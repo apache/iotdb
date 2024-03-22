@@ -70,13 +70,13 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
 
   @Override
   public Set<TimeSeriesWindow> mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp) {
-    long lastTime =
+    final long lastTime =
         windowList.isEmpty()
             ? slidingBoundaryTime
             : windowList.get(windowList.size() - 1).getTimestamp();
 
     if (timeStamp >= (windowList.isEmpty() ? lastTime : lastTime + slidingInterval)) {
-      TimeSeriesWindow window = new TimeSeriesWindow(this, null);
+      final TimeSeriesWindow window = new TimeSeriesWindow(this, null);
       // Align to the last time + k * slidingInterval, k is a natural number
       window.setTimestamp(((timeStamp - lastTime) / slidingInterval) * slidingInterval + lastTime);
       windowList.add(window);

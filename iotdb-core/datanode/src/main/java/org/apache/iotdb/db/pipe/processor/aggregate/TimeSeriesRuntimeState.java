@@ -78,7 +78,7 @@ public class TimeSeriesRuntimeState {
     if (timestamp <= lastReportTimeStamp) {
       return null;
     }
-    Set<TimeSeriesWindow> addedWindows =
+    final Set<TimeSeriesWindow> addedWindows =
         windowingProcessor.mayAddWindow(currentOpeningWindows, timestamp, value);
     if (Objects.nonNull(addedWindows)) {
       addedWindows.forEach(
@@ -88,10 +88,10 @@ public class TimeSeriesRuntimeState {
                   aggregatorOutputName2OperatorMap,
                   systemParameters));
     }
-    Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
+    final Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
     while (windowIterator.hasNext()) {
-      TimeSeriesWindow window = windowIterator.next();
-      Pair<WindowState, WindowOutput> stateWindowOutputPair =
+      final TimeSeriesWindow window = windowIterator.next();
+      final Pair<WindowState, WindowOutput> stateWindowOutputPair =
           window.updateIntermediateResult(timestamp, value);
       if (Objects.isNull(stateWindowOutputPair)) {
         continue;
@@ -123,7 +123,7 @@ public class TimeSeriesRuntimeState {
     if (timestamp <= lastReportTimeStamp) {
       return null;
     }
-    Set<TimeSeriesWindow> addedWindows =
+    final Set<TimeSeriesWindow> addedWindows =
         windowingProcessor.mayAddWindow(currentOpeningWindows, timestamp, value);
     if (Objects.nonNull(addedWindows)) {
       addedWindows.forEach(
@@ -133,10 +133,10 @@ public class TimeSeriesRuntimeState {
                   aggregatorOutputName2OperatorMap,
                   systemParameters));
     }
-    Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
+    final Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
     while (windowIterator.hasNext()) {
-      TimeSeriesWindow window = windowIterator.next();
-      Pair<WindowState, WindowOutput> stateWindowOutputPair =
+      final TimeSeriesWindow window = windowIterator.next();
+      final Pair<WindowState, WindowOutput> stateWindowOutputPair =
           window.updateIntermediateResult(timestamp, value);
       if (Objects.isNull(stateWindowOutputPair)) {
         continue;
@@ -168,7 +168,7 @@ public class TimeSeriesRuntimeState {
     if (timestamp <= lastReportTimeStamp) {
       return null;
     }
-    Set<TimeSeriesWindow> addedWindows =
+    final Set<TimeSeriesWindow> addedWindows =
         windowingProcessor.mayAddWindow(currentOpeningWindows, timestamp, value);
     if (Objects.nonNull(addedWindows)) {
       addedWindows.forEach(
@@ -178,10 +178,10 @@ public class TimeSeriesRuntimeState {
                   aggregatorOutputName2OperatorMap,
                   systemParameters));
     }
-    Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
+    final Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
     while (windowIterator.hasNext()) {
-      TimeSeriesWindow window = windowIterator.next();
-      Pair<WindowState, WindowOutput> stateWindowOutputPair =
+      final TimeSeriesWindow window = windowIterator.next();
+      final Pair<WindowState, WindowOutput> stateWindowOutputPair =
           window.updateIntermediateResult(timestamp, value);
       if (Objects.isNull(stateWindowOutputPair)) {
         continue;
@@ -213,7 +213,7 @@ public class TimeSeriesRuntimeState {
     if (timestamp <= lastReportTimeStamp) {
       return null;
     }
-    Set<TimeSeriesWindow> addedWindows =
+    final Set<TimeSeriesWindow> addedWindows =
         windowingProcessor.mayAddWindow(currentOpeningWindows, timestamp, value);
     if (Objects.nonNull(addedWindows)) {
       addedWindows.forEach(
@@ -223,10 +223,10 @@ public class TimeSeriesRuntimeState {
                   aggregatorOutputName2OperatorMap,
                   systemParameters));
     }
-    Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
+    final Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
     while (windowIterator.hasNext()) {
-      TimeSeriesWindow window = windowIterator.next();
-      Pair<WindowState, WindowOutput> stateWindowOutputPair =
+      final TimeSeriesWindow window = windowIterator.next();
+      final Pair<WindowState, WindowOutput> stateWindowOutputPair =
           window.updateIntermediateResult(timestamp, value);
       if (Objects.isNull(stateWindowOutputPair)) {
         continue;
@@ -258,7 +258,7 @@ public class TimeSeriesRuntimeState {
     if (timestamp <= lastReportTimeStamp) {
       return null;
     }
-    Set<TimeSeriesWindow> addedWindows =
+    final Set<TimeSeriesWindow> addedWindows =
         windowingProcessor.mayAddWindow(currentOpeningWindows, timestamp, value);
     if (Objects.nonNull(addedWindows)) {
       addedWindows.forEach(
@@ -268,10 +268,10 @@ public class TimeSeriesRuntimeState {
                   aggregatorOutputName2OperatorMap,
                   systemParameters));
     }
-    Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
+    final Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
     while (windowIterator.hasNext()) {
-      TimeSeriesWindow window = windowIterator.next();
-      Pair<WindowState, WindowOutput> stateWindowOutputPair =
+      final TimeSeriesWindow window = windowIterator.next();
+      final Pair<WindowState, WindowOutput> stateWindowOutputPair =
           window.updateIntermediateResult(timestamp, value);
       if (Objects.isNull(stateWindowOutputPair)) {
         continue;
@@ -303,7 +303,7 @@ public class TimeSeriesRuntimeState {
     if (timestamp <= lastReportTimeStamp) {
       return null;
     }
-    Set<TimeSeriesWindow> addedWindows =
+    final Set<TimeSeriesWindow> addedWindows =
         windowingProcessor.mayAddWindow(currentOpeningWindows, timestamp, value);
     if (Objects.nonNull(addedWindows)) {
       addedWindows.forEach(
@@ -313,10 +313,10 @@ public class TimeSeriesRuntimeState {
                   aggregatorOutputName2OperatorMap,
                   systemParameters));
     }
-    Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
+    final Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
     while (windowIterator.hasNext()) {
-      TimeSeriesWindow window = windowIterator.next();
-      Pair<WindowState, WindowOutput> stateWindowOutputPair =
+      final TimeSeriesWindow window = windowIterator.next();
+      final Pair<WindowState, WindowOutput> stateWindowOutputPair =
           window.updateIntermediateResult(timestamp, value);
       if (Objects.isNull(stateWindowOutputPair)) {
         continue;
@@ -384,7 +384,7 @@ public class TimeSeriesRuntimeState {
     final int size = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < size; ++i) {
       // The runtime value will be deserialized if exists
-      TimeSeriesWindow currentWindow = new TimeSeriesWindow(windowingProcessor, null);
+      final TimeSeriesWindow currentWindow = new TimeSeriesWindow(windowingProcessor, null);
       currentWindow.initWindow(
           intermediateResultName2OperatorSupplierMap,
           aggregatorOutputName2OperatorMap,

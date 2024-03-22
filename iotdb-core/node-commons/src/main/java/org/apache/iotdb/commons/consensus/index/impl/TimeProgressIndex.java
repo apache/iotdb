@@ -72,7 +72,7 @@ public class TimeProgressIndex extends ProgressIndex {
           timeSeries2TimestampWindowBufferPairMap.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
         ReadWriteIOUtils.write(entry.getValue().getLeft(), byteBuffer);
-        ByteBuffer buffer = entry.getValue().getRight();
+        final ByteBuffer buffer = entry.getValue().getRight();
         if (Objects.nonNull(buffer)) {
           ReadWriteIOUtils.write(buffer.limit(), byteBuffer);
           byteBuffer.put(buffer.array(), 0, buffer.limit());
@@ -96,7 +96,7 @@ public class TimeProgressIndex extends ProgressIndex {
           timeSeries2TimestampWindowBufferPairMap.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), stream);
         ReadWriteIOUtils.write(entry.getValue().getLeft(), stream);
-        ByteBuffer buffer = entry.getValue().getRight();
+        final ByteBuffer buffer = entry.getValue().getRight();
         if (Objects.nonNull(buffer)) {
           ReadWriteIOUtils.write(buffer.limit(), stream);
           stream.write(buffer.array(), 0, buffer.limit());
@@ -127,7 +127,7 @@ public class TimeProgressIndex extends ProgressIndex {
 
       final TimeProgressIndex thisTimeProgressIndex = this;
       final TimeProgressIndex thatTimeProgressIndex = (TimeProgressIndex) progressIndex;
-      Map<String, Pair<Long, ByteBuffer>> thisMapView =
+      final Map<String, Pair<Long, ByteBuffer>> thisMapView =
           new HashMap<>(thisTimeProgressIndex.timeSeries2TimestampWindowBufferPairMap);
       thisMapView
           .entrySet()
@@ -248,7 +248,7 @@ public class TimeProgressIndex extends ProgressIndex {
       }
       final byte[] body = new byte[length];
       byteBuffer.get(body);
-      ByteBuffer dstBuffer = ByteBuffer.wrap(body);
+      final ByteBuffer dstBuffer = ByteBuffer.wrap(body);
       timeProgressIndex.timeSeries2TimestampWindowBufferPairMap.put(
           timeSeries, new Pair<>(timestamp, dstBuffer));
     }
@@ -268,14 +268,14 @@ public class TimeProgressIndex extends ProgressIndex {
         continue;
       }
       final byte[] body = new byte[length];
-      int readLen = stream.read(body);
+      final int readLen = stream.read(body);
       if (readLen != length) {
         throw new IOException(
             String.format(
                 "The intended read length is %s but %s is actually read when deserializing TimeProgressIndex, ProgressIndex: %s",
                 length, readLen, timeProgressIndex));
       }
-      ByteBuffer dstBuffer = ByteBuffer.wrap(body);
+      final ByteBuffer dstBuffer = ByteBuffer.wrap(body);
       timeProgressIndex.timeSeries2TimestampWindowBufferPairMap.put(
           timeSeries, new Pair<>(timestamp, dstBuffer));
     }

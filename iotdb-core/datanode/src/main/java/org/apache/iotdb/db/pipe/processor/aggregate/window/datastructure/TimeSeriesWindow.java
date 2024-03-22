@@ -104,16 +104,16 @@ public class TimeSeriesWindow {
   // Return the output and state of the window.
   // Return null if the state is normal to avoid boxing.
   public Pair<WindowState, WindowOutput> updateIntermediateResult(long timestamp, boolean value) {
-    Pair<WindowState, WindowOutput> stateOutputPair =
+    final Pair<WindowState, WindowOutput> stateOutputPair =
         processor.updateAndMaySetWindowState(this, timestamp, value);
-    WindowState state = stateOutputPair.getLeft();
+    final WindowState state = stateOutputPair.getLeft();
 
     if (state.isEmitWithoutCompute()) {
       stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.BOOLEAN));
     }
 
     if (state.isCalculate()) {
-      Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
+      final Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
           intermediateResultName2tsTypeAndOperatorMap.entrySet().iterator();
       Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry;
 
@@ -159,16 +159,16 @@ public class TimeSeriesWindow {
 
   // The same logic is repeated because java does not support basic type template :-)
   public Pair<WindowState, WindowOutput> updateIntermediateResult(long timestamp, int value) {
-    Pair<WindowState, WindowOutput> stateOutputPair =
+    final Pair<WindowState, WindowOutput> stateOutputPair =
         processor.updateAndMaySetWindowState(this, timestamp, value);
-    WindowState state = stateOutputPair.getLeft();
+    final WindowState state = stateOutputPair.getLeft();
 
     if (state.isEmitWithoutCompute()) {
       stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.INT32));
     }
 
     if (state.isCalculate()) {
-      Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
+      final Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
           intermediateResultName2tsTypeAndOperatorMap.entrySet().iterator();
       Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry;
 
@@ -213,16 +213,16 @@ public class TimeSeriesWindow {
   }
 
   public Pair<WindowState, WindowOutput> updateIntermediateResult(long timestamp, long value) {
-    Pair<WindowState, WindowOutput> stateOutputPair =
+    final Pair<WindowState, WindowOutput> stateOutputPair =
         processor.updateAndMaySetWindowState(this, timestamp, value);
-    WindowState state = stateOutputPair.getLeft();
+    final WindowState state = stateOutputPair.getLeft();
 
     if (state.isEmitWithoutCompute()) {
       stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.INT64));
     }
 
     if (state.isCalculate()) {
-      Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
+      final Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
           intermediateResultName2tsTypeAndOperatorMap.entrySet().iterator();
       Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry;
 
@@ -267,16 +267,16 @@ public class TimeSeriesWindow {
   }
 
   public Pair<WindowState, WindowOutput> updateIntermediateResult(long timestamp, float value) {
-    Pair<WindowState, WindowOutput> stateOutputPair =
+    final Pair<WindowState, WindowOutput> stateOutputPair =
         processor.updateAndMaySetWindowState(this, timestamp, value);
-    WindowState state = stateOutputPair.getLeft();
+    final WindowState state = stateOutputPair.getLeft();
 
     if (state.isEmitWithoutCompute()) {
       stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.FLOAT));
     }
 
     if (state.isCalculate()) {
-      Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
+      final Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
           intermediateResultName2tsTypeAndOperatorMap.entrySet().iterator();
       Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry;
 
@@ -321,15 +321,15 @@ public class TimeSeriesWindow {
   }
 
   public Pair<WindowState, WindowOutput> updateIntermediateResult(long timestamp, double value) {
-    Pair<WindowState, WindowOutput> stateOutputPair =
+    final Pair<WindowState, WindowOutput> stateOutputPair =
         processor.updateAndMaySetWindowState(this, timestamp, value);
-    WindowState state = stateOutputPair.getLeft();
+    final WindowState state = stateOutputPair.getLeft();
 
     if (state.isEmitWithoutCompute()) {
       stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.DOUBLE));
     }
     if (state.isCalculate()) {
-      Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
+      final Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
           intermediateResultName2tsTypeAndOperatorMap.entrySet().iterator();
       Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry;
 
@@ -374,15 +374,15 @@ public class TimeSeriesWindow {
   }
 
   public Pair<WindowState, WindowOutput> updateIntermediateResult(long timestamp, String value) {
-    Pair<WindowState, WindowOutput> stateOutputPair =
+    final Pair<WindowState, WindowOutput> stateOutputPair =
         processor.updateAndMaySetWindowState(this, timestamp, value);
-    WindowState state = stateOutputPair.getLeft();
+    final WindowState state = stateOutputPair.getLeft();
 
     if (state.isEmitWithoutCompute()) {
       stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.TEXT));
     }
     if (state.isCalculate()) {
-      Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
+      final Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
           intermediateResultName2tsTypeAndOperatorMap.entrySet().iterator();
       Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry;
 
@@ -445,7 +445,7 @@ public class TimeSeriesWindow {
             .anyMatch(entry -> entry.getValue().getLeft() != dataType)) {
       return Collections.emptyMap();
     }
-    CustomizedReadableIntermediateResults readableIntermediateResults =
+    final CustomizedReadableIntermediateResults readableIntermediateResults =
         new CustomizedReadableIntermediateResults(
             intermediateResultName2tsTypeAndOperatorMap.entrySet().stream()
                 .collect(
@@ -483,7 +483,7 @@ public class TimeSeriesWindow {
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; i++) {
       final String intermediateResultName = ReadWriteIOUtils.readString(byteBuffer);
-      Pair<TSDataType, IntermediateResultOperator> initializedAndOperatorPair =
+      final Pair<TSDataType, IntermediateResultOperator> initializedAndOperatorPair =
           intermediateResultName2tsTypeAndOperatorMap.get(intermediateResultName);
       if (Objects.nonNull(initializedAndOperatorPair)) {
         initializedAndOperatorPair.setLeft(TSDataType.deserializeFrom(byteBuffer));
