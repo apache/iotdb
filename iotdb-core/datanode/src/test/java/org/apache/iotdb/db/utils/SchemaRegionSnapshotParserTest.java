@@ -75,13 +75,10 @@ public class SchemaRegionSnapshotParserTest {
   protected static class SchemaRegionSnapshotParserTestParams {
     private final String testModeName;
     private final String schemaRegionMode;
-    private final boolean isClusterMode;
 
-    private SchemaRegionSnapshotParserTestParams(
-        String testModeName, String schemaEngineMode, boolean isClusterMode) {
+    private SchemaRegionSnapshotParserTestParams(String testModeName, String schemaEngineMode) {
       this.testModeName = testModeName;
       this.schemaRegionMode = schemaEngineMode;
-      this.isClusterMode = isClusterMode;
     }
 
     public String getTestModeName() {
@@ -90,10 +87,6 @@ public class SchemaRegionSnapshotParserTest {
 
     public String getSchemaRegionMode() {
       return this.schemaRegionMode;
-    }
-
-    public boolean getClusterMode() {
-      return this.isClusterMode;
     }
 
     @Override
@@ -107,17 +100,15 @@ public class SchemaRegionSnapshotParserTest {
   @Parameterized.Parameters(name = "{0}")
   public static List<SchemaRegionSnapshotParserTestParams> getTestModes() {
     return Arrays.asList(
-        new SchemaRegionSnapshotParserTestParams("MemoryMode", "Memory", true),
-        new SchemaRegionSnapshotParserTestParams("PBTree", "PBTree", true));
+        new SchemaRegionSnapshotParserTestParams("MemoryMode", "Memory"),
+        new SchemaRegionSnapshotParserTestParams("PBTree", "PBTree"));
   }
 
   @Before
   public void setUp() throws Exception {
     rawConfig =
-        new SchemaRegionSnapshotParserTestParams(
-            "Raw-Config", COMMON_CONFIG.getSchemaEngineMode(), config.isClusterMode());
+        new SchemaRegionSnapshotParserTestParams("Raw-Config", COMMON_CONFIG.getSchemaEngineMode());
     COMMON_CONFIG.setSchemaEngineMode(testParams.schemaRegionMode);
-    config.setClusterMode(testParams.isClusterMode);
     SchemaEngine.getInstance().init();
     if (testParams.schemaRegionMode.equals("Memory")) {
       snapshotFileName = SchemaConstant.MTREE_SNAPSHOT;
@@ -131,7 +122,6 @@ public class SchemaRegionSnapshotParserTest {
     SchemaEngine.getInstance().clear();
     cleanEnv();
     COMMON_CONFIG.setSchemaEngineMode(rawConfig.schemaRegionMode);
-    config.setClusterMode(rawConfig.isClusterMode);
   }
 
   protected void cleanEnv() throws IOException {

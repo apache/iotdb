@@ -235,7 +235,7 @@ public class TsFileInsertionDataContainerTest {
       long startTime,
       long endTime)
       throws Exception {
-    LOGGER.info(
+    LOGGER.debug(
         "testToTabletInsertionEvents: deviceNumber: {}, measurementNumber: {}, rowNumberInOneDevice: {}, patternFormat: {}, startTime: {}, endTime: {}",
         deviceNumber,
         measurementNumber,

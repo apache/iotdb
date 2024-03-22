@@ -45,7 +45,7 @@ import java.util.List;
 
 public class TsFileSketchToolTest {
   String path =
-      "data"
+      "target"
           .concat(File.separator)
           .concat("data")
           .concat(File.separator)

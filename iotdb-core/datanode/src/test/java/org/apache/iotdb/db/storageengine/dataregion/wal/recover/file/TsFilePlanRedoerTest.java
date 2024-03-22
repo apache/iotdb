@@ -83,13 +83,10 @@ public class TsFilePlanRedoerTest {
   private CompressionType compressionType;
   boolean prevIsAutoCreateSchemaEnabled;
   boolean prevIsEnablePartialInsert;
-  boolean prevIsCluster;
 
   @Before
   public void setUp() throws Exception {
-    prevIsCluster = IoTDBDescriptor.getInstance().getConfig().isClusterMode();
     EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance().getConfig().setClusterMode(true);
 
     // set recover config, avoid creating deleted time series when recovering wal
     prevIsAutoCreateSchemaEnabled =
@@ -109,7 +106,6 @@ public class TsFilePlanRedoerTest {
     if (modsFile.exists()) {
       modsFile.delete();
     }
-    IoTDBDescriptor.getInstance().getConfig().setClusterMode(prevIsCluster);
     EnvironmentUtils.cleanEnv();
     // reset config
     //    IoTDBDescriptor.getInstance()

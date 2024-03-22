@@ -312,11 +312,10 @@ public class DataRegion implements IDataRegionForQuery {
     lastFlushTimeMap = new HashLastFlushTimeMap();
 
     // recover tsfiles unless consensus protocol is ratis and storage storageengine is not ready
-    if (config.isClusterMode()
-        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
         && !StorageEngine.getInstance().isAllSgReady()) {
       logger.debug(
-          "Skip recovering data region {}[{}] when consensus protocol is ratis and storage storageengine is not ready.",
+          "Skip recovering data region {}[{}] when consensus protocol is ratis and storage engine is not ready.",
           databaseName,
           dataRegionId);
       for (String fileFolder : TierManager.getInstance().getAllFilesFolders()) {
@@ -619,7 +618,7 @@ public class DataRegion implements IDataRegionForQuery {
     compactionRecoverManager.recoverCrossSpaceCompaction();
   }
 
-  private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
+  public void updatePartitionFileVersion(long partitionNum, long fileVersion) {
     partitionMaxFileVersions.compute(
         partitionNum,
         (key, oldVersion) ->

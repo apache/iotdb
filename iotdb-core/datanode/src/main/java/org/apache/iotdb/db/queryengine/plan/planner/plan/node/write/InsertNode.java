@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
@@ -34,7 +33,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
@@ -189,13 +187,7 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
       if (measurements[i] == null) {
         continue;
       }
-      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-        byteLen += WALWriteUtils.sizeToWrite(measurementSchemas[i]);
-      } else {
-        byteLen += ReadWriteIOUtils.sizeToWrite(measurements[i]);
-        // datatype size
-        byteLen++;
-      }
+      byteLen += WALWriteUtils.sizeToWrite(measurementSchemas[i]);
     }
     return byteLen;
   }
@@ -207,14 +199,7 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
       if (measurements[i] == null) {
         continue;
       }
-
-      // serialize measurementId only for standalone version for better write performance
-      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-        WALWriteUtils.write(measurementSchemas[i], buffer);
-      } else {
-        WALWriteUtils.write(measurements[i], buffer);
-        WALWriteUtils.write(dataTypes[i], buffer);
-      }
+      WALWriteUtils.write(measurementSchemas[i], buffer);
     }
   }
 
@@ -224,14 +209,9 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
    */
   protected void deserializeMeasurementSchemas(DataInputStream stream) throws IOException {
     for (int i = 0; i < measurements.length; i++) {
-      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-        measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
-        measurements[i] = measurementSchemas[i].getMeasurementId();
-        dataTypes[i] = measurementSchemas[i].getType();
-      } else {
-        measurements[i] = ReadWriteIOUtils.readString(stream);
-        dataTypes[i] = TSDataType.deserialize(ReadWriteIOUtils.readByte(stream));
-      }
+      measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
+      measurements[i] = measurementSchemas[i].getMeasurementId();
+      dataTypes[i] = measurementSchemas[i].getType();
     }
   }
 

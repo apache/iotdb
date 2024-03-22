@@ -237,8 +237,6 @@ public class DataNode implements DataNodeMBean {
   /** Prepare cluster IoTDB-DataNode */
   private boolean prepareDataNode() throws StartupException, IOException {
     long startTime = System.currentTimeMillis();
-    // Set cluster mode
-    config.setClusterMode(true);
 
     // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
     IoTDBStartCheck.getInstance().checkOldSystemConfig();
@@ -572,8 +570,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(CacheHitRatioMonitor.getInstance());
 
     // Close wal when using ratis consensus
-    if (config.isClusterMode()
-        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       config.setWalMode(WALMode.DISABLE);
     }
     registerManager.register(WALManager.getInstance());
