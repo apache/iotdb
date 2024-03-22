@@ -211,6 +211,19 @@ public enum ConfigPhysicalPlanType {
   PipeDeleteTimeSeries((short) 1702),
   PipeDeleteLogicalView((short) 1703),
   PipeDeactivateTemplate((short) 1704),
+
+  /** Subscription */
+  CreateTopic((short) 1800),
+  DropTopic((short) 1801),
+  ShowTopic((short) 1802),
+  AlterTopic((short) 1803),
+
+  AlterConsumerGroup((short) 1900),
+
+  ShowSubscription((short) 2000),
+
+  /** Test Only. */
+  TestOnly((short) 30000),
   ;
 
   private final short planType;

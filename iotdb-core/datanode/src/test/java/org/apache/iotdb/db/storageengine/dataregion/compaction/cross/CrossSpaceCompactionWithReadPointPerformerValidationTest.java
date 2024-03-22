@@ -48,6 +48,7 @@ import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -1838,7 +1839,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
     unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
-    for (String deviceID : lastSeqResource.getDevices()) {
+    for (IDeviceID deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
     }
     seqResources.remove(4);
@@ -1891,7 +1892,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
     unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
-    for (String deviceID : lastSeqResource.getDevices()) {
+    for (IDeviceID deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
     }
     seqResources.remove(4);
@@ -1937,7 +1938,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
     unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
-    for (String deviceID : lastSeqResource.getDevices()) {
+    for (IDeviceID deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
     }
     seqResources.remove(4);
@@ -1989,7 +1990,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
     unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
-    for (String deviceID : lastSeqResource.getDevices()) {
+    for (IDeviceID deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
     }
     seqResources.remove(4);
@@ -2042,7 +2043,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     TsFileResource unclosedUnSeqResource = new TsFileResource(unseqResources.get(1).getTsFile());
     unclosedUnSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastUnSeqResource = unseqResources.get(1);
-    for (String deviceID : lastUnSeqResource.getDevices()) {
+    for (IDeviceID deviceID : lastUnSeqResource.getDevices()) {
       unclosedUnSeqResource.updateStartTime(deviceID, lastUnSeqResource.getStartTime(deviceID));
       unclosedUnSeqResource.updateEndTime(deviceID, lastUnSeqResource.getEndTime(deviceID));
     }

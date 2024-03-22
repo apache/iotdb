@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 import org.apache.iotdb.tsfile.exception.TsFileStatisticsMistakesException;
+import org.apache.iotdb.tsfile.file.IMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -35,10 +36,13 @@ import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.DeviceMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.metadata.MeasurementMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -109,7 +113,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   protected volatile TsFileMetadata tsFileMetaData;
 
   // device -> measurement -> TimeseriesMetadata
-  private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadata =
+  private Map<IDeviceID, Map<String, TimeseriesMetadata>> cachedDeviceMetadata =
       new ConcurrentHashMap<>();
   private static final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
   private boolean cacheDeviceMetadata;
@@ -325,7 +329,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return the map measurementId -> TimeseriesMetaData in one device
    * @throws IOException io error
    */
-  public Map<String, TimeseriesMetadata> readDeviceMetadata(String device) throws IOException {
+  public Map<String, TimeseriesMetadata> readDeviceMetadata(IDeviceID device) throws IOException {
     if (!cacheDeviceMetadata) {
       return readDeviceMetadataFromDisk(device);
     }
@@ -357,7 +361,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     cachedDeviceMetadata.clear();
   }
 
-  private Map<String, TimeseriesMetadata> readDeviceMetadataFromDisk(String device)
+  private Map<String, TimeseriesMetadata> readDeviceMetadataFromDisk(IDeviceID device)
       throws IOException {
     readFileMetadata();
     List<TimeseriesMetadata> timeseriesMetadataList =
@@ -369,20 +373,12 @@ public class TsFileSequenceReader implements AutoCloseable {
     return deviceMetadata;
   }
 
-  /** @deprecated Use {@link #readTimeseriesMetadata(String, String, boolean)} instead. */
-  @Deprecated
-  @SuppressWarnings("java:S1133") // suppress warn of deprecation
-  public TimeseriesMetadata readTimeseriesMetadata(Path path, boolean ignoreNotExists)
-      throws IOException {
-    return readTimeseriesMetadata(path.getDevice(), path.getMeasurement(), ignoreNotExists);
-  }
-
   public TimeseriesMetadata readTimeseriesMetadata(
-      String device, String measurement, boolean ignoreNotExists) throws IOException {
+      IDeviceID device, String measurement, boolean ignoreNotExists) throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
-    Pair<MetadataIndexEntry, Long> metadataIndexPair =
-        getMetadataAndEndOffset(deviceMetadataIndexNode, device, true, true);
+    Pair<IMetadataIndexEntry, Long> metadataIndexPair =
+        getMetadataAndEndOffsetOfDeviceNode(deviceMetadataIndexNode, device, true);
     if (metadataIndexPair == null) {
       if (ignoreNotExists) {
         return null;
@@ -393,12 +389,13 @@ public class TsFileSequenceReader implements AutoCloseable {
     MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
     if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
       try {
-        metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+        metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer, false);
       } catch (Exception e) {
         logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
         throw e;
       }
-      metadataIndexPair = getMetadataAndEndOffset(metadataIndexNode, measurement, false, false);
+      metadataIndexPair =
+          getMetadataAndEndOffsetOfMeasurementNode(metadataIndexNode, measurement, false);
     }
     if (metadataIndexPair == null) {
       return null;
@@ -440,8 +437,8 @@ public class TsFileSequenceReader implements AutoCloseable {
       throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
-    Pair<MetadataIndexEntry, Long> metadataIndexPair =
-        getMetadataAndEndOffset(deviceMetadataIndexNode, path.getDevice(), true, true);
+    Pair<IMetadataIndexEntry, Long> metadataIndexPair =
+        getMetadataAndEndOffsetOfDeviceNode(deviceMetadataIndexNode, path.getIDeviceID(), true);
     if (metadataIndexPair == null) {
       if (ignoreNotExists) {
         return null;
@@ -453,14 +450,14 @@ public class TsFileSequenceReader implements AutoCloseable {
     TimeseriesMetadata firstTimeseriesMetadata;
     try {
       // next layer MeasurementNode of the specific DeviceNode
-      metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+      metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer, false);
     } catch (Exception e) {
       logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
       throw e;
     }
     firstTimeseriesMetadata = tryToGetFirstTimeseriesMetadata(metadataIndexNode);
     metadataIndexPair =
-        getMetadataAndEndOffset(metadataIndexNode, path.getMeasurement(), false, false);
+        getMetadataAndEndOffsetOfMeasurementNode(metadataIndexNode, path.getMeasurement(), false);
 
     if (metadataIndexPair == null) {
       return null;
@@ -494,8 +491,8 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   /* Find the leaf node that contains path, return all the sensors in that leaf node which are also in allSensors set */
   public List<TimeseriesMetadata> readTimeseriesMetadata(
-      String device, String measurement, Set<String> allSensors) throws IOException {
-    Pair<MetadataIndexEntry, Long> metadataIndexPair =
+      IDeviceID device, String measurement, Set<String> allSensors) throws IOException {
+    Pair<IMetadataIndexEntry, Long> metadataIndexPair =
         getLeafMetadataIndexPair(device, measurement);
     if (metadataIndexPair == null) {
       return Collections.emptyList();
@@ -543,12 +540,12 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /* Get leaf MetadataIndexPair which contains path */
-  private Pair<MetadataIndexEntry, Long> getLeafMetadataIndexPair(String device, String measurement)
-      throws IOException {
+  private Pair<IMetadataIndexEntry, Long> getLeafMetadataIndexPair(
+      IDeviceID device, String measurement) throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
-    Pair<MetadataIndexEntry, Long> metadataIndexPair =
-        getMetadataAndEndOffset(deviceMetadataIndexNode, device, true, true);
+    Pair<IMetadataIndexEntry, Long> metadataIndexPair =
+        getMetadataAndEndOffsetOfDeviceNode(deviceMetadataIndexNode, device, true);
     if (metadataIndexPair == null) {
       return null;
     }
@@ -556,23 +553,24 @@ public class TsFileSequenceReader implements AutoCloseable {
     MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
     if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
       try {
-        metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+        metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer, false);
       } catch (Exception e) {
         logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
         throw e;
       }
-      metadataIndexPair = getMetadataAndEndOffset(metadataIndexNode, measurement, false, false);
+      metadataIndexPair =
+          getMetadataAndEndOffsetOfMeasurementNode(metadataIndexNode, measurement, false);
     }
     return metadataIndexPair;
   }
 
   // This method is only used for TsFile
-  public List<ITimeSeriesMetadata> readITimeseriesMetadata(String device, Set<String> measurements)
-      throws IOException {
+  public List<ITimeSeriesMetadata> readITimeseriesMetadata(
+      IDeviceID device, Set<String> measurements) throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
-    Pair<MetadataIndexEntry, Long> metadataIndexPair =
-        getMetadataAndEndOffset(deviceMetadataIndexNode, device, true, false);
+    Pair<IMetadataIndexEntry, Long> metadataIndexPair =
+        getMetadataAndEndOffsetOfDeviceNode(deviceMetadataIndexNode, device, false);
     if (metadataIndexPair == null) {
       return Collections.emptyList();
     }
@@ -581,13 +579,13 @@ public class TsFileSequenceReader implements AutoCloseable {
     Set<String> measurementsHadFound = new HashSet<>();
     // the content of next Layer MeasurementNode of the specific device's DeviceNode
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
-    Pair<MetadataIndexEntry, Long> measurementMetadataIndexPair = metadataIndexPair;
+    Pair<IMetadataIndexEntry, Long> measurementMetadataIndexPair = metadataIndexPair;
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
 
     // next layer MeasurementNode of the specific DeviceNode
     MetadataIndexNode measurementMetadataIndexNode;
     try {
-      measurementMetadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+      measurementMetadataIndexNode = MetadataIndexNode.deserializeFrom(buffer, false);
     } catch (Exception e) {
       logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
       throw e;
@@ -602,8 +600,8 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
       timeseriesMetadataList.clear();
       measurementMetadataIndexPair =
-          getMetadataAndEndOffset(
-              measurementMetadataIndexNode, measurementList.get(i), false, false);
+          getMetadataAndEndOffsetOfMeasurementNode(
+              measurementMetadataIndexNode, measurementList.get(i), false);
 
       if (measurementMetadataIndexPair == null) {
         continue;
@@ -667,20 +665,20 @@ public class TsFileSequenceReader implements AutoCloseable {
     return -1; // key not found
   }
 
-  public List<String> getAllDevices() throws IOException {
+  public List<IDeviceID> getAllDevices() throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
     return getAllDevices(tsFileMetaData.getMetadataIndex());
   }
 
-  private List<String> getAllDevices(MetadataIndexNode metadataIndexNode) throws IOException {
-    List<String> deviceList = new ArrayList<>();
+  private List<IDeviceID> getAllDevices(MetadataIndexNode metadataIndexNode) throws IOException {
+    List<IDeviceID> deviceList = new ArrayList<>();
     // if metadataIndexNode is LEAF_DEVICE, put all devices in node entry into the list
     if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
       deviceList.addAll(
           metadataIndexNode.getChildren().stream()
-              .map(x -> x.getName().intern())
+              .map(entry -> ((DeviceMetadataIndexEntry) entry).getDeviceID())
               .collect(Collectors.toList()));
       return deviceList;
     }
@@ -692,7 +690,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
       }
       ByteBuffer buffer = readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
-      MetadataIndexNode node = MetadataIndexNode.deserializeFrom(buffer);
+      MetadataIndexNode node = MetadataIndexNode.deserializeFrom(buffer, true);
       deviceList.addAll(getAllDevices(node));
     }
     return deviceList;
@@ -705,7 +703,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public TsFileDeviceIterator getAllDevicesIteratorWithIsAligned() throws IOException {
     readFileMetadata();
-    Queue<Pair<String, long[]>> queue = new LinkedList<>();
+    Queue<Pair<IDeviceID, long[]>> queue = new LinkedList<>();
     List<long[]> leafDeviceNodeOffsets = new ArrayList<>();
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
     if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
@@ -727,11 +725,11 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param measurementNodeOffsetQueue device -> first measurement node offset
    */
   public void getDevicesAndEntriesOfOneLeafNode(
-      Long startOffset, Long endOffset, Queue<Pair<String, long[]>> measurementNodeOffsetQueue)
+      Long startOffset, Long endOffset, Queue<Pair<IDeviceID, long[]>> measurementNodeOffsetQueue)
       throws IOException {
     try {
       ByteBuffer nextBuffer = readData(startOffset, endOffset);
-      MetadataIndexNode deviceLeafNode = MetadataIndexNode.deserializeFrom(nextBuffer);
+      MetadataIndexNode deviceLeafNode = MetadataIndexNode.deserializeFrom(nextBuffer, true);
       getDevicesOfLeafNode(deviceLeafNode, measurementNodeOffsetQueue);
     } catch (StopReadTsFileByInterruptException e) {
       throw e;
@@ -747,20 +745,21 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param deviceLeafNode this node must be device leaf node
    */
   private void getDevicesOfLeafNode(
-      MetadataIndexNode deviceLeafNode, Queue<Pair<String, long[]>> measurementNodeOffsetQueue) {
+      MetadataIndexNode deviceLeafNode, Queue<Pair<IDeviceID, long[]>> measurementNodeOffsetQueue) {
     if (!deviceLeafNode.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
       throw new IllegalStateException("the first param should be device leaf node.");
     }
-    List<MetadataIndexEntry> childrenEntries = deviceLeafNode.getChildren();
+    List<IMetadataIndexEntry> childrenEntries = deviceLeafNode.getChildren();
     for (int i = 0; i < childrenEntries.size(); i++) {
-      MetadataIndexEntry deviceEntry = childrenEntries.get(i);
+      IMetadataIndexEntry deviceEntry = childrenEntries.get(i);
       long childStartOffset = deviceEntry.getOffset();
       long childEndOffset =
           i == childrenEntries.size() - 1
               ? deviceLeafNode.getEndOffset()
               : childrenEntries.get(i + 1).getOffset();
       long[] offset = {childStartOffset, childEndOffset};
-      measurementNodeOffsetQueue.add(new Pair<>(deviceEntry.getName(), offset));
+      measurementNodeOffsetQueue.add(
+          new Pair<>(((DeviceMetadataIndexEntry) deviceEntry).getDeviceID(), offset));
     }
   }
 
@@ -778,7 +777,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       int metadataIndexListSize = deviceInternalNode.getChildren().size();
       boolean isCurrentLayerLeafNode = false;
       for (int i = 0; i < metadataIndexListSize; i++) {
-        MetadataIndexEntry entry = deviceInternalNode.getChildren().get(i);
+        IMetadataIndexEntry entry = deviceInternalNode.getChildren().get(i);
         long startOffset = entry.getOffset();
         long endOffset = deviceInternalNode.getEndOffset();
         if (i != metadataIndexListSize - 1) {
@@ -800,7 +799,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         }
         ByteBuffer nextBuffer = readData(startOffset, endOffset);
         getAllDeviceLeafNodeOffset(
-            MetadataIndexNode.deserializeFrom(nextBuffer), leafDeviceNodeOffsets);
+            MetadataIndexNode.deserializeFrom(nextBuffer, true), leafDeviceNodeOffsets);
       }
     } catch (StopReadTsFileByInterruptException e) {
       throw e;
@@ -817,7 +816,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return measurement -> ChunkMetadata list
    * @throws IOException io error
    */
-  public Map<String, List<ChunkMetadata>> readChunkMetadataInDevice(String device)
+  public Map<String, List<ChunkMetadata>> readChunkMetadataInDevice(IDeviceID device)
       throws IOException {
     readFileMetadata();
     List<TimeseriesMetadata> timeseriesMetadataMap = getDeviceTimeseriesMetadata(device);
@@ -843,7 +842,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public List<Path> getAllPaths() throws IOException {
     List<Path> paths = new ArrayList<>();
-    for (String device : getAllDevices()) {
+    for (IDeviceID device : getAllDevices()) {
       Map<String, TimeseriesMetadata> timeseriesMetadataMap = readDeviceMetadata(device);
       for (String measurementId : timeseriesMetadataMap.keySet()) {
         paths.add(new Path(device, measurementId, true));
@@ -861,10 +860,10 @@ public class TsFileSequenceReader implements AutoCloseable {
     readFileMetadata();
 
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
-    List<MetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
-    Queue<Pair<String, Pair<Long, Long>>> queue = new LinkedList<>();
+    List<IMetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
+    Queue<Pair<IDeviceID, Pair<Long, Long>>> queue = new LinkedList<>();
     for (int i = 0; i < metadataIndexEntryList.size(); i++) {
-      MetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
+      IMetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
       long endOffset = metadataIndexNode.getEndOffset();
       if (i != metadataIndexEntryList.size() - 1) {
         endOffset = metadataIndexEntryList.get(i + 1).getOffset();
@@ -883,7 +882,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         if (!hasNext()) {
           throw new NoSuchElementException();
         }
-        Pair<String, Pair<Long, Long>> startEndPair = queue.remove();
+        Pair<IDeviceID, Pair<Long, Long>> startEndPair = queue.remove();
         List<Path> paths = new ArrayList<>();
         try {
           ByteBuffer nextBuffer = readData(startEndPair.right.left, startEndPair.right.right);
@@ -904,17 +903,19 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   private void getAllPaths(
-      MetadataIndexEntry metadataIndex,
+      IMetadataIndexEntry metadataIndex,
       ByteBuffer buffer,
-      String deviceId,
+      IDeviceID deviceId,
       MetadataIndexNodeType type,
-      Queue<Pair<String, Pair<Long, Long>>> queue)
+      Queue<Pair<IDeviceID, Pair<Long, Long>>> queue)
       throws IOException {
     try {
       if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {
-        deviceId = metadataIndex.getName();
+        deviceId = ((DeviceMetadataIndexEntry) metadataIndex).getDeviceID();
       }
-      MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+      boolean currentChildLevelIsDevice = MetadataIndexNodeType.INTERNAL_DEVICE.equals(type);
+      MetadataIndexNode metadataIndexNode =
+          MetadataIndexNode.deserializeFrom(buffer, currentChildLevelIsDevice);
       int metadataIndexListSize = metadataIndexNode.getChildren().size();
       for (int i = 0; i < metadataIndexListSize; i++) {
         long startOffset = metadataIndexNode.getChildren().get(i).getOffset();
@@ -944,18 +945,19 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
-   * Check whether the deivce is aligned or not.
+   * Check whether the device is aligned or not.
    *
    * @param measurementNode the next measurement layer node of specific device node
    */
   public boolean isAlignedDevice(MetadataIndexNode measurementNode) {
-    return "".equals(measurementNode.getChildren().get(0).getName());
+    IMetadataIndexEntry entry = measurementNode.getChildren().get(0);
+    return "".equals(((MeasurementMetadataIndexEntry) entry).getName());
   }
 
   TimeseriesMetadata tryToGetFirstTimeseriesMetadata(MetadataIndexNode measurementNode)
       throws IOException {
     // Not aligned timeseries
-    if (!"".equals(measurementNode.getChildren().get(0).getName())) {
+    if (!isAlignedDevice(measurementNode)) {
       return null;
     }
 
@@ -978,7 +980,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           readData(
               measurementNode.getChildren().get(0).getOffset(),
               measurementNode.getChildren().get(1).getOffset());
-      MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+      MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer, false);
       return tryToGetFirstTimeseriesMetadata(metadataIndexNode);
     }
     return null;
@@ -1002,7 +1004,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           throws IOException {
     Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
         new LinkedHashMap<>();
-    List<MetadataIndexEntry> childrenEntryList = measurementNode.getChildren();
+    List<IMetadataIndexEntry> childrenEntryList = measurementNode.getChildren();
     for (int i = 0; i < childrenEntryList.size(); i++) {
       long startOffset = childrenEntryList.get(i).getOffset();
       long endOffset =
@@ -1027,7 +1029,8 @@ public class TsFileSequenceReader implements AutoCloseable {
 
       } else {
         // internal measurement node
-        MetadataIndexNode nextLayerMeasurementNode = MetadataIndexNode.deserializeFrom(nextBuffer);
+        MetadataIndexNode nextLayerMeasurementNode =
+            MetadataIndexNode.deserializeFrom(nextBuffer, false);
         timeseriesMetadataOffsetMap.putAll(
             getTimeseriesMetadataOffsetByDevice(
                 nextLayerMeasurementNode, excludedMeasurementIds, needChunkMetadata));
@@ -1083,7 +1086,8 @@ public class TsFileSequenceReader implements AutoCloseable {
         }
       } else {
         // internal measurement node
-        MetadataIndexNode nextLayerMeasurementNode = MetadataIndexNode.deserializeFrom(nextBuffer);
+        MetadataIndexNode nextLayerMeasurementNode =
+            MetadataIndexNode.deserializeFrom(nextBuffer, false);
         getDeviceTimeseriesMetadata(
             timeseriesMetadataList,
             nextLayerMeasurementNode,
@@ -1098,16 +1102,16 @@ public class TsFileSequenceReader implements AutoCloseable {
    *
    * @param metadataIndex MetadataIndexEntry
    * @param buffer byte buffer
-   * @param deviceId String
+   * @param deviceId IDeviceID
    * @param timeseriesMetadataMap map: deviceId -> timeseriesMetadata list
    * @param needChunkMetadata deserialize chunk metadata list or not
    */
   private void generateMetadataIndex(
-      MetadataIndexEntry metadataIndex,
+      IMetadataIndexEntry metadataIndex,
       ByteBuffer buffer,
-      String deviceId,
+      IDeviceID deviceId,
       MetadataIndexNodeType type,
-      Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap,
+      Map<IDeviceID, List<TimeseriesMetadata>> timeseriesMetadataMap,
       boolean needChunkMetadata)
       throws IOException {
     try {
@@ -1122,9 +1126,11 @@ public class TsFileSequenceReader implements AutoCloseable {
       } else {
         // deviceId should be determined by LEAF_DEVICE node
         if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {
-          deviceId = metadataIndex.getName();
+          deviceId = ((DeviceMetadataIndexEntry) metadataIndex).getDeviceID();
         }
-        MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+        boolean currentChildLevelIsDevice = MetadataIndexNodeType.INTERNAL_DEVICE.equals(type);
+        MetadataIndexNode metadataIndexNode =
+            MetadataIndexNode.deserializeFrom(buffer, currentChildLevelIsDevice);
         int metadataIndexListSize = metadataIndexNode.getChildren().size();
         for (int i = 0; i < metadataIndexListSize; i++) {
           long endOffset = metadataIndexNode.getEndOffset();
@@ -1164,12 +1170,12 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   private void generateMetadataIndexUsingTsFileInput(
-      MetadataIndexEntry metadataIndex,
+      IMetadataIndexEntry metadataIndex,
       long start,
       long end,
-      String deviceId,
+      IDeviceID deviceId,
       MetadataIndexNodeType type,
-      Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap,
+      Map<IDeviceID, List<TimeseriesMetadata>> timeseriesMetadataMap,
       boolean needChunkMetadata)
       throws IOException {
     try {
@@ -1186,10 +1192,12 @@ public class TsFileSequenceReader implements AutoCloseable {
       } else {
         // deviceId should be determined by LEAF_DEVICE node
         if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {
-          deviceId = metadataIndex.getName();
+          deviceId = ((DeviceMetadataIndexEntry) metadataIndex).getDeviceID();
         }
+        boolean currentChildLevelIsDevice = MetadataIndexNodeType.INTERNAL_DEVICE.equals(type);
         MetadataIndexNode metadataIndexNode =
-            MetadataIndexNode.deserializeFrom(tsFileInput.wrapAsInputStream());
+            MetadataIndexNode.deserializeFrom(
+                tsFileInput.wrapAsInputStream(), currentChildLevelIsDevice);
         int metadataIndexListSize = metadataIndexNode.getChildren().size();
         for (int i = 0; i < metadataIndexListSize; i++) {
           long endOffset = metadataIndexNode.getEndOffset();
@@ -1215,16 +1223,16 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /* TimeseriesMetadata don't need deserialize chunk metadata list */
-  public Map<String, List<TimeseriesMetadata>> getAllTimeseriesMetadata(boolean needChunkMetadata)
-      throws IOException {
+  public Map<IDeviceID, List<TimeseriesMetadata>> getAllTimeseriesMetadata(
+      boolean needChunkMetadata) throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
-    Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new HashMap<>();
+    Map<IDeviceID, List<TimeseriesMetadata>> timeseriesMetadataMap = new HashMap<>();
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
-    List<MetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
+    List<IMetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
     for (int i = 0; i < metadataIndexEntryList.size(); i++) {
-      MetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
+      IMetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
       long endOffset = metadataIndexNode.getEndOffset();
       if (i != metadataIndexEntryList.size() - 1) {
         endOffset = metadataIndexEntryList.get(i + 1).getOffset();
@@ -1253,16 +1261,16 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /* This method will only deserialize the TimeseriesMetadata, not including chunk metadata list */
-  private List<TimeseriesMetadata> getDeviceTimeseriesMetadataWithoutChunkMetadata(String device)
+  private List<TimeseriesMetadata> getDeviceTimeseriesMetadataWithoutChunkMetadata(IDeviceID device)
       throws IOException {
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
-    Pair<MetadataIndexEntry, Long> metadataIndexPair =
-        getMetadataAndEndOffset(metadataIndexNode, device, true, true);
+    Pair<IMetadataIndexEntry, Long> metadataIndexPair =
+        getMetadataAndEndOffsetOfDeviceNode(metadataIndexNode, device, true);
     if (metadataIndexPair == null) {
       return Collections.emptyList();
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
-    Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
+    Map<IDeviceID, List<TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
     generateMetadataIndex(
         metadataIndexPair.left,
         buffer,
@@ -1278,15 +1286,16 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /* This method will not only deserialize the TimeseriesMetadata, but also all the chunk metadata list meanwhile. */
-  private List<TimeseriesMetadata> getDeviceTimeseriesMetadata(String device) throws IOException {
+  private List<TimeseriesMetadata> getDeviceTimeseriesMetadata(IDeviceID device)
+      throws IOException {
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
-    Pair<MetadataIndexEntry, Long> metadataIndexPair =
-        getMetadataAndEndOffset(metadataIndexNode, device, true, true);
+    Pair<IMetadataIndexEntry, Long> metadataIndexPair =
+        getMetadataAndEndOffsetOfDeviceNode(metadataIndexNode, device, true);
     if (metadataIndexPair == null) {
       return Collections.emptyList();
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
-    Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
+    Map<IDeviceID, List<TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
     generateMetadataIndex(
         metadataIndexPair.left,
         buffer,
@@ -1305,29 +1314,57 @@ public class TsFileSequenceReader implements AutoCloseable {
    * Get target MetadataIndexEntry and its end offset
    *
    * @param metadataIndex given MetadataIndexNode
-   * @param name target device / measurement name
-   * @param isDeviceLevel whether target MetadataIndexNode is device level
+   * @param deviceID target device
    * @param exactSearch whether is in exact search mode, return null when there is no entry with
    *     name; or else return the nearest MetadataIndexEntry before it (for deeper search)
    * @return target MetadataIndexEntry, endOffset pair
    */
-  protected Pair<MetadataIndexEntry, Long> getMetadataAndEndOffset(
-      MetadataIndexNode metadataIndex, String name, boolean isDeviceLevel, boolean exactSearch)
-      throws IOException {
+  protected Pair<IMetadataIndexEntry, Long> getMetadataAndEndOffsetOfDeviceNode(
+      MetadataIndexNode metadataIndex, IDeviceID deviceID, boolean exactSearch) throws IOException {
+    if (MetadataIndexNodeType.INTERNAL_MEASUREMENT.equals(metadataIndex.getNodeType())
+        || MetadataIndexNodeType.LEAF_MEASUREMENT.equals(metadataIndex.getNodeType())) {
+      throw new IllegalArgumentException();
+    }
     try {
-      // When searching for a device node, return when it is not INTERNAL_DEVICE
-      // When searching for a measurement node, return when it is not INTERNAL_MEASUREMENT
-      if ((isDeviceLevel
-              && !metadataIndex.getNodeType().equals(MetadataIndexNodeType.INTERNAL_DEVICE))
-          || (!isDeviceLevel
-              && !metadataIndex.getNodeType().equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT))) {
-        return metadataIndex.getChildIndexEntry(name, exactSearch);
-      } else {
-        Pair<MetadataIndexEntry, Long> childIndexEntry =
-            metadataIndex.getChildIndexEntry(name, false);
+      if (MetadataIndexNodeType.INTERNAL_DEVICE.equals(metadataIndex.getNodeType())) {
+        Pair<IMetadataIndexEntry, Long> childIndexEntry =
+            metadataIndex.getChildIndexEntry(deviceID, false);
         ByteBuffer buffer = readData(childIndexEntry.left.getOffset(), childIndexEntry.right);
-        return getMetadataAndEndOffset(
-            MetadataIndexNode.deserializeFrom(buffer), name, isDeviceLevel, exactSearch);
+        return getMetadataAndEndOffsetOfDeviceNode(
+            MetadataIndexNode.deserializeFrom(buffer, true), deviceID, exactSearch);
+      } else {
+        return metadataIndex.getChildIndexEntry(deviceID, exactSearch);
+      }
+    } catch (Exception e) {
+      logger.error("Something error happened while deserializing MetadataIndex of file {}", file);
+      throw e;
+    }
+  }
+
+  /**
+   * Get target MetadataIndexEntry and its end offset
+   *
+   * @param metadataIndex given MetadataIndexNode
+   * @param measurement target measurement
+   * @param exactSearch whether is in exact search mode, return null when there is no entry with
+   *     name; or else return the nearest MetadataIndexEntry before it (for deeper search)
+   * @return target MetadataIndexEntry, endOffset pair
+   */
+  protected Pair<IMetadataIndexEntry, Long> getMetadataAndEndOffsetOfMeasurementNode(
+      MetadataIndexNode metadataIndex, String measurement, boolean exactSearch) throws IOException {
+    if (MetadataIndexNodeType.INTERNAL_DEVICE.equals(metadataIndex.getNodeType())
+        || MetadataIndexNodeType.LEAF_DEVICE.equals(metadataIndex.getNodeType())) {
+      throw new IllegalArgumentException();
+    }
+    try {
+      if (MetadataIndexNodeType.INTERNAL_MEASUREMENT.equals(metadataIndex.getNodeType())) {
+        Pair<IMetadataIndexEntry, Long> childIndexEntry =
+            metadataIndex.getChildIndexEntry(measurement, false);
+        ByteBuffer buffer = readData(childIndexEntry.left.getOffset(), childIndexEntry.right);
+        return getMetadataAndEndOffsetOfMeasurementNode(
+            MetadataIndexNode.deserializeFrom(buffer, false), measurement, exactSearch);
+      } else {
+        return metadataIndex.getChildIndexEntry(measurement, exactSearch);
       }
     } catch (StopReadTsFileByInterruptException e) {
       throw e;
@@ -1714,7 +1751,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     long truncatedSize = headerLength;
     byte marker;
     List<long[]> timeBatch = new ArrayList<>();
-    String lastDeviceId = null;
+    IDeviceID lastDeviceId = null;
     List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
     try {
       while ((marker = this.readMarker()) != MetaMarker.SEPARATOR) {
@@ -2088,7 +2125,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   public List<ChunkMetadata> getChunkMetadataList(Path path, boolean ignoreNotExists)
       throws IOException {
     TimeseriesMetadata timeseriesMetaData =
-        readTimeseriesMetadata(path.getDevice(), path.getMeasurement(), ignoreNotExists);
+        readTimeseriesMetadata(path.getIDeviceID(), path.getMeasurement(), ignoreNotExists);
     if (timeseriesMetaData == null) {
       return Collections.emptyList();
     }
@@ -2118,11 +2155,11 @@ public class TsFileSequenceReader implements AutoCloseable {
    *
    * @param device device name
    */
-  public List<AlignedChunkMetadata> getAlignedChunkMetadata(String device) throws IOException {
+  public List<AlignedChunkMetadata> getAlignedChunkMetadata(IDeviceID device) throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
-    Pair<MetadataIndexEntry, Long> metadataIndexPair =
-        getMetadataAndEndOffset(deviceMetadataIndexNode, device, true, true);
+    Pair<IMetadataIndexEntry, Long> metadataIndexPair =
+        getMetadataAndEndOffsetOfDeviceNode(deviceMetadataIndexNode, device, true);
     if (metadataIndexPair == null) {
       throw new IOException("Device {" + device + "} is not in tsFileMetaData");
     }
@@ -2131,7 +2168,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     TimeseriesMetadata firstTimeseriesMetadata;
     try {
       // next layer MeasurementNode of the specific DeviceNode
-      metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+      metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer, false);
     } catch (Exception e) {
       logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
       throw e;
@@ -2141,11 +2178,11 @@ public class TsFileSequenceReader implements AutoCloseable {
       throw new IOException("Timeseries of device {" + device + "} are not aligned");
     }
 
-    Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
-    List<MetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
+    Map<IDeviceID, List<TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
+    List<IMetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
 
     for (int i = 0; i < metadataIndexEntryList.size(); i++) {
-      MetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
+      IMetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
       long endOffset = metadataIndexNode.getEndOffset();
       if (i != metadataIndexEntryList.size() - 1) {
         endOffset = metadataIndexEntryList.get(i + 1).getOffset();
@@ -2224,7 +2261,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public Map<String, TSDataType> getAllMeasurements() throws IOException {
     Map<String, TSDataType> result = new HashMap<>();
-    for (String device : getAllDevices()) {
+    for (IDeviceID device : getAllDevices()) {
       Map<String, TimeseriesMetadata> timeseriesMetadataMap = readDeviceMetadata(device);
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataMap.values()) {
         result.put(timeseriesMetadata.getMeasurementId(), timeseriesMetadata.getTsDataType());
@@ -2240,20 +2277,22 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public Map<String, TSDataType> getFullPathDataTypeMap() throws IOException {
     final Map<String, TSDataType> result = new HashMap<>();
-    for (final String device : getAllDevices()) {
+    for (final IDeviceID device : getAllDevices()) {
       Map<String, TimeseriesMetadata> timeseriesMetadataMap = readDeviceMetadata(device);
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataMap.values()) {
         result.put(
-            device + TsFileConstant.PATH_SEPARATOR + timeseriesMetadata.getMeasurementId(),
+            ((PlainDeviceID) device).toStringID()
+                + TsFileConstant.PATH_SEPARATOR
+                + timeseriesMetadata.getMeasurementId(),
             timeseriesMetadata.getTsDataType());
       }
     }
     return result;
   }
 
-  public Map<String, List<String>> getDeviceMeasurementsMap() throws IOException {
-    Map<String, List<String>> result = new HashMap<>();
-    for (String device : getAllDevices()) {
+  public Map<IDeviceID, List<String>> getDeviceMeasurementsMap() throws IOException {
+    Map<IDeviceID, List<String>> result = new HashMap<>();
+    for (IDeviceID device : getAllDevices()) {
       Map<String, TimeseriesMetadata> timeseriesMetadataMap = readDeviceMetadata(device);
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataMap.values()) {
         result
@@ -2271,9 +2310,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param end end of the partition
    * @return device names in range
    */
-  public List<String> getDeviceNameInRange(long start, long end) throws IOException {
-    List<String> res = new ArrayList<>();
-    for (String device : getAllDevices()) {
+  public List<IDeviceID> getDeviceNameInRange(long start, long end) throws IOException {
+    List<IDeviceID> res = new ArrayList<>();
+    for (IDeviceID device : getAllDevices()) {
       Map<String, List<ChunkMetadata>> seriesMetadataMap = readChunkMetadataInDevice(device);
       if (hasDataInPartition(seriesMetadataMap, start, end)) {
         res.add(device);
@@ -2287,11 +2326,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    *
    * @param startOffset start read offset
    * @param endOffset end read offset
+   * @param isDeviceLevel is current MetadataIndexNode in device level
    * @return MetadataIndexNode
    */
-  public MetadataIndexNode getMetadataIndexNode(long startOffset, long endOffset)
-      throws IOException {
-    return MetadataIndexNode.deserializeFrom(readData(startOffset, endOffset));
+  public MetadataIndexNode readMetadataIndexNode(
+      long startOffset, long endOffset, boolean isDeviceLevel) throws IOException {
+    return MetadataIndexNode.deserializeFrom(readData(startOffset, endOffset), isDeviceLevel);
   }
 
   /**
@@ -2345,12 +2385,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    *     lexicographic order.
    */
   public Iterator<Map<String, List<ChunkMetadata>>> getMeasurementChunkMetadataListMapIterator(
-      String device) throws IOException {
+      IDeviceID device) throws IOException {
     readFileMetadata();
 
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
-    Pair<MetadataIndexEntry, Long> metadataIndexPair =
-        getMetadataAndEndOffset(metadataIndexNode, device, true, true);
+    Pair<IMetadataIndexEntry, Long> metadataIndexPair =
+        getMetadataAndEndOffsetOfDeviceNode(metadataIndexNode, device, true);
 
     if (metadataIndexPair == null) {
       return new Iterator<Map<String, List<ChunkMetadata>>>() {
@@ -2412,7 +2452,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   private void collectEachLeafMeasurementNodeOffsetRange(
       ByteBuffer buffer, Queue<Pair<Long, Long>> queue) throws IOException {
     try {
-      final MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+      final MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer, false);
       final MetadataIndexNodeType metadataIndexNodeType = metadataIndexNode.getNodeType();
       final int metadataIndexListSize = metadataIndexNode.getChildren().size();
       for (int i = 0; i < metadataIndexListSize; ++i) {
@@ -2434,18 +2474,6 @@ public class TsFileSequenceReader implements AutoCloseable {
           "Error occurred while collecting offset ranges of measurement nodes of file {}", file);
       throw e;
     }
-  }
-
-  /**
-   * Read MetadataIndexNode by start and end offset.
-   *
-   * @param start the start offset of the MetadataIndexNode
-   * @param end the end offset of the MetadataIndexNode
-   * @return MetadataIndexNode
-   * @throws IOException IOException
-   */
-  public MetadataIndexNode readMetadataIndexNode(long start, long end) throws IOException {
-    return MetadataIndexNode.deserializeFrom(readData(start, end));
   }
 
   @Override

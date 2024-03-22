@@ -1224,22 +1224,26 @@ public class Session implements ISession {
     // remove the cached broken leader session
     if (enableRedirection) {
       TEndPoint endPoint = null;
-      for (Iterator<Entry<TEndPoint, SessionConnection>> it =
-              endPointToSessionConnection.entrySet().iterator();
-          it.hasNext(); ) {
-        Entry<TEndPoint, SessionConnection> entry = it.next();
-        if (entry.getValue().equals(sessionConnection)) {
-          endPoint = entry.getKey();
-          it.remove();
-          break;
+      if (endPointToSessionConnection != null) {
+        for (Iterator<Entry<TEndPoint, SessionConnection>> it =
+                endPointToSessionConnection.entrySet().iterator();
+            it.hasNext(); ) {
+          Entry<TEndPoint, SessionConnection> entry = it.next();
+          if (entry.getValue().equals(sessionConnection)) {
+            endPoint = entry.getKey();
+            it.remove();
+            break;
+          }
         }
       }
 
-      for (Iterator<Entry<String, TEndPoint>> it = deviceIdToEndpoint.entrySet().iterator();
-          it.hasNext(); ) {
-        Entry<String, TEndPoint> entry = it.next();
-        if (entry.getValue().equals(endPoint)) {
-          it.remove();
+      if (deviceIdToEndpoint != null) {
+        for (Iterator<Entry<String, TEndPoint>> it = deviceIdToEndpoint.entrySet().iterator();
+            it.hasNext(); ) {
+          Entry<String, TEndPoint> entry = it.next();
+          if (entry.getValue().equals(endPoint)) {
+            it.remove();
+          }
         }
       }
     }

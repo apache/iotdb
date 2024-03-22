@@ -62,6 +62,8 @@ public abstract class AbstractThriftServiceThread extends Thread {
 
   private TProtocolFactory protocolFactory;
 
+  private TTransportFactory transportFactory;
+
   // currently, we can reuse the ProtocolFactory instance.
   private static TCompactProtocol.Factory compactProtocolFactory = new TCompactProtocol.Factory();
   private static TBinaryProtocol.Factory binaryProtocolFactory = new TBinaryProtocol.Factory();
@@ -70,7 +72,9 @@ public abstract class AbstractThriftServiceThread extends Thread {
     protocolFactory = getProtocolFactory(compress);
   }
 
-  public abstract TTransportFactory getTTransportFactory();
+  public TTransportFactory getTTransportFactory() {
+    return transportFactory;
+  }
 
   public static TProtocolFactory getProtocolFactory(boolean compress) {
     if (compress) {
@@ -116,7 +120,9 @@ public abstract class AbstractThriftServiceThread extends Thread {
       boolean compress,
       int connectionTimeoutInMS,
       int maxReadBufferBytes,
-      ServerType serverType) {
+      ServerType serverType,
+      TTransportFactory transportFactory) {
+    this.transportFactory = transportFactory;
     initProtocolFactory(compress);
     this.serviceName = serviceName;
     try {
@@ -168,7 +174,9 @@ public abstract class AbstractThriftServiceThread extends Thread {
       boolean compress,
       String keyStorePath,
       String keyStorePwd,
-      int clientTimeout) {
+      int clientTimeout,
+      TTransportFactory transportFactory) {
+    this.transportFactory = transportFactory;
     initProtocolFactory(compress);
     this.serviceName = serviceName;
 
@@ -200,7 +208,9 @@ public abstract class AbstractThriftServiceThread extends Thread {
       int maxWorkerThreads,
       int timeoutSecond,
       TServerEventHandler serverEventHandler,
-      boolean compress) {
+      boolean compress,
+      TTransportFactory transportFactory) {
+    this.transportFactory = transportFactory;
     initProtocolFactory(compress);
     this.serviceName = serviceName;
 

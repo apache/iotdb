@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOpt
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -43,7 +44,7 @@ public class AlignedSeriesScanLimitOffsetPushDownTest extends AbstractAlignedSer
       throws IllegalPathException {
     AlignedPath scanPath =
         new AlignedPath(
-            TEST_DEVICE,
+            ((PlainDeviceID) TEST_DEVICE).toStringID(),
             Arrays.asList("s1", "s2"),
             Arrays.asList(
                 new MeasurementSchema("s1", TSDataType.INT32),

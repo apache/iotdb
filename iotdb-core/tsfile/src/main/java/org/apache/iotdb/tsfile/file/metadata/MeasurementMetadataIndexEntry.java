@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.file.IMetadataIndexEntry;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -26,12 +27,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public class MetadataIndexEntry {
+public class MeasurementMetadataIndexEntry implements IMetadataIndexEntry {
 
   private String name;
   private long offset;
 
-  public MetadataIndexEntry(String name, long offset) {
+  public MeasurementMetadataIndexEntry(String name, long offset) {
     this.name = name;
     this.offset = offset;
   }
@@ -40,6 +41,7 @@ public class MetadataIndexEntry {
     return name;
   }
 
+  @Override
   public long getOffset() {
     return offset;
   }
@@ -48,14 +50,12 @@ public class MetadataIndexEntry {
     this.name = name;
   }
 
+  @Override
   public void setOffset(long offset) {
     this.offset = offset;
   }
 
-  public String toString() {
-    return "<" + name + "," + offset + ">";
-  }
-
+  @Override
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.writeVar(name, outputStream);
@@ -63,15 +63,31 @@ public class MetadataIndexEntry {
     return byteLen;
   }
 
-  public static MetadataIndexEntry deserializeFrom(ByteBuffer buffer) {
-    String name = ReadWriteIOUtils.readVarIntString(buffer);
-    long offset = ReadWriteIOUtils.readLong(buffer);
-    return new MetadataIndexEntry(name, offset);
+  @Override
+  public Comparable getCompareKey() {
+    return name;
   }
 
-  public static MetadataIndexEntry deserializeFrom(InputStream inputStream) throws IOException {
+  @Override
+  public boolean isDeviceLevel() {
+    return false;
+  }
+
+  public static MeasurementMetadataIndexEntry deserializeFrom(ByteBuffer buffer) {
+    String name = ReadWriteIOUtils.readVarIntString(buffer);
+    long offset = ReadWriteIOUtils.readLong(buffer);
+    return new MeasurementMetadataIndexEntry(name, offset);
+  }
+
+  public static MeasurementMetadataIndexEntry deserializeFrom(InputStream inputStream)
+      throws IOException {
     String name = ReadWriteIOUtils.readVarIntString(inputStream);
     long offset = ReadWriteIOUtils.readLong(inputStream);
-    return new MetadataIndexEntry(name, offset);
+    return new MeasurementMetadataIndexEntry(name, offset);
+  }
+
+  @Override
+  public String toString() {
+    return "<" + name + "," + offset + ">";
   }
 }

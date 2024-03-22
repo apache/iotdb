@@ -83,6 +83,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetSpaceQ
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.SetThrottleQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.CreateTopicTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.DropTopicTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -123,6 +127,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DeactivateTemplateStatement;
@@ -440,6 +448,29 @@ public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryCon
   @Override
   public IConfigTask visitStopPipe(StopPipeStatement stopPipeStatement, MPPQueryContext context) {
     return new StopPipeTask(stopPipeStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowSubscriptions(
+      ShowSubscriptionsStatement showSubscriptionsStatement, MPPQueryContext context) {
+    return new ShowSubscriptionTask(showSubscriptionsStatement);
+  }
+
+  public IConfigTask visitCreateTopic(
+      CreateTopicStatement createTopicStatement, MPPQueryContext context) {
+    return new CreateTopicTask(createTopicStatement);
+  }
+
+  @Override
+  public IConfigTask visitDropTopic(
+      DropTopicStatement dropTopicStatement, MPPQueryContext context) {
+    return new DropTopicTask(dropTopicStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowTopics(
+      ShowTopicsStatement showTopicsStatement, MPPQueryContext context) {
+    return new ShowTopicsTask(showTopicsStatement);
   }
 
   @Override

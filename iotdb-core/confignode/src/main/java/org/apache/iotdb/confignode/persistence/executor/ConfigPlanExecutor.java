@@ -89,6 +89,10 @@ import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuot
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -117,6 +121,7 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -166,6 +171,8 @@ public class ConfigPlanExecutor {
 
   private final PipeInfo pipeInfo;
 
+  private final SubscriptionInfo subscriptionInfo;
+
   private final QuotaInfo quotaInfo;
 
   public ConfigPlanExecutor(
@@ -179,6 +186,7 @@ public class ConfigPlanExecutor {
       TriggerInfo triggerInfo,
       CQInfo cqInfo,
       PipeInfo pipeInfo,
+      SubscriptionInfo subscriptionInfo,
       QuotaInfo quotaInfo) {
 
     this.snapshotProcessorList = new ArrayList<>();
@@ -210,7 +218,11 @@ public class ConfigPlanExecutor {
     this.pipeInfo = pipeInfo;
     this.snapshotProcessorList.add(pipeInfo);
 
+    this.subscriptionInfo = subscriptionInfo;
+    this.snapshotProcessorList.add(subscriptionInfo);
+
     this.procedureInfo = procedureInfo;
+    this.snapshotProcessorList.add(procedureInfo);
 
     this.quotaInfo = quotaInfo;
     this.snapshotProcessorList.add(quotaInfo);
@@ -285,6 +297,10 @@ public class ConfigPlanExecutor {
         return pipeInfo.getPipePluginInfo().getPipePluginJar((GetPipePluginJarPlan) req);
       case ShowPipeV2:
         return pipeInfo.getPipeTaskInfo().showPipes();
+      case ShowTopic:
+        return subscriptionInfo.showTopics();
+      case ShowSubscription:
+        return subscriptionInfo.showSubscriptions();
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -435,6 +451,14 @@ public class ConfigPlanExecutor {
         return pipeInfo.handleLeaderChange((PipeHandleLeaderChangePlan) physicalPlan);
       case PipeHandleMetaChange:
         return pipeInfo.handleMetaChanges((PipeHandleMetaChangePlan) physicalPlan);
+      case CreateTopic:
+        return subscriptionInfo.createTopic((CreateTopicPlan) physicalPlan);
+      case DropTopic:
+        return subscriptionInfo.dropTopic((DropTopicPlan) physicalPlan);
+      case AlterTopic:
+        return subscriptionInfo.alterTopic((AlterTopicPlan) physicalPlan);
+      case AlterConsumerGroup:
+        return subscriptionInfo.alterConsumerGroup((AlterConsumerGroupPlan) physicalPlan);
       case ADD_CQ:
         return cqInfo.addCQ((AddCQPlan) physicalPlan);
       case DROP_CQ:
@@ -472,6 +496,8 @@ public class ConfigPlanExecutor {
         // PipeUnsetTemplate plan will not be written here, and exists only after pipe sender
         // collects UnsetTemplatePlan and before receiver calls ConfigManager.
         throw new UnsupportedOperationException("PipeUnsetTemplate is not supported.");
+      case TestOnly:
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

@@ -181,7 +181,7 @@ public class IoTDBProcedureIT {
 
     // Restart the ConfigNode
     final int leaderConfigNodeIndex = EnvFactory.getEnv().getLeaderConfigNodeIndex();
-    EnvFactory.getEnv().getConfigNodeWrapperList().get(leaderConfigNodeIndex).stop();
+    EnvFactory.getEnv().getConfigNodeWrapperList().get(leaderConfigNodeIndex).stopForcibly();
     EnvFactory.getEnv().getConfigNodeWrapperList().get(leaderConfigNodeIndex).start();
     SyncConfigNodeIServiceClient newLeaderClient =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();

@@ -32,6 +32,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -560,7 +562,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // seq file 2 (unclosed)
     // device: d2, time: [100, ]
     TsFileResource seqTsFileResource2 = createEmptyFileAndResource(true);
-    seqTsFileResource2.updateStartTime(COMPACTION_TEST_SG + ".d2", 100);
+    seqTsFileResource2.updateStartTime(new PlainDeviceID(COMPACTION_TEST_SG + ".d2"), 100);
     seqTsFileResource2.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     seqTsFileResource2.serialize();
     seqResources.add(seqTsFileResource2);
@@ -615,7 +617,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // seq file 3 (unclosed)
     // device: d2, time: [610, 670]
     TsFileResource seqTsFileResource3 = createEmptyFileAndResource(true);
-    seqTsFileResource3.updateStartTime(COMPACTION_TEST_SG + ".d2", 610);
+    seqTsFileResource3.updateStartTime(new PlainDeviceID(COMPACTION_TEST_SG + ".d2"), 610);
     seqTsFileResource3.setStatusForTest(TsFileResourceStatus.UNCLOSED);
 
     seqTsFileResource3.serialize();
@@ -673,7 +675,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // seq file 3 (unclosed)
     // device: d2, time: [500, ]
     TsFileResource seqTsFileResource3 = createEmptyFileAndResource(true);
-    seqTsFileResource3.updateStartTime(COMPACTION_TEST_SG + ".d2", 500);
+    seqTsFileResource3.updateStartTime(new PlainDeviceID(COMPACTION_TEST_SG + ".d2"), 500);
     seqTsFileResource3.setStatusForTest(TsFileResourceStatus.UNCLOSED);
 
     seqTsFileResource3.serialize();
@@ -836,15 +838,16 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
       long startTime,
       long endTime)
       throws IOException, IllegalPathException {
-    String deviceId = COMPACTION_TEST_SG + "." + deviceName;
+    IDeviceID deviceId = new PlainDeviceID(COMPACTION_TEST_SG + "." + deviceName);
 
-    fileWriter.startChunkGroup(deviceName);
+    fileWriter.startChunkGroup(deviceId);
 
     List<TSDataType> dataTypes = TsFileGeneratorUtils.createDataType(1);
     List<TSEncoding> encodingTypes = TsFileGeneratorUtils.createEncodingType(1);
     List<CompressionType> compressionTypes = TsFileGeneratorUtils.createCompressionType(1);
     List<PartialPath> timeSeriesPaths = new ArrayList<>();
-    timeSeriesPaths.add(new MeasurementPath(deviceId + ".s1", dataTypes.get(0)));
+    timeSeriesPaths.add(
+        new MeasurementPath(((PlainDeviceID) deviceId).toStringID() + ".s1", dataTypes.get(0)));
 
     List<IChunkWriter> chunkWriters =
         TsFileGeneratorUtils.createChunkWriter(

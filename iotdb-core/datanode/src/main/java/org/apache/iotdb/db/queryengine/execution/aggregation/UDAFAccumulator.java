@@ -117,6 +117,14 @@ public class UDAFAccumulator implements Accumulator {
 
   @Override
   public void addInput(Column[] columns, BitMap bitMap) {
+    // To be consistent with UDTF
+    // Left rotate the first time column to the end of input columns
+    Column timeColumn = columns[0];
+    for (int i = 0; i < columns.length - 1; i++) {
+      columns[i] = columns[i + 1];
+    }
+    columns[columns.length - 1] = timeColumn;
+
     udaf.addInput(state, columns, bitMap);
   }
 

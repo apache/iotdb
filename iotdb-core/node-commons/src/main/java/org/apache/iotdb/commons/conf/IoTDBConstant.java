@@ -183,6 +183,7 @@ public class IoTDBConstant {
   public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
   public static final String FUNCTION_TYPE_EXTERNAL_UDAF = "external UDAF";
   public static final String FUNCTION_TYPE_EXTERNAL_UDTF = "external UDTF";
+  public static final String FUNCTION_TYPE_UNKNOWN = "UNKNOWN";
 
   public static final String COLUMN_TRIGGER_NAME = "trigger name";
   public static final String COLUMN_TRIGGER_STATUS = "status";
