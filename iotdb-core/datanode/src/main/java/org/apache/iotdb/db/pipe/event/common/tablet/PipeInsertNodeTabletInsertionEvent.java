@@ -51,9 +51,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
 
   private final WALEntryHandler walEntryHandler;
-  private ProgressIndex progressIndex;
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
+
+  private ProgressIndex progressIndex;
 
   private TabletInsertionDataContainer dataContainer;
 
