@@ -203,20 +203,17 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
         return this;
       }
 
-      this.timeSeries2TimestampWindowBufferPairMap
-          .entrySet()
-          .addAll(
-              ((TimeWindowStateProgressIndex) progressIndex)
-                  .timeSeries2TimestampWindowBufferPairMap.entrySet().stream()
-                      .filter(
-                          entry ->
-                              !this.timeSeries2TimestampWindowBufferPairMap.containsKey(
-                                      entry.getKey())
-                                  || this.timeSeries2TimestampWindowBufferPairMap
-                                          .get(entry.getKey())
-                                          .getLeft()
-                                      < entry.getValue().getLeft())
-                      .collect(Collectors.toSet()));
+      this.timeSeries2TimestampWindowBufferPairMap.putAll(
+          ((TimeWindowStateProgressIndex) progressIndex)
+              .timeSeries2TimestampWindowBufferPairMap.entrySet().stream()
+                  .filter(
+                      entry ->
+                          !this.timeSeries2TimestampWindowBufferPairMap.containsKey(entry.getKey())
+                              || this.timeSeries2TimestampWindowBufferPairMap
+                                      .get(entry.getKey())
+                                      .getLeft()
+                                  <= entry.getValue().getLeft())
+                  .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
       return this;
     } finally {
       lock.writeLock().unlock();
@@ -230,13 +227,8 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
 
   @Override
   public TotalOrderSumTuple getTotalOrderSumTuple() {
-    lock.readLock().lock();
-    try {
-      return new ProgressIndex.TotalOrderSumTuple(
-          timeSeries2TimestampWindowBufferPairMap.values().stream().mapToLong(Pair::getLeft).sum());
-    } finally {
-      lock.readLock().unlock();
-    }
+    throw new UnsupportedOperationException(
+        "TimeWindowStateProgressIndex does not support topological sorting");
   }
 
   public static TimeWindowStateProgressIndex deserializeFrom(ByteBuffer byteBuffer) {

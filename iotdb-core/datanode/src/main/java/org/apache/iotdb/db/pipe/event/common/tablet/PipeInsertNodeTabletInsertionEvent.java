@@ -54,9 +54,9 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
 
-  private ProgressIndex progressIndex;
-
   private TabletInsertionDataContainer dataContainer;
+
+  private ProgressIndex progressIndex;
 
   public PipeInsertNodeTabletInsertionEvent(
       WALEntryHandler walEntryHandler,

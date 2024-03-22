@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  * encountered.
  */
 public class PipeResetTabletRow extends PipeRow {
+
   public PipeResetTabletRow(
       int rowIndex,
       String deviceId,

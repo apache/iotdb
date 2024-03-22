@@ -349,7 +349,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             // Some different tsFiles may share the same max progressIndex, thus
                             // tsFiles with an "equals" max progressIndex must be transmitted to
                             // avoid data loss
-                            && isTsFileResourceAfterProgress(resource)
+                            && mayTsFileContainUnprocessedData(resource)
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
@@ -365,7 +365,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             // Some different tsFiles may share the same max progressIndex, thus
                             // tsFiles with an "equals" max progressIndex must be transmitted to
                             // avoid data loss
-                            && isTsFileResourceAfterProgress(resource)
+                            && mayTsFileContainUnprocessedData(resource)
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
@@ -385,8 +385,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         resourceList.sort(
             (o1, o2) ->
                 startIndex instanceof TimeWindowStateProgressIndex
-                    // The use of timeProgressIndex indicates that the processor is
-                    // AggregateProcessor
                     ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
                     : o1.getMaxProgressIndex().topologicalCompareTo(o2.getMaxProgressIndex()));
         pendingQueue = new ArrayDeque<>(resourceList);
@@ -411,7 +409,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     }
   }
 
-  private boolean isTsFileResourceAfterProgress(TsFileResource resource) {
+  private boolean mayTsFileContainUnprocessedData(TsFileResource resource) {
     return startIndex instanceof TimeWindowStateProgressIndex
         // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
         ? ((TimeWindowStateProgressIndex) startIndex).getMinTime() <= resource.getFileEndTime()

@@ -40,14 +40,14 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   private Tablet tablet;
   private final boolean isAligned;
 
-  private EnrichedEvent sourceEvent;
+  private final EnrichedEvent sourceEvent;
   private boolean needToReport;
 
   private PipeTabletMemoryBlock allocatedMemoryBlock;
 
   private TabletInsertionDataContainer dataContainer;
 
-  private ProgressIndex progressIndex;
+  private ProgressIndex overridingProgressIndex;
 
   private PipeRawTabletInsertionEvent(
       Tablet tablet,
@@ -111,7 +111,6 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     allocatedMemoryBlock.close();
     // Actually release the occupied memory.
     tablet = null;
-    sourceEvent = null;
     dataContainer = null;
     return true;
   }
@@ -124,18 +123,23 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   @Override
-  public void bindProgressIndex(ProgressIndex progressIndex) {
-    if (Objects.nonNull(progressIndex)) {
+  public void bindProgressIndex(ProgressIndex overridingProgressIndex) {
+    // Normally not all events need to report progress, but if the overriddenProgressIndex
+    // is given, indicating that the progress needs to be reported.
+    if (Objects.nonNull(overridingProgressIndex)) {
       markAsNeedToReport();
     }
-    this.progressIndex = progressIndex;
+
+    this.overridingProgressIndex = overridingProgressIndex;
   }
 
   @Override
   public ProgressIndex getProgressIndex() {
-    if (Objects.nonNull(progressIndex)) {
-      return progressIndex;
+    // If the overriddenProgressIndex is given, ignore the sourceEvent's progressIndex.
+    if (Objects.nonNull(overridingProgressIndex)) {
+      return overridingProgressIndex;
     }
+
     return sourceEvent != null ? sourceEvent.getProgressIndex() : MinimumProgressIndex.INSTANCE;
   }
 
