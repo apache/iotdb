@@ -219,7 +219,7 @@ public class PipePluginInfo implements SnapshotProcessor {
 
   public JarResp getPipePluginJar(GetPipePluginJarPlan getPipePluginJarPlan) {
     try {
-      List<ByteBuffer> jarList = new ArrayList<>();
+      final List<ByteBuffer> jarList = new ArrayList<>();
       for (String jarName : getPipePluginJarPlan.getJarNames()) {
         jarList.add(
             ExecutableManager.transferToBytebuffer(

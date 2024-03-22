@@ -298,7 +298,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus executeStatementAndClassifyExceptions(Statement statement) {
     try {
-      TSStatus result = executeStatement(statement);
+      final TSStatus result = executeStatement(statement);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return result;
       } else {
