@@ -189,143 +189,143 @@ public class Session implements ISession {
 
   public Session(String host, int rpcPort) {
     this(
-            host,
-            rpcPort,
-            SessionConfig.DEFAULT_USER,
-            SessionConfig.DEFAULT_PASSWORD,
-            SessionConfig.DEFAULT_FETCH_SIZE,
-            null,
-            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-            SessionConfig.DEFAULT_REDIRECTION_MODE,
-            SessionConfig.DEFAULT_VERSION);
+        host,
+        rpcPort,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        null,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(String host, String rpcPort, String username, String password) {
     this(
-            host,
-            Integer.parseInt(rpcPort),
-            username,
-            password,
-            SessionConfig.DEFAULT_FETCH_SIZE,
-            null,
-            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-            SessionConfig.DEFAULT_REDIRECTION_MODE,
-            SessionConfig.DEFAULT_VERSION);
+        host,
+        Integer.parseInt(rpcPort),
+        username,
+        password,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        null,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(String host, int rpcPort, String username, String password) {
     this(
-            host,
-            rpcPort,
-            username,
-            password,
-            SessionConfig.DEFAULT_FETCH_SIZE,
-            null,
-            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-            SessionConfig.DEFAULT_REDIRECTION_MODE,
-            SessionConfig.DEFAULT_VERSION);
+        host,
+        rpcPort,
+        username,
+        password,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        null,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize) {
     this(
-            host,
-            rpcPort,
-            username,
-            password,
-            fetchSize,
-            null,
-            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-            SessionConfig.DEFAULT_REDIRECTION_MODE,
-            SessionConfig.DEFAULT_VERSION);
+        host,
+        rpcPort,
+        username,
+        password,
+        fetchSize,
+        null,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(
-          String host,
-          int rpcPort,
-          String username,
-          String password,
-          int fetchSize,
-          long queryTimeoutInMs) {
+      String host,
+      int rpcPort,
+      String username,
+      String password,
+      int fetchSize,
+      long queryTimeoutInMs) {
     this(
-            host,
-            rpcPort,
-            username,
-            password,
-            fetchSize,
-            null,
-            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-            SessionConfig.DEFAULT_REDIRECTION_MODE,
-            SessionConfig.DEFAULT_VERSION);
+        host,
+        rpcPort,
+        username,
+        password,
+        fetchSize,
+        null,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_VERSION);
     this.queryTimeoutInMs = queryTimeoutInMs;
   }
 
   public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
     this(
-            host,
-            rpcPort,
-            username,
-            password,
-            SessionConfig.DEFAULT_FETCH_SIZE,
-            zoneId,
-            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-            SessionConfig.DEFAULT_REDIRECTION_MODE,
-            SessionConfig.DEFAULT_VERSION);
+        host,
+        rpcPort,
+        username,
+        password,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        zoneId,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        SessionConfig.DEFAULT_REDIRECTION_MODE,
+        SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(
-          String host, int rpcPort, String username, String password, boolean enableRedirection) {
+      String host, int rpcPort, String username, String password, boolean enableRedirection) {
     this(
-            host,
-            rpcPort,
-            username,
-            password,
-            SessionConfig.DEFAULT_FETCH_SIZE,
-            null,
-            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-            enableRedirection,
-            SessionConfig.DEFAULT_VERSION);
+        host,
+        rpcPort,
+        username,
+        password,
+        SessionConfig.DEFAULT_FETCH_SIZE,
+        null,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        enableRedirection,
+        SessionConfig.DEFAULT_VERSION);
   }
 
   public Session(
-          String host,
-          int rpcPort,
-          String username,
-          String password,
-          int fetchSize,
-          ZoneId zoneId,
-          boolean enableRedirection) {
+      String host,
+      int rpcPort,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      boolean enableRedirection) {
     this(
-            host,
-            rpcPort,
-            username,
-            password,
-            fetchSize,
-            zoneId,
-            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-            enableRedirection,
-            SessionConfig.DEFAULT_VERSION);
+        host,
+        rpcPort,
+        username,
+        password,
+        fetchSize,
+        zoneId,
+        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE,
+        enableRedirection,
+        SessionConfig.DEFAULT_VERSION);
   }
 
   @SuppressWarnings("squid:S107")
   public Session(
-          String host,
-          int rpcPort,
-          String username,
-          String password,
-          int fetchSize,
-          ZoneId zoneId,
-          int thriftDefaultBufferSize,
-          int thriftMaxFrameSize,
-          boolean enableRedirection,
-          Version version) {
+      String host,
+      int rpcPort,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableRedirection,
+      Version version) {
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
@@ -336,6 +336,7 @@ public class Session implements ISession {
     this.enableRedirection = enableRedirection;
     this.version = version;
   }
+
   public Session(List<String> nodeUrls, String username, String password) {
     this(
         nodeUrls,
@@ -1909,13 +1910,13 @@ public class Session implements ISession {
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
 
-    if(enableRecordsConvertTablet) {
+    if (enableRecordsConvertTablet) {
       // judge if convert records to tablets.
       Set<String> deviceSet = new HashSet<>(deviceIds);
 
       if ((double) deviceSet.size() / deviceIds.size() <= 0.5) {
         convertToTabletsAndInsert(
-                deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), false);
+            deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), false);
         return;
       }
     }
@@ -1963,12 +1964,12 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
     }
-    if(enableRecordsConvertTablet) {
+    if (enableRecordsConvertTablet) {
       // judge if convert records to tablets.
       Set<String> deviceSet = new HashSet<>(deviceIds);
       if ((double) deviceSet.size() / deviceIds.size() <= 0.5) {
         convertToTabletsAndInsert(
-                deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), true);
+            deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), true);
         return;
       }
     }
@@ -3638,18 +3639,6 @@ public class Session implements ISession {
   }
 
   @Override
-  public boolean isEnableRecordsConvertTablet(){
-    return enableRecordsConvertTablet;
-  }
-
-  @Override
-  public void setEnableRecordsConvertTablet(boolean enableRecordsConvertTablet){
-    this.enableRecordsConvertTablet = enableRecordsConvertTablet;
-  }
-
-
-
-  @Override
   public TSBackupConfigurationResp getBackupConfiguration()
       throws IoTDBConnectionException, StatementExecutionException {
     return defaultSessionConnection.getBackupConfiguration();
@@ -3747,7 +3736,7 @@ public class Session implements ISession {
       return this;
     }
 
-    public Builder enableRecordsConvertTablet(boolean enableRecordsConvertTablet){
+    public Builder enableRecordsConvertTablet(boolean enableRecordsConvertTablet) {
       this.enableRecordsConvertTablet = enableRecordsConvertTablet;
       return this;
     }

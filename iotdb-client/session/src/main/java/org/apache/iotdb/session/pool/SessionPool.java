@@ -3605,7 +3605,7 @@ public class SessionPool implements ISessionPool {
       return this;
     }
 
-    public Builder enableRecordsConvertTablet(boolean enableRecordsConvertTablet){
+    public Builder enableRecordsConvertTablet(boolean enableRecordsConvertTablet) {
       this.enableRecordsConvertTablet = enableRecordsConvertTablet;
       return this;
     }
