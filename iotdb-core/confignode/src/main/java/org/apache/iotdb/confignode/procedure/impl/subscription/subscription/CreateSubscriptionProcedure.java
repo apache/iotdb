@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
 import org.apache.iotdb.commons.exception.SubscriptionException;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -73,6 +74,13 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
   }
 
   @Override
+  protected void unlockPipeProcedure() {
+    for (AbstractOperatePipeProcedureV2 createPipeProcedure : createPipeProcedures) {
+      createPipeProcedure.unsetPipeTaskInfo();
+    }
+  }
+
+  @Override
   protected void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("CreateSubscriptionProcedure: executeFromValidate");
 
@@ -95,17 +103,22 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
         createPipeProcedures.add(
             new CreatePipeProcedureV2(
                 new TCreatePipeReq()
-                    .setPipeName(topic + "_" + subscribeReq.getConsumerGroupId())
-                    // TODO: put attributes correctly.
-                    .setExtractorAttributes(updatedTopicMeta.getConfig().getAttribute())
-                    .setProcessorAttributes(updatedTopicMeta.getConfig().getAttribute())
-                    .setConnectorAttributes(updatedTopicMeta.getConfig().getAttribute())));
+                    .setPipeName(
+                        PipeStaticMeta.generateSubscriptionPipeName(
+                            topic, subscribeReq.getConsumerGroupId()))
+                    .setExtractorAttributes(updatedTopicMeta.generateExtractorAttributes())
+                    .setProcessorAttributes(updatedTopicMeta.generateProcessorAttributes())
+                    .setConnectorAttributes(
+                        updatedTopicMeta.generateConnectorAttributes(
+                            subscribeReq.getConsumerGroupId()))));
 
         alterTopicProcedures.add(new AlterTopicProcedure(updatedTopicMeta));
       }
     }
 
     for (int i = 0, topicCount = alterTopicProcedures.size(); i < topicCount; ++i) {
+      // TODO: temporary fix
+      createPipeProcedures.get(i).setPipeTaskInfo(pipeTaskInfo);
       createPipeProcedures.get(i).executeFromValidateTask(env);
       createPipeProcedures.get(i).executeFromCalculateInfoForTask(env);
     }

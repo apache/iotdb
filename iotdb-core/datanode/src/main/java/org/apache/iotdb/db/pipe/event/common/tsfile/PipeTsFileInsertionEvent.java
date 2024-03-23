@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileInsertionEvent {
@@ -156,7 +157,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public ProgressIndex getProgressIndex() {
     try {
-      waitForTsFileClose();
+      if (!waitForTsFileClose()) {
+        LOGGER.warn(
+            "Skipping temporary TsFile {}'s progressIndex, will report MinimumProgressIndex",
+            tsFile);
+        return MinimumProgressIndex.INSTANCE;
+      }
       return resource.getMaxProgressIndexAfterClose();
     } catch (InterruptedException e) {
       LOGGER.warn(
@@ -217,18 +223,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
-    return initDataContainer().toTabletInsertionEvents();
-  }
-
-  private TsFileInsertionDataContainer initDataContainer() {
     try {
-      if (dataContainer == null) {
-        waitForTsFileClose();
-        dataContainer =
-            new TsFileInsertionDataContainer(
-                tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this);
+      if (!waitForTsFileClose()) {
+        LOGGER.warn(
+            "Pipe skipping temporary TsFile's parsing which shouldn't be transferred: {}", tsFile);
+        return Collections.emptyList();
       }
-      return dataContainer;
+      return initDataContainer().toTabletInsertionEvents();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       close();
@@ -238,6 +239,17 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
+    }
+  }
+
+  private TsFileInsertionDataContainer initDataContainer() {
+    try {
+      if (dataContainer == null) {
+        dataContainer =
+            new TsFileInsertionDataContainer(
+                tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this);
+      }
+      return dataContainer;
     } catch (IOException e) {
       close();
 

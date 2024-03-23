@@ -79,7 +79,9 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   // This method will return events only after schema region leader gets ready
   @Override
   public synchronized EnrichedEvent supply() throws Exception {
-    if (!PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId) || hasBeenClosed.get()) {
+    if (!PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)
+        || hasBeenClosed.get()
+        || listenedTypeSet.isEmpty()) {
       return null;
     }
 

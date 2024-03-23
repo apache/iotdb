@@ -17,14 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.subscription.config;
+package org.apache.iotdb.db.subscription.receiver;
 
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestVersion;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
-import java.util.Map;
+public interface SubscriptionReceiver {
 
-public class TopicConfig extends PipeParameters {
-  public TopicConfig(Map<String, String> attributes) {
-    super(attributes);
-  }
+  TPipeSubscribeResp handle(TPipeSubscribeReq req);
+
+  PipeSubscribeRequestVersion getVersion();
+
+  void handleExit();
 }

@@ -46,7 +46,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 
   // For input
-  private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
+  protected final BoundedBlockingPendingQueue<Event> inputPendingQueue;
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   private final String attributeSortedString;

@@ -26,13 +26,17 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 public class PipeSubscribePollReq extends TPipeSubscribeReq {
 
-  private transient List<String> topicNames = new ArrayList<>();;
+  private transient Set<String> topicNames = new HashSet<>();
+
+  public Set<String> getTopicNames() {
+    return topicNames;
+  }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
@@ -40,7 +44,7 @@ public class PipeSubscribePollReq extends TPipeSubscribeReq {
    * Serialize the incoming parameters into `PipeSubscribePollReq`, called by the subscription
    * client.
    */
-  public static PipeSubscribePollReq toTPipeSubscribeReq(List<String> topicNames)
+  public static PipeSubscribePollReq toTPipeSubscribeReq(Set<String> topicNames)
       throws IOException {
     final PipeSubscribePollReq req = new PipeSubscribePollReq();
 
@@ -50,7 +54,7 @@ public class PipeSubscribePollReq extends TPipeSubscribeReq {
     req.type = PipeSubscribeRequestType.POLL.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.writeStringList(topicNames, outputStream);
+      ReadWriteIOUtils.writeObjectSet(topicNames, outputStream);
       req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
@@ -61,8 +65,8 @@ public class PipeSubscribePollReq extends TPipeSubscribeReq {
   public static PipeSubscribePollReq fromTPipeSubscribeReq(TPipeSubscribeReq pollReq) {
     final PipeSubscribePollReq req = new PipeSubscribePollReq();
 
-    if (pollReq.body.hasRemaining()) {
-      req.topicNames = ReadWriteIOUtils.readStringList(pollReq.body);
+    if (Objects.nonNull(pollReq.body) && pollReq.body.hasRemaining()) {
+      req.topicNames = ReadWriteIOUtils.readObjectSet(pollReq.body);
     }
 
     req.version = pollReq.version;

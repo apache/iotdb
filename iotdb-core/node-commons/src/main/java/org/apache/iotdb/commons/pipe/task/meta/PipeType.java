@@ -17,14 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.subscription.config;
+package org.apache.iotdb.commons.pipe.task.meta;
 
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+public enum PipeType {
+  USER((byte) 0),
+  SUBSCRIPTION((byte) 1),
+  ;
 
-import java.util.Map;
+  private final byte type;
 
-public class ConsumerConfig extends PipeParameters {
-  public ConsumerConfig(Map<String, String> attributes) {
-    super(attributes);
+  PipeType(byte type) {
+    this.type = type;
+  }
+
+  public static PipeType getPipeType(String pipeName) {
+    if (pipeName.startsWith(PipeStaticMeta.SUBSCRIPTION_PIPE_PREFIX)) {
+      return SUBSCRIPTION;
+    }
+    return USER;
   }
 }
