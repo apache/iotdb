@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.isession.subscription;
+package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
@@ -140,6 +140,7 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
 
   private List<MeasurementSchema> allSchemas;
   private List<TSDataType> allDataTypes;
+
   // current column index -> (tablet index, origin column index)
   private Map<Integer, Pair<Integer, Integer>> indexMap;
   private Iterator<Map.Entry<Long, Map<Integer, Integer>>> iterator;

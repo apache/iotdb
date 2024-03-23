@@ -21,12 +21,12 @@ package org.apache.iotdb;
 
 import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.isession.subscription.SubscriptionSessionDataSet;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
 
 import java.util.ArrayList;
 import java.util.Collections;

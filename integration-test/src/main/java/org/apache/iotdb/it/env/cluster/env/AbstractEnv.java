@@ -54,6 +54,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.subscription.SubscriptionSession;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -429,6 +430,15 @@ public abstract class AbstractEnv implements BaseEnv {
             SessionConfig.DEFAULT_MAX_FRAME_SIZE,
             SessionConfig.DEFAULT_REDIRECTION_MODE,
             SessionConfig.DEFAULT_VERSION);
+    session.open();
+    return session;
+  }
+
+  @Override
+  public SubscriptionSession getSubscriptionSessionConnection() throws IoTDBConnectionException {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    SubscriptionSession session = new SubscriptionSession(dataNode.getIp(), dataNode.getPort());
     session.open();
     return session;
   }

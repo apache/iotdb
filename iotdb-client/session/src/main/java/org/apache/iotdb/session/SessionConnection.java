@@ -1660,9 +1660,9 @@ public class SessionConnection {
     return "SessionConnection{" + " endPoint=" + endPoint + "}";
   }
 
-  // -------------------------------------------------------------- //
-  // provided for IoTDBSubscriptionSimpleIT (will be removed later) //
-  // -------------------------------------------------------------- //
+  // --------------------------------- //
+  // provided for subscription session //
+  // --------------------------------- //
 
   public void createConsumer(ConsumerConfig consumerConfig) throws Exception {
     TPipeSubscribeResp resp =
