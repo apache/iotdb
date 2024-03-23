@@ -47,7 +47,6 @@ public class SlidingWindowLogAppender implements LogAppender {
   private RaftMember member;
   private RaftLogManager logManager;
   private RaftConfig config;
-  private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   public SlidingWindowLogAppender(RaftMember member, RaftConfig config) {
     this.member = member;
