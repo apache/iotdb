@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.read;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -41,7 +43,21 @@ public class QueryDataSource {
    */
   private final List<TsFileResource> seqResources;
 
+  private int curSeqIndex = -1;
+
+  // asc: startTime; desc: endTime
+  private long curSeqOrderTime = 0;
+
+  private Boolean curSeqSatisfied = null;
+
   private final List<TsFileResource> unseqResources;
+
+  private int curUnSeqIndex = -1;
+
+  // asc: startTime; desc: endTime
+  private long curUnSeqOrderTime = 0;
+
+  private Boolean curUnSeqSatisfied = null;
 
   private boolean isSingleDevice;
 
@@ -74,11 +90,82 @@ public class QueryDataSource {
     this.dataTTL = dataTTL;
   }
 
+  public boolean hasNextSeqResource(int curIndex, boolean ascending, IDeviceID deviceID) {
+    boolean res = ascending ? curIndex < seqResources.size() : curIndex >= 0;
+    if (res && curIndex != this.curSeqIndex) {
+      this.curSeqIndex = curIndex;
+      this.curSeqOrderTime = seqResources.get(curIndex).getOrderTime(deviceID, ascending);
+      this.curSeqSatisfied = null;
+    }
+    return res;
+  }
+
+  public boolean isSeqSatisfied(
+      IDeviceID deviceID, int curIndex, Filter timeFilter, boolean debug) {
+    if (curIndex != this.curSeqIndex) {
+      throw new IllegalArgumentException(
+          String.format("curIndex %d is not equal to curSeqIndex %d", curIndex, this.curSeqIndex));
+    }
+    if (curSeqSatisfied == null) {
+      TsFileResource tsFileResource = seqResources.get(curSeqIndex);
+      curSeqSatisfied =
+          tsFileResource != null
+              && (isSingleDevice || tsFileResource.isSatisfied(deviceID, timeFilter, true, debug));
+    }
+
+    return curSeqSatisfied;
+  }
+
+  public long getCurrentSeqOrderTime(int curIndex) {
+    if (curIndex != this.curSeqIndex) {
+      throw new IllegalArgumentException(
+          String.format("curIndex %d is not equal to curSeqIndex %d", curIndex, this.curSeqIndex));
+    }
+    return this.curSeqOrderTime;
+  }
+
   public TsFileResource getSeqResourceByIndex(int curIndex) {
     if (curIndex < seqResources.size()) {
       return seqResources.get(curIndex);
     }
     return null;
+  }
+
+  public boolean hasNextUnseqResource(int curIndex, boolean ascending, IDeviceID deviceID) {
+    boolean res = curIndex < unseqResources.size();
+    if (res && curIndex != this.curUnSeqIndex) {
+      this.curUnSeqIndex = curIndex;
+      this.curUnSeqOrderTime =
+          seqResources.get(unSeqFileOrderIndex[curIndex]).getOrderTime(deviceID, ascending);
+      this.curUnSeqSatisfied = null;
+    }
+    return res;
+  }
+
+  public boolean isUnSeqSatisfied(
+      IDeviceID deviceID, int curIndex, Filter timeFilter, boolean debug) {
+    if (curIndex != this.curUnSeqIndex) {
+      throw new IllegalArgumentException(
+          String.format(
+              "curIndex %d is not equal to curUnSeqIndex %d", curIndex, this.curUnSeqIndex));
+    }
+    if (curUnSeqSatisfied == null) {
+      TsFileResource tsFileResource = seqResources.get(unSeqFileOrderIndex[curIndex]);
+      curUnSeqSatisfied =
+          tsFileResource != null
+              && (isSingleDevice || tsFileResource.isSatisfied(deviceID, timeFilter, false, debug));
+    }
+
+    return curUnSeqSatisfied;
+  }
+
+  public long getCurrentUnSeqOrderTime(int curIndex) {
+    if (curIndex != this.curUnSeqIndex) {
+      throw new IllegalArgumentException(
+          String.format(
+              "curIndex %d is not equal to curSeqIndex %d", curIndex, this.curUnSeqIndex));
+    }
+    return this.curUnSeqOrderTime;
   }
 
   public TsFileResource getUnseqResourceByIndex(int curIndex) {
@@ -87,14 +174,6 @@ public class QueryDataSource {
       return unseqResources.get(actualIndex);
     }
     return null;
-  }
-
-  public boolean hasNextSeqResource(int curIndex, boolean ascending) {
-    return ascending ? curIndex < seqResources.size() : curIndex >= 0;
-  }
-
-  public boolean hasNextUnseqResource(int curIndex) {
-    return curIndex < unseqResources.size();
   }
 
   public int getSeqResourcesSize() {
