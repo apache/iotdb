@@ -136,7 +136,7 @@ public class QueryDataSource {
     if (res && curIndex != this.curUnSeqIndex) {
       this.curUnSeqIndex = curIndex;
       this.curUnSeqOrderTime =
-          seqResources.get(unSeqFileOrderIndex[curIndex]).getOrderTime(deviceID, ascending);
+          unseqResources.get(unSeqFileOrderIndex[curIndex]).getOrderTime(deviceID, ascending);
       this.curUnSeqSatisfied = null;
     }
     return res;
@@ -150,7 +150,7 @@ public class QueryDataSource {
               "curIndex %d is not equal to curUnSeqIndex %d", curIndex, this.curUnSeqIndex));
     }
     if (curUnSeqSatisfied == null) {
-      TsFileResource tsFileResource = seqResources.get(unSeqFileOrderIndex[curIndex]);
+      TsFileResource tsFileResource = unseqResources.get(unSeqFileOrderIndex[curIndex]);
       curUnSeqSatisfied =
           tsFileResource != null
               && (isSingleDevice || tsFileResource.isSatisfied(deviceID, timeFilter, false, debug));
