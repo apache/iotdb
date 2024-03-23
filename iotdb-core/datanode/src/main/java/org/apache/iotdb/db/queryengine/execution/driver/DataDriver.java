@@ -95,6 +95,8 @@ public class DataDriver extends Driver {
               QueryDataSource queryDataSource =
                   new QueryDataSource(dataSource.getSeqResources(), dataSource.getUnseqResources());
 
+              queryDataSource.setSingleDevice(queryDataSource.isSingleDevice());
+
               queryDataSource.setDataTTL(dataSource.getDataTTL());
 
               sourceOperator.initQueryDataSource(queryDataSource);

@@ -1368,8 +1368,9 @@ public class SeriesScanUtil {
       while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), true, false)) {
+            && (dataSource.isSingleDevice()
+                || tsFileResource.isSatisfied(
+                    seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), true, false))) {
           break;
         }
         curSeqFileIndex--;
@@ -1382,8 +1383,9 @@ public class SeriesScanUtil {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), false, false)) {
+            && (dataSource.isSingleDevice()
+                || tsFileResource.isSatisfied(
+                    seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), false, false))) {
           break;
         }
         curUnseqFileIndex++;
@@ -1491,8 +1493,9 @@ public class SeriesScanUtil {
       while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), true, false)) {
+            && (dataSource.isSingleDevice()
+                || tsFileResource.isSatisfied(
+                    seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), true, false))) {
           break;
         }
         curSeqFileIndex++;
@@ -1505,8 +1508,9 @@ public class SeriesScanUtil {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), false, false)) {
+            && (dataSource.isSingleDevice()
+                || tsFileResource.isSatisfied(
+                    seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), false, false))) {
           break;
         }
         curUnseqFileIndex++;

@@ -43,6 +43,8 @@ public class QueryDataSource {
 
   private final List<TsFileResource> unseqResources;
 
+  private boolean isSingleDevice;
+
   /* The traversal order of unseqResources (different for each device) */
   private int[] unSeqFileOrderIndex;
 
@@ -123,5 +125,13 @@ public class QueryDataSource {
       }
     }
     this.unSeqFileOrderIndex = unSeqFileOrderIndexArray;
+  }
+
+  public boolean isSingleDevice() {
+    return isSingleDevice;
+  }
+
+  public void setSingleDevice(boolean singleDevice) {
+    isSingleDevice = singleDevice;
   }
 }
