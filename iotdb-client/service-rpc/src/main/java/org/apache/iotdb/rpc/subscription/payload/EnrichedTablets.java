@@ -245,8 +245,8 @@ public class EnrichedTablets {
         field.setDoubleV(doubleValue);
         break;
       case TEXT:
-        Binary binary = new Binary((((Binary[]) value)[index]).getValues());
-        field.setBinaryV(binary);
+        Binary binaryValue = new Binary((((Binary[]) value)[index]).getValues());
+        field.setBinaryV(binaryValue);
         break;
       default:
         throw new UnSupportedDataTypeException(
