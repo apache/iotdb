@@ -22,7 +22,7 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.db.subscription.broker.SerializedEnrichedEvent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtask;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

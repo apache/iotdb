@@ -19,12 +19,14 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.subscription.EnrichedRowRecord;
 import org.apache.iotdb.isession.util.Version;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConstant;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,18 +51,21 @@ public class SubscriptionSessionExample {
             .build();
     session.open(false);
 
-    int count = 0;
-    session.executeNonQueryStatement("create topic topic1 with ('start-time'='now')");
+    session.executeNonQueryStatement("create topic topic1");
 
     // insert some history data
     long currentTime = System.currentTimeMillis();
     for (int i = 0; i < 100; ++i) {
       session.executeNonQueryStatement(
-          String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
+          String.format("insert into root.db.d1(time, s1, s2) values (%s, 1, 2)", i));
     }
     for (int i = 0; i < 100; ++i) {
       session.executeNonQueryStatement(
-          String.format("insert into root.db.d2(time, s) values (%s, 1)", currentTime + i));
+          String.format("insert into root.db.d2(time, s3, s4) values (%s, 3, 4)", currentTime + i));
+    }
+    for (int i = 0; i < 100; ++i) {
+      session.executeNonQueryStatement(
+          String.format("insert into root.sg.d2(time, s) values (%s, 5)", currentTime + 2 * i));
     }
     session.executeNonQueryStatement("flush");
 
@@ -81,8 +86,13 @@ public class SubscriptionSessionExample {
       }
       Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
       for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
-        for (Tablet tablet : enrichedTablets.getTablets()) {
-          count += tablet.rowSize;
+        EnrichedRowRecord enrichedRowRecord = new EnrichedRowRecord(enrichedTablets);
+        System.out.println(enrichedRowRecord.getTopicName());
+        System.out.println(enrichedRowRecord.getColumnNameList());
+        System.out.println(enrichedRowRecord.getColumnTypeList());
+        List<RowRecord> records = enrichedRowRecord.getRecords();
+        for (RowRecord record : records) {
+          System.out.println(record);
         }
         topicNameToSubscriptionCommitIds
             .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
@@ -93,7 +103,22 @@ public class SubscriptionSessionExample {
     session.unsubscribe(Collections.singleton("topic1"));
     session.dropConsumer();
     session.close();
+  }
 
-    System.out.println(count);
+  public static void query(String[] args) throws Exception {
+    session =
+        new Session.Builder()
+            .host(LOCAL_HOST)
+            .port(6667)
+            .username("root")
+            .password("root")
+            .version(Version.V_1_0)
+            .build();
+    session.open(false);
+    SessionDataSet dataSet = session.executeQueryStatement("select ** from root.**");
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+    session.close();
   }
 }

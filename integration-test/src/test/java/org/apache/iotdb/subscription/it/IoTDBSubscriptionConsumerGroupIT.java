@@ -23,9 +23,9 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConstant;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 

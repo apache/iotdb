@@ -17,15 +17,41 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.config;
+package org.apache.iotdb.isession.subscription;
 
-public class ConsumerConstant {
+import org.apache.iotdb.isession.ISessionDataSet;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-  public static final String CONSUMER_ID_KEY = "consumer-id";
+import java.util.List;
 
-  public static final String CONSUMER_GROUP_ID_KEY = "group-id";
+public class SubscriptionSessionDataSet implements ISessionDataSet {
 
-  private ConsumerConstant() {
-    throw new IllegalStateException("Utility class");
+  private final EnrichedRowRecord enrichedRowRecord;
+
+  public SubscriptionSessionDataSet(EnrichedRowRecord enrichedRowRecord) {
+    this.enrichedRowRecord = enrichedRowRecord;
   }
+
+  @Override
+  public List<String> getColumnNames() {
+    return null;
+  }
+
+  @Override
+  public List<String> getColumnTypes() {
+    return null;
+  }
+
+  @Override
+  public boolean hasNext() {
+    return false;
+  }
+
+  @Override
+  public RowRecord next() {
+    return null;
+  }
+
+  @Override
+  public void close() throws Exception {}
 }

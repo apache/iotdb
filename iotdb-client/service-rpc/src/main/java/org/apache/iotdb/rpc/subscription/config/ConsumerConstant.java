@@ -17,19 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription;
+package org.apache.iotdb.rpc.subscription.config;
 
-import java.util.Iterator;
+public class ConsumerConstant {
 
-public class IoTDBSubscriptionDataSet implements Iterator<EnrichedRowRecord> {
+  public static final String CONSUMER_ID_KEY = "consumer-id";
 
-  @Override
-  public boolean hasNext() {
-    return false;
-  }
+  public static final String CONSUMER_GROUP_ID_KEY = "group-id";
 
-  @Override
-  public EnrichedRowRecord next() {
-    return null;
+  private ConsumerConstant() {
+    throw new IllegalStateException("Utility class");
   }
 }

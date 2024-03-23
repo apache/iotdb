@@ -17,18 +17,40 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription;
+package org.apache.iotdb.isession.subscription;
 
+import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.util.List;
 
 public class EnrichedRowRecord {
 
-  private String topicName;
-  private RowRecord record;
-  private List<String> columnNameList;
-  private List<String> columnTypeList;
+  private final String topicName;
+  private final List<String> columnNameList;
+  private final List<String> columnTypeList;
+  private final List<RowRecord> records;
 
-  // TODO: translate EnrichedTablets to EnrichedRowRecord
+  public EnrichedRowRecord(EnrichedTablets enrichedTablets) {
+    this.topicName = enrichedTablets.getTopicName();
+    this.columnNameList = enrichedTablets.generateColumnNameList();
+    this.columnTypeList = enrichedTablets.generateColumnTypeList();
+    this.records = enrichedTablets.generateRecords();
+  }
+
+  public String getTopicName() {
+    return topicName;
+  }
+
+  public List<String> getColumnNameList() {
+    return columnNameList;
+  }
+
+  public List<String> getColumnTypeList() {
+    return columnTypeList;
+  }
+
+  public List<RowRecord> getRecords() {
+    return records;
+  }
 }
