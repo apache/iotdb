@@ -159,7 +159,7 @@ public class SeriesScanUtil {
    * @param dataSource the query data source
    */
   public void initQueryDataSource(QueryDataSource dataSource) {
-    dataSource.fillOrderIndexes(seriesPath.getDevice(), orderUtils.getAscending());
+    dataSource.fillOrderIndexes(deviceID, orderUtils.getAscending());
     this.dataSource = dataSource;
 
     // updated filter concerning TTL

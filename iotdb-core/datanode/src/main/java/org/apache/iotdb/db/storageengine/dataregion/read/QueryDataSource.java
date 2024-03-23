@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.read;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
@@ -72,6 +71,14 @@ public class QueryDataSource {
   public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seqResources = seqResources;
     this.unseqResources = unseqResources;
+  }
+
+  // used for compaction, because in compaction task(unlike query, each QueryDataSource only serve
+  // for one series), we will reuse this object for multi series
+  public QueryDataSource(QueryDataSource other) {
+    this.seqResources = other.seqResources;
+    this.unseqResources = other.unseqResources;
+    this.unSeqFileOrderIndex = other.unSeqFileOrderIndex;
   }
 
   public List<TsFileResource> getSeqResources() {
@@ -184,15 +191,13 @@ public class QueryDataSource {
     return unseqResources.size();
   }
 
-  public void fillOrderIndexes(String deviceId, boolean ascending) {
+  public void fillOrderIndexes(IDeviceID deviceId, boolean ascending) {
     TreeMap<Long, List<Integer>> orderTimeToIndexMap =
         ascending ? new TreeMap<>() : new TreeMap<>(descendingComparator);
     int index = 0;
     for (TsFileResource resource : unseqResources) {
       orderTimeToIndexMap
-          .computeIfAbsent(
-              resource.getOrderTime(new PlainDeviceID(deviceId), ascending),
-              key -> new ArrayList<>())
+          .computeIfAbsent(resource.getOrderTime(deviceId, ascending), key -> new ArrayList<>())
           .add(index++);
     }
 
