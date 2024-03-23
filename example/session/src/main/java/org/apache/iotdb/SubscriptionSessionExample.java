@@ -19,14 +19,14 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.isession.subscription.EnrichedRowRecord;
+import org.apache.iotdb.isession.subscription.SubscriptionSessionDataSet;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -86,13 +86,12 @@ public class SubscriptionSessionExample {
       }
       Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
       for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
-        EnrichedRowRecord enrichedRowRecord = new EnrichedRowRecord(enrichedTablets);
-        System.out.println(enrichedRowRecord.getTopicName());
-        System.out.println(enrichedRowRecord.getColumnNameList());
-        System.out.println(enrichedRowRecord.getColumnTypeList());
-        List<RowRecord> records = enrichedRowRecord.getRecords();
-        for (RowRecord record : records) {
-          System.out.println(record);
+        try (ISessionDataSet dataSet = new SubscriptionSessionDataSet(enrichedTablets)) {
+          System.out.println(dataSet.getColumnNames());
+          System.out.println(dataSet.getColumnTypes());
+          while (dataSet.hasNext()) {
+            System.out.println(dataSet.next());
+          }
         }
         topicNameToSubscriptionCommitIds
             .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())

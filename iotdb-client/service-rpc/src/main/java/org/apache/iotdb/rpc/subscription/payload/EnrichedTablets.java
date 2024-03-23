@@ -19,26 +19,15 @@
 
 package org.apache.iotdb.rpc.subscription.payload;
 
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 public class EnrichedTablets {
 
@@ -50,12 +39,12 @@ public class EnrichedTablets {
     return topicName;
   }
 
-  public List<Tablet> getTablets() {
-    return tablets;
-  }
-
   public String getSubscriptionCommitId() {
     return subscriptionCommitId;
+  }
+
+  public List<Tablet> getTablets() {
+    return tablets;
   }
 
   public EnrichedTablets() {
@@ -88,171 +77,6 @@ public class EnrichedTablets {
       enrichedTablets.tablets.add(Tablet.deserialize(buffer));
     }
     return enrichedTablets;
-  }
-
-  /////////////////////////////// convert to EnrichedRowRecord ///////////////////////////////
-
-  private List<MeasurementSchema> allSchemas;
-  private List<TSDataType> allDataTypes;
-  private Map<Integer, Pair<Integer, Integer>> indexMap;
-  private TreeMap<Long, Map<Integer, Integer>> timestampIndexMap;
-
-  private int getAllColumnSize() {
-    return getAllSchemas().size();
-  }
-
-  private List<MeasurementSchema> getAllSchemas() {
-    if (Objects.nonNull(allSchemas)) {
-      return allSchemas;
-    }
-    return allSchemas =
-        tablets.stream().map(Tablet::getSchemas).flatMap(List::stream).collect(Collectors.toList());
-  }
-
-  private List<TSDataType> getAllDataTypes() {
-    if (Objects.nonNull(allDataTypes)) {
-      return allDataTypes;
-    }
-    return allDataTypes =
-        getAllSchemas().stream().map(MeasurementSchema::getType).collect(Collectors.toList());
-  }
-
-  private Map<Integer, Pair<Integer, Integer>> generateIndexMap() {
-    if (Objects.nonNull(indexMap)) {
-      return indexMap;
-    }
-    indexMap = new HashMap<>();
-    int currentIndex = 0;
-    final int tabletSize = tablets.size();
-    for (int tabletIndex = 0; tabletIndex < tabletSize; ++tabletIndex) {
-      final int columnSize = tablets.get(tabletIndex).getSchemas().size();
-      for (int columnIndex = 0; columnIndex < columnSize; ++columnIndex) {
-        indexMap.put(currentIndex, new Pair<>(tabletIndex, columnIndex));
-        currentIndex += 1;
-      }
-    }
-    return indexMap;
-  }
-
-  private TreeMap<Long, Map<Integer, Integer>> generateTimestampIndexMap() {
-    if (Objects.nonNull(timestampIndexMap)) {
-      return timestampIndexMap;
-    }
-    timestampIndexMap = new TreeMap<>();
-    int currentIndex = 0;
-    for (Tablet tablet : tablets) {
-      final int columnSize = tablet.getSchemas().size();
-      final int timestampSize = tablet.timestamps.length;
-      for (int timestampIndex = 0; timestampIndex < timestampSize; ++timestampIndex) {
-        Long timestamp = tablet.timestamps[timestampIndex];
-        final Map<Integer, Integer> indexToTimestampIndex =
-            timestampIndexMap.computeIfAbsent(timestamp, (t) -> new HashMap<>());
-        for (int columnIndex = 0; columnIndex < columnSize; ++columnIndex) {
-          indexToTimestampIndex.put(currentIndex + columnIndex, timestampIndex);
-        }
-      }
-      currentIndex += tablet.getSchemas().size();
-    }
-    return timestampIndexMap;
-  }
-
-  public List<String> generateColumnNameList() {
-    List<String> columnNameList = new ArrayList<>();
-    columnNameList.add("Time");
-    for (Tablet tablet : tablets) {
-      String deviceId = tablet.deviceId;
-      List<MeasurementSchema> schemas = tablet.getSchemas();
-      columnNameList.addAll(
-          schemas.stream()
-              .map((schema) -> deviceId + "." + schema.getMeasurementId())
-              .collect(Collectors.toList()));
-    }
-    return columnNameList;
-  }
-
-  public List<String> generateColumnTypeList() {
-    List<String> columnTypeList = new ArrayList<>();
-    columnTypeList.add(TSDataType.INT64.toString());
-    for (Tablet tablet : tablets) {
-      List<MeasurementSchema> schemas = tablet.getSchemas();
-      columnTypeList.addAll(
-          schemas.stream()
-              .map((schema) -> schema.getType().toString())
-              .collect(Collectors.toList()));
-    }
-    return columnTypeList;
-  }
-
-  public List<RowRecord> generateRecords() {
-    final List<RowRecord> records = new ArrayList<>();
-
-    final int totalColumnSize = getAllColumnSize();
-    TreeMap<Long, Map<Integer, Integer>> timestampIndexMap = generateTimestampIndexMap();
-    for (Map.Entry<Long, Map<Integer, Integer>> entry : timestampIndexMap.entrySet()) {
-      final List<Field> fields = new ArrayList<>();
-      final long timestamp = entry.getKey();
-      final Map<Integer, Integer> timestampIndex = entry.getValue();
-
-      for (int currentIndex = 0; currentIndex < totalColumnSize; ++currentIndex) {
-        final Field field;
-        if (!timestampIndex.containsKey(currentIndex)) {
-          field = new Field(null);
-        } else {
-          Pair<Integer, Integer> tabletAndColumnIndex = generateIndexMap().get(currentIndex);
-          if (tablets
-              .get(tabletAndColumnIndex.getLeft())
-              .bitMaps[tabletAndColumnIndex.getRight()]
-              .isMarked(timestampIndex.get(currentIndex))) {
-            field = new Field(null);
-          } else {
-            TSDataType dataType = getAllDataTypes().get(currentIndex);
-            field =
-                generateFieldFromTabletValue(
-                    dataType,
-                    tablets.get(tabletAndColumnIndex.getLeft())
-                        .values[tabletAndColumnIndex.getRight()],
-                    timestampIndex.get(currentIndex));
-          }
-        }
-        fields.add(field);
-      }
-      records.add(new RowRecord(timestamp, fields));
-    }
-    return records;
-  }
-
-  private static Field generateFieldFromTabletValue(TSDataType dataType, Object value, int index) {
-    final Field field = new Field(dataType);
-    switch (dataType) {
-      case BOOLEAN:
-        boolean booleanValue = ((boolean[]) value)[index];
-        field.setBoolV(booleanValue);
-        break;
-      case INT32:
-        int intValue = ((int[]) value)[index];
-        field.setIntV(intValue);
-        break;
-      case INT64:
-        long longValue = ((long[]) value)[index];
-        field.setLongV(longValue);
-        break;
-      case FLOAT:
-        float floatValue = ((float[]) value)[index];
-        field.setFloatV(floatValue);
-        break;
-      case DOUBLE:
-        double doubleValue = ((double[]) value)[index];
-        field.setDoubleV(doubleValue);
-        break;
-      case TEXT:
-        Binary binaryValue = new Binary((((Binary[]) value)[index]).getValues());
-        field.setBinaryV(binaryValue);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
-    return field;
   }
 
   /////////////////////////////// Object ///////////////////////////////

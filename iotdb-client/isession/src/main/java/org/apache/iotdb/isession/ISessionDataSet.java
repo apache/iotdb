@@ -29,7 +29,7 @@ public interface ISessionDataSet extends AutoCloseable {
 
   List<String> getColumnTypes();
 
-  boolean hasNext();
+  boolean hasNext() throws Exception;
 
-  RowRecord next();
+  RowRecord next() throws Exception;
 }
