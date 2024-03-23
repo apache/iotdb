@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityM
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -68,6 +69,8 @@ public class SeriesScanUtil {
 
   // The path of the target series which will be scanned.
   protected final PartialPath seriesPath;
+
+  private final IDeviceID deviceID;
   protected boolean isAligned = false;
   private final TSDataType dataType;
 
@@ -113,6 +116,7 @@ public class SeriesScanUtil {
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context) {
     this.seriesPath = seriesPath;
+    this.deviceID = seriesPath.getIDeviceID();
     this.dataType = seriesPath.getSeriesType();
 
     this.scanOptions = scanOptions;
@@ -1303,7 +1307,7 @@ public class SeriesScanUtil {
     @SuppressWarnings("squid:S3740")
     @Override
     public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getEndTime(seriesPath.getIDeviceID());
+      return fileResource.getEndTime(deviceID);
     }
 
     @SuppressWarnings("squid:S3740")
@@ -1326,7 +1330,7 @@ public class SeriesScanUtil {
 
     @Override
     public boolean isOverlapped(long time, TsFileResource right) {
-      return time <= right.getEndTime(seriesPath.getIDeviceID());
+      return time <= right.getEndTime(deviceID);
     }
 
     @Override
@@ -1369,7 +1373,7 @@ public class SeriesScanUtil {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), true, false)) {
+                deviceID, scanOptions.getGlobalTimeFilter(), true, false)) {
           break;
         }
         curSeqFileIndex--;
@@ -1383,7 +1387,7 @@ public class SeriesScanUtil {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), false, false)) {
+                deviceID, scanOptions.getGlobalTimeFilter(), false, false)) {
           break;
         }
         curUnseqFileIndex++;
@@ -1426,7 +1430,7 @@ public class SeriesScanUtil {
     @SuppressWarnings("squid:S3740")
     @Override
     public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getStartTime(seriesPath.getIDeviceID());
+      return fileResource.getStartTime(deviceID);
     }
 
     @SuppressWarnings("squid:S3740")
@@ -1449,7 +1453,7 @@ public class SeriesScanUtil {
 
     @Override
     public boolean isOverlapped(long time, TsFileResource right) {
-      return time >= right.getStartTime(seriesPath.getIDeviceID());
+      return time >= right.getStartTime(deviceID);
     }
 
     @Override
@@ -1492,7 +1496,7 @@ public class SeriesScanUtil {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), true, false)) {
+                deviceID, scanOptions.getGlobalTimeFilter(), true, false)) {
           break;
         }
         curSeqFileIndex++;
@@ -1506,7 +1510,7 @@ public class SeriesScanUtil {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), false, false)) {
+                deviceID, scanOptions.getGlobalTimeFilter(), false, false)) {
           break;
         }
         curUnseqFileIndex++;
