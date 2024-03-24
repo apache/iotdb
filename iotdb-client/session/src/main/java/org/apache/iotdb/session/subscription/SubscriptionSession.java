@@ -1,11 +1,32 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
-import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionConnection;
 
-import java.util.List;
-import java.util.Map;
+import java.time.ZoneId;
 import java.util.Properties;
 import java.util.Set;
 
@@ -19,45 +40,75 @@ public class SubscriptionSession extends Session {
     super(host, rpcPort, username, password);
   }
 
+  @Override
+  public SessionConnection constructSessionConnection(
+      Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
+    if (endpoint == null) {
+      return new SubscriptionSessionConnection(
+          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
+    }
+    return new SubscriptionSessionConnection(
+        session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
+  }
+
   /////////////////////////////// topic ///////////////////////////////
 
-  public Topic createTopic(String topicName, Properties properties) {}
+  public void createTopic(String topicName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    final String sql = String.format("CREATE TOPIC %s", topicName);
+    executeNonQueryStatement(sql);
+  }
 
-  public void drop(String topicName) {}
+  public void createTopic(String topicName, Properties config)
+      throws IoTDBConnectionException, StatementExecutionException {
+    final StringBuilder sb = new StringBuilder();
+    sb.append('(');
+    config.forEach(
+        (k, v) ->
+            sb.append('\'')
+                .append(k)
+                .append('\'')
+                .append('=')
+                .append('\'')
+                .append(k)
+                .append('\'')
+                .append(','));
+    sb.append(')');
+    final String sql = String.format("CREATE TOPIC %s WITH %s", topicName, sb);
+    executeNonQueryStatement(sql);
+  }
 
-  public Set<Topic> getTopics() {}
+  public void drop(String topicName) throws IoTDBConnectionException, StatementExecutionException {
+    final String sql = String.format("DROP TOPIC %s", topicName);
+    executeNonQueryStatement(sql);
+  }
 
-  public Topic getTopic(String topicName) {}
+  public Set<Topic> getTopics() throws IoTDBConnectionException, StatementExecutionException {
+    final String sql = "SHOW TOPICS";
+    SessionDataSet dataSet = executeQueryStatement(sql);
+    return null;
+  }
+
+  public Topic getTopic(String topicName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    final String sql = String.format("SHOW TOPIC %s", topicName);
+    SessionDataSet dataSet = executeQueryStatement(sql);
+    return null;
+  }
 
   /////////////////////////////// subscription ///////////////////////////////
 
-  public Set<Subscription> subscription() {}
-
-  public Set<Subscription> subscription(String topicName) {}
-
-  /////////////////////////////// consumer ///////////////////////////////
-
-  public void createConsumer(ConsumerConfig consumerConfig) throws Exception {
-    defaultSessionConnection.createConsumer(consumerConfig);
+  public Set<Subscription> getSubscriptions()
+      throws IoTDBConnectionException, StatementExecutionException {
+    final String sql = "SHOW SUBSCRIPTIONS";
+    SessionDataSet dataSet = executeQueryStatement(sql);
+    return null;
   }
 
-  public void dropConsumer() throws Exception {
-    defaultSessionConnection.dropConsumer();
-  }
-
-  public void subscribe(Set<String> topicNames) throws Exception {
-    defaultSessionConnection.subscribe(topicNames);
-  }
-
-  public void unsubscribe(Set<String> topicNames) throws Exception {
-    defaultSessionConnection.unsubscribe(topicNames);
-  }
-
-  public List<EnrichedTablets> poll(Set<String> topicNames) throws Exception {
-    return defaultSessionConnection.poll(topicNames);
-  }
-
-  public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) throws Exception {
-    defaultSessionConnection.commit(topicNameToSubscriptionCommitIds);
+  public Set<Subscription> getSubscriptions(String topicName)
+      throws IoTDBConnectionException, StatementExecutionException {
+    final String sql = String.format("SHOW SUBSCRIPTIONS ON %s", topicName);
+    SessionDataSet dataSet = executeQueryStatement(sql);
+    return null;
   }
 }

@@ -19,10 +19,30 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+public class Message {
 
-public class Topic {
+  private SubscriptionSessionDataSet dataSet;
 
-  private String topicName;
-  private TopicConfig config;
+  // TODO: support more data format
+
+  public Message(SubscriptionSessionDataSet dataSet) {
+    this.dataSet = dataSet;
+  }
+
+  public String getTopic() {
+    return dataSet.getTopicName();
+  }
+
+  String getSubscriptionCommitId() {
+    // make it package-private
+    return dataSet.getSubscriptionCommitId();
+  }
+
+  public void debug() {
+    System.out.println(dataSet.getColumnNames());
+    System.out.println(dataSet.getColumnTypes());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+  }
 }

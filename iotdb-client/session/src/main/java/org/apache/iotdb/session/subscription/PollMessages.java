@@ -19,10 +19,27 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 
-public class Topic {
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
-  private String topicName;
-  private TopicConfig config;
+public class PollMessages implements Iterable<PollMessage> {
+
+  private final List<PollMessage> pollMessageList;
+
+  public PollMessages(
+      SubscriptionPullConsumer consumer, List<EnrichedTablets> enrichedTabletsList) {
+    pollMessageList = new ArrayList<>();
+    enrichedTabletsList.forEach(
+        (enrichedTablets) ->
+            pollMessageList.add(
+                new PollMessage(consumer, new SubscriptionSessionDataSet(enrichedTablets))));
+  }
+
+  @Override
+  public Iterator<PollMessage> iterator() {
+    return pollMessageList.iterator();
+  }
 }

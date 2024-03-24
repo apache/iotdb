@@ -19,20 +19,16 @@
 
 package org.apache.iotdb;
 
-import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.util.Version;
-import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
-import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.PollMessage;
+import org.apache.iotdb.session.subscription.PollMessages;
+import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.Duration;
+import java.util.Properties;
 
 public class SubscriptionSessionExample {
 
@@ -51,8 +47,6 @@ public class SubscriptionSessionExample {
             .build();
     session.open(false);
 
-    session.executeNonQueryStatement("create topic topic1");
-
     // insert some history data
     long currentTime = System.currentTimeMillis();
     for (int i = 0; i < 100; ++i) {
@@ -70,38 +64,20 @@ public class SubscriptionSessionExample {
     session.executeNonQueryStatement("flush");
 
     // subscription
-    Map<String, String> consumerAttributes = new HashMap<>();
-    consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-    consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
-
-    session.createConsumer(new ConsumerConfig(consumerAttributes));
-    session.subscribe(Collections.singleton("topic1"));
-
-    List<EnrichedTablets> enrichedTabletsList;
-    while (true) {
+    Properties config = new Properties();
+    config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
+    config.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+    try (SubscriptionPullConsumer consumer = new SubscriptionPullConsumer(config)) {
+      consumer.createTopic("topic1");
+      consumer.subscribe("topic1");
       Thread.sleep(1000); // wait some time
-      enrichedTabletsList = session.poll(Collections.singleton("topic1"));
-      if (enrichedTabletsList.isEmpty()) {
-        break;
+      PollMessages pollMessages = consumer.poll(Duration.ofMillis(100));
+      for (PollMessage message : pollMessages) {
+        message.debug();
+        message.commit();
       }
-      Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
-      for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
-        try (ISessionDataSet dataSet = new SubscriptionSessionDataSet(enrichedTablets)) {
-          System.out.println(dataSet.getColumnNames());
-          System.out.println(dataSet.getColumnTypes());
-          while (dataSet.hasNext()) {
-            System.out.println(dataSet.next());
-          }
-        }
-        topicNameToSubscriptionCommitIds
-            .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
-            .add(enrichedTablets.getSubscriptionCommitId());
-      }
-      session.commit(topicNameToSubscriptionCommitIds);
+      consumer.unsubscribe("topic1");
     }
-    session.unsubscribe(Collections.singleton("topic1"));
-    session.dropConsumer();
-    session.close();
   }
 
   public static void query(String[] args) throws Exception {

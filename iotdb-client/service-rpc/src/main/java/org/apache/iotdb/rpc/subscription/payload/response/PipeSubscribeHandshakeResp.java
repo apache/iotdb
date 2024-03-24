@@ -40,6 +40,10 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
   // dataNodeId -> clientRpcEndPoint
   private transient Map<Integer, TEndPoint> endPoints = new HashMap<>();
 
+  public Map<Integer, TEndPoint> getEndPoints() {
+    return endPoints;
+  }
+
   /////////////////////////////// Thrift ///////////////////////////////
 
   /**

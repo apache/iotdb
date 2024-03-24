@@ -175,7 +175,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // create consumer if not existed
     if (!SubscriptionAgent.consumer()
-        .isConsumerExisted(consumerConfig.getConsumerId(), consumerConfig.getConsumerGroupId())) {
+        .isConsumerExisted(consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId())) {
       createConsumer(consumerConfig);
     } else {
       LOGGER.info(
@@ -339,6 +339,13 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // poll
     Set<String> topicNames = req.getTopicNames();
+    if (topicNames.isEmpty()) {
+      // poll all subscribed topics
+      topicNames =
+          SubscriptionAgent.consumer()
+              .getTopicsSubscribedByConsumer(
+                  consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+    }
     List<SerializedEnrichedEvent> events =
         SubscriptionAgent.broker().poll(consumerConfig, topicNames);
     List<ByteBuffer> byteBuffers =

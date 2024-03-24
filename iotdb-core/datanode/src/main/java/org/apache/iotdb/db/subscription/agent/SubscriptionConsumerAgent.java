@@ -180,7 +180,7 @@ public class SubscriptionConsumerAgent {
     consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
   }
 
-  public boolean isConsumerExisted(String consumerId, String consumerGroupId) {
+  public boolean isConsumerExisted(String consumerGroupId, String consumerId) {
     acquireReadLock();
     try {
       final ConsumerGroupMeta consumerGroupMeta =
