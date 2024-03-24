@@ -107,7 +107,7 @@ public class IoTDBSubscriptionTopicIT {
         for (SubscriptionMessage message : messages) {
           ISessionDataSet dataSet = message.getPayload();
           List<String> columnNameList = dataSet.getColumnNames();
-          Assert.assertEquals(2, columnNameList.size());
+          Assert.assertEquals(3, columnNameList.size());
           Assert.assertTrue(columnNameList.contains("root.db.d1.s"));
           Assert.assertTrue(columnNameList.contains("root.db.d2.s"));
           while (dataSet.hasNext()) {
@@ -154,7 +154,7 @@ public class IoTDBSubscriptionTopicIT {
             .consumerGroupId("cg1")
             .buildPullConsumer()) {
       Properties config = new Properties();
-      config.put(TopicConstant.START_TIME_KEY, TopicConstant.NOW_TIME_VALUE);
+      config.put(TopicConstant.START_TIME_KEY, currentTime);
       consumer.createTopic("topic1", config);
       consumer.subscribe("topic1");
       while (true) {
@@ -204,7 +204,7 @@ public class IoTDBSubscriptionTopicIT {
       Properties config = new Properties();
       config.put("processor", "tumbling-time-sampling-processor");
       config.put("processor.tumbling-time.interval-seconds", "1");
-      config.put("processor.down-sampling.split-file", "'true'");
+      config.put("processor.down-sampling.split-file", "true");
       consumer.createTopic("topic1", config);
       consumer.subscribe("topic1");
       while (true) {

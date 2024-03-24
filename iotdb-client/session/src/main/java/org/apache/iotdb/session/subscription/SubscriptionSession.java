@@ -61,6 +61,9 @@ public class SubscriptionSession extends Session {
 
   public void createTopic(String topicName, Properties config)
       throws IoTDBConnectionException, StatementExecutionException {
+    if (config.isEmpty()) {
+      createTopic(topicName);
+    }
     final StringBuilder sb = new StringBuilder();
     sb.append('(');
     config.forEach(
@@ -73,6 +76,7 @@ public class SubscriptionSession extends Session {
                 .append(v)
                 .append('\'')
                 .append(','));
+    sb.deleteCharAt(sb.length() - 1);
     sb.append(')');
     final String sql = String.format("CREATE TOPIC %s WITH %s", topicName, sb);
     executeNonQueryStatement(sql);

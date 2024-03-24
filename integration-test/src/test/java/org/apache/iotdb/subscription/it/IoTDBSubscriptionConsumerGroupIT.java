@@ -134,10 +134,12 @@ public class IoTDBSubscriptionConsumerGroupIT {
         consumerGroupIdToTimestamps.values().stream().mapToInt(Map::size).reduce(0, Integer::sum));
   }
 
-  private SubscriptionPullConsumer createConsumerAndSubscribe(
+  private SubscriptionPullConsumer createConsumerAndSubscribeTopics(
       String consumerId, String consumerGroupId, String... topicNames) throws Exception {
     SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
+            .host(EnvFactory.getEnv().getIP())
+            .port(Integer.parseInt(EnvFactory.getEnv().getPort()))
             .consumerId(consumerId)
             .consumerGroupId(consumerGroupId)
             .buildPullConsumer();
@@ -149,9 +151,9 @@ public class IoTDBSubscriptionConsumerGroupIT {
   public void test3C1CGSubscribeOneTopic() throws Exception {
     createTopics();
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
-    consumers.add(createConsumerAndSubscribe("c1", "cg1", "topic1"));
-    consumers.add(createConsumerAndSubscribe("c2", "cg1", "topic1"));
-    consumers.add(createConsumerAndSubscribe("c3", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
     testMultiConsumersSubscribeMultiTopicsTemplate(consumers, 1);
   }
 
@@ -159,9 +161,9 @@ public class IoTDBSubscriptionConsumerGroupIT {
   public void test3C3CGSubscribeOneTopic() throws Exception {
     createTopics();
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
-    consumers.add(createConsumerAndSubscribe("c1", "cg1", "topic1"));
-    consumers.add(createConsumerAndSubscribe("c2", "cg2", "topic1"));
-    consumers.add(createConsumerAndSubscribe("c3", "cg3", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic1"));
     testMultiConsumersSubscribeMultiTopicsTemplate(consumers, 3);
   }
 
@@ -169,9 +171,9 @@ public class IoTDBSubscriptionConsumerGroupIT {
   public void test3C1CGSubscribeTwoTopic() throws Exception {
     createTopics();
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
-    consumers.add(createConsumerAndSubscribe("c1", "cg1", "topic1"));
-    consumers.add(createConsumerAndSubscribe("c2", "cg1", "topic1", "topic2"));
-    consumers.add(createConsumerAndSubscribe("c3", "cg1", "topic2"));
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1", "topic2"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic2"));
     testMultiConsumersSubscribeMultiTopicsTemplate(consumers, 2);
   }
 
@@ -179,9 +181,9 @@ public class IoTDBSubscriptionConsumerGroupIT {
   public void test3C3CGSubscribeTwoTopic() throws Exception {
     createTopics();
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
-    consumers.add(createConsumerAndSubscribe("c1", "cg1", "topic1"));
-    consumers.add(createConsumerAndSubscribe("c2", "cg2", "topic1", "topic2"));
-    consumers.add(createConsumerAndSubscribe("c3", "cg2", "topic2"));
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic2"));
     testMultiConsumersSubscribeMultiTopicsTemplate(consumers, 4);
   }
 
@@ -189,10 +191,10 @@ public class IoTDBSubscriptionConsumerGroupIT {
   public void test4C2CGSubscribeTwoTopic() throws Exception {
     createTopics();
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
-    consumers.add(createConsumerAndSubscribe("c1", "cg1", "topic1"));
-    consumers.add(createConsumerAndSubscribe("c2", "cg2", "topic1", "topic2"));
-    consumers.add(createConsumerAndSubscribe("c3", "cg1", "topic1"));
-    consumers.add(createConsumerAndSubscribe("c4", "cg2", "topic2"));
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c4", "cg2", "topic2"));
     testMultiConsumersSubscribeMultiTopicsTemplate(consumers, 3);
   }
 }
