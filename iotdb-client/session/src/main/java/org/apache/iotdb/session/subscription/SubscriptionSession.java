@@ -70,7 +70,7 @@ public class SubscriptionSession extends Session {
                 .append('\'')
                 .append('=')
                 .append('\'')
-                .append(k)
+                .append(v)
                 .append('\'')
                 .append(','));
     sb.append(')');
