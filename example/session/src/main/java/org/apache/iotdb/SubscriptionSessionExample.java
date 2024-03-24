@@ -19,15 +19,16 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.subscription.PollMessage;
-import org.apache.iotdb.session.subscription.PollMessages;
+import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Properties;
 
 public class SubscriptionSessionExample {
@@ -63,33 +64,60 @@ public class SubscriptionSessionExample {
     }
     session.executeNonQueryStatement("flush");
 
-    // subscription
+    // subscription: property-style ctor
     Properties config = new Properties();
     config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
     config.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
     try (SubscriptionPullConsumer consumer = new SubscriptionPullConsumer(config)) {
       consumer.createTopic("topic1");
       consumer.subscribe("topic1");
-      Thread.sleep(1000); // wait some time
-      PollMessages pollMessages = consumer.poll(Duration.ofMillis(100));
-      for (PollMessage message : pollMessages) {
-        message.debug();
-        message.commit();
+      while (true) {
+        Thread.sleep(1000); // wait some time
+        List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(100));
+        if (messages.isEmpty()) {
+          break;
+        }
+        for (SubscriptionMessage message : messages) {
+          ISessionDataSet dataSet = message.getPayload();
+          System.out.println(dataSet.getColumnNames());
+          System.out.println(dataSet.getColumnTypes());
+          while (dataSet.hasNext()) {
+            System.out.println(dataSet.next());
+          }
+        }
+        consumer.commitSync(messages);
+        consumer.unsubscribe("topic1");
       }
-      consumer.unsubscribe("topic1");
     }
-  }
 
-  public static void query(String[] args) throws Exception {
-    session =
-        new Session.Builder()
-            .host(LOCAL_HOST)
-            .port(6667)
-            .username("root")
-            .password("root")
-            .version(Version.V_1_0)
-            .build();
-    session.open(false);
+    // subscription: builder-style ctor
+    try (SubscriptionPullConsumer consumer =
+        new SubscriptionPullConsumer.Builder()
+            .consumerId("c2")
+            .consumerGroupId("cg2")
+            .buildPullConsumer()) {
+      consumer.createTopic("topic2");
+      consumer.subscribe("topic2");
+      while (true) {
+        Thread.sleep(1000); // wait some time
+        List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(100));
+        if (messages.isEmpty()) {
+          break;
+        }
+        for (SubscriptionMessage message : messages) {
+          ISessionDataSet dataSet = message.getPayload();
+          System.out.println(dataSet.getColumnNames());
+          System.out.println(dataSet.getColumnTypes());
+          while (dataSet.hasNext()) {
+            System.out.println(dataSet.next());
+          }
+        }
+        consumer.commitSync(messages);
+        consumer.unsubscribe("topic2");
+      }
+    }
+
+    // query
     SessionDataSet dataSet = session.executeQueryStatement("select ** from root.**");
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());

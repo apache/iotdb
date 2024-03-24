@@ -41,7 +41,6 @@ import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.session.subscription.SubscriptionSession;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -239,13 +238,6 @@ public class RemoteServerEnv implements BaseEnv {
             SessionConfig.DEFAULT_MAX_FRAME_SIZE,
             SessionConfig.DEFAULT_REDIRECTION_MODE,
             SessionConfig.DEFAULT_VERSION);
-    session.open();
-    return session;
-  }
-
-  @Override
-  public SubscriptionSession getSubscriptionSessionConnection() throws IoTDBConnectionException {
-    SubscriptionSession session = new SubscriptionSession(ip_addr, Integer.parseInt(port));
     session.open();
     return session;
   }

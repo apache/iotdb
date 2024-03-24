@@ -29,14 +29,16 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.thrift.TException;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
-public class SubscriptionConsumer extends SubscriptionSession {
+public abstract class SubscriptionConsumer extends SubscriptionSession {
 
   protected final String host;
   protected final int port;
@@ -48,9 +50,17 @@ public class SubscriptionConsumer extends SubscriptionSession {
   protected final String consumerId;
   protected final String consumerGroupId;
 
+  public String getConsumerId() {
+    return consumerId;
+  }
+
+  public String getConsumerGroupId() {
+    return consumerGroupId;
+  }
+
   /////////////////////////////// ctor ///////////////////////////////
 
-  public SubscriptionConsumer(Builder builder)
+  protected SubscriptionConsumer(Builder builder)
       throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
     super(builder.host, String.valueOf(builder.port), builder.username, builder.password);
 
@@ -63,26 +73,6 @@ public class SubscriptionConsumer extends SubscriptionSession {
     this.consumerGroupId = builder.consumerGroupId;
 
     handshake();
-  }
-
-  public SubscriptionConsumer(Properties config)
-      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
-    this(
-        new Builder()
-            .host(
-                (String) config.getOrDefault(ConsumerConstant.HOST_KEY, SessionConfig.DEFAULT_HOST))
-            .port(
-                (Integer)
-                    config.getOrDefault(ConsumerConstant.PORT_KEY, SessionConfig.DEFAULT_PORT))
-            .username(
-                (String)
-                    config.getOrDefault(ConsumerConstant.USERNAME_KEY, SessionConfig.DEFAULT_USER))
-            .password(
-                (String)
-                    config.getOrDefault(
-                        ConsumerConstant.PASSWORD_KEY, SessionConfig.DEFAULT_PASSWORD))
-            .consumerId((String) config.get(ConsumerConstant.CONSUMER_ID_KEY))
-            .consumerGroupId((String) config.get(ConsumerConstant.CONSUMER_GROUP_ID_KEY)));
   }
 
   protected SubscriptionConsumer(Builder builder, Properties config)
@@ -123,6 +113,11 @@ public class SubscriptionConsumer extends SubscriptionSession {
     subscribe(Collections.singleton(topicName));
   }
 
+  public void subscribe(String... topicName)
+      throws TException, IOException, StatementExecutionException {
+    subscribe(new HashSet<>(Arrays.asList(topicName)));
+  }
+
   public void subscribe(Set<String> topicNames)
       throws TException, IOException, StatementExecutionException {
     getSessionConnection().subscribe(topicNames);
@@ -131,6 +126,11 @@ public class SubscriptionConsumer extends SubscriptionSession {
   public void unsubscribe(String topicName)
       throws TException, IOException, StatementExecutionException {
     unsubscribe(Collections.singleton(topicName));
+  }
+
+  public void unsubscribe(String... topicName)
+      throws TException, IOException, StatementExecutionException {
+    unsubscribe(new HashSet<>(Arrays.asList(topicName)));
   }
 
   public void unsubscribe(Set<String> topicNames)
@@ -158,7 +158,7 @@ public class SubscriptionConsumer extends SubscriptionSession {
 
   /////////////////////////////// builder ///////////////////////////////
 
-  public static class Builder {
+  public abstract static class Builder {
 
     protected String host = SessionConfig.DEFAULT_HOST;
     protected int port = SessionConfig.DEFAULT_PORT;
@@ -205,9 +205,10 @@ public class SubscriptionConsumer extends SubscriptionSession {
       return this;
     }
 
-    public SubscriptionConsumer build()
-        throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
-      return new SubscriptionConsumer(this);
-    }
+    public abstract SubscriptionPullConsumer buildPullConsumer()
+        throws IoTDBConnectionException, TException, IOException, StatementExecutionException;
+
+    public abstract SubscriptionPushConsumer buildPushConsumer()
+        throws IoTDBConnectionException, TException, IOException, StatementExecutionException;
   }
 }

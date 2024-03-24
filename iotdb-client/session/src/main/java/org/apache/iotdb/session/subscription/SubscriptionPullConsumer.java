@@ -23,16 +23,18 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
-import org.apache.iotdb.session.subscription.SubscriptionConsumer.Builder;
 
 import org.apache.thrift.TException;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
@@ -51,8 +53,13 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   public SubscriptionPullConsumer(Properties config)
       throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+    this(new Builder(), config);
+  }
+
+  public SubscriptionPullConsumer(Builder builder, Properties config)
+      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
     super(
-        new Builder()
+        builder
             .autoCommit(
                 (Boolean)
                     config.getOrDefault(
@@ -78,14 +85,37 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// APIs ///////////////////////////////
 
-  public PollMessages poll(Duration timeout)
+  public List<SubscriptionMessage> poll(Duration timeout)
       throws TException, IOException, StatementExecutionException {
     // TODO: timeout
+    // TODO: specify the topics to poll
     List<EnrichedTablets> enrichedTabletsList = getSessionConnection().poll(Collections.emptySet());
-    return new PollMessages(this, enrichedTabletsList);
+    return enrichedTabletsList.stream()
+        .map(
+            (enrichedTablets) ->
+                new SubscriptionMessage(new SubscriptionSessionDataSet(enrichedTablets)))
+        .collect(Collectors.toList());
   }
 
-  public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds)
+  public void commitSync(SubscriptionMessage message)
+      throws TException, IOException, StatementExecutionException {
+    commitSync(Collections.singletonList(message));
+  }
+
+  public void commitSync(List<SubscriptionMessage> messages)
+      throws TException, IOException, StatementExecutionException {
+    Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
+    for (SubscriptionMessage message : messages) {
+      topicNameToSubscriptionCommitIds
+          .computeIfAbsent(message.getTopic(), (topic) -> new ArrayList<>())
+          .add(message.getSubscriptionCommitId());
+    }
+    commitSync(topicNameToSubscriptionCommitIds);
+  }
+
+  /////////////////////////////// utility ///////////////////////////////
+
+  private void commitSync(Map<String, List<String>> topicNameToSubscriptionCommitIds)
       throws TException, IOException, StatementExecutionException {
     getSessionConnection().commit(topicNameToSubscriptionCommitIds);
   }
@@ -108,9 +138,15 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     }
 
     @Override
-    public SubscriptionPullConsumer build()
+    public SubscriptionPullConsumer buildPullConsumer()
         throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
       return new SubscriptionPullConsumer(this);
+    }
+
+    @Override
+    public SubscriptionPushConsumer buildPushConsumer() {
+      throw new UnsupportedOperationException(
+          "SubscriptionPullConsumer.Builder do not support build push consumer.");
     }
   }
 }

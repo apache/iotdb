@@ -19,35 +19,32 @@
 
 package org.apache.iotdb.session.subscription;
 
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.thrift.TException;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
-public class PollMessage {
+public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
-  private SubscriptionPullConsumer consumer;
-
-  private Message message;
-
-  public PollMessage(SubscriptionPullConsumer consumer, SubscriptionSessionDataSet dataSet) {
-    this.consumer = consumer;
-    this.message = new Message(dataSet);
+  protected SubscriptionPushConsumer(Builder builder)
+      throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
+    super(builder);
   }
 
-  public void commit() throws TException, IOException, StatementExecutionException {
-    Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
-    topicNameToSubscriptionCommitIds.put(
-        message.getTopic(), Collections.singletonList(message.getSubscriptionCommitId()));
-    consumer.commit(topicNameToSubscriptionCommitIds);
-  }
+  public static class Builder extends SubscriptionConsumer.Builder {
 
-  public void debug() {
-    message.debug();
+    @Override
+    public SubscriptionPullConsumer buildPullConsumer() {
+      throw new UnsupportedOperationException(
+          "SubscriptionPushConsumer.Builder do not support build pull consumer.");
+    }
+
+    @Override
+    public SubscriptionPushConsumer buildPushConsumer()
+        throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
+      return new SubscriptionPushConsumer(this);
+    }
   }
 }

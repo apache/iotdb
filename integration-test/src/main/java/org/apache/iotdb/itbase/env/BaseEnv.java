@@ -29,7 +29,6 @@ import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.session.subscription.SubscriptionSession;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -147,8 +146,6 @@ public interface BaseEnv {
   ISession getSessionConnection(String userName, String password) throws IoTDBConnectionException;
 
   ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
-
-  SubscriptionSession getSubscriptionSessionConnection() throws IoTDBConnectionException;
 
   /**
    * Get the index of the first dataNode with a SchemaRegion leader.

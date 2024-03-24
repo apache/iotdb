@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.session.subscription;
 
-public class Message {
+import org.apache.iotdb.isession.ISessionDataSet;
+
+public class SubscriptionMessage {
 
   private SubscriptionSessionDataSet dataSet;
 
   // TODO: support more data format
 
-  public Message(SubscriptionSessionDataSet dataSet) {
+  public SubscriptionMessage(SubscriptionSessionDataSet dataSet) {
     this.dataSet = dataSet;
   }
 
@@ -33,16 +35,12 @@ public class Message {
     return dataSet.getTopicName();
   }
 
+  public ISessionDataSet getPayload() {
+    return dataSet;
+  }
+
   String getSubscriptionCommitId() {
     // make it package-private
     return dataSet.getSubscriptionCommitId();
-  }
-
-  public void debug() {
-    System.out.println(dataSet.getColumnNames());
-    System.out.println(dataSet.getColumnTypes());
-    while (dataSet.hasNext()) {
-      System.out.println(dataSet.next());
-    }
   }
 }
