@@ -98,6 +98,7 @@ public class IoTDBSubscriptionBasicIT {
         for (SubscriptionMessage message : messages) {
           ISessionDataSet dataSet = message.getPayload();
           while (dataSet.hasNext()) {
+            dataSet.next();
             count += 1;
           }
         }
@@ -146,6 +147,7 @@ public class IoTDBSubscriptionBasicIT {
         for (SubscriptionMessage message : messages) {
           ISessionDataSet dataSet = message.getPayload();
           while (dataSet.hasNext()) {
+            dataSet.next();
             count += 1;
           }
         }
@@ -204,6 +206,7 @@ public class IoTDBSubscriptionBasicIT {
         for (SubscriptionMessage message : messages) {
           ISessionDataSet dataSet = message.getPayload();
           while (dataSet.hasNext()) {
+            dataSet.next();
             count += 1;
           }
         }

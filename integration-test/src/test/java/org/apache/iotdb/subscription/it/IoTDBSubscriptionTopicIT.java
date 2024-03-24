@@ -111,6 +111,7 @@ public class IoTDBSubscriptionTopicIT {
           Assert.assertTrue(columnNameList.contains("root.db.d1.s"));
           Assert.assertTrue(columnNameList.contains("root.db.d2.s"));
           while (dataSet.hasNext()) {
+            dataSet.next();
             count += 1;
           }
         }
@@ -165,6 +166,7 @@ public class IoTDBSubscriptionTopicIT {
         for (SubscriptionMessage message : messages) {
           ISessionDataSet dataSet = message.getPayload();
           while (dataSet.hasNext()) {
+            dataSet.next();
             count += 1;
           }
         }
@@ -214,6 +216,7 @@ public class IoTDBSubscriptionTopicIT {
         for (SubscriptionMessage message : messages) {
           ISessionDataSet dataSet = message.getPayload();
           while (dataSet.hasNext()) {
+            dataSet.next();
             count += 1;
           }
         }

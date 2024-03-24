@@ -113,9 +113,9 @@ public abstract class SubscriptionConsumer extends SubscriptionSession {
     subscribe(Collections.singleton(topicName));
   }
 
-  public void subscribe(String... topicName)
+  public void subscribe(String... topicNames)
       throws TException, IOException, StatementExecutionException {
-    subscribe(new HashSet<>(Arrays.asList(topicName)));
+    subscribe(new HashSet<>(Arrays.asList(topicNames)));
   }
 
   public void subscribe(Set<String> topicNames)
@@ -128,9 +128,9 @@ public abstract class SubscriptionConsumer extends SubscriptionSession {
     unsubscribe(Collections.singleton(topicName));
   }
 
-  public void unsubscribe(String... topicName)
+  public void unsubscribe(String... topicNames)
       throws TException, IOException, StatementExecutionException {
-    unsubscribe(new HashSet<>(Arrays.asList(topicName)));
+    unsubscribe(new HashSet<>(Arrays.asList(topicNames)));
   }
 
   public void unsubscribe(Set<String> topicNames)
