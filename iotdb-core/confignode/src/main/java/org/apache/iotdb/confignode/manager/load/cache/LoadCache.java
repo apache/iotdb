@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
@@ -76,7 +77,7 @@ public class LoadCache {
   // Map<RegionGroupId, RegionRouteCache>
   private final Map<TConsensusGroupId, RegionRouteCache> regionRouteCacheMap;
   // Map<DataNodeId, confirmedConfigNodes>
-  private final Map<Integer, Set<TConfigNodeLocation>> confirmedConfigNodeMap;
+  private final Map<Integer, Set<TEndPoint>> confirmedConfigNodeMap;
 
   public LoadCache() {
     this.nodeCacheMap = new ConcurrentHashMap<>();
@@ -610,11 +611,11 @@ public class LoadCache {
   }
 
   public void updateConfirmedConfigNodeLocations(
-      int dataNodeId, Set<TConfigNodeLocation> configNodeLocations) {
-    confirmedConfigNodeMap.put(dataNodeId, configNodeLocations);
+      int dataNodeId, Set<TEndPoint> configNodeEndPoints) {
+    confirmedConfigNodeMap.put(dataNodeId, configNodeEndPoints);
   }
 
-  public Set<TConfigNodeLocation> getConfirmedConfigNodeLocations(int dataNodeId) {
+  public Set<TEndPoint> getConfirmedConfigNodeEndPoints(int dataNodeId) {
     return confirmedConfigNodeMap.get(dataNodeId);
   }
 }

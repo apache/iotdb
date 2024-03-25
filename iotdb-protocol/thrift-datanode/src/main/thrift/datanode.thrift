@@ -252,7 +252,7 @@ struct TDataNodeHeartbeatReq {
   8: optional bool needPipeMetaList
   9: optional i64 deviceQuotaRemain
   10: optional TDataNodeActivation activation
-  11: optional set<common.TConfigNodeLocation> configNodeLocations
+  11: optional set<common.TEndPoint> configNodeEndPoints
 }
 
 struct TDataNodeActivation {
@@ -274,7 +274,7 @@ struct TDataNodeHeartbeatResp {
   9: optional TSchemaLimitLevel schemaLimitLevel
   10: optional list<binary> pipeMetaList
   11: optional string activateStatus
-  12: optional set<common.TConfigNodeLocation> confirmedConfigNodeLocations
+  12: optional set<common.TEndPoint> confirmedConfigNodeEndPoints
 }
 
 struct TPipeHeartbeatReq {

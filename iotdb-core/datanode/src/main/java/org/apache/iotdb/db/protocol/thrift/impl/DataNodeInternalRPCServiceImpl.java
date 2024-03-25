@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -1309,13 +1308,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       PipeAgent.task().collectPipeMetaList(resp);
     }
 
-    if (req.isSetConfigNodeLocations()) {
-      List<TEndPoint> configNodeEndPointList =
-          req.getConfigNodeLocations().stream()
-              .map(TConfigNodeLocation::getInternalEndPoint)
-              .collect(Collectors.toList());
-      if (ConfigNodeInfo.getInstance().updateConfigNodeList(configNodeEndPointList)) {
-        resp.setConfirmedConfigNodeLocations(req.getConfigNodeLocations());
+    if (req.isSetConfigNodeEndPoints()) {
+      if (ConfigNodeInfo.getInstance()
+          .updateConfigNodeList(new ArrayList<>(req.getConfigNodeEndPoints()))) {
+        resp.setConfirmedConfigNodeEndPoints(req.getConfigNodeEndPoints());
       }
     }
 
