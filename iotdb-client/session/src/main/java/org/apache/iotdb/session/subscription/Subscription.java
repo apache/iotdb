@@ -19,11 +19,27 @@
 
 package org.apache.iotdb.session.subscription;
 
-import java.util.Set;
-
 public class Subscription {
 
   private String topicName;
   private String consumerGroupId;
-  private Set<String> consumerIds;
+  private String consumerIds;
+
+  public Subscription(String topicName, String consumerGroupId, String consumerIds) {
+    this.topicName = topicName;
+    this.consumerGroupId = consumerGroupId;
+    this.consumerIds = consumerIds;
+  }
+
+  public String getTopicName() {
+    return topicName;
+  }
+
+  public String getConsumerGroupId() {
+    return consumerGroupId;
+  }
+
+  public String getConsumerIds() {
+    return consumerIds;
+  }
 }

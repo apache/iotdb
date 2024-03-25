@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.SubscriptionSession;
 
 import java.time.Duration;
 import java.util.List;
@@ -64,12 +65,19 @@ public class SubscriptionSessionExample {
     }
     session.executeNonQueryStatement("flush");
 
+    // create topic
+    try (SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
+      subscriptionSession.open();
+      subscriptionSession.createTopic("topic1");
+      subscriptionSession.createTopic("topic2");
+      subscriptionSession.getTopics();
+    }
+
     // subscription: property-style ctor
     Properties config = new Properties();
     config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
     config.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
     try (SubscriptionPullConsumer consumer = new SubscriptionPullConsumer(config)) {
-      consumer.createTopic("topic1");
       consumer.subscribe("topic1");
       while (true) {
         Thread.sleep(1000); // wait some time
@@ -96,7 +104,6 @@ public class SubscriptionSessionExample {
             .consumerId("c2")
             .consumerGroupId("cg2")
             .buildPullConsumer()) {
-      consumer.createTopic("topic2");
       consumer.subscribe("topic2");
       while (true) {
         Thread.sleep(1000); // wait some time

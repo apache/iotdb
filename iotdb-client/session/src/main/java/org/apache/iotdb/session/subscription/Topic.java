@@ -19,10 +19,21 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.subscription.config.TopicConfig;
-
 public class Topic {
 
   private String topicName;
-  private TopicConfig config;
+  private String topicAttributes;
+
+  public Topic(String topicName, String topicAttributes) {
+    this.topicName = topicName;
+    this.topicAttributes = topicAttributes;
+  }
+
+  public String getTopicName() {
+    return topicName;
+  }
+
+  public String getTopicAttributes() {
+    return topicAttributes;
+  }
 }

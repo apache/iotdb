@@ -25,8 +25,13 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionConnection;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.time.ZoneId;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 
@@ -89,15 +94,21 @@ public class SubscriptionSession extends Session {
 
   public Set<Topic> getTopics() throws IoTDBConnectionException, StatementExecutionException {
     final String sql = "SHOW TOPICS";
-    SessionDataSet dataSet = executeQueryStatement(sql);
-    return null;
+    try (SessionDataSet dataSet = executeQueryStatement(sql)) {
+      return convertDataSetToTopics(dataSet);
+    }
   }
 
-  public Topic getTopic(String topicName)
+  public Optional<Topic> getTopic(String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
     final String sql = String.format("SHOW TOPIC %s", topicName);
-    SessionDataSet dataSet = executeQueryStatement(sql);
-    return null;
+    try (SessionDataSet dataSet = executeQueryStatement(sql)) {
+      Set<Topic> topics = convertDataSetToTopics(dataSet);
+      if (topics.isEmpty()) {
+        return Optional.empty();
+      }
+      return Optional.of(topics.iterator().next());
+    }
   }
 
   /////////////////////////////// subscription ///////////////////////////////
@@ -105,14 +116,51 @@ public class SubscriptionSession extends Session {
   public Set<Subscription> getSubscriptions()
       throws IoTDBConnectionException, StatementExecutionException {
     final String sql = "SHOW SUBSCRIPTIONS";
-    SessionDataSet dataSet = executeQueryStatement(sql);
-    return null;
+    try (SessionDataSet dataSet = executeQueryStatement(sql)) {
+      return convertDataSetToSubscriptions(dataSet);
+    }
   }
 
   public Set<Subscription> getSubscriptions(String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
     final String sql = String.format("SHOW SUBSCRIPTIONS ON %s", topicName);
-    SessionDataSet dataSet = executeQueryStatement(sql);
-    return null;
+    try (SessionDataSet dataSet = executeQueryStatement(sql)) {
+      return convertDataSetToSubscriptions(dataSet);
+    }
+  }
+
+  /////////////////////////////// utility ///////////////////////////////
+
+  public Set<Topic> convertDataSetToTopics(SessionDataSet dataSet)
+      throws IoTDBConnectionException, StatementExecutionException {
+    Set<Topic> topics = new HashSet<>();
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      List<Field> fields = record.getFields();
+      if (fields.size() != 2) {
+        throw new StatementExecutionException("something unexpected happened when get topics...");
+      }
+      topics.add(new Topic(fields.get(0).getStringValue(), fields.get(1).getStringValue()));
+    }
+    return topics;
+  }
+
+  public Set<Subscription> convertDataSetToSubscriptions(SessionDataSet dataSet)
+      throws IoTDBConnectionException, StatementExecutionException {
+    Set<Subscription> subscriptions = new HashSet<>();
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      List<Field> fields = record.getFields();
+      if (fields.size() != 3) {
+        throw new StatementExecutionException(
+            "something unexpected happened when get subscriptions...");
+      }
+      subscriptions.add(
+          new Subscription(
+              fields.get(0).getStringValue(),
+              fields.get(1).getStringValue(),
+              fields.get(2).getStringValue()));
+    }
+    return subscriptions;
   }
 }
