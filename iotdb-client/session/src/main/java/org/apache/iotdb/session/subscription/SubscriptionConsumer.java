@@ -47,8 +47,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private final String consumerId;
   private final String consumerGroupId;
 
-  private Map<Integer, SubscriptionProvider> subscriptionProviders;
-  private SubscriptionProvider defaultSubscriptionProvider;
+  private Map<Integer, SubscriptionProvider> subscriptionProviders; // used for poll and commit
+  private SubscriptionProvider defaultSubscriptionProvider; // used for subscribe and unsubscribe
 
   private boolean isClosed = true;
 

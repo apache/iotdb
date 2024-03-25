@@ -24,7 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.exception.SubscriptionException;
+import org.apache.iotdb.commons.exception.subscription.SubscriptionException;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SerializedEnrichedEvent;
+import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
@@ -346,8 +348,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
               .getTopicsSubscribedByConsumer(
                   consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
     }
+
+    SubscriptionPollTimer timer =
+        new SubscriptionPollTimer(
+            System.currentTimeMillis(),
+            req.getTimeoutMs() == 0
+                ? SubscriptionConfig.getInstance().getSubscriptionTimeoutThreshold()
+                : req.getTimeoutMs());
     List<SerializedEnrichedEvent> events =
-        SubscriptionAgent.broker().poll(consumerConfig, topicNames);
+        SubscriptionAgent.broker().poll(consumerConfig, topicNames, timer);
+
     List<ByteBuffer> byteBuffers =
         events.stream()
             .map(SerializedEnrichedEvent::getByteBuffer)
@@ -358,6 +368,13 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         events.stream()
             .map(SerializedEnrichedEvent::getSubscriptionCommitId)
             .collect(Collectors.toList());
+
+    if (timer.isExpired()) {
+      LOGGER.warn(
+          "Subscription: timeout happened when consumer {} poll topics {}",
+          consumerConfig,
+          topicNames);
+    }
 
     LOGGER.info(
         "Subscription: consumer {} poll topics {} successfully, commit ids: {}",

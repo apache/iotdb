@@ -557,6 +557,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_recycle_uncommitted_event_interval_seconds",
                 String.valueOf(config.getSubscriptionRecycleUncommittedEventIntervalSeconds()))));
+    config.setSubscriptionTimeoutThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_timeout_threshold",
+                String.valueOf(config.getSubscriptionTimeoutThreshold()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

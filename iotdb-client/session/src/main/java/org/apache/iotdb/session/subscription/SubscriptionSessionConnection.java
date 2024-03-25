@@ -101,7 +101,16 @@ public class SubscriptionSessionConnection extends SessionConnection {
   public List<EnrichedTablets> poll(Set<String> topicNames)
       throws TException, IOException, StatementExecutionException {
     TPipeSubscribeResp resp =
-        client.pipeSubscribe(PipeSubscribePollReq.toTPipeSubscribeReq(topicNames));
+        client.pipeSubscribe(PipeSubscribePollReq.toTPipeSubscribeReq(topicNames, 0));
+    RpcUtils.verifySuccess(resp.status);
+    PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
+    return pollResp.getEnrichedTabletsList();
+  }
+
+  public List<EnrichedTablets> poll(Set<String> topicNames, long timeoutMs)
+      throws TException, IOException, StatementExecutionException {
+    TPipeSubscribeResp resp =
+        client.pipeSubscribe(PipeSubscribePollReq.toTPipeSubscribeReq(topicNames, timeoutMs));
     RpcUtils.verifySuccess(resp.status);
     PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
     return pollResp.getEnrichedTabletsList();

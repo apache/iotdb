@@ -234,6 +234,7 @@ public class CommonConfig {
   private long subscriptionLaunchRetryIntervalMs = 1000;
   private int subscriptionClearCommittedEventIntervalSeconds = 30;
   private int subscriptionRecycleUncommittedEventIntervalSeconds = 240;
+  private long subscriptionTimeoutThreshold = 30000; // unit: ms
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -1014,6 +1015,14 @@ public class CommonConfig {
       int subscriptionRecycleUncommittedEventIntervalSeconds) {
     this.subscriptionRecycleUncommittedEventIntervalSeconds =
         subscriptionRecycleUncommittedEventIntervalSeconds;
+  }
+
+  public long getSubscriptionTimeoutThreshold() {
+    return subscriptionTimeoutThreshold;
+  }
+
+  public void setSubscriptionTimeoutThreshold(long subscriptionTimeoutThreshold) {
+    this.subscriptionTimeoutThreshold = subscriptionTimeoutThreshold;
   }
 
   public String getSchemaEngineMode() {

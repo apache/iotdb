@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.exception;
+package org.apache.iotdb.commons.exception.subscription;
 
 import org.apache.iotdb.pipe.api.exception.PipeException;
 

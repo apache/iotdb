@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription;
 
-import org.apache.iotdb.commons.exception.SubscriptionException;
+import org.apache.iotdb.commons.exception.subscription.SubscriptionException;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;

@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executors;
@@ -120,13 +121,27 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
     return isClosed;
   }
 
-  public List<SubscriptionMessage> poll(Duration timeout)
+  public List<SubscriptionMessage> poll(Duration timeoutMs)
       throws TException, IOException, StatementExecutionException {
-    // TODO: timeout
+    return poll(Collections.emptySet(), timeoutMs.toMillis());
+  }
+
+  public List<SubscriptionMessage> poll(long timeoutMs)
+      throws TException, IOException, StatementExecutionException {
+    return poll(Collections.emptySet(), timeoutMs);
+  }
+
+  public List<SubscriptionMessage> poll(Set<String> topicNames, Duration timeoutMs)
+      throws TException, IOException, StatementExecutionException {
+    return poll(topicNames, timeoutMs.toMillis());
+  }
+
+  public List<SubscriptionMessage> poll(Set<String> topicNames, long timeoutMs)
+      throws TException, IOException, StatementExecutionException {
+    // TODO: network timeout
     List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
     for (SubscriptionSessionConnection connection : getSessionConnections()) {
-      // TODO: specify the topics to poll
-      enrichedTabletsList.addAll(connection.poll(Collections.emptySet()));
+      enrichedTabletsList.addAll(connection.poll(topicNames, timeoutMs));
     }
 
     List<SubscriptionMessage> messages =
@@ -145,6 +160,11 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
       uncommittedMessages.computeIfAbsent(index, o -> new ArrayList<>()).addAll(messages);
     }
     return messages;
+  }
+
+  public void commitSync(SubscriptionMessage message)
+      throws TException, IOException, StatementExecutionException {
+    commitSync(Collections.singletonList(message));
   }
 
   public void commitSync(List<SubscriptionMessage> messages)

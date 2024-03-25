@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.subscription.consumer;
 
-import org.apache.iotdb.commons.exception.SubscriptionException;
+import org.apache.iotdb.commons.exception.subscription.SubscriptionException;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 
