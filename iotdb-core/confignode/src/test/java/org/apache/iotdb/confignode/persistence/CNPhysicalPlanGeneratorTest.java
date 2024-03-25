@@ -101,10 +101,10 @@ public class CNPhysicalPlanGeneratorTest {
     AuthorPlan plan = new AuthorPlan(ConfigPhysicalPlanType.CreateRole);
     plan.setRoleName(roleName);
     answerSet.add(plan.hashCode());
-    // step 1: create role - plan1
+    // Step 1: create role - plan1
     authorInfo.authorNonQuery(plan);
 
-    // step 2: grant role path privileges - plan2
+    // Step 2: grant role path privileges - plan2
     plan = new AuthorPlan(ConfigPhysicalPlanType.GrantRole);
     plan.setRoleName(roleName);
     plan.setNodeNameList(Collections.singletonList(new PartialPath("root.db.t1")));
@@ -114,7 +114,7 @@ public class CNPhysicalPlanGeneratorTest {
     plan.setPermissions(pathPris);
     authorInfo.authorNonQuery(plan);
 
-    // answer set
+    // Answer set
     plan.getPermissions().clear();
     plan.getPermissions().add(PrivilegeType.WRITE_DATA.ordinal());
     answerSet.add(plan.hashCode());
@@ -122,7 +122,7 @@ public class CNPhysicalPlanGeneratorTest {
     plan.getPermissions().add(PrivilegeType.WRITE_SCHEMA.ordinal());
     answerSet.add(plan.hashCode());
 
-    // step 3: grant role sys privileges - plan3
+    // Step 3: grant role sys privileges - plan3
     plan = new AuthorPlan(ConfigPhysicalPlanType.GrantRole);
     plan.setRoleName(roleName);
     plan.setNodeNameList(Collections.emptyList());
@@ -133,7 +133,7 @@ public class CNPhysicalPlanGeneratorTest {
     plan.setGrantOpt(true);
     authorInfo.authorNonQuery(plan);
 
-    // answer set
+    // Answer set
     plan.getPermissions().clear();
     plan.getPermissions().add(PrivilegeType.MANAGE_ROLE.ordinal());
     answerSet.add(plan.hashCode());
@@ -141,11 +141,11 @@ public class CNPhysicalPlanGeneratorTest {
     plan.getPermissions().add(PrivilegeType.MANAGE_DATABASE.ordinal());
     answerSet.add(plan.hashCode());
 
-    // PhysicalPlan gnerator will return five plans:
+    // PhysicalPlan generator will return five plans:
     // 1. create role plan
     // 2. grant path privileges plan * 2
     // 3. grant system privileges plan * 2
-    boolean success = authorInfo.processTakeSnapshot(snapshotDir);
+    Assert.assertTrue(authorInfo.processTakeSnapshot(snapshotDir));
 
     File roleProfile =
         SystemFileFactory.INSTANCE.getFile(
@@ -174,7 +174,7 @@ public class CNPhysicalPlanGeneratorTest {
     AuthorPlan plan = new AuthorPlan(ConfigPhysicalPlanType.CreateUser);
     plan.setPassword("password");
     plan.setUserName(userName);
-    // create user plan 1
+    // Create user plan 1
     authorInfo.authorNonQuery(plan);
     answerSet.add(plan.hashCode());
 
@@ -182,7 +182,7 @@ public class CNPhysicalPlanGeneratorTest {
     plan.setRoleName("role1");
     authorInfo.authorNonQuery(plan);
 
-    // grant path privileges, plan 2 , plan 3
+    // Grant path privileges, plan 2 , plan 3
     plan = new AuthorPlan(ConfigPhysicalPlanType.GrantUser);
     plan.setUserName(userName);
     plan.setNodeNameList(Collections.singletonList(new PartialPath("root.db1.t2")));
@@ -201,7 +201,7 @@ public class CNPhysicalPlanGeneratorTest {
     plan.getPermissions().add(PrivilegeType.READ_DATA.ordinal());
     answerSet.add(plan.hashCode());
 
-    // grant system privileges, plan 4
+    // Grant system privileges, plan 4
     plan = new AuthorPlan(ConfigPhysicalPlanType.GrantUser);
     plan.setUserName(userName);
     plan.setNodeNameList(Collections.emptyList());
@@ -210,14 +210,14 @@ public class CNPhysicalPlanGeneratorTest {
     authorInfo.authorNonQuery(plan);
     answerSet.add(plan.hashCode());
 
-    // grant role to user, plan 5
+    // Grant role to user, plan 5
     plan = new AuthorPlan(ConfigPhysicalPlanType.GrantRoleToUser);
     plan.setRoleName("role1");
     plan.setUserName(userName);
     authorInfo.authorNonQuery(plan);
     answerSet.add(plan.hashCode());
 
-    boolean success = authorInfo.processTakeSnapshot(snapshotDir);
+    Assert.assertTrue(authorInfo.processTakeSnapshot(snapshotDir));
 
     File userProfile =
         SystemFileFactory.INSTANCE.getFile(
@@ -309,7 +309,7 @@ public class CNPhysicalPlanGeneratorTest {
   }
 
   @Test
-  public void templateGneratorTest() throws Exception {
+  public void templateGeneratorTest() throws Exception {
     setupClusterSchemaInfo();
     Template t1 =
         new Template(
@@ -353,7 +353,7 @@ public class CNPhysicalPlanGeneratorTest {
   }
 
   @Test
-  public void templateAndDatabaseComplatedTest() throws Exception {
+  public void templateAndDatabaseCompletedTest() throws Exception {
     setupClusterSchemaInfo();
     Set<Integer> answerSet = new HashSet<>();
     Set<String> storageGroupPathList = new TreeSet<>();

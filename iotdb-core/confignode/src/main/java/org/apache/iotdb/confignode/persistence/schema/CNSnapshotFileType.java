@@ -24,5 +24,5 @@ public enum CNSnapshotFileType {
   USER,
   ROLE,
   USER_ROLE,
-  SCHEMA_TEMPLATE
+  SCHEMA
 }
