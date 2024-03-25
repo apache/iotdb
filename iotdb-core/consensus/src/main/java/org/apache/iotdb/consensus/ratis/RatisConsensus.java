@@ -286,7 +286,8 @@ class RatisConsensus implements IConsensus {
         buildRawRequest(raftGroupId, message, RaftClientRequest.writeRequestType());
 
     RaftPeer suggestedLeader = null;
-    if (isLeader(groupId) && waitUntilLeaderReady(raftGroupId)) {
+    if ((isLeader(groupId) || raftGroup.getPeers().size() == 1)
+        && waitUntilLeaderReady(raftGroupId)) {
       try (AutoCloseable ignored =
           RatisMetricsManager.getInstance().startWriteLocallyTimer(consensusGroupType)) {
         RaftClientReply localServerReply = writeLocallyWithRetry(clientRequest);
@@ -600,8 +601,10 @@ class RatisConsensus implements IConsensus {
 
   private boolean waitUntilLeaderReady(RaftGroupId groupId) {
     DivisionInfo divisionInfo;
+    RaftGroup raftGroup;
     try {
       divisionInfo = server.getDivision(groupId).getInfo();
+      raftGroup = getGroupInfo(groupId);
     } catch (IOException e) {
       // if the read fails, simply return not leader
       logger.info("isLeaderReady checking failed with exception: ", e);
@@ -613,7 +616,7 @@ class RatisConsensus implements IConsensus {
         () ->
             Utils.anyOf(
                 // this peer is not a leader
-                () -> !divisionInfo.isLeader(),
+                () -> !divisionInfo.isLeader() && raftGroup.getPeers().size() > 1,
                 // this peer is a ready leader
                 () -> divisionInfo.isLeader() && divisionInfo.isLeaderReady(),
                 // reaches max retry timeout
