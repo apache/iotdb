@@ -276,7 +276,7 @@ public class ProcedureInfo implements SnapshotProcessor {
       return false;
     }
     ProcedureInfo procedureInfo = (ProcedureInfo) o;
-    return lastProcId == procedureInfo.lastProcId
+    return lastProcId.get() == procedureInfo.lastProcId.get()
         && procedureMap.equals(procedureInfo.procedureMap);
   }
 }
