@@ -110,4 +110,10 @@ public class SimpleConsensusProgressIndexAssigner {
   public SimpleProgressIndex getSimpleProgressIndexForTsFileRecovery() {
     return new SimpleProgressIndex(rebootTimes, insertionRequestId.getAndIncrement());
   }
+
+  ////////////////////// Provided for Subscription Agent //////////////////////
+
+  public int getRebootTimes() {
+    return rebootTimes;
+  }
 }

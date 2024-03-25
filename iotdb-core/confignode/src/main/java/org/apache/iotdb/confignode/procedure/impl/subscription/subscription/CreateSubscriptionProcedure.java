@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.SubscriptionException;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -85,6 +86,13 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   }
 
   @Override
+  protected void unlockPipeProcedure() {
+    for (AbstractOperatePipeProcedureV2 createPipeProcedure : createPipeProcedures) {
+      createPipeProcedure.unsetPipeTaskInfo();
+    }
+  }
+
+  @Override
   protected void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("CreateSubscriptionProcedure: executeFromValidate");
 
@@ -106,12 +114,14 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
         createPipeProcedures.add(
             new CreatePipeProcedureV2(
                 new TCreatePipeReq()
-                    .setPipeName(topic + "_" + subscribeReq.getConsumerGroupId())
-                    // TODO: put attributes correctly.
-                    .setExtractorAttributes(updatedTopicMeta.getConfig().getAttribute())
-                    .setProcessorAttributes(updatedTopicMeta.getConfig().getAttribute())
-                    .setConnectorAttributes(updatedTopicMeta.getConfig().getAttribute()),
-                pipeTaskInfo));
+                    .setPipeName(
+                        PipeStaticMeta.generateSubscriptionPipeName(
+                            topic, subscribeReq.getConsumerGroupId()))
+                    .setExtractorAttributes(updatedTopicMeta.generateExtractorAttributes())
+                    .setProcessorAttributes(updatedTopicMeta.generateProcessorAttributes())
+                    .setConnectorAttributes(
+                        updatedTopicMeta.generateConnectorAttributes(
+                            subscribeReq.getConsumerGroupId())), pipeTaskInfo));
 
         alterTopicProcedures.add(new AlterTopicProcedure(updatedTopicMeta, subscriptionInfo));
       }

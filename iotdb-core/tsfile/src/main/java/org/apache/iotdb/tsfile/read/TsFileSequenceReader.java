@@ -313,7 +313,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
-   * this function does not modify the position of the file reader.
+   * This function does not modify the position of the file reader.
    *
    * @throws IOException io error
    */

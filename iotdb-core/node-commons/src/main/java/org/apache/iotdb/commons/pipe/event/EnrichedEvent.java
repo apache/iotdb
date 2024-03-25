@@ -57,7 +57,7 @@ public abstract class EnrichedEvent implements Event {
   protected boolean isPatternParsed;
   protected boolean isTimeParsed;
 
-  protected boolean shouldReportOnCommit = false;
+  protected boolean shouldReportOnCommit = true;
 
   protected EnrichedEvent(
       String pipeName,
@@ -121,8 +121,8 @@ public abstract class EnrichedEvent implements Event {
     synchronized (this) {
       if (referenceCount.get() == 1) {
         isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
-        if (shouldReport) {
-          shouldReportOnCommit = true;
+        if (!shouldReport) {
+          shouldReportOnCommit = false;
         }
         PipeEventCommitManager.getInstance().commit(this, committerKey);
       }
@@ -171,6 +171,14 @@ public abstract class EnrichedEvent implements Event {
       pipeTaskMeta.updateProgressIndex(
           progressIndex == null ? MinimumProgressIndex.INSTANCE : progressIndex);
     }
+  }
+
+  /**
+   * Externally skip the report of the processing {@link ProgressIndex} of this {@link
+   * EnrichedEvent}.
+   */
+  public void skipReport() {
+    shouldReportOnCommit = false;
   }
 
   public void bindProgressIndex(ProgressIndex progressIndex) {

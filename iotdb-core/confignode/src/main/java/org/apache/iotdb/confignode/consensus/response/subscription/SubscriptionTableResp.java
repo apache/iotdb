@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.consensus.response.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.subscription.SubscriptionMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionInfo;
@@ -33,11 +34,16 @@ import java.util.List;
 
 public class SubscriptionTableResp implements DataSet {
   private final TSStatus status;
-  private final List<SubscriptionMeta> allSubscriptionMeta;
+  private final List<SubscriptionMeta> allSubscriptionMeta; // use for show subscription
+  private final List<ConsumerGroupMeta> allConsumerGroupMeta; // use for meta sync
 
-  public SubscriptionTableResp(TSStatus status, List<SubscriptionMeta> allSubscriptionMeta) {
+  public SubscriptionTableResp(
+      TSStatus status,
+      List<SubscriptionMeta> allSubscriptionMeta,
+      List<ConsumerGroupMeta> allConsumerGroupMeta) {
     this.status = status;
     this.allSubscriptionMeta = allSubscriptionMeta;
+    this.allConsumerGroupMeta = allConsumerGroupMeta;
   }
 
   public SubscriptionTableResp filter(String topicName) {
@@ -51,7 +57,7 @@ public class SubscriptionTableResp implements DataSet {
           break;
         }
       }
-      return new SubscriptionTableResp(status, filteredSubscriptionMeta);
+      return new SubscriptionTableResp(status, filteredSubscriptionMeta, allConsumerGroupMeta);
     }
   }
 
@@ -70,8 +76,8 @@ public class SubscriptionTableResp implements DataSet {
 
   public TGetAllSubscriptionInfoResp convertToTGetAllSubscriptionInfoResp() throws IOException {
     final List<ByteBuffer> subscriptionInfoByteBuffers = new ArrayList<>();
-    for (SubscriptionMeta subscriptionMeta : allSubscriptionMeta) {
-      subscriptionInfoByteBuffers.add(subscriptionMeta.serialize());
+    for (ConsumerGroupMeta consumerGroupMeta : allConsumerGroupMeta) {
+      subscriptionInfoByteBuffers.add(consumerGroupMeta.serialize());
     }
     return new TGetAllSubscriptionInfoResp(status, subscriptionInfoByteBuffers);
   }

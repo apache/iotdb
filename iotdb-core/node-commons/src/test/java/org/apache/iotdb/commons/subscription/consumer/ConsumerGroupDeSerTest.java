@@ -56,6 +56,8 @@ public class ConsumerGroupDeSerTest {
 
     Assert.assertTrue(
         consumerGroupMeta.getConsumersSubscribingTopic("test_topic").contains("test_consumer1"));
+    Assert.assertTrue(
+        consumerGroupMeta.getTopicsSubscribedByConsumer("test_consumer1").contains("test_topic"));
 
     ByteBuffer byteBuffer = consumerGroupMeta.serialize();
     ConsumerGroupMeta consumerGroupMeta1 = ConsumerGroupMeta.deserialize(byteBuffer);

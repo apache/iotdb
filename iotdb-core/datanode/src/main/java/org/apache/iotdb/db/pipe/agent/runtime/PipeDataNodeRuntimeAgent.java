@@ -167,6 +167,12 @@ public class PipeDataNodeRuntimeAgent implements IService {
             simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery()));
   }
 
+  ////////////////////// Provided for Subscription Agent //////////////////////
+
+  public int getRebootTimes() {
+    return simpleConsensusProgressIndexAssigner.getRebootTimes();
+  }
+
   //////////////////////////// Runtime Exception Handlers ////////////////////////////
 
   public void report(EnrichedEvent event, PipeRuntimeException pipeRuntimeException) {

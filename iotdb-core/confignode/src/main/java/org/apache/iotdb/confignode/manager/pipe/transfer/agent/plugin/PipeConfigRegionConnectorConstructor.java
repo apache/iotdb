@@ -67,7 +67,7 @@ class PipeConfigRegionConnectorConstructor extends PipeConnectorConstructor {
   }
 
   @Override
-  protected PipeConnector reflectPluginByKey(String pluginKey) {
+  public PipeConnector reflectPluginByKey(String pluginKey) {
     // TODO: support constructing plugin by reflection
     return (PipeConnector)
         pluginConstructors.getOrDefault(pluginKey, DoNothingConnector::new).get();

@@ -103,8 +103,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
   private void collectValueColumnSchemaList() throws IOException {
     Map<String, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
-    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair :
-        this.readerAndChunkMetadataList) {
+    for (int i = this.readerAndChunkMetadataList.size() - 1; i >= 0; i--) {
+      Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair =
+          this.readerAndChunkMetadataList.get(i);
       CompactionTsFileReader reader = (CompactionTsFileReader) pair.getLeft();
       List<AlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
       for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
@@ -184,7 +185,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     Collections.fill(valueChunks, getChunkLoader(reader, null));
     long pointNum = 0;
     for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      if (chunkMetadata == null) {
+      if (chunkMetadata == null || !isValueChunkDataTypeMatchSchema(chunkMetadata)) {
         continue;
       }
       pointNum += chunkMetadata.getStatistics().getCount();
@@ -199,6 +200,12 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     } else {
       compactAlignedChunkByDeserialize(timeChunk, valueChunks);
     }
+  }
+
+  private boolean isValueChunkDataTypeMatchSchema(IChunkMetadata valueChunkMetadata) {
+    String measurement = valueChunkMetadata.getMeasurementUid();
+    IMeasurementSchema schema = schemaList.get(measurementSchemaListIndexMap.get(measurement));
+    return schema.getType() == valueChunkMetadata.getDataType();
   }
 
   private ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)

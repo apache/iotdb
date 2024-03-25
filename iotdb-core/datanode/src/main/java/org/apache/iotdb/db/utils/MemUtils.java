@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -116,7 +117,7 @@ public class MemUtils {
       if (insertTabletNode.getMeasurements()[i] == null) {
         continue;
       }
-      // time column memSize
+      // Time column memSize
       memSize += (end - start) * 8L;
       memSize += (long) (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
     }
@@ -151,13 +152,13 @@ public class MemUtils {
     return memUsed;
   }
 
-  /** function for getting the memory size of the given string. */
+  /** Function for getting the memory size of the given string. */
   public static long getStringMem(String str) {
     // wide char (2 bytes each) and 64B String overhead
     return str.length() * 2L + 64L;
   }
 
-  /** function for getting the memory size of the given data point. */
+  /** Function for getting the memory size of the given data point. */
   public static long getDataPointMem(DataPoint dataPoint) {
     // type reference
     long memUsed = 8;
@@ -189,7 +190,7 @@ public class MemUtils {
     return memUsed;
   }
 
-  /** function for converting the byte count result to readable string. */
+  /** Function for converting the byte count result to readable string. */
   public static String bytesCntToStr(long inputCnt) {
     long cnt = inputCnt;
     long gbs = cnt / IoTDBConstant.GB;

@@ -324,7 +324,7 @@ public class TabletInsertionDataContainer {
                 .boxed()
                 .map(o -> new BitMap(tablet.getMaxRowNumber()))
                 .toArray(BitMap[]::new)
-            : tablet.bitMaps; // we do not reduce bitmaps here by origin row size
+            : tablet.bitMaps; // We do not reduce bitmaps here by origin row size
     for (int i = 0; i < originBitMapList.length; i++) {
       if (originBitMapList[i] == null) {
         originBitMapList[i] = new BitMap(tablet.getMaxRowNumber());

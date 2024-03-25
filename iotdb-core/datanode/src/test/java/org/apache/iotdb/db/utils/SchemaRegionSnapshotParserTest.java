@@ -588,7 +588,7 @@ public class SchemaRegionSnapshotParserTest {
             }));
     for (ISchemaRegionPlan plan : planMap.values()) {
       if (plan instanceof ICreateTimeSeriesPlan) {
-        schemaRegion.createTimeseries((ICreateTimeSeriesPlan) plan, 0);
+        schemaRegion.createTimeseries((ICreateTimeSeriesPlan) plan, -1);
       } else if (plan instanceof ICreateAlignedTimeSeriesPlan) {
         schemaRegion.createAlignedTimeSeries((ICreateAlignedTimeSeriesPlan) plan);
       } else if (plan instanceof IActivateTemplateInClusterPlan) {
