@@ -278,6 +278,12 @@ public class AggregateProcessor implements PipeProcessor {
         UDFParametersFactory.TIMESTAMP_PRECISION,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
+    // The aggregated result operators can be configured here because they are global
+    // and stateless, needing only one configuration
+    this.outputName2OperatorMap
+        .values()
+        .forEach(operator -> operator.configureSystemParameters(systemParameters));
+
     // Restore window state
     final ProgressIndex index = pipeTaskMeta.getProgressIndex();
     if (index == MinimumProgressIndex.INSTANCE) {
