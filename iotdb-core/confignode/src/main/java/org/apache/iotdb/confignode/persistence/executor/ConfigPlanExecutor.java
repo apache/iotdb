@@ -515,7 +515,7 @@ public class ConfigPlanExecutor {
     // which may result in incorrect results.
     File[] fileList = snapshotDir.listFiles();
     if (fileList != null && fileList.length > 0) {
-      LOGGER.error("snapshot directory [{}] is not empty.", snapshotDir.getAbsolutePath());
+      LOGGER.error("Snapshot directory [{}] is not empty.", snapshotDir.getAbsolutePath());
       return false;
     }
 

@@ -116,8 +116,6 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
               ? snapshotPaths.getRight().toString()
               : null,
           schemaRegion.getDatabaseFullPath());
-      // We create listener snapshot after the latest snapshot is successfully listened
-      // to make the recorded snapshot after restart as fresh as possible
       listener.createSnapshot(snapshotDir);
       return true;
     }

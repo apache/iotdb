@@ -58,9 +58,8 @@ public class IoTDBSnapshotTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    FileUtils.recursiveDeleteFolder("target" + File.separator + "data");
+    FileUtils.recursivelyDeleteFolder("target" + File.separator + "data");
     EnvironmentUtils.cleanEnv();
-    FileUtils.recursiveDeleteFolder("target" + File.separator + "tmp");
   }
 
   private List<TsFileResource> writeTsFiles() throws IOException, WriteProcessException {
@@ -122,7 +121,7 @@ public class IoTDBSnapshotTest {
           Assert.assertTrue(resource.tryWriteLock());
         }
       } finally {
-        FileUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
+        FileUtils.recursivelyDeleteFolder(snapshotDir.getAbsolutePath());
       }
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originDataDirs);
@@ -159,7 +158,7 @@ public class IoTDBSnapshotTest {
           Assert.assertTrue(resource.tryWriteLock());
         }
       } finally {
-        FileUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
+        FileUtils.recursivelyDeleteFolder(snapshotDir.getAbsolutePath());
       }
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originDataDirs);
@@ -189,7 +188,7 @@ public class IoTDBSnapshotTest {
         List<TsFileResource> resource = dataRegion.getTsFileManager().getTsFileList(true);
         Assert.assertEquals(100, resource.size());
       } finally {
-        FileUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
+        FileUtils.recursivelyDeleteFolder(snapshotDir.getAbsolutePath());
       }
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originDataDirs);

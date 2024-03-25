@@ -54,6 +54,8 @@ public class AuthorPlan extends ConfigPhysicalPlan {
   public AuthorPlan(ConfigPhysicalPlanType type) {
     super(type);
     authorType = type;
+    permissions = new HashSet<>();
+    nodeNameList = new ArrayList<>();
   }
 
   /**
@@ -183,7 +185,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
     roleName = BasicStructureSerDeUtil.readString(buffer);
     password = BasicStructureSerDeUtil.readString(buffer);
     newPassword = BasicStructureSerDeUtil.readString(buffer);
-    byte hasPermissions = buffer.get();
+    final byte hasPermissions = buffer.get();
     if (hasPermissions == (byte) 0) {
       this.permissions = null;
     } else {

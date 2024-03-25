@@ -156,7 +156,7 @@ public class FileUtils {
     return sum;
   }
 
-  public static void recursiveDeleteFolder(String path) throws IOException {
+  public static void recursivelyDeleteFolder(String path) throws IOException {
     File file = new File(path);
     if (file.isDirectory()) {
       File[] files = file.listFiles();
@@ -164,7 +164,7 @@ public class FileUtils {
         org.apache.commons.io.FileUtils.deleteDirectory(file);
       } else {
         for (File f : files) {
-          recursiveDeleteFolder(f.getAbsolutePath());
+          recursivelyDeleteFolder(f.getAbsolutePath());
         }
         org.apache.commons.io.FileUtils.deleteDirectory(file);
       }
@@ -213,7 +213,7 @@ public class FileUtils {
         if (unfinishedTarget.isFile()) {
           org.apache.commons.io.FileUtils.delete(unfinishedTarget);
         } else {
-          recursiveDeleteFolder(unfinishedTarget.getAbsolutePath());
+          recursivelyDeleteFolder(unfinishedTarget.getAbsolutePath());
         }
       }
     } catch (IOException e) {
@@ -249,7 +249,7 @@ public class FileUtils {
     // Delete old file
     try {
       if (source.isDirectory()) {
-        recursiveDeleteFolder(source.getAbsolutePath());
+        recursivelyDeleteFolder(source.getAbsolutePath());
       } else {
         org.apache.commons.io.FileUtils.delete(source);
       }

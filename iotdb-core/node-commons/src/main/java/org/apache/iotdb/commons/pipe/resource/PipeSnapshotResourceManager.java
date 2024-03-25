@@ -37,7 +37,7 @@ public abstract class PipeSnapshotResourceManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSnapshotResourceManager.class);
 
-  private static final String PIPE_SNAPSHOT_DIR_NAME = "pipe_snapshot";
+  public static final String PIPE_SNAPSHOT_DIR_NAME = "pipe_snapshot";
 
   private final Set<String> pipeCopiedSnapshotDirs;
 
@@ -83,8 +83,8 @@ public abstract class PipeSnapshotResourceManager {
     }
   }
 
-  private boolean increaseReferenceIfExists(String copiedSnapshotRoot) {
-    final AtomicLong referenceCount = copiedSnapshotPath2ReferenceCountMap.get(copiedSnapshotRoot);
+  private boolean increaseReferenceIfExists(String copiedSnapshotPath) {
+    final AtomicLong referenceCount = copiedSnapshotPath2ReferenceCountMap.get(copiedSnapshotPath);
     if (referenceCount != null) {
       referenceCount.incrementAndGet();
       return true;
@@ -102,8 +102,7 @@ public abstract class PipeSnapshotResourceManager {
    * @return Target snapshot path in pipe dir
    */
   private String getCopiedSnapshotPathInPipeDir(String snapshotPath) throws IOException {
-    final File snapshotFile = new File(snapshotPath);
-    File parentFile = snapshotFile;
+    File parentFile = new File(snapshotPath);
     // Recursively find the parent path until meets the pipe snapshot dir
     while (!pipeCopiedSnapshotDirs.contains(parentFile.getName())) {
       if (parentFile.getParentFile() == null) {
@@ -113,14 +112,15 @@ public abstract class PipeSnapshotResourceManager {
       }
       parentFile = parentFile.getParentFile();
     }
-    // Reserve the snapshot's parent file to distinguish different versions of snapshots
+    // Insert the pipe snapshot dir name into "consensus" and group id to identify the different
+    // snapshots. A typical ratis snapshot path may be like
+    // data/confignode/consensus/47474747-4747-4747-4747-000000000000/sm/2_58/system/users/root.profile
+    // Then the copied pipe snapshot path is like
+    // data/confignode/consensus/pipe_snapshot/47474747-4747-4747-4747-000000000000/sm/2_58/system/users/root.profile
     return parentFile.getPath()
         + File.separator
         + PIPE_SNAPSHOT_DIR_NAME
-        + File.separator
-        + snapshotFile.getParentFile().getName()
-        + File.separator
-        + snapshotFile.getName();
+        + snapshotPath.replace(parentFile.getPath(), "");
   }
 
   /**
