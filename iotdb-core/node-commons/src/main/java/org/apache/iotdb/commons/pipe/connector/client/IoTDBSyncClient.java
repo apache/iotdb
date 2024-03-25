@@ -52,7 +52,7 @@ public class IoTDBSyncClient extends IClientRPCService.Client
                         trustStorePwd)
                     : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                         ipAddress, port, property.getConnectionTimeoutMs())));
-    TTransport transport = getInputProtocol().getTransport();
+    final TTransport transport = getInputProtocol().getTransport();
     if (!transport.isOpen()) {
       transport.open();
     }

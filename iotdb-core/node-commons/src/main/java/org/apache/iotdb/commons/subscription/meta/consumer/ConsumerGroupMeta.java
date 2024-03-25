@@ -90,6 +90,12 @@ public class ConsumerGroupMeta {
     return consumerIdToConsumerMeta.containsKey(consumerId);
   }
 
+  public boolean isEmpty() {
+    // When there are no consumers in a consumer group, it means that the ConsumerGroupMeta is
+    // empty, and at this time, the topicNameToSubscribedConsumerIdSet is also empty.
+    return consumerIdToConsumerMeta.isEmpty();
+  }
+
   ////////////////////////// subscription //////////////////////////
 
   /**
@@ -101,6 +107,17 @@ public class ConsumerGroupMeta {
    */
   public Set<String> getConsumersSubscribingTopic(String topic) {
     return topicNameToSubscribedConsumerIdSet.getOrDefault(topic, Collections.emptySet());
+  }
+
+  public Set<String> getTopicsSubscribedByConsumer(String consumerId) {
+    Set<String> topics = new HashSet<>();
+    for (Map.Entry<String, Set<String>> topicNameToSubscribedConsumerId :
+        topicNameToSubscribedConsumerIdSet.entrySet()) {
+      if (topicNameToSubscribedConsumerId.getValue().contains(consumerId)) {
+        topics.add(topicNameToSubscribedConsumerId.getKey());
+      }
+    }
+    return topics;
   }
 
   public void addSubscription(String consumerId, Set<String> topics) {

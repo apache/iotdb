@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.flink.sql.client;
 
 import org.apache.iotdb.flink.sql.function.IoTDBCDCSourceFunction;
@@ -52,7 +53,7 @@ public class IoTDBWebSocketClient extends WebSocketClient {
 
   @Override
   public void onOpen(ServerHandshake serverHandshake) {
-    String log =
+    final String log =
         String.format("The connection with %s:%d has been created.", uri.getHost(), uri.getPort());
     LOGGER.info(log);
   }
@@ -69,8 +70,8 @@ public class IoTDBWebSocketClient extends WebSocketClient {
   @Override
   public void onMessage(ByteBuffer bytes) {
     super.onMessage(bytes);
-    long commitId = bytes.getLong();
-    Tablet tablet = Tablet.deserialize(bytes);
+    final long commitId = bytes.getLong();
+    final Tablet tablet = Tablet.deserialize(bytes);
     function.addTabletWrapper(new TabletWrapper(commitId, this, tablet));
   }
 
@@ -82,7 +83,7 @@ public class IoTDBWebSocketClient extends WebSocketClient {
 
   @Override
   public void onError(Exception e) {
-    String log =
+    final String log =
         String.format(
             "An error occurred when connecting to %s:%s: %s.",
             uri.getHost(), uri.getPort(), e.getMessage());

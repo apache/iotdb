@@ -24,6 +24,9 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.throwing.ThrowingExceptionProcessor;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
+import org.apache.iotdb.db.pipe.processor.aggregate.AggregateProcessor;
+import org.apache.iotdb.db.pipe.processor.aggregate.operator.processor.StandardStatisticsOperatorProcessor;
+import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.TumblingWindowingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.sdt.SwingingDoorTrendingSamplingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.tumbling.TumblingTimeSamplingProcessor;
 
@@ -46,5 +49,13 @@ class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.THROWING_EXCEPTION_PROCESSOR.getPipePluginName(),
         ThrowingExceptionProcessor::new);
+    pluginConstructors.put(
+        BuiltinPipePlugin.AGGREGATE_PROCESSOR.getPipePluginName(), AggregateProcessor::new);
+    pluginConstructors.put(
+        BuiltinPipePlugin.STANDARD_STATISTICS_PROCESSOR.getPipePluginName(),
+        StandardStatisticsOperatorProcessor::new);
+    pluginConstructors.put(
+        BuiltinPipePlugin.TUMBLING_WINDOWING_PROCESSOR.getPipePluginName(),
+        TumblingWindowingProcessor::new);
   }
 }

@@ -166,10 +166,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
         // no data region && no dataNodeLocation, we need to execute this FI on local
         // now only the case AggregationQuery has schemaengine but no data region will enter here
         fragmentInstance.setExecutorAndHost(
-            new QueryExecutor(
-                new TDataNodeLocation()
-                    .setInternalEndPoint(DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT)
-                    .setMPPDataExchangeEndPoint(DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT)));
+            new QueryExecutor(DataNodeEndPoints.getLocalDataNodeLocation()));
       }
     } else {
       fragmentInstance.setExecutorAndHost(new StorageExecutor(regionReplicaSet));

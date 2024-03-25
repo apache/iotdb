@@ -20,23 +20,23 @@
 package org.apache.iotdb.rpc.subscription.payload.request;
 
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
 
-  private transient List<Pair<String, Integer>> committerKeyAndCommitIds = new ArrayList<>();
+  private transient Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
 
-  public List<Pair<String, Integer>> getCommitterKeyAndCommitIds() {
-    return committerKeyAndCommitIds;
+  public Map<String, List<String>> getTopicNameToSubscriptionCommitIds() {
+    return topicNameToSubscriptionCommitIds;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -46,19 +46,19 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
    * client.
    */
   public static PipeSubscribeCommitReq toTPipeSubscribeReq(
-      List<Pair<String, Integer>> committerKeyAndCommitIds) throws IOException {
+      Map<String, List<String>> topicNameToSubscriptionCommitIds) throws IOException {
     final PipeSubscribeCommitReq req = new PipeSubscribeCommitReq();
 
-    req.committerKeyAndCommitIds = committerKeyAndCommitIds;
+    req.topicNameToSubscriptionCommitIds = topicNameToSubscriptionCommitIds;
 
     req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();
     req.type = PipeSubscribeRequestType.COMMIT.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(committerKeyAndCommitIds.size(), outputStream);
-      for (Pair<String, Integer> committerKeyAndCommitId : committerKeyAndCommitIds) {
-        ReadWriteIOUtils.write(committerKeyAndCommitId.left, outputStream);
-        ReadWriteIOUtils.write(committerKeyAndCommitId.right, outputStream);
+      ReadWriteIOUtils.write(topicNameToSubscriptionCommitIds.size(), outputStream);
+      for (Map.Entry<String, List<String>> entry : topicNameToSubscriptionCommitIds.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), outputStream);
+        ReadWriteIOUtils.writeStringList(entry.getValue(), outputStream);
       }
       req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
@@ -70,12 +70,12 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
   public static PipeSubscribeCommitReq fromTPipeSubscribeReq(TPipeSubscribeReq commitReq) {
     final PipeSubscribeCommitReq req = new PipeSubscribeCommitReq();
 
-    if (commitReq.body.hasRemaining()) {
+    if (Objects.nonNull(commitReq.body) && commitReq.body.hasRemaining()) {
       int size = ReadWriteIOUtils.readInt(commitReq.body);
       for (int i = 0; i < size; ++i) {
-        String committerKey = ReadWriteIOUtils.readString(commitReq.body);
-        int commitId = ReadWriteIOUtils.readInt(commitReq.body);
-        req.committerKeyAndCommitIds.add(new Pair<>(committerKey, commitId));
+        String topicName = ReadWriteIOUtils.readString(commitReq.body);
+        List<String> subscriptionCommitIds = ReadWriteIOUtils.readStringList(commitReq.body);
+        req.topicNameToSubscriptionCommitIds.put(topicName, subscriptionCommitIds);
       }
     }
 
@@ -97,7 +97,8 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
       return false;
     }
     PipeSubscribeCommitReq that = (PipeSubscribeCommitReq) obj;
-    return Objects.equals(this.committerKeyAndCommitIds, that.committerKeyAndCommitIds)
+    return Objects.equals(
+            this.topicNameToSubscriptionCommitIds, that.topicNameToSubscriptionCommitIds)
         && this.version == that.version
         && this.type == that.type
         && Objects.equals(this.body, that.body);
@@ -105,6 +106,6 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(committerKeyAndCommitIds, version, type, body);
+    return Objects.hash(topicNameToSubscriptionCommitIds, version, type, body);
   }
 }

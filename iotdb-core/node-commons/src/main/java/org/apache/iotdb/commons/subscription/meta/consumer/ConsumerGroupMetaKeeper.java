@@ -29,21 +29,49 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ConsumerGroupMetaKeeper {
 
-  private final Map<String, ConsumerGroupMeta> consumerGroupIDToConsumerGroupMetaMap;
+  private final Map<String, ConsumerGroupMeta> consumerGroupIdToConsumerGroupMetaMap;
+
+  private final ReentrantReadWriteLock consumerGroupMetaKeeperLock;
 
   public ConsumerGroupMetaKeeper() {
-    consumerGroupIDToConsumerGroupMetaMap = new ConcurrentHashMap<>();
+    consumerGroupIdToConsumerGroupMetaMap = new ConcurrentHashMap<>();
+    consumerGroupMetaKeeperLock = new ReentrantReadWriteLock(true);
   }
 
-  public boolean containsConsumerGroupMeta(String consumerGroupID) {
-    return consumerGroupIDToConsumerGroupMetaMap.containsKey(consumerGroupID);
+  /////////////////////////////////  Lock  /////////////////////////////////
+
+  public void acquireReadLock() {
+    consumerGroupMetaKeeperLock.readLock().lock();
   }
 
-  public ConsumerGroupMeta getConsumerGroupMeta(String consumerGroupID) {
-    return consumerGroupIDToConsumerGroupMetaMap.get(consumerGroupID);
+  public void releaseReadLock() {
+    consumerGroupMetaKeeperLock.readLock().unlock();
+  }
+
+  public void acquireWriteLock() {
+    consumerGroupMetaKeeperLock.writeLock().lock();
+  }
+
+  public void releaseWriteLock() {
+    consumerGroupMetaKeeperLock.writeLock().unlock();
+  }
+
+  /////////////////////////////////  ConsumerGroupMeta  /////////////////////////////////
+
+  public boolean containsConsumerGroupMeta(String consumerGroupId) {
+    return consumerGroupIdToConsumerGroupMetaMap.containsKey(consumerGroupId);
+  }
+
+  public ConsumerGroupMeta getConsumerGroupMeta(String consumerGroupId) {
+    return consumerGroupIdToConsumerGroupMetaMap.get(consumerGroupId);
+  }
+
+  public Iterable<ConsumerGroupMeta> getAllConsumerGroupMeta() {
+    return consumerGroupIdToConsumerGroupMetaMap.values();
   }
 
   /**
@@ -54,35 +82,43 @@ public class ConsumerGroupMetaKeeper {
    *     not exist or no consumer is subscribing the topic, return an empty set.
    */
   public Set<String> getConsumersSubscribingTopic(String consumerGroupId, String topic) {
-    return consumerGroupIDToConsumerGroupMetaMap.containsKey(consumerGroupId)
-        ? consumerGroupIDToConsumerGroupMetaMap
+    return consumerGroupIdToConsumerGroupMetaMap.containsKey(consumerGroupId)
+        ? consumerGroupIdToConsumerGroupMetaMap
             .get(consumerGroupId)
             .getConsumersSubscribingTopic(topic)
         : Collections.emptySet();
   }
 
-  public void addConsumerGroupMeta(String consumerGroupID, ConsumerGroupMeta consumerGroupMeta) {
-    consumerGroupIDToConsumerGroupMetaMap.put(consumerGroupID, consumerGroupMeta);
+  public Set<String> getTopicsSubscribedByConsumer(String consumerGroupId, String consumerId) {
+    return consumerGroupIdToConsumerGroupMetaMap.containsKey(consumerGroupId)
+        ? consumerGroupIdToConsumerGroupMetaMap
+            .get(consumerGroupId)
+            .getTopicsSubscribedByConsumer(consumerId)
+        : Collections.emptySet();
   }
 
-  public void removeConsumerGroupMeta(String consumerGroupID) {
-    consumerGroupIDToConsumerGroupMetaMap.remove(consumerGroupID);
+  public void addConsumerGroupMeta(String consumerGroupId, ConsumerGroupMeta consumerGroupMeta) {
+    consumerGroupIdToConsumerGroupMetaMap.put(consumerGroupId, consumerGroupMeta);
+  }
+
+  public void removeConsumerGroupMeta(String consumerGroupId) {
+    consumerGroupIdToConsumerGroupMetaMap.remove(consumerGroupId);
   }
 
   public void clear() {
-    this.consumerGroupIDToConsumerGroupMetaMap.clear();
+    this.consumerGroupIdToConsumerGroupMetaMap.clear();
   }
 
   public boolean isEmpty() {
-    return consumerGroupIDToConsumerGroupMetaMap.isEmpty();
+    return consumerGroupIdToConsumerGroupMetaMap.isEmpty();
   }
 
   /////////////////////////////////  Snapshot  /////////////////////////////////
 
   public void processTakeSnapshot(FileOutputStream fileOutputStream) throws IOException {
-    ReadWriteIOUtils.write(consumerGroupIDToConsumerGroupMetaMap.size(), fileOutputStream);
+    ReadWriteIOUtils.write(consumerGroupIdToConsumerGroupMetaMap.size(), fileOutputStream);
     for (Map.Entry<String, ConsumerGroupMeta> entry :
-        consumerGroupIDToConsumerGroupMetaMap.entrySet()) {
+        consumerGroupIdToConsumerGroupMetaMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), fileOutputStream);
       entry.getValue().serialize(fileOutputStream);
     }
@@ -94,7 +130,7 @@ public class ConsumerGroupMetaKeeper {
     final int size = ReadWriteIOUtils.readInt(fileInputStream);
     for (int i = 0; i < size; i++) {
       final String topicName = ReadWriteIOUtils.readString(fileInputStream);
-      consumerGroupIDToConsumerGroupMetaMap.put(
+      consumerGroupIdToConsumerGroupMetaMap.put(
           topicName, ConsumerGroupMeta.deserialize(fileInputStream));
     }
   }
@@ -111,19 +147,19 @@ public class ConsumerGroupMetaKeeper {
     }
     ConsumerGroupMetaKeeper that = (ConsumerGroupMetaKeeper) o;
     return Objects.equals(
-        consumerGroupIDToConsumerGroupMetaMap, that.consumerGroupIDToConsumerGroupMetaMap);
+        consumerGroupIdToConsumerGroupMetaMap, that.consumerGroupIdToConsumerGroupMetaMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(consumerGroupIDToConsumerGroupMetaMap);
+    return Objects.hash(consumerGroupIdToConsumerGroupMetaMap);
   }
 
   @Override
   public String toString() {
     return "ConsumerGroupMetaKeeper{"
         + "consumerGroupIDToConsumerGroupMetaMap="
-        + consumerGroupIDToConsumerGroupMetaMap
+        + consumerGroupIdToConsumerGroupMetaMap
         + '}';
   }
 }

@@ -91,5 +91,7 @@ class PipeDataRegionConnectorConstructor extends PipeConnectorConstructor {
         BuiltinPipePlugin.DO_NOTHING_SINK.getPipePluginName(), DoNothingConnector::new);
     pluginConstructors.put(
         BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName(), WriteBackConnector::new);
+    pluginConstructors.put(
+        BuiltinPipePlugin.SUBSCRIPTION_SINK.getPipePluginName(), DoNothingConnector::new);
   }
 }

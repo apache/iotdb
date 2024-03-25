@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription;
 
 import org.apache.iotdb.commons.exception.SubscriptionException;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -28,6 +29,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.subscription.OperateSubscriptionState;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,16 +47,19 @@ public abstract class AbstractOperateSubscriptionProcedure
   private static final int RETRY_THRESHOLD = 1;
 
   protected AtomicReference<SubscriptionInfo> subscriptionInfo;
+  protected AtomicReference<PipeTaskInfo> pipeTaskInfo;
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     LOGGER.info("ProcedureId {} try to acquire subscription lock.", getProcId());
-    subscriptionInfo =
+    Pair<AtomicReference<SubscriptionInfo>, AtomicReference<PipeTaskInfo>> infoHolderPair =
         configNodeProcedureEnv
             .getConfigManager()
             .getSubscriptionManager()
             .getSubscriptionCoordinator()
             .tryLock();
+    subscriptionInfo = infoHolderPair.left;
+    pipeTaskInfo = infoHolderPair.right;
     if (subscriptionInfo == null) {
       LOGGER.warn("ProcedureId {} failed to acquire subscription lock.", getProcId());
     } else {
@@ -115,6 +120,7 @@ public abstract class AbstractOperateSubscriptionProcedure
   @Override
   protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     super.releaseLock(configNodeProcedureEnv);
+    unlockPipeProcedure();
 
     if (subscriptionInfo == null) {
       LOGGER.warn(
@@ -127,6 +133,7 @@ public abstract class AbstractOperateSubscriptionProcedure
           .getSubscriptionCoordinator()
           .unlock();
       subscriptionInfo = null;
+      pipeTaskInfo = null;
     }
   }
 
@@ -140,6 +147,11 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   protected abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException;
+
+  // TODO: temporary fix
+  protected void unlockPipeProcedure() {
+    // do nothing...
+  }
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperateSubscriptionState state)

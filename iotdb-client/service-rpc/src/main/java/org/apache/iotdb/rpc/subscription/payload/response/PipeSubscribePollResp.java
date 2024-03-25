@@ -24,7 +24,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -36,6 +35,10 @@ import java.util.Objects;
 public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
   private transient List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
+
+  public List<EnrichedTablets> getEnrichedTabletsList() {
+    return enrichedTabletsList;
+  }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
@@ -52,16 +55,23 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
     resp.type = PipeSubscribeResponseType.POLL_TABLETS.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(enrichedTabletsList.size(), outputStream);
-      for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
-        enrichedTablets.serialize(outputStream);
-      }
-      resp.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    try {
+      resp.body = serializeEnrichedTabletsList(enrichedTabletsList);
     } catch (IOException e) {
       resp.status = RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, e.getMessage());
     }
+
+    return resp;
+  }
+
+  public static PipeSubscribePollResp directToTPipeSubscribeResp(
+      TSStatus status, List<ByteBuffer> byteBuffers) {
+    final PipeSubscribePollResp resp = new PipeSubscribePollResp();
+
+    resp.status = status;
+    resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
+    resp.type = PipeSubscribeResponseType.POLL_TABLETS.getType();
+    resp.body = byteBuffers;
 
     return resp;
   }
@@ -70,10 +80,11 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
   public static PipeSubscribePollResp fromTPipeSubscribeResp(TPipeSubscribeResp pollResp) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
-    if (pollResp.body.hasRemaining()) {
-      int size = ReadWriteIOUtils.readInt(pollResp.body);
-      for (int i = 0; i < size; ++i) {
-        resp.enrichedTabletsList.add(EnrichedTablets.deserialize(pollResp.body));
+    if (Objects.nonNull(pollResp.body)) {
+      for (ByteBuffer byteBuffer : pollResp.body) {
+        if (Objects.nonNull(byteBuffer) && byteBuffer.hasRemaining()) {
+          resp.enrichedTabletsList.add(EnrichedTablets.deserialize(byteBuffer));
+        }
       }
     }
 
@@ -83,6 +94,26 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
     resp.body = pollResp.body;
 
     return resp;
+  }
+
+  /////////////////////////////// Utility ///////////////////////////////
+
+  public static List<ByteBuffer> serializeEnrichedTabletsList(
+      List<EnrichedTablets> enrichedTabletsList) throws IOException {
+    List<ByteBuffer> byteBufferList = new ArrayList<>();
+    for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
+      byteBufferList.add(serializeEnrichedTablets(enrichedTablets));
+    }
+    return byteBufferList;
+  }
+
+  public static ByteBuffer serializeEnrichedTablets(EnrichedTablets enrichedTablets)
+      throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      enrichedTablets.serialize(outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
   }
 
   /////////////////////////////// Object ///////////////////////////////
