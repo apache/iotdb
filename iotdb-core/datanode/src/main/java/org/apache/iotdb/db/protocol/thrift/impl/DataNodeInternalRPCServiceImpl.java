@@ -212,7 +212,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -1310,6 +1309,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       PipeAgent.task().collectPipeMetaList(resp);
     }
 
+    if (req.isSetConfigNodeLocations()) {
+      List<TEndPoint> configNodeEndPointList =
+          req.getConfigNodeLocations().stream()
+              .map(TConfigNodeLocation::getInternalEndPoint)
+              .collect(Collectors.toList());
+      if (ConfigNodeInfo.getInstance().updateConfigNodeList(configNodeEndPointList)) {
+        resp.setConfirmedConfigNodeLocations(req.getConfigNodeLocations());
+      }
+    }
+
     return resp;
   }
 
@@ -1540,20 +1549,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
     return storageEngine.setTTL(req);
-  }
-
-  @Override
-  public TSStatus updateConfigNodeGroup(TUpdateConfigNodeGroupReq req) {
-    List<TConfigNodeLocation> configNodeLocations = req.getConfigNodeLocations();
-    if (configNodeLocations != null) {
-      ConfigNodeInfo.getInstance()
-          .updateConfigNodeList(
-              configNodeLocations
-                  .parallelStream()
-                  .map(TConfigNodeLocation::getInternalEndPoint)
-                  .collect(Collectors.toList()));
-    }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override

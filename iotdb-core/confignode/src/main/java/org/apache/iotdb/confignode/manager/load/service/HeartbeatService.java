@@ -42,8 +42,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -69,6 +71,8 @@ public class HeartbeatService {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.CONFIG_NODE_HEART_BEAT_SERVICE.getName());
   private final AtomicLong heartbeatCounter = new AtomicLong(0);
+
+  //  private final ConcurrentHashMap<TDataNodeConfiguration, TConfigNodeLocation>
 
   public HeartbeatService(IManager configManager, LoadCache loadCache) {
     this.configManager = configManager;
@@ -143,11 +147,22 @@ public class HeartbeatService {
       heartbeatReq.setDataRegionIds(configManager.getClusterQuotaManager().getDataRegionIds());
       heartbeatReq.setSpaceQuotaUsage(configManager.getClusterQuotaManager().getSpaceQuotaUsage());
     }
+    heartbeatReq.setConfigNodeLocations(new HashSet<>(getNodeManager().getRegisteredConfigNodes()));
 
     /* Update heartbeat counter */
     heartbeatCounter.getAndIncrement();
 
     return heartbeatReq;
+  }
+
+  private void addConfigNodeLocationsToReq(int dataNodeId, TDataNodeHeartbeatReq req) {
+    Set<TConfigNodeLocation> confirmedConfigNodes =
+        loadCache.getConfirmedConfigNodeLocations(dataNodeId);
+    Set<TConfigNodeLocation> actualConfigNodes =
+        new HashSet<>(getNodeManager().getRegisteredConfigNodes());
+    if (!actualConfigNodes.equals(confirmedConfigNodes)) {
+      req.setConfigNodeLocations(actualConfigNodes);
+    }
   }
 
   private TConfigNodeHeartbeatReq genConfigNodeHeartbeatReq() {
@@ -198,6 +213,7 @@ public class HeartbeatService {
               configManager.getClusterSchemaManager()::updateDeviceUsage,
               configManager.getPipeManager().getPipeRuntimeCoordinator());
       configManager.getClusterQuotaManager().updateSpaceQuotaUsage();
+      addConfigNodeLocationsToReq(dataNodeInfo.getLocation().getDataNodeId(), heartbeatReq);
       AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);

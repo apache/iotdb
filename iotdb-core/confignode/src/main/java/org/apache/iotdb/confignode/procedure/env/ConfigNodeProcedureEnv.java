@@ -78,7 +78,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushSingleConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
-import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -362,28 +361,6 @@ public class ConfigNodeProcedureEnv {
             configNodeLocation.getInternalEndPoint(),
             null,
             ConfigNodeRequestType.NOTIFY_REGISTER_SUCCESS);
-  }
-
-  /** Notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced. */
-  public void broadCastTheLatestConfigNodeGroup() {
-    List<TConfigNodeLocation> registeredConfigNodes =
-        configManager.getNodeManager().getRegisteredConfigNodes();
-    Map<Integer, TDataNodeLocation> registeredDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
-    AsyncClientHandler<TUpdateConfigNodeGroupReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.BROADCAST_LATEST_CONFIG_NODE_GROUP,
-            new TUpdateConfigNodeGroupReq(registeredConfigNodes),
-            registeredDataNodes);
-
-    if (!registeredDataNodes.isEmpty()) {
-      LOG.info(
-          "Begin to broadcast the latest configNodeGroup to DataNodes, ConfigNodeGroups: {}, DataNodes: {}",
-          registeredConfigNodes,
-          registeredDataNodes.values());
-      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-      LOG.info("Broadcast the latest configNodeGroup to DataNodes finished.");
-    }
   }
 
   /**

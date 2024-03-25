@@ -51,6 +51,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -74,6 +75,10 @@ public class LoadCache {
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
   // Map<RegionGroupId, RegionRouteCache>
   private final Map<TConsensusGroupId, RegionRouteCache> regionRouteCacheMap;
+
+  // Map<DataNodeId, confirmedConfigNodes>
+  private final ConcurrentHashMap<Integer, Set<TConfigNodeLocation>> confirmedConfigNodeMap =
+      new ConcurrentHashMap<>();
 
   public LoadCache() {
     this.nodeCacheMap = new ConcurrentHashMap<>();
@@ -603,5 +608,14 @@ public class LoadCache {
 
   public boolean existUnreadyRegionGroup() {
     return regionRouteCacheMap.values().stream().anyMatch(RegionRouteCache::isRegionGroupUnready);
+  }
+
+  public void updateConfirmedConfigNodeLocations(
+      int dataNodeId, Set<TConfigNodeLocation> configNodeLocations) {
+    confirmedConfigNodeMap.put(dataNodeId, configNodeLocations);
+  }
+
+  public Set<TConfigNodeLocation> getConfirmedConfigNodeLocations(int dataNodeId) {
+    return confirmedConfigNodeMap.get(dataNodeId);
   }
 }
