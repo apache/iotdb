@@ -74,8 +74,7 @@ public class ConfignodeSnapshotParser {
       for (Path path : stream) {
         try (DirectoryStream<Path> filestream =
             Files.newDirectoryStream(Paths.get(path.toString() + File.separator + "sm"))) {
-          // Find the latest snapshots
-          final ArrayList<Path> snapshotList = new ArrayList<>();
+          ArrayList<Path> snapshotList = new ArrayList<>();
           for (Path snapshotFolder : filestream) {
             if (snapshotFolder.toFile().isDirectory()) {
               snapshotList.add(snapshotFolder);
@@ -147,7 +146,7 @@ public class ConfignodeSnapshotParser {
   public static CNPhysicalPlanGenerator translate2PhysicalPlan(
       Path path1, Path path2, CNSnapshotFileType type) throws IOException {
     if (type == CNSnapshotFileType.SCHEMA && (path1 == null || path2 == null)) {
-      LOGGER.warn("schema_template require schemainfo file and template file");
+      LOGGER.warn("schema_template require schema info file and template file");
       return null;
     } else if (path1 == null) {
       LOGGER.warn("path1 should not be null");

@@ -421,8 +421,12 @@ public class LocalFileUserAccessor implements IUserAccessor {
   @Override
   public void cleanUserFolder() {
     File[] files = SystemFileFactory.INSTANCE.getFile(userDirPath).listFiles();
-    for (File file : files) {
-      FileUtils.deleteFileIfExist(file);
+    if (files != null) {
+      for (File file : files) {
+        FileUtils.deleteFileIfExist(file);
+      }
+    } else {
+      LOGGER.warn("User folder not exists");
     }
   }
 
