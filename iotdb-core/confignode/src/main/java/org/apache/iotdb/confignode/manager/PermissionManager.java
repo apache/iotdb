@@ -61,6 +61,7 @@ public class PermissionManager {
   public TSStatus operatePermission(AuthorPlan authorPlan, boolean isGeneratedByPipe) {
     TSStatus tsStatus;
     // If the permissions change, clear the cache content affected by the operation
+    LOGGER.info("Auth: run auth plan: {}", authorPlan.toString());
     try {
       if (authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUser
           || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateRole) {

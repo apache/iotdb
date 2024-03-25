@@ -62,8 +62,8 @@ public class TsFileManager {
   }
 
   /**
-   * @param sequence true for sequence, false for unsequence
-   * @param timePartitions null for all time partitions, empty for zero time partitions
+   * @param sequence {@code true} for sequence, {@code false} for unsequence
+   * @param timePartitions {@code null} for all time partitions, empty for zero time partitions
    */
   public List<TsFileResource> getTsFileList(
       boolean sequence, List<Long> timePartitions, Filter timeFilter) {
@@ -177,7 +177,7 @@ public class TsFileManager {
   }
 
   /**
-   * insert tsFileResource to a target pos(targetPos = insertPos) e.g. if insertPos = 0, then to the
+   * Insert tsFileResource to a target pos(targetPos = insertPos) e.g. if insertPos = 0, then to the
    * first, if insert Pos = 1, then to the second.
    */
   public void insertToPartitionFileList(

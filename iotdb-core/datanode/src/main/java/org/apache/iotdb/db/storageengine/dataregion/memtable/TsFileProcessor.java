@@ -1353,7 +1353,7 @@ public class TsFileProcessor {
     writer = null;
   }
 
-  /** end empty file and remove it from file system */
+  /** End empty file and remove it from file system */
   private void endEmptyFile() throws TsFileProcessorException, IOException {
     logger.info("Start to end empty file {}", tsFileResource);
 

@@ -105,7 +105,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    PipeParameters parameters = validator.getParameters();
+    final PipeParameters parameters = validator.getParameters();
 
     try {
       realtimeDataExtractionStartTime =
@@ -149,7 +149,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     // indexed by the taskID of IoTDBDataRegionExtractor. To avoid PipeRealtimeDataRegionExtractor
     // holding a reference to IoTDBDataRegionExtractor, the taskID should be constructed to
     // match that of IoTDBDataRegionExtractor.
-    long creationTime = environment.getCreationTime();
+    final long creationTime = environment.getCreationTime();
     taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
 
     pipePattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
@@ -386,7 +386,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   }
 
   private boolean isDataRegionTimePartitionCoveredByTimeRange() {
-    Pair<Long, Long> timePartitionIdBound = dataRegionTimePartitionIdBound.get();
+    final Pair<Long, Long> timePartitionIdBound = dataRegionTimePartitionIdBound.get();
     return startTimePartitionIdLowerBound <= timePartitionIdBound.left
         && timePartitionIdBound.right <= endTimePartitionIdUpperBound;
   }

@@ -183,10 +183,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
       throw new PipeException(exceptionMessage);
     }
 
-    PipeStaticMeta pipeStaticMetaFromCoordinator =
+    final PipeStaticMeta pipeStaticMetaFromCoordinator =
         getPipeMetaByPipeName(alterPipeRequest.getPipeName()).getStaticMeta();
     // deep copy current pipe static meta
-    PipeStaticMeta copiedPipeStaticMetaFromCoordinator =
+    final PipeStaticMeta copiedPipeStaticMetaFromCoordinator =
         new PipeStaticMeta(
             pipeStaticMetaFromCoordinator.getPipeName(),
             pipeStaticMetaFromCoordinator.getCreationTime(),
@@ -768,7 +768,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTaskInfo other = (PipeTaskInfo) obj;
+    final PipeTaskInfo other = (PipeTaskInfo) obj;
     return pipeMetaKeeper.equals(other.pipeMetaKeeper);
   }
 

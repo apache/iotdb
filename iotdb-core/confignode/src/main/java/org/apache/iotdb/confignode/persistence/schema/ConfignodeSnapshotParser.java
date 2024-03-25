@@ -74,7 +74,6 @@ public class ConfignodeSnapshotParser {
       for (Path path : stream) {
         try (DirectoryStream<Path> filestream =
             Files.newDirectoryStream(Paths.get(path.toString() + File.separator + "sm"))) {
-          // find the latest snapshots
           ArrayList<Path> snapshotList = new ArrayList<>();
           for (Path snapshotFolder : filestream) {
             if (snapshotFolder.toFile().isDirectory()) {
@@ -135,7 +134,7 @@ public class ConfignodeSnapshotParser {
               snapshotPairList.add(
                   new Pair<>(
                       new Pair<>(schemaInfoFile.toPath(), templateInfoFile.toPath()),
-                      CNSnapshotFileType.SCHEMA_TEMPLATE));
+                      CNSnapshotFileType.SCHEMA));
             }
           }
         }
@@ -146,8 +145,8 @@ public class ConfignodeSnapshotParser {
 
   public static CNPhysicalPlanGenerator translate2PhysicalPlan(
       Path path1, Path path2, CNSnapshotFileType type) throws IOException {
-    if (type == CNSnapshotFileType.SCHEMA_TEMPLATE && (path1 == null || path2 == null)) {
-      LOGGER.warn("schema_template require schemainfo file and template file");
+    if (type == CNSnapshotFileType.SCHEMA && (path1 == null || path2 == null)) {
+      LOGGER.warn("schema_template require schema info file and template file");
       return null;
     } else if (path1 == null) {
       LOGGER.warn("path1 should not be null");
@@ -159,7 +158,7 @@ public class ConfignodeSnapshotParser {
       return null;
     }
 
-    if (type == CNSnapshotFileType.SCHEMA_TEMPLATE) {
+    if (type == CNSnapshotFileType.SCHEMA) {
       return new CNPhysicalPlanGenerator(path1, path2);
     } else {
       return new CNPhysicalPlanGenerator(path1, type);

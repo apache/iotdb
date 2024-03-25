@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -34,6 +35,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_VALUE_USE_TOP_K;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy.LINEAR;
@@ -93,16 +97,34 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
+      PlanNode newNode = node.clone();
       for (PlanNode child : node.getChildren()) {
         context.setParent(node);
-        child.accept(this, context);
+        newNode.addChild(child.accept(this, context));
       }
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitSingleChildProcess(SingleChildProcessNode node, RewriterContext context) {
+      context.setParent(node);
+      node.setChild(node.getChild().accept(this, context));
+      return node;
+    }
+
+    @Override
+    public PlanNode visitMultiChildProcess(MultiChildProcessNode node, RewriterContext context) {
+      List<PlanNode> visitedChildren = new ArrayList<>();
+      for (int i = 0; i < node.getChildren().size(); i++) {
+        context.setParent(node);
+        visitedChildren.add(node.getChildren().get(i).accept(this, context));
+      }
+      node.setChildren(visitedChildren);
       return node;
     }
 
     @Override
     public PlanNode visitLimit(LimitNode limitNode, RewriterContext rewriterContext) {
-      PlanNode parent = rewriterContext.getParent();
 
       if (limitNode.getChild() instanceof OffsetNode) {
         rewriterContext.setParent(limitNode);
@@ -114,16 +136,16 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
       }
 
       if (limitNode.getChild() instanceof SortNode) {
-        return rewriterContext.returnSortNode(limitNode, parent);
+        return rewriterContext.returnSortNode(limitNode);
       } else if (limitNode.getChild() instanceof MergeSortNode) {
-        return rewriterContext.returnMergeSortNode(limitNode, parent);
+        return rewriterContext.returnMergeSortNode(limitNode);
       } else if (limitNode.getChild() instanceof TransformNode
           && !(limitNode.getChild() instanceof FilterNode)) {
-        return rewriterContext.returnTransformNodeFillNode(limitNode, parent);
+        return rewriterContext.returnTransformNodeFillNode(limitNode);
       } else if (limitNode.getChild() instanceof FillNode
           && !LINEAR.equals(
               ((FillNode) limitNode.getChild()).getFillDescriptor().getFillPolicy())) {
-        return rewriterContext.returnTransformNodeFillNode(limitNode, parent);
+        return rewriterContext.returnTransformNodeFillNode(limitNode);
       }
 
       return limitNode;
@@ -180,7 +202,7 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
       return this.mppQueryContext;
     }
 
-    private PlanNode returnSortNode(LimitNode limitNode, PlanNode parent) {
+    private PlanNode returnSortNode(LimitNode limitNode) {
       SortNode sortNode = (SortNode) limitNode.getChild();
       TopKNode topKNode =
           new TopKNode(
@@ -190,15 +212,10 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
               sortNode.getOutputColumnNames());
       topKNode.setChildren(sortNode.getChildren());
 
-      if (parent != null) {
-        ((SingleChildProcessNode) parent).setChild(topKNode);
-        return parent;
-      } else {
-        return topKNode;
-      }
+      return topKNode;
     }
 
-    private PlanNode returnMergeSortNode(LimitNode limitNode, PlanNode parent) {
+    private PlanNode returnMergeSortNode(LimitNode limitNode) {
       MergeSortNode mergeSortNode = (MergeSortNode) limitNode.getChild();
       TopKNode topKNode =
           new TopKNode(
@@ -208,15 +225,10 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
               mergeSortNode.getOutputColumnNames());
       topKNode.setChildren(mergeSortNode.getChildren());
 
-      if (parent != null) {
-        ((SingleChildProcessNode) parent).setChild(topKNode);
-        return parent;
-      } else {
-        return topKNode;
-      }
+      return topKNode;
     }
 
-    private PlanNode returnTransformNodeFillNode(LimitNode limitNode, PlanNode parent) {
+    private PlanNode returnTransformNodeFillNode(LimitNode limitNode) {
       SingleChildProcessNode singleNode = (SingleChildProcessNode) limitNode.getChild();
       if (singleNode.getChild() instanceof SortNode) {
         SortNode sortNode = (SortNode) singleNode.getChild();
@@ -229,12 +241,7 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
         topKNode.setChildren(sortNode.getChildren());
         singleNode.setChild(topKNode);
 
-        if (parent != null) {
-          ((SingleChildProcessNode) parent).setChild(singleNode);
-          return parent;
-        } else {
-          return singleNode;
-        }
+        return singleNode;
       } else if (singleNode.getChild() instanceof MergeSortNode) {
         MergeSortNode mergeSortNode = (MergeSortNode) singleNode.getChild();
         TopKNode topKNode =
@@ -246,12 +253,7 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
         topKNode.setChildren(mergeSortNode.getChildren());
         singleNode.setChild(topKNode);
 
-        if (parent != null) {
-          ((SingleChildProcessNode) parent).setChild(singleNode);
-          return parent;
-        } else {
-          return singleNode;
-        }
+        return singleNode;
       }
 
       return limitNode;
