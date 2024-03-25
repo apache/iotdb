@@ -58,22 +58,14 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
 
   /////////////////////////////// ctor ///////////////////////////////
 
-  public SubscriptionPullConsumer(SubscriptionPullConsumer.Builder builder)
-      throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
+  public SubscriptionPullConsumer(SubscriptionPullConsumer.Builder builder) {
     super(builder);
 
     this.autoCommit = builder.autoCommit;
     this.autoCommitInterval = builder.autoCommitInterval;
-
-    if (autoCommit) {
-      launchAutoCommitWorker();
-    }
-
-    isClosed = false;
   }
 
-  public SubscriptionPullConsumer(Properties config)
-      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+  public SubscriptionPullConsumer(Properties config) {
     this(
         config,
         (Boolean)
@@ -85,12 +77,18 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
                 ConsumerConstant.AUTO_COMMIT_INTERVAL_DEFAULT_VALUE));
   }
 
-  private SubscriptionPullConsumer(Properties config, boolean autoCommit, int autoCommitInterval)
-      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+  private SubscriptionPullConsumer(Properties config, boolean autoCommit, int autoCommitInterval) {
     super(new Builder().autoCommit(autoCommit).autoCommitInterval(autoCommitInterval), config);
 
     this.autoCommit = autoCommit;
     this.autoCommitInterval = autoCommitInterval;
+  }
+
+  /////////////////////////////// APIs ///////////////////////////////
+
+  public void open()
+      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+    super.open();
 
     if (autoCommit) {
       launchAutoCommitWorker();
@@ -99,7 +97,28 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
     isClosed = false;
   }
 
-  /////////////////////////////// APIs ///////////////////////////////
+  @Override
+  public void close() throws IoTDBConnectionException {
+    if (isClosed) {
+      return;
+    }
+
+    try {
+      if (autoCommit) {
+        workerExecutor.shutdown();
+        workerExecutor = null;
+        // commit all uncommitted messages
+        commitAllUncommittedMessages();
+      }
+      super.close();
+    } finally {
+      isClosed = true;
+    }
+  }
+
+  public boolean isClosed() {
+    return isClosed;
+  }
 
   public List<SubscriptionMessage> poll(Duration timeout)
       throws TException, IOException, StatementExecutionException {
@@ -146,29 +165,6 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
     }
   }
 
-  @Override
-  public void close() throws IoTDBConnectionException {
-    if (isClosed) {
-      return;
-    }
-
-    try {
-      if (autoCommit) {
-        workerExecutor.shutdown();
-        workerExecutor = null;
-        // commit all uncommitted messages
-        commitAllUncommittedMessages();
-      }
-      super.close();
-    } finally {
-      isClosed = true;
-    }
-  }
-
-  public boolean isClosed() {
-    return isClosed;
-  }
-
   /////////////////////////////// utility ///////////////////////////////
 
   private void commitSyncInternal(
@@ -205,7 +201,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
               }
               return t;
             });
-    workerExecutor.scheduleWithFixedDelay(this, 0, autoCommitInterval, TimeUnit.MILLISECONDS);
+    workerExecutor.scheduleAtFixedRate(this, 0, autoCommitInterval, TimeUnit.MILLISECONDS);
   }
 
   private void commitAllUncommittedMessages() {
@@ -261,8 +257,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
     }
 
     @Override
-    public SubscriptionPullConsumer buildPullConsumer()
-        throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
+    public SubscriptionPullConsumer buildPullConsumer() {
       return new SubscriptionPullConsumer(this);
     }
 

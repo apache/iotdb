@@ -98,6 +98,7 @@ public class IoTDBSubscriptionBasicIT {
             .consumerId("c1")
             .consumerGroupId("cg1")
             .buildPullConsumer()) {
+      consumer.open();
       consumer.subscribe("topic1");
       while (true) {
         Thread.sleep(1000); // wait some time
@@ -155,6 +156,7 @@ public class IoTDBSubscriptionBasicIT {
               .consumerId("c1")
               .consumerGroupId("cg1")
               .buildPullConsumer();
+      consumer.open();
       consumer.subscribe("topic1");
       while (true) {
         Thread.sleep(1000); // wait some time
@@ -215,6 +217,7 @@ public class IoTDBSubscriptionBasicIT {
             .consumerId("c1")
             .consumerGroupId("cg1")
             .buildPullConsumer()) {
+      consumer.open();
       while (true) {
         Thread.sleep(1000); // wait some time
         List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(100));

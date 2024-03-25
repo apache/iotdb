@@ -40,11 +40,15 @@ import java.util.stream.Collectors;
 
 public abstract class SubscriptionConsumer implements AutoCloseable {
 
-  protected final String consumerId;
-  protected final String consumerGroupId;
+  private final TEndPoint defaultEndPoint;
+  private final String username;
+  private final String password;
 
-  private final Map<Integer, SubscriptionProvider> subscriptionProviders;
-  private final SubscriptionProvider defaultSubscriptionProvider;
+  private final String consumerId;
+  private final String consumerGroupId;
+
+  private Map<Integer, SubscriptionProvider> subscriptionProviders;
+  private SubscriptionProvider defaultSubscriptionProvider;
 
   private boolean isClosed = true;
 
@@ -58,42 +62,16 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// ctor ///////////////////////////////
 
-  protected SubscriptionConsumer(Builder builder)
-      throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
+  protected SubscriptionConsumer(Builder builder) {
+    this.defaultEndPoint = new TEndPoint(builder.host, builder.port);
+    this.username = builder.username;
+    this.password = builder.password;
+
     this.consumerId = builder.consumerId;
     this.consumerGroupId = builder.consumerGroupId;
-
-    TEndPoint defaultEndPoint = new TEndPoint(builder.host, builder.port);
-
-    this.subscriptionProviders = new HashMap<>();
-    this.defaultSubscriptionProvider =
-        new SubscriptionProvider(
-            defaultEndPoint,
-            builder.username,
-            builder.password,
-            builder.consumerId,
-            builder.consumerGroupId);
-
-    Map<Integer, TEndPoint> endPoints = defaultSubscriptionProvider.handshake();
-    for (Map.Entry<Integer, TEndPoint> entry : endPoints.entrySet()) {
-      // TODO: Avoid creating two identical targets for SubscriptionProvider by distinguishing
-      // between localhost, 0.0.0.0, and 127.0.0.1.
-      SubscriptionProvider subscriptionProvider =
-          new SubscriptionProvider(
-              entry.getValue(),
-              builder.username,
-              builder.password,
-              builder.consumerId,
-              builder.consumerGroupId);
-      subscriptionProvider.handshake();
-      subscriptionProviders.put(entry.getKey(), subscriptionProvider);
-    }
-
-    isClosed = false;
   }
 
-  protected SubscriptionConsumer(Builder builder, Properties config)
-      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+  protected SubscriptionConsumer(Builder builder, Properties config) {
     this(
         builder
             .host(
@@ -113,6 +91,26 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   /////////////////////////////// APIs ///////////////////////////////
+
+  public void open()
+      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+    subscriptionProviders = new HashMap<>();
+    defaultSubscriptionProvider =
+        new SubscriptionProvider(defaultEndPoint, username, password, consumerId, consumerGroupId);
+
+    Map<Integer, TEndPoint> endPoints = defaultSubscriptionProvider.handshake();
+    for (Map.Entry<Integer, TEndPoint> entry : endPoints.entrySet()) {
+      // TODO: Avoid creating two identical targets for SubscriptionProvider by distinguishing
+      // between localhost, 0.0.0.0, and 127.0.0.1.
+      SubscriptionProvider subscriptionProvider =
+          new SubscriptionProvider(
+              entry.getValue(), username, password, consumerId, consumerGroupId);
+      subscriptionProvider.handshake();
+      subscriptionProviders.put(entry.getKey(), subscriptionProvider);
+    }
+
+    isClosed = false;
+  }
 
   @Override
   public void close() throws IoTDBConnectionException {
@@ -221,10 +219,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       return this;
     }
 
-    public abstract SubscriptionPullConsumer buildPullConsumer()
-        throws IoTDBConnectionException, TException, IOException, StatementExecutionException;
+    public abstract SubscriptionPullConsumer buildPullConsumer();
 
-    public abstract SubscriptionPushConsumer buildPushConsumer()
-        throws IoTDBConnectionException, TException, IOException, StatementExecutionException;
+    public abstract SubscriptionPushConsumer buildPushConsumer();
   }
 }

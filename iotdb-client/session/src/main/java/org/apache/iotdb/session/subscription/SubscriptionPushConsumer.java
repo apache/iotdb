@@ -19,18 +19,12 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.SubscriptionException;
 
-import org.apache.thrift.TException;
-
-import java.io.IOException;
-
+// TODO
 public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
-  protected SubscriptionPushConsumer(Builder builder)
-      throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
+  protected SubscriptionPushConsumer(Builder builder) {
     super(builder);
   }
 
@@ -43,8 +37,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
 
     @Override
-    public SubscriptionPushConsumer buildPushConsumer()
-        throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
+    public SubscriptionPushConsumer buildPushConsumer() {
       return new SubscriptionPushConsumer(this);
     }
   }

@@ -147,6 +147,7 @@ public class IoTDBSubscriptionConsumerGroupIT {
             .consumerId(consumerId)
             .consumerGroupId(consumerGroupId)
             .buildPullConsumer();
+    consumer.open();
     consumer.subscribe(topicNames);
     return consumer;
   }

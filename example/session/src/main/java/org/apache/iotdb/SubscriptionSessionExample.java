@@ -78,6 +78,7 @@ public class SubscriptionSessionExample {
     config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
     config.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
     try (SubscriptionPullConsumer consumer = new SubscriptionPullConsumer(config)) {
+      consumer.open();
       consumer.subscribe("topic1");
       while (true) {
         Thread.sleep(1000); // wait some time
@@ -93,7 +94,7 @@ public class SubscriptionSessionExample {
             System.out.println(dataSet.next());
           }
         }
-        consumer.commitSync(messages);
+        // consumer.commitSync(messages);
         consumer.unsubscribe("topic1");
       }
     }
@@ -104,6 +105,7 @@ public class SubscriptionSessionExample {
             .consumerId("c2")
             .consumerGroupId("cg2")
             .buildPullConsumer()) {
+      consumer.open();
       consumer.subscribe("topic2");
       while (true) {
         Thread.sleep(1000); // wait some time
