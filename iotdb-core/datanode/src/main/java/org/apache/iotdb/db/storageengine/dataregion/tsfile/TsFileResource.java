@@ -404,7 +404,7 @@ public class TsFileResource {
     return timeIndex.getMinStartTime();
   }
 
-  /** open file's end time is Long.MIN_VALUE */
+  /** Open file's end time is Long.MIN_VALUE */
   public long getFileEndTime() {
     return timeIndex.getMaxEndTime();
   }

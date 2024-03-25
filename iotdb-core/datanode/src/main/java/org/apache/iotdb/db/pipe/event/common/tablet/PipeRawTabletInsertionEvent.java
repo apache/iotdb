@@ -40,12 +40,14 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   private Tablet tablet;
   private final boolean isAligned;
 
-  private EnrichedEvent sourceEvent;
+  private final EnrichedEvent sourceEvent;
   private boolean needToReport;
 
   private PipeTabletMemoryBlock allocatedMemoryBlock;
 
   private TabletInsertionDataContainer dataContainer;
+
+  private ProgressIndex overridingProgressIndex;
 
   private PipeRawTabletInsertionEvent(
       Tablet tablet,
@@ -109,7 +111,6 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     allocatedMemoryBlock.close();
     // Actually release the occupied memory.
     tablet = null;
-    sourceEvent = null;
     dataContainer = null;
     return true;
   }
@@ -122,7 +123,23 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   @Override
+  public void bindProgressIndex(ProgressIndex overridingProgressIndex) {
+    // Normally not all events need to report progress, but if the overriddenProgressIndex
+    // is given, indicating that the progress needs to be reported.
+    if (Objects.nonNull(overridingProgressIndex)) {
+      markAsNeedToReport();
+    }
+
+    this.overridingProgressIndex = overridingProgressIndex;
+  }
+
+  @Override
   public ProgressIndex getProgressIndex() {
+    // If the overriddenProgressIndex is given, ignore the sourceEvent's progressIndex.
+    if (Objects.nonNull(overridingProgressIndex)) {
+      return overridingProgressIndex;
+    }
+
     return sourceEvent != null ? sourceEvent.getProgressIndex() : MinimumProgressIndex.INSTANCE;
   }
 
@@ -152,7 +169,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
-    long[] timestamps = tablet.timestamps;
+    final long[] timestamps = tablet.timestamps;
     if (Objects.isNull(timestamps) || timestamps.length == 0) {
       return false;
     }
