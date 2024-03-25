@@ -179,7 +179,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       createConsumer(consumerConfig);
     } else {
       LOGGER.info(
-          "Subscription: Detect the same consumer {} when handshaking, skip the creation of consumer.",
+          "Subscription: The consumer {} has already existed when handshaking, skip creating consumer.",
           consumerConfig);
     }
 
@@ -438,8 +438,15 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       unsubscribe(consumerConfig, topics);
     }
 
-    // drop consumer
-    dropConsumer(consumerConfig);
+    // drop consumer if existed
+    if (SubscriptionAgent.consumer()
+        .isConsumerExisted(consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId())) {
+      dropConsumer(consumerConfig);
+    } else {
+      LOGGER.info(
+          "Subscription: The consumer {} does not existed when closing, skip dropping consumer.",
+          consumerConfig);
+    }
 
     LOGGER.info("Subscription: consumer {} close successfully", consumerConfig);
     return PipeSubscribeCloseResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);

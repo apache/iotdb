@@ -37,13 +37,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.SortedMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class SubscriptionPullConsumer extends SubscriptionConsumer {
+public class SubscriptionPullConsumer extends SubscriptionConsumer implements Runnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPullConsumer.class);
 
@@ -51,7 +52,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   private final int autoCommitInterval;
 
   private ScheduledExecutorService workerExecutor;
-  private ConcurrentLinkedQueue<SubscriptionMessage> uncommittedMessages;
+  private SortedMap<Long, List<SubscriptionMessage>> uncommittedMessages;
 
   private boolean isClosed = true;
 
@@ -65,7 +66,6 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     this.autoCommitInterval = builder.autoCommitInterval;
 
     if (autoCommit) {
-      this.uncommittedMessages = new ConcurrentLinkedQueue<>();
       launchAutoCommitWorker();
     }
 
@@ -93,7 +93,6 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     this.autoCommitInterval = autoCommitInterval;
 
     if (autoCommit) {
-      this.uncommittedMessages = new ConcurrentLinkedQueue<>();
       launchAutoCommitWorker();
     }
 
@@ -118,7 +117,13 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
                     new SubscriptionMessage(new SubscriptionSessionDataSet(enrichedTablets)))
             .collect(Collectors.toList());
     if (autoCommit) {
-      messages.forEach((message) -> uncommittedMessages.offer(message));
+      long currentTimestamp = System.currentTimeMillis();
+      long index = currentTimestamp / autoCommitInterval;
+      if (currentTimestamp % autoCommitInterval == 0) {
+        index -= 1;
+      }
+      // TODO: thread-safe
+      uncommittedMessages.computeIfAbsent(index, o -> new ArrayList<>()).addAll(messages);
     }
     return messages;
   }
@@ -151,7 +156,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       if (autoCommit) {
         workerExecutor.shutdown();
         workerExecutor = null;
-        // TODO: commit all uncommitted message
+        // commit all uncommitted messages
+        commitAllUncommittedMessages();
       }
       super.close();
     } finally {
@@ -178,7 +184,10 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     }
   }
 
+  /////////////////////////////// auto commit ///////////////////////////////
+
   private void launchAutoCommitWorker() {
+    this.uncommittedMessages = new ConcurrentSkipListMap<>();
     this.workerExecutor =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
@@ -196,12 +205,41 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
               }
               return t;
             });
-    workerExecutor.scheduleWithFixedDelay(
-        new SubscriptionAutoCommitWorker(this), 0, autoCommitInterval, TimeUnit.MILLISECONDS);
+    workerExecutor.scheduleWithFixedDelay(this, 0, autoCommitInterval, TimeUnit.MILLISECONDS);
   }
 
-  ConcurrentLinkedQueue<SubscriptionMessage> getUncommittedMessages() {
-    return uncommittedMessages;
+  private void commitAllUncommittedMessages() {
+    for (Map.Entry<Long, List<SubscriptionMessage>> entry : uncommittedMessages.entrySet()) {
+      try {
+        commitSync(entry.getValue());
+        uncommittedMessages.remove(entry.getKey());
+      } catch (TException | IOException | StatementExecutionException e) {
+        LOGGER.warn("something unexpected happened when commit messages during close", e);
+      }
+    }
+  }
+
+  @Override
+  public void run() {
+    if (isClosed()) {
+      return;
+    }
+
+    long currentTimestamp = System.currentTimeMillis();
+    long index = currentTimestamp / autoCommitInterval;
+    if (currentTimestamp % autoCommitInterval == 0) {
+      index -= 1;
+    }
+
+    for (Map.Entry<Long, List<SubscriptionMessage>> entry :
+        uncommittedMessages.headMap(index).entrySet()) {
+      try {
+        commitSync(entry.getValue());
+        uncommittedMessages.remove(entry.getKey());
+      } catch (TException | IOException | StatementExecutionException e) {
+        LOGGER.warn("something unexpected happened when auto commit messages...", e);
+      }
+    }
   }
 
   /////////////////////////////// builder ///////////////////////////////
@@ -217,6 +255,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     }
 
     public Builder autoCommitInterval(int autoCommitInterval) {
+      // TODO: set min interval
       this.autoCommitInterval = autoCommitInterval;
       return this;
     }
