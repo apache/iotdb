@@ -114,7 +114,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
       pipeRuntimeCoordinator.parseHeartbeat(nodeId, heartbeatResp.getPipeMetaList());
     }
     if (heartbeatResp.isSetConfirmedConfigNodeEndPoints()) {
-      loadCache.updateConfirmedConfigNodeLocations(
+      loadCache.updateConfirmedConfigNodeEndPoints(
           nodeId, heartbeatResp.getConfirmedConfigNodeEndPoints());
     }
   }

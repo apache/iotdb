@@ -610,7 +610,7 @@ public class LoadCache {
     return regionRouteCacheMap.values().stream().anyMatch(RegionRouteCache::isRegionGroupUnready);
   }
 
-  public void updateConfirmedConfigNodeLocations(
+  public void updateConfirmedConfigNodeEndPoints(
       int dataNodeId, Set<TEndPoint> configNodeEndPoints) {
     confirmedConfigNodeMap.put(dataNodeId, configNodeEndPoints);
   }
