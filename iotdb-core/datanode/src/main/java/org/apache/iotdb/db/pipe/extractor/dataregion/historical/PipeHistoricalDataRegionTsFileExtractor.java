@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.historical;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
@@ -107,7 +108,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public void validate(PipeParameterValidator validator) {
-    PipeParameters parameters = validator.getParameters();
+    final PipeParameters parameters = validator.getParameters();
 
     if (parameters.hasAnyAttributes(
         SOURCE_START_TIME_KEY,
@@ -187,7 +188,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
               Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
               EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE);
     } catch (Exception e) {
-      // compatible with the current validation framework
+      // Compatible with the current validation framework
       throw new PipeParameterNotValidException(e.getMessage());
     }
   }
@@ -364,10 +365,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                         // Some resource may not be closed due to the control of
                         // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
                         resource.isClosed()
-                            // Some different tsFiles may share the same max progressIndex, thus
-                            // tsFiles with an "equals" max progressIndex must be transmitted to
-                            // avoid data loss
-                            && !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+                            && mayTsFileContainUnprocessedData(resource)
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
@@ -380,10 +378,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                         // Some resource may not be closed due to the control of
                         // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
                         resource.isClosed()
-                            // Some different tsFiles may share the same max progressIndex, thus
-                            // tsFiles with an "equals" max progressIndex must be transmitted to
-                            // avoid data loss
-                            && !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+                            && mayTsFileContainUnprocessedData(resource)
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
@@ -401,7 +396,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             });
 
         resourceList.sort(
-            (o1, o2) -> o1.getMaxProgressIndex().topologicalCompareTo(o2.getMaxProgressIndex()));
+            (o1, o2) ->
+                startIndex instanceof TimeWindowStateProgressIndex
+                    ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
+                    : o1.getMaxProgressIndex().topologicalCompareTo(o2.getMaxProgressIndex()));
         pendingQueue = new ArrayDeque<>(resourceList);
 
         LOGGER.info(
@@ -422,6 +420,15 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     } finally {
       dataRegion.writeUnlock();
     }
+  }
+
+  private boolean mayTsFileContainUnprocessedData(TsFileResource resource) {
+    return startIndex instanceof TimeWindowStateProgressIndex
+        // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
+        ? ((TimeWindowStateProgressIndex) startIndex).getMinTime() <= resource.getFileEndTime()
+        // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
+        // "equals" max progressIndex must be transmitted to avoid data loss
+        : !startIndex.isAfter(resource.getMaxProgressIndexAfterClose());
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(TsFileResource resource) {

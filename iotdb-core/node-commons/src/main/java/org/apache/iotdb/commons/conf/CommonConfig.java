@@ -225,6 +225,16 @@ public class CommonConfig {
   private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
 
+  private int subscriptionSubtaskExecutorMaxThreadNum =
+      Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+  private int subscriptionMaxTabletsPerPrefetching = 16;
+  private int subscriptionPollMaxBlockingTimeMs = 500;
+  private int subscriptionSerializeMaxBlockingTimeMs = 100;
+  private int subscriptionClearMaxBlockingTimeMs = 100;
+  private long subscriptionLaunchRetryIntervalMs = 1000;
+  private int subscriptionClearCommittedEventIntervalSeconds = 30;
+  private int subscriptionRecycleUncommittedEventIntervalSeconds = 240;
+
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
 
@@ -931,6 +941,79 @@ public class CommonConfig {
 
   public void setPipeLeaderCacheMemoryUsagePercentage(float pipeLeaderCacheMemoryUsagePercentage) {
     this.pipeLeaderCacheMemoryUsagePercentage = pipeLeaderCacheMemoryUsagePercentage;
+  }
+
+  public int getSubscriptionSubtaskExecutorMaxThreadNum() {
+    return subscriptionSubtaskExecutorMaxThreadNum;
+  }
+
+  public void setSubscriptionSubtaskExecutorMaxThreadNum(
+      int subscriptionSubtaskExecutorMaxThreadNum) {
+    this.subscriptionSubtaskExecutorMaxThreadNum =
+        Math.min(
+            subscriptionSubtaskExecutorMaxThreadNum,
+            Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+  }
+
+  public int getSubscriptionMaxTabletsPerPrefetching() {
+    return subscriptionMaxTabletsPerPrefetching;
+  }
+
+  public void setSubscriptionMaxTabletsPerPrefetching(int subscriptionMaxTabletsPerPrefetching) {
+    this.subscriptionMaxTabletsPerPrefetching = subscriptionMaxTabletsPerPrefetching;
+  }
+
+  public int getSubscriptionPollMaxBlockingTimeMs() {
+    return subscriptionPollMaxBlockingTimeMs;
+  }
+
+  public void setSubscriptionPollMaxBlockingTimeMs(int subscriptionPollMaxBlockingTimeMs) {
+    this.subscriptionPollMaxBlockingTimeMs = subscriptionPollMaxBlockingTimeMs;
+  }
+
+  public int getSubscriptionSerializeMaxBlockingTimeMs() {
+    return subscriptionSerializeMaxBlockingTimeMs;
+  }
+
+  public void setSubscriptionSerializeMaxBlockingTimeMs(
+      int subscriptionSerializeMaxBlockingTimeMs) {
+    this.subscriptionSerializeMaxBlockingTimeMs = subscriptionSerializeMaxBlockingTimeMs;
+  }
+
+  public int getSubscriptionClearMaxBlockingTimeMs() {
+    return subscriptionClearMaxBlockingTimeMs;
+  }
+
+  public void setSubscriptionClearMaxBlockingTimeMs(int subscriptionClearMaxBlockingTimeMs) {
+    this.subscriptionClearMaxBlockingTimeMs = subscriptionClearMaxBlockingTimeMs;
+  }
+
+  public long getSubscriptionLaunchRetryIntervalMs() {
+    return subscriptionLaunchRetryIntervalMs;
+  }
+
+  public void setSubscriptionLaunchRetryIntervalMs(long subscriptionLaunchRetryIntervalMs) {
+    this.subscriptionLaunchRetryIntervalMs = subscriptionLaunchRetryIntervalMs;
+  }
+
+  public int getSubscriptionClearCommittedEventIntervalSeconds() {
+    return subscriptionClearCommittedEventIntervalSeconds;
+  }
+
+  public void setSubscriptionClearCommittedEventIntervalSeconds(
+      int subscriptionClearCommittedEventIntervalSeconds) {
+    this.subscriptionClearCommittedEventIntervalSeconds =
+        subscriptionClearCommittedEventIntervalSeconds;
+  }
+
+  public int getSubscriptionRecycleUncommittedEventIntervalSeconds() {
+    return subscriptionRecycleUncommittedEventIntervalSeconds;
+  }
+
+  public void setSubscriptionRecycleUncommittedEventIntervalSeconds(
+      int subscriptionRecycleUncommittedEventIntervalSeconds) {
+    this.subscriptionRecycleUncommittedEventIntervalSeconds =
+        subscriptionRecycleUncommittedEventIntervalSeconds;
   }
 
   public String getSchemaEngineMode() {

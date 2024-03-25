@@ -126,7 +126,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     }
 
     try {
-      // in order to commit in order
+      // In order to commit in order
       if (isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty()) {
         doTransfer();
       }
@@ -160,7 +160,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   }
 
   private void doTransfer() {
-    Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
+    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
     try {
       resp = clientAndStatus.getLeft().pipeTransfer(tabletBatchBuilder.toTPipeTransferReq());
@@ -181,7 +181,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException {
-    InsertNode insertNode;
+    final InsertNode insertNode;
     Pair<IoTDBSyncClient, Boolean> clientAndStatus = null;
     final TPipeTransferResp resp;
 

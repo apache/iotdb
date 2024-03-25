@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.subscription.config;
+package org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate;
 
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.PlaceHolderProcessor;
 
-import java.util.Map;
-
-public class ConsumerConfig extends PipeParameters {
-  public ConsumerConfig(Map<String, String> attributes) {
-    super(attributes);
-  }
-}
+/**
+ * This class is a placeholder and should not be initialized. It represents the Aggregate processor.
+ * There is a real implementation in the server module but cannot be imported here. The pipe agent
+ * in the server module will replace this class with the real implementation when initializing the
+ * Down Sampling processor.
+ */
+public class AggregateProcessor extends PlaceHolderProcessor {}
