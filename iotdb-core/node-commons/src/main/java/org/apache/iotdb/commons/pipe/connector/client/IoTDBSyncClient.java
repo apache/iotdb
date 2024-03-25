@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.pipe.connector.client;
 
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
@@ -44,15 +44,15 @@ public class IoTDBSyncClient extends IClientRPCService.Client
             .getProtocolFactory()
             .getProtocol(
                 useSSL
-                    ? RpcTransportFactory.INSTANCE.getTransport(
+                    ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                         ipAddress,
                         port,
                         property.getConnectionTimeoutMs(),
                         trustStore,
                         trustStorePwd)
-                    : RpcTransportFactory.INSTANCE.getTransport(
+                    : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                         ipAddress, port, property.getConnectionTimeoutMs())));
-    TTransport transport = getInputProtocol().getTransport();
+    final TTransport transport = getInputProtocol().getTransport();
     if (!transport.isOpen()) {
       transport.open();
     }

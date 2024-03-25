@@ -104,18 +104,18 @@ public class UDTFConcat implements UDTF {
     int rowCount = columns[0].getPositionCount();
 
     Binary[][] inputFrame = new Binary[colCount][rowCount];
-    for (int i = 0; i < colCount; i++) {
+    for (int i = 0; i < colCount - 1; i++) {
       inputFrame[i] = columns[i].getBinaries();
     }
 
     boolean[][] isNullFrame = new boolean[colCount][rowCount];
-    for (int i = 0; i < colCount; i++) {
+    for (int i = 0; i < colCount - 1; i++) {
       isNullFrame[i] = columns[i].isNull();
     }
 
     for (int row = 0; row < rowCount; row++) {
       StringBuilder concatSeries = new StringBuilder();
-      for (int col = 0; col < colCount; col++) {
+      for (int col = 0; col < colCount - 1; col++) {
         if (isNullFrame[col][row]) {
           continue;
         }

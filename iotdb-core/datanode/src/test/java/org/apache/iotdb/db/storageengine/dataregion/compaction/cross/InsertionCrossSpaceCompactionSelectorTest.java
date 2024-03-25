@@ -32,6 +32,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -70,7 +72,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testSimpleInsertionCompaction() throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -100,7 +102,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testSimpleInsertionCompactionWithMultiUnseqFiles()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -134,7 +136,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testSimpleInsertionCompactionWithFirstUnseqFileCannotSelect()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -170,7 +172,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testSimpleInsertionCompactionWithFirstUnseqFileInvalid()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -204,7 +206,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testSimpleInsertionCompactionWithFirstTwoUnseqFileCannotSelect()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -244,7 +246,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testSimpleInsertionCompactionWithUnseqDeviceNotExistInSeqSpace()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1", d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1"), d2 = new PlainDeviceID("root.testsg.d2");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -274,7 +276,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testSimpleInsertionCompactionWithUnseqFileInsertFirstInSeqSpace()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -304,7 +306,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testSimpleInsertionCompactionWithUnseqFileInsertLastInSeqSpace()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -333,7 +335,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testSimpleInsertionCompactionWithCloseTimestamp() throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -360,7 +362,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testSimpleInsertionCompactionWithOverlap() throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -388,7 +390,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testSimpleInsertionCompactionWithPrevSeqFileInvalidCompactionCandidate()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -420,7 +422,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testSimpleInsertionCompactionWithNextSeqFileInvalidCompactionCandidate()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -451,7 +453,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testSimpleInsertionCompactionWithManySeqFiles() throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -489,9 +491,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionCompactionWithManySeqFilesManyDevices()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
-    String d3 = "root.testsg.d3";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -533,9 +535,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionCompactionWithManySeqFilesManyDevices2()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
-    String d3 = "root.testsg.d3";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -576,8 +578,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testInsertLast1() throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -610,8 +612,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testInsertLast2() throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -650,8 +652,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testInsertFirst() throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -679,9 +681,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionCompactionWithManySeqFilesManyDevices3()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
-    String d3 = "root.testsg.d3";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -723,9 +725,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionCompactionWithManySeqFilesManyDevices4()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
-    String d3 = "root.testsg.d3";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -769,9 +771,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionCompactionWithManySeqFilesManyDevices5()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
-    String d3 = "root.testsg.d3";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -815,9 +817,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionCompactionWithManySeqFilesManyDevices6()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
-    String d3 = "root.testsg.d3";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -857,9 +859,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionCompactionWithManySeqFilesManyDevicesWithOverlap()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
-    String d3 = "root.testsg.d3";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -902,8 +904,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testInsertionSelectorWithNoSeqFiles() throws MergeException, IOException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
 
     TsFileResource unseqResource1 = createTsFileResource("1-1-0-0.tsfile", false);
     unseqResource1.updateStartTime(d1, 10);
@@ -1027,8 +1029,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testInsertionSelectorWithNoUnseqFiles() throws MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -1065,8 +1067,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   // can be inserted into seq file list.
   @Test
   public void testInsertionSelectorWithOverlapUnseqFile() throws MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
 
     // 1. prevSeqFileIndex == nextSeqFileIndex
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
@@ -1127,11 +1129,11 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   // unseq file 1 is overlap, while unseq file 2 4 5 7 is nonOverlap
   @Test
   public void testInsertionSelectorWithNonOverlapUnseqFile() throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
-    String d3 = "root.testsg.d3";
-    String d4 = "root.testsg.d4";
-    String d5 = "root.testsg.d5";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
+    IDeviceID d4 = new PlainDeviceID("root.testsg.d4");
+    IDeviceID d5 = new PlainDeviceID("root.testsg.d5");
 
     TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -1340,9 +1342,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testInsertionIntoCompactingSeqFiles() throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
-    String d3 = "root.testsg.d3";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
 
     TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -1450,8 +1452,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testInsertionSelectorWithUnclosedSeqFile() throws MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -1533,8 +1535,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testInsertionSelectorWithUnclosedUnSeqFile() throws MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -1598,8 +1600,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionSelectorWithNoSeqFilesAndFileTimeIndex()
       throws MergeException, IOException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
 
     TsFileResource unseqResource1 = createTsFileResource("1-1-0-0.tsfile", false);
     unseqResource1.updateStartTime(d1, 10);
@@ -1725,8 +1727,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionSelectorWithNoUnseqFilesAndFileTimeIndex()
       throws MergeException, IOException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -1768,8 +1770,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionSelectorWithOverlapUnseqFileAndFileTimeIndex()
       throws MergeException, IOException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
 
     // 1. prevSeqFileIndex == nextSeqFileIndex
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
@@ -1842,11 +1844,11 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionSelectorWithNonOverlapUnseqFileAndFileTimeIndex()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
-    String d3 = "root.testsg.d3";
-    String d4 = "root.testsg.d4";
-    String d5 = "root.testsg.d5";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
+    IDeviceID d4 = new PlainDeviceID("root.testsg.d4");
+    IDeviceID d5 = new PlainDeviceID("root.testsg.d5");
 
     TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -2058,9 +2060,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionIntoCompactingSeqFilesAndFileTimeIndex()
       throws IOException, MergeException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
-    String d3 = "root.testsg.d3";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
 
     TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -2170,8 +2172,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionSelectorWithUnclosedSeqFileAndFileTimeIndex()
       throws MergeException, IOException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -2264,8 +2266,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionSelectorWithUnclosedUnSeqFileAndFileTimeIndex()
       throws MergeException, IOException {
-    String d1 = "root.testsg.d1";
-    String d2 = "root.testsg.d2";
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -2346,7 +2348,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   private void createTsFileByResource(TsFileResource resource) throws IOException {
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
-      for (String device : resource.getDevices()) {
+      for (IDeviceID device : resource.getDevices()) {
         // write d1
         tsFileIOWriter.startChunkGroup(device);
         MeasurementSchema schema =

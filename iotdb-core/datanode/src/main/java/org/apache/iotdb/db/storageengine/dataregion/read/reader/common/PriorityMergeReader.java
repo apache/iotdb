@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
@@ -36,16 +37,20 @@ public class PriorityMergeReader implements IPointReader {
 
   protected PriorityQueue<Element> heap;
 
+  protected long usedMemorySize = 0;
+
   public PriorityMergeReader() {
     heap =
         new PriorityQueue<>(
             (o1, o2) -> {
               int timeCompare =
-                  Long.compare(o1.timeValuePair.getTimestamp(), o2.timeValuePair.getTimestamp());
-              return timeCompare != 0 ? timeCompare : o2.priority.compareTo(o1.priority);
+                  Long.compare(
+                      o1.getTimeValuePair().getTimestamp(), o2.getTimeValuePair().getTimestamp());
+              return timeCompare != 0 ? timeCompare : o2.getPriority().compareTo(o1.getPriority());
             });
   }
 
+  @TestOnly
   public void addReader(IPointReader reader, long priority) throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(
@@ -58,8 +63,10 @@ public class PriorityMergeReader implements IPointReader {
   public void addReader(IPointReader reader, MergeReaderPriority priority, long endTime)
       throws IOException {
     if (reader.hasNextTimeValuePair()) {
-      heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
+      Element element = new Element(reader, reader.nextTimeValuePair(), priority);
+      heap.add(element);
       currentReadStopTime = Math.max(currentReadStopTime, endTime);
+      usedMemorySize += element.getReader().getUsedMemorySize();
     } else {
       reader.close();
     }
@@ -85,8 +92,10 @@ public class PriorityMergeReader implements IPointReader {
     }
     updateHeap(ret, topNext);
     if (topNext != null) {
-      top.timeValuePair = topNext;
+      top.setTimeValuePair(topNext);
       heap.add(top);
+    } else {
+      usedMemorySize -= top.getReader().getUsedMemorySize();
     }
     return ret;
   }
@@ -111,7 +120,8 @@ public class PriorityMergeReader implements IPointReader {
       Element e = heap.poll();
       fillNullValue(ret, e.getTimeValuePair());
       if (!e.hasNext()) {
-        e.reader.close();
+        usedMemorySize -= e.getReader().getUsedMemorySize();
+        e.getReader().close();
         continue;
       }
       e.next();
@@ -122,6 +132,7 @@ public class PriorityMergeReader implements IPointReader {
           e.next();
           heap.add(e);
         } else {
+          usedMemorySize -= e.getReader().getUsedMemorySize();
           // the chunk is end
           e.close();
         }
@@ -137,11 +148,17 @@ public class PriorityMergeReader implements IPointReader {
   }
 
   @Override
+  public long getUsedMemorySize() {
+    return usedMemorySize;
+  }
+
+  @Override
   public void close() throws IOException {
     while (!heap.isEmpty()) {
       Element e = heap.poll();
       e.close();
     }
+    usedMemorySize = 0;
   }
 
   public static class MergeReaderPriority implements Comparable<MergeReaderPriority> {

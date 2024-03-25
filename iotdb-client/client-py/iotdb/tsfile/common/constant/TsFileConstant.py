@@ -32,5 +32,4 @@ class TsFileConstant:
 
     VALUE_COLUMN_MASK = 0x40
 
-    def __ts_file_constant(self):
-        ...
+    def __ts_file_constant(self): ...

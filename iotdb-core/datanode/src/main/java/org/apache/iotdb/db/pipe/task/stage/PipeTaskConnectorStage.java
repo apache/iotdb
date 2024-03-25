@@ -30,9 +30,11 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public class PipeTaskConnectorStage extends PipeTaskStage {
 
-  private final String pipeName;
-  private final int regionId;
+  protected final String pipeName;
+  protected final long creationTime;
   protected final PipeParameters pipeConnectorParameters;
+  protected final int regionId;
+  protected final PipeConnectorSubtaskExecutor executor;
 
   protected String connectorSubtaskId;
 
@@ -43,16 +45,21 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
       int regionId,
       PipeConnectorSubtaskExecutor executor) {
     this.pipeName = pipeName;
-    this.regionId = regionId;
+    this.creationTime = creationTime;
     this.pipeConnectorParameters = pipeConnectorParameters;
+    this.regionId = regionId;
+    this.executor = executor;
 
-    connectorSubtaskId =
+    registerSubtask();
+  }
+
+  protected void registerSubtask() {
+    this.connectorSubtaskId =
         PipeConnectorSubtaskManager.instance()
             .register(
                 executor,
                 pipeConnectorParameters,
-                new PipeTaskConnectorRuntimeEnvironment(
-                    this.pipeName, creationTime, this.regionId));
+                new PipeTaskConnectorRuntimeEnvironment(pipeName, creationTime, regionId));
   }
 
   @Override

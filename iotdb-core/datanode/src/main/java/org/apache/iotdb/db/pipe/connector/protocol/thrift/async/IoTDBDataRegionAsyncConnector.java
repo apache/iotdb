@@ -113,7 +113,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     super.customize(parameters, configuration);
 
     // Disable batch mode for retry connector, in case retry events are never sent again
-    PipeParameters retryParameters = new PipeParameters(new HashMap<>(parameters.getAttribute()));
+    final PipeParameters retryParameters =
+        new PipeParameters(new HashMap<>(parameters.getAttribute()));
     retryParameters.getAttribute().put(SINK_IOTDB_BATCH_MODE_ENABLE_KEY, "false");
     retryParameters.getAttribute().put(CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY, "false");
     retryConnector.customize(retryParameters, configuration);

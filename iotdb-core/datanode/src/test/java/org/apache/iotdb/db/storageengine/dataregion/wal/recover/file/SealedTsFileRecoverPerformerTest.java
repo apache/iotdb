@@ -23,6 +23,8 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.TsFileUtilsForReco
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -56,8 +58,8 @@ import static org.junit.Assert.assertTrue;
 
 public class SealedTsFileRecoverPerformerTest {
   private static final String SG_NAME = "root.recover_sg";
-  private static final String DEVICE1_NAME = SG_NAME.concat(".d1");
-  private static final String DEVICE2_NAME = SG_NAME.concat(".d2");
+  private static final IDeviceID DEVICE1_NAME = new PlainDeviceID(SG_NAME.concat(".d1"));
+  private static final IDeviceID DEVICE2_NAME = new PlainDeviceID(SG_NAME.concat(".d2"));
   private static final String FILE_NAME =
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 0, 1);
   private TsFileResource tsFileResource;

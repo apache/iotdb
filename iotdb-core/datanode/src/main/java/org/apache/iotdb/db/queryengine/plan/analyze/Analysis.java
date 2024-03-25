@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -327,6 +328,13 @@ public class Analysis implements IAnalysis {
 
   public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {
     return dataPartition.getDataRegionReplicaSetWithTimeFilter(deviceName, globalTimeFilter);
+  }
+
+  public QueryStatement getQueryStatement() {
+    if (statement instanceof ExplainAnalyzeStatement) {
+      return ((ExplainAnalyzeStatement) statement).getQueryStatement();
+    }
+    return (QueryStatement) statement;
   }
 
   public Statement getStatement() {

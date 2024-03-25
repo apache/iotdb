@@ -50,6 +50,8 @@ import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -1839,7 +1841,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
     unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
-    for (String deviceID : lastSeqResource.getDevices()) {
+    for (IDeviceID deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
     }
     seqResources.remove(4);
@@ -1892,7 +1894,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
     unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
-    for (String deviceID : lastSeqResource.getDevices()) {
+    for (IDeviceID deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
     }
     seqResources.remove(4);
@@ -1938,7 +1940,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
     unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
-    for (String deviceID : lastSeqResource.getDevices()) {
+    for (IDeviceID deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
     }
     seqResources.remove(4);
@@ -1990,7 +1992,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
     unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
-    for (String deviceID : lastSeqResource.getDevices()) {
+    for (IDeviceID deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
     }
     seqResources.remove(4);
@@ -2043,7 +2045,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     TsFileResource unclosedUnSeqResource = new TsFileResource(unseqResources.get(1).getTsFile());
     unclosedUnSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastUnSeqResource = unseqResources.get(1);
-    for (String deviceID : lastUnSeqResource.getDevices()) {
+    for (IDeviceID deviceID : lastUnSeqResource.getDevices()) {
       unclosedUnSeqResource.updateStartTime(deviceID, lastUnSeqResource.getStartTime(deviceID));
       unclosedUnSeqResource.updateEndTime(deviceID, lastUnSeqResource.getEndTime(deviceID));
     }
@@ -2141,13 +2143,13 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     tsFileManager
         .getTsFileList(true)
         .get(0)
-        .updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1", 1100L);
+        .updateEndTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"), 1100L);
 
     // set the end time of d1 in the second seq file to 1200
     tsFileManager
         .getTsFileList(true)
         .get(1)
-        .updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1", 1200L);
+        .updateStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"), 1200L);
 
     for (int i = 1; i < seqResources.size(); i++) {
       tsFileManager.getTsFileList(true).get(i).degradeTimeIndex();

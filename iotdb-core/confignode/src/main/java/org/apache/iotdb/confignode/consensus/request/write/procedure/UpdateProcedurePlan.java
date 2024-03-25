@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.consensus.request.write.procedure;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import java.io.DataOutputStream;
@@ -31,13 +32,13 @@ import java.util.Objects;
 
 public class UpdateProcedurePlan extends ConfigPhysicalPlan {
 
-  private Procedure procedure;
+  private Procedure<ConfigNodeProcedureEnv> procedure;
 
-  public Procedure getProcedure() {
+  public Procedure<ConfigNodeProcedureEnv> getProcedure() {
     return procedure;
   }
 
-  public void setProcedure(Procedure procedure) {
+  public void setProcedure(Procedure<ConfigNodeProcedureEnv> procedure) {
     this.procedure = procedure;
   }
 
@@ -45,7 +46,7 @@ public class UpdateProcedurePlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.UpdateProcedure);
   }
 
-  public UpdateProcedurePlan(Procedure procedure) {
+  public UpdateProcedurePlan(Procedure<ConfigNodeProcedureEnv> procedure) {
     this();
     this.procedure = procedure;
   }

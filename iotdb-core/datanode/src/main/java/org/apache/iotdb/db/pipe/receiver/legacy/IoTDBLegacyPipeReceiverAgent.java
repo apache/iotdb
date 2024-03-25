@@ -180,7 +180,7 @@ public class IoTDBLegacyPipeReceiverAgent {
     // step2. deserialize PipeData
     PipeData pipeData;
     try {
-      int length = buff.capacity();
+      int length = buff.remaining();
       byte[] byteArray = new byte[length];
       buff.get(byteArray);
       pipeData = PipeData.createPipeData(byteArray);
@@ -288,7 +288,7 @@ public class IoTDBLegacyPipeReceiverAgent {
 
     // step3. append file
     try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw")) {
-      int length = buff.capacity();
+      int length = buff.remaining();
       randomAccessFile.seek(startIndex);
       byte[] byteArray = new byte[length];
       buff.get(byteArray);

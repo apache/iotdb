@@ -82,7 +82,7 @@ public class UDAFCount implements UDAF {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
       }
-      if (!column[1].isNull(i)) {
+      if (!column[0].isNull(i)) {
         countState.count++;
       }
     }
