@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -40,8 +41,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLe
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
-import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.BaseRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -258,11 +260,11 @@ public class IoTDBConfig {
 
   /** System directory, including version file for each database and metadata */
   private String systemDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
+      IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
   /** Schema directory, including storage set of values. */
   private String schemaDir =
-      IoTDBConstant.DEFAULT_BASE_DIR
+      IoTDBConstant.DN_DEFAULT_DATA_DIR
           + File.separator
           + IoTDBConstant.SYSTEM_FOLDER_NAME
           + File.separator
@@ -270,7 +272,7 @@ public class IoTDBConfig {
 
   /** Query directory, stores temporary files of query */
   private String queryDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
+      IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
 
   /** External lib directory, stores user-uploaded JAR files */
   private String extDir = IoTDBConstant.EXT_FOLDER_NAME;
@@ -307,7 +309,7 @@ public class IoTDBConfig {
 
   /** Tiered data directories. It can be settled as dataDirs = {{"data1"}, {"data2", "data3"}}; */
   private String[][] tierDataDirs = {
-    {IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME}
+    {IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME}
   };
 
   private String loadTsFileDir =
@@ -317,14 +319,14 @@ public class IoTDBConfig {
   private String multiDirStrategyClassName = null;
 
   private String ratisDataRegionSnapshotDir =
-      IoTDBConstant.DEFAULT_BASE_DIR
+      IoTDBConstant.DN_DEFAULT_DATA_DIR
           + File.separator
           + IoTDBConstant.DATA_FOLDER_NAME
           + File.separator
           + IoTDBConstant.SNAPSHOT_FOLDER_NAME;
 
   /** Consensus directory. */
-  private String consensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
+  private String consensusDir = IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + "consensus";
 
   private String dataRegionConsensusDir = consensusDir + File.separator + "data_region";
 
@@ -332,7 +334,7 @@ public class IoTDBConfig {
 
   /** temp result directory for sortOperator */
   private String sortTmpDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+      IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;
@@ -347,6 +349,8 @@ public class IoTDBConfig {
   private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
   private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+
+  private int mergeThresholdOfExplainAnalyze = 10;
 
   private int modeMapSizeThreshold = 10000;
 
@@ -492,8 +496,8 @@ public class IoTDBConfig {
   /** The max candidate file num in one cross space compaction task */
   private int fileLimitPerCrossTask = 500;
 
-  /** The max candidate file num in cross space compaction */
-  private int totalFileLimitForCrossTask = 5000;
+  /** The max candidate file num in compaction */
+  private int totalFileLimitForCompactionTask = 5000;
 
   /** The max total size of candidate files in one cross space compaction task */
   private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
@@ -516,10 +520,13 @@ public class IoTDBConfig {
    */
   private int subCompactionTaskNum = 4;
 
+  /** The number of threads to be set up to select compaction task. */
+  private int compactionScheduleThreadNum = 4;
+
   private boolean enableTsFileValidation = false;
 
   /** The size of candidate compaction task queue. */
-  private int candidateCompactionTaskQueueSize = 50;
+  private int candidateCompactionTaskQueueSize = 200;
 
   /**
    * When the size of the mods file corresponding to TsFile exceeds this value, inner compaction
@@ -593,9 +600,6 @@ public class IoTDBConfig {
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = ClientRPCServiceImpl.class.getName();
 
-  /** indicate whether current mode is cluster */
-  private boolean isClusterMode = false;
-
   /**
    * The cluster name that this DataNode joined in the cluster mode. The default value
    * "defaultCluster" will be changed after join cluster
@@ -603,21 +607,27 @@ public class IoTDBConfig {
   private String clusterName = "defaultCluster";
 
   /**
+   * The cluster ID that this DataNode joined in the cluster mode. DataNode will fetch cluster ID
+   * from ConfigNode and cache it here when first time use it.
+   */
+  private String clusterId = "";
+
+  /**
    * The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
    * join cluster
    */
   private int dataNodeId = -1;
 
-  /** whether use chunkBufferPool. */
+  /** Whether to use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
 
   /** Switch of creating schema automatically */
   private boolean enableAutoCreateSchema = true;
 
-  /** register time series as which type when receiving boolean string "true" or "false" */
+  /** Register time series as which type when receiving boolean string "true" or "false" */
   private TSDataType booleanStringInferType = TSDataType.BOOLEAN;
 
-  /** register time series as which type when receiving an integer string "67" */
+  /** Register time series as which type when receiving an integer string "67" */
   private TSDataType integerStringInferType = TSDataType.FLOAT;
 
   /**
@@ -1534,21 +1544,20 @@ public class IoTDBConfig {
   }
 
   public void checkMultiDirStrategyClassName() {
-    if (isClusterMode) {
-      for (String multiDirStrategy : CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES) {
-        // If the multiDirStrategyClassName is one of cluster allowed strategy, the check is passed.
-        if (multiDirStrategyClassName.equals(multiDirStrategy)
-            || multiDirStrategyClassName.equals(MULTI_DIR_STRATEGY_PREFIX + multiDirStrategy)) {
-          return;
-        }
+    confirmMultiDirStrategy();
+    for (String multiDirStrategy : CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES) {
+      // If the multiDirStrategyClassName is one of cluster allowed strategy, the check is passed.
+      if (multiDirStrategyClassName.equals(multiDirStrategy)
+          || multiDirStrategyClassName.equals(MULTI_DIR_STRATEGY_PREFIX + multiDirStrategy)) {
+        return;
       }
-      String msg =
-          String.format(
-              "Cannot set multi_dir_strategy to %s, because cluster mode only allows %s.",
-              multiDirStrategyClassName, Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
-      logger.error(msg);
-      throw new RuntimeException(msg);
     }
+    String msg =
+        String.format(
+            "Cannot set multi_dir_strategy to %s, because cluster mode only allows %s.",
+            multiDirStrategyClassName, Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
+    logger.error(msg);
+    throw new RuntimeException(msg);
   }
 
   public int getBatchSize() {
@@ -1592,6 +1601,14 @@ public class IoTDBConfig {
 
   public int getDegreeOfParallelism() {
     return degreeOfParallelism;
+  }
+
+  public void setMergeThresholdOfExplainAnalyze(int mergeThresholdOfExplainAnalyze) {
+    this.mergeThresholdOfExplainAnalyze = mergeThresholdOfExplainAnalyze;
+  }
+
+  public int getMergeThresholdOfExplainAnalyze() {
+    return mergeThresholdOfExplainAnalyze;
   }
 
   public int getMaxAllowedConcurrentQueries() {
@@ -2496,7 +2513,7 @@ public class IoTDBConfig {
 
   public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
-    RpcTransportFactory.setThriftMaxFrameSize(this.thriftMaxFrameSize);
+    BaseRpcTransportFactory.setThriftMaxFrameSize(this.thriftMaxFrameSize);
   }
 
   public int getThriftDefaultBufferSize() {
@@ -2505,7 +2522,7 @@ public class IoTDBConfig {
 
   public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
-    RpcTransportFactory.setDefaultBufferCapacity(this.thriftDefaultBufferSize);
+    BaseRpcTransportFactory.setDefaultBufferCapacity(this.thriftDefaultBufferSize);
   }
 
   public int getCheckPeriodWhenInsertBlocked() {
@@ -2586,7 +2603,7 @@ public class IoTDBConfig {
 
   public void setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
-    RpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
+    ZeroCopyRpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
   }
 
   public int getMlogBufferSize() {
@@ -2781,8 +2798,8 @@ public class IoTDBConfig {
     return fileLimitPerCrossTask;
   }
 
-  public int getTotalFileLimitForCrossTask() {
-    return totalFileLimitForCrossTask;
+  public int getTotalFileLimitForCompactionTask() {
+    return totalFileLimitForCompactionTask;
   }
 
   public void setFileLimitPerCrossTask(int fileLimitPerCrossTask) {
@@ -2819,6 +2836,14 @@ public class IoTDBConfig {
 
   public void setSubCompactionTaskNum(int subCompactionTaskNum) {
     this.subCompactionTaskNum = subCompactionTaskNum;
+  }
+
+  public int getCompactionScheduleThreadNum() {
+    return compactionScheduleThreadNum;
+  }
+
+  public void setCompactionScheduleThreadNum(int compactionScheduleThreadNum) {
+    this.compactionScheduleThreadNum = compactionScheduleThreadNum;
   }
 
   public int getCachedMNodeSizeInPBTreeMode() {
@@ -2998,21 +3023,20 @@ public class IoTDBConfig {
     this.selectorNumOfClientManager = selectorNumOfClientManager;
   }
 
-  public boolean isClusterMode() {
-    return isClusterMode;
-  }
-
-  public void setClusterMode(boolean isClusterMode) {
-    this.isClusterMode = isClusterMode;
-    checkMultiDirStrategyClassName();
-  }
-
   public String getClusterName() {
     return clusterName;
   }
 
   public void setClusterName(String clusterName) {
     this.clusterName = clusterName;
+  }
+
+  public String getClusterId() {
+    return clusterId;
+  }
+
+  public void setClusterId(String clusterId) {
+    this.clusterId = clusterId;
   }
 
   public int getDataNodeId() {

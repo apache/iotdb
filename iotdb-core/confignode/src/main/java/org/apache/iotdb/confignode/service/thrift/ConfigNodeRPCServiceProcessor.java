@@ -73,6 +73,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -81,10 +82,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -107,7 +110,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
@@ -129,6 +134,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -149,12 +156,19 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
@@ -207,7 +221,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TGetClusterIdResp getClusterId() throws TException {
+  public TGetClusterIdResp getClusterId() {
     TGetClusterIdResp resp = new TGetClusterIdResp();
     String clusterId = configManager.getClusterManager().getClusterId();
     if (clusterId == null) {
@@ -419,14 +433,14 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus deleteDatabase(TDeleteDatabaseReq tDeleteReq) {
-    String prefixPath = tDeleteReq.getPrefixPath();
-    return configManager.deleteDatabases(Collections.singletonList(prefixPath));
+    return configManager.deleteDatabases(
+        new TDeleteDatabasesReq(Collections.singletonList(tDeleteReq.getPrefixPath()))
+            .setIsGeneratedByPipe(tDeleteReq.isIsGeneratedByPipe()));
   }
 
   @Override
   public TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq) {
-    List<String> prefixList = tDeleteReq.getPrefixPathList();
-    return configManager.deleteDatabases(prefixList);
+    return configManager.deleteDatabases(tDeleteReq);
   }
 
   @Override
@@ -478,6 +492,20 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         (DatabaseSchemaResp) configManager.getMatchedDatabaseSchemas(plan);
 
     return databaseSchemaResp.convertToRPCStorageGroupSchemaResp();
+  }
+
+  @Override
+  public TSStatus callSpecialProcedure(TTestOperation operation) throws TException {
+    switch (operation) {
+      case TEST_PROCEDURE_RECOVER:
+        return configManager.getProcedureManager().createManyDatabases();
+      case TEST_SUB_PROCEDURE:
+        return configManager.getProcedureManager().testSubProcedure();
+      default:
+        String msg = String.format("operation %s is not supported", operation);
+        LOGGER.error(msg);
+        throw new UnsupportedOperationException(msg);
+    }
   }
 
   @Override
@@ -791,8 +819,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus repairData() {
-    return configManager.repairData();
+  public TSStatus startRepairData() {
+    return configManager.startRepairData();
+  }
+
+  @Override
+  public TSStatus stopRepairData() throws TException {
+    return configManager.stopRepairData();
   }
 
   @Override
@@ -899,7 +932,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req) throws TException {
+  public TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req) {
     return configManager.alterSchemaTemplate(req);
   }
 
@@ -914,7 +947,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus alterLogicalView(TAlterLogicalViewReq req) throws TException {
+  public TSStatus alterLogicalView(TAlterLogicalViewReq req) {
     return configManager.alterLogicalView(req);
   }
 
@@ -954,8 +987,59 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary) {
-    return configManager.executeSyncCommand(configPhysicalPlanBinary);
+  public TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
+      throws TException {
+    return configManager.handleTransferConfigPlan(req);
+  }
+
+  @Override
+  public TSStatus createTopic(TCreateTopicReq req) {
+    return configManager.createTopic(req);
+  }
+
+  @Override
+  public TSStatus dropTopic(String topicName) {
+    return configManager.dropTopic(topicName);
+  }
+
+  @Override
+  public TShowTopicResp showTopic(TShowTopicReq req) {
+    return configManager.showTopic(req);
+  }
+
+  @Override
+  public TGetAllTopicInfoResp getAllTopicInfo() {
+    return configManager.getAllTopicInfo();
+  }
+
+  @Override
+  public TSStatus createConsumer(TCreateConsumerReq req) {
+    return configManager.createConsumer(req);
+  }
+
+  @Override
+  public TSStatus closeConsumer(TCloseConsumerReq req) {
+    return configManager.closeConsumer(req);
+  }
+
+  @Override
+  public TSStatus createSubscription(TSubscribeReq req) {
+    return configManager.createSubscription(req);
+  }
+
+  @Override
+  public TSStatus dropSubscription(TUnsubscribeReq req) {
+    return configManager.dropSubscription(req);
+  }
+
+  @Override
+  public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) {
+    return configManager.showSubscription(req);
+  }
+
+  @Override
+  public TGetAllSubscriptionInfoResp getAllSubscriptionInfo() {
+    return configManager.getAllSubscriptionInfo();
   }
 
   @Override

@@ -187,7 +187,10 @@ if [ "${version_arr[0]}" = "1" ] ; then
         # only add -Xlog:gc if it's not mentioned in jvm-server.options file
         mkdir -p ${IOTDB_HOME}/logs
         if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
-            IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/logs/gc.log  -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M"
+            IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/logs/gc.log -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M"
+            # For more detailed GC information, you can uncomment option below.
+            # NOTE: more detailed GC information may bring larger GC log files.
+            # IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/logs/gc.log -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:+PrintTenuringDistribution -XX:+PrintHeapAtGC -XX:+PrintReferenceGC -XX:+PrintSafepointStatistics -XX:PrintSafepointStatisticsCount=1 -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M"
         fi
     fi
 else
@@ -201,6 +204,9 @@ else
         mkdir -p ${IOTDB_HOME}/logs
         if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
             IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xlog:gc=info,heap*=info,age*=info,safepoint=info,promotion*=info:file=${IOTDB_HOME}/logs/gc.log:time,uptime,pid,tid,level:filecount=10,filesize=10485760"
+            # For more detailed GC information, you can uncomment option below.
+            # NOTE: more detailed GC information may bring larger GC log files.
+            # IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xlog:gc*=debug,heap*=debug,age*=trace,metaspace*=info,safepoint*=debug,promotion*=info:file=${IOTDB_HOME}/logs/gc.log:time,uptime,pid,tid,level,tags:filecount=10,filesize=100M"
         fi
     fi
     # Add argLine for Java 11 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default] (https://openjdk.java.net/jeps/396)
@@ -269,8 +275,37 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${ON_HEAP_MEMORY}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:MaxDirectMemorySize=${OFF_HEAP_MEMORY}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djdk.nio.maxCachedBufferSize=${MAX_CACHED_BUFFER_SIZE}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+CrashOnOutOfMemoryError"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+UseAdaptiveSizePolicy"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xss512k"
+# options below try to optimize safepoint stw time.
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+UnlockDiagnosticVMOptions"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:GuaranteedSafepointInterval=0"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:-UseBiasedLocking"
+# these two options print safepoints with pauses longer than 1000ms to the standard output. You can see these logs via redirection when starting in the background like "start-datanode.sh > log_datanode_safepoint.log"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:SafepointTimeoutDelay=1000"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+SafepointTimeout"
+
+# option below tries to optimize safepoint stw time for large counted loop.
+# NOTE: it may have an impact on JIT's black-box optimization.
+# IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+UseCountedLoopSafepoints"
+
+# when the GC time is too long, if there are remaining CPU resources, you can try to turn on and increase options below.
+# for Linux:
+# CPU_PROCESSOR_NUM=$(nproc)
+# for MacOS:
+# CPU_PROCESSOR_NUM=$(sysctl -n hw.ncpu)
+# IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:ParallelGCThreads=${CPU_PROCESSOR_NUM}"
+
+# if there are much of stw time of reference process in GC log, you can turn on option below.
+# NOTE: it may have an impact on application's throughput.
+# IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+ParallelRefProcEnabled"
+
+# this option can reduce the overhead caused by memory allocation, page fault interrupts, etc. during JVM operation.
+# NOTE: it may reduce memory utilization and trigger OOM killer when memory is tight.
+# IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+AlwaysPreTouch"
+
 # if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace /tmp/heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
-#IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/datanode_heapdump.hprof"
+# IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/datanode_heapdump.hprof"
 
 
 echo "DataNode on heap memory size = ${ON_HEAP_MEMORY}B, off heap memory size = ${OFF_HEAP_MEMORY}B"

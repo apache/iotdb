@@ -96,7 +96,6 @@ public class IoTDBMaxByIT {
         "INSERT INTO root.db.d2(timestamp,x1,x2,x3,x4,x5,x6) values(1, 1, 1, 1, 1, true, \"1\")",
         "INSERT INTO root.db.d2(timestamp,x1,x2,x3,x4,x5,x6) values(2, 2, 2, 2, 2, false, \"2\")",
         "INSERT INTO root.db.d2(timestamp,x1,x2,x3,x4,x5,x6) values(3, 3, 3, 3, 3, false, \"3\")",
-        "INSERT INTO root.db.d2(timestamp,x1,x2,x3,x4,x5,x6) values(1, 4, 4, 4, 4, true, \"1\")",
         "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(2, 2, 2, 2, 2, true, \"4\")",
         "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(3, 3, 3, 3, 3, false, \"3\")",
         "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(4, 1, 1, 1, 1, false, \"1\")",
@@ -107,7 +106,7 @@ public class IoTDBMaxByIT {
         "flush"
       };
 
-  protected static final String UNSUPPORTED_TYPE_MESSAGE = "Unsupported data type in MaxBy:";
+  protected static final String UNSUPPORTED_TYPE_MESSAGE = "Unsupported data type in MaxBy/MinBy:";
 
   @BeforeClass
   public static void setUp() throws Exception {

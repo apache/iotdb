@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
+import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
@@ -179,7 +180,8 @@ public abstract class PageManager implements IPageManager {
     String alias;
     // TODO: reserve order of insert in container may be better
     for (Map.Entry<String, ICachedMNode> entry :
-        ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildBuffer().entrySet().stream()
+        ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildFlushingBuffer().entrySet()
+            .stream()
             .sorted(Map.Entry.comparingByKey())
             .collect(Collectors.toList())) {
       // check and pre-allocate
@@ -248,7 +250,7 @@ public abstract class PageManager implements IPageManager {
               reEstimateSegSize(
                   curPage.getAsSegmentedPage().getSegmentSize(actSegId) + childBuffer.capacity(),
                   ICachedMNodeContainer.getCachedMNodeContainer(node)
-                      .getNewChildBuffer()
+                      .getNewChildFlushingBuffer()
                       .entrySet()
                       .size());
           ISegmentedPage newPage = getMinApplSegmentedPageInMem(newSegSize, cxt);
@@ -283,7 +285,9 @@ public abstract class PageManager implements IPageManager {
     ByteBuffer childBuffer;
     long res; // result of update
     for (Map.Entry<String, ICachedMNode> entry :
-        ICachedMNodeContainer.getCachedMNodeContainer(node).getUpdatedChildBuffer().entrySet()) {
+        ICachedMNodeContainer.getCachedMNodeContainer(node)
+            .getUpdatedChildFlushingBuffer()
+            .entrySet()) {
       child = entry.getValue();
       actualAddress = getTargetSegmentAddress(curSegAddr, entry.getKey(), cxt);
       childBuffer = RecordUtils.node2Buffer(child);
@@ -582,7 +586,8 @@ public abstract class PageManager implements IPageManager {
    * @param size size of the expected segment
    * @return always write locked
    */
-  protected ISegmentedPage getMinApplSegmentedPageInMem(short size, SchemaPageContext cxt) {
+  protected ISegmentedPage getMinApplSegmentedPageInMem(short size, SchemaPageContext cxt)
+      throws SegmentNotFoundException {
     // pages retrieved from context is unnecessary and inefficient to lock
     ISchemaPage targetPage = cxt.indexBuckets.getNearestFitPage(size, false);
     if (targetPage != null) {
@@ -613,7 +618,8 @@ public abstract class PageManager implements IPageManager {
     }
   }
 
-  protected ISchemaPage allocNewSegmentedPage(SchemaPageContext cxt) {
+  protected ISchemaPage allocNewSegmentedPage(SchemaPageContext cxt)
+      throws SegmentNotFoundException {
     ISchemaPage newPage =
         ISchemaPage.initSegmentedPage(
             ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), lastPageIndex.incrementAndGet());

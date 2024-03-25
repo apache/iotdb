@@ -79,7 +79,8 @@ public class AuthOperationProcedureTest {
                     Collections.singleton(1),
                     false,
                     Collections.singletonList(path)),
-                datanodes);
+                datanodes,
+                false);
         proc.serialize(outputStream);
         ByteBuffer buffer =
             ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());

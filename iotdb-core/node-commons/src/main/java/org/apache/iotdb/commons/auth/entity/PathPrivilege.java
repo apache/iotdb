@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.auth.entity;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 
 import org.slf4j.Logger;
@@ -113,43 +114,13 @@ public class PathPrivilege {
     return false;
   }
 
-  private int posToPri(int pos) {
-    switch (pos) {
-      case 0:
-        return PrivilegeType.READ_DATA.ordinal();
-      case 1:
-        return PrivilegeType.WRITE_DATA.ordinal();
-      case 2:
-        return PrivilegeType.READ_SCHEMA.ordinal();
-      case 3:
-        return PrivilegeType.WRITE_SCHEMA.ordinal();
-      default:
-        return -1;
-    }
-  }
-
-  private int priToPos(PrivilegeType pri) {
-    switch (pri) {
-      case READ_DATA:
-        return 0;
-      case WRITE_DATA:
-        return 1;
-      case READ_SCHEMA:
-        return 2;
-      case WRITE_SCHEMA:
-        return 3;
-      default:
-        return -1;
-    }
-  }
-
   public void setAllPrivileges(int privs) {
     for (int i = 0; i < PATH_PRI_SIZE; i++) {
       if (((1 << i) & privs) != 0) {
-        privileges.add(posToPri(i));
+        privileges.add(AuthUtils.pathPosToPri(i));
       }
-      if (((1 << (i + 16) & privs) != 0)) {
-        grantOpts.add(posToPri(i));
+      if ((1 << (i + 16) & privs) != 0) {
+        grantOpts.add(AuthUtils.pathPosToPri(i));
       }
     }
   }
@@ -157,10 +128,10 @@ public class PathPrivilege {
   public int getAllPrivileges() {
     int privilege = 0;
     for (Integer pri : privileges) {
-      privilege |= 1 << priToPos(PrivilegeType.values()[pri]);
+      privilege |= 1 << AuthUtils.pathPriToPos(PrivilegeType.values()[pri]);
     }
     for (Integer grantOpt : grantOpts) {
-      privilege |= 1 << (priToPos(PrivilegeType.values()[grantOpt]) + 16);
+      privilege |= 1 << (AuthUtils.pathPriToPos(PrivilegeType.values()[grantOpt]) + 16);
     }
     return privilege;
   }

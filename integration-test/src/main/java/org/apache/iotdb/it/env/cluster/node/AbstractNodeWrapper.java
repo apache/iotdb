@@ -482,7 +482,20 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.error("Waiting node to shutdown error. %s", e);
+      logger.error("Waiting node to shutdown error.", e);
+    }
+  }
+
+  @Override
+  public void stopForcibly() {
+    if (this.instance == null) {
+      return;
+    }
+    try {
+      this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("Waiting node to shutdown error.", e);
     }
   }
 

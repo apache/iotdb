@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.TreeModelTimePredicate;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildren
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastSeriesSourceNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -140,10 +142,11 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
         new FragmentInstance(
             fragment,
             fragment.getId().genFragmentInstanceId(),
-            globalTimePredicate,
+            globalTimePredicate == null ? null : new TreeModelTimePredicate(globalTimePredicate),
             queryContext.getQueryType(),
             queryContext.getTimeOut(),
             queryContext.getSession(),
+            queryContext.isExplainAnalyze(),
             fragment.isRoot());
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one
@@ -163,10 +166,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
         // no data region && no dataNodeLocation, we need to execute this FI on local
         // now only the case AggregationQuery has schemaengine but no data region will enter here
         fragmentInstance.setExecutorAndHost(
-            new QueryExecutor(
-                new TDataNodeLocation()
-                    .setInternalEndPoint(DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT)
-                    .setMPPDataExchangeEndPoint(DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT)));
+            new QueryExecutor(DataNodeEndPoints.getLocalDataNodeLocation()));
       }
     } else {
       fragmentInstance.setExecutorAndHost(new StorageExecutor(regionReplicaSet));
@@ -184,6 +184,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
         });
 
     if (analysis.getStatement() instanceof QueryStatement
+        || analysis.getStatement() instanceof ExplainAnalyzeStatement
         || analysis.getStatement() instanceof ShowQueriesStatement
         || (analysis.getStatement() instanceof ShowTimeSeriesStatement
             && ((ShowTimeSeriesStatement) analysis.getStatement()).isOrderByHeat())) {

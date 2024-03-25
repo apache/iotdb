@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -59,7 +60,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
+  public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("StartPipeProcedureV2: executeFromValidateTask({})", pipeName);
 
     pipeTaskInfo.get().checkBeforeStartPipe(pipeName);
@@ -69,14 +70,13 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
+  public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("StartPipeProcedureV2: executeFromCalculateInfoForTask({})", pipeName);
     // Do nothing
   }
 
   @Override
-  protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
-      throws PipeException {
+  public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("StartPipeProcedureV2: executeFromWriteConfigNodeConsensus({})", pipeName);
 
     TSStatus response;
@@ -96,10 +96,10 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info("StartPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    String exceptionMessage =
+    final String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
@@ -115,19 +115,19 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("StartPipeProcedureV2: rollbackFromValidateTask({})", pipeName);
     // Do nothing
   }
 
   @Override
-  protected void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("StartPipeProcedureV2: rollbackFromCalculateInfoForTask({})", pipeName);
     // Do nothing
   }
 
   @Override
-  protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
+  public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("StartPipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})", pipeName);
 
     TSStatus response;
@@ -147,11 +147,11 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info("StartPipeProcedureV2: rollbackFromOperateOnDataNodes({})", pipeName);
 
     // Push all pipe metas to datanode, may be time-consuming
-    String exceptionMessage =
+    final String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
@@ -183,11 +183,14 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       return false;
     }
     StartPipeProcedureV2 that = (StartPipeProcedureV2) o;
-    return pipeName.equals(that.pipeName);
+    return getProcId() == that.getProcId()
+        && getCurrentState().equals(that.getCurrentState())
+        && getCycles() == that.getCycles()
+        && pipeName.equals(that.pipeName);
   }
 
   @Override
   public int hashCode() {
-    return pipeName.hashCode();
+    return Objects.hash(getProcId(), getCurrentState(), getCycles(), pipeName);
   }
 }

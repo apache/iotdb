@@ -224,8 +224,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       "LATEST",
       "LIKE",
       "MAX_BY",
+      "MIN_BY",
       "METADATA",
-      "MERGE",
       "MOVE",
       "MIN_TIME",
       "MAX_TIME",
@@ -2220,6 +2220,10 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
       throws SQLException {
     Statement stmt = this.connection.createStatement();
+
+    if (this.connection.getCatalog().equals(catalog)) {
+      catalog = null;
+    }
 
     String sql = "SHOW TIMESERIES";
     if (StringUtils.isNotEmpty(catalog)) {

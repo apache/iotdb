@@ -28,8 +28,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * PipeTaskCoordinatorLock is a cross thread lock for pipe task coordinator. It is used to ensure
- * that only one thread can execute the pipe task coordinator at the same time.
+ * {@link PipeTaskCoordinatorLock} is a cross thread lock for pipe task coordinator. It is used to
+ * ensure that only one thread can execute the pipe task coordinator at the same time.
  */
 public class PipeTaskCoordinatorLock {
 
@@ -58,7 +58,7 @@ public class PipeTaskCoordinatorLock {
     }
   }
 
-  boolean tryLock() {
+  public boolean tryLock() {
     try {
       final long id = idGenerator.incrementAndGet();
       LOGGER.info(
@@ -87,7 +87,7 @@ public class PipeTaskCoordinatorLock {
     }
   }
 
-  void unlock() {
+  public void unlock() {
     final Long id = deque.poll();
     if (id == null) {
       LOGGER.error(
@@ -101,7 +101,7 @@ public class PipeTaskCoordinatorLock {
     }
   }
 
-  boolean isLocked() {
+  public boolean isLocked() {
     return !deque.isEmpty();
   }
 }

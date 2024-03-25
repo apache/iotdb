@@ -42,6 +42,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.SizeInBytes;
@@ -65,6 +66,9 @@ public class ConsensusManager {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
   private static final int SEED_CONFIG_NODE_ID = 0;
+  private static final long MAX_WAIT_READY_TIME_MS =
+      CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2;
+  private static final long RETRY_WAIT_TIME_MS = 100;
   /** There is only one ConfigNodeGroup */
   public static final ConsensusGroupId DEFAULT_CONSENSUS_GROUP_ID =
       new ConfigRegionId(CONF.getConfigRegionId());
@@ -72,10 +76,30 @@ public class ConsensusManager {
   private final IManager configManager;
   private IConsensus consensusImpl;
 
-  public ConsensusManager(IManager configManager, ConfigRegionStateMachine stateMachine)
-      throws IOException {
+  public ConsensusManager(IManager configManager, ConfigRegionStateMachine stateMachine) {
     this.configManager = configManager;
     setConsensusLayer(stateMachine);
+  }
+
+  public void start() throws IOException {
+    consensusImpl.start();
+    if (SystemPropertiesUtils.isRestarted()) {
+      LOGGER.info("Init ConsensusManager successfully when restarted");
+    } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
+      // Create ConsensusGroup that contains only itself
+      // if the current ConfigNode is Seed-ConfigNode
+      try {
+        createPeerForConsensusGroup(
+            Collections.singletonList(
+                new TConfigNodeLocation(
+                    SEED_CONFIG_NODE_ID,
+                    new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+                    new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
+      } catch (ConsensusException e) {
+        LOGGER.error(
+            "Something wrong happened while calling consensus layer's createLocalPeer API.", e);
+      }
+    }
   }
 
   public void close() throws IOException {
@@ -83,8 +107,7 @@ public class ConsensusManager {
   }
 
   /** ConsensusLayer local implementation. */
-  private void setConsensusLayer(ConfigRegionStateMachine stateMachine) throws IOException {
-
+  private void setConsensusLayer(ConfigRegionStateMachine stateMachine) {
     if (SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       upgrade();
       consensusImpl =
@@ -122,6 +145,7 @@ public class ConsensusManager {
                                   RatisConfig.Snapshot.newBuilder()
                                       .setAutoTriggerThreshold(
                                           CONF.getConfigNodeRatisSnapshotTriggerThreshold())
+                                      .setCreationGap(1)
                                       .build())
                               .setLog(
                                   RatisConfig.Log.newBuilder()
@@ -210,24 +234,6 @@ public class ConsensusManager {
                           String.format(
                               ConsensusFactory.CONSTRUCT_FAILED_MSG,
                               CONF.getConfigNodeConsensusProtocolClass())));
-    }
-    consensusImpl.start();
-    if (SystemPropertiesUtils.isRestarted()) {
-      LOGGER.info("Init ConsensusManager successfully when restarted");
-    } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
-      // Create ConsensusGroup that contains only itself
-      // if the current ConfigNode is Seed-ConfigNode
-      try {
-        createPeerForConsensusGroup(
-            Collections.singletonList(
-                new TConfigNodeLocation(
-                    SEED_CONFIG_NODE_ID,
-                    new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                    new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
-      } catch (ConsensusException e) {
-        LOGGER.error(
-            "Something wrong happened while calling consensus layer's createLocalPeer API.", e);
-      }
     }
   }
 
@@ -343,7 +349,7 @@ public class ConsensusManager {
         return leaderPeer;
       }
       try {
-        TimeUnit.MILLISECONDS.sleep(100);
+        TimeUnit.MILLISECONDS.sleep(RETRY_WAIT_TIME_MS);
       } catch (InterruptedException e) {
         LOGGER.warn("ConsensusManager getLeaderPeer been interrupted, ", e);
         Thread.currentThread().interrupt();
@@ -382,6 +388,19 @@ public class ConsensusManager {
     } else {
       result.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
       if (isLeader()) {
+        long startTime = System.currentTimeMillis();
+        while (System.currentTimeMillis() - startTime < MAX_WAIT_READY_TIME_MS) {
+          if (isLeaderReady()) {
+            result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            return result;
+          }
+          try {
+            Thread.sleep(RETRY_WAIT_TIME_MS);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn("Unexpected interruption during waiting for configNode leader ready.");
+          }
+        }
         result.setMessage(
             "The current ConfigNode is leader but not ready yet, please try again later.");
       } else {
@@ -414,5 +433,9 @@ public class ConsensusManager {
 
   private NodeManager getNodeManager() {
     return configManager.getNodeManager();
+  }
+
+  public void manuallyTakeSnapshot() throws ConsensusException {
+    consensusImpl.triggerSnapshot(ConfigNodeInfo.CONFIG_REGION_ID);
   }
 }

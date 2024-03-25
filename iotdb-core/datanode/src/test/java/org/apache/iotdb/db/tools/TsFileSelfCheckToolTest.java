@@ -53,7 +53,7 @@ import static org.junit.Assert.fail;
 public class TsFileSelfCheckToolTest {
 
   String path =
-      "data"
+      "target"
           .concat(File.separator)
           .concat("data")
           .concat(File.separator)

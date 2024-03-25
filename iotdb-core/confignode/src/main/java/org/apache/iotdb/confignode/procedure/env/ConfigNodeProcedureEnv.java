@@ -54,6 +54,8 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
+import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -69,9 +71,13 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSingleConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -90,6 +96,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class ConfigNodeProcedureEnv {
 
@@ -120,14 +127,15 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Delete ConfigNode cache, includes ClusterSchemaInfo and PartitionInfo.
+   * Delete ConfigNode cache, includes {@link ClusterSchemaInfo} and {@link PartitionInfo}.
    *
    * @param name database name
+   * @param isGeneratedByPipe whether the deletion is triggered by pipe request
    * @return tsStatus
    */
-  public TSStatus deleteDatabaseConfig(String name) {
+  public TSStatus deleteDatabaseConfig(String name, boolean isGeneratedByPipe) {
     DeleteDatabasePlan deleteDatabasePlan = new DeleteDatabasePlan(name);
-    return getClusterSchemaManager().deleteDatabase(deleteDatabasePlan);
+    return getClusterSchemaManager().deleteDatabase(deleteDatabasePlan, isGeneratedByPipe);
   }
 
   /**
@@ -575,6 +583,8 @@ public class ConfigNodeProcedureEnv {
             heartbeatSampleMap.put(
                 dataNodeId, new RegionHeartbeatSample(currentTime, currentTime, regionStatus)));
     getLoadManager().forceUpdateRegionGroupCache(regionGroupId, heartbeatSampleMap);
+    // force balance region leader to skip waiting for leader election
+    getLoadManager().forceBalanceRegionLeader();
     // Wait for leader election
     getLoadManager().waitForLeaderElection(Collections.singletonList(regionGroupId));
   }
@@ -714,6 +724,67 @@ public class ConfigNodeProcedureEnv {
             clientHandler,
             PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2);
     return clientHandler.getResponseMap();
+  }
+
+  public List<TSStatus> pushSingleTopicOnDataNode(ByteBuffer topicMeta) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushSingleTopicMetaReq request = new TPushSingleTopicMetaReq().setTopicMeta(topicMeta);
+
+    final AsyncClientHandler<TPushSingleTopicMetaReq, TPushTopicMetaResp> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList().stream()
+        .map(TPushTopicMetaResp::getStatus)
+        .collect(Collectors.toList());
+  }
+
+  public List<TSStatus> dropSingleTopicOnDataNode(String topicNameToDrop) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushSingleTopicMetaReq request =
+        new TPushSingleTopicMetaReq().setTopicNameToDrop(topicNameToDrop);
+
+    final AsyncClientHandler<TPushSingleTopicMetaReq, TPushTopicMetaResp> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList().stream()
+        .map(TPushTopicMetaResp::getStatus)
+        .collect(Collectors.toList());
+  }
+
+  public List<TSStatus> pushSingleConsumerGroupOnDataNode(ByteBuffer consumerGroupMeta) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushSingleConsumerGroupMetaReq request =
+        new TPushSingleConsumerGroupMetaReq().setConsumerGroupMeta(consumerGroupMeta);
+
+    final AsyncClientHandler<TPushSingleConsumerGroupMetaReq, TPushConsumerGroupMetaResp>
+        clientHandler =
+            new AsyncClientHandler<>(
+                DataNodeRequestType.CONSUMER_GROUP_PUSH_SINGLE_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList().stream()
+        .map(TPushConsumerGroupMetaResp::getStatus)
+        .collect(Collectors.toList());
+  }
+
+  public List<TSStatus> dropSingleConsumerGroupOnDataNode(String consumerGroupNameToDrop) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushSingleConsumerGroupMetaReq request =
+        new TPushSingleConsumerGroupMetaReq().setConsumerGroupNameToDrop(consumerGroupNameToDrop);
+
+    final AsyncClientHandler<TPushSingleConsumerGroupMetaReq, TPushConsumerGroupMetaResp>
+        clientHandler =
+            new AsyncClientHandler<>(
+                DataNodeRequestType.CONSUMER_GROUP_PUSH_SINGLE_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList().stream()
+        .map(TPushConsumerGroupMetaResp::getStatus)
+        .collect(Collectors.toList());
   }
 
   public LockQueue getNodeLock() {

@@ -28,12 +28,17 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySource;
+import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceContext;
+import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByParameter;
@@ -41,12 +46,15 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -62,7 +70,7 @@ import java.util.Set;
 import static com.google.common.base.Preconditions.checkArgument;
 
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
-public class Analysis {
+public class Analysis implements IAnalysis {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Common Analysis
@@ -171,6 +179,7 @@ public class Analysis {
 
   // indicates whether DeviceView need special process when rewriteSource in DistributionPlan,
   // you can see SourceRewriter#visitDeviceView to get more information
+  // deviceViewSpecialProcess equals true when all Aggregation Functions and DIFF
   private boolean deviceViewSpecialProcess;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -289,6 +298,12 @@ public class Analysis {
   private List<String> measurementList;
   private List<IMeasurementSchema> measurementSchemaList;
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Used in optimizer
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  private final Set<NodeRef<FilterNode>> fromWhereFilterNodes = new HashSet<>();
+
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
   }
@@ -313,6 +328,13 @@ public class Analysis {
 
   public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {
     return dataPartition.getDataRegionReplicaSetWithTimeFilter(deviceName, globalTimeFilter);
+  }
+
+  public QueryStatement getQueryStatement() {
+    if (statement instanceof ExplainAnalyzeStatement) {
+      return ((ExplainAnalyzeStatement) statement).getQueryStatement();
+    }
+    return (QueryStatement) statement;
   }
 
   public Statement getStatement() {
@@ -370,6 +392,7 @@ public class Analysis {
     this.globalTimePredicate = timeFilter;
   }
 
+  @Override
   public DatasetHeader getRespDatasetHeader() {
     return respDatasetHeader;
   }
@@ -395,12 +418,44 @@ public class Analysis {
     return type;
   }
 
-  public boolean hasDataSource() {
+  @Override
+  public boolean canSkipExecute(MPPQueryContext context) {
+    return isFinishQueryAfterAnalyze()
+        || (context.getQueryType() == QueryType.READ && !hasDataSource());
+  }
+
+  private boolean hasDataSource() {
     return (dataPartition != null && !dataPartition.isEmpty())
         || (schemaPartition != null && !schemaPartition.isEmpty())
         || statement instanceof ShowQueriesStatement
         || (statement instanceof QueryStatement
             && ((QueryStatement) statement).isAggregationQuery());
+  }
+
+  @Override
+  public TsBlock constructResultForMemorySource(MPPQueryContext context) {
+    StatementMemorySource memorySource =
+        new StatementMemorySourceVisitor()
+            .process(getStatement(), new StatementMemorySourceContext(context, this));
+    setRespDatasetHeader(memorySource.getDatasetHeader());
+    return memorySource.getTsBlock();
+  }
+
+  @Override
+  public boolean isQuery() {
+    return statement.isQuery();
+  }
+
+  @Override
+  public boolean needSetHighestPriority() {
+    // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
+    // that the sub-tasks of the ShowQueries instances could be executed first.
+    return StatementType.SHOW_QUERIES.equals(statement.getType());
+  }
+
+  @Override
+  public String getStatementType() {
+    return statement.getType().name();
   }
 
   public Map<Expression, Set<Expression>> getCrossGroupByExpressions() {
@@ -479,10 +534,12 @@ public class Analysis {
     this.finishQueryAfterAnalyze = finishQueryAfterAnalyze;
   }
 
+  @Override
   public boolean isFailed() {
     return failStatus != null;
   }
 
+  @Override
   public TSStatus getFailStatus() {
     return this.failStatus;
   }
@@ -876,5 +933,13 @@ public class Analysis {
 
   public boolean isTemplateWildCardQuery() {
     return this.templateWildCardQuery;
+  }
+
+  public void setFromWhere(FilterNode filterNode) {
+    this.fromWhereFilterNodes.add(NodeRef.of(filterNode));
+  }
+
+  public boolean fromWhere(FilterNode filterNode) {
+    return fromWhereFilterNodes.contains(NodeRef.of(filterNode));
   }
 }

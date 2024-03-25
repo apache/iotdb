@@ -31,6 +31,7 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -123,12 +124,23 @@ public class RoundRobinStrategyTest {
     columns[4] = false;
     columns[5] = new Binary("hh" + 0, TSFileConfig.STRING_CHARSET);
 
+    MeasurementSchema[] schemas =
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", dataTypes[0]),
+          new MeasurementSchema("s2", dataTypes[1]),
+          new MeasurementSchema("s3", dataTypes[2]),
+          new MeasurementSchema("s4", dataTypes[3]),
+          new MeasurementSchema("s5", dataTypes[4]),
+          new MeasurementSchema("s6", dataTypes[5]),
+        };
+
     return new InsertRowNode(
         new PlanNodeId("0"),
         new PartialPath("root.test_sg.test_d"),
         false,
         new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
         dataTypes,
+        schemas,
         time,
         columns,
         true);

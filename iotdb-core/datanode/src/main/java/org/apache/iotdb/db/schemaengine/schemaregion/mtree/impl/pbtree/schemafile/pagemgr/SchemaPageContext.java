@@ -18,17 +18,24 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr;
 
+import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaPage;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISegmentedPage;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFileConfig;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** Thread local variables about write/update process. */
 class SchemaPageContext {
+  protected static final Logger logger = LoggerFactory.getLogger(SchemaPageContext.class);
+
   final long threadID;
   final PageIndexSortBuckets indexBuckets;
   // locked and dirty pages are all referred pages, they all reside in page cache
@@ -38,6 +45,9 @@ class SchemaPageContext {
   final int[] treeTrace;
   int dirtyCnt;
   int interleavedFlushCnt;
+
+  // to report first reentrant lock detail
+  static boolean lockFaultTrigger = true;
 
   // flush B+Tree leaf before operation finished since all records are ordered
   ISegmentedPage lastLeafPage;
@@ -74,8 +84,33 @@ class SchemaPageContext {
     }
   }
 
-  public void traceLock(ISchemaPage page) {
+  public void traceLock(ISchemaPage page) throws SegmentNotFoundException {
     refer(page);
+    if (lockTraces.contains(page.getPageIndex())) {
+      // FIXME rough resolve for reentrant write lock
+      if (referredPages.get(page.getPageIndex()) != page) {
+        logger.error("Duplicate page instances with identical index: {}", page.getPageIndex());
+      }
+      // it's exactly twice-locked
+      if (((ReentrantReadWriteLock) page.getLock()).getWriteHoldCount() > 1) {
+        logger.warn(
+            "Page [{}] had been locked {} times.",
+            ((ReentrantReadWriteLock) page.getLock()).getWriteHoldCount());
+        // had already been locked twice
+        page.getLock().writeLock().unlock();
+
+        if (lockFaultTrigger) {
+          logger.warn(
+              "Reentrant write locks on page {}, content detail:{}",
+              page.getPageIndex(),
+              page.inspect());
+          lockFaultTrigger = false;
+        } else {
+          logger.warn("Reentrant write locks on page:{}", page.getPageIndex());
+        }
+        return;
+      }
+    }
     lockTraces.add(page.getPageIndex());
   }
 

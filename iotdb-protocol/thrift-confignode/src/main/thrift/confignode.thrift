@@ -104,6 +104,7 @@ struct TRuntimeConfiguration {
   3: required list<binary> allUDFInformation
   4: required binary allTTLInformation
   5: required list<binary> allPipeInformation
+  6: optional string clusterId
 }
 
 struct TDataNodeRegisterReq {
@@ -160,10 +161,12 @@ struct TSetDataNodeStatusReq {
 // Database
 struct TDeleteDatabaseReq {
   1: required string prefixPath
+  2: optional bool isGeneratedByPipe
 }
 
 struct TDeleteDatabasesReq {
   1: required list<string> prefixPathList
+  2: optional bool isGeneratedByPipe
 }
 
 struct TSetSchemaReplicationFactorReq {
@@ -458,20 +461,22 @@ enum TTriggerState {
 
 struct TCreateTriggerReq {
   1: required string triggerName
-  2: required string className,
-  3: required byte triggerEvent,
+  2: required string className
+  3: required byte triggerEvent
   4: required byte triggerType
-  5: required binary pathPattern,
-  6: required map<string, string> attributes,
+  5: required binary pathPattern
+  6: required map<string, string> attributes
   7: required i32 failureStrategy
-  8: required bool isUsingURI,
-  9: optional string jarName,
-  10: optional binary jarFile,
-  11: optional string jarMD5,
+  8: required bool isUsingURI
+  9: optional string jarName
+  10: optional binary jarFile
+  11: optional string jarMD5
+  12: optional bool isGeneratedByPipe
 }
 
 struct TDropTriggerReq {
   1: required string triggerName
+  2: optional bool isGeneratedByPipe
 }
 
 struct TGetLocationForTriggerResp {
@@ -498,25 +503,6 @@ struct TGetJarInListResp {
 struct TGetDataNodeLocationsResp {
   1: required common.TSStatus status
   2: required list<common.TDataNodeLocation> dataNodeLocationList
-}
-
-// Pipe Plugin
-struct TCreatePipePluginReq {
-  1: required string pluginName
-  2: required string className
-  3: required string jarName
-  4: required binary jarFile
-  5: required string jarMD5
-}
-
-struct TDropPipePluginReq {
-  1: required string pluginName
-}
-
-// Get PipePlugin table from config node
-struct TGetPipePluginTableResp {
-  1: required common.TSStatus status
-  2: required list<binary> allPipePluginMeta
 }
 
 // Show cluster
@@ -592,7 +578,7 @@ struct TDatabaseInfo {
   11: required i32 maxDataRegionNum
 }
 
-struct TGetDatabaseReq{
+struct TGetDatabaseReq {
   1: required list<string> databasePathPattern
   2: required binary scopePatternTree
 }
@@ -663,6 +649,7 @@ struct TSetSchemaTemplateReq {
   1: required string queryId
   2: required string name
   3: required string path
+  4: optional bool isGeneratedByPipe
 }
 
 struct TGetPathsSetTemplatesReq {
@@ -673,6 +660,25 @@ struct TGetPathsSetTemplatesReq {
 struct TGetPathsSetTemplatesResp {
   1: required common.TSStatus status
   2: optional list<string> pathList
+}
+
+// Pipe Plugin
+struct TCreatePipePluginReq {
+  1: required string pluginName
+  2: required string className
+  3: required string jarName
+  4: required binary jarFile
+  5: required string jarMD5
+}
+
+struct TDropPipePluginReq {
+  1: required string pluginName
+}
+
+// Get PipePlugin table from config node
+struct TGetPipePluginTableResp {
+  1: required common.TSStatus status
+  2: required list<binary> allPipePluginMeta
 }
 
 // Pipe
@@ -724,19 +730,111 @@ struct TShowPipeResp {
   2: optional list<TShowPipeInfo> pipeInfoList
 }
 
-struct TDeleteTimeSeriesReq{
-  1: required string queryId
-  2: required binary pathPatternTree
+struct TPipeConfigTransferReq {
+  1: required i8 version
+  2: required i16 type
+  3: required binary body
+  4: required bool isAirGap
 }
 
-struct TDeleteLogicalViewReq{
-  1: required string queryId
-  2: required binary pathPatternTree
+struct TPipeConfigTransferResp {
+  1: required common.TSStatus status
+  2: optional binary body
 }
 
-struct TAlterLogicalViewReq{
+struct TDeleteTimeSeriesReq {
+  1: required string queryId
+  2: required binary pathPatternTree
+  3: optional bool isGeneratedByPipe
+}
+
+struct TDeleteLogicalViewReq {
+  1: required string queryId
+  2: required binary pathPatternTree
+  3: optional bool isGeneratedByPipe
+}
+
+struct TAlterLogicalViewReq {
   1: required string queryId
   2: required binary viewBinary
+  3: optional bool isGeneratedByPipe
+}
+
+// Subscription topic
+struct TCreateTopicReq {
+    1: required string topicName
+    2: optional map<string, string> topicAttributes
+}
+
+struct TShowTopicReq {
+    1: optional string topicName
+}
+
+struct TShowTopicResp {
+    1: required common.TSStatus status
+    2: optional list<TShowTopicInfo> topicInfoList
+}
+
+struct TShowTopicInfo {
+    1: required string topicName
+    2: required i64 creationTime
+    3: optional string topicAttributes
+}
+
+struct TAlterTopicReq {
+    1: required string topicName
+    2: required map<string, string> topicAttributes
+    3: required set<string> subscribedConsumerGroupIds
+}
+
+struct TGetAllTopicInfoResp {
+    1: required common.TSStatus status
+    2: required list<binary> allTopicInfo
+}
+
+// Subscription consumer
+
+struct TCreateConsumerReq {
+    1: required string consumerId
+    2: required string consumerGroupId
+    3: optional map<string, string> consumerAttributes
+}
+
+struct TCloseConsumerReq {
+    1: required string consumerId
+    2: required string consumerGroupId
+}
+
+struct TSubscribeReq {
+    1: required string consumerId
+    2: required string consumerGroupId
+    3: required set<string> topicNames
+}
+
+struct TUnsubscribeReq {
+    1: required string consumerId
+    2: required string consumerGroupId
+    3: required set<string> topicNames
+}
+
+struct TShowSubscriptionReq {
+    1: optional string topicName
+}
+
+struct TShowSubscriptionResp {
+    1: required common.TSStatus status
+    2: optional list<TShowSubscriptionInfo> subscriptionInfoList
+}
+
+struct TShowSubscriptionInfo {
+    1: required string topicName
+    2: required string consumerGroupId
+    3: required set<string> consumerIds
+}
+
+struct TGetAllSubscriptionInfoResp {
+    1: required common.TSStatus status
+    2: required list<binary> allSubscriptionInfo
 }
 
 // ====================================================
@@ -771,33 +869,35 @@ struct TShowCQResp {
 }
 
 
-struct TDeactivateSchemaTemplateReq{
+struct TDeactivateSchemaTemplateReq {
   1: required string queryId
   2: required binary pathPatternTree
   3: optional string templateName
+  4: optional bool isGeneratedByPipe
 }
 
-struct TUnsetSchemaTemplateReq{
+struct TUnsetSchemaTemplateReq {
   1: required string queryId
   2: required string templateName
   3: required string path
+  4: optional bool isGeneratedByPipe
 }
 
 // ====================================================
 // Quota
 // ====================================================
-struct TSpaceQuotaResp{
+struct TSpaceQuotaResp {
   1: required common.TSStatus status
   2: optional map<string, common.TSpaceQuota> spaceQuota
   3: optional map<string, common.TSpaceQuota> spaceQuotaUsage
 }
 
-struct TThrottleQuotaResp{
+struct TThrottleQuotaResp {
   1: required common.TSStatus status
   2: optional map<string, common.TThrottleQuota> throttleQuota
 }
 
-struct TShowThrottleReq{
+struct TShowThrottleReq {
   1: optional string userName;
 }
 
@@ -813,6 +913,13 @@ enum TActivationControl {
   ALL_LICENSE_FILE_DELETED
 }
 
+// ====================================================
+// Test only
+// ====================================================
+enum TTestOperation {
+  TEST_PROCEDURE_RECOVER,
+  TEST_SUB_PROCEDURE,
+}
 
 service IConfigNodeRPCService {
 
@@ -944,6 +1051,9 @@ service IConfigNodeRPCService {
 
   /** Get the matched Databases' TDatabaseSchema */
   TDatabaseSchemaResp getMatchedDatabaseSchemas(TGetDatabaseReq req)
+
+  /** Test only */
+  common.TSStatus callSpecialProcedure(TTestOperation operation)
 
   // ======================================================
   // SchemaPartition
@@ -1154,18 +1264,18 @@ service IConfigNodeRPCService {
   TGetLocationForTriggerResp getLocationOfStatefulTrigger(string triggerName)
 
   /**
-     * Return the trigger table
-     */
+   * Return the trigger table
+   */
   TGetTriggerTableResp getTriggerTable()
 
   /**
-     * Return the Stateful trigger table
-     */
+   * Return the Stateful trigger table
+   */
   TGetTriggerTableResp getStatefulTriggerTable()
 
   /**
-     * Return the trigger jar list of the trigger name list
-     */
+   * Return the trigger jar list of the trigger name list
+   */
   TGetJarInListResp getTriggerJar(TGetJarInListReq req)
 
   // ======================================================
@@ -1212,7 +1322,10 @@ service IConfigNodeRPCService {
   common.TSStatus clearCache()
 
   /** Check and repair unsorted tsfile by compaction */
-  common.TSStatus repairData()
+  common.TSStatus startRepairData()
+
+  /** Stop repair data task */
+  common.TSStatus stopRepairData()
 
   /** Load configuration on all DataNodes */
   common.TSStatus loadConfiguration()
@@ -1348,8 +1461,47 @@ service IConfigNodeRPCService {
   /** Get all pipe information. It is used for DataNode registration and restart*/
   TGetAllPipeInfoResp getAllPipeInfo()
 
-  /** Execute schema language from external pipes */
-  common.TSStatus executeSyncCommand(binary configPhysicalPlanBinary)
+ /** Execute schema language from external pipes */
+  TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
+
+  // ======================================================
+  // Subscription Topic
+  // ======================================================
+  /** Create Topic */
+  common.TSStatus createTopic(TCreateTopicReq req)
+
+  /** Drop Topic */
+  common.TSStatus dropTopic(string topicName)
+
+  /** Show Topic by name, if name is empty, show all Topic */
+  TShowTopicResp showTopic(TShowTopicReq req)
+
+  /** Get all topic information. It is used for DataNode registration and restart*/
+  TGetAllTopicInfoResp getAllTopicInfo()
+
+  // ======================================================
+  // Subscription consumer
+  // ======================================================
+  /** Create consumer */
+  common.TSStatus createConsumer(TCreateConsumerReq req)
+
+  /** Close consumer */
+  common.TSStatus closeConsumer(TCloseConsumerReq req)
+
+  // ======================================================
+  // Subscription
+  // ======================================================
+  /** Create subscription */
+  common.TSStatus createSubscription(TSubscribeReq req)
+
+  /** Close subscription */
+  common.TSStatus dropSubscription(TUnsubscribeReq req)
+
+  /** Show Subscription on topic name, if name is empty, show all subscriptions */
+  TShowSubscriptionResp showSubscription(TShowSubscriptionReq req)
+
+  /** Get all subscription information. It is used for DataNode registration and restart */
+  TGetAllSubscriptionInfoResp getAllSubscriptionInfo()
 
   // ======================================================
   // TestTools

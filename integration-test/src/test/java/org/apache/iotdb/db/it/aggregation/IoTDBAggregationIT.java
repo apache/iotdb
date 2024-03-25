@@ -46,6 +46,7 @@ import static org.apache.iotdb.db.utils.constant.TestConstant.lastValue;
 import static org.apache.iotdb.db.utils.constant.TestConstant.maxBy;
 import static org.apache.iotdb.db.utils.constant.TestConstant.maxTime;
 import static org.apache.iotdb.db.utils.constant.TestConstant.maxValue;
+import static org.apache.iotdb.db.utils.constant.TestConstant.minBy;
 import static org.apache.iotdb.db.utils.constant.TestConstant.minTime;
 import static org.apache.iotdb.db.utils.constant.TestConstant.minValue;
 import static org.apache.iotdb.db.utils.constant.TestConstant.sum;
@@ -1023,6 +1024,57 @@ public class IoTDBAggregationIT {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(maxBy("Time", d0s0));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void minByTest() {
+    String[] retArray = new String[] {"0,500", "0,500", "0,500"};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      int cnt;
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT min_by(time, s0) "
+                  + "FROM root.vehicle.d0 WHERE time >= 100 AND time < 9000")) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(minBy("Time", d0s0));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT min_by(time,s0) FROM root.vehicle.d0 WHERE time < 2500")) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(minBy("Time", d0s0));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(2, cnt);
+      }
+
+      // keep the correctness of `order by time desc`
+      cnt = 0;
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT min_by(time,s0) FROM root.vehicle.d0 WHERE time >= 100 AND time < 9000 order by time desc")) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(minBy("Time", d0s0));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }

@@ -20,14 +20,17 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.IMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.DeviceMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
@@ -218,12 +221,12 @@ public class TsFileSketchTool {
           String.format("%20s", entry.getKey())
               + "|\t[IndexOfTimerseriesIndex Node] type="
               + entry.getValue().getNodeType());
-      for (MetadataIndexEntry metadataIndexEntry : entry.getValue().getChildren()) {
+      for (IMetadataIndexEntry metadataIndexEntry : entry.getValue().getChildren()) {
         printlnBoth(
             pw,
             String.format("%20s", "")
                 + "|\t\t<"
-                + metadataIndexEntry.getName()
+                + metadataIndexEntry.getCompareKey()
                 + ", "
                 + metadataIndexEntry.getOffset()
                 + ">");
@@ -240,12 +243,12 @@ public class TsFileSketchTool {
         String.format("%20s", pos)
             + "|\t[IndexOfTimerseriesIndex Node] type="
             + metadataIndexNode.getNodeType());
-    for (MetadataIndexEntry metadataIndexEntry : metadataIndexNode.getChildren()) {
+    for (IMetadataIndexEntry metadataIndexEntry : metadataIndexNode.getChildren()) {
       printlnBoth(
           pw,
           String.format("%20s", "")
               + "|\t\t<"
-              + metadataIndexEntry.getName()
+              + metadataIndexEntry.getCompareKey()
               + ", "
               + metadataIndexEntry.getOffset()
               + ">");
@@ -370,7 +373,12 @@ public class TsFileSketchTool {
             break;
         }
 
-        printlnBoth(pw, splitStr + " [Chunk Group] of " + chunkGroupMetadata.getDevice() + " ends");
+        printlnBoth(
+            pw,
+            splitStr
+                + " [Chunk Group] of "
+                + ((PlainDeviceID) chunkGroupMetadata.getDevice()).toStringID()
+                + " ends");
       }
     } catch (IOException e) {
       e.printStackTrace();
@@ -452,12 +460,12 @@ public class TsFileSketchTool {
     treeOutputStringBuffer.add(
         tableWriter.toString() + "[MetadataIndex:" + metadataIndexNode.getNodeType() + "]");
     for (int i = 0; i < metadataIndexNode.getChildren().size(); i++) {
-      MetadataIndexEntry metadataIndexEntry = metadataIndexNode.getChildren().get(i);
+      IMetadataIndexEntry metadataIndexEntry = metadataIndexNode.getChildren().get(i);
 
       treeOutputStringBuffer.add(
           tableWriter.toString()
               + "└──────["
-              + metadataIndexEntry.getName()
+              + metadataIndexEntry.getCompareKey()
               + ","
               + metadataIndexEntry.getOffset()
               + "]");
@@ -466,8 +474,11 @@ public class TsFileSketchTool {
         if (i != metadataIndexNode.getChildren().size() - 1) {
           endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
         }
+        boolean currentChildLevelIsDevice =
+            MetadataIndexNodeType.INTERNAL_DEVICE.equals(metadataIndexNode.getNodeType());
         MetadataIndexNode subNode =
-            reader.getMetadataIndexNode(metadataIndexEntry.getOffset(), endOffset);
+            reader.readMetadataIndexNode(
+                metadataIndexEntry.getOffset(), endOffset, currentChildLevelIsDevice);
         metadataIndexNodeMap.put(metadataIndexEntry.getOffset(), subNode);
         loadIndexTree(subNode, metadataIndexNodeMap, treeOutputStringBuffer, deep + 1);
       }
@@ -508,9 +519,9 @@ public class TsFileSketchTool {
      */
     private void generateMetadataIndexWithOffset(
         long startOffset,
-        MetadataIndexEntry metadataIndex,
+        IMetadataIndexEntry metadataIndex,
         ByteBuffer buffer,
-        String deviceId,
+        IDeviceID deviceId,
         MetadataIndexNodeType type,
         Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap,
         boolean needChunkMetadata)
@@ -530,9 +541,11 @@ public class TsFileSketchTool {
         } else {
           // deviceId should be determined by LEAF_DEVICE node
           if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {
-            deviceId = metadataIndex.getName();
+            deviceId = ((DeviceMetadataIndexEntry) metadataIndex).getDeviceID();
           }
-          MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+          boolean currentChildLevelIsDevice = MetadataIndexNodeType.INTERNAL_DEVICE.equals(type);
+          MetadataIndexNode metadataIndexNode =
+              MetadataIndexNode.deserializeFrom(buffer, currentChildLevelIsDevice);
           int metadataIndexListSize = metadataIndexNode.getChildren().size();
           for (int i = 0; i < metadataIndexListSize; i++) {
             long endOffset = metadataIndexNode.getEndOffset();
@@ -581,8 +594,8 @@ public class TsFileSketchTool {
     private void generateMetadataIndexWithOffsetUsingTsFileInput(
         long start,
         long end,
-        MetadataIndexEntry metadataIndex,
-        String deviceId,
+        IMetadataIndexEntry metadataIndex,
+        IDeviceID deviceId,
         MetadataIndexNodeType type,
         Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap,
         boolean needChunkMetadata)
@@ -603,10 +616,11 @@ public class TsFileSketchTool {
         } else {
           // deviceId should be determined by LEAF_DEVICE node
           if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {
-            deviceId = metadataIndex.getName();
+            deviceId = ((DeviceMetadataIndexEntry) metadataIndex).getDeviceID();
           }
+          boolean isDeviceLevel = MetadataIndexNodeType.INTERNAL_DEVICE.equals(type);
           MetadataIndexNode metadataIndexNode =
-              MetadataIndexNode.deserializeFrom(tsFileInput.wrapAsInputStream());
+              MetadataIndexNode.deserializeFrom(tsFileInput.wrapAsInputStream(), isDeviceLevel);
           int metadataIndexListSize = metadataIndexNode.getChildren().size();
           for (int i = 0; i < metadataIndexListSize; i++) {
             long endOffset = metadataIndexNode.getEndOffset();
@@ -635,9 +649,9 @@ public class TsFileSketchTool {
       }
       MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
       Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
-      List<MetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
+      List<IMetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
       for (int i = 0; i < metadataIndexEntryList.size(); i++) {
-        MetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
+        IMetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
         long endOffset = tsFileMetaData.getMetadataIndex().getEndOffset();
         if (i != metadataIndexEntryList.size() - 1) {
           endOffset = metadataIndexEntryList.get(i + 1).getOffset();

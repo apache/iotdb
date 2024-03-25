@@ -56,7 +56,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
   }
 
   /**
-   * AuthorPlan Constructor.
+   * {@link AuthorPlan} Constructor.
    *
    * @param authorType author type
    * @param userName user name
@@ -290,6 +290,6 @@ public class AuthorPlan extends ConfigPhysicalPlan {
   @Override
   public int hashCode() {
     return Objects.hash(
-        authorType, userName, roleName, password, newPassword, permissions, nodeNameList);
+        authorType, userName, roleName, password, newPassword, permissions, nodeNameList, grantOpt);
   }
 }

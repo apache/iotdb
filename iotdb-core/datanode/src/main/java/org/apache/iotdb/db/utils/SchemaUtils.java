@@ -141,6 +141,7 @@ public class SchemaUtils {
       case SqlConstant.VAR_POP + "_partial":
       case SqlConstant.VAR_SAMP + "_partial":
       case SqlConstant.MAX_BY + "_partial":
+      case SqlConstant.MIN_BY + "_partial":
         return TSDataType.TEXT;
       case SqlConstant.LAST_VALUE:
       case SqlConstant.FIRST_VALUE:
@@ -148,6 +149,7 @@ public class SchemaUtils {
       case SqlConstant.MAX_VALUE:
       case SqlConstant.MODE:
       case SqlConstant.MAX_BY:
+      case SqlConstant.MIN_BY:
       default:
         return null;
     }
@@ -239,6 +241,7 @@ public class SchemaUtils {
       case VAR_POP:
       case VAR_SAMP:
       case MAX_BY:
+      case MIN_BY:
       case UDAF:
         return true;
       default:
@@ -275,6 +278,8 @@ public class SchemaUtils {
         return Collections.singletonList(addPartialSuffix(SqlConstant.VAR_SAMP));
       case MAX_BY:
         return Collections.singletonList(addPartialSuffix(SqlConstant.MAX_BY));
+      case MIN_BY:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.MIN_BY));
       case AVG:
         return Arrays.asList(SqlConstant.COUNT, SqlConstant.SUM);
       case TIME_DURATION:
