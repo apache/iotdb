@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
@@ -156,27 +157,15 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   }
 
   @Override
-  public CreateMultiTimeSeriesStatement visitInternalCreateTimeSeries(
+  public InternalCreateTimeSeriesStatement visitInternalCreateTimeSeries(
       InternalCreateTimeSeriesNode node, Void context) {
-    CreateMultiTimeSeriesStatement statement = new CreateMultiTimeSeriesStatement();
-
-    List<PartialPath> paths = new ArrayList<>();
-    MeasurementGroup measurementGroup = node.getMeasurementGroup();
-    if (Objects.nonNull(measurementGroup.getMeasurements())) {
-      for (int i = 0; i < measurementGroup.getMeasurements().size(); ++i) {
-        paths.add(node.getDevicePath().concatNode(measurementGroup.getMeasurements().get(i)));
-      }
-    }
-
-    statement.setPaths(paths);
-    statement.setDataTypes(measurementGroup.getDataTypes());
-    statement.setEncodings(measurementGroup.getEncodings());
-    statement.setCompressors(measurementGroup.getCompressors());
-    statement.setPropsList(measurementGroup.getPropsList());
-    statement.setAliasList(measurementGroup.getAliasList());
-    statement.setTagsList(measurementGroup.getTagsList());
-    statement.setAttributesList(measurementGroup.getAttributesList());
-    return statement;
+    return new InternalCreateTimeSeriesStatement(
+        node.getDevicePath(),
+        node.getMeasurementGroup().getMeasurements(),
+        node.getMeasurementGroup().getDataTypes(),
+        node.getMeasurementGroup().getEncodings(),
+        node.getMeasurementGroup().getCompressors(),
+        node.isAligned());
   }
 
   @Override

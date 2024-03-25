@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
@@ -40,11 +41,16 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   private ConcurrentIterableLinkedQueue<Event>.DynamicIterator iterator;
 
+  // If close() is called, hasBeenClosed will be set to true even if the extractor is started again.
+  // If the extractor is closed, it should not be started again. This is to avoid the case that
+  // the extractor is closed and then be reused by processor.
+  protected final AtomicBoolean hasBeenClosed = new AtomicBoolean(false);
+
   protected abstract AbstractPipeListeningQueue getListeningQueue();
 
   @Override
   public void start() throws Exception {
-    if (hasBeenStarted.get()) {
+    if (hasBeenStarted.get() || hasBeenClosed.get()) {
       return;
     }
     super.start();
@@ -98,6 +104,17 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   @Override
   public EnrichedEvent supply() throws Exception {
+    if (hasBeenClosed.get()) {
+      return null;
+    }
+
+    // Delayed start
+    // In schema region: to avoid pipe start is called when schema region is unready
+    // In config region: to avoid triggering snapshot under a consensus write causing deadlock
+    if (!hasBeenStarted.get()) {
+      start();
+    }
+
     // Historical
     if (!historicalEvents.isEmpty()) {
       final PipeSnapshotEvent historicalEvent =
@@ -141,6 +158,11 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   @Override
   public void close() throws Exception {
+    if (hasBeenClosed.get()) {
+      return;
+    }
+    hasBeenClosed.set(true);
+
     if (!hasBeenStarted.get()) {
       return;
     }

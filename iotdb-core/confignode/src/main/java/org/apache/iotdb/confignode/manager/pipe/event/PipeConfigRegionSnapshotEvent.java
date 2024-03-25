@@ -37,7 +37,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -51,7 +51,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
   // This will only be filled in when the snapshot is a schema info file.
   private String templateFilePath;
   private static final Map<CNSnapshotFileType, Set<Short>>
-      SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP = new HashMap<>();
+      SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP = new EnumMap<>(CNSnapshotFileType.class);
   private CNSnapshotFileType fileType;
 
   static {
@@ -202,7 +202,8 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
   }
 
   public void confineTransferredTypes(Set<ConfigPhysicalPlanType> listenedTypeSet) {
-    final Set<Short> types = SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.get(fileType);
+    final Set<Short> types =
+        new HashSet<>(SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.get(fileType));
     types.retainAll(
         listenedTypeSet.stream()
             .map(ConfigPhysicalPlanType::getPlanType)

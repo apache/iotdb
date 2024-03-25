@@ -39,18 +39,12 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   private SchemaRegionId schemaRegionId;
 
   private Set<PlanNodeType> listenedTypeSet = new HashSet<>();
-
-  // If close() is called, hasBeenClosed will be set to true even if the extractor is started again.
-  // If the extractor is closed, it should not be started again. This is to avoid the case that
-  // the extractor is closed and then be reused by processor.
-  private final AtomicBoolean hasBeenClosed = new AtomicBoolean(false);
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
@@ -66,8 +60,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
     // Delay the start process to schema region leader ready
     if (!PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)
         || hasBeenStarted.get()
-        || hasBeenClosed.get()
-        || listenedTypeSet.isEmpty()) {
+        || hasBeenClosed.get()) {
       return;
     }
 
@@ -97,18 +90,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   // This method will return events only after schema region leader gets ready
   @Override
   public synchronized EnrichedEvent supply() throws Exception {
-    if (!PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)
-        || hasBeenClosed.get()
-        || listenedTypeSet.isEmpty()) {
-      return null;
-    }
-
-    // Delayed start
-    if (!hasBeenStarted.get()) {
-      start();
-    }
-
-    return super.supply();
+    return PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId) ? super.supply() : null;
   }
 
   @Override

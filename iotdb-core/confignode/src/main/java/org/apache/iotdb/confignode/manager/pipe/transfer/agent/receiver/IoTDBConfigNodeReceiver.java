@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.agent.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
@@ -275,8 +274,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   protected TSStatus loadFileV2(PipeTransferFileSealReqV2 req, List<String> fileAbsolutePaths)
-      throws IOException, IllegalPathException {
-    Map<String, String> parameters = req.getParameters();
+      throws IOException {
+    final Map<String, String> parameters = req.getParameters();
     final CNPhysicalPlanGenerator generator =
         ConfignodeSnapshotParser.translate2PhysicalPlan(
             Paths.get(fileAbsolutePaths.get(0)),
@@ -284,7 +283,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             CNSnapshotFileType.deserialize(
                 Byte.parseByte(parameters.get(PipeTransferConfigSnapshotSealReq.FILE_TYPE))));
     if (Objects.isNull(generator)) {
-      throw new IllegalPathException(
+      throw new IOException(
           String.format("The config region snapshots %s cannot be parsed.", fileAbsolutePaths));
     }
     final Set<ConfigPhysicalPlanType> executionTypes =

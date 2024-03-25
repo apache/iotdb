@@ -146,15 +146,15 @@ public class ConfignodeSnapshotParser {
   public static CNPhysicalPlanGenerator translate2PhysicalPlan(
       Path path1, Path path2, CNSnapshotFileType type) throws IOException {
     if (type == CNSnapshotFileType.SCHEMA && (path1 == null || path2 == null)) {
-      LOGGER.warn("schema_template require schema info file and template file");
+      LOGGER.warn("Schema_template require schema info file and template file");
       return null;
     } else if (path1 == null) {
-      LOGGER.warn("path1 should not be null");
+      LOGGER.warn("Path1 should not be null");
       return null;
     }
 
-    if (path1.toFile().exists()) {
-      LOGGER.warn("file {} not exists", path1.toFile().getName());
+    if (!path1.toFile().exists()) {
+      LOGGER.warn("File {} not exists", path1.toFile().getName());
       return null;
     }
 
