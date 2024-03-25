@@ -60,6 +60,7 @@ public class IoTDBSnapshotTest {
   public void tearDown() throws IOException, StorageEngineException {
     FileUtils.recursivelyDeleteFolder("target" + File.separator + "data");
     EnvironmentUtils.cleanEnv();
+    FileUtils.recursivelyDeleteFolder("target" + File.separator + "tmp");
   }
 
   private List<TsFileResource> writeTsFiles() throws IOException, WriteProcessException {
