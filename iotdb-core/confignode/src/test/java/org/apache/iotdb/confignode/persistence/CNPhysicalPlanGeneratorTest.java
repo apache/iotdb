@@ -90,7 +90,7 @@ public class CNPhysicalPlanGeneratorTest {
     if (clusterSchemaInfo != null) {
       clusterSchemaInfo.clear();
     }
-    FileUtils.deleteDirectory(snapshotDir);
+    FileUtils.deleteFileOrDirectory(snapshotDir);
   }
 
   @Test
