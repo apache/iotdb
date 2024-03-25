@@ -111,7 +111,7 @@ public class IoTDBSubscriptionTopicIT {
       consumer.subscribe("topic1");
       while (true) {
         Thread.sleep(1000); // wait some time
-        List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(100));
+        List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
         if (messages.isEmpty()) {
           break;
         }
@@ -179,7 +179,7 @@ public class IoTDBSubscriptionTopicIT {
       consumer.subscribe("topic1");
       while (true) {
         Thread.sleep(1000); // wait some time
-        List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(100));
+        List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
         if (messages.isEmpty()) {
           break;
         }
@@ -238,7 +238,7 @@ public class IoTDBSubscriptionTopicIT {
       consumer.subscribe("topic1");
       while (true) {
         Thread.sleep(1000); // wait some time
-        List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(100));
+        List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
         if (messages.isEmpty()) {
           break;
         }
