@@ -112,6 +112,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   @Override
   public void close() throws IoTDBConnectionException {
+    defaultSubscriptionProvider.close();
     for (SubscriptionProvider provider : subscriptionProviders.values()) {
       provider.close();
     }
