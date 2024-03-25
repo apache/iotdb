@@ -73,8 +73,6 @@ public class HeartbeatService {
   private final AtomicLong heartbeatCounter = new AtomicLong(0);
   private static final int configNodeListPeriodicallySyncInterval = 100;
 
-  //  private final ConcurrentHashMap<TDataNodeConfiguration, TConfigNodeLocation>
-
   public HeartbeatService(IManager configManager, LoadCache loadCache) {
     this.configManager = configManager;
     this.loadCache = loadCache;
@@ -148,7 +146,6 @@ public class HeartbeatService {
       heartbeatReq.setDataRegionIds(configManager.getClusterQuotaManager().getDataRegionIds());
       heartbeatReq.setSpaceQuotaUsage(configManager.getClusterQuotaManager().getSpaceQuotaUsage());
     }
-    heartbeatReq.setConfigNodeLocations(new HashSet<>(getNodeManager().getRegisteredConfigNodes()));
 
     /* Update heartbeat counter */
     heartbeatCounter.getAndIncrement();

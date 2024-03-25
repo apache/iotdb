@@ -75,15 +75,14 @@ public class LoadCache {
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
   // Map<RegionGroupId, RegionRouteCache>
   private final Map<TConsensusGroupId, RegionRouteCache> regionRouteCacheMap;
-
   // Map<DataNodeId, confirmedConfigNodes>
-  private final ConcurrentHashMap<Integer, Set<TConfigNodeLocation>> confirmedConfigNodeMap =
-      new ConcurrentHashMap<>();
+  private final Map<Integer, Set<TConfigNodeLocation>> confirmedConfigNodeMap;
 
   public LoadCache() {
     this.nodeCacheMap = new ConcurrentHashMap<>();
     this.regionGroupCacheMap = new ConcurrentHashMap<>();
     this.regionRouteCacheMap = new ConcurrentHashMap<>();
+    this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
   }
 
   public void initHeartbeatCache(IManager configManager) {

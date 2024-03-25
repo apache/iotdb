@@ -69,6 +69,13 @@ public class ConfigNodeInfo {
                 + PROPERTIES_FILE_NAME);
     propertiesFileTmp =
         SystemFileFactory.INSTANCE.getFile(propertiesFile.getAbsolutePath() + ".tmp");
+    if (propertiesFileTmp.exists()) {
+      try {
+        updatePropertiesFile();
+      } catch (IOException e) {
+        logger.error("Update properties file fail", e);
+      }
+    }
   }
   // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
@@ -124,6 +131,10 @@ public class ConfigNodeInfo {
     try (FileOutputStream fileOutputStream = new FileOutputStream(propertiesFileTmp)) {
       properties.store(fileOutputStream, "");
     }
+    updatePropertiesFile();
+  }
+
+  private void updatePropertiesFile() throws IOException {
     if (!propertiesFile.delete()) {
       String msg =
           String.format(
