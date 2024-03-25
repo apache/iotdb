@@ -46,6 +46,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private final Map<Integer, SubscriptionProvider> subscriptionProviders;
   private final SubscriptionProvider defaultSubscriptionProvider;
 
+  private boolean isClosed = true;
+
   public String getConsumerId() {
     return consumerId;
   }
@@ -86,6 +88,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       subscriptionProvider.handshake();
       subscriptionProviders.put(entry.getKey(), subscriptionProvider);
     }
+
+    isClosed = false;
   }
 
   protected SubscriptionConsumer(Builder builder, Properties config)
@@ -112,9 +116,17 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   @Override
   public void close() throws IoTDBConnectionException {
-    defaultSubscriptionProvider.close();
-    for (SubscriptionProvider provider : subscriptionProviders.values()) {
-      provider.close();
+    if (isClosed) {
+      return;
+    }
+
+    try {
+      defaultSubscriptionProvider.close();
+      for (SubscriptionProvider provider : subscriptionProviders.values()) {
+        provider.close();
+      }
+    } finally {
+      isClosed = true;
     }
   }
 

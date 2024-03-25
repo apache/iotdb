@@ -53,6 +53,7 @@ public class SubscriptionPrefetchingQueue {
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
 
   private final Map<String, SerializedEnrichedEvent> uncommittedEvents;
+  // TODO: replaced with ConcurrentLinkedQueue
   private final ConcurrentIterableLinkedQueue<SerializedEnrichedEvent> prefetchingQueue;
 
   private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);

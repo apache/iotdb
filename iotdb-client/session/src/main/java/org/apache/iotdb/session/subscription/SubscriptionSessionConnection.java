@@ -107,7 +107,7 @@ public class SubscriptionSessionConnection extends SessionConnection {
     return pollResp.getEnrichedTabletsList();
   }
 
-  public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds)
+  public void commitSync(Map<String, List<String>> topicNameToSubscriptionCommitIds)
       throws TException, IOException, StatementExecutionException {
     TPipeSubscribeResp resp =
         client.pipeSubscribe(

@@ -26,6 +26,8 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -35,12 +37,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPullConsumer.class);
+
   private final boolean autoCommit;
   private final int autoCommitInterval;
+
+  private ScheduledExecutorService workerExecutor;
+  private ConcurrentLinkedQueue<SubscriptionMessage> uncommittedMessages;
+
+  private boolean isClosed = true;
 
   /////////////////////////////// ctor ///////////////////////////////
 
@@ -50,38 +63,41 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
     this.autoCommit = builder.autoCommit;
     this.autoCommitInterval = builder.autoCommitInterval;
+
+    if (autoCommit) {
+      this.uncommittedMessages = new ConcurrentLinkedQueue<>();
+      launchAutoCommitWorker();
+    }
+
+    isClosed = false;
   }
 
   public SubscriptionPullConsumer(Properties config)
       throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
-    this(new Builder(), config);
-  }
-
-  private SubscriptionPullConsumer(Builder builder, Properties config)
-      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
-    super(
-        builder
-            .autoCommit(
-                (Boolean)
-                    config.getOrDefault(
-                        ConsumerConstant.AUTO_COMMIT_KEY,
-                        ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE))
-            .autoCommitInterval(
-                (Integer)
-                    config.getOrDefault(
-                        ConsumerConstant.AUTO_COMMIT_INTERVAL_KEY,
-                        ConsumerConstant.AUTO_COMMIT_INTERVAL_DEFAULT_VALUE)),
-        config);
-
-    this.autoCommit =
+    this(
+        config,
         (Boolean)
             config.getOrDefault(
-                ConsumerConstant.AUTO_COMMIT_KEY, ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE);
-    this.autoCommitInterval =
+                ConsumerConstant.AUTO_COMMIT_KEY, ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE),
         (Integer)
             config.getOrDefault(
                 ConsumerConstant.AUTO_COMMIT_INTERVAL_KEY,
-                ConsumerConstant.AUTO_COMMIT_INTERVAL_DEFAULT_VALUE);
+                ConsumerConstant.AUTO_COMMIT_INTERVAL_DEFAULT_VALUE));
+  }
+
+  private SubscriptionPullConsumer(Properties config, boolean autoCommit, int autoCommitInterval)
+      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+    super(new Builder().autoCommit(autoCommit).autoCommitInterval(autoCommitInterval), config);
+
+    this.autoCommit = autoCommit;
+    this.autoCommitInterval = autoCommitInterval;
+
+    if (autoCommit) {
+      this.uncommittedMessages = new ConcurrentLinkedQueue<>();
+      launchAutoCommitWorker();
+    }
+
+    isClosed = false;
   }
 
   /////////////////////////////// APIs ///////////////////////////////
@@ -94,20 +110,23 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       // TODO: specify the topics to poll
       enrichedTabletsList.addAll(connection.poll(Collections.emptySet()));
     }
-    return enrichedTabletsList.stream()
-        .map(
-            (enrichedTablets) ->
-                new SubscriptionMessage(new SubscriptionSessionDataSet(enrichedTablets)))
-        .collect(Collectors.toList());
-  }
 
-  public void commitSync(SubscriptionMessage message)
-      throws TException, IOException, StatementExecutionException {
-    commitSync(Collections.singletonList(message));
+    List<SubscriptionMessage> messages =
+        enrichedTabletsList.stream()
+            .map(
+                (enrichedTablets) ->
+                    new SubscriptionMessage(new SubscriptionSessionDataSet(enrichedTablets)))
+            .collect(Collectors.toList());
+    if (autoCommit) {
+      messages.forEach((message) -> uncommittedMessages.offer(message));
+    }
+    return messages;
   }
 
   public void commitSync(List<SubscriptionMessage> messages)
       throws TException, IOException, StatementExecutionException {
+    checkBeforeCommit();
+
     Map<Integer, Map<String, List<String>>> dataNodeIdToTopicNameToSubscriptionCommitIds =
         new HashMap<>();
     for (SubscriptionMessage message : messages) {
@@ -118,16 +137,71 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     }
     for (Map.Entry<Integer, Map<String, List<String>>> entry :
         dataNodeIdToTopicNameToSubscriptionCommitIds.entrySet()) {
-      commitSync(entry.getKey(), entry.getValue());
+      commitSyncInternal(entry.getKey(), entry.getValue());
     }
+  }
+
+  @Override
+  public void close() throws IoTDBConnectionException {
+    if (isClosed) {
+      return;
+    }
+
+    try {
+      if (autoCommit) {
+        workerExecutor.shutdown();
+        workerExecutor = null;
+        // TODO: commit all uncommitted message
+      }
+      super.close();
+    } finally {
+      isClosed = true;
+    }
+  }
+
+  public boolean isClosed() {
+    return isClosed;
   }
 
   /////////////////////////////// utility ///////////////////////////////
 
-  private void commitSync(
+  private void commitSyncInternal(
       int dataNodeId, Map<String, List<String>> topicNameToSubscriptionCommitIds)
       throws TException, IOException, StatementExecutionException {
-    getSessionConnection(dataNodeId).commit(topicNameToSubscriptionCommitIds);
+    getSessionConnection(dataNodeId).commitSync(topicNameToSubscriptionCommitIds);
+  }
+
+  private void checkBeforeCommit() {
+    if (autoCommit) {
+      LOGGER.warn(
+          "The 'auto-commit' parameter is set to true, so manual commits are not required...");
+    }
+  }
+
+  private void launchAutoCommitWorker() {
+    this.workerExecutor =
+        Executors.newSingleThreadScheduledExecutor(
+            r -> {
+              Thread t =
+                  new Thread(
+                      Thread.currentThread().getThreadGroup(),
+                      r,
+                      "SubscriptionAutoCommitWorker",
+                      0);
+              if (!t.isDaemon()) {
+                t.setDaemon(true);
+              }
+              if (t.getPriority() != Thread.NORM_PRIORITY) {
+                t.setPriority(Thread.NORM_PRIORITY);
+              }
+              return t;
+            });
+    workerExecutor.scheduleWithFixedDelay(
+        new SubscriptionAutoCommitWorker(this), 0, autoCommitInterval, TimeUnit.MILLISECONDS);
+  }
+
+  ConcurrentLinkedQueue<SubscriptionMessage> getUncommittedMessages() {
+    return uncommittedMessages;
   }
 
   /////////////////////////////// builder ///////////////////////////////
