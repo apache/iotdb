@@ -25,6 +25,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionConnection;
+import org.apache.iotdb.session.subscription.model.Subscription;
+import org.apache.iotdb.session.subscription.model.Topic;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
