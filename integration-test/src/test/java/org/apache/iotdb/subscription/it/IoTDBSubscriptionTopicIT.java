@@ -23,10 +23,12 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.SubscriptionSession;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -44,7 +46,7 @@ import java.util.Properties;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSubscriptionTopicIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionTopicIT.class);
@@ -84,19 +86,26 @@ public class IoTDBSubscriptionTopicIT {
       fail(e.getMessage());
     }
 
-    int count = 0;
+    // create topic
+    String host = EnvFactory.getEnv().getIP();
+    int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    try (SubscriptionSession session = new SubscriptionSession(host, port)) {
+      Properties config = new Properties();
+      config.put(TopicConstant.PATH_KEY, "root.db.*.s");
+      session.createTopic("topic1", config);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
 
     // subscription
+    int count = 0;
     try (SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
-            .host(EnvFactory.getEnv().getIP())
-            .port(Integer.parseInt(EnvFactory.getEnv().getPort()))
+            .host(host)
+            .port(port)
             .consumerId("c1")
             .consumerGroupId("cg1")
             .buildPullConsumer()) {
-      Properties config = new Properties();
-      config.put(TopicConstant.PATH_KEY, "root.db.*.s");
-      consumer.createTopic("topic1", config);
       consumer.subscribe("topic1");
       while (true) {
         Thread.sleep(1000); // wait some time
@@ -143,19 +152,26 @@ public class IoTDBSubscriptionTopicIT {
       fail(e.getMessage());
     }
 
-    int count = 0;
+    // create topic
+    String host = EnvFactory.getEnv().getIP();
+    int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    try (SubscriptionSession session = new SubscriptionSession(host, port)) {
+      Properties config = new Properties();
+      config.put(TopicConstant.START_TIME_KEY, currentTime);
+      session.createTopic("topic1", config);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
 
     // subscription
+    int count = 0;
     try (SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
-            .host(EnvFactory.getEnv().getIP())
-            .port(Integer.parseInt(EnvFactory.getEnv().getPort()))
+            .host(host)
+            .port(port)
             .consumerId("c1")
             .consumerGroupId("cg1")
             .buildPullConsumer()) {
-      Properties config = new Properties();
-      config.put(TopicConstant.START_TIME_KEY, currentTime);
-      consumer.createTopic("topic1", config);
       consumer.subscribe("topic1");
       while (true) {
         Thread.sleep(1000); // wait some time
@@ -191,9 +207,21 @@ public class IoTDBSubscriptionTopicIT {
       fail(e.getMessage());
     }
 
-    int count = 0;
+    // create topic
+    String host = EnvFactory.getEnv().getIP();
+    int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    try (SubscriptionSession session = new SubscriptionSession(host, port)) {
+      Properties config = new Properties();
+      config.put("processor", "tumbling-time-sampling-processor");
+      config.put("processor.tumbling-time.interval-seconds", "1");
+      config.put("processor.down-sampling.split-file", "true");
+      session.createTopic("topic1", config);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
 
     // subscription
+    int count = 0;
     try (SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
             .host(EnvFactory.getEnv().getIP())
@@ -201,11 +229,6 @@ public class IoTDBSubscriptionTopicIT {
             .consumerId("c1")
             .consumerGroupId("cg1")
             .buildPullConsumer()) {
-      Properties config = new Properties();
-      config.put("processor", "tumbling-time-sampling-processor");
-      config.put("processor.tumbling-time.interval-seconds", "1");
-      config.put("processor.down-sampling.split-file", "true");
-      consumer.createTopic("topic1", config);
       consumer.subscribe("topic1");
       while (true) {
         Thread.sleep(1000); // wait some time

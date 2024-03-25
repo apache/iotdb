@@ -29,10 +29,12 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.SubscriptionSession;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -49,7 +51,7 @@ import java.util.List;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSubscriptionBasicIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionBasicIT.class);
@@ -77,17 +79,24 @@ public class IoTDBSubscriptionBasicIT {
       fail(e.getMessage());
     }
 
-    int count = 0;
+    // create topic
+    String host = EnvFactory.getEnv().getIP();
+    int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    try (SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.createTopic("topic1");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
 
     // subscription
+    int count = 0;
     try (SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
-            .host(EnvFactory.getEnv().getIP())
-            .port(Integer.parseInt(EnvFactory.getEnv().getPort()))
+            .host(host)
+            .port(port)
             .consumerId("c1")
             .consumerGroupId("cg1")
             .buildPullConsumer()) {
-      consumer.createTopic("topic1");
       consumer.subscribe("topic1");
       while (true) {
         Thread.sleep(1000); // wait some time
@@ -125,18 +134,25 @@ public class IoTDBSubscriptionBasicIT {
       fail(e.getMessage());
     }
 
-    int count = 0;
+    // create topic
+    String host = EnvFactory.getEnv().getIP();
+    int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    try (SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.createTopic("topic1");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
 
     // subscription
+    int count = 0;
     try {
       SubscriptionPullConsumer consumer =
           new SubscriptionPullConsumer.Builder()
-              .host(EnvFactory.getEnv().getIP())
-              .port(Integer.parseInt(EnvFactory.getEnv().getPort()))
+              .host(host)
+              .port(port)
               .consumerId("c1")
               .consumerGroupId("cg1")
               .buildPullConsumer();
-      consumer.createTopic("topic1");
       consumer.subscribe("topic1");
       while (true) {
         Thread.sleep(1000); // wait some time
@@ -192,8 +208,8 @@ public class IoTDBSubscriptionBasicIT {
     // subscription again
     try (SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
-            .host(EnvFactory.getEnv().getIP())
-            .port(Integer.parseInt(EnvFactory.getEnv().getPort()))
+            .host(host)
+            .port(port)
             .consumerId("c1")
             .consumerGroupId("cg1")
             .buildPullConsumer()) {
