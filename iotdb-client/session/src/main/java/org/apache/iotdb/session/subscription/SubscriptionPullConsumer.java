@@ -89,7 +89,10 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       throws TException, IOException, StatementExecutionException {
     // TODO: timeout
     // TODO: specify the topics to poll
-    List<EnrichedTablets> enrichedTabletsList = getSessionConnection().poll(Collections.emptySet());
+    List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
+    for (SubscriptionSessionConnection connection : getSessionConnections()) {
+      enrichedTabletsList.addAll(connection.poll(Collections.emptySet()));
+    }
     return enrichedTabletsList.stream()
         .map(
             (enrichedTablets) ->
@@ -104,20 +107,29 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   public void commitSync(List<SubscriptionMessage> messages)
       throws TException, IOException, StatementExecutionException {
-    Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
+    Map<Integer, Map<String, List<String>>> dataNodeIdToTopicNameToSubscriptionCommitIds =
+        new HashMap<>();
     for (SubscriptionMessage message : messages) {
-      topicNameToSubscriptionCommitIds
+      int dataNodeId =
+          EnrichedTablets.parseDataNodeIdFromSubscriptionCommitId(
+              message.getSubscriptionCommitId());
+      dataNodeIdToTopicNameToSubscriptionCommitIds
+          .computeIfAbsent(dataNodeId, (id) -> new HashMap<>())
           .computeIfAbsent(message.getTopic(), (topic) -> new ArrayList<>())
           .add(message.getSubscriptionCommitId());
     }
-    commitSync(topicNameToSubscriptionCommitIds);
+    for (Map.Entry<Integer, Map<String, List<String>>> entry :
+        dataNodeIdToTopicNameToSubscriptionCommitIds.entrySet()) {
+      commitSync(entry.getKey(), entry.getValue());
+    }
   }
 
   /////////////////////////////// utility ///////////////////////////////
 
-  private void commitSync(Map<String, List<String>> topicNameToSubscriptionCommitIds)
+  private void commitSync(
+      int dataNodeId, Map<String, List<String>> topicNameToSubscriptionCommitIds)
       throws TException, IOException, StatementExecutionException {
-    getSessionConnection().commit(topicNameToSubscriptionCommitIds);
+    getSessionConnection(dataNodeId).commit(topicNameToSubscriptionCommitIds);
   }
 
   /////////////////////////////// builder ///////////////////////////////

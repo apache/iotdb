@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 
 import org.apache.thrift.TException;
@@ -35,20 +34,19 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-public abstract class SubscriptionConsumer extends SubscriptionSession {
-
-  protected final String host;
-  protected final int port;
-  protected final List<String> nodeUrls;
-
-  protected final String username;
-  protected final String password;
+public abstract class SubscriptionConsumer implements AutoCloseable {
 
   protected final String consumerId;
   protected final String consumerGroupId;
+
+  private final Map<Integer, SubscriptionProvider> subscriptionProviders;
+  private final SubscriptionProvider defaultSubscriptionProvider;
 
   public String getConsumerId() {
     return consumerId;
@@ -62,17 +60,46 @@ public abstract class SubscriptionConsumer extends SubscriptionSession {
 
   protected SubscriptionConsumer(Builder builder)
       throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
-    super(builder.host, String.valueOf(builder.port), builder.username, builder.password);
-
-    this.host = builder.host;
-    this.port = builder.port;
-    this.nodeUrls = builder.nodeUrls;
-    this.username = builder.username;
-    this.password = builder.password;
     this.consumerId = builder.consumerId;
     this.consumerGroupId = builder.consumerGroupId;
 
-    handshake();
+    TEndPoint defaultEndPoint = new TEndPoint(builder.host, builder.port);
+
+    this.subscriptionProviders = new HashMap<>();
+    this.defaultSubscriptionProvider =
+        new SubscriptionProvider(
+            defaultEndPoint,
+            builder.username,
+            builder.password,
+            builder.consumerId,
+            builder.consumerGroupId);
+
+    Map<Integer, TEndPoint> endPoints = defaultSubscriptionProvider.handshake();
+    Optional<Integer> defaultDataNodeId =
+        endPoints.entrySet().stream()
+            .filter(entry -> entry.getValue().equals(defaultEndPoint))
+            .map(Map.Entry::getKey)
+            .findFirst();
+    if (!defaultDataNodeId.isPresent()) {
+      throw new IoTDBConnectionException(
+          "something unexpected happened when construct subscription consumer...");
+    }
+
+    subscriptionProviders.put(defaultDataNodeId.get(), defaultSubscriptionProvider);
+    for (Map.Entry<Integer, TEndPoint> entry : endPoints.entrySet()) {
+      if (Objects.equals(entry.getValue(), defaultEndPoint)) {
+        continue;
+      }
+      SubscriptionProvider subscriptionProvider =
+          new SubscriptionProvider(
+              entry.getValue(),
+              builder.username,
+              builder.password,
+              builder.consumerId,
+              builder.consumerGroupId);
+      subscriptionProvider.handshake();
+      subscriptionProviders.put(entry.getKey(), subscriptionProvider);
+    }
   }
 
   protected SubscriptionConsumer(Builder builder, Properties config)
@@ -99,13 +126,9 @@ public abstract class SubscriptionConsumer extends SubscriptionSession {
 
   @Override
   public void close() throws IoTDBConnectionException {
-    try {
-      getSessionConnection().closeConsumer();
-    } catch (TException | StatementExecutionException e) {
-      // wrap to IoTDBConnectionException to keep interface consistent
-      throw new IoTDBConnectionException(e);
+    for (SubscriptionProvider provider : subscriptionProviders.values()) {
+      provider.close();
     }
-    super.close();
   }
 
   public void subscribe(String topicName)
@@ -120,7 +143,7 @@ public abstract class SubscriptionConsumer extends SubscriptionSession {
 
   public void subscribe(Set<String> topicNames)
       throws TException, IOException, StatementExecutionException {
-    getSessionConnection().subscribe(topicNames);
+    getDefaultSessionConnection().subscribe(topicNames);
   }
 
   public void unsubscribe(String topicName)
@@ -135,25 +158,25 @@ public abstract class SubscriptionConsumer extends SubscriptionSession {
 
   public void unsubscribe(Set<String> topicNames)
       throws TException, IOException, StatementExecutionException {
-    getSessionConnection().unsubscribe(topicNames);
+    getDefaultSessionConnection().unsubscribe(topicNames);
   }
 
   /////////////////////////////// utility ///////////////////////////////
 
-  protected SubscriptionSessionConnection getSessionConnection() {
-    return (SubscriptionSessionConnection) defaultSessionConnection;
+  private SubscriptionSessionConnection getDefaultSessionConnection() {
+    return defaultSubscriptionProvider.getSessionConnection();
   }
 
-  private void handshake()
-      throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
-    open();
+  protected List<SubscriptionSessionConnection> getSessionConnections() {
+    return subscriptionProviders.values().stream()
+        .map(SubscriptionProvider::getSessionConnection)
+        .collect(Collectors.toList());
+  }
 
-    Map<String, String> consumerAttributes = new HashMap<>();
-    consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
-    consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
-    Map<Integer, TEndPoint> endPoints =
-        getSessionConnection().handshake(new ConsumerConfig(consumerAttributes));
-    // TODO: connect to all DNs
+  protected SubscriptionSessionConnection getSessionConnection(int dataNodeId) {
+    return subscriptionProviders
+        .getOrDefault(dataNodeId, defaultSubscriptionProvider)
+        .getSessionConnection();
   }
 
   /////////////////////////////// builder ///////////////////////////////
@@ -162,7 +185,6 @@ public abstract class SubscriptionConsumer extends SubscriptionSession {
 
     protected String host = SessionConfig.DEFAULT_HOST;
     protected int port = SessionConfig.DEFAULT_PORT;
-    protected List<String> nodeUrls = null;
 
     protected String username = SessionConfig.DEFAULT_USER;
     protected String password = SessionConfig.DEFAULT_PASSWORD;
@@ -177,11 +199,6 @@ public abstract class SubscriptionConsumer extends SubscriptionSession {
 
     public Builder port(int port) {
       this.port = port;
-      return this;
-    }
-
-    public Builder nodeUrls(List<String> nodeUrls) {
-      this.nodeUrls = nodeUrls;
       return this;
     }
 
