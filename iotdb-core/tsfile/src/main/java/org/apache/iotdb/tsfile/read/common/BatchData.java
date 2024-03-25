@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsVector;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -371,6 +372,115 @@ public class BatchData {
     count++;
   }
 
+  public void putFloats(long[] times, float[] values) {
+    assert times.length == values.length;
+
+    // Indicate for progress of data consuming
+    int start = 0;
+    int insertNum = times.length;
+    // Dynamic expansion phase for single array
+    if (writeCurListIndex == 0) {
+      // writeCurArrayIndex points to next insertion position
+      // i.e. the element count of current array
+      int total = writeCurArrayIndex + insertNum;
+      int realThreshold = nextPowerOfTwo(CAPACITY_THRESHOLD);
+      if (total <= realThreshold) {
+        // Direct copy columns to the single array
+        int newCapacity = nextPowerOfTwo(total);
+        // No need to do expansion
+        if (newCapacity <= capacity) {
+          // Merge time columns
+          long[] targetTimes = timeRet.get(0);
+          System.arraycopy(times, 0, targetTimes, writeCurArrayIndex, times.length);
+
+          // Merge value columns
+          float[] targetValues = floatRet.get(0);
+          System.arraycopy(values, 0, targetValues, writeCurArrayIndex, values.length);
+        } else {
+          capacity = newCapacity;
+
+          long[] oldTimes = timeRet.get(0);
+          long[] newTimes = Arrays.copyOf(oldTimes, capacity);
+          System.arraycopy(times, 0, newTimes, writeCurArrayIndex, times.length);
+          timeRet.set(0, newTimes);
+
+          float[] oldValues = floatRet.get(0);
+          float[] newValues = Arrays.copyOf(oldValues, capacity);
+          System.arraycopy(values, 0, newValues, writeCurArrayIndex, values.length);
+          floatRet.set(0, newValues);
+        }
+
+        // Update relevant indexes
+        writeCurArrayIndex += insertNum;
+        count += insertNum;
+
+        return;
+      } else {
+        // Place spilled element to new array
+        capacity = realThreshold;
+        int retained = capacity - writeCurArrayIndex;
+
+        // Merge time columns
+        long[] oldTimes = timeRet.get(0);
+        long[] newTimes = Arrays.copyOf(oldTimes, capacity);
+        System.arraycopy(times, 0, newTimes, writeCurArrayIndex, retained);
+        timeRet.set(0, newTimes);
+
+        // Merge value columns
+        float[] oldValues = floatRet.get(0);
+        float[] newValues = Arrays.copyOf(oldValues, capacity);
+        System.arraycopy(values, 0, newValues, writeCurArrayIndex, retained);
+        floatRet.set(0, newValues);
+
+        // Create new columns
+        timeRet.add(new long[capacity]);
+        floatRet.add(new float[capacity]);
+
+        // Update relevant indexes
+        writeCurArrayIndex = 0;
+        writeCurListIndex++;
+        count += retained;
+        insertNum -= retained;
+
+        // Continue to insert elements into new array
+        // Use index to avoid copy
+        start = retained;
+      }
+    }
+
+    // Fill the whole array
+    while (insertNum > 0) {
+      int consumed = Math.min(insertNum, capacity - writeCurArrayIndex);
+      consumed = start + consumed > times.length? times.length - start : consumed;
+
+      // Insert a whole time array
+      long[] targetTimes = timeRet.get(writeCurListIndex);
+      System.arraycopy(times, start, targetTimes, writeCurArrayIndex, consumed);
+
+      // Insert a whole value array
+      float[] targetValues = floatRet.get(writeCurListIndex);
+      System.arraycopy(values, start, targetValues, writeCurArrayIndex, consumed);
+
+      if (insertNum >= capacity) {
+        // Create new columns
+        timeRet.add(new long[capacity]);
+        floatRet.add(new float[capacity]);
+
+        // Move cursor to new columns
+        writeCurArrayIndex = 0;
+        writeCurListIndex++;
+      } else {
+        // Increase in current column
+        writeCurArrayIndex += consumed;
+      }
+
+      // Update indexes for both cases
+      insertNum -= consumed;
+      start += consumed;
+      count += consumed;
+    }
+  }
+
   /**
    * put double data.
    *
@@ -473,6 +583,16 @@ public class BatchData {
 
     writeCurArrayIndex++;
     count++;
+  }
+
+  private int nextPowerOfTwo(int n) {
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    return n + 1;
   }
 
   public boolean getBoolean() {
