@@ -113,7 +113,7 @@ public class SessionTest {
             .fetchSize(1000)
             .zoneId(ZoneId.systemDefault())
             .enableRedirection(true)
-            .enableRecordsConvertTablet(true)
+            .enableRecordsAutoConvertTablet(true)
             .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
             .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
             .version(Version.V_0_13)

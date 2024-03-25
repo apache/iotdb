@@ -112,8 +112,7 @@ public class SessionPool implements ISessionPool {
   private String trustStorePwd;
   private ZoneId zoneId;
   private boolean enableRedirection;
-
-  private boolean enableRecordsConvertTablet;
+  private boolean enableRecordsAutoConvertTablet;
   private boolean enableQueryRedirection = false;
 
   private Map<String, TEndPoint> deviceIdToEndpoint;
@@ -477,7 +476,7 @@ public class SessionPool implements ISessionPool {
     if (this.enableRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
     }
-    this.enableRecordsConvertTablet = builder.enableRecordsConvertTablet;
+    this.enableRecordsAutoConvertTablet = builder.enableRecordsAutoConvertTablet;
     this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
     this.version = builder.version;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
@@ -535,7 +534,7 @@ public class SessionPool implements ISessionPool {
               .thriftDefaultBufferSize(thriftDefaultBufferSize)
               .thriftMaxFrameSize(thriftMaxFrameSize)
               .enableRedirection(enableRedirection)
-              .enableRecordsConvertTablet(enableRecordsConvertTablet)
+              .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
               .version(version)
               .useSSL(useSSL)
               .trustStore(trustStore)
@@ -555,7 +554,7 @@ public class SessionPool implements ISessionPool {
               .thriftDefaultBufferSize(thriftDefaultBufferSize)
               .thriftMaxFrameSize(thriftMaxFrameSize)
               .enableRedirection(enableRedirection)
-              .enableRecordsConvertTablet(enableRecordsConvertTablet)
+              .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
               .version(version)
               .useSSL(useSSL)
               .trustStore(trustStore)
@@ -3510,8 +3509,7 @@ public class SessionPool implements ISessionPool {
     private boolean enableCompression = false;
     private ZoneId zoneId = null;
     private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
-
-    private boolean enableRecordsConvertTablet = SessionConfig.DEFAULT_RECORDS_CONVERT_TABLET;
+    private boolean enableRecordsAutoConvertTablet = SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
     private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
     private Version version = SessionConfig.DEFAULT_VERSION;
 
@@ -3605,8 +3603,8 @@ public class SessionPool implements ISessionPool {
       return this;
     }
 
-    public Builder enableRecordsConvertTablet(boolean enableRecordsConvertTablet) {
-      this.enableRecordsConvertTablet = enableRecordsConvertTablet;
+    public Builder enableRecordsAutoConvertTablet(boolean enableRecordsAutoConvertTablet) {
+      this.enableRecordsAutoConvertTablet = enableRecordsAutoConvertTablet;
       return this;
     }
 
