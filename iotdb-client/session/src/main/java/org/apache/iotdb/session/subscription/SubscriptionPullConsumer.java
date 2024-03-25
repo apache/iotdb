@@ -149,8 +149,6 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
 
   public void commitSync(List<SubscriptionMessage> messages)
       throws TException, IOException, StatementExecutionException {
-    checkBeforeCommit();
-
     Map<Integer, Map<String, List<String>>> dataNodeIdToTopicNameToSubscriptionCommitIds =
         new HashMap<>();
     for (SubscriptionMessage message : messages) {
@@ -173,15 +171,9 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
     getSessionConnection(dataNodeId).commitSync(topicNameToSubscriptionCommitIds);
   }
 
-  private void checkBeforeCommit() {
-    if (autoCommit) {
-      LOGGER.warn(
-          "The 'auto-commit' parameter is set to true, so manual commits are not required...");
-    }
-  }
-
   /////////////////////////////// auto commit ///////////////////////////////
 
+  @SuppressWarnings("unsafeThreadSchedule")
   private void launchAutoCommitWorker() {
     uncommittedMessages = new ConcurrentSkipListMap<>();
     workerExecutor =
