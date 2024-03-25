@@ -30,7 +30,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
-import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -126,7 +126,7 @@ class SubscriptionAgentLauncher {
           throw new SubscriptionException(exceptionMessage);
         }
 
-        final TPushConsumerGroupRespExceptionMessage exceptionMessage =
+        final TPushConsumerGroupMetaRespExceptionMessage exceptionMessage =
             SubscriptionAgent.consumer()
                 .handleConsumerGroupMetaChanges(
                     getAllSubscriptionInfoResp.getAllSubscriptionInfo().stream()

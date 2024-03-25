@@ -234,6 +234,7 @@ public class AsyncClientHandler<Q, R> {
             dataNodeLocationMap,
             (Map<Integer, TPushTopicMetaResp>) responseMap,
             countDownLatch);
+      case CONSUMER_GROUP_PUSH_ALL_META:
       case CONSUMER_GROUP_PUSH_SINGLE_META:
         return new ConsumerGroupPushMetaRPCHandler(
             requestType,

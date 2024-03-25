@@ -128,10 +128,12 @@ import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMai
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlanV1;
@@ -1379,7 +1381,21 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void AlterConsumerGroupPlan() throws IOException {
+  public void TopicHandleMetaChangePlanTest() throws IOException {
+    List<TopicMeta> topicMetas = new ArrayList<>();
+    topicMetas.add(new TopicMeta("topic1", 1, Collections.singletonMap("k1", "v1")));
+    topicMetas.add(new TopicMeta("topic2", 2, Collections.singletonMap("k2", "v2")));
+    TopicHandleMetaChangePlan topicHandleMetaChangePlan = new TopicHandleMetaChangePlan(topicMetas);
+    TopicHandleMetaChangePlan topicHandleMetaChangePlan1 =
+        (TopicHandleMetaChangePlan)
+            ConfigPhysicalPlan.Factory.create(topicHandleMetaChangePlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        topicHandleMetaChangePlan.getTopicMetaList(),
+        topicHandleMetaChangePlan1.getTopicMetaList());
+  }
+
+  @Test
+  public void AlterConsumerGroupPlanTest() throws IOException {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("k1", "v1");
     attributes.put("k2", "v2");
@@ -1393,6 +1409,26 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         alterConsumerGroupPlan.getConsumerGroupMeta(),
         alterConsumerGroupPlan1.getConsumerGroupMeta());
+  }
+
+  @Test
+  public void ConsumerGroupHandleMetaChangePlanTest() throws IOException {
+    List<ConsumerGroupMeta> consumerGroupMetas = new ArrayList<>();
+    consumerGroupMetas.add(
+        new ConsumerGroupMeta(
+            "cg1", 1, new ConsumerMeta("c1", 11, Collections.singletonMap("k1", "v1"))));
+    consumerGroupMetas.add(
+        new ConsumerGroupMeta(
+            "cg2", 2, new ConsumerMeta("c2", 22, Collections.singletonMap("k2", "v2"))));
+    ConsumerGroupHandleMetaChangePlan consumerGroupHandleMetaChangePlan =
+        new ConsumerGroupHandleMetaChangePlan(consumerGroupMetas);
+    ConsumerGroupHandleMetaChangePlan consumerGroupHandleMetaChangePlan1 =
+        (ConsumerGroupHandleMetaChangePlan)
+            ConfigPhysicalPlan.Factory.create(
+                consumerGroupHandleMetaChangePlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        consumerGroupHandleMetaChangePlan.getConsumerGroupMetaList(),
+        consumerGroupHandleMetaChangePlan1.getConsumerGroupMetaList());
   }
 
   @Test

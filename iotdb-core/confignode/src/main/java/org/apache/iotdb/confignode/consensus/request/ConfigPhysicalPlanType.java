@@ -217,8 +217,10 @@ public enum ConfigPhysicalPlanType {
   ShowTopic((short) 1802),
   AlterTopic((short) 1803),
   AlterMultipleTopics((short) 1804),
+  TopicHandleMetaChange((short) 1805),
 
   AlterConsumerGroup((short) 1900),
+  ConsumerGroupHandleMetaChange((short) 1901),
 
   ShowSubscription((short) 2000),
 

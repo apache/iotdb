@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription;
 
 import org.apache.iotdb.commons.exception.SubscriptionException;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -29,6 +30,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.subscription.OperateSubscriptionState;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -293,13 +295,40 @@ public abstract class AbstractOperateSubscriptionProcedure
     return env.pushAllTopicMetaToDataNodes(topicMetaBinaryList);
   }
 
-  public static boolean allTopicMetaPushedSuccessfully(Map<Integer, TPushTopicMetaResp> respMap) {
+  public static boolean pushTopicMetaHasException(Map<Integer, TPushTopicMetaResp> respMap) {
     for (TPushTopicMetaResp resp : respMap.values()) {
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return false;
+        return true;
       }
     }
-    return true;
+    return false;
+  }
+
+  /**
+   * Pushing all the topicMeta's to all the dataNodes.
+   *
+   * @param env ConfigNodeProcedureEnv
+   * @return The responseMap after pushing topic meta
+   * @throws IOException Exception when Serializing to byte buffer
+   */
+  protected Map<Integer, TPushConsumerGroupMetaResp> pushConsumerGroupMetaToDataNodes(
+      ConfigNodeProcedureEnv env) throws IOException {
+    final List<ByteBuffer> consumerGroupMetaBinaryList = new ArrayList<>();
+    for (ConsumerGroupMeta consumerGroupMeta : subscriptionInfo.get().getAllConsumerGroupMeta()) {
+      consumerGroupMetaBinaryList.add(consumerGroupMeta.serialize());
+    }
+
+    return env.pushAllConsumerGroupMetaToDataNodes(consumerGroupMetaBinaryList);
+  }
+
+  public static boolean pushConsumerGroupMetaHasException(
+      Map<Integer, TPushConsumerGroupMetaResp> respMap) {
+    for (TPushConsumerGroupMetaResp resp : respMap.values()) {
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

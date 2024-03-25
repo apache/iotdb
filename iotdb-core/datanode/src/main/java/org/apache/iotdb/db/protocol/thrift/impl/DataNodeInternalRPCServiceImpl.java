@@ -189,8 +189,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
-import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
@@ -1085,6 +1086,29 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TPushTopicMetaResp pushTopicMeta(TPushTopicMetaReq req) {
+    final List<TopicMeta> topicMetas = new ArrayList<>();
+    for (ByteBuffer byteBuffer : req.getTopicMetas()) {
+      topicMetas.add(TopicMeta.deserialize(byteBuffer));
+    }
+    try {
+      TPushTopicMetaRespExceptionMessage exceptionMessage =
+          SubscriptionAgent.topic().handleTopicMetaChanges(topicMetas);
+
+      return exceptionMessage == null
+          ? new TPushTopicMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+          : new TPushTopicMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()))
+              .setExceptionMessages(Collections.singletonList(exceptionMessage));
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when pushing topic meta", e);
+      return new TPushTopicMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()));
+    }
+  }
+
+  @Override
   public TPushTopicMetaResp pushSingleTopicMeta(TPushSingleTopicMetaReq req) {
     try {
       final TPushTopicMetaRespExceptionMessage exceptionMessage;
@@ -1110,13 +1134,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return new TPushTopicMetaResp()
           .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()));
     }
-  }
-
-  @Override
-  public TPushTopicMetaResp pushTopicMeta(TPushTopicMetaReq req) {
-    // TODO: handle push all topic meta
-    return new TPushTopicMetaResp()
-        .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
   @Override
@@ -1167,10 +1184,33 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TPushConsumerGroupMetaResp pushConsumerGroupMeta(TPushConsumerGroupMetaReq req) {
+    final List<ConsumerGroupMeta> consumerGroupMetas = new ArrayList<>();
+    for (ByteBuffer byteBuffer : req.getConsumerGroupMetas()) {
+      consumerGroupMetas.add(ConsumerGroupMeta.deserialize(byteBuffer));
+    }
+    try {
+      TPushConsumerGroupMetaRespExceptionMessage exceptionMessage =
+          SubscriptionAgent.consumer().handleConsumerGroupMetaChanges(consumerGroupMetas);
+
+      return exceptionMessage == null
+          ? new TPushConsumerGroupMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+          : new TPushConsumerGroupMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode()))
+              .setExceptionMessages(Collections.singletonList(exceptionMessage));
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when pushing consumer group meta", e);
+      return new TPushConsumerGroupMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode()));
+    }
+  }
+
+  @Override
   public TPushConsumerGroupMetaResp pushSingleConsumerGroupMeta(
       TPushSingleConsumerGroupMetaReq req) {
     try {
-      final TPushConsumerGroupRespExceptionMessage exceptionMessage;
+      final TPushConsumerGroupMetaRespExceptionMessage exceptionMessage;
       if (req.isSetConsumerGroupNameToDrop()) {
         exceptionMessage =
             SubscriptionAgent.consumer().handleDropConsumerGroup(req.getConsumerGroupNameToDrop());

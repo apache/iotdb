@@ -64,6 +64,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
@@ -289,6 +290,7 @@ public class AsyncDataNodeClientPool {
               (TPushTopicMetaReq) clientHandler.getRequest(requestId),
               (TopicPushMetaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         case TOPIC_PUSH_SINGLE_META:
           client.pushSingleTopicMeta(
               (TPushSingleTopicMetaReq) clientHandler.getRequest(requestId),
@@ -299,6 +301,12 @@ public class AsyncDataNodeClientPool {
           client.pushMultiTopicMeta(
               (TPushMultiTopicMetaReq) clientHandler.getRequest(requestId),
               (TopicPushMetaRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case CONSUMER_GROUP_PUSH_ALL_META:
+          client.pushConsumerGroupMeta(
+              (TPushConsumerGroupMetaReq) clientHandler.getRequest(requestId),
+              (ConsumerGroupPushMetaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case CONSUMER_GROUP_PUSH_SINGLE_META:

@@ -456,6 +456,10 @@ struct TPushTopicMetaRespExceptionMessage {
   3: required i64 timeStamp
 }
 
+struct TPushConsumerGroupMetaReq {
+  1: required list<binary> consumerGroupMetas
+}
+
 struct TPushSingleConsumerGroupMetaReq {
    1: optional binary consumerGroupMeta // Should not set both to null.
    2: optional string consumerGroupNameToDrop
@@ -463,10 +467,10 @@ struct TPushSingleConsumerGroupMetaReq {
 
 struct TPushConsumerGroupMetaResp {
   1: required common.TSStatus status
-  2: optional list<TPushConsumerGroupRespExceptionMessage> exceptionMessages
+  2: optional list<TPushConsumerGroupMetaRespExceptionMessage> exceptionMessages
 }
 
-struct TPushConsumerGroupRespExceptionMessage {
+struct TPushConsumerGroupMetaRespExceptionMessage {
   1: required string consumerGroupId
   2: required string message
   3: required i64 timeStamp
@@ -921,6 +925,11 @@ service IDataNodeRPCService {
   * Send multiple topic metas to DataNodes, for create/drop subscriptions
   */
   TPushTopicMetaResp pushMultiTopicMeta(TPushMultiTopicMetaReq req)
+
+ /**
+  * Send consumerGroupMetas to DataNodes, for synchronization
+  */
+  TPushConsumerGroupMetaResp pushConsumerGroupMeta(TPushConsumerGroupMetaReq req)
 
  /**
   * Send one consumer group meta to DataNodes.

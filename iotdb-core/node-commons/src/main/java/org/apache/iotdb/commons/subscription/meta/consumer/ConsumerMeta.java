@@ -38,7 +38,7 @@ public class ConsumerMeta {
   private long creationTime;
   private ConsumerConfig config;
 
-  public ConsumerMeta() {
+  private ConsumerMeta() {
     // Empty constructor
   }
 

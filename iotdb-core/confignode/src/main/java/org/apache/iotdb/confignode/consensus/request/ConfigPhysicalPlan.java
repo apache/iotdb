@@ -99,10 +99,12 @@ import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMai
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlanV1;
@@ -457,8 +459,14 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case AlterMultipleTopics:
           plan = new AlterMultipleTopicsPlan();
           break;
+        case TopicHandleMetaChange:
+          plan = new TopicHandleMetaChangePlan();
+          break;
         case AlterConsumerGroup:
           plan = new AlterConsumerGroupPlan();
+          break;
+        case ConsumerGroupHandleMetaChange:
+          plan = new ConsumerGroupHandleMetaChangePlan();
           break;
         case ShowSubscription:
           plan = new ShowSubscriptionPlan();

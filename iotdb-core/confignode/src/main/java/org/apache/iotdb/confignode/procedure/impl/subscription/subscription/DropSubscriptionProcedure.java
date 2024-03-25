@@ -200,7 +200,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
     for (AlterTopicProcedure alterTopicProcedure : alterTopicProcedures) {
       topicMetaBinaryList.add(alterTopicProcedure.getUpdatedTopicMeta().serialize());
     }
-    if (!allTopicMetaPushedSuccessfully(env.pushMultiTopicMetaToDataNodes(topicMetaBinaryList))) {
+    if (pushTopicMetaHasException(env.pushMultiTopicMetaToDataNodes(topicMetaBinaryList))) {
       // If not all topic meta are pushed successfully, the meta can be pushed during meta sync.
       LOGGER.warn(
           "Failed to alter topics when creating subscription, metadata will be synchronized later.");
@@ -269,7 +269,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
     alterConsumerGroupProcedure.rollbackFromOperateOnDataNodes(env);
 
     // Push all topic metas to datanode, may be time-consuming
-    if (!allTopicMetaPushedSuccessfully(pushTopicMetaToDataNodes(env))) {
+    if (pushTopicMetaHasException(pushTopicMetaToDataNodes(env))) {
       LOGGER.warn(
           "Failed to rollback alter topics when dropping subscription, metadata will be synchronized later.");
     }

@@ -93,6 +93,14 @@ public class SubscriptionCoordinator {
     }
   }
 
+  public boolean isLocked() {
+    return coordinatorLock.isLocked();
+  }
+
+  public boolean canSkipNextSync() {
+    return subscriptionInfo.canSkipNextSync();
+  }
+
   /////////////////////////////// Operate ///////////////////////////////
 
   public TSStatus createTopic(TCreateTopicReq req) {
