@@ -418,7 +418,7 @@ public class AggregateProcessor implements PipeProcessor {
               throw new UnsupportedOperationException(
                   String.format("The type %s is not supported", row.getDataType(index)));
           }
-          if (!Objects.isNull(result)) {
+          if (Objects.nonNull(result)) {
             collectWindowOutputs(result.getLeft(), timeSeries, rowCollector);
             if (Objects.nonNull(result.getRight())) {
               resultMap.put(timeSeries, result.getRight());

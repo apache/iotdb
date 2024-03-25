@@ -36,7 +36,6 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
-import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
@@ -47,7 +46,6 @@ import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.utils.writelog.LogWriter;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,11 +55,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -202,16 +198,15 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   @Override
   public boolean takeSnapshot(File snapshotDir) {
-    List<Pair<Pair<Path, Path>, CNSnapshotFileType>> snapshotPaths = null;
     if (executor.takeSnapshot(snapshotDir)) {
       try {
-        snapshotPaths = ConfignodeSnapshotParser.getSnapshots();
-        PipeConfigNodeAgent.runtime().listener().tryListenToSnapshots(snapshotPaths);
+        PipeConfigNodeAgent.runtime()
+            .listener()
+            .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
         return true;
       } catch (IOException e) {
         LOGGER.error(
-            "Config Region Listening Queue Listen to snapshot failed, the historical data may not be transferred. snapshotPaths:{}",
-            snapshotPaths);
+            "Config Region Listening Queue Listen to snapshot failed, the historical data may not be transferred.");
       }
     }
     return false;
