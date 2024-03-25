@@ -71,6 +71,7 @@ public class HeartbeatService {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.CONFIG_NODE_HEART_BEAT_SERVICE.getName());
   private final AtomicLong heartbeatCounter = new AtomicLong(0);
+  private static final int configNodeListPeriodicallySyncInterval = 100;
 
   //  private final ConcurrentHashMap<TDataNodeConfiguration, TConfigNodeLocation>
 
@@ -160,7 +161,8 @@ public class HeartbeatService {
         loadCache.getConfirmedConfigNodeLocations(dataNodeId);
     Set<TConfigNodeLocation> actualConfigNodes =
         new HashSet<>(getNodeManager().getRegisteredConfigNodes());
-    if (!actualConfigNodes.equals(confirmedConfigNodes)) {
+    if (!actualConfigNodes.equals(confirmedConfigNodes)
+        || heartbeatCounter.get() % configNodeListPeriodicallySyncInterval == 0) {
       req.setConfigNodeLocations(actualConfigNodes);
     }
   }

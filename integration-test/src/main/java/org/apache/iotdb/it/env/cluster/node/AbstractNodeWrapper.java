@@ -531,7 +531,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     return getLogDirPath() + File.separator + getId() + ".log";
   }
 
-  protected String getLogDirPath() {
+  public String getLogDirPath() {
     String baseDir =
         System.getProperty(USER_DIR)
             + File.separator

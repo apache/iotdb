@@ -346,6 +346,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
   @Override
   public void cleanClusterEnvironment() {
+    logger.info("You can find logs at {}", this.dataNodeWrapperList.get(0).getLogDirPath());
     for (AbstractNodeWrapper nodeWrapper :
         Stream.concat(this.dataNodeWrapperList.stream(), this.configNodeWrapperList.stream())
             .collect(Collectors.toList())) {
