@@ -115,7 +115,7 @@ public class AuditLogger {
     if (auditLogOperationList.contains(operation)) {
       if (auditLogStorageList.contains(AuditLogStorage.IOTDB)) {
         try {
-          COORDINATOR.execute(
+          COORDINATOR.executeForTreeModel(
               generateInsertStatement(log, address, username),
               SESSION_MANAGER.requestQueryId(),
               sessionInfo,
@@ -208,6 +208,8 @@ public class AuditLogger {
       case ALTER_LOGICAL_VIEW:
       case DELETE_LOGICAL_VIEW:
       case RENAME_LOGICAL_VIEW:
+      case CREATE_TOPIC:
+      case DROP_TOPIC:
         return AuditLogOperation.DDL;
       case LOAD_DATA:
       case INSERT:
@@ -243,6 +245,8 @@ public class AuditLogger {
       case UDTF:
       case SHOW:
       case SHOW_PIPES:
+      case SHOW_TOPICS:
+      case SHOW_SUBSCRIPTIONS:
       case SHOW_MERGE_STATUS:
       case KILL:
       case TRACING:

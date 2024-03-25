@@ -30,6 +30,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -62,7 +64,7 @@ abstract class MergeTest {
   long flushInterval = 20;
   TSEncoding encoding = TSEncoding.PLAIN;
 
-  String[] deviceIds;
+  IDeviceID[] deviceIds;
   MeasurementSchema[] measurementSchemas;
 
   List<TsFileResource> seqResources = new ArrayList<>();
@@ -93,9 +95,9 @@ abstract class MergeTest {
           new MeasurementSchema(
               "sensor" + i, TSDataType.DOUBLE, encoding, CompressionType.UNCOMPRESSED);
     }
-    deviceIds = new String[deviceNum];
+    deviceIds = new IDeviceID[deviceNum];
     for (int i = 0; i < deviceNum; i++) {
-      deviceIds[i] = MERGE_TEST_SG + PATH_SEPARATOR + "device" + i;
+      deviceIds[i] = new PlainDeviceID(MERGE_TEST_SG + PATH_SEPARATOR + "device" + i);
     }
   }
 
@@ -152,14 +154,14 @@ abstract class MergeTest {
   void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum, long valueOffset)
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
-    for (String deviceId : deviceIds) {
+    for (IDeviceID deviceId : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (int j = 0; j < deviceNum; j++) {
-        TSRecord record = new TSRecord(i, deviceIds[j]);
+        TSRecord record = new TSRecord(i, ((PlainDeviceID) deviceIds[j]).toStringID());
         for (int k = 0; k < measurementNum; k++) {
           record.addTuple(
               DataPoint.getDataPoint(

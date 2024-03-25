@@ -21,8 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
@@ -31,7 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -57,7 +55,7 @@ public class ConfigExecution implements IQueryExecution {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigExecution.class);
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final TsBlockSerde serde = new TsBlockSerde();
 
   private final MPPQueryContext context;
   private final ExecutorService executor;
@@ -68,31 +66,29 @@ public class ConfigExecution implements IQueryExecution {
   private DatasetHeader datasetHeader;
   private boolean resultSetConsumed;
   private final IConfigTask task;
-  private IConfigTaskExecutor configTaskExecutor;
+  private final IConfigTaskExecutor configTaskExecutor;
 
-  private static final TsBlockSerde serde = new TsBlockSerde();
-
-  private Statement statement;
+  private final StatementType statementType;
   private long totalExecutionTime;
 
-  public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
+  public ConfigExecution(
+      MPPQueryContext context,
+      StatementType statementType,
+      ExecutorService executor,
+      IConfigTask task) {
     this.context = context;
-    this.statement = statement;
+    this.statementType = statementType;
     this.executor = executor;
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
     this.taskFuture = SettableFuture.create();
-    this.task = statement.accept(new ConfigTaskVisitor(), context);
+    this.task = task;
     this.resultSetConsumed = false;
     configTaskExecutor = ClusterConfigTaskExecutor.getInstance();
   }
 
   @TestOnly
   public ConfigExecution(MPPQueryContext context, ExecutorService executor, IConfigTask task) {
-    this.context = context;
-    this.executor = executor;
-    this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
-    this.taskFuture = SettableFuture.create();
-    this.task = task;
+    this(context, StatementType.NULL, executor, task);
   }
 
   @Override
@@ -249,7 +245,7 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
-  public Statement getStatement() {
-    return statement;
+  public String getStatementType() {
+    return statementType.name();
   }
 }

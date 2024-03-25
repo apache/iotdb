@@ -57,6 +57,11 @@ public class ShowQueriesNode extends VirtualSourceNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.SHOW_QUERIES;
+  }
+
+  @Override
   public PlanNode clone() {
     return new ShowQueriesNode(getPlanNodeId(), getDataNodeLocation());
   }

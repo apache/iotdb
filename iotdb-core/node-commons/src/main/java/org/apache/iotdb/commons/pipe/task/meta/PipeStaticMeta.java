@@ -24,9 +24,9 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
@@ -78,6 +78,10 @@ public class PipeStaticMeta {
     return connectorParameters;
   }
 
+  public PipeType getPipeType() {
+    return PipeType.getPipeType(pipeName);
+  }
+
   public ByteBuffer serialize() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
@@ -85,28 +89,7 @@ public class PipeStaticMeta {
     return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
   }
 
-  public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(pipeName, outputStream);
-    ReadWriteIOUtils.write(creationTime, outputStream);
-
-    ReadWriteIOUtils.write(extractorParameters.getAttribute().size(), outputStream);
-    for (Map.Entry<String, String> entry : extractorParameters.getAttribute().entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue(), outputStream);
-    }
-    ReadWriteIOUtils.write(processorParameters.getAttribute().size(), outputStream);
-    for (Map.Entry<String, String> entry : processorParameters.getAttribute().entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue(), outputStream);
-    }
-    ReadWriteIOUtils.write(connectorParameters.getAttribute().size(), outputStream);
-    for (Map.Entry<String, String> entry : connectorParameters.getAttribute().entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue(), outputStream);
-    }
-  }
-
-  public void serialize(FileOutputStream outputStream) throws IOException {
+  public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(pipeName, outputStream);
     ReadWriteIOUtils.write(creationTime, outputStream);
 
@@ -227,5 +210,14 @@ public class PipeStaticMeta {
         + ", connectorParameters="
         + connectorParameters
         + "}";
+  }
+
+  /////////////////////////////////  Pipe Name  /////////////////////////////////
+
+  public static final String SYSTEM_PIPE_PREFIX = "__";
+  public static final String SUBSCRIPTION_PIPE_PREFIX = SYSTEM_PIPE_PREFIX + "subscription.";
+
+  public static String generateSubscriptionPipeName(String topicName, String consumerGroupId) {
+    return SUBSCRIPTION_PIPE_PREFIX + topicName + "_" + consumerGroupId;
   }
 }

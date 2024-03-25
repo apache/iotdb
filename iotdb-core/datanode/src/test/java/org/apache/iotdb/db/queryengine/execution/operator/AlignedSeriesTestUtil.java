@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -157,18 +158,18 @@ public class AlignedSeriesTestUtil {
         index++;
       }
       fileWriter.writeAligned(record);
-      tsFileResource.updateStartTime(device0, i);
-      tsFileResource.updateEndTime(device0, i);
+      tsFileResource.updateStartTime(new PlainDeviceID(device0), i);
+      tsFileResource.updateEndTime(new PlainDeviceID(device0), i);
 
       record.deviceId = device1;
       fileWriter.writeAligned(record);
-      tsFileResource.updateStartTime(device1, i);
-      tsFileResource.updateEndTime(device1, i);
+      tsFileResource.updateStartTime(new PlainDeviceID(device1), i);
+      tsFileResource.updateEndTime(new PlainDeviceID(device1), i);
 
       record.deviceId = device2;
       fileWriter.write(record);
-      tsFileResource.updateStartTime(device2, i);
-      tsFileResource.updateEndTime(device2, i);
+      tsFileResource.updateStartTime(new PlainDeviceID(device2), i);
+      tsFileResource.updateEndTime(new PlainDeviceID(device2), i);
 
       long flushInterval = 20;
       if ((i + 1) % flushInterval == 0) {

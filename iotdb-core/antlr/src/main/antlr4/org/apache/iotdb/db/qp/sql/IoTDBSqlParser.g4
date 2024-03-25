@@ -56,6 +56,10 @@ ddlStatement
     | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
+    // TOPIC
+    | createTopic | dropTopic | showTopics
+    // Subscription
+    | showSubscriptions
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
@@ -611,6 +615,32 @@ showPipePlugins
     : SHOW PIPEPLUGINS
     ;
 
+// Topic =========================================================================================
+createTopic
+    : CREATE TOPIC topicName=identifier topicAttributesClause?
+    ;
+
+topicAttributesClause
+    : WITH LR_BRACKET topicAttributeClause (COMMA topicAttributeClause)* RR_BRACKET
+    ;
+
+topicAttributeClause
+    : topicKey=STRING_LITERAL OPERATOR_SEQ topicValue=STRING_LITERAL
+    ;
+
+dropTopic
+    : DROP TOPIC topicName=identifier
+    ;
+
+showTopics
+    : SHOW ((TOPIC topicName=identifier) | TOPICS )
+    ;
+
+// Subscriptions =========================================================================================
+showSubscriptions
+    : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    ;
+
 // Create Logical View
 createLogicalView
     : CREATE VIEW viewTargetPaths AS viewSourcePaths
@@ -961,7 +991,7 @@ stopRepairData
 
 // Explain
 explain
-    : EXPLAIN selectStatement
+    : EXPLAIN (ANALYZE VERBOSE?)? selectStatement?
     ;
 
 // Set System To readonly/running/error

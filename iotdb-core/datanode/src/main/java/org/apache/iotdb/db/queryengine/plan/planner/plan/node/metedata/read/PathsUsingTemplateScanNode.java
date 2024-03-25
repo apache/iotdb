@@ -66,6 +66,11 @@ public class PathsUsingTemplateScanNode extends SchemaQueryScanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.PATHS_USING_TEMPLATE_SCAN;
+  }
+
+  @Override
   public PlanNode clone() {
     return new PathsUsingTemplateScanNode(getPlanNodeId(), pathPatternList, templateId, scope);
   }

@@ -40,15 +40,16 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
@@ -90,8 +91,10 @@ import org.apache.iotdb.confignode.manager.node.NodeMetrics;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
+import org.apache.iotdb.confignode.manager.subscription.SubscriptionManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -104,20 +107,24 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
@@ -125,12 +132,15 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -151,6 +161,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -164,12 +176,18 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -177,6 +195,8 @@ import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -198,6 +218,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /** Entry of all management, AssignPartitionManager, AssignRegionManager. */
@@ -226,6 +247,7 @@ public class ConfigManager implements IManager {
   /** Manage cluster authorization. */
   private final PermissionManager permissionManager;
 
+  /** Manage load balancing. */
   private final LoadManager loadManager;
 
   /** Manage procedure. */
@@ -246,6 +268,9 @@ public class ConfigManager implements IManager {
   /** Manage quotas */
   private final ClusterQuotaManager clusterQuotaManager;
 
+  /** Subscription */
+  private final SubscriptionManager subscriptionManager;
+
   private final ConfigRegionStateMachine stateMachine;
 
   private final RetryFailedTasksThread retryFailedTasksThread;
@@ -259,12 +284,13 @@ public class ConfigManager implements IManager {
     ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
     PartitionInfo partitionInfo = new PartitionInfo();
     AuthorInfo authorInfo = new AuthorInfo();
-    ProcedureInfo procedureInfo = new ProcedureInfo();
+    ProcedureInfo procedureInfo = new ProcedureInfo(this);
     UDFInfo udfInfo = new UDFInfo();
     TriggerInfo triggerInfo = new TriggerInfo();
     CQInfo cqInfo = new CQInfo();
     PipeInfo pipeInfo = new PipeInfo();
     QuotaInfo quotaInfo = new QuotaInfo();
+    SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -279,6 +305,7 @@ public class ConfigManager implements IManager {
             triggerInfo,
             cqInfo,
             pipeInfo,
+            subscriptionInfo,
             quotaInfo);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
@@ -298,6 +325,7 @@ public class ConfigManager implements IManager {
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.cqManager = new CQManager(this);
     this.pipeManager = new PipeManager(this, pipeInfo);
+    this.subscriptionManager = new SubscriptionManager(this, subscriptionInfo);
 
     // 1. keep PipeManager initialization before LoadManager initialization, because
     // LoadManager will register PipeManager as a listener.
@@ -322,7 +350,7 @@ public class ConfigManager implements IManager {
       partitionManager.getRegionMaintainer().shutdown();
     }
     if (procedureManager != null) {
-      procedureManager.shiftExecutor(false);
+      procedureManager.stopExecutor();
     }
   }
 
@@ -504,7 +532,7 @@ public class ConfigManager implements IManager {
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setTTL(setTTLPlan);
+      return clusterSchemaManager.setTTL(setTTLPlan, false);
     } else {
       return status;
     }
@@ -571,7 +599,7 @@ public class ConfigManager implements IManager {
   public synchronized TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setDatabase(databaseSchemaPlan);
+      return clusterSchemaManager.setDatabase(databaseSchemaPlan, false);
     } else {
       return status;
     }
@@ -581,16 +609,17 @@ public class ConfigManager implements IManager {
   public TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.alterDatabase(databaseSchemaPlan);
+      return clusterSchemaManager.alterDatabase(databaseSchemaPlan, false);
     } else {
       return status;
     }
   }
 
   @Override
-  public synchronized TSStatus deleteDatabases(List<String> deletedPaths) {
+  public synchronized TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<String> deletedPaths = tDeleteReq.getPrefixPathList();
       // remove wild
       Map<String, TDatabaseSchema> deleteDatabaseSchemaMap =
           getClusterSchemaManager().getMatchedDatabaseSchemasByName(deletedPaths);
@@ -601,16 +630,12 @@ public class ConfigManager implements IManager {
       }
       ArrayList<TDatabaseSchema> parsedDeleteDatabases =
           new ArrayList<>(deleteDatabaseSchemaMap.values());
-      return procedureManager.deleteDatabases(parsedDeleteDatabases);
+      return procedureManager.deleteDatabases(
+          parsedDeleteDatabases,
+          tDeleteReq.isSetIsGeneratedByPipe() && tDeleteReq.isIsGeneratedByPipe());
     } else {
       return status;
     }
-  }
-
-  @TestOnly
-  @Override
-  public TSStatus createManyDatabases() {
-    return getProcedureManager().createManyDatabases();
   }
 
   private List<TSeriesPartitionSlot> calculateRelatedSlot(PartialPath path, PartialPath database) {
@@ -619,7 +644,7 @@ public class ConfigManager implements IManager {
       return new ArrayList<>();
     }
     List<PartialPath> innerPathList = path.alterPrefixPath(database);
-    if (innerPathList.size() == 0) {
+    if (innerPathList.isEmpty()) {
       return new ArrayList<>();
     }
     PartialPath innerPath = innerPathList.get(0);
@@ -1002,6 +1027,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public PermissionManager getPermissionManager() {
+    return permissionManager;
+  }
+
+  @Override
   public LoadManager getLoadManager() {
     return loadManager;
   }
@@ -1017,10 +1047,15 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public SubscriptionManager getSubscriptionManager() {
+    return subscriptionManager;
+  }
+
+  @Override
   public TSStatus operatePermission(AuthorPlan authorPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return permissionManager.operatePermission(authorPlan);
+      return permissionManager.operatePermission(authorPlan, false);
     } else {
       return status;
     }
@@ -1619,7 +1654,11 @@ public class ConfigManager implements IManager {
   public synchronized TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return procedureManager.setSchemaTemplate(req.getQueryId(), req.getName(), req.getPath());
+      return procedureManager.setSchemaTemplate(
+          req.getQueryId(),
+          req.getName(),
+          req.getPath(),
+          req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
     } else {
       return status;
     }
@@ -1686,7 +1725,10 @@ public class ConfigManager implements IManager {
       templateSetInfo = filteredTemplateSetInfo;
     }
 
-    return procedureManager.deactivateTemplate(req.getQueryId(), templateSetInfo);
+    return procedureManager.deactivateTemplate(
+        req.getQueryId(),
+        templateSetInfo,
+        req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
   }
 
   @Override
@@ -1700,7 +1742,10 @@ public class ConfigManager implements IManager {
     if (checkResult.left.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       try {
         return procedureManager.unsetSchemaTemplate(
-            req.getQueryId(), checkResult.right, new PartialPath(req.getPath()));
+            req.getQueryId(),
+            checkResult.right,
+            new PartialPath(req.getPath()),
+            req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
       } catch (IllegalPathException e) {
         return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
       }
@@ -1728,7 +1773,7 @@ public class ConfigManager implements IManager {
           TemplateAlterOperationUtil.parseOperationType(buffer);
       if (operationType.equals(TemplateAlterOperationType.EXTEND_TEMPLATE)) {
         return clusterSchemaManager.extendSchemaTemplate(
-            TemplateAlterOperationUtil.parseTemplateExtendInfo(buffer));
+            TemplateAlterOperationUtil.parseTemplateExtendInfo(buffer), false);
       }
       return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
     } else {
@@ -1740,10 +1785,73 @@ public class ConfigManager implements IManager {
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return procedureManager.deleteTimeSeries(req);
-    } else {
-      return status;
+      String queryId = req.getQueryId();
+      PathPatternTree rawPatternTree =
+          PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+      boolean isGeneratedByPipe = req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe();
+      /**
+       * If delete pattern is prefix path (such as root.db.**), it may be optimized to delete
+       * database plus create database. We need to determine two conditions: whether the pattern
+       * ends in **, and that the device is a full path and is matched in the ConfigMTree.
+       */
+      boolean canOptimize = false;
+      HashSet<TDatabaseSchema> deleteDatabaseSchemas = new HashSet<>();
+      List<PartialPath> deleteTimeSeriesPatternPaths = new ArrayList<>();
+      for (PartialPath path : rawPatternTree.getAllPathPatterns()) {
+        if (path.getFullPath().endsWith(MULTI_LEVEL_PATH_WILDCARD)
+            && !path.getDevicePath().hasWildcard()) {
+          Map<String, TDatabaseSchema> databaseSchemaMap =
+              getClusterSchemaManager().getMatchedDatabaseSchemasByPrefix(path.getDevicePath());
+          if (!databaseSchemaMap.isEmpty()) {
+            deleteDatabaseSchemas.addAll(databaseSchemaMap.values());
+            canOptimize = true;
+            continue;
+          }
+        }
+        deleteTimeSeriesPatternPaths.add(path);
+      }
+      if (!canOptimize) {
+        return procedureManager.deleteTimeSeries(queryId, rawPatternTree, isGeneratedByPipe);
+      }
+      if (!deleteTimeSeriesPatternPaths.isEmpty()) {
+        // 1. delete time series that can not be optimized
+        PathPatternTree deleteTimeSeriesPatternTree = new PathPatternTree();
+        for (PartialPath path : deleteTimeSeriesPatternPaths) {
+          deleteTimeSeriesPatternTree.appendPathPattern(path);
+        }
+        deleteTimeSeriesPatternTree.constructTree();
+        status =
+            procedureManager.deleteTimeSeries(
+                queryId, deleteTimeSeriesPatternTree, isGeneratedByPipe);
+      }
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // 2. delete database
+        List<TSStatus> failedStatus = new ArrayList<>();
+        status =
+            procedureManager.deleteDatabases(
+                new ArrayList<>(deleteDatabaseSchemas), isGeneratedByPipe);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          failedStatus.add(status);
+        }
+        // 3. create database whatever the delete database operation is successful or not
+        for (TDatabaseSchema databaseSchema : deleteDatabaseSchemas) {
+          status =
+              clusterSchemaManager.setDatabase(
+                  new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema),
+                  isGeneratedByPipe);
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            failedStatus.add(status);
+          }
+        }
+        // 4. squash or generate status
+        if (!failedStatus.isEmpty()) {
+          status = RpcUtils.squashResponseStatusList(failedStatus);
+        } else {
+          status = StatusUtils.OK;
+        }
+      }
     }
+    return status;
   }
 
   @Override
@@ -1823,10 +1931,101 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus executeSyncCommand(ByteBuffer configPhysicalPlanBinary) {
+  public TSStatus createTopic(TCreateTopicReq req) {
     TSStatus status = confirmLeader();
-    // TODO: determine whether to use procedure based on plan type
-    return status;
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? subscriptionManager.getSubscriptionCoordinator().createTopic(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus dropTopic(String topicName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? subscriptionManager.getSubscriptionCoordinator().dropTopic(topicName)
+        : status;
+  }
+
+  @Override
+  public TShowTopicResp showTopic(TShowTopicReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? subscriptionManager.getSubscriptionCoordinator().showTopic(req)
+        : new TShowTopicResp().setStatus(status);
+  }
+
+  @Override
+  public TGetAllTopicInfoResp getAllTopicInfo() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? subscriptionManager.getSubscriptionCoordinator().getAllTopicInfo()
+        : new TGetAllTopicInfoResp(status, Collections.emptyList());
+  }
+
+  @Override
+  public TSStatus createConsumer(TCreateConsumerReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? subscriptionManager.getSubscriptionCoordinator().createConsumer(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus closeConsumer(TCloseConsumerReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? subscriptionManager.getSubscriptionCoordinator().dropConsumer(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus createSubscription(TSubscribeReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? subscriptionManager.getSubscriptionCoordinator().createSubscription(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus dropSubscription(TUnsubscribeReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? subscriptionManager.getSubscriptionCoordinator().dropSubscription(req)
+        : status;
+  }
+
+  @Override
+  public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? subscriptionManager.getSubscriptionCoordinator().showSubscription(req)
+        : new TShowSubscriptionResp().setStatus(status);
+  }
+
+  @Override
+  public TGetAllSubscriptionInfoResp getAllSubscriptionInfo() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? subscriptionManager.getSubscriptionCoordinator().getAllSubscriptionInfo()
+        : new TGetAllSubscriptionInfoResp(status, Collections.emptyList());
+  }
+
+  @Override
+  public TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TPipeConfigTransferResp(status);
+    }
+    TPipeTransferResp result =
+        PipeConfigNodeAgent.receiver()
+            .receive(
+                req.isAirGap
+                    ? new AirGapPseudoTPipeTransferRequest()
+                        .setVersion(req.version)
+                        .setType(req.type)
+                        .setBody(req.body)
+                    : new TPipeTransferReq(req.version, req.type, req.body));
+    return new TPipeConfigTransferResp(result.status).setBody(result.body);
   }
 
   @Override

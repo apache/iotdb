@@ -57,6 +57,11 @@ public class RollbackPreDeactivateTemplateNode extends PlanNode
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.ROLLBACK_PRE_DEACTIVATE_TEMPLATE_NODE;
+  }
+
+  @Override
   public PlanNode clone() {
     return new RollbackPreDeactivateTemplateNode(getPlanNodeId(), templateSetInfo);
   }

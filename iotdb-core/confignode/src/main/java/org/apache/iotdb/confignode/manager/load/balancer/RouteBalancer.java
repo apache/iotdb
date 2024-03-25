@@ -86,6 +86,9 @@ public class RouteBalancer {
           // The simple consensus protocol will always automatically designate itself as the leader
           || ConsensusFactory.SIMPLE_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS);
 
+  // The interval of retrying to balance ratis leader after the last failed time
+  private static final long BALANCE_RATIS_LEADER_FAILED_INTERVAL = 60 * 1000L;
+
   private final IManager configManager;
 
   /** RegionRouteMap */
@@ -93,6 +96,9 @@ public class RouteBalancer {
   private final ILeaderBalancer leaderBalancer;
   // For generating optimal RegionPriorityMap
   private final IPriorityBalancer priorityRouter;
+
+  private long lastFailedTimeForBalanceRatisSchemaLeader = 0;
+  private long lastFailedTimeForBalanceRatisDataLeader = 0;
 
   public RouteBalancer(IManager configManager) {
     this.configManager = configManager;
@@ -127,10 +133,16 @@ public class RouteBalancer {
   public synchronized Map<TConsensusGroupId, Pair<Integer, Integer>> balanceRegionLeader() {
     Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionLeaderMap =
         new ConcurrentHashMap<>();
-    if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION) {
+    if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION
+        && (!ConsensusFactory.RATIS_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS)
+            || System.currentTimeMillis() - lastFailedTimeForBalanceRatisSchemaLeader
+                > BALANCE_RATIS_LEADER_FAILED_INTERVAL)) {
       differentRegionLeaderMap.putAll(balanceRegionLeader(TConsensusGroupType.SchemaRegion));
     }
-    if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION) {
+    if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION
+        && (!ConsensusFactory.RATIS_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS)
+            || System.currentTimeMillis() - lastFailedTimeForBalanceRatisDataLeader
+                > BALANCE_RATIS_LEADER_FAILED_INTERVAL)) {
       differentRegionLeaderMap.putAll(balanceRegionLeader(TConsensusGroupType.DataRegion));
     }
 
@@ -182,7 +194,8 @@ public class RouteBalancer {
                 requestId,
                 clientHandler,
                 regionGroupId,
-                getNodeManager().getRegisteredDataNode(newLeaderId).getLocation());
+                getNodeManager().getRegisteredDataNode(newLeaderId).getLocation(),
+                regionGroupType);
             differentRegionLeaderMap.put(
                 regionGroupId, new Pair<>(currentLeaderMap.get(regionGroupId), newLeaderId));
           }
@@ -199,6 +212,14 @@ public class RouteBalancer {
                   clientHandler.getRequest(i).getNewLeaderNode().getDataNodeId());
         } else {
           differentRegionLeaderMap.remove(clientHandler.getRequest(i).getRegionId());
+          if (TConsensusGroupType.SchemaRegion.equals(regionGroupType)
+              && ConsensusFactory.RATIS_CONSENSUS.equals(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS)) {
+            lastFailedTimeForBalanceRatisSchemaLeader = System.currentTimeMillis();
+          }
+          if (TConsensusGroupType.DataRegion.equals(regionGroupType)
+              && ConsensusFactory.RATIS_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS)) {
+            lastFailedTimeForBalanceRatisDataLeader = System.currentTimeMillis();
+          }
           LOGGER.error(
               "[LeaderBalancer] Failed to change the leader of Region: {} to DataNode: {}",
               clientHandler.getRequest(i).getRegionId(),
@@ -214,7 +235,8 @@ public class RouteBalancer {
       AtomicInteger requestId,
       AsyncClientHandler<TRegionLeaderChangeReq, TSStatus> clientHandler,
       TConsensusGroupId regionGroupId,
-      TDataNodeLocation newLeader) {
+      TDataNodeLocation newLeader,
+      TConsensusGroupType regionGroupType) {
     switch (consensusProtocolClass) {
       case ConsensusFactory.IOT_CONSENSUS:
       case ConsensusFactory.SIMPLE_CONSENSUS:
@@ -228,11 +250,20 @@ public class RouteBalancer {
         // leader.
         // And the RegionRouteMap will be updated by Cluster-Heartbeat-Service later if change
         // leader success.
-        TRegionLeaderChangeReq regionLeaderChangeReq =
-            new TRegionLeaderChangeReq(regionGroupId, newLeader);
-        int requestIndex = requestId.getAndIncrement();
-        clientHandler.putRequest(requestIndex, regionLeaderChangeReq);
-        clientHandler.putDataNodeLocation(requestIndex, newLeader);
+        // Force update region leader for ratis consensus when replication factor is 1.
+        if (TConsensusGroupType.SchemaRegion.equals(regionGroupType)
+            && CONF.getSchemaReplicationFactor() == 1) {
+          getLoadManager().forceUpdateRegionLeader(regionGroupId, newLeader.getDataNodeId());
+        } else if (TConsensusGroupType.DataRegion.equals(regionGroupType)
+            && CONF.getDataReplicationFactor() == 1) {
+          getLoadManager().forceUpdateRegionLeader(regionGroupId, newLeader.getDataNodeId());
+        } else {
+          TRegionLeaderChangeReq regionLeaderChangeReq =
+              new TRegionLeaderChangeReq(regionGroupId, newLeader);
+          int requestIndex = requestId.getAndIncrement();
+          clientHandler.putRequest(requestIndex, regionLeaderChangeReq);
+          clientHandler.putDataNodeLocation(requestIndex, newLeader);
+        }
         break;
     }
   }

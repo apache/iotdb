@@ -65,7 +65,7 @@ public class PredicatePushDown implements PlanOptimizer {
     if (analysis.getStatement().getType() != StatementType.QUERY) {
       return plan;
     }
-    QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
+    QueryStatement queryStatement = analysis.getQueryStatement();
     if (queryStatement.isLastQuery() || !analysis.hasValueFilter()) {
       return plan;
     }

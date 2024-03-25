@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.file.IMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 
 import org.junit.Assert;
@@ -31,12 +32,12 @@ public class MetadataIndexNodeTest {
 
   @Test
   public void testBinarySearchInChildren() {
-    List<MetadataIndexEntry> list = new ArrayList<>();
-    list.add(new MetadataIndexEntry("s0", -1L));
-    list.add(new MetadataIndexEntry("s5", -1L));
-    list.add(new MetadataIndexEntry("s10", -1L));
-    list.add(new MetadataIndexEntry("s15", -1L));
-    list.add(new MetadataIndexEntry("s20", -1L));
+    List<IMetadataIndexEntry> list = new ArrayList<>();
+    list.add(new MeasurementMetadataIndexEntry("s0", -1L));
+    list.add(new MeasurementMetadataIndexEntry("s5", -1L));
+    list.add(new MeasurementMetadataIndexEntry("s10", -1L));
+    list.add(new MeasurementMetadataIndexEntry("s15", -1L));
+    list.add(new MeasurementMetadataIndexEntry("s20", -1L));
 
     MetadataIndexNode metadataIndexNode =
         new MetadataIndexNode(list, -1L, MetadataIndexNodeType.LEAF_MEASUREMENT);

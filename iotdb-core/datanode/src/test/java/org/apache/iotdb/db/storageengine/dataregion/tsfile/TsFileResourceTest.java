@@ -22,6 +22,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -40,20 +42,21 @@ public class TsFileResourceTest {
       new File(
           TsFileNameGenerator.generateNewTsFilePath(TestConstant.BASE_OUTPUT_PATH, 1, 1, 1, 1));
   private final TsFileResource tsFileResource = new TsFileResource(file);
-  private final Map<String, Integer> deviceToIndex = new HashMap<>();
+  private final Map<IDeviceID, Integer> deviceToIndex = new HashMap<>();
   private final long[] startTimes = new long[DEVICE_NUM];
   private final long[] endTimes = new long[DEVICE_NUM];
   private static final int DEVICE_NUM = 100;
 
   @Before
   public void setUp() {
-    IntStream.range(0, DEVICE_NUM).forEach(i -> deviceToIndex.put("root.sg.d" + i, i));
+    IntStream.range(0, DEVICE_NUM)
+        .forEach(i -> deviceToIndex.put(new PlainDeviceID("root.sg.d" + i), i));
     DeviceTimeIndex deviceTimeIndex = new DeviceTimeIndex(deviceToIndex, startTimes, endTimes);
     IntStream.range(0, DEVICE_NUM)
         .forEach(
             i -> {
-              deviceTimeIndex.updateStartTime("root.sg.d" + i, i);
-              deviceTimeIndex.updateEndTime("root.sg.d" + i, i + 1);
+              deviceTimeIndex.updateStartTime(new PlainDeviceID("root.sg.d" + i), i);
+              deviceTimeIndex.updateEndTime(new PlainDeviceID("root.sg.d" + i), i + 1);
             });
     tsFileResource.setTimeIndex(deviceTimeIndex);
     tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
@@ -86,8 +89,9 @@ public class TsFileResourceTest {
     Assert.assertEquals(ITimeIndex.FILE_TIME_INDEX_TYPE, tsFileResource.getTimeIndexType());
     Assert.assertEquals(deviceToIndex.keySet(), tsFileResource.getDevices());
     for (int i = 0; i < DEVICE_NUM; i++) {
-      Assert.assertEquals(tsFileResource.getStartTime("root.sg1.d" + i), 0);
-      Assert.assertEquals(tsFileResource.getEndTime("root.sg1.d" + i), DEVICE_NUM);
+      Assert.assertEquals(tsFileResource.getStartTime(new PlainDeviceID("root.sg1.d" + i)), 0);
+      Assert.assertEquals(
+          tsFileResource.getEndTime(new PlainDeviceID("root.sg1.d" + i)), DEVICE_NUM);
     }
   }
 }

@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanBuilder;
+import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.BaseSourceRewriter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -72,8 +72,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParame
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -84,8 +87,16 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.LAST_VALUE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
+import static org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanBuilder.updateTypeProviderByPartialAggregation;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_IF;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.DIFF;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_VALUE;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.TIME_DURATION;
 
 public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> {
 
@@ -123,7 +134,6 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   public List<PlanNode> visitSingleDeviceView(
       SingleDeviceViewNode node, DistributionPlanContext context) {
 
-    // Same process logic as visitDeviceView
     if (analysis.isDeviceViewSpecialProcess()) {
       List<PlanNode> rewroteChildren = rewrite(node.getChild(), context);
       if (rewroteChildren.size() != 1) {
@@ -175,6 +185,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     // Step 1: constructs DeviceViewSplits
     Set<TRegionReplicaSet> relatedDataRegions = new HashSet<>();
     List<DeviceViewSplit> deviceViewSplits = new ArrayList<>();
+    boolean existDeviceCrossRegion = false;
 
     for (int i = 0; i < node.getDevices().size(); i++) {
       String outputDevice = node.getDevices().get(i);
@@ -187,10 +198,9 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                       context.getPartitionTimeFilter()))
               : new ArrayList<>(
                   analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()));
-      if (regionReplicaSets.size() > 1) {
-        // specialProcess and existDeviceCrossRegion, use the old aggregation logic
-        analysis.setExistDeviceCrossRegion();
-        if (analysis.isDeviceViewSpecialProcess()) {
+      if (regionReplicaSets.size() > 1 && !existDeviceCrossRegion) {
+        existDeviceCrossRegion = true;
+        if (analysis.isDeviceViewSpecialProcess() && aggregationCannotUseMergeSort()) {
           return processSpecialDeviceView(node, context);
         }
       }
@@ -200,7 +210,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
 
     // Step 2: Iterate all partition and create DeviceViewNode for each region
     List<PlanNode> deviceViewNodeList = new ArrayList<>();
-    if (analysis.isExistDeviceCrossRegion()) {
+    if (existDeviceCrossRegion) {
       constructDeviceViewNodeListWithCrossRegion(
           deviceViewNodeList, relatedDataRegions, deviceViewSplits, node, context);
     } else {
@@ -217,13 +227,103 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       return deviceViewNodeList;
     }
 
-    MergeSortNode mergeSortNode =
-        new MergeSortNode(
-            context.queryContext.getQueryId().genPlanNodeId(),
-            node.getMergeOrderParameter(),
-            node.getOutputColumnNames());
-    deviceViewNodeList.forEach(mergeSortNode::addChild);
-    return Collections.singletonList(mergeSortNode);
+    // aggregation and some device cross region, user AggregationMergeSortNode
+    // 1. generate old and new measurement idx relationship
+    // 2. generate new outputColumns for each subDeviceView
+    if (existDeviceCrossRegion && analysis.isDeviceViewSpecialProcess()) {
+      Map<Integer, List<Integer>> newMeasurementIdxMap = new HashMap<>();
+      List<String> newPartialOutputColumns = new ArrayList<>();
+      Set<Expression> deviceViewOutputExpressions = analysis.getDeviceViewOutputExpressions();
+
+      int i = 0, newIdxSum = 0;
+      for (Expression expression : deviceViewOutputExpressions) {
+        if (i == 0) {
+          newPartialOutputColumns.add(expression.getOutputSymbol());
+          i++;
+          newIdxSum++;
+          continue;
+        }
+        FunctionExpression aggExpression = (FunctionExpression) expression;
+        // used for AVG, FIRST_VALUE, LAST_VALUE, TIME_DURATION agg function
+        List<String> actualPartialAggregationNames =
+            getActualPartialAggregationNames(aggExpression.getFunctionName());
+        for (String actualAggName : actualPartialAggregationNames) {
+          FunctionExpression partialFunctionExpression =
+              new FunctionExpression(
+                  actualAggName,
+                  aggExpression.getFunctionAttributes(),
+                  aggExpression.getExpressions());
+          if (actualPartialAggregationNames.size() > 1) {
+            TSDataType dataType = analyzeExpression(analysis, partialFunctionExpression);
+            context
+                .queryContext
+                .getTypeProvider()
+                .setType(partialFunctionExpression.getOutputSymbol(), dataType);
+          }
+          newPartialOutputColumns.add(partialFunctionExpression.getOutputSymbol());
+        }
+        newMeasurementIdxMap.put(
+            i++,
+            actualPartialAggregationNames.size() > 1
+                ? Arrays.asList(newIdxSum++, newIdxSum++)
+                : Collections.singletonList(newIdxSum++));
+      }
+
+      for (String device : node.getDevices()) {
+        List<Integer> oldMeasurementIdxList = node.getDeviceToMeasurementIndexesMap().get(device);
+        List<Integer> newMeasurementIdxList = new ArrayList<>();
+        oldMeasurementIdxList.forEach(
+            idx -> newMeasurementIdxList.addAll(newMeasurementIdxMap.get(idx)));
+        node.getDeviceToMeasurementIndexesMap().put(device, newMeasurementIdxList);
+      }
+
+      for (PlanNode planNode : deviceViewNodeList) {
+        DeviceViewNode deviceViewNode = (DeviceViewNode) planNode;
+        deviceViewNode.setOutputColumnNames(newPartialOutputColumns);
+        transferAggregatorsRecursively(planNode, context);
+      }
+
+      boolean hasGroupBy =
+          analysis.getGroupByTimeParameter() != null || analysis.hasGroupByParameter();
+      AggregationMergeSortNode mergeSortNode =
+          new AggregationMergeSortNode(
+              context.queryContext.getQueryId().genPlanNodeId(),
+              node.getMergeOrderParameter(),
+              node.getOutputColumnNames(),
+              deviceViewOutputExpressions,
+              hasGroupBy);
+      deviceViewNodeList.forEach(mergeSortNode::addChild);
+      return Collections.singletonList(mergeSortNode);
+    } else {
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              context.queryContext.getQueryId().genPlanNodeId(),
+              node.getMergeOrderParameter(),
+              node.getOutputColumnNames());
+      deviceViewNodeList.forEach(mergeSortNode::addChild);
+      return Collections.singletonList(mergeSortNode);
+    }
+  }
+
+  /**
+   * aggregation align by device, and aggregation is `count_if` or `diff`, or aggregation used with
+   * group by parameter (session, variation, count), use the old aggregation logic
+   */
+  private boolean aggregationCannotUseMergeSort() {
+    if (analysis.hasGroupByParameter()) {
+      return true;
+    }
+
+    for (Expression expression : analysis.getDeviceViewOutputExpressions()) {
+      if (expression instanceof FunctionExpression) {
+        String functionName = ((FunctionExpression) expression).getFunctionName();
+        if (COUNT_IF.equalsIgnoreCase(functionName) || DIFF.equalsIgnoreCase(functionName)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   private void constructDeviceViewNodeListWithCrossRegion(
@@ -286,10 +386,56 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     }
   }
 
-  @Override
-  public List<PlanNode> visitAggregationMergeSort(
-      AggregationMergeSortNode node, DistributionPlanContext context) {
-    return null;
+  public List<String> getActualPartialAggregationNames(String aggregationType) {
+    List<String> outputAggregationNames = new ArrayList<>();
+    switch (aggregationType) {
+      case AVG:
+        outputAggregationNames.add(SqlConstant.COUNT);
+        outputAggregationNames.add(SqlConstant.SUM);
+        break;
+      case FIRST_VALUE:
+        outputAggregationNames.add(FIRST_VALUE);
+        outputAggregationNames.add(SqlConstant.MIN_TIME);
+        break;
+      case LAST_VALUE:
+        outputAggregationNames.add(SqlConstant.LAST_VALUE);
+        outputAggregationNames.add(SqlConstant.MAX_TIME);
+        break;
+      case TIME_DURATION:
+        outputAggregationNames.add(SqlConstant.MAX_TIME);
+        outputAggregationNames.add(SqlConstant.MIN_TIME);
+        break;
+      default:
+        // TODO how about UDAF?
+        outputAggregationNames.add(aggregationType);
+    }
+    return outputAggregationNames;
+  }
+
+  private void transferAggregatorsRecursively(PlanNode planNode, DistributionPlanContext context) {
+    List<AggregationDescriptor> descriptorList = getAggregationDescriptors(planNode);
+    if (descriptorList != null) {
+      for (AggregationDescriptor descriptor : descriptorList) {
+        descriptor.setStep(
+            planNode instanceof SlidingWindowAggregationNode
+                ? AggregationStep.INTERMEDIATE
+                : AggregationStep.PARTIAL);
+        updateTypeProviderByPartialAggregation(descriptor, context.queryContext.getTypeProvider());
+      }
+    }
+    planNode.getChildren().forEach(child -> transferAggregatorsRecursively(child, context));
+  }
+
+  private List<AggregationDescriptor> getAggregationDescriptors(PlanNode planNode) {
+    List<AggregationDescriptor> descriptorList = null;
+    if (planNode instanceof SeriesAggregationSourceNode) {
+      descriptorList = ((SeriesAggregationSourceNode) planNode).getAggregationDescriptorList();
+    } else if (planNode instanceof AggregationNode) {
+      descriptorList = ((AggregationNode) planNode).getAggregationDescriptorList();
+    } else if (planNode instanceof SlidingWindowAggregationNode) {
+      descriptorList = ((SlidingWindowAggregationNode) planNode).getAggregationDescriptorList();
+    }
+    return descriptorList;
   }
 
   private List<PlanNode> processSpecialDeviceView(
@@ -620,9 +766,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                         descriptor.getInputExpressions(),
                         descriptor.getInputAttributes())));
     leafAggDescriptorList.forEach(
-        d ->
-            LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
-                d, context.queryContext.getTypeProvider()));
+        d -> updateTypeProviderByPartialAggregation(d, context.queryContext.getTypeProvider()));
     List<AggregationDescriptor> rootAggDescriptorList = new ArrayList<>();
     node.getAggregationDescriptorList()
         .forEach(
@@ -1315,7 +1459,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         }
         if (keep) {
           descriptorList.add(originalDescriptor);
-          LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
+          updateTypeProviderByPartialAggregation(
               originalDescriptor, context.queryContext.getTypeProvider());
         }
       }
@@ -1359,8 +1503,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         descriptor.setStep(level == 0 ? AggregationStep.FINAL : AggregationStep.INTERMEDIATE);
         descriptor.setInputExpressions(new ArrayList<>(descriptorExpressions));
         descriptorList.add(descriptor);
-        LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
-            descriptor, context.queryContext.getTypeProvider());
+        updateTypeProviderByPartialAggregation(descriptor, context.queryContext.getTypeProvider());
       }
       handle.setGroupByLevelDescriptors(descriptorList);
     }
@@ -1457,8 +1600,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           .forEach(
               d -> {
                 d.setStep(AggregationStep.PARTIAL);
-                LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
-                    d, context.queryContext.getTypeProvider());
+                updateTypeProviderByPartialAggregation(d, context.queryContext.getTypeProvider());
               });
     }
 
@@ -1496,7 +1638,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                 } else {
                   eachSeriesOneRegion[0] = false;
                   descriptor.setStep(AggregationStep.PARTIAL);
-                  LogicalPlanBuilder.updateTypeProviderByPartialAggregation(
+                  updateTypeProviderByPartialAggregation(
                       descriptor, context.queryContext.getTypeProvider());
                 }
               });

@@ -168,6 +168,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -185,6 +189,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.DeleteLogica
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ClearCacheStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
@@ -2556,7 +2561,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitExplain(IoTDBSqlParser.ExplainContext ctx) {
     QueryStatement queryStatement = (QueryStatement) visitSelectStatement(ctx.selectStatement());
-    return new ExplainStatement(queryStatement);
+    if (ctx.ANALYZE() == null) {
+      return new ExplainStatement(queryStatement);
+    }
+    ExplainAnalyzeStatement explainAnalyzeStatement = new ExplainAnalyzeStatement(queryStatement);
+    if (ctx.VERBOSE() != null) {
+      explainAnalyzeStatement.setVerbose(true);
+    }
+    return explainAnalyzeStatement;
   }
 
   @Override
@@ -3154,9 +3166,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.boolean_literal() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.boolean_literal().getText()));
     }
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException("FLUSH ON CLUSTER is not supported in standalone mode");
-    }
     flushStatement.setOnCluster(ctx.LOCAL() == null);
     if (ctx.prefixPath(0) != null) {
       storageGroups = new ArrayList<>();
@@ -3173,9 +3182,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitClearCache(IoTDBSqlParser.ClearCacheContext ctx) {
     ClearCacheStatement clearCacheStatement = new ClearCacheStatement(StatementType.CLEAR_CACHE);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException("CLEAR CACHE ON CLUSTER is not supported in standalone mode");
-    }
     clearCacheStatement.setOnCluster(ctx.LOCAL() == null);
     return clearCacheStatement;
   }
@@ -3186,10 +3192,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitStartRepairData(IoTDBSqlParser.StartRepairDataContext ctx) {
     StartRepairDataStatement startRepairDataStatement =
         new StartRepairDataStatement(StatementType.START_REPAIR_DATA);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException(
-          "START REPAIR DATA ON CLUSTER is not supported in standalone mode");
-    }
     startRepairDataStatement.setOnCluster(ctx.LOCAL() == null);
     return startRepairDataStatement;
   }
@@ -3200,10 +3202,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitStopRepairData(IoTDBSqlParser.StopRepairDataContext ctx) {
     StopRepairDataStatement stopRepairDataStatement =
         new StopRepairDataStatement(StatementType.STOP_REPAIR_DATA);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException(
-          "STOP REPAIR DATA ON CLUSTER is not supported in standalone mode");
-    }
     stopRepairDataStatement.setOnCluster(ctx.LOCAL() == null);
     return stopRepairDataStatement;
   }
@@ -3214,10 +3212,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitLoadConfiguration(IoTDBSqlParser.LoadConfigurationContext ctx) {
     LoadConfigurationStatement loadConfigurationStatement =
         new LoadConfigurationStatement(StatementType.LOAD_CONFIGURATION);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException(
-          "LOAD CONFIGURATION ON CLUSTER is not supported in standalone mode");
-    }
     loadConfigurationStatement.setOnCluster(ctx.LOCAL() == null);
     return loadConfigurationStatement;
   }
@@ -3227,10 +3221,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitSetSystemStatus(IoTDBSqlParser.SetSystemStatusContext ctx) {
     SetSystemStatusStatement setSystemStatusStatement = new SetSystemStatusStatement();
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException(
-          "SET SYSTEM STATUS ON CLUSTER is not supported in standalone mode");
-    }
     setSystemStatusStatement.setOnCluster(ctx.LOCAL() == null);
     if (ctx.RUNNING() != null) {
       setSystemStatusStatement.setStatus(NodeStatus.Running);
@@ -3751,6 +3741,74 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     showPipesStatement.setWhereClause(ctx.CONNECTOR() != null);
 
     return showPipesStatement;
+  }
+
+  @Override
+  public Statement visitCreateTopic(IoTDBSqlParser.CreateTopicContext ctx) {
+    final CreateTopicStatement createTopicStatement = new CreateTopicStatement();
+
+    if (ctx.topicName != null) {
+      createTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    } else {
+      throw new SemanticException(
+          "Not support for this sql in CREATE TOPIC, please enter topicName.");
+    }
+
+    if (ctx.topicAttributesClause() != null) {
+      createTopicStatement.setTopicAttributes(
+          parseTopicAttributesClause(ctx.topicAttributesClause().topicAttributeClause()));
+    } else {
+      createTopicStatement.setTopicAttributes(new HashMap<>());
+    }
+
+    return createTopicStatement;
+  }
+
+  private Map<String, String> parseTopicAttributesClause(
+      List<IoTDBSqlParser.TopicAttributeClauseContext> contexts) {
+    final Map<String, String> collectorMap = new HashMap<>();
+    for (IoTDBSqlParser.TopicAttributeClauseContext context : contexts) {
+      collectorMap.put(
+          parseStringLiteral(context.topicKey.getText()),
+          parseStringLiteral(context.topicValue.getText()));
+    }
+    return collectorMap;
+  }
+
+  @Override
+  public Statement visitDropTopic(IoTDBSqlParser.DropTopicContext ctx) {
+    final DropTopicStatement dropTopicStatement = new DropTopicStatement();
+
+    if (ctx.topicName != null) {
+      dropTopicStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    } else {
+      throw new SemanticException(
+          "Not support for this sql in DROP TOPIC, please enter topicName.");
+    }
+
+    return dropTopicStatement;
+  }
+
+  @Override
+  public Statement visitShowTopics(IoTDBSqlParser.ShowTopicsContext ctx) {
+    final ShowTopicsStatement showTopicsStatement = new ShowTopicsStatement();
+
+    if (ctx.topicName != null) {
+      showTopicsStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    }
+
+    return showTopicsStatement;
+  }
+
+  @Override
+  public Statement visitShowSubscriptions(IoTDBSqlParser.ShowSubscriptionsContext ctx) {
+    final ShowSubscriptionsStatement showSubscriptionsStatement = new ShowSubscriptionsStatement();
+
+    if (ctx.topicName != null) {
+      showSubscriptionsStatement.setTopicName(parseIdentifier(ctx.topicName.getText()));
+    }
+
+    return showSubscriptionsStatement;
   }
 
   @Override

@@ -27,7 +27,9 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 
@@ -88,6 +90,7 @@ public class PipeHeartbeatScheduler {
       return;
     }
 
+    // data node heartbeat
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPipeHeartbeatReq request = new TPipeHeartbeatReq(System.currentTimeMillis());
@@ -107,6 +110,17 @@ public class PipeHeartbeatScheduler {
         .forEach(
             (dataNodeId, resp) ->
                 pipeHeartbeatParser.parseHeartbeat(dataNodeId, resp.getPipeMetaList()));
+
+    // config node heartbeat
+    try {
+      final TPipeHeartbeatResp configNodeResp = new TPipeHeartbeatResp();
+      PipeConfigNodeAgent.task().collectPipeMetaList(request, configNodeResp);
+      pipeHeartbeatParser.parseHeartbeat(
+          ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+          configNodeResp.getPipeMetaList());
+    } catch (Exception e) {
+      LOGGER.warn("Failed to collect pipe meta list from config node task agent", e);
+    }
   }
 
   public synchronized void stop() {

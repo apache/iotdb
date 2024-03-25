@@ -155,8 +155,7 @@ class PipeAgentLauncher {
     try (final ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetAllPipeInfoResp getAllPipeInfoResp = configNodeClient.getAllPipeInfo();
-      if (getAllPipeInfoResp.getStatus().getCode()
-          == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
+      if (getAllPipeInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new StartupException("Failed to get pipe task meta from config node.");
       }
 

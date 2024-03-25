@@ -291,6 +291,13 @@ public class ConfigMTreeTest {
     assertEquals(
         1,
         newTree.getMatchedDatabases(new PartialPath("root.*.*.sg"), ALL_MATCH_SCOPE, false).size());
+    assertEquals(
+        3, newTree.getMatchedDatabases(new PartialPath("root.a"), ALL_MATCH_SCOPE, true).size());
+    assertEquals(
+        1, newTree.getMatchedDatabases(new PartialPath("root.a.b"), ALL_MATCH_SCOPE, true).size());
+    assertEquals(
+        1,
+        newTree.getMatchedDatabases(new PartialPath("root.a.b.sg"), ALL_MATCH_SCOPE, true).size());
   }
 
   @Test

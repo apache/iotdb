@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.conf;
 
 import java.io.File;
@@ -102,6 +103,7 @@ public class IoTDBConstant {
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
   public static final String COMPACTION_LOGGER_NAME = "COMPACTION";
+  public static final String EXPLAIN_ANALYZE_LOGGER_NAME = "EXPLAIN_ANALYZE";
 
   public static final String IOTDB_JMX_LOCAL = "iotdb.jmx.local";
   public static final String IOTDB_JMX_PORT = "com.sun.management.jmxremote.port";
@@ -181,6 +183,7 @@ public class IoTDBConstant {
   public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
   public static final String FUNCTION_TYPE_EXTERNAL_UDAF = "external UDAF";
   public static final String FUNCTION_TYPE_EXTERNAL_UDTF = "external UDTF";
+  public static final String FUNCTION_TYPE_UNKNOWN = "UNKNOWN";
 
   public static final String COLUMN_TRIGGER_NAME = "trigger name";
   public static final String COLUMN_TRIGGER_STATUS = "status";

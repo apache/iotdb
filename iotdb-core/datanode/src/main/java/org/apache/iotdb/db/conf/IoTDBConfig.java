@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -40,8 +41,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLe
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
-import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.BaseRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -348,6 +350,8 @@ public class IoTDBConfig {
 
   private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
+  private int mergeThresholdOfExplainAnalyze = 10;
+
   private int modeMapSizeThreshold = 10000;
 
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
@@ -522,7 +526,7 @@ public class IoTDBConfig {
   private boolean enableTsFileValidation = false;
 
   /** The size of candidate compaction task queue. */
-  private int candidateCompactionTaskQueueSize = 50;
+  private int candidateCompactionTaskQueueSize = 200;
 
   /**
    * When the size of the mods file corresponding to TsFile exceeds this value, inner compaction
@@ -596,9 +600,6 @@ public class IoTDBConfig {
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = ClientRPCServiceImpl.class.getName();
 
-  /** indicate whether current mode is cluster */
-  private boolean isClusterMode = false;
-
   /**
    * The cluster name that this DataNode joined in the cluster mode. The default value
    * "defaultCluster" will be changed after join cluster
@@ -617,16 +618,16 @@ public class IoTDBConfig {
    */
   private int dataNodeId = -1;
 
-  /** whether use chunkBufferPool. */
+  /** Whether to use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
 
   /** Switch of creating schema automatically */
   private boolean enableAutoCreateSchema = true;
 
-  /** register time series as which type when receiving boolean string "true" or "false" */
+  /** Register time series as which type when receiving boolean string "true" or "false" */
   private TSDataType booleanStringInferType = TSDataType.BOOLEAN;
 
-  /** register time series as which type when receiving an integer string "67" */
+  /** Register time series as which type when receiving an integer string "67" */
   private TSDataType integerStringInferType = TSDataType.FLOAT;
 
   /**
@@ -1543,21 +1544,20 @@ public class IoTDBConfig {
   }
 
   public void checkMultiDirStrategyClassName() {
-    if (isClusterMode) {
-      for (String multiDirStrategy : CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES) {
-        // If the multiDirStrategyClassName is one of cluster allowed strategy, the check is passed.
-        if (multiDirStrategyClassName.equals(multiDirStrategy)
-            || multiDirStrategyClassName.equals(MULTI_DIR_STRATEGY_PREFIX + multiDirStrategy)) {
-          return;
-        }
+    confirmMultiDirStrategy();
+    for (String multiDirStrategy : CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES) {
+      // If the multiDirStrategyClassName is one of cluster allowed strategy, the check is passed.
+      if (multiDirStrategyClassName.equals(multiDirStrategy)
+          || multiDirStrategyClassName.equals(MULTI_DIR_STRATEGY_PREFIX + multiDirStrategy)) {
+        return;
       }
-      String msg =
-          String.format(
-              "Cannot set multi_dir_strategy to %s, because cluster mode only allows %s.",
-              multiDirStrategyClassName, Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
-      logger.error(msg);
-      throw new RuntimeException(msg);
     }
+    String msg =
+        String.format(
+            "Cannot set multi_dir_strategy to %s, because cluster mode only allows %s.",
+            multiDirStrategyClassName, Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
+    logger.error(msg);
+    throw new RuntimeException(msg);
   }
 
   public int getBatchSize() {
@@ -1601,6 +1601,14 @@ public class IoTDBConfig {
 
   public int getDegreeOfParallelism() {
     return degreeOfParallelism;
+  }
+
+  public void setMergeThresholdOfExplainAnalyze(int mergeThresholdOfExplainAnalyze) {
+    this.mergeThresholdOfExplainAnalyze = mergeThresholdOfExplainAnalyze;
+  }
+
+  public int getMergeThresholdOfExplainAnalyze() {
+    return mergeThresholdOfExplainAnalyze;
   }
 
   public int getMaxAllowedConcurrentQueries() {
@@ -2505,7 +2513,7 @@ public class IoTDBConfig {
 
   public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
-    RpcTransportFactory.setThriftMaxFrameSize(this.thriftMaxFrameSize);
+    BaseRpcTransportFactory.setThriftMaxFrameSize(this.thriftMaxFrameSize);
   }
 
   public int getThriftDefaultBufferSize() {
@@ -2514,7 +2522,7 @@ public class IoTDBConfig {
 
   public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
-    RpcTransportFactory.setDefaultBufferCapacity(this.thriftDefaultBufferSize);
+    BaseRpcTransportFactory.setDefaultBufferCapacity(this.thriftDefaultBufferSize);
   }
 
   public int getCheckPeriodWhenInsertBlocked() {
@@ -2595,7 +2603,7 @@ public class IoTDBConfig {
 
   public void setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
-    RpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
+    ZeroCopyRpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
   }
 
   public int getMlogBufferSize() {
@@ -3013,15 +3021,6 @@ public class IoTDBConfig {
 
   public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
     this.selectorNumOfClientManager = selectorNumOfClientManager;
-  }
-
-  public boolean isClusterMode() {
-    return isClusterMode;
-  }
-
-  public void setClusterMode(boolean isClusterMode) {
-    this.isClusterMode = isClusterMode;
-    checkMultiDirStrategyClassName();
   }
 
   public String getClusterName() {

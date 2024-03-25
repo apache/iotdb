@@ -57,7 +57,7 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
 
   private int batchSize = 0;
   private int flushIntervalMs = 3000;
-  private transient List<Event> batchList;
+  private List<Event> batchList;
   private int sessionPoolSize = 2;
 
   public IoTDBSink(IoTDBSinkOptions options, IoTSerializationSchema<IN> schema) {

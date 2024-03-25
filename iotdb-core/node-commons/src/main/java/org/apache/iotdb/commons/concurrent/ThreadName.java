@@ -124,12 +124,8 @@ public enum ThreadName {
   GROUP_MANAGEMENT("groupManagement"),
   // -------------------------- Compute --------------------------
   PIPE_EXTRACTOR_DISRUPTOR("Pipe-Extractor-Disruptor"),
-  PIPE_DATAREGION_ASSIGNER_EXECUTOR_POOL("Pipe-DataRegion-Assigner-Executor-Pool"),
-  PIPE_DATAREGION_PROCESSOR_EXECUTOR_POOL("Pipe-DataRegion-Processor-Executor-Pool"),
-  PIPE_DATAREGION_CONNECTOR_EXECUTOR_POOL("Pipe-DataRegion-Connector-Executor-Pool"),
-  PIPE_SCHEMAREGION_ASSIGNER_EXECUTOR_POOL("Pipe-SchemaRegion-Assigner-Executor-Pool"),
-  PIPE_SCHEMAREGION_PROCESSOR_EXECUTOR_POOL("Pipe-SchemaRegion-Processor-Executor-Pool"),
-  PIPE_SCHEMAREGION_CONNECTOR_EXECUTOR_POOL("Pipe-SchemaRegion-Connector-Executor-Pool"),
+  PIPE_PROCESSOR_EXECUTOR_POOL("Pipe-Processor-Executor-Pool"),
+  PIPE_CONNECTOR_EXECUTOR_POOL("Pipe-Connector-Executor-Pool"),
   PIPE_CONFIGNODE_EXECUTOR_POOL("Pipe-ConfigNode-Executor-Pool"),
   PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL("Pipe-SubTask-Callback-Executor-Pool"),
   PIPE_RUNTIME_META_SYNCER("Pipe-Runtime-Meta-Syncer"),
@@ -138,6 +134,7 @@ public enum ThreadName {
   PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR("Pipe-Runtime-Periodical-Job-Executor"),
   PIPE_ASYNC_CONNECTOR_CLIENT_POOL("Pipe-Async-Connector-Client-Pool"),
   PIPE_RECEIVER_AIR_GAP_AGENT("Pipe-Receiver-Air-Gap-Agent"),
+  SUBSCRIPTION_EXECUTOR_POOL("Subscription-Executor-Pool"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   STATEFUL_TRIGGER_INFORMATION_UPDATER("Stateful-Trigger-Information-Updater"),
   // -------------------------- JVM --------------------------
@@ -264,12 +261,8 @@ public enum ThreadName {
       new HashSet<>(
           Arrays.asList(
               PIPE_EXTRACTOR_DISRUPTOR,
-              PIPE_DATAREGION_ASSIGNER_EXECUTOR_POOL,
-              PIPE_DATAREGION_PROCESSOR_EXECUTOR_POOL,
-              PIPE_DATAREGION_CONNECTOR_EXECUTOR_POOL,
-              PIPE_SCHEMAREGION_ASSIGNER_EXECUTOR_POOL,
-              PIPE_SCHEMAREGION_PROCESSOR_EXECUTOR_POOL,
-              PIPE_SCHEMAREGION_CONNECTOR_EXECUTOR_POOL,
+              PIPE_PROCESSOR_EXECUTOR_POOL,
+              PIPE_CONNECTOR_EXECUTOR_POOL,
               PIPE_CONFIGNODE_EXECUTOR_POOL,
               PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL,
               PIPE_RUNTIME_META_SYNCER,
@@ -278,6 +271,7 @@ public enum ThreadName {
               PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR,
               PIPE_ASYNC_CONNECTOR_CLIENT_POOL,
               PIPE_RECEIVER_AIR_GAP_AGENT,
+              SUBSCRIPTION_EXECUTOR_POOL,
               WINDOW_EVALUATION_SERVICE,
               STATEFUL_TRIGGER_INFORMATION_UPDATER));
 

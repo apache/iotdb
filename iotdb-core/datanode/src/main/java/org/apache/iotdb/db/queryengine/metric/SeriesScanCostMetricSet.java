@@ -970,6 +970,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   private static final String BUILD_TSBLOCK_FROM_PAGE_READER = "build_tsblock_from_page_reader";
   private static final String HISTOGRAM_BUILD_TSBLOCK_FROM_PAGE_READER =
       "histogram_build_tsblock_from_page_reader";
+  private static final String PAGE_READER_MAX_USED_MEMORY_SIZE = "page_reader_max_used_memory_size";
 
   private Histogram pageReadersDecodeAlignedMemHistogram =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
@@ -979,6 +980,8 @@ public class SeriesScanCostMetricSet implements IMetricSet {
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram pageReadersDecodeNonAlignedDiskHistogram =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  private Histogram pageReaderMaxMemoryHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
   private Timer pageReadersDecodeAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer pageReadersDecodeAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -1002,6 +1005,10 @@ public class SeriesScanCostMetricSet implements IMetricSet {
     pageReadersDecodeAlignedDiskTimer.updateNanos(alignedDiskTime);
     pageReadersDecodeNonAlignedMemTimer.updateNanos(nonAlignedMemTime);
     pageReadersDecodeNonAlignedDiskTimer.updateNanos(nonAlignedDiskTime);
+  }
+
+  public void updatePageReaderMemoryUsage(long memorySize) {
+    pageReaderMaxMemoryHistogram.update(memorySize);
   }
 
   private void bindTsBlockFromPageReader(AbstractMetricService metricService) {
@@ -1086,6 +1093,13 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             NON_ALIGNED,
             Tag.FROM.toString(),
             DISK);
+
+    pageReaderMaxMemoryHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.MEMORY_USAGE_MONITOR.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            PAGE_READER_MAX_USED_MEMORY_SIZE);
   }
 
   private void unbindTsBlockFromPageReader(AbstractMetricService metricService) {
@@ -1093,6 +1107,8 @@ public class SeriesScanCostMetricSet implements IMetricSet {
     pageReadersDecodeAlignedDiskHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     pageReadersDecodeNonAlignedMemHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     pageReadersDecodeNonAlignedDiskHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    pageReaderMaxMemoryHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
     pageReadersDecodeAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     pageReadersDecodeAlignedDiskTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     pageReadersDecodeNonAlignedMemTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -1121,6 +1137,12 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             from);
       }
     }
+
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.MEMORY_USAGE_MONITOR.toString(),
+        Tag.TYPE.toString(),
+        PAGE_READER_MAX_USED_MEMORY_SIZE);
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////

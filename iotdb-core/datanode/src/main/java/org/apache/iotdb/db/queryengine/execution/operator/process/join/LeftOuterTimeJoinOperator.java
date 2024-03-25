@@ -320,7 +320,8 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
   @Override
   public long calculateMaxPeekMemory() {
     return Math.max(
-        Math.max(left.calculateMaxPeekMemory(), right.calculateMaxPeekMemory()),
+        Math.max(
+            left.calculateMaxPeekMemoryWithCounter(), right.calculateMaxPeekMemoryWithCounter()),
         calculateRetainedSizeAfterCallingNext() + calculateMaxReturnSize());
   }
 

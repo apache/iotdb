@@ -118,9 +118,7 @@ public class WriteBackConnector implements PipeConnector {
               .thrift()
               .receive(
                   PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                      pipeInsertNodeTabletInsertionEvent.getByteBuffer()),
-                  ClusterPartitionFetcher.getInstance(),
-                  ClusterSchemaFetcher.getInstance())
+                      pipeInsertNodeTabletInsertionEvent.getByteBuffer()))
               .getStatus();
     } else {
       InsertBaseStatement statement =
@@ -138,7 +136,7 @@ public class WriteBackConnector implements PipeConnector {
 
   private void doTransfer(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
-    InsertBaseStatement statement =
+    final InsertBaseStatement statement =
         PipeTransferTabletRawReq.toTPipeTransferRawReq(
                 pipeRawTabletInsertionEvent.convertToTablet(),
                 pipeRawTabletInsertionEvent.isAligned())
@@ -156,7 +154,7 @@ public class WriteBackConnector implements PipeConnector {
 
   private TSStatus executeStatement(InsertBaseStatement statement) {
     return Coordinator.getInstance()
-        .execute(
+        .executeForTreeModel(
             new PipeEnrichedStatement(statement),
             SessionManager.getInstance().requestQueryId(),
             new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
