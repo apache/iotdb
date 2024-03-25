@@ -89,6 +89,10 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
 
   public void open()
       throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+    if (!isClosed) {
+      return;
+    }
+
     super.open();
 
     if (autoCommit) {
@@ -115,10 +119,6 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
     } finally {
       isClosed = true;
     }
-  }
-
-  public boolean isClosed() {
-    return isClosed;
   }
 
   public List<SubscriptionMessage> poll(Duration timeoutMs)
@@ -229,7 +229,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
 
   @Override
   public void run() {
-    if (isClosed()) {
+    if (isClosed) {
       return;
     }
 

@@ -94,6 +94,10 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   public void open()
       throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+    if (!isClosed) {
+      return;
+    }
+
     subscriptionProviders = new HashMap<>();
     defaultSubscriptionProvider =
         new SubscriptionProvider(defaultEndPoint, username, password, consumerId, consumerGroupId);
