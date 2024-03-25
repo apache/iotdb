@@ -34,8 +34,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -75,21 +73,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
             builder.consumerGroupId);
 
     Map<Integer, TEndPoint> endPoints = defaultSubscriptionProvider.handshake();
-    Optional<Integer> defaultDataNodeId =
-        endPoints.entrySet().stream()
-            .filter(entry -> entry.getValue().equals(defaultEndPoint))
-            .map(Map.Entry::getKey)
-            .findFirst();
-    if (!defaultDataNodeId.isPresent()) {
-      throw new IoTDBConnectionException(
-          "something unexpected happened when construct subscription consumer...");
-    }
-
-    subscriptionProviders.put(defaultDataNodeId.get(), defaultSubscriptionProvider);
     for (Map.Entry<Integer, TEndPoint> entry : endPoints.entrySet()) {
-      if (Objects.equals(entry.getValue(), defaultEndPoint)) {
-        continue;
-      }
+      // TODO: Avoid creating two identical targets for SubscriptionProvider by distinguishing
+      // between localhost, 0.0.0.0, and 127.0.0.1.
       SubscriptionProvider subscriptionProvider =
           new SubscriptionProvider(
               entry.getValue(),

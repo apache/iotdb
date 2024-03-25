@@ -9,6 +9,7 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.thrift.TException;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,6 +17,8 @@ final class SubscriptionProvider extends SubscriptionSession {
 
   private final String consumerId;
   private final String consumerGroupId;
+
+  private boolean isClosed = true;
 
   SubscriptionProvider(
       TEndPoint endPoint,
@@ -31,23 +34,37 @@ final class SubscriptionProvider extends SubscriptionSession {
 
   Map<Integer, TEndPoint> handshake()
       throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
-    open();
+    if (!isClosed) {
+      return Collections.emptyMap();
+    }
+
+    super.open();
 
     Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
-    return getSessionConnection().handshake(new ConsumerConfig(consumerAttributes));
+    Map<Integer, TEndPoint> endPoints =
+        getSessionConnection().handshake(new ConsumerConfig(consumerAttributes));
+
+    isClosed = false;
+    return endPoints;
   }
 
   @Override
   public void close() throws IoTDBConnectionException {
+    if (isClosed) {
+      return;
+    }
+
     try {
       getSessionConnection().closeConsumer();
     } catch (TException | StatementExecutionException e) {
       // wrap to IoTDBConnectionException to keep interface consistent
       throw new IoTDBConnectionException(e);
+    } finally {
+      super.close();
+      isClosed = true;
     }
-    super.close();
   }
 
   SubscriptionSessionConnection getSessionConnection() {
