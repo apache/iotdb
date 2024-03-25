@@ -94,7 +94,7 @@ public class SubscriptionSessionExample {
             System.out.println(dataSet.next());
           }
         }
-        // consumer.commitSync(messages);
+        // auto commit
         consumer.unsubscribe("topic1");
       }
     }
@@ -102,6 +102,8 @@ public class SubscriptionSessionExample {
     // subscription: builder-style ctor
     try (SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
+            // TODO: Currently, specific parameters must be set before general parameters.
+            .autoCommit(false)
             .consumerId("c2")
             .consumerGroupId("cg2")
             .buildPullConsumer()) {

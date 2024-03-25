@@ -141,7 +141,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
       if (currentTimestamp % autoCommitInterval == 0) {
         index -= 1;
       }
-      // TODO: thread-safe
+      // TODO: use thread-safe list
       uncommittedMessages.computeIfAbsent(index, o -> new ArrayList<>()).addAll(messages);
     }
     return messages;
@@ -183,8 +183,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
   /////////////////////////////// auto commit ///////////////////////////////
 
   private void launchAutoCommitWorker() {
-    this.uncommittedMessages = new ConcurrentSkipListMap<>();
-    this.workerExecutor =
+    uncommittedMessages = new ConcurrentSkipListMap<>();
+    workerExecutor =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
               Thread t =
