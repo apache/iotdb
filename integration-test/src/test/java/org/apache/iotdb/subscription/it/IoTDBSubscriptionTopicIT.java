@@ -90,6 +90,7 @@ public class IoTDBSubscriptionTopicIT {
     String host = EnvFactory.getEnv().getIP();
     int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     try (SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
       Properties config = new Properties();
       config.put(TopicConstant.PATH_KEY, "root.db.*.s");
       session.createTopic("topic1", config);
@@ -156,6 +157,7 @@ public class IoTDBSubscriptionTopicIT {
     String host = EnvFactory.getEnv().getIP();
     int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     try (SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
       Properties config = new Properties();
       config.put(TopicConstant.START_TIME_KEY, currentTime);
       session.createTopic("topic1", config);
@@ -211,6 +213,7 @@ public class IoTDBSubscriptionTopicIT {
     String host = EnvFactory.getEnv().getIP();
     int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     try (SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
       Properties config = new Properties();
       config.put("processor", "tumbling-time-sampling-processor");
       config.put("processor.tumbling-time.interval-seconds", "1");

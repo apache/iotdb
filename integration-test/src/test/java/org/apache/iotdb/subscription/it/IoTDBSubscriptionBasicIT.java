@@ -83,6 +83,7 @@ public class IoTDBSubscriptionBasicIT {
     String host = EnvFactory.getEnv().getIP();
     int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     try (SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
       session.createTopic("topic1");
     } catch (Exception e) {
       fail(e.getMessage());
@@ -138,6 +139,7 @@ public class IoTDBSubscriptionBasicIT {
     String host = EnvFactory.getEnv().getIP();
     int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     try (SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
       session.createTopic("topic1");
     } catch (Exception e) {
       fail(e.getMessage());

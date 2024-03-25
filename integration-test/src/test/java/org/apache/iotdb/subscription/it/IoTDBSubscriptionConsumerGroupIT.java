@@ -64,20 +64,23 @@ public class IoTDBSubscriptionConsumerGroupIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  private void createTopics() {
+  private long createTopics() {
+    long currentTime = System.currentTimeMillis();
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.executeNonQueryStatement("create topic topic1 with ('start-time'='now')");
-      session.executeNonQueryStatement("create topic topic2 with ('end-time'='now')");
+      session.executeNonQueryStatement(
+          String.format("create topic topic1 with ('start-time'='%s')", currentTime));
+      session.executeNonQueryStatement(
+          String.format("create topic topic2 with ('end-time'='%s')", currentTime - 1));
     } catch (Exception e) {
       fail(e.getMessage());
     }
+    return currentTime;
   }
 
   private void testMultiConsumersSubscribeMultiTopicsTemplate(
-      List<SubscriptionPullConsumer> consumers, int factor) throws Exception {
+      long currentTime, List<SubscriptionPullConsumer> consumers, int factor) throws Exception {
     ConcurrentHashMap<String, ConcurrentHashMap<Long, Long>> consumerGroupIdToTimestamps =
         new ConcurrentHashMap<>();
-    long currentTime = System.currentTimeMillis();
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       for (int i = 0; i < BASE; ++i) {
         session.executeNonQueryStatement(
@@ -150,52 +153,52 @@ public class IoTDBSubscriptionConsumerGroupIT {
 
   @Test
   public void test3C1CGSubscribeOneTopic() throws Exception {
-    createTopics();
+    long currentTime = createTopics();
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
-    testMultiConsumersSubscribeMultiTopicsTemplate(consumers, 1);
+    testMultiConsumersSubscribeMultiTopicsTemplate(currentTime, consumers, 1);
   }
 
   @Test
   public void test3C3CGSubscribeOneTopic() throws Exception {
-    createTopics();
+    long currentTime = createTopics();
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic1"));
-    testMultiConsumersSubscribeMultiTopicsTemplate(consumers, 3);
+    testMultiConsumersSubscribeMultiTopicsTemplate(currentTime, consumers, 3);
   }
 
   @Test
   public void test3C1CGSubscribeTwoTopic() throws Exception {
-    createTopics();
+    long currentTime = createTopics();
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic2"));
-    testMultiConsumersSubscribeMultiTopicsTemplate(consumers, 2);
+    testMultiConsumersSubscribeMultiTopicsTemplate(currentTime, consumers, 2);
   }
 
   @Test
   public void test3C3CGSubscribeTwoTopic() throws Exception {
-    createTopics();
+    long currentTime = createTopics();
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic2"));
-    testMultiConsumersSubscribeMultiTopicsTemplate(consumers, 4);
+    testMultiConsumersSubscribeMultiTopicsTemplate(currentTime, consumers, 4);
   }
 
   @Test
   public void test4C2CGSubscribeTwoTopic() throws Exception {
-    createTopics();
+    long currentTime = createTopics();
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c4", "cg2", "topic2"));
-    testMultiConsumersSubscribeMultiTopicsTemplate(consumers, 3);
+    testMultiConsumersSubscribeMultiTopicsTemplate(currentTime, consumers, 3);
   }
 }
