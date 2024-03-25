@@ -93,7 +93,7 @@ public class CNPhysicalPlanGenerator
 
   public CNPhysicalPlanGenerator(Path snapshotFilePath, CNSnapshotFileType fileType)
       throws IOException {
-    if (fileType == CNSnapshotFileType.SCHEMA_TEMPLATE) {
+    if (fileType == CNSnapshotFileType.SCHEMA) {
       logger.warn("schema_template need two files");
       return;
     }
@@ -107,7 +107,7 @@ public class CNPhysicalPlanGenerator
   public CNPhysicalPlanGenerator(Path schemaInfoFile, Path templateFile) throws IOException {
     inputStream = Files.newInputStream(schemaInfoFile);
     templateInputStream = Files.newInputStream(templateFile);
-    snapshotFileType = CNSnapshotFileType.SCHEMA_TEMPLATE;
+    snapshotFileType = CNSnapshotFileType.SCHEMA;
   }
 
   @Override
@@ -127,7 +127,7 @@ public class CNPhysicalPlanGenerator
       generateUserRolePhysicalPlan(false);
     } else if (snapshotFileType == CNSnapshotFileType.USER_ROLE) {
       generateGrantRolePhysicalPlan();
-    } else if (snapshotFileType == CNSnapshotFileType.SCHEMA_TEMPLATE) {
+    } else if (snapshotFileType == CNSnapshotFileType.SCHEMA) {
       generateTemplatePlan();
       if (latestException != null) {
         return false;
@@ -279,8 +279,8 @@ public class CNPhysicalPlanGenerator
   private void generateDatabasePhysicalPlan() {
     try (BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream)) {
       byte type = ReadWriteIOUtils.readByte(bufferedInputStream);
-      String name = null;
-      int childNum = 0;
+      String name;
+      int childNum;
       Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
       IConfigMNode databaseMNode;
       IConfigMNode internalMNode;
@@ -333,7 +333,7 @@ public class CNPhysicalPlanGenerator
   private void generateTemplatePlan() {
     try (BufferedInputStream bufferedInputStream = new BufferedInputStream(templateInputStream)) {
       ByteBuffer byteBuffer = ByteBuffer.wrap(IOUtils.toByteArray(bufferedInputStream));
-      // skip id
+      // Skip id
       ReadWriteIOUtils.readInt(byteBuffer);
       int size = ReadWriteIOUtils.readInt(byteBuffer);
       while (size > 0) {

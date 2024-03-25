@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
@@ -80,8 +81,7 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
     if (Objects.nonNull(tagLogSnapshotFile)) {
       transferFilePieces(tagLogSnapshotFile, socket, true);
     }
-
-    // 2. Transfer file seal signal, which means the file is transferred completely
+    // 2. Transfer file seal signal, which means the snapshots is transferred completely
     if (!send(
         socket,
         PipeTransferSchemaSnapshotSealReq.toTPipeTransferBytes(
@@ -101,5 +101,17 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
           mtreeSnapshotFile,
           tagLogSnapshotFile);
     }
+  }
+
+  @Override
+  protected byte[] getTransferSingleFilePieceBytes(String fileName, long position, byte[] payLoad) {
+    throw new UnsupportedOperationException(
+        "The schema region air gap connector does not support transferring single file piece bytes.");
+  }
+
+  @Override
+  protected byte[] getTransferMultiFilePieceBytes(String fileName, long position, byte[] payLoad)
+      throws IOException {
+    return PipeTransferSchemaSnapshotPieceReq.toTPipeTransferBytes(fileName, position, payLoad);
   }
 }

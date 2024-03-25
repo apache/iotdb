@@ -29,8 +29,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -38,12 +36,9 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -114,38 +109,6 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
           String.format(
               "Transfer data node write plan %s error. Socket: %s.",
               pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), socket));
-    }
-  }
-
-  protected void transferFilePieces(File file, Socket socket, boolean isMultiFile)
-      throws PipeException, IOException {
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
-    final byte[] readBuffer = new byte[readFileBufferSize];
-    long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
-      while (true) {
-        final int readLength = reader.read(readBuffer);
-        if (readLength == -1) {
-          break;
-        }
-
-        final byte[] payload =
-            readLength == readFileBufferSize
-                ? readBuffer
-                : Arrays.copyOfRange(readBuffer, 0, readLength);
-        if (!send(
-            socket,
-            isMultiFile
-                ? PipeTransferTsFilePieceWithModReq.toTPipeTransferBytes(
-                    file.getName(), position, payload)
-                : PipeTransferTsFilePieceReq.toTPipeTransferBytes(
-                    file.getName(), position, payload))) {
-          throw new PipeException(
-              String.format("Transfer file %s error. Socket %s.", file, socket));
-        } else {
-          position += readLength;
-        }
-      }
     }
   }
 }

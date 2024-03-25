@@ -462,7 +462,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       writingFileWriter.close();
       writingFileWriter = null;
 
-      // writingFile will be deleted after load if no exception occurs
+      // WritingFile will be deleted after load if no exception occurs
       writingFile = null;
 
       final List<String> fileAbsolutePaths =

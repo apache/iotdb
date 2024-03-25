@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
@@ -79,7 +81,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
     if (Objects.nonNull(tagLogSnapshotFile)) {
       transferFilePieces(tagLogSnapshotFile, clientAndStatus, true);
     }
-    // 2. Transfer file seal signal, which means the snapshot is transferred completely
+    // 2. Transfer file seal signal, which means the snapshots are transferred completely
     try {
       resp =
           clientAndStatus
@@ -109,5 +111,18 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
         snapshotEvent.toString());
 
     LOGGER.info("Successfully transferred file {} and {}.", mTreeSnapshotFile, tagLogSnapshotFile);
+  }
+
+  @Override
+  protected PipeTransferFilePieceReq getTransferSingleFilePieceReq(
+      String fileName, long position, byte[] payLoad) {
+    throw new UnsupportedOperationException(
+        "The schema region connector does not support transferring single file piece req.");
+  }
+
+  @Override
+  protected PipeTransferFilePieceReq getTransferMultiFilePieceReq(
+      String fileName, long position, byte[] payLoad) throws IOException {
+    return PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq(fileName, position, payLoad);
   }
 }

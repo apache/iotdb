@@ -32,8 +32,10 @@ import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaT
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigSerializableEventType;
+import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -42,8 +44,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
     implements SnapshotProcessor {
@@ -88,11 +92,23 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
     }
   }
 
-  // TODO: bind snapshot type to the files
-  public synchronized void tryListenToSnapshots(List<String> snapshotPaths) {
+  public synchronized void tryListenToSnapshots(
+      List<Pair<Pair<Path, Path>, CNSnapshotFileType>> snapshotPathInfoList) {
     List<PipeSnapshotEvent> events = new ArrayList<>();
-    for (String snapshotPath : snapshotPaths) {
-      events.add(new PipeConfigRegionSnapshotEvent(snapshotPath));
+    for (Pair<Pair<Path, Path>, CNSnapshotFileType> snapshotPathInfo : snapshotPathInfoList) {
+      Path snapshotPath = snapshotPathInfo.getLeft().getLeft();
+      if (snapshotPath.toFile().length() == 0) {
+        // Filter empty snapshots
+        continue;
+      }
+      Path templateFilePath = snapshotPathInfo.getLeft().getRight();
+      events.add(
+          new PipeConfigRegionSnapshotEvent(
+              snapshotPath.toString(),
+              Objects.nonNull(templateFilePath) && templateFilePath.toFile().length() > 0
+                  ? templateFilePath.toString()
+                  : null,
+              snapshotPathInfo.getRight()));
     }
     tryListen(events);
   }

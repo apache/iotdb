@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.manager.pipe.transfer.connector.config;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapConnector;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
@@ -42,10 +41,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.net.Socket;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Objects;
 
 public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
 
@@ -69,6 +67,18 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
     return PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferBytes(params);
+  }
+
+  @Override
+  protected byte[] getTransferSingleFilePieceBytes(String fileName, long position, byte[] payLoad) {
+    throw new UnsupportedOperationException(
+        "The config region air gap connector does not support transferring single file piece bytes.");
+  }
+
+  @Override
+  protected byte[] getTransferMultiFilePieceBytes(String fileName, long position, byte[] payLoad)
+      throws IOException {
+    return PipeTransferConfigSnapshotPieceReq.toTPipeTransferBytes(fileName, position, payLoad);
   }
 
   @Override
@@ -116,41 +126,24 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
   private void doTransfer(
       Socket socket, PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
       throws PipeException, IOException {
-    final File snapshot = pipeConfigRegionSnapshotEvent.getSnapshot();
+    final File snapshot = pipeConfigRegionSnapshotEvent.getSnapshotFile();
+    final File templateFile = pipeConfigRegionSnapshotEvent.getTemplateFile();
 
-    // 1. Transfer file piece by piece
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
-    final byte[] readBuffer = new byte[readFileBufferSize];
-    long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(snapshot, "r")) {
-      while (true) {
-        final int readLength = reader.read(readBuffer);
-        if (readLength == -1) {
-          break;
-        }
-
-        if (!send(
-            socket,
-            PipeTransferConfigSnapshotPieceReq.toTPipeTransferBytes(
-                snapshot.getName(),
-                position,
-                readLength == readFileBufferSize
-                    ? readBuffer
-                    : Arrays.copyOfRange(readBuffer, 0, readLength)))) {
-          throw new PipeException(
-              String.format(
-                  "Transfer config region snapshot %s error. Socket %s.", snapshot, socket));
-        } else {
-          position += readLength;
-        }
-      }
+    // 1. Transfer snapshotFile, and template file if exists
+    transferFilePieces(snapshot, socket, true);
+    if (Objects.nonNull(templateFile)) {
+      transferFilePieces(templateFile, socket, true);
     }
-
-    // 2. Transfer file seal signal, which means the file is transferred completely
+    // 2. Transfer file seal signal, which means the snapshots are transferred completely
     if (!send(
         socket,
         PipeTransferConfigSnapshotSealReq.toTPipeTransferBytes(
-            snapshot.getName(), snapshot.length()))) {
+            snapshot.getName(),
+            snapshot.length(),
+            Objects.nonNull(templateFile) ? templateFile.getName() : null,
+            Objects.nonNull(templateFile) ? templateFile.length() : 0,
+            pipeConfigRegionSnapshotEvent.getFileType(),
+            pipeConfigRegionSnapshotEvent.toSealTypeString()))) {
       throw new PipeException(
           String.format("Seal config region snapshot %s error. Socket %s.", snapshot, socket));
     } else {

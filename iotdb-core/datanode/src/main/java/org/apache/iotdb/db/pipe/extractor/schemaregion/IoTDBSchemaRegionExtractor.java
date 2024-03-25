@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.extractor.schemaregion;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -120,7 +121,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
-  protected void confineHistoricalEventTransferTypes(Event event) {
+  protected void confineHistoricalEventTransferTypes(PipeSnapshotEvent event) {
     ((PipeSchemaRegionSnapshotEvent) event).confineTransferredTypes(listenedTypeSet);
   }
 

@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -191,5 +193,17 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
         LOGGER.info("Successfully transferred file {}.", tsFile);
       }
     }
+  }
+
+  @Override
+  protected byte[] getTransferSingleFilePieceBytes(String fileName, long position, byte[] payLoad)
+      throws IOException {
+    return PipeTransferTsFilePieceReq.toTPipeTransferBytes(fileName, position, payLoad);
+  }
+
+  @Override
+  protected byte[] getTransferMultiFilePieceBytes(String fileName, long position, byte[] payLoad)
+      throws IOException {
+    return PipeTransferTsFilePieceWithModReq.toTPipeTransferBytes(fileName, position, payLoad);
   }
 }

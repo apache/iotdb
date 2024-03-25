@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.manager.pipe.resource.snapshot.PipeConfigNodeSnapshotResourceManager;
+import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -34,8 +35,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -43,42 +48,83 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigRegionSnapshotEvent.class);
   private String snapshotPath;
-  private static final Set<Short> CONFIG_PHYSICAL_PLAN_TRANSFER_TYPES =
-      Collections.unmodifiableSet(
-          new HashSet<>(
-              Arrays.asList(
-                  ConfigPhysicalPlanType.CreateDatabase.getPlanType(),
-                  ConfigPhysicalPlanType.CreateUser.getPlanType(),
-                  ConfigPhysicalPlanType.CreateRole.getPlanType(),
-                  ConfigPhysicalPlanType.CreateSchemaTemplate.getPlanType(),
-                  ConfigPhysicalPlanType.CommitSetSchemaTemplate.getPlanType(),
-                  ConfigPhysicalPlanType.GrantUser.getPlanType(),
-                  ConfigPhysicalPlanType.GrantRole.getPlanType(),
-                  ConfigPhysicalPlanType.SetTTL.getPlanType())));
+  // This will only be filled in when the snapshot is a schema info file.
+  private String templateFilePath;
+  private static final Map<CNSnapshotFileType, Set<Short>>
+      SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP = new HashMap<>();
+  private CNSnapshotFileType fileType;
+
+  static {
+    SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
+        CNSnapshotFileType.ROLE,
+        Collections.unmodifiableSet(
+            new HashSet<>(
+                Arrays.asList(
+                    ConfigPhysicalPlanType.CreateRole.getPlanType(),
+                    ConfigPhysicalPlanType.GrantRole.getPlanType()))));
+    SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
+        CNSnapshotFileType.USER,
+        Collections.unmodifiableSet(
+            new HashSet<>(
+                Arrays.asList(
+                    ConfigPhysicalPlanType.CreateUser.getPlanType(),
+                    ConfigPhysicalPlanType.GrantUser.getPlanType()))));
+    SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
+        CNSnapshotFileType.USER_ROLE,
+        Collections.singleton(ConfigPhysicalPlanType.GrantRoleToUser.getPlanType()));
+    SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
+        CNSnapshotFileType.SCHEMA,
+        Collections.unmodifiableSet(
+            new HashSet<>(
+                Arrays.asList(
+                    ConfigPhysicalPlanType.CreateDatabase.getPlanType(),
+                    ConfigPhysicalPlanType.SetTTL.getPlanType(),
+                    ConfigPhysicalPlanType.CreateSchemaTemplate.getPlanType(),
+                    ConfigPhysicalPlanType.CommitSetSchemaTemplate.getPlanType()))));
+  }
 
   public PipeConfigRegionSnapshotEvent() {
     // Used for deserialization
-    this(null);
-  }
-
-  public PipeConfigRegionSnapshotEvent(String snapshotPath) {
-    this(snapshotPath, null, null, null);
+    this(null, null, null);
   }
 
   public PipeConfigRegionSnapshotEvent(
-      String snapshotPath, String pipeName, PipeTaskMeta pipeTaskMeta, PipePattern pattern) {
-    super(pipeName, pipeTaskMeta, pattern, PipeConfigNodeSnapshotResourceManager.getInstance());
-    this.snapshotPath = snapshotPath;
+      String snapshotPath, String templateFilePath, CNSnapshotFileType type) {
+    this(snapshotPath, templateFilePath, type, null, null, null);
   }
 
-  public File getSnapshot() {
+  public PipeConfigRegionSnapshotEvent(
+      String snapshotPath,
+      String templateFilePath,
+      CNSnapshotFileType type,
+      String pipeName,
+      PipeTaskMeta pipeTaskMeta,
+      PipePattern pattern) {
+    super(pipeName, pipeTaskMeta, pattern, PipeConfigNodeSnapshotResourceManager.getInstance());
+    this.snapshotPath = snapshotPath;
+    this.templateFilePath = Objects.nonNull(templateFilePath) ? templateFilePath : "";
+    this.fileType = type;
+  }
+
+  public File getSnapshotFile() {
     return new File(snapshotPath);
+  }
+
+  public File getTemplateFile() {
+    return !templateFilePath.isEmpty() ? new File(templateFilePath) : null;
+  }
+
+  public CNSnapshotFileType getFileType() {
+    return fileType;
   }
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
       snapshotPath = resourceManager.increaseSnapshotReference(snapshotPath);
+      if (!templateFilePath.isEmpty()) {
+        templateFilePath = resourceManager.increaseSnapshotReference(templateFilePath);
+      }
       return true;
     } catch (IOException e) {
       LOGGER.warn(
@@ -94,6 +140,9 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
       resourceManager.decreaseSnapshotReference(snapshotPath);
+      if (!templateFilePath.isEmpty()) {
+        resourceManager.decreaseSnapshotReference(templateFilePath);
+      }
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -112,27 +161,39 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
       PipePattern pattern,
       long startTime,
       long endTime) {
-    return new PipeConfigRegionSnapshotEvent(snapshotPath, pipeName, pipeTaskMeta, pattern);
+    return new PipeConfigRegionSnapshotEvent(
+        snapshotPath, templateFilePath, fileType, pipeName, pipeTaskMeta, pattern);
   }
 
   @Override
   public ByteBuffer serializeToByteBuffer() {
     ByteBuffer result =
-        ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + snapshotPath.getBytes().length);
+        ByteBuffer.allocate(
+            2 * Byte.BYTES
+                + 2 * Integer.BYTES
+                + snapshotPath.getBytes().length
+                + templateFilePath.getBytes().length);
     ReadWriteIOUtils.write(PipeConfigSerializableEventType.CONFIG_SNAPSHOT.getType(), result);
+    ReadWriteIOUtils.write(fileType.getType(), result);
     ReadWriteIOUtils.write(snapshotPath, result);
+    ReadWriteIOUtils.write(templateFilePath, result);
     return result;
   }
 
   @Override
   public void deserializeFromByteBuffer(ByteBuffer buffer) {
+    fileType = CNSnapshotFileType.deserialize(ReadWriteIOUtils.readByte(buffer));
     snapshotPath = ReadWriteIOUtils.readString(buffer);
+    templateFilePath = ReadWriteIOUtils.readString(buffer);
   }
 
   /////////////////////////////// Type parsing ///////////////////////////////
 
   public static boolean needTransferSnapshot(Set<ConfigPhysicalPlanType> listenedTypeSet) {
-    final Set<Short> types = new HashSet<>(CONFIG_PHYSICAL_PLAN_TRANSFER_TYPES);
+    final Set<Short> types =
+        SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.values().stream()
+            .flatMap(Collection::stream)
+            .collect(Collectors.toSet());
     types.retainAll(
         listenedTypeSet.stream()
             .map(ConfigPhysicalPlanType::getPlanType)
@@ -141,7 +202,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
   }
 
   public void confineTransferredTypes(Set<ConfigPhysicalPlanType> listenedTypeSet) {
-    final Set<Short> types = new HashSet<>(CONFIG_PHYSICAL_PLAN_TRANSFER_TYPES);
+    final Set<Short> types = SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.get(fileType);
     types.retainAll(
         listenedTypeSet.stream()
             .map(ConfigPhysicalPlanType::getPlanType)
@@ -150,11 +211,10 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
   }
 
   public static Set<ConfigPhysicalPlanType> getConfigPhysicalPlanTypeSet(String sealTypes) {
-    final Set<Short> types = new HashSet<>(CONFIG_PHYSICAL_PLAN_TRANSFER_TYPES);
-    types.retainAll(
-        Arrays.stream(sealTypes.split(",")).map(Short::valueOf).collect(Collectors.toSet()));
-    return types.stream()
-        .map(ConfigPhysicalPlanType::convertToConfigPhysicalPlanType)
+    return Arrays.stream(sealTypes.split(","))
+        .map(
+            typeValue ->
+                ConfigPhysicalPlanType.convertToConfigPhysicalPlanType(Short.parseShort(typeValue)))
         .collect(Collectors.toSet());
   }
 }

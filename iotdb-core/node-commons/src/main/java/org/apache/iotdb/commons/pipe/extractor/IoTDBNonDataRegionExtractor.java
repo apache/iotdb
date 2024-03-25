@@ -98,7 +98,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   @Override
   public EnrichedEvent supply() throws Exception {
-    // historical
+    // Historical
     if (!historicalEvents.isEmpty()) {
       final PipeSnapshotEvent historicalEvent =
           (PipeSnapshotEvent)
@@ -117,7 +117,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
       return historicalEvent;
     }
 
-    // realtime
+    // Realtime
     EnrichedEvent realtimeEvent;
     do {
       realtimeEvent = (EnrichedEvent) iterator.next(0);
@@ -137,7 +137,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   protected abstract boolean isTypeListened(Event event);
 
-  protected abstract void confineHistoricalEventTransferTypes(Event event);
+  protected abstract void confineHistoricalEventTransferTypes(PipeSnapshotEvent event);
 
   @Override
   public void close() throws Exception {

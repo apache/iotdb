@@ -25,13 +25,16 @@ import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteRespo
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -177,6 +180,42 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
           e);
     }
   }
+
+  protected void transferFilePieces(File file, Socket socket, boolean isMultiFile)
+      throws PipeException, IOException {
+    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    final byte[] readBuffer = new byte[readFileBufferSize];
+    long position = 0;
+    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+      while (true) {
+        final int readLength = reader.read(readBuffer);
+        if (readLength == -1) {
+          break;
+        }
+
+        final byte[] payload =
+            readLength == readFileBufferSize
+                ? readBuffer
+                : Arrays.copyOfRange(readBuffer, 0, readLength);
+        if (!send(
+            socket,
+            isMultiFile
+                ? getTransferMultiFilePieceBytes(file.getName(), position, payload)
+                : getTransferSingleFilePieceBytes(file.getName(), position, payload))) {
+          throw new PipeException(
+              String.format("Transfer file %s error. Socket %s.", file, socket));
+        } else {
+          position += readLength;
+        }
+      }
+    }
+  }
+
+  protected abstract byte[] getTransferSingleFilePieceBytes(
+      String fileName, long position, byte[] payLoad) throws IOException;
+
+  protected abstract byte[] getTransferMultiFilePieceBytes(
+      String fileName, long position, byte[] payLoad) throws IOException;
 
   protected int nextSocketIndex() {
     final int socketSize = sockets.size();
