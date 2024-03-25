@@ -56,7 +56,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     this(new Builder(), config);
   }
 
-  public SubscriptionPullConsumer(Builder builder, Properties config)
+  private SubscriptionPullConsumer(Builder builder, Properties config)
       throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
     super(
         builder
@@ -88,9 +88,9 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   public List<SubscriptionMessage> poll(Duration timeout)
       throws TException, IOException, StatementExecutionException {
     // TODO: timeout
-    // TODO: specify the topics to poll
     List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
     for (SubscriptionSessionConnection connection : getSessionConnections()) {
+      // TODO: specify the topics to poll
       enrichedTabletsList.addAll(connection.poll(Collections.emptySet()));
     }
     return enrichedTabletsList.stream()
@@ -115,7 +115,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
               message.getSubscriptionCommitId());
       dataNodeIdToTopicNameToSubscriptionCommitIds
           .computeIfAbsent(dataNodeId, (id) -> new HashMap<>())
-          .computeIfAbsent(message.getTopic(), (topic) -> new ArrayList<>())
+          .computeIfAbsent(message.getTopicName(), (topicName) -> new ArrayList<>())
           .add(message.getSubscriptionCommitId());
     }
     for (Map.Entry<Integer, Map<String, List<String>>> entry :

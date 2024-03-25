@@ -31,7 +31,7 @@ public class SubscriptionMessage {
     this.dataSet = dataSet;
   }
 
-  public String getTopic() {
+  public String getTopicName() {
     return dataSet.getTopicName();
   }
 

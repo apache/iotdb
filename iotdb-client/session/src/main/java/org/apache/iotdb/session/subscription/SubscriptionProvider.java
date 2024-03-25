@@ -12,20 +12,12 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-public final class SubscriptionProvider extends SubscriptionSession {
+final class SubscriptionProvider extends SubscriptionSession {
 
   private final String consumerId;
   private final String consumerGroupId;
 
-  public String getConsumerId() {
-    return consumerId;
-  }
-
-  public String getConsumerGroupId() {
-    return consumerGroupId;
-  }
-
-  public SubscriptionProvider(
+  SubscriptionProvider(
       TEndPoint endPoint,
       String username,
       String password,
@@ -37,7 +29,7 @@ public final class SubscriptionProvider extends SubscriptionSession {
     this.consumerGroupId = consumerGroupId;
   }
 
-  public Map<Integer, TEndPoint> handshake()
+  Map<Integer, TEndPoint> handshake()
       throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
     open();
 
@@ -58,7 +50,7 @@ public final class SubscriptionProvider extends SubscriptionSession {
     super.close();
   }
 
-  public SubscriptionSessionConnection getSessionConnection() {
+  SubscriptionSessionConnection getSessionConnection() {
     return (SubscriptionSessionConnection) defaultSessionConnection;
   }
 }
