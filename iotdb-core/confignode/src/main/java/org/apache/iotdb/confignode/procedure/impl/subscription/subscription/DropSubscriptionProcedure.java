@@ -120,7 +120,8 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
         dropPipeProcedures.add(
             new DropPipeProcedureV2(
                 PipeStaticMeta.generateSubscriptionPipeName(
-                    topic, unsubscribeReq.getConsumerGroupId()), pipeTaskInfo));
+                    topic, unsubscribeReq.getConsumerGroupId()),
+                pipeTaskInfo));
       }
     }
 

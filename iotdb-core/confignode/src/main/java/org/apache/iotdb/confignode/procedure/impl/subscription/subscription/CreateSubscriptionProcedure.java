@@ -121,7 +121,8 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
                     .setProcessorAttributes(updatedTopicMeta.generateProcessorAttributes())
                     .setConnectorAttributes(
                         updatedTopicMeta.generateConnectorAttributes(
-                            subscribeReq.getConsumerGroupId())), pipeTaskInfo));
+                            subscribeReq.getConsumerGroupId())),
+                pipeTaskInfo));
 
         alterTopicProcedures.add(new AlterTopicProcedure(updatedTopicMeta, subscriptionInfo));
       }
