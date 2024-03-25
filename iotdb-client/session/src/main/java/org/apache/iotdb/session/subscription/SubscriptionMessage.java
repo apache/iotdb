@@ -43,4 +43,9 @@ public class SubscriptionMessage {
     // make it package-private
     return dataSet.getSubscriptionCommitId();
   }
+
+  int getDataNodeIdFromSubscriptionCommitId() {
+    // make it package-private
+    return Integer.parseInt(dataSet.getSubscriptionCommitId().split("#")[0]);
+  }
 }

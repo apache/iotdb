@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.subscription.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 
@@ -110,11 +111,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     Map<Integer, Map<String, List<String>>> dataNodeIdToTopicNameToSubscriptionCommitIds =
         new HashMap<>();
     for (SubscriptionMessage message : messages) {
-      int dataNodeId =
-          EnrichedTablets.parseDataNodeIdFromSubscriptionCommitId(
-              message.getSubscriptionCommitId());
       dataNodeIdToTopicNameToSubscriptionCommitIds
-          .computeIfAbsent(dataNodeId, (id) -> new HashMap<>())
+          .computeIfAbsent(message.getDataNodeIdFromSubscriptionCommitId(), (id) -> new HashMap<>())
           .computeIfAbsent(message.getTopicName(), (topicName) -> new ArrayList<>())
           .add(message.getSubscriptionCommitId());
     }
@@ -157,7 +155,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
     @Override
     public SubscriptionPushConsumer buildPushConsumer() {
-      throw new UnsupportedOperationException(
+      throw new SubscriptionException(
           "SubscriptionPullConsumer.Builder do not support build push consumer.");
     }
   }

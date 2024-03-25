@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.subscription.SubscriptionException;
 
 import org.apache.thrift.TException;
 
@@ -37,7 +38,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
     @Override
     public SubscriptionPullConsumer buildPullConsumer() {
-      throw new UnsupportedOperationException(
+      throw new SubscriptionException(
           "SubscriptionPushConsumer.Builder do not support build pull consumer.");
     }
 

@@ -101,10 +101,4 @@ public class EnrichedTablets {
     // should not be included when calculating the hashCode of EnrichedTablets.
     return Objects.hash(topicName, subscriptionCommitId);
   }
-
-  /////////////////////////////// utility ///////////////////////////////
-
-  public static int parseDataNodeIdFromSubscriptionCommitId(String subscriptionCommitId) {
-    return Integer.parseInt(subscriptionCommitId.split("#")[0]);
-  }
 }

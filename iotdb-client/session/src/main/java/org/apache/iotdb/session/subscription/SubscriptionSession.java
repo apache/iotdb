@@ -20,9 +20,11 @@
 package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.subscription.SubscriptionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionConnection;
 import org.apache.iotdb.session.subscription.model.Subscription;
@@ -39,12 +41,20 @@ import java.util.Set;
 
 public class SubscriptionSession extends Session {
 
-  public SubscriptionSession(String host, int rpcPort) {
-    super(host, rpcPort);
+  public SubscriptionSession(String host, int port) {
+    this(host, port, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
-  public SubscriptionSession(String host, String rpcPort, String username, String password) {
-    super(host, rpcPort, username, password);
+  public SubscriptionSession(String host, int port, String username, String password) {
+    // TODO: more configs control
+    super(
+        new Session.Builder()
+            .host(host)
+            .port(port)
+            .username(username)
+            .password(password)
+            // disable auto fetch
+            .enableAutoFetch(false));
   }
 
   @Override
@@ -140,7 +150,7 @@ public class SubscriptionSession extends Session {
       RowRecord record = dataSet.next();
       List<Field> fields = record.getFields();
       if (fields.size() != 2) {
-        throw new StatementExecutionException("something unexpected happened when get topics...");
+        throw new SubscriptionException("something unexpected happened when get topics...");
       }
       topics.add(new Topic(fields.get(0).getStringValue(), fields.get(1).getStringValue()));
     }
@@ -154,8 +164,7 @@ public class SubscriptionSession extends Session {
       RowRecord record = dataSet.next();
       List<Field> fields = record.getFields();
       if (fields.size() != 3) {
-        throw new StatementExecutionException(
-            "something unexpected happened when get subscriptions...");
+        throw new SubscriptionException("something unexpected happened when get subscriptions...");
       }
       subscriptions.add(
           new Subscription(

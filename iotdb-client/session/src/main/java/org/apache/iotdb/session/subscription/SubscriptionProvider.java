@@ -45,7 +45,7 @@ final class SubscriptionProvider extends SubscriptionSession {
       String password,
       String consumerId,
       String consumerGroupId) {
-    super(endPoint.ip, String.valueOf(endPoint.port), username, password);
+    super(endPoint.ip, endPoint.port, username, password);
 
     this.consumerId = consumerId;
     this.consumerGroupId = consumerGroupId;
