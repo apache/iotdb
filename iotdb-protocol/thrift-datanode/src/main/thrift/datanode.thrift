@@ -252,6 +252,7 @@ struct TDataNodeHeartbeatReq {
   8: optional bool needPipeMetaList
   9: optional i64 deviceQuotaRemain
   10: optional TDataNodeActivation activation
+  11: optional set<common.TEndPoint> configNodeEndPoints
 }
 
 struct TDataNodeActivation {
@@ -273,6 +274,7 @@ struct TDataNodeHeartbeatResp {
   9: optional TSchemaLimitLevel schemaLimitLevel
   10: optional list<binary> pipeMetaList
   11: optional string activateStatus
+  12: optional set<common.TEndPoint> confirmedConfigNodeEndPoints
 }
 
 struct TPipeHeartbeatReq {
@@ -303,10 +305,6 @@ struct TLoadSample {
 struct TRegionRouteReq {
   1: required i64 timestamp
   2: required map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
-}
-
-struct TUpdateConfigNodeGroupReq {
-  1: required list<common.TConfigNodeLocation> configNodeLocations
 }
 
 struct TUpdateTemplateReq {
@@ -803,13 +801,6 @@ service IDataNodeRPCService {
    * Config node will Set the TTL for the database on a list of data nodes.
    */
   common.TSStatus setTTL(common.TSetTTLReq req)
-  
-  /**
-   * configNode will notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced
-   *
-   * @param list<common.TConfigNodeLocation> configNodeLocations
-   */
-  common.TSStatus updateConfigNodeGroup(TUpdateConfigNodeGroupReq req)
 
   /**
    * Update template cache when template info or template set info is updated

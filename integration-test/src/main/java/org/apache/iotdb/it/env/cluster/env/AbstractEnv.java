@@ -346,9 +346,14 @@ public abstract class AbstractEnv implements BaseEnv {
 
   @Override
   public void cleanClusterEnvironment() {
-    for (AbstractNodeWrapper nodeWrapper :
+    List<AbstractNodeWrapper> allNodeWrappers =
         Stream.concat(this.dataNodeWrapperList.stream(), this.configNodeWrapperList.stream())
-            .collect(Collectors.toList())) {
+            .collect(Collectors.toList());
+    allNodeWrappers.stream()
+        .findAny()
+        .ifPresent(
+            nodeWrapper -> logger.info("You can find logs at {}", nodeWrapper.getLogDirPath()));
+    for (AbstractNodeWrapper nodeWrapper : allNodeWrappers) {
       nodeWrapper.stopForcibly();
       nodeWrapper.destroyDir();
       String lockPath = EnvUtils.getLockFilePath(nodeWrapper.getPort());

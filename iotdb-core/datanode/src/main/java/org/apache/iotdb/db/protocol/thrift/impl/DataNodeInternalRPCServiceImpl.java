@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -212,7 +211,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -1310,6 +1308,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       PipeAgent.task().collectPipeMetaList(resp);
     }
 
+    if (req.isSetConfigNodeEndPoints()) {
+      if (ConfigNodeInfo.getInstance()
+          .updateConfigNodeList(new ArrayList<>(req.getConfigNodeEndPoints()))) {
+        resp.setConfirmedConfigNodeEndPoints(req.getConfigNodeEndPoints());
+      }
+    }
+
     return resp;
   }
 
@@ -1540,20 +1545,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
     return storageEngine.setTTL(req);
-  }
-
-  @Override
-  public TSStatus updateConfigNodeGroup(TUpdateConfigNodeGroupReq req) {
-    List<TConfigNodeLocation> configNodeLocations = req.getConfigNodeLocations();
-    if (configNodeLocations != null) {
-      ConfigNodeInfo.getInstance()
-          .updateConfigNodeList(
-              configNodeLocations
-                  .parallelStream()
-                  .map(TConfigNodeLocation::getInternalEndPoint)
-                  .collect(Collectors.toList()));
-    }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
