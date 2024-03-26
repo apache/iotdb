@@ -20,6 +20,8 @@
 package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -42,12 +44,20 @@ import org.apache.thrift.TException;
 
 import java.io.IOException;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
 public class SubscriptionSessionConnection extends SessionConnection {
+
+  private static final String SHOW_DATA_NODES_COMMAND = "SHOW DATANODES";
+  private static final String NODE_ID_COLUMN_NAME = "NodeID";
+  private static final String STATUS_COLUMN_NAME = "Status";
+  private static final String IP_COLUMN_NAME = "RpcAddress";
+  private static final String PORT_COLUMN_NAME = "RpcPort";
+  private static final String REMOVING_STATUS = "Removing";
 
   public SubscriptionSessionConnection(
       Session session,
@@ -70,14 +80,39 @@ public class SubscriptionSessionConnection extends SessionConnection {
     super(session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
   }
 
-  public Map<Integer, TEndPoint> handshake(ConsumerConfig consumerConfig)
+  // from org.apache.iotdb.session.NodesSupplier.updateDataNodeList
+  public Map<Integer, TEndPoint> fetchAllEndPoints()
+      throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet = session.executeQueryStatement(SHOW_DATA_NODES_COMMAND);
+    SessionDataSet.DataIterator iterator = dataSet.iterator();
+    Map<Integer, TEndPoint> endPoints = new HashMap<>();
+    while (iterator.next()) {
+      // ignore removing DN
+      if (REMOVING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))) {
+        continue;
+      }
+      String ip = iterator.getString(IP_COLUMN_NAME);
+      String port = iterator.getString(PORT_COLUMN_NAME);
+      // TODO: check logic
+      if ("0.0.0.0".equals(ip)) {
+        ip = SessionConfig.DEFAULT_HOST;
+      }
+      if (ip != null && port != null) {
+        endPoints.put(
+            iterator.getInt(NODE_ID_COLUMN_NAME), new TEndPoint(ip, Integer.parseInt(port)));
+      }
+    }
+    return endPoints;
+  }
+
+  public int handshake(ConsumerConfig consumerConfig)
       throws TException, IOException, StatementExecutionException {
     TPipeSubscribeResp resp =
         client.pipeSubscribe(PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig));
     RpcUtils.verifySuccess(resp.status);
     PipeSubscribeHandshakeResp handshakeResp =
         PipeSubscribeHandshakeResp.fromTPipeSubscribeResp(resp);
-    return handshakeResp.getEndPoints();
+    return handshakeResp.getDataNodeId();
   }
 
   public void heartbeat() throws TException, StatementExecutionException {

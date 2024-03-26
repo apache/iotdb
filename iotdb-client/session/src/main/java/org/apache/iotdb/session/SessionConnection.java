@@ -89,7 +89,7 @@ public class SessionConnection {
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to reconnect to server. Please check server status.";
-  private Session session;
+  protected Session session;
   private TTransport transport;
   protected IClientRPCService.Iface client;
   private long sessionId;

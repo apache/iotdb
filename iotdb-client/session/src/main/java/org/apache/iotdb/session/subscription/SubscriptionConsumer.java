@@ -108,10 +108,13 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     defaultSubscriptionProvider =
         new SubscriptionProvider(defaultEndPoint, username, password, consumerId, consumerGroupId);
 
-    Map<Integer, TEndPoint> endPoints = defaultSubscriptionProvider.handshake();
-    for (Map.Entry<Integer, TEndPoint> entry : endPoints.entrySet()) {
-      // TODO: Avoid creating two identical targets for SubscriptionProvider by distinguishing
-      // between localhost, 0.0.0.0, and 127.0.0.1.
+    int defaultDataNodeId = defaultSubscriptionProvider.handshake();
+    for (Map.Entry<Integer, TEndPoint> entry :
+        getDefaultSessionConnection().fetchAllEndPoints().entrySet()) {
+      if (defaultDataNodeId == entry.getKey()) {
+        subscriptionProviders.put(defaultDataNodeId, defaultSubscriptionProvider);
+        continue;
+      }
       SubscriptionProvider subscriptionProvider =
           new SubscriptionProvider(
               entry.getValue(), username, password, consumerId, consumerGroupId);

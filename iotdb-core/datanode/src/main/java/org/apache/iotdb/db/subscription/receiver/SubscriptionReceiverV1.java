@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.subscription.receiver;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -28,9 +27,9 @@ import org.apache.iotdb.commons.exception.subscription.SubscriptionException;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -68,10 +67,8 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -186,41 +183,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           consumerConfig);
     }
 
-    // fetch DN endPoints by CN
-    // TODO: cache result and listen changes
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TDataNodeConfigurationResp resp = configNodeClient.getDataNodeConfiguration(-1);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
-        final String exceptionMessage =
-            String.format(
-                "Subscription: Failed to get data node configuration in config node, status is %s.",
-                resp.getStatus());
-        LOGGER.warn(exceptionMessage);
-        throw new SubscriptionException(exceptionMessage);
-      }
-
-      Map<Integer, TEndPoint> endPoints =
-          Objects.isNull(resp.dataNodeConfigurationMap)
-              ? Collections.emptyMap()
-              : resp.dataNodeConfigurationMap.entrySet().stream()
-                  .collect(
-                      Collectors.toMap(
-                          Entry::getKey, entry -> entry.getValue().location.clientRpcEndPoint));
-
-      LOGGER.info(
-          "Subscription: consumer {} handshake successfully, get DN endPoints: {}",
-          req.getConsumerConfig(),
-          endPoints);
-      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, endPoints);
-    } catch (ClientManagerException | TException e) {
-      final String exceptionMessage =
-          String.format(
-              "Subscription: Failed to get data node configuration in config node, exception is %s.",
-              e.getMessage());
-      LOGGER.warn(exceptionMessage);
-      throw new SubscriptionException(exceptionMessage);
-    }
+    int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    LOGGER.info(
+        "Subscription: consumer {} handshake successfully, data node id: {}",
+        req.getConsumerConfig(),
+        dataNodeId);
+    return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, dataNodeId);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeHeartbeat(PipeSubscribeHeartbeatReq req) {
