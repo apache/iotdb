@@ -59,6 +59,7 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribe
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -334,8 +335,13 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     List<ByteBuffer> byteBuffers =
         events.stream()
-            .map(SerializedEnrichedEvent::getByteBuffer)
-            // .map(ReadWriteIOUtils::clone) // deep copy
+            .map(
+                (event -> {
+                  event.serialize();
+                  return event.getByteBuffer();
+                }))
+            .filter(Objects::nonNull)
+            .map(ReadWriteIOUtils::clone) // deep copy
             .collect(Collectors.toList());
     // TODO
     // events.forEach(SerializedEnrichedEvent::clearByteBuffer);

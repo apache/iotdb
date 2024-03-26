@@ -88,14 +88,12 @@ public class SubscriptionPrefetchingQueue {
         }
         // Re-enqueue the uncommitted event at the end of the queue.
         prefetchingQueue.add(currentEvent);
-        // timeout control: may not be time-consuming, considering it won't switch to kernel mode
+        // timeout control
         timer.update();
         if (timer.isExpired()) {
           break;
         }
-        // Serialize the uncommitted and pollable event.
-        if (!currentEvent.pollable() && !currentEvent.serialize()) {
-          // The event returned by poll always has a non-null byte buffer.
+        if (!currentEvent.pollable()) {
           continue;
         }
         currentEvent.recordLastPolledTimestamp();
