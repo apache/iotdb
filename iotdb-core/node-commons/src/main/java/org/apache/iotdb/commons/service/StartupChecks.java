@@ -83,11 +83,12 @@ public abstract class StartupChecks {
     RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
     logger.info("JVM version is {} {}.", bean.getVmName(), bean.getVmVersion());
     try {
+      // For more information, visit https://github.com/oracle/graal/issues/8638
       Class.forName("org.graalvm.home.Version");
     } catch (ClassNotFoundException e) {
       return;
     }
-    logger.error(
+    logger.warn(
         "Perhaps you are using GraalVM, which is strongly not recommended. Using GraalVM may cause strange problems after the system runs for a while. Please check your JVM version.");
   }
 
