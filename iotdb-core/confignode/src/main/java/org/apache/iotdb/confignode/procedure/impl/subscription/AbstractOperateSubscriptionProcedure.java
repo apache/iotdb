@@ -124,7 +124,6 @@ public abstract class AbstractOperateSubscriptionProcedure
   @Override
   protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     super.releaseLock(configNodeProcedureEnv);
-    unlockPipeProcedure();
 
     if (subscriptionInfo == null) {
       LOGGER.warn(
@@ -150,11 +149,6 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   protected abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException;
-
-  // TODO: temporary fix
-  protected void unlockPipeProcedure() {
-    // do nothing...
-  }
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperateSubscriptionState state)

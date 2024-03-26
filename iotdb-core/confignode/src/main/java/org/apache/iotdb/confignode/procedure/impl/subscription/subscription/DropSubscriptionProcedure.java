@@ -86,13 +86,6 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   }
 
   @Override
-  protected void unlockPipeProcedure() {
-    for (AbstractOperatePipeProcedureV2 dropPipeProcedure : dropPipeProcedures) {
-      dropPipeProcedure.unsetPipeTaskInfo();
-    }
-  }
-
-  @Override
   protected void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("DropSubscriptionProcedure: executeFromValidate");
 

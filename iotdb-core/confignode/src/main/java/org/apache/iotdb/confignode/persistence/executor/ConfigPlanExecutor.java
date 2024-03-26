@@ -446,7 +446,7 @@ public class ConfigPlanExecutor {
       case AlterPipeV2:
         return pipeInfo.alterPipe((AlterPipePlanV2) physicalPlan);
       case OperateMultiplePipesV2:
-        return pipeInfo.createMultiplePipes((OperateMultiplePipesPlanV2) physicalPlan);
+        return pipeInfo.operateMultiplePipes((OperateMultiplePipesPlanV2) physicalPlan);
       case PipeHandleLeaderChange:
         return pipeInfo.handleLeaderChange((PipeHandleLeaderChangePlan) physicalPlan);
       case PipeHandleMetaChange:

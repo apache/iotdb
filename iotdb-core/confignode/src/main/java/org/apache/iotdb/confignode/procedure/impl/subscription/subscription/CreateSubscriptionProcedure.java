@@ -86,13 +86,6 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
   }
 
   @Override
-  protected void unlockPipeProcedure() {
-    for (AbstractOperatePipeProcedureV2 createPipeProcedure : createPipeProcedures) {
-      createPipeProcedure.unsetPipeTaskInfo();
-    }
-  }
-
-  @Override
   protected void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("CreateSubscriptionProcedure: executeFromValidate");
 

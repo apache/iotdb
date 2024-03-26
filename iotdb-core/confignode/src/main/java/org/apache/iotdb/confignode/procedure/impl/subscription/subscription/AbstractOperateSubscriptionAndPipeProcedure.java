@@ -46,17 +46,6 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     LOGGER.info("ProcedureId {} try to acquire subscription and pipe lock.", getProcId());
-    subscriptionInfo =
-        configNodeProcedureEnv
-            .getConfigManager()
-            .getSubscriptionManager()
-            .getSubscriptionCoordinator()
-            .tryLock();
-    if (subscriptionInfo == null) {
-      LOGGER.warn("ProcedureId {} failed to acquire subscription lock.", getProcId());
-    } else {
-      LOGGER.info("ProcedureId {} acquired subscription lock.", getProcId());
-    }
 
     pipeTaskInfo =
         configNodeProcedureEnv
@@ -71,17 +60,10 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
     }
 
     final ProcedureLockState procedureLockState = super.acquireLock(configNodeProcedureEnv);
+
     switch (procedureLockState) {
       case LOCK_ACQUIRED:
-        if (subscriptionInfo == null && pipeTaskInfo == null) {
-          LOGGER.warn(
-              "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without subscription lock and pipe lock.",
-              getProcId());
-        } else if (subscriptionInfo == null) {
-          LOGGER.warn(
-              "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without subscription lock.",
-              getProcId());
-        } else if (pipeTaskInfo == null) {
+        if (pipeTaskInfo == null) {
           LOGGER.warn(
               "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without pipe lock.",
               getProcId());
@@ -92,79 +74,27 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
         }
         break;
       case LOCK_EVENT_WAIT:
-        if (subscriptionInfo == null && pipeTaskInfo == null) {
-          LOGGER.warn(
-              "ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring subscription or pipe lock.",
-              getProcId());
-        } else if (pipeTaskInfo == null) {
-          LOGGER.warn(
-              "ProcedureId {}: LOCK_EVENT_WAIT. Subscription lock will be released, pipe lock not acquired.",
-              getProcId());
-          configNodeProcedureEnv
-              .getConfigManager()
-              .getSubscriptionManager()
-              .getSubscriptionCoordinator()
-              .unlock();
-          subscriptionInfo = null;
-        } else if (subscriptionInfo == null) {
-          LOGGER.info(
-              "ProcedureId {}: LOCK_EVENT_WAIT. Pipe lock will be released, subscription lock not acquired.",
-              getProcId());
-          configNodeProcedureEnv
-              .getConfigManager()
-              .getPipeManager()
-              .getPipeTaskCoordinator()
-              .unlock();
-          pipeTaskInfo = null;
+        if (pipeTaskInfo == null) {
+          LOGGER.warn("ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring pipe lock.", getProcId());
         } else {
-          LOGGER.info(
-              "ProcedureId {}: LOCK_EVENT_WAIT. Subscription and pipe lock will be released.",
-              getProcId());
+          LOGGER.info("ProcedureId {}: LOCK_EVENT_WAIT. Pipe lock will be released.", getProcId());
           configNodeProcedureEnv
               .getConfigManager()
               .getPipeManager()
               .getPipeTaskCoordinator()
               .unlock();
           pipeTaskInfo = null;
-          configNodeProcedureEnv
-              .getConfigManager()
-              .getSubscriptionManager()
-              .getSubscriptionCoordinator()
-              .unlock();
-          subscriptionInfo = null;
         }
         break;
       default:
-        if (subscriptionInfo == null && pipeTaskInfo == null) {
+        if (pipeTaskInfo == null) {
           LOGGER.error(
-              "ProcedureId {}: {}. Invalid lock state. Without acquiring subscription or pipe lock.",
+              "ProcedureId {}: {}. Invalid lock state. Without acquiring pipe lock.",
               getProcId(),
               procedureLockState);
-        } else if (pipeTaskInfo == null) {
-          LOGGER.error(
-              "ProcedureId {}: {}. Invalid lock state. Subscription lock will be released, pipe lock not acquired.",
-              getProcId(),
-              procedureLockState);
-          configNodeProcedureEnv
-              .getConfigManager()
-              .getSubscriptionManager()
-              .getSubscriptionCoordinator()
-              .unlock();
-          subscriptionInfo = null;
-        } else if (subscriptionInfo == null) {
-          LOGGER.error(
-              "ProcedureId {}: {}. Invalid lock state. Pipe lock will be released, subscription lock not acquired.",
-              getProcId(),
-              procedureLockState);
-          configNodeProcedureEnv
-              .getConfigManager()
-              .getPipeManager()
-              .getPipeTaskCoordinator()
-              .unlock();
-          pipeTaskInfo = null;
         } else {
           LOGGER.error(
-              "ProcedureId {}: {}. Invalid lock state. Subscription and pipe lock will be released.",
+              "ProcedureId {}: {}. Invalid lock state. Pipe lock will be released.",
               getProcId(),
               procedureLockState);
           configNodeProcedureEnv
@@ -173,12 +103,6 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
               .getPipeTaskCoordinator()
               .unlock();
           pipeTaskInfo = null;
-          configNodeProcedureEnv
-              .getConfigManager()
-              .getSubscriptionManager()
-              .getSubscriptionCoordinator()
-              .unlock();
-          subscriptionInfo = null;
         }
         break;
     }
@@ -195,19 +119,6 @@ public abstract class AbstractOperateSubscriptionAndPipeProcedure
       LOGGER.info("ProcedureId {} release lock. Pipe lock will be released.", getProcId());
       configNodeProcedureEnv.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
       pipeTaskInfo = null;
-    }
-
-    if (subscriptionInfo == null) {
-      LOGGER.warn(
-          "ProcedureId {} release lock. No need to release subscription lock.", getProcId());
-    } else {
-      LOGGER.info("ProcedureId {} release lock. Subscription lock will be released.", getProcId());
-      configNodeProcedureEnv
-          .getConfigManager()
-          .getSubscriptionManager()
-          .getSubscriptionCoordinator()
-          .unlock();
-      subscriptionInfo = null;
     }
   }
 

@@ -161,7 +161,7 @@ public class PipeInfo implements SnapshotProcessor {
     }
   }
 
-  public TSStatus createMultiplePipes(OperateMultiplePipesPlanV2 plans) {
+  public TSStatus operateMultiplePipes(OperateMultiplePipesPlanV2 plans) {
     try {
       return pipeTaskInfo.operateMultiplePipes(plans);
     } catch (Exception e) {
