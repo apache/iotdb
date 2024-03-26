@@ -238,20 +238,23 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode()));
 
   /**
-   * This method is used to get the highest priority status from a list of TSStatus. The priority of
-   * each status is determined by its status code, and the priority sequence is defined in the
-   * {@link IoTDBDataNodeReceiver#STATUS_PRIORITY} list.
+   * This method is used to get the highest priority {@link TSStatus} from a list of {@link
+   * TSStatus}. The priority of each status is determined by its {@link TSStatusCode}, and the
+   * priority sequence is defined in the {@link IoTDBDataNodeReceiver#STATUS_PRIORITY} list.
    *
-   * <p>Specifically, it iterates through the input status list. For each status, if its status code
-   * is not in the {@link IoTDBDataNodeReceiver#STATUS_PRIORITY} list, it directly returns this
-   * status. Otherwise, it compares the current status with the highest priority status found so far
-   * (initially set to the success status). If the current status has a higher priority, it updates
-   * the highest priority status to the current status.
+   * <p>Specifically, it iterates through the input {@link TSStatus} list. For each {@link
+   * TSStatus}, if its {@link TSStatusCode} is not in the {@link
+   * IoTDBDataNodeReceiver#STATUS_PRIORITY} list, it directly returns this {@link TSStatus}.
+   * Otherwise, it compares the current {@link TSStatus} with the highest priority {@link TSStatus}
+   * found so far (initially set to the {@link TSStatusCode#SUCCESS_STATUS}). If the current {@link
+   * TSStatus} has a higher priority, it updates the highest priority {@link TSStatus} to the
+   * current {@link TSStatus}.
    *
-   * <p>Finally, the method returns the highest priority status.
+   * <p>Finally, the method returns the highest priority {@link TSStatus}.
    *
-   * @param givenStatusList a list of TSStatus from which the highest priority status is to be found
-   * @return the highest priority status from the input list
+   * @param givenStatusList a list of {@link TSStatus} from which the highest priority {@link
+   *     TSStatus} is to be found
+   * @return the highest priority {@link TSStatus} from the input list
    */
   public TSStatus getPriorStatus(List<TSStatus> givenStatusList) {
     final TSStatus resultStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
