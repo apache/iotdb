@@ -19,7 +19,6 @@
 
 package org.apache.iotdb;
 
-import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
@@ -27,6 +26,8 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
 
 import java.time.Duration;
 import java.util.List;
@@ -87,11 +88,13 @@ public class SubscriptionSessionExample {
           break;
         }
         for (SubscriptionMessage message : messages) {
-          ISessionDataSet dataSet = message.getPayload();
-          System.out.println(dataSet.getColumnNames());
-          System.out.println(dataSet.getColumnTypes());
-          while (dataSet.hasNext()) {
-            System.out.println(dataSet.next());
+          SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
+          for (SubscriptionSessionDataSet dataSet : payload) {
+            System.out.println(dataSet.getColumnNames());
+            System.out.println(dataSet.getColumnTypes());
+            while (dataSet.hasNext()) {
+              System.out.println(dataSet.next());
+            }
           }
         }
         // auto commit
@@ -116,11 +119,13 @@ public class SubscriptionSessionExample {
           break;
         }
         for (SubscriptionMessage message : messages) {
-          ISessionDataSet dataSet = message.getPayload();
-          System.out.println(dataSet.getColumnNames());
-          System.out.println(dataSet.getColumnTypes());
-          while (dataSet.hasNext()) {
-            System.out.println(dataSet.next());
+          SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
+          for (SubscriptionSessionDataSet dataSet : payload) {
+            System.out.println(dataSet.getColumnNames());
+            System.out.println(dataSet.getColumnTypes());
+            while (dataSet.hasNext()) {
+              System.out.println(dataSet.next());
+            }
           }
         }
         consumer.commitSync(messages);

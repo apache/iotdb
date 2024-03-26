@@ -148,11 +148,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     }
 
     List<SubscriptionMessage> messages =
-        enrichedTabletsList.stream()
-            .map(
-                (enrichedTablets) ->
-                    new SubscriptionMessage(new SubscriptionSessionDataSet(enrichedTablets)))
-            .collect(Collectors.toList());
+        enrichedTabletsList.stream().map(SubscriptionMessage::new).collect(Collectors.toList());
     if (autoCommit) {
       long currentTimestamp = System.currentTimeMillis();
       long index = currentTimestamp / autoCommitInterval;
@@ -176,7 +172,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
         new HashMap<>();
     for (SubscriptionMessage message : messages) {
       dataNodeIdToTopicNameToSubscriptionCommitIds
-          .computeIfAbsent(message.getDataNodeIdFromSubscriptionCommitId(), (id) -> new HashMap<>())
+          .computeIfAbsent(
+              message.parseDataNodeIdFromSubscriptionCommitId(), (id) -> new HashMap<>())
           .computeIfAbsent(message.getTopicName(), (topicName) -> new ArrayList<>())
           .add(message.getSubscriptionCommitId());
     }

@@ -46,6 +46,7 @@ public class ConsumerHeartbeatWorker implements Runnable {
         connection.heartbeat();
       } catch (TException | StatementExecutionException e) {
         // TODO: handle exception
+        LOGGER.warn("something unexpected happened when heartbeat...", e);
       }
     }
   }

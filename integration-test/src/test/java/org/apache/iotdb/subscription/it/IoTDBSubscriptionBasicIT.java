@@ -26,7 +26,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.ISessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -35,6 +34,8 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -56,7 +57,7 @@ public class IoTDBSubscriptionBasicIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionBasicIT.class);
 
-  private static final long MAX_RETRY_COUNT = 5;
+  private static final long MAX_RETRY_COUNT = 3;
 
   @Before
   public void setUp() throws Exception {
@@ -78,6 +79,7 @@ public class IoTDBSubscriptionBasicIT {
       }
       session.executeNonQueryStatement("flush");
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
@@ -88,6 +90,7 @@ public class IoTDBSubscriptionBasicIT {
       session.open();
       session.createTopic("topic1");
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
@@ -115,16 +118,23 @@ public class IoTDBSubscriptionBasicIT {
           continue;
         }
         for (SubscriptionMessage message : messages) {
-          ISessionDataSet dataSet = message.getPayload();
-          while (dataSet.hasNext()) {
-            dataSet.next();
-            count += 1;
+          SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
+          for (SubscriptionSessionDataSet dataSet : payload) {
+            while (dataSet.hasNext()) {
+              dataSet.next();
+              count += 1;
+            }
           }
         }
         consumer.commitSync(messages);
-        consumer.unsubscribe("topic1");
       }
+      consumer.unsubscribe("topic1");
+      LOGGER.info(
+          "consumer {} (group {}) exiting...",
+          consumer.getConsumerId(),
+          consumer.getConsumerGroupId());
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
@@ -141,6 +151,7 @@ public class IoTDBSubscriptionBasicIT {
       }
       session.executeNonQueryStatement("flush");
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
@@ -151,6 +162,7 @@ public class IoTDBSubscriptionBasicIT {
       session.open();
       session.createTopic("topic1");
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
@@ -179,16 +191,19 @@ public class IoTDBSubscriptionBasicIT {
           continue;
         }
         for (SubscriptionMessage message : messages) {
-          ISessionDataSet dataSet = message.getPayload();
-          while (dataSet.hasNext()) {
-            dataSet.next();
-            count += 1;
+          SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
+          for (SubscriptionSessionDataSet dataSet : payload) {
+            while (dataSet.hasNext()) {
+              dataSet.next();
+              count += 1;
+            }
           }
         }
         consumer.commitSync(messages);
-        // we do not unsubscribe topic and close consumer here
       }
+      // we do not unsubscribe topic and close consumer here
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
@@ -220,6 +235,7 @@ public class IoTDBSubscriptionBasicIT {
       }
       session.executeNonQueryStatement("flush");
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
@@ -245,16 +261,23 @@ public class IoTDBSubscriptionBasicIT {
           continue;
         }
         for (SubscriptionMessage message : messages) {
-          ISessionDataSet dataSet = message.getPayload();
-          while (dataSet.hasNext()) {
-            dataSet.next();
-            count += 1;
+          SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
+          for (SubscriptionSessionDataSet dataSet : payload) {
+            while (dataSet.hasNext()) {
+              dataSet.next();
+              count += 1;
+            }
           }
         }
         consumer.commitSync(messages);
-        consumer.unsubscribe("topic1");
       }
+      consumer.unsubscribe("topic1");
+      LOGGER.info(
+          "consumer {} (group {}) exiting...",
+          consumer.getConsumerId(),
+          consumer.getConsumerGroupId());
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 

@@ -19,20 +19,17 @@
 
 package org.apache.iotdb.subscription.it;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.ISessionDataSet;
-import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -40,194 +37,215 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBSubscriptionTopicIT {
+@Category({MultiClusterIT2.class})
+public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionTopicIT.class);
 
-  private static final long MAX_RETRY_COUNT = 5;
-
-  @Before
-  public void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
-
   @Test
-  public void testTopicPathSubscription() {
-    // insert some history data
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+  public void testTopicPathSubscription() throws Exception {
+    // insert some history data on sender
+    try (ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
-      }
-      for (int i = 100; i < 200; ++i) {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d2(time, s) values (%s, 1)", i));
-      }
-      for (int i = 200; i < 300; ++i) {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d3(time, t) values (%s, 1)", i));
-      }
-      for (int i = 300; i < 400; ++i) {
         session.executeNonQueryStatement(
             String.format("insert into root.db.t1(time, s1) values (%s, 1)", i));
       }
       session.executeNonQueryStatement("flush");
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
-    // create topic
-    String host = EnvFactory.getEnv().getIP();
-    int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    // create topic on sender
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
     try (SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
       Properties config = new Properties();
       config.put(TopicConstant.PATH_KEY, "root.db.*.s");
       session.createTopic("topic1", config);
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
-    // subscription
-    int count = 0;
-    long retryCount = 0;
-    try (SubscriptionPullConsumer consumer =
-        new SubscriptionPullConsumer.Builder()
-            .autoCommit(false)
-            .host(host)
-            .port(port)
-            .consumerId("c1")
-            .consumerGroupId("cg1")
-            .buildPullConsumer()) {
-      consumer.open();
-      consumer.subscribe("topic1");
-      while (true) {
-        Thread.sleep(1000 * retryCount); // wait some time
-        List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
-        if (messages.isEmpty()) {
-          if (retryCount >= MAX_RETRY_COUNT) {
-            break;
-          }
-          retryCount += 1;
-          continue;
-        }
-        for (SubscriptionMessage message : messages) {
-          ISessionDataSet dataSet = message.getPayload();
-          List<String> columnNameList = dataSet.getColumnNames();
-          Assert.assertEquals(3, columnNameList.size());
-          Assert.assertTrue(columnNameList.contains("root.db.d1.s"));
-          Assert.assertTrue(columnNameList.contains("root.db.d2.s"));
-          while (dataSet.hasNext()) {
-            dataSet.next();
-            count += 1;
-          }
-        }
-        consumer.commitSync(messages);
-        consumer.unsubscribe("topic1");
-      }
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
+    // subscribe on sender and insert on receiver
+    Thread thread =
+        new Thread(
+            () -> {
+              try (SubscriptionPullConsumer consumer =
+                      new SubscriptionPullConsumer.Builder()
+                          .autoCommit(false)
+                          .host(host)
+                          .port(port)
+                          .consumerId("c1")
+                          .consumerGroupId("cg1")
+                          .buildPullConsumer();
+                  ISession session = receiverEnv.getSessionConnection()) {
+                consumer.open();
+                consumer.subscribe("topic1");
+                while (!Thread.currentThread().isInterrupted()) {
+                  try {
+                    Thread.sleep(1000); // wait some time
+                  } catch (InterruptedException e) {
+                    break;
+                  }
+                  List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+                  if (messages.isEmpty()) {
+                    continue;
+                  }
+                  for (SubscriptionMessage message : messages) {
+                    SubscriptionSessionDataSets dataSets =
+                        (SubscriptionSessionDataSets) message.getPayload();
+                    for (Iterator<Tablet> it = dataSets.tabletIterator(); it.hasNext(); ) {
+                      Tablet tablet = it.next();
+                      session.insertTablet(tablet);
+                    }
+                  }
+                  consumer.commitSync(messages);
+                }
+                consumer.unsubscribe("topic1");
+                LOGGER.info(
+                    "consumer {} (group {}) exiting...",
+                    consumer.getConsumerId(),
+                    consumer.getConsumerGroupId());
+              } catch (Exception e) {
+                e.printStackTrace();
+                fail(e.getMessage());
+              }
+            });
+    thread.start();
 
-    Assert.assertEquals(200, count);
+    // check data on receiver
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select count(*) from root.**",
+        "count(root.db.d1.s),count(root.db.d2.s),",
+        Collections.singleton("100,100,"));
+
+    thread.interrupt();
+    thread.join();
   }
 
   @Test
-  public void testTopicTimeSubscription() {
-    // insert some history data
+  public void testTopicTimeSubscription() throws Exception {
+    // insert some history data on sender
     long currentTime = System.currentTimeMillis();
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+    try (ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
-      }
-      for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d2(time, s) values (%s, 1)", currentTime + i));
       }
       session.executeNonQueryStatement("flush");
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
-    // create topic
-    String host = EnvFactory.getEnv().getIP();
-    int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    // create topic on sender
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
     try (SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
       Properties config = new Properties();
       config.put(TopicConstant.START_TIME_KEY, currentTime);
       session.createTopic("topic1", config);
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
-    // subscription
-    int count = 0;
-    long retryCount = 0;
-    try (SubscriptionPullConsumer consumer =
-        new SubscriptionPullConsumer.Builder()
-            .autoCommit(false)
-            .host(host)
-            .port(port)
-            .consumerId("c1")
-            .consumerGroupId("cg1")
-            .buildPullConsumer()) {
-      consumer.open();
-      consumer.subscribe("topic1");
-      while (true) {
-        Thread.sleep(1000 * retryCount); // wait some time
-        List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
-        if (messages.isEmpty()) {
-          if (retryCount >= MAX_RETRY_COUNT) {
-            break;
-          }
-          retryCount += 1;
-          continue;
-        }
-        for (SubscriptionMessage message : messages) {
-          ISessionDataSet dataSet = message.getPayload();
-          while (dataSet.hasNext()) {
-            dataSet.next();
-            count += 1;
-          }
-        }
-        consumer.commitSync(messages);
-        consumer.unsubscribe("topic1");
-      }
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
+    // subscribe on sender and insert on receiver
+    Thread thread =
+        new Thread(
+            () -> {
+              try (SubscriptionPullConsumer consumer =
+                      new SubscriptionPullConsumer.Builder()
+                          .autoCommit(false)
+                          .host(host)
+                          .port(port)
+                          .consumerId("c1")
+                          .consumerGroupId("cg1")
+                          .buildPullConsumer();
+                  ISession session = receiverEnv.getSessionConnection()) {
+                consumer.open();
+                consumer.subscribe("topic1");
+                while (!Thread.currentThread().isInterrupted()) {
+                  try {
+                    Thread.sleep(1000); // wait some time
+                  } catch (InterruptedException e) {
+                    break;
+                  }
+                  List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+                  if (messages.isEmpty()) {
+                    continue;
+                  }
+                  for (SubscriptionMessage message : messages) {
+                    SubscriptionSessionDataSets dataSets =
+                        (SubscriptionSessionDataSets) message.getPayload();
+                    for (Iterator<Tablet> it = dataSets.tabletIterator(); it.hasNext(); ) {
+                      Tablet tablet = it.next();
+                      session.insertTablet(tablet);
+                    }
+                  }
+                  consumer.commitSync(messages);
+                }
+                consumer.unsubscribe("topic1");
+                LOGGER.info(
+                    "consumer {} (group {}) exiting...",
+                    consumer.getConsumerId(),
+                    consumer.getConsumerGroupId());
+              } catch (Exception e) {
+                e.printStackTrace();
+                fail(e.getMessage());
+              }
+            });
+    thread.start();
 
-    Assert.assertEquals(100, count);
+    // check data on receiver
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select count(*) from root.**",
+        "count(root.db.d2.s),",
+        Collections.singleton("100,"));
+
+    thread.interrupt();
+    thread.join();
   }
 
   @Test
-  public void testTopicProcessorSubscription() {
-    // insert some history data
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+  public void testTopicProcessorSubscription() throws Exception {
+    // insert some history data on sender
+    try (ISession session = senderEnv.getSessionConnection()) {
       session.executeNonQueryStatement(
           "insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)");
       session.executeNonQueryStatement("flush");
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
     // create topic
-    String host = EnvFactory.getEnv().getIP();
-    int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
     try (SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
       Properties config = new Properties();
@@ -236,46 +254,66 @@ public class IoTDBSubscriptionTopicIT {
       config.put("processor.down-sampling.split-file", "true");
       session.createTopic("topic1", config);
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
-    // subscription
-    int count = 0;
-    long retryCount = 0;
-    try (SubscriptionPullConsumer consumer =
-        new SubscriptionPullConsumer.Builder()
-            .autoCommit(false)
-            .host(EnvFactory.getEnv().getIP())
-            .port(Integer.parseInt(EnvFactory.getEnv().getPort()))
-            .consumerId("c1")
-            .consumerGroupId("cg1")
-            .buildPullConsumer()) {
-      consumer.open();
-      consumer.subscribe("topic1");
-      while (true) {
-        Thread.sleep(1000 * retryCount); // wait some time
-        List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
-        if (messages.isEmpty()) {
-          if (retryCount >= MAX_RETRY_COUNT) {
-            break;
-          }
-          retryCount += 1;
-          continue;
-        }
-        for (SubscriptionMessage message : messages) {
-          ISessionDataSet dataSet = message.getPayload();
-          while (dataSet.hasNext()) {
-            dataSet.next();
-            count += 1;
-          }
-        }
-        consumer.commitSync(messages);
-        consumer.unsubscribe("topic1");
-      }
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
+    // subscribe on sender and insert on receiver
+    Thread thread =
+        new Thread(
+            () -> {
+              try (SubscriptionPullConsumer consumer =
+                      new SubscriptionPullConsumer.Builder()
+                          .autoCommit(false)
+                          .host(host)
+                          .port(port)
+                          .consumerId("c1")
+                          .consumerGroupId("cg1")
+                          .buildPullConsumer();
+                  ISession session = receiverEnv.getSessionConnection()) {
+                consumer.open();
+                consumer.subscribe("topic1");
+                while (!Thread.currentThread().isInterrupted()) {
+                  try {
+                    Thread.sleep(1000); // wait some time
+                  } catch (InterruptedException e) {
+                    break;
+                  }
+                  List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+                  if (messages.isEmpty()) {
+                    continue;
+                  }
+                  for (SubscriptionMessage message : messages) {
+                    SubscriptionSessionDataSets dataSets =
+                        (SubscriptionSessionDataSets) message.getPayload();
+                    for (Iterator<Tablet> it = dataSets.tabletIterator(); it.hasNext(); ) {
+                      Tablet tablet = it.next();
+                      session.insertTablet(tablet);
+                    }
+                  }
+                  consumer.commitSync(messages);
+                }
+                consumer.unsubscribe("topic1");
+                LOGGER.info(
+                    "consumer {} (group {}) exiting...",
+                    consumer.getConsumerId(),
+                    consumer.getConsumerGroupId());
+              } catch (Exception e) {
+                e.printStackTrace();
+                fail(e.getMessage());
+              }
+            });
+    thread.start();
 
-    Assert.assertEquals(3, count);
+    // check data on receiver
+    Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1000,1.0,");
+    expectedResSet.add("2000,3.0,");
+    expectedResSet.add("3000,5.0,");
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv, "select * from root.**", "Time,root.db.d1.at1,", expectedResSet);
+
+    thread.interrupt();
+    thread.join();
   }
 }

@@ -19,33 +19,37 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.isession.ISessionDataSet;
+import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 
 public class SubscriptionMessage {
 
-  private SubscriptionSessionDataSet dataSet;
-
   // TODO: support more data format
+  private final SubscriptionMessagePayload payload;
 
-  public SubscriptionMessage(SubscriptionSessionDataSet dataSet) {
-    this.dataSet = dataSet;
+  private final String topicName;
+  private final String subscriptionCommitId;
+
+  public SubscriptionMessage(EnrichedTablets tablets) {
+    this.payload = new SubscriptionSessionDataSets(tablets);
+    this.topicName = tablets.getTopicName();
+    this.subscriptionCommitId = tablets.getSubscriptionCommitId();
   }
 
   public String getTopicName() {
-    return dataSet.getTopicName();
+    return topicName;
   }
 
-  public ISessionDataSet getPayload() {
-    return dataSet;
+  public SubscriptionMessagePayload getPayload() {
+    return payload;
   }
 
   String getSubscriptionCommitId() {
     // make it package-private
-    return dataSet.getSubscriptionCommitId();
+    return subscriptionCommitId;
   }
 
-  int getDataNodeIdFromSubscriptionCommitId() {
+  int parseDataNodeIdFromSubscriptionCommitId() {
     // make it package-private
-    return Integer.parseInt(dataSet.getSubscriptionCommitId().split("#")[0]);
+    return Integer.parseInt(subscriptionCommitId.split("#")[0]);
   }
 }

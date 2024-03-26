@@ -19,18 +19,17 @@
 
 package org.apache.iotdb.subscription.it;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.isession.ISessionDataSet;
-import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -39,96 +38,93 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBSubscriptionConsumerGroupIT {
+@Category({MultiClusterIT2.class})
+public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBSubscriptionConsumerGroupIT.class);
 
-  private static final long MAX_RETRY_COUNT = 5;
-
   private static final int BASE = 233;
 
-  @Before
-  public void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
-
   private long createTopics() {
+    // create topics on sender
     long currentTime = System.currentTimeMillis();
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+    try (ISession session = senderEnv.getSessionConnection()) {
       session.executeNonQueryStatement(
-          String.format("create topic topic1 with ('start-time'='%s')", currentTime));
+          String.format("create topic topic1 with ('end-time'='%s')", currentTime - 1));
       session.executeNonQueryStatement(
-          String.format("create topic topic2 with ('end-time'='%s')", currentTime - 1));
+          String.format("create topic topic2 with ('start-time'='%s')", currentTime));
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
     return currentTime;
   }
 
   private void testMultiConsumersSubscribeMultiTopicsTemplate(
-      long currentTime, List<SubscriptionPullConsumer> consumers, int factor) throws Exception {
-    ConcurrentHashMap<String, ConcurrentHashMap<Long, Long>> consumerGroupIdToTimestamps =
-        new ConcurrentHashMap<>();
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      long currentTime, List<SubscriptionPullConsumer> consumers, Supplier<Void> checker)
+      throws Exception {
+    // insert some history data on sender
+    try (ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < BASE; ++i) {
         session.executeNonQueryStatement(
-            String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
-      }
-      for (int i = 0; i < BASE; ++i) {
+            String.format("insert into root.topic1(time, s) values (%s, 1)", i)); // topic1
         session.executeNonQueryStatement(
-            String.format("insert into root.db.d2(time, s) values (%s, 1)", currentTime + i));
+            String.format(
+                "insert into root.topic2(time, s) values (%s, 1)", currentTime + i)); // topic2
       }
       session.executeNonQueryStatement("flush");
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
     List<Thread> threads = new ArrayList<>();
-    for (SubscriptionPullConsumer consumer : consumers) {
+    for (int i = 0; i < consumers.size(); ++i) {
+      final int index = i;
       Thread t =
           new Thread(
               () -> {
-                try {
-                  long retryCount = 0;
-                  while (true) {
-                    Thread.sleep(1000 * retryCount); // wait some time
+                try (SubscriptionPullConsumer consumer = consumers.get(index);
+                    ISession session = receiverEnv.getSessionConnection()) {
+                  while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                      Thread.sleep(1000); // wait some time
+                    } catch (InterruptedException e) {
+                      break;
+                    }
                     List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
                     if (messages.isEmpty()) {
-                      if (retryCount >= MAX_RETRY_COUNT) {
-                        break;
-                      }
-                      retryCount += 1;
                       continue;
                     }
                     for (SubscriptionMessage message : messages) {
-                      ISessionDataSet dataSet = message.getPayload();
-                      while (dataSet.hasNext()) {
-                        long time = dataSet.next().getTimestamp();
-                        consumerGroupIdToTimestamps
-                            .computeIfAbsent(
-                                consumer.getConsumerGroupId(),
-                                (consumerGroupId) -> new ConcurrentHashMap<>())
-                            .put(time, time);
+                      SubscriptionSessionDataSets payload =
+                          (SubscriptionSessionDataSets) message.getPayload();
+                      for (SubscriptionSessionDataSet dataSet : payload) {
+                        List<String> columnNameList = dataSet.getColumnNames();
+                        while (dataSet.hasNext()) {
+                          RowRecord record = dataSet.next();
+                          insertRowRecordEnrichByConsumerGroupId(
+                              session, columnNameList, record, consumer.getConsumerGroupId());
+                        }
                       }
                     }
                     consumer.commitSync(messages);
                   }
-                  consumer.close();
+                  // no need to unsubscribe
+                  LOGGER.info(
+                      "consumer {} (group {}) exiting...",
+                      consumer.getConsumerId(),
+                      consumer.getConsumerGroupId());
                 } catch (Exception e) {
+                  e.printStackTrace();
                   fail(e.getMessage());
                 }
               });
@@ -136,13 +132,29 @@ public class IoTDBSubscriptionConsumerGroupIT {
       threads.add(t);
     }
 
+    // check data on receiver
+    checker.get();
+
     for (Thread thread : threads) {
+      thread.interrupt();
       thread.join();
     }
+  }
 
-    Assert.assertEquals(
-        BASE * factor,
-        consumerGroupIdToTimestamps.values().stream().mapToInt(Map::size).reduce(0, Integer::sum));
+  private void insertRowRecordEnrichByConsumerGroupId(
+      ISession session, List<String> columnNameList, RowRecord record, String consumerGroupId)
+      throws Exception {
+    if (columnNameList.size() != 2) {
+      LOGGER.warn("unexpected column name list: {}", columnNameList);
+      throw new Exception("unexpected column name list");
+    }
+    String columnName = columnNameList.get(1);
+    session.insertRecord(
+        columnName,
+        record.getTimestamp(),
+        Collections.singletonList(consumerGroupId),
+        Collections.singletonList(TSDataType.FLOAT),
+        Collections.singletonList(record.getFields().get(0).getFloatV()));
   }
 
   private SubscriptionPullConsumer createConsumerAndSubscribeTopics(
@@ -150,8 +162,8 @@ public class IoTDBSubscriptionConsumerGroupIT {
     SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
             .autoCommit(false)
-            .host(EnvFactory.getEnv().getIP())
-            .port(Integer.parseInt(EnvFactory.getEnv().getPort()))
+            .host(senderEnv.getIP())
+            .port(Integer.parseInt(senderEnv.getPort()))
             .consumerId(consumerId)
             .consumerGroupId(consumerGroupId)
             .buildPullConsumer();
@@ -167,7 +179,17 @@ public class IoTDBSubscriptionConsumerGroupIT {
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
-    testMultiConsumersSubscribeMultiTopicsTemplate(currentTime, consumers, 1);
+    testMultiConsumersSubscribeMultiTopicsTemplate(
+        currentTime,
+        consumers,
+        () -> {
+          TestUtils.assertDataEventuallyOnEnv(
+              receiverEnv,
+              "select count(*) from root.**",
+              "count(root.topic1.s.cg1),",
+              Collections.singleton("100,"));
+          return null;
+        });
   }
 
   @Test
@@ -177,7 +199,27 @@ public class IoTDBSubscriptionConsumerGroupIT {
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic1"));
-    testMultiConsumersSubscribeMultiTopicsTemplate(currentTime, consumers, 3);
+    testMultiConsumersSubscribeMultiTopicsTemplate(
+        currentTime,
+        consumers,
+        () -> {
+          TestUtils.assertDataEventuallyOnEnv(
+              receiverEnv,
+              "select count(*) from root.topic1.s.cg1",
+              "count(root.topic1.s.cg1),",
+              Collections.singleton("100,"));
+          TestUtils.assertDataEventuallyOnEnv(
+              receiverEnv,
+              "select count(*) from root.topic1.s.cg2",
+              "count(root.topic1.s.cg2),",
+              Collections.singleton("100,"));
+          TestUtils.assertDataEventuallyOnEnv(
+              receiverEnv,
+              "select count(*) from root.topic1.s.cg3",
+              "count(root.topic1.s.cg3),",
+              Collections.singleton("100,"));
+          return null;
+        });
   }
 
   @Test
@@ -187,7 +229,22 @@ public class IoTDBSubscriptionConsumerGroupIT {
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic2"));
-    testMultiConsumersSubscribeMultiTopicsTemplate(currentTime, consumers, 2);
+    testMultiConsumersSubscribeMultiTopicsTemplate(
+        currentTime,
+        consumers,
+        () -> {
+          TestUtils.assertDataEventuallyOnEnv(
+              receiverEnv,
+              "select count(*) from root.topic1.s.cg1",
+              "count(root.topic1.s.cg1),",
+              Collections.singleton("100,"));
+          TestUtils.assertDataEventuallyOnEnv(
+              receiverEnv,
+              "select count(*) from root.topic2.s.cg1",
+              "count(root.topic2.s.cg1),",
+              Collections.singleton("100,"));
+          return null;
+        });
   }
 
   @Test
@@ -197,7 +254,32 @@ public class IoTDBSubscriptionConsumerGroupIT {
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic2"));
-    testMultiConsumersSubscribeMultiTopicsTemplate(currentTime, consumers, 4);
+    testMultiConsumersSubscribeMultiTopicsTemplate(
+        currentTime,
+        consumers,
+        () -> {
+          TestUtils.assertDataEventuallyOnEnv(
+              receiverEnv,
+              "select count(*) from root.topic1.s.cg1",
+              "count(root.topic1.s.cg1),",
+              Collections.singleton("100,"));
+          TestUtils.assertDataEventuallyOnEnv(
+              receiverEnv,
+              "select count(*) from root.topic1.s.cg2",
+              "count(root.topic1.s.cg2),",
+              Collections.singleton("100,"));
+          TestUtils.assertDataEventuallyOnEnv(
+              receiverEnv,
+              "select count(*) from root.topic2.s.cg2",
+              "count(root.topic2.s.cg2),",
+              Collections.singleton("100,"));
+          TestUtils.assertDataEventuallyOnEnv(
+              receiverEnv,
+              "select count(*) from root.topic2.s.cg3",
+              "count(root.topic2.s.cg3),",
+              Collections.singleton("100,"));
+          return null;
+        });
   }
 
   @Test
@@ -208,6 +290,26 @@ public class IoTDBSubscriptionConsumerGroupIT {
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c4", "cg2", "topic2"));
-    testMultiConsumersSubscribeMultiTopicsTemplate(currentTime, consumers, 3);
+    testMultiConsumersSubscribeMultiTopicsTemplate(
+        currentTime,
+        consumers,
+        () -> {
+          TestUtils.assertDataEventuallyOnEnv(
+              receiverEnv,
+              "select count(*) from root.topic1.s.cg1",
+              "count(root.topic1.s.cg1),",
+              Collections.singleton("100,"));
+          TestUtils.assertDataEventuallyOnEnv(
+              receiverEnv,
+              "select count(*) from root.topic1.s.cg2",
+              "count(root.topic1.s.cg2),",
+              Collections.singleton("100,"));
+          TestUtils.assertDataEventuallyOnEnv(
+              receiverEnv,
+              "select count(*) from root.topic2.s.cg2",
+              "count(root.topic2.s.cg2),",
+              Collections.singleton("100,"));
+          return null;
+        });
   }
 }
