@@ -2038,7 +2038,7 @@ public class Session implements ISession {
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
-    if (judgeConvert(measurementsList)) {
+    if (enableRecordsAutoConvertTablet && judgeConvert(measurementsList)) {
       convertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, false);
       return;
     }
@@ -2189,7 +2189,7 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "times, subMeasurementsList and valuesList's size should be equal");
     }
-    if (judgeConvert(measurementsList)) {
+    if (enableRecordsAutoConvertTablet && judgeConvert(measurementsList)) {
       convertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, true);
       return;
     }
