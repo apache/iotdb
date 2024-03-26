@@ -58,6 +58,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Stack;
 
@@ -84,6 +85,8 @@ public class CNPhysicalPlanGenerator
   private final ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
 
   private final HashMap<Integer, String> templateTable = new HashMap<>();
+
+  private final List<IConfigMNode> templateNodeList = new ArrayList<>();
 
   // All plan will be stored at this deque
   private final Deque<ConfigPhysicalPlan> planDeque = new ArrayDeque<>();
@@ -135,6 +138,10 @@ public class CNPhysicalPlanGenerator
         return false;
       }
       generateDatabasePhysicalPlan();
+      if (latestException != null) {
+        return false;
+      }
+      generateSetTemplatePlan();
     }
     snapshotFileType = CNSnapshotFileType.INVALID;
     try {
@@ -348,8 +355,8 @@ public class CNPhysicalPlanGenerator
       while (size > 0) {
         final Template template = new Template();
         template.deserialize(byteBuffer);
-        template.setId(0);
         templateTable.put(template.getId(), template.getName());
+        template.setId(0);
         final CreateSchemaTemplatePlan plan =
             new CreateSchemaTemplatePlan(template.serialize().array());
         planDeque.add(plan);
@@ -358,6 +365,18 @@ public class CNPhysicalPlanGenerator
     } catch (IOException ioException) {
       logger.error("Got IOException when deserialize template info", ioException);
       latestException = ioException;
+    }
+  }
+
+  private void generateSetTemplatePlan() {
+    if (templateNodeList.isEmpty()) {
+      return;
+    }
+    for (IConfigMNode templateNode : templateNodeList) {
+      String templateName = templateTable.get(templateNode.getSchemaTemplateId());
+      CommitSetSchemaTemplatePlan plan =
+          new CommitSetSchemaTemplatePlan(templateName, templateNode.getFullPath());
+      planDeque.add(plan);
     }
   }
 
@@ -393,10 +412,7 @@ public class CNPhysicalPlanGenerator
         nodeFactory.createInternalMNode(null, ReadWriteIOUtils.readString(inputStream));
     basicMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
     if (basicMNode.getSchemaTemplateId() >= 0 && !templateTable.isEmpty()) {
-      String templateName = templateTable.get(basicMNode.getSchemaTemplateId());
-      CommitSetSchemaTemplatePlan plan =
-          new CommitSetSchemaTemplatePlan(templateName, basicMNode.getFullPath());
-      planDeque.add(plan);
+      templateNodeList.add(basicMNode);
     }
     return basicMNode;
   }

@@ -455,7 +455,13 @@ public class CNPhysicalPlanGeneratorTest {
       } else if (plan.getType() == ConfigPhysicalPlanType.PreSetSchemaTemplate) {
         Assert.assertTrue(answerSet.contains(((PreSetSchemaTemplatePlan) plan).hashCode()));
       } else if (plan.getType() == ConfigPhysicalPlanType.CommitSetSchemaTemplate) {
-        Assert.assertTrue(answerSet.contains(((CommitSetSchemaTemplatePlan) plan).hashCode()));
+        CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan =
+            (CommitSetSchemaTemplatePlan) plan;
+        if (commitSetSchemaTemplatePlan.getName().equals("t1")) {
+          Assert.assertTrue(commitSetSchemaTemplatePlan.equals(setSchemaTemplatePlan1));
+        } else {
+          Assert.assertTrue(commitSetSchemaTemplatePlan.equals(setSchemaTemplatePlan1));
+        }
       }
       count++;
     }
