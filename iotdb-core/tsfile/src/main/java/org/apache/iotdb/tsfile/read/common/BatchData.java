@@ -267,11 +267,25 @@ public class BatchData {
     count++;
   }
 
+  /**
+   * put a bunch of boolean data.
+   *
+   * @param times timestamps
+   * @param values a bunch of boolean data
+   */
   public void putBooleans(long[] times, boolean[] values) {
     assert times.length == values.length;
     putBooleans(times, values, 0, times.length);
   }
 
+  /**
+   * put a bunch of boolean data with given indexes.
+   *
+   * @param times timestamps
+   * @param values a bunch of boolean data
+   * @param from start position of input arrays(close)
+   * @param to end position of input arrays(open)
+   */
   public void putBooleans(long[] times, boolean[] values, int from, int to) {
     // Indicate for progress of data consuming
     int start = from;
@@ -414,11 +428,25 @@ public class BatchData {
     count++;
   }
 
+  /**
+   * put a bunch of int data.
+   *
+   * @param times timestamps
+   * @param values a bunch of int data
+   */
   public void putInts(long[] times, int[] values) {
     assert times.length == values.length;
     putInts(times, values, 0, times.length);
   }
 
+  /**
+   * put a bunch of int data with given indexes.
+   *
+   * @param times timestamps
+   * @param values a bunch of int data
+   * @param from start position of input arrays(close)
+   * @param to end position of input arrays(open)
+   */
   public void putInts(long[] times, int[] values, int from, int to) {
     // Indicate for progress of data consuming
     int start = from;
@@ -561,11 +589,25 @@ public class BatchData {
     count++;
   }
 
+  /**
+   * put a bunch of long data.
+   *
+   * @param times timestamps
+   * @param values a bunch of long data
+   */
   public void putLongs(long[] times, long[] values) {
     assert times.length == values.length;
     putLongs(times, values, 0, times.length);
   }
 
+  /**
+   * put a bunch of long data with given indexes.
+   *
+   * @param times timestamps
+   * @param values a bunch of long data
+   * @param from start position of input arrays(close)
+   * @param to end position of input arrays(open)
+   */
   public void putLongs(long[] times, long[] values, int from, int to) {
     assert times.length == values.length;
 
@@ -710,11 +752,25 @@ public class BatchData {
     count++;
   }
 
+  /**
+   * put a bunch of float data.
+   *
+   * @param times timestamps
+   * @param values a bunch of float data
+   */
   public void putFloats(long[] times, float[] values) {
     assert times.length == values.length;
     putFloats(times, values, 0, times.length);
   }
 
+  /**
+   * put a bunch of float data with given indexes.
+   *
+   * @param times timestamps
+   * @param values a bunch of float data
+   * @param from start position of input arrays(close)
+   * @param to end position of input arrays(open)
+   */
   public void putFloats(long[] times, float[] values, int from, int to) {
     // Indicate for progress of data consuming
     int start = from;
@@ -856,11 +912,25 @@ public class BatchData {
     count++;
   }
 
+  /**
+   * put a bunch of double data.
+   *
+   * @param times timestamps
+   * @param values a bunch of double data
+   */
   public void putDoubles(long[] times, double[] values) {
     assert times.length == values.length;
     putDoubles(times, values, 0, times.length);
   }
 
+  /**
+   * put a bunch of double data with given indexes.
+   *
+   * @param times timestamps
+   * @param values a bunch of double data
+   * @param from start position of input arrays(close)
+   * @param to end position of input arrays(open)
+   */
   public void putDoubles(long[] times, double[] values, int from, int to) {
     assert times.length == values.length;
 
@@ -1005,11 +1075,25 @@ public class BatchData {
     count++;
   }
 
+  /**
+   * put a bunch of binary data.
+   *
+   * @param times timestamps
+   * @param values a bunch of binary data
+   */
   public void putBinaries(long[] times, Binary[] values) {
     assert times.length == values.length;
     putBinaries(times, values, 0, times.length);
   }
 
+  /**
+   * put a bunch of binary data with given indexes.
+   *
+   * @param times timestamps
+   * @param values a bunch of binary data
+   * @param from start position of input arrays(close)
+   * @param to end position of input arrays(open)
+   */
   public void putBinaries(long[] times, Binary[] values, int from, int to) {
     assert times.length == values.length;
 
