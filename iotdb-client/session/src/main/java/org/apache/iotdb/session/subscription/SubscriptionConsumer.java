@@ -50,7 +50,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private final String consumerId;
   private final String consumerGroupId;
 
-  private Map<Integer, SubscriptionProvider> subscriptionProviders; // used for poll and commit
+  private Map<Integer, SubscriptionProvider>
+      subscriptionProviders; // contains default subscription provider, used for poll and commit
   private SubscriptionProvider defaultSubscriptionProvider; // used for subscribe and unsubscribe
 
   private static final long HEARTBEAT_INTERVAL = 5000; // unit: ms
@@ -138,7 +139,6 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       shutdownHeartbeatWorker();
 
       // close subscription provider
-      defaultSubscriptionProvider.close();
       for (SubscriptionProvider provider : subscriptionProviders.values()) {
         provider.close();
       }
