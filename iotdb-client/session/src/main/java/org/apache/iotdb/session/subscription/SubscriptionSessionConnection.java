@@ -28,6 +28,7 @@ import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
@@ -77,6 +78,11 @@ public class SubscriptionSessionConnection extends SessionConnection {
     PipeSubscribeHandshakeResp handshakeResp =
         PipeSubscribeHandshakeResp.fromTPipeSubscribeResp(resp);
     return handshakeResp.getEndPoints();
+  }
+
+  public void heartbeat() throws TException, StatementExecutionException {
+    TPipeSubscribeResp resp = client.pipeSubscribe(PipeSubscribeHeartbeatReq.toTPipeSubscribeReq());
+    RpcUtils.verifySuccess(resp.status);
   }
 
   public void closeConsumer() throws TException, StatementExecutionException {

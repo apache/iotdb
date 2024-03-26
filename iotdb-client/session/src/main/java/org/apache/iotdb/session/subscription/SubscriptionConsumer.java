@@ -36,6 +36,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public abstract class SubscriptionConsumer implements AutoCloseable {
@@ -49,6 +52,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private Map<Integer, SubscriptionProvider> subscriptionProviders; // used for poll and commit
   private SubscriptionProvider defaultSubscriptionProvider; // used for subscribe and unsubscribe
+
+  private static final long HEARTBEAT_INTERVAL = 5000; // unit: ms
+  private ScheduledExecutorService heartbeatWorkerExecutor;
 
   private boolean isClosed = true;
 
@@ -90,7 +96,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
             .consumerGroupId((String) config.get(ConsumerConstant.CONSUMER_GROUP_ID_KEY)));
   }
 
-  /////////////////////////////// APIs ///////////////////////////////
+  /////////////////////////////// open & close ///////////////////////////////
 
   public void open()
       throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
@@ -113,6 +119,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       subscriptionProviders.put(entry.getKey(), subscriptionProvider);
     }
 
+    launchHeartbeatWorker();
+
     isClosed = false;
   }
 
@@ -123,6 +131,10 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
 
     try {
+      // shutdown heartbeat worker
+      shutdownHeartbeatWorker();
+
+      // close subscription provider
       defaultSubscriptionProvider.close();
       for (SubscriptionProvider provider : subscriptionProviders.values()) {
         provider.close();
@@ -131,6 +143,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       isClosed = true;
     }
   }
+
+  /////////////////////////////// subscribe & unsubscribe ///////////////////////////////
 
   public void subscribe(String topicName)
       throws TException, IOException, StatementExecutionException {
@@ -160,6 +174,37 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   public void unsubscribe(Set<String> topicNames)
       throws TException, IOException, StatementExecutionException {
     getDefaultSessionConnection().unsubscribe(topicNames);
+  }
+
+  /////////////////////////////// heartbeat ///////////////////////////////
+
+  @SuppressWarnings("unsafeThreadSchedule")
+  private void launchHeartbeatWorker() {
+    heartbeatWorkerExecutor =
+        Executors.newSingleThreadScheduledExecutor(
+            r -> {
+              Thread t =
+                  new Thread(
+                      Thread.currentThread().getThreadGroup(), r, "ConsumerHeartbeatWorker", 0);
+              if (!t.isDaemon()) {
+                t.setDaemon(true);
+              }
+              if (t.getPriority() != Thread.NORM_PRIORITY) {
+                t.setPriority(Thread.NORM_PRIORITY);
+              }
+              return t;
+            });
+    heartbeatWorkerExecutor.scheduleAtFixedRate(
+        new ConsumerHeartbeatWorker(this), 0, HEARTBEAT_INTERVAL, TimeUnit.MILLISECONDS);
+  }
+
+  private void shutdownHeartbeatWorker() {
+    heartbeatWorkerExecutor.shutdown();
+    heartbeatWorkerExecutor = null;
+  }
+
+  boolean isClosed() {
+    return isClosed;
   }
 
   /////////////////////////////// utility ///////////////////////////////

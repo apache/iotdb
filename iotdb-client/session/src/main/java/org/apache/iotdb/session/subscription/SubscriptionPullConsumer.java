@@ -45,14 +45,14 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class SubscriptionPullConsumer extends SubscriptionConsumer implements Runnable {
+public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPullConsumer.class);
 
   private final boolean autoCommit;
   private final int autoCommitInterval;
 
-  private ScheduledExecutorService workerExecutor;
+  private ScheduledExecutorService autoCommitWorkerExecutor;
   private SortedMap<Long, List<SubscriptionMessage>> uncommittedMessages;
 
   private boolean isClosed = true;
@@ -85,7 +85,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
     this.autoCommitInterval = autoCommitInterval;
   }
 
-  /////////////////////////////// APIs ///////////////////////////////
+  /////////////////////////////// open & close ///////////////////////////////
 
   public void open()
       throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
@@ -110,8 +110,9 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
 
     try {
       if (autoCommit) {
-        workerExecutor.shutdown();
-        workerExecutor = null;
+        // shutdown auto commit worker
+        shutdownAutoCommitWorker();
+
         // commit all uncommitted messages
         commitAllUncommittedMessages();
       }
@@ -120,6 +121,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
       isClosed = true;
     }
   }
+
+  /////////////////////////////// poll & commit ///////////////////////////////
 
   public List<SubscriptionMessage> poll(Duration timeoutMs)
       throws TException, IOException, StatementExecutionException {
@@ -196,14 +199,14 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
   @SuppressWarnings("unsafeThreadSchedule")
   private void launchAutoCommitWorker() {
     uncommittedMessages = new ConcurrentSkipListMap<>();
-    workerExecutor =
+    autoCommitWorkerExecutor =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
               Thread t =
                   new Thread(
                       Thread.currentThread().getThreadGroup(),
                       r,
-                      "SubscriptionAutoCommitWorker",
+                      "PullConsumerAutoCommitWorker",
                       0);
               if (!t.isDaemon()) {
                 t.setDaemon(true);
@@ -213,7 +216,13 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
               }
               return t;
             });
-    workerExecutor.scheduleAtFixedRate(this, 0, autoCommitInterval, TimeUnit.MILLISECONDS);
+    autoCommitWorkerExecutor.scheduleAtFixedRate(
+        new PullConsumerAutoCommitWorker(this), 0, autoCommitInterval, TimeUnit.MILLISECONDS);
+  }
+
+  private void shutdownAutoCommitWorker() {
+    autoCommitWorkerExecutor.shutdown();
+    autoCommitWorkerExecutor = null;
   }
 
   private void commitAllUncommittedMessages() {
@@ -227,27 +236,16 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
     }
   }
 
-  @Override
-  public void run() {
-    if (isClosed) {
-      return;
-    }
+  boolean isClosed() {
+    return isClosed;
+  }
 
-    long currentTimestamp = System.currentTimeMillis();
-    long index = currentTimestamp / autoCommitInterval;
-    if (currentTimestamp % autoCommitInterval == 0) {
-      index -= 1;
-    }
+  int getAutoCommitInterval() {
+    return autoCommitInterval;
+  }
 
-    for (Map.Entry<Long, List<SubscriptionMessage>> entry :
-        uncommittedMessages.headMap(index).entrySet()) {
-      try {
-        commitSync(entry.getValue());
-        uncommittedMessages.remove(entry.getKey());
-      } catch (TException | IOException | StatementExecutionException e) {
-        LOGGER.warn("something unexpected happened when auto commit messages...", e);
-      }
-    }
+  SortedMap<Long, List<SubscriptionMessage>> getUncommittedMessages() {
+    return uncommittedMessages;
   }
 
   /////////////////////////////// builder ///////////////////////////////
