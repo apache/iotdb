@@ -96,6 +96,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -143,6 +144,10 @@ public class Session implements ISession {
   // Cluster version cache
   protected boolean enableRedirection;
   protected boolean enableRecordsAutoConvertTablet;
+  private static final double CONVERT_THRESHOLD = 0.5;
+  private static final double SAMPLE_PROPORTION = 0.05;
+  private static final int MIN_SAMPLE_SIZE = 40;
+
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
 
@@ -1906,17 +1911,16 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
-
-//    if (enableRecordsAutoConvertTablet) {
-      // judge if convert records to tablets.
-//      Set<String> deviceSet = new HashSet<>(deviceIds);
-//
-//      if ((double) deviceSet.size() / deviceIds.size() <= 0.5) {
-////        convertToTabletsAndInsert(
-//            deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), false);
-//        return;
-//      }
-//    }
+    // judge if convert records to tablets.
+    if (enableRecordsAutoConvertTablet) {
+      Set<String> deviceSet = new HashSet<>(deviceIds);
+      if ((double) deviceSet.size() / deviceIds.size() <= CONVERT_THRESHOLD
+          && judgeConvert(deviceIds, measurementsList)) {
+        convertToTabletsAndInsert(
+            deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), false);
+        return;
+      }
+    }
     // insert records
     if (enableRedirection) {
       insertRecordsWithLeaderCache(
@@ -1961,10 +1965,11 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
     }
+    // judge if convert records to tablets.
     if (enableRecordsAutoConvertTablet) {
-      // judge if convert records to tablets.
       Set<String> deviceSet = new HashSet<>(deviceIds);
-      if ((double) deviceSet.size() / deviceIds.size() <= 0.5) {
+      if ((double) deviceSet.size() / deviceIds.size() <= CONVERT_THRESHOLD
+          && judgeConvert(deviceIds, measurementsList)) {
 
         convertToTabletsAndInsert(
             deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), true);
@@ -2708,6 +2713,37 @@ public class Session implements ISession {
     request.addToSizeList(tablet.rowSize);
   }
 
+  // sample some records and judge weather need to add too many null values to convert to tablet.
+  public boolean judgeConvert(List<String> deviceIds, List<List<String>> measurementsList) {
+    int size = deviceIds.size();
+    int sampleNum = (int) (size * SAMPLE_PROPORTION);
+    if (sampleNum < MIN_SAMPLE_SIZE) {
+      return false;
+    }
+    Map<String, Set<String>> measurementMap = new HashMap<>(sampleNum + 1, 1);
+    List<Integer> indexList =
+        ThreadLocalRandom.current()
+            .ints(0, size)
+            .distinct()
+            .limit(sampleNum)
+            .boxed()
+            .collect(Collectors.toList());
+    for (int i = 0; i < sampleNum; i++) {
+      int index = indexList.get(i);
+      Set<String> allMeasurement =
+          measurementMap.computeIfAbsent(deviceIds.get(index), k -> new HashSet<>());
+      allMeasurement.addAll(measurementsList.get(index));
+    }
+    for (int i = 0; i < sampleNum; i++) {
+      int index = indexList.get(i);
+      Set<String> allMeasurement = measurementMap.get(deviceIds.get(index));
+      if ((double) measurementsList.get(index).size() / allMeasurement.size() < CONVERT_THRESHOLD) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   // convert records of one device to tablet and insert
   public void convertToTabletAndInsert(
       String deviceId,
@@ -2725,13 +2761,13 @@ public class Session implements ISession {
       List<TSDataType> types = typesList.get(rowIndex);
       for (int colIndex = 0; colIndex < measurements.size(); colIndex++) {
         if (!measuremenMap.containsKey(measurements.get(colIndex))) {
-          measuremenMap.put(measurements.get(colIndex), new Pair<>(types.get(colIndex),true));
+          measuremenMap.put(measurements.get(colIndex), new Pair<>(types.get(colIndex), true));
         }
       }
     }
     List<MeasurementSchema> schemaList = new ArrayList<>();
     // use measurementType to build schemaList
-    for (Entry<String, Pair<TSDataType,Boolean>> entry : measuremenMap.entrySet()) {
+    for (Entry<String, Pair<TSDataType, Boolean>> entry : measuremenMap.entrySet()) {
       schemaList.add(new MeasurementSchema(entry.getKey(), entry.getValue().getLeft()));
     }
     // build tablet and insert
@@ -2741,7 +2777,8 @@ public class Session implements ISession {
           tablet,
           times.get(rowIndex),
           measurementsList.get(rowIndex),
-          valuesList.get(rowIndex), measuremenMap);
+          valuesList.get(rowIndex),
+          measuremenMap);
     }
     if (isAligned) {
       insertAlignedTablet(tablet);
@@ -2761,20 +2798,21 @@ public class Session implements ISession {
       boolean isAligned)
       throws IoTDBConnectionException, StatementExecutionException {
     // device -> measurement -> <type,if null>
-    Map<String, Map<String, Pair<TSDataType,Boolean>>> deviceMeasuremenMap = new HashMap<>(deviceSize + 1, 1);
+    Map<String, Map<String, Pair<TSDataType, Boolean>>> deviceMeasuremenMap =
+        new HashMap<>(deviceSize + 1, 1);
     // device -> row count
     Map<String, Integer> rowMap = new HashMap<>(deviceSize + 1, 1);
     // first build measurementTypeMap and rowMap
     for (int rowIndex = 0; rowIndex < deviceIds.size(); rowIndex++) {
       String device = deviceIds.get(rowIndex);
-      Map<String, Pair<TSDataType,Boolean>> measurementMap =
-              deviceMeasuremenMap.computeIfAbsent(device, k -> new HashMap<>());
+      Map<String, Pair<TSDataType, Boolean>> measurementMap =
+          deviceMeasuremenMap.computeIfAbsent(device, k -> new HashMap<>());
       List<String> measurements = measurementsList.get(rowIndex);
       List<TSDataType> types = typesList.get(rowIndex);
       for (int colIndex = 0; colIndex < measurements.size(); colIndex++) {
         String measurement = measurements.get(colIndex);
         if (!measurementMap.containsKey(measurement)) {
-          measurementMap.put(measurement, new Pair<>(types.get(colIndex),true));
+          measurementMap.put(measurement, new Pair<>(types.get(colIndex), true));
         }
       }
       rowMap.merge(device, 1, Integer::sum);
@@ -2782,10 +2820,12 @@ public class Session implements ISession {
     // device -> schema
     Map<String, List<MeasurementSchema>> schemaMap = new HashMap<>(deviceSize + 1, 1);
     // use measurementTypeMap to build schemaMap
-    for (Map.Entry<String, Map<String, Pair<TSDataType,Boolean>>> entry : deviceMeasuremenMap.entrySet()) {
+    for (Map.Entry<String, Map<String, Pair<TSDataType, Boolean>>> entry :
+        deviceMeasuremenMap.entrySet()) {
       List<MeasurementSchema> schemaList = new ArrayList<>();
-      for (Map.Entry<String, Pair<TSDataType,Boolean>> schemaEntry : entry.getValue().entrySet()) {
-        schemaList.add(new MeasurementSchema(schemaEntry.getKey(), schemaEntry.getValue().getLeft()));
+      for (Map.Entry<String, Pair<TSDataType, Boolean>> schemaEntry : entry.getValue().entrySet()) {
+        schemaList.add(
+            new MeasurementSchema(schemaEntry.getKey(), schemaEntry.getValue().getLeft()));
       }
       schemaMap.put(entry.getKey(), schemaList);
     }
@@ -2817,7 +2857,7 @@ public class Session implements ISession {
       Long timestamp,
       List<String> measurements,
       List<Object> values,
-      Map<String,Pair<TSDataType,Boolean>> allMeasurementMap) {
+      Map<String, Pair<TSDataType, Boolean>> allMeasurementMap) {
     int row = tablet.rowSize++;
     tablet.addTimestamp(row, timestamp);
     // tablet without null value
@@ -2827,17 +2867,15 @@ public class Session implements ISession {
       }
       return;
     }
+    List<String> allMeasurements = new ArrayList<>(allMeasurementMap.keySet());
     // tablet with null value
+    Map<String, Object> measurementValueMap = new HashMap<>(measurements.size() + 1, 1);
     for (int i = 0; i < measurements.size(); i++) {
-      String measurement = measurements.get(i);
-      tablet.addValue(measurement, row, values.get(i));
-      allMeasurementMap.get(measurement).setRight(false);
+      measurementValueMap.put(measurements.get(i), values.get(i));
     }
-    for(Entry<String,Pair<TSDataType,Boolean>> entry:allMeasurementMap.entrySet()){
-      if(entry.getValue().getRight()){
-        tablet.addValue(entry.getKey(), row, null);
-      }
-      entry.getValue().setRight(true);
+    for (String measurement : allMeasurements) {
+      Object value = measurementValueMap.getOrDefault(measurement, null);
+      tablet.addValue(measurement, row, value);
     }
   }
 
@@ -3653,7 +3691,8 @@ public class Session implements ISession {
     private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
     private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
     private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
-    private boolean enableRecordsAutoConvertTablet = SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
+    private boolean enableRecordsAutoConvertTablet =
+        SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
     private Version version = SessionConfig.DEFAULT_VERSION;
     private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
     private boolean enableAutoFetch = SessionConfig.DEFAULT_ENABLE_AUTO_FETCH;
