@@ -103,8 +103,10 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -1831,5 +1833,39 @@ public class ConfigPhysicalPlanSerDeTest {
         (PipeDeactivateTemplatePlan)
             ConfigPhysicalPlan.Factory.create(pipeDeactivateTemplatePlan.serializeToByteBuffer());
     Assert.assertEquals(pipeDeactivateTemplatePlan, deserializedPlan);
+  }
+
+  @Test
+  public void addRegionLocationPlanTest() throws IOException {
+    AddRegionLocationPlan plan =
+        new AddRegionLocationPlan(
+            new TConsensusGroupId(DataRegion, 1),
+            new TDataNodeLocation(
+                10000,
+                new TEndPoint("127.0.0.1", 6600),
+                new TEndPoint("127.0.0.1", 7700),
+                new TEndPoint("127.0.0.1", 8800),
+                new TEndPoint("127.0.0.1", 9900),
+                new TEndPoint("127.0.0.1", 11000)));
+    AddRegionLocationPlan dePlan =
+        (AddRegionLocationPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan, dePlan);
+  }
+
+  @Test
+  public void removeRegionLocationPlanTest() throws IOException {
+    RemoveRegionLocationPlan plan =
+        new RemoveRegionLocationPlan(
+            new TConsensusGroupId(DataRegion, 1),
+            new TDataNodeLocation(
+                10000,
+                new TEndPoint("127.0.0.1", 6600),
+                new TEndPoint("127.0.0.1", 7700),
+                new TEndPoint("127.0.0.1", 8800),
+                new TEndPoint("127.0.0.1", 9900),
+                new TEndPoint("127.0.0.1", 11000)));
+    RemoveRegionLocationPlan dePlan =
+        (RemoveRegionLocationPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan, dePlan);
   }
 }

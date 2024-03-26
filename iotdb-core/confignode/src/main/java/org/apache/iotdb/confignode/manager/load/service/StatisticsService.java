@@ -279,17 +279,21 @@ public class StatisticsService implements IClusterStatusSubscriber {
         regionPriorityEntry : priorityMap.entrySet()) {
       if (!Objects.equals(
           regionPriorityEntry.getValue().getRight(), regionPriorityEntry.getValue().getLeft())) {
-        LOGGER.info(
-            "[RegionPriority]\t {}: {}->{}",
-            regionPriorityEntry.getKey(),
-            regionPriorityEntry.getValue().getLeft() == null
-                ? "null"
-                : regionPriorityEntry.getValue().getLeft().getDataNodeLocations().stream()
-                    .map(TDataNodeLocation::getDataNodeId)
-                    .collect(Collectors.toList()),
-            regionPriorityEntry.getValue().getRight().getDataNodeLocations().stream()
-                .map(TDataNodeLocation::getDataNodeId)
-                .collect(Collectors.toList()));
+        try {
+          LOGGER.info(
+              "[RegionPriority]\t {}: {}->{}",
+              regionPriorityEntry.getKey(),
+              regionPriorityEntry.getValue().getLeft() == null
+                  ? "null"
+                  : regionPriorityEntry.getValue().getLeft().getDataNodeLocations().stream()
+                      .map(TDataNodeLocation::getDataNodeId)
+                      .collect(Collectors.toList()),
+              regionPriorityEntry.getValue().getRight().getDataNodeLocations().stream()
+                  .map(TDataNodeLocation::getDataNodeId)
+                  .collect(Collectors.toList()));
+        } catch (Exception e) {
+          LOGGER.error("unexcepted exception", e);
+        }
       }
     }
   }

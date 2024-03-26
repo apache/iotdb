@@ -62,7 +62,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
-import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
+import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -366,10 +366,8 @@ public class NodeManager {
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
 
-    DataNodeRemoveHandler dataNodeRemoveHandler =
-        new DataNodeRemoveHandler((ConfigManager) configManager);
-    DataNodeToStatusResp preCheckStatus =
-        dataNodeRemoveHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
+    RegionMaintainHandler handler = new RegionMaintainHandler((ConfigManager) configManager);
+    DataNodeToStatusResp preCheckStatus = handler.checkRemoveDataNodeRequest(removeDataNodePlan);
     if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(
           "The remove DataNode request check failed. req: {}, check result: {}",

@@ -73,8 +73,10 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
@@ -223,6 +225,15 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case CreateRegionGroups:
           plan = new CreateRegionGroupsPlan();
+          break;
+        case UpdateRegionLocation:
+          plan = new UpdateRegionLocationPlan();
+          break;
+        case AddRegionLocation:
+          plan = new AddRegionLocationPlan();
+          break;
+        case RemoveRegionLocation:
+          plan = new RemoveRegionLocationPlan();
           break;
         case OfferRegionMaintainTasks:
           plan = new OfferRegionMaintainTasksPlan();
@@ -385,9 +396,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case GetRegionInfoList:
           plan = new GetRegionInfoListPlan();
-          break;
-        case UpdateRegionLocation:
-          plan = new UpdateRegionLocationPlan();
           break;
         case CreatePipeSinkV1:
           plan = new CreatePipeSinkPlanV1();

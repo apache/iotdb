@@ -110,14 +110,14 @@ public class ConfigNodeProcedureEnv {
 
   private final ProcedureScheduler scheduler;
 
-  private final DataNodeRemoveHandler dataNodeRemoveHandler;
+  private final RegionMaintainHandler regionMaintainHandler;
 
   private final ReentrantLock removeConfigNodeLock;
 
   public ConfigNodeProcedureEnv(ConfigManager configManager, ProcedureScheduler scheduler) {
     this.configManager = configManager;
     this.scheduler = scheduler;
-    this.dataNodeRemoveHandler = new DataNodeRemoveHandler(configManager);
+    this.regionMaintainHandler = new RegionMaintainHandler(configManager);
     this.removeConfigNodeLock = new ReentrantLock();
   }
 
@@ -211,15 +211,19 @@ public class ConfigNodeProcedureEnv {
         .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public boolean doubleCheckReplica(TDataNodeLocation removedDatanode) {
-    return getNodeManager()
-                .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
-                .size()
-            - Boolean.compare(
-                getLoadManager().getNodeStatus(removedDatanode.getDataNodeId())
-                    != NodeStatus.Unknown,
-                false)
-        >= NodeInfo.getMinimumDataNode();
+  public boolean checkEnoughDataNodeAfterRemoving(TDataNodeLocation removedDatanode) {
+    final int existedDataNodeNum =
+        getNodeManager()
+            .filterDataNodeThroughStatus(
+                NodeStatus.Running, NodeStatus.ReadOnly, NodeStatus.Removing)
+            .size();
+    int dataNodeNumAfterRemoving;
+    if (getLoadManager().getNodeStatus(removedDatanode.getDataNodeId()) != NodeStatus.Unknown) {
+      dataNodeNumAfterRemoving = existedDataNodeNum - 1;
+    } else {
+      dataNodeNumAfterRemoving = existedDataNodeNum;
+    }
+    return dataNodeNumAfterRemoving >= NodeInfo.getMinimumDataNode();
   }
 
   /**
@@ -773,15 +777,15 @@ public class ConfigNodeProcedureEnv {
   }
 
   public LockQueue getRegionMigrateLock() {
-    return dataNodeRemoveHandler.getRegionMigrateLock();
+    return regionMaintainHandler.getRegionMigrateLock();
   }
 
   public ReentrantLock getSchedulerLock() {
     return schedulerLock;
   }
 
-  public DataNodeRemoveHandler getDataNodeRemoveHandler() {
-    return dataNodeRemoveHandler;
+  public RegionMaintainHandler getRegionMaintainHandler() {
+    return regionMaintainHandler;
   }
 
   private ConsensusManager getConsensusManager() {

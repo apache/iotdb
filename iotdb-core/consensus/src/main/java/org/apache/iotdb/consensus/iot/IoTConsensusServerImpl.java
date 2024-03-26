@@ -605,27 +605,14 @@ public class IoTConsensusServerImpl {
   public void persistConfigurationUpdate() throws ConsensusGroupModifyPeerException {
     try {
       serializeConfigurationAndFsyncToDisk(CONFIGURATION_TMP_FILE_NAME);
-      Path tmpConfigurationPath =
-          Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
-      Path configurationPath =
-          Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
-      Files.deleteIfExists(configurationPath);
-      Files.move(tmpConfigurationPath, configurationPath);
+      tmpConfigurationUpdate(configuration);
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException(
           "Unexpected error occurs when update configuration", e);
     }
   }
 
-  private void serializeConfigurationTo(DataOutputStream outputStream) throws IOException {
-    outputStream.writeInt(configuration.size());
-    for (Peer peer : configuration) {
-      peer.serialize(outputStream);
-    }
-  }
-
   public void recoverConfiguration() {
-    ByteBuffer buffer;
     try {
       Path tmpConfigurationPath =
           Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
@@ -635,20 +622,70 @@ public class IoTConsensusServerImpl {
       // interrupted
       // unexpectedly, we need substitute configuration with tmpConfiguration file
       if (Files.exists(tmpConfigurationPath)) {
-        if (Files.exists(configurationPath)) {
-          Files.delete(configurationPath);
-        }
+        Files.deleteIfExists(configurationPath);
         Files.move(tmpConfigurationPath, configurationPath);
       }
-      buffer = ByteBuffer.wrap(Files.readAllBytes(configurationPath));
-      int size = buffer.getInt();
-      for (int i = 0; i < size; i++) {
-        configuration.add(Peer.deserialize(buffer));
+      if (Files.exists(configurationPath)) {
+        recoverFromOldConfigurationFile(configurationPath);
+      } else {
+        // recover from split configuration file
+        Path dirPath = Paths.get(storageDir);
+        List<Peer> tmpPeerList = getConfiguration(dirPath, CONFIGURATION_TMP_FILE_NAME);
+        tmpConfigurationUpdate(tmpPeerList);
+        List<Peer> peerList = getConfiguration(dirPath, CONFIGURATION_FILE_NAME);
+        configuration.addAll(peerList);
       }
       logger.info("Recover IoTConsensus server Impl, configuration: {}", configuration);
     } catch (IOException e) {
       logger.error("Unexpected error occurs when recovering configuration", e);
     }
+  }
+
+  // @Compatibility
+  private void recoverFromOldConfigurationFile(Path oldConfigurationPath) throws IOException {
+    ByteBuffer buffer = ByteBuffer.wrap(Files.readAllBytes(oldConfigurationPath));
+    int size = buffer.getInt();
+    for (int i = 0; i < size; i++) {
+      configuration.add(Peer.deserialize(buffer));
+    }
+    persistConfiguration();
+    Files.delete(oldConfigurationPath);
+  }
+
+  private void tmpConfigurationUpdate(List<Peer> tmpPeerList) throws IOException {
+    for (Peer peer : tmpPeerList) {
+      Path tmpConfigurationPath =
+          Paths.get(
+              new File(storageDir, peer.getNodeId() + "_" + CONFIGURATION_TMP_FILE_NAME)
+                  .getAbsolutePath());
+      Path configurationPath =
+          Paths.get(
+              new File(storageDir, peer.getNodeId() + "_" + CONFIGURATION_FILE_NAME)
+                  .getAbsolutePath());
+      Files.deleteIfExists(configurationPath);
+      Files.move(tmpConfigurationPath, configurationPath);
+    }
+  }
+
+  private List<Peer> getConfiguration(Path dirPath, String configurationFileName)
+      throws IOException {
+    ByteBuffer buffer;
+    List<Peer> tmpConfiguration = new ArrayList<>();
+    Path[] files =
+        Files.walk(dirPath)
+            .filter(Files::isRegularFile)
+            .filter(filePath -> filePath.getFileName().toString().contains(configurationFileName))
+            .toArray(Path[]::new);
+    for (Path file : files) {
+      buffer = ByteBuffer.wrap(Files.readAllBytes(file));
+      tmpConfiguration.add(Peer.deserialize(buffer));
+    }
+    return tmpConfiguration;
+  }
+
+  public void resetConfiguration(List<Peer> newConfiguration) {
+    configuration.clear();
+    configuration.addAll(newConfiguration);
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
@@ -841,15 +878,20 @@ public class IoTConsensusServerImpl {
 
   private void serializeConfigurationAndFsyncToDisk(String configurationFileName)
       throws IOException {
-    FileOutputStream fileOutputStream =
-        new FileOutputStream(new File(storageDir, configurationFileName));
-    DataOutputStream outputStream = new DataOutputStream(fileOutputStream);
-    try {
-      serializeConfigurationTo(outputStream);
-    } finally {
-      fileOutputStream.flush();
-      fileOutputStream.getFD().sync();
-      outputStream.close();
+    for (Peer peer : configuration) {
+      String peerConfigurationFileName = peer.getNodeId() + "_" + configurationFileName;
+      FileOutputStream fileOutputStream =
+          new FileOutputStream(new File(storageDir, peerConfigurationFileName));
+      try (DataOutputStream outputStream = new DataOutputStream(fileOutputStream)) {
+        peer.serialize(outputStream);
+      } finally {
+        try {
+          fileOutputStream.flush();
+          fileOutputStream.getFD().sync();
+        } catch (IOException e) {
+          logger.error("Failed to fsync the configuration file {}", peerConfigurationFileName, e);
+        }
+      }
     }
   }
 

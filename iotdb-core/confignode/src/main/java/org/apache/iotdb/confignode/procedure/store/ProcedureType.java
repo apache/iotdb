@@ -38,6 +38,8 @@ public enum ProcedureType {
   CREATE_REGION_GROUPS((short) 202),
   @TestOnly
   CREATE_MANY_DATABASES_PROCEDURE((short) 203),
+  ADD_REGION_PEER_PROCEDURE((short) 204),
+  REMOVE_REGION_PEER_PROCEDURE((short) 205),
 
   /** Timeseries */
   DELETE_TIMESERIES_PROCEDURE((short) 300),

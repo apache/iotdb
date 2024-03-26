@@ -51,9 +51,10 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotL
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.response.partition.CountTimeSlotListResp;
@@ -732,6 +733,11 @@ public class PartitionManager {
     return partitionInfo.getReplicaSets(database, regionGroupIds);
   }
 
+  public boolean isDataNodeContainsRegion(int dataNodeId, TConsensusGroupId regionId) {
+    return getAllReplicaSets(dataNodeId).stream()
+        .anyMatch(tRegionReplicaSet -> tRegionReplicaSet.getRegionId().equals(regionId));
+  }
+
   /**
    * Only leader use this interface.
    *
@@ -910,6 +916,25 @@ public class PartitionManager {
     return partitionInfo.generateNextRegionGroupId();
   }
 
+  public Optional<TConsensusGroupId> generateTConsensusGroupIdByRegionId(final int regionId) {
+    if (configManager
+        .getPartitionManager()
+        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId))) {
+      return Optional.of(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId));
+    }
+    if (configManager
+        .getPartitionManager()
+        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))) {
+      return Optional.of(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId));
+    }
+    String msg =
+        String.format(
+            "Submit RegionMigrateProcedure failed, because RegionGroup: %s doesn't exist",
+            regionId);
+    LOGGER.warn(msg);
+    return Optional.empty();
+  }
+
   /**
    * GetNodePathsPartition.
    *
@@ -1000,13 +1025,18 @@ public class PartitionManager {
     return partitionInfo.isRegionGroupExisted(regionGroupId);
   }
 
-  /**
-   * Update region location.
-   *
-   * @param req UpdateRegionLocationReq
-   * @return TSStatus
-   */
-  public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
+  public TSStatus addRegionLocation(AddRegionLocationPlan req) {
+    try {
+      return getConsensusManager().write(req);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
+    }
+  }
+
+  public TSStatus removeRegionLocation(RemoveRegionLocationPlan req) {
     try {
       return getConsensusManager().write(req);
     } catch (ConsensusException e) {

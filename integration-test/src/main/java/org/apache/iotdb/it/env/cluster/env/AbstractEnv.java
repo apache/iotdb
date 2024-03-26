@@ -29,8 +29,10 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.isession.ISession;
@@ -1011,5 +1013,23 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public String getLibPath() {
     return TEMPLATE_NODE_LIB_PATH;
+  }
+
+  @Override
+  public Optional<DataNodeWrapper> dataNodeIdToWrapper(int nodeId) {
+    try (SyncConfigNodeIServiceClient leaderClient =
+        (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
+      TShowDataNodesResp resp = leaderClient.showDataNodes();
+      for (TDataNodeInfo dataNodeInfo : resp.getDataNodesInfoList()) {
+        if (dataNodeInfo.getDataNodeId() == nodeId) {
+          return dataNodeWrapperList.stream()
+              .filter(dataNodeWrapper -> dataNodeWrapper.getPort() == dataNodeInfo.getRpcPort())
+              .findAny();
+        }
+      }
+      return Optional.empty();
+    } catch (Exception e) {
+      return Optional.empty();
+    }
   }
 }

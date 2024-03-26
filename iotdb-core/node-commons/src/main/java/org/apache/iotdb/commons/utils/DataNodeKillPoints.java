@@ -17,13 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state;
+package org.apache.iotdb.commons.utils;
 
-public enum RegionTransitionState {
-  REGION_MIGRATE_PREPARE,
-  ADD_REGION_PEER,
-  CHECK_ADD_REGION_PEER,
-  CHANGE_REGION_LEADER,
-  REMOVE_REGION_PEER,
-  CHECK_REMOVE_REGION_PEER,
+@TestOnly
+public enum DataNodeKillPoints {
+  OriginalRemovePeer,
+  OriginalDeleteOldRegionPeer,
+
+  CoordinatorRemovePeer,
 }

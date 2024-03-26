@@ -553,7 +553,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     return clusterIndex + HYPHEN + outputCommonConfig.getClusterConfigStr();
   }
 
-  protected String getNodePath() {
+  public String getNodePath() {
     return System.getProperty(USER_DIR) + File.separator + TARGET + File.separator + getId();
   }
 

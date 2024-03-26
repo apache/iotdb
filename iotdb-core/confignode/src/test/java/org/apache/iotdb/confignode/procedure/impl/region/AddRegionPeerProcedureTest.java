@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.procedure.impl.region;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -29,15 +30,13 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.DataOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class RegionMigrateProcedureTest {
-
+public class AddRegionPeerProcedureTest {
   @Test
-  public void serDeTest() throws IOException {
-    RegionMigrateProcedure procedure0 =
-        new RegionMigrateProcedure(
+  public void serDeTest() throws Exception {
+    AddRegionPeerProcedure procedure =
+        new AddRegionPeerProcedure(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 10),
             new TDataNodeLocation(
                 1,
@@ -52,28 +51,13 @@ public class RegionMigrateProcedureTest {
                 new TEndPoint("127.0.0.1", 6),
                 new TEndPoint("127.0.0.1", 7),
                 new TEndPoint("127.0.0.1", 8),
-                new TEndPoint("127.0.0.1", 9)),
-            new TDataNodeLocation(
-                11,
-                new TEndPoint("127.0.0.1", 10),
-                new TEndPoint("127.0.0.1", 11),
-                new TEndPoint("127.0.0.1", 12),
-                new TEndPoint("127.0.0.1", 13),
-                new TEndPoint("127.0.0.1", 14)),
-            new TDataNodeLocation(
-                15,
-                new TEndPoint("127.0.0.1", 15),
-                new TEndPoint("127.0.0.1", 16),
-                new TEndPoint("127.0.0.1", 17),
-                new TEndPoint("127.0.0.1", 18),
-                new TEndPoint("127.0.0.1", 19)));
-
+                new TEndPoint("127.0.0.1", 9)));
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      procedure0.serialize(outputStream);
+      procedure.serialize(outputStream);
       ByteBuffer buffer =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-      Assert.assertEquals(procedure0, ProcedureFactory.getInstance().create(buffer));
+      Assert.assertEquals(procedure, ProcedureFactory.getInstance().create(buffer));
     }
   }
 }
