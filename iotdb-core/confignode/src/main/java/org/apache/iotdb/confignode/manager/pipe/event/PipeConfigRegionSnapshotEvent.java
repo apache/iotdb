@@ -212,11 +212,14 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
   }
 
   public static Set<ConfigPhysicalPlanType> getConfigPhysicalPlanTypeSet(String sealTypes) {
-    return Arrays.stream(sealTypes.split(","))
-        .map(
-            typeValue ->
-                ConfigPhysicalPlanType.convertToConfigPhysicalPlanType(Short.parseShort(typeValue)))
-        .collect(Collectors.toSet());
+    return sealTypes.isEmpty()
+        ? Collections.emptySet()
+        : Arrays.stream(sealTypes.split(","))
+            .map(
+                typeValue ->
+                    ConfigPhysicalPlanType.convertToConfigPhysicalPlanType(
+                        Short.parseShort(typeValue)))
+            .collect(Collectors.toSet());
   }
 
   /////////////////////////////// Object ///////////////////////////////
