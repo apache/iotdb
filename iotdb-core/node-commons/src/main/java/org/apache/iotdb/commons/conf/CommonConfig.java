@@ -234,7 +234,8 @@ public class CommonConfig {
   private long subscriptionLaunchRetryIntervalMs = 1000;
   private int subscriptionClearCommittedEventIntervalSeconds = 30;
   private int subscriptionRecycleUncommittedEventIntervalSeconds = 240;
-  private long subscriptionPollTimeoutThreshold = 30000; // unit: ms
+  private long subscriptionDefaultPollTimeoutMs = 30000;
+  private long subscriptionMinPollTimeoutMs = 500;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -1017,12 +1018,20 @@ public class CommonConfig {
         subscriptionRecycleUncommittedEventIntervalSeconds;
   }
 
-  public long getSubscriptionPollTimeoutThreshold() {
-    return subscriptionPollTimeoutThreshold;
+  public long getSubscriptionDefaultPollTimeoutMs() {
+    return subscriptionDefaultPollTimeoutMs;
   }
 
-  public void setSubscriptionPollTimeoutThreshold(long subscriptionPollTimeoutThreshold) {
-    this.subscriptionPollTimeoutThreshold = subscriptionPollTimeoutThreshold;
+  public void setSubscriptionDefaultPollTimeoutMs(long subscriptionDefaultPollTimeoutMs) {
+    this.subscriptionDefaultPollTimeoutMs = subscriptionDefaultPollTimeoutMs;
+  }
+
+  public long getSubscriptionMinPollTimeoutMs() {
+    return subscriptionMinPollTimeoutMs;
+  }
+
+  public void setSubscriptionMinPollTimeoutMs(long subscriptionMinPollTimeoutMs) {
+    this.subscriptionMinPollTimeoutMs = subscriptionMinPollTimeoutMs;
   }
 
   public String getSchemaEngineMode() {

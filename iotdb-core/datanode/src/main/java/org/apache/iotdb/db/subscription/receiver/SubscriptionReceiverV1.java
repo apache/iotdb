@@ -353,8 +353,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         new SubscriptionPollTimer(
             System.currentTimeMillis(),
             req.getTimeoutMs() == 0
-                ? SubscriptionConfig.getInstance().getPollSubscriptionTimeoutThreshold()
-                : req.getTimeoutMs());
+                ? SubscriptionConfig.getInstance().getSubscriptionDefaultPollTimeoutMs()
+                : Math.max(
+                    req.getTimeoutMs(),
+                    SubscriptionConfig.getInstance().getSubscriptionMinPollTimeoutMs()));
     List<SerializedEnrichedEvent> events =
         SubscriptionAgent.broker().poll(consumerConfig, topicNames, timer);
 

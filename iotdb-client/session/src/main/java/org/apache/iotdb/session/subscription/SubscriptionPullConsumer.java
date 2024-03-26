@@ -263,8 +263,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer implements Ru
     }
 
     public Builder autoCommitInterval(int autoCommitInterval) {
-      // TODO: set min interval
-      this.autoCommitInterval = autoCommitInterval;
+      this.autoCommitInterval =
+          Math.max(autoCommitInterval, ConsumerConstant.AUTO_COMMIT_INTERVAL_MIN_VALUE);
       return this;
     }
 

@@ -38,6 +38,7 @@ public class ConsumerConstant {
 
   public static final String AUTO_COMMIT_INTERVAL_KEY = "auto-commit-interval"; // unit: ms
   public static final int AUTO_COMMIT_INTERVAL_DEFAULT_VALUE = 5000;
+  public static final int AUTO_COMMIT_INTERVAL_MIN_VALUE = 500;
 
   /////////////////////////////// push consumer ///////////////////////////////
 
