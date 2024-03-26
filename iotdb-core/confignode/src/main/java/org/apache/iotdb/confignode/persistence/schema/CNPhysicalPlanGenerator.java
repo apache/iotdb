@@ -52,9 +52,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Stack;
@@ -182,10 +184,14 @@ public class CNPhysicalPlanGenerator
         final AuthorPlan createUser = new AuthorPlan(ConfigPhysicalPlanType.CreateUser);
         createUser.setUserName(user);
         createUser.setPassword(DEFAULT_PASSWORD);
+        createUser.setPermissions(new HashSet<>());
+        createUser.setNodeNameList(new ArrayList<>());
         planDeque.add(createUser);
       } else {
         final AuthorPlan createRole = new AuthorPlan(ConfigPhysicalPlanType.CreateRole);
         createRole.setRoleName(user);
+        createRole.setPermissions(new HashSet<>());
+        createRole.setNodeNameList(new ArrayList<>());
         planDeque.add(createRole);
       }
 
@@ -220,6 +226,8 @@ public class CNPhysicalPlanGenerator
         final AuthorPlan plan = new AuthorPlan(ConfigPhysicalPlanType.GrantRoleToUser);
         plan.setUserName(userName);
         plan.setRoleName(roleName);
+        plan.setNodeNameList(new ArrayList<>());
+        plan.setPermissions(new HashSet<>());
         planDeque.add(plan);
       }
     } catch (IOException ioException) {
@@ -238,8 +246,10 @@ public class CNPhysicalPlanGenerator
                 isUser ? ConfigPhysicalPlanType.GrantUser : ConfigPhysicalPlanType.GrantRole);
         if (isUser) {
           plan.setUserName(userName);
+          plan.setRoleName("");
         } else {
           plan.setRoleName(userName);
+          plan.setUserName("");
         }
         plan.setPermissions(Collections.singleton(AuthUtils.posToSysPri(i)));
         if ((sysMask & (1 << (i + 16))) != 0) {
@@ -260,8 +270,10 @@ public class CNPhysicalPlanGenerator
                 isUser ? ConfigPhysicalPlanType.GrantUser : ConfigPhysicalPlanType.GrantRole);
         if (isUser) {
           plan.setUserName(userName);
+          plan.setRoleName("");
         } else {
           plan.setRoleName(userName);
+          plan.setUserName("");
         }
         plan.setPermissions(Collections.singleton(AuthUtils.pathPosToPri(pos)));
         plan.setNodeNameList(Collections.singletonList(path));
@@ -369,7 +381,7 @@ public class CNPhysicalPlanGenerator
     if (databaseTTL != -1L) {
       final SetTTLPlan setTTLPlan =
           new SetTTLPlan(
-              Collections.singletonList(databaseMNode.getAsMNode().getDatabaseSchema().getName()),
+              Arrays.asList(databaseMNode.getAsMNode().getDatabaseSchema().getName().split("\\.")),
               databaseTTL);
       planDeque.add(setTTLPlan);
     }

@@ -54,8 +54,6 @@ public class AuthorPlan extends ConfigPhysicalPlan {
   public AuthorPlan(ConfigPhysicalPlanType type) {
     super(type);
     authorType = type;
-    permissions = new HashSet<>();
-    nodeNameList = new ArrayList<>();
   }
 
   /**

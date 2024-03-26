@@ -25,13 +25,13 @@ import java.util.Map;
 
 public enum PipeRequestType {
 
-  // handshake
+  // Handshake
   HANDSHAKE_CONFIGNODE_V1((short) 0),
   HANDSHAKE_DATANODE_V1((short) 1),
   HANDSHAKE_CONFIGNODE_V2((short) 50),
   HANDSHAKE_DATANODE_V2((short) 51),
 
-  // data region
+  // Data region
   TRANSFER_TABLET_INSERT_NODE((short) 2),
   TRANSFER_TABLET_RAW((short) 3),
   TRANSFER_TS_FILE_PIECE((short) 4),

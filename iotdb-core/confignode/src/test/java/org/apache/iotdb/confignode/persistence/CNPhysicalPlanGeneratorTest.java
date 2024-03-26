@@ -47,6 +47,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -100,6 +101,8 @@ public class CNPhysicalPlanGeneratorTest {
     setupAuthorInfo();
     AuthorPlan plan = new AuthorPlan(ConfigPhysicalPlanType.CreateRole);
     plan.setRoleName(roleName);
+    plan.setPermissions(new HashSet<>());
+    plan.setNodeNameList(new ArrayList<>());
     answerSet.add(plan.hashCode());
     // Step 1: create role - plan1
     authorInfo.authorNonQuery(plan);
@@ -107,6 +110,7 @@ public class CNPhysicalPlanGeneratorTest {
     // Step 2: grant role path privileges - plan2
     plan = new AuthorPlan(ConfigPhysicalPlanType.GrantRole);
     plan.setRoleName(roleName);
+    plan.setUserName("");
     plan.setNodeNameList(Collections.singletonList(new PartialPath("root.db.t1")));
     Set<Integer> pathPris = new HashSet<>();
     pathPris.add(PrivilegeType.WRITE_DATA.ordinal());
@@ -125,6 +129,7 @@ public class CNPhysicalPlanGeneratorTest {
     // Step 3: grant role sys privileges - plan3
     plan = new AuthorPlan(ConfigPhysicalPlanType.GrantRole);
     plan.setRoleName(roleName);
+    plan.setUserName("");
     plan.setNodeNameList(Collections.emptyList());
     Set<Integer> sysPris = new HashSet<>();
     sysPris.add(PrivilegeType.MANAGE_DATABASE.ordinal());
@@ -174,17 +179,22 @@ public class CNPhysicalPlanGeneratorTest {
     AuthorPlan plan = new AuthorPlan(ConfigPhysicalPlanType.CreateUser);
     plan.setPassword("password");
     plan.setUserName(userName);
+    plan.setPermissions(new HashSet<>());
+    plan.setNodeNameList(new ArrayList<>());
     // Create user plan 1
     authorInfo.authorNonQuery(plan);
     answerSet.add(plan.hashCode());
 
     plan = new AuthorPlan(ConfigPhysicalPlanType.CreateRole);
     plan.setRoleName("role1");
+    plan.setPermissions(new HashSet<>());
+    plan.setNodeNameList(new ArrayList<>());
     authorInfo.authorNonQuery(plan);
 
     // Grant path privileges, plan 2 , plan 3
     plan = new AuthorPlan(ConfigPhysicalPlanType.GrantUser);
     plan.setUserName(userName);
+    plan.setRoleName("");
     plan.setNodeNameList(Collections.singletonList(new PartialPath("root.db1.t2")));
     Set<Integer> priSet = new HashSet<>();
     priSet.add(PrivilegeType.WRITE_SCHEMA.ordinal());
@@ -204,6 +214,7 @@ public class CNPhysicalPlanGeneratorTest {
     // Grant system privileges, plan 4
     plan = new AuthorPlan(ConfigPhysicalPlanType.GrantUser);
     plan.setUserName(userName);
+    plan.setRoleName("");
     plan.setNodeNameList(Collections.emptyList());
     plan.setPermissions(Collections.singleton(PrivilegeType.MANAGE_DATABASE.ordinal()));
     plan.setGrantOpt(false);
@@ -213,7 +224,10 @@ public class CNPhysicalPlanGeneratorTest {
     // Grant role to user, plan 5
     plan = new AuthorPlan(ConfigPhysicalPlanType.GrantRoleToUser);
     plan.setRoleName("role1");
+    plan.setUserName("");
     plan.setUserName(userName);
+    plan.setPermissions(new HashSet<>());
+    plan.setNodeNameList(new ArrayList<>());
     authorInfo.authorNonQuery(plan);
     answerSet.add(plan.hashCode());
 
@@ -262,6 +276,7 @@ public class CNPhysicalPlanGeneratorTest {
     Set<Integer> answerSet = new HashSet<>();
     Set<String> storageGroupPathList = new TreeSet<>();
     storageGroupPathList.add("root.sg");
+    storageGroupPathList.add("root.ln");
     storageGroupPathList.add("root.a.sg");
     storageGroupPathList.add("root.a.b.sg");
     storageGroupPathList.add("root.a.a.a.b.sg");
@@ -276,7 +291,7 @@ public class CNPhysicalPlanGeneratorTest {
       tDatabaseSchema.setTimePartitionInterval(i);
       clusterSchemaInfo.createDatabase(
           new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, tDatabaseSchema));
-      SetTTLPlan plan = new SetTTLPlan(Collections.singletonList(path), tDatabaseSchema.getTTL());
+      SetTTLPlan plan = new SetTTLPlan(Arrays.asList(path.split("\\.")), tDatabaseSchema.getTTL());
       answerSet.add(plan.hashCode());
       TDatabaseSchema tDatabaseSchemaBak = new TDatabaseSchema(tDatabaseSchema);
       tDatabaseSchemaBak.unsetTTL();
@@ -300,12 +315,15 @@ public class CNPhysicalPlanGeneratorTest {
       if (plan.getType() == ConfigPhysicalPlanType.CreateDatabase) {
         Assert.assertTrue(answerSet.contains(((DatabaseSchemaPlan) plan).hashCode()));
       } else if (plan.getType() == ConfigPhysicalPlanType.SetTTL) {
+        String[] database = ((SetTTLPlan) plan).getDatabasePathPattern();
+        PartialPath databasePath = new PartialPath(database);
         Assert.assertTrue(answerSet.contains(((SetTTLPlan) plan).hashCode()));
+        clusterSchemaInfo.setTTL((SetTTLPlan) plan);
       }
       count++;
     }
     planGenerator.checkException();
-    Assert.assertEquals(8, count);
+    Assert.assertEquals(10, count);
   }
 
   @Test
@@ -372,7 +390,7 @@ public class CNPhysicalPlanGeneratorTest {
       tDatabaseSchema.setTimePartitionInterval(i);
       clusterSchemaInfo.createDatabase(
           new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, tDatabaseSchema));
-      SetTTLPlan plan = new SetTTLPlan(Collections.singletonList(path), tDatabaseSchema.getTTL());
+      SetTTLPlan plan = new SetTTLPlan(Arrays.asList(path.split("\\.")), tDatabaseSchema.getTTL());
       answerSet.add(plan.hashCode());
       TDatabaseSchema tDatabaseSchemaBak = new TDatabaseSchema(tDatabaseSchema);
       tDatabaseSchemaBak.unsetTTL();
