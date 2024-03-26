@@ -1559,7 +1559,7 @@ public class IoTDBDescriptor {
       // update timed flush & close conf
       loadTimedService(properties);
       StorageEngine.getInstance().rebootTimedService();
-      // update params of creating schemaengine automatically
+      // update params of creating schema automatically
       loadAutoCreateSchemaProps(properties);
 
       // update tsfile-format config

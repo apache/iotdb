@@ -1019,11 +1019,11 @@ public class IoTDBSessionSimpleIT {
         dataSet.getColumnTypes().toArray(new String[0]),
         new String[] {
           String.valueOf(TSDataType.INT64),
-          String.valueOf(TSDataType.FLOAT),
-          String.valueOf(TSDataType.FLOAT),
+          String.valueOf(TSDataType.DOUBLE),
+          String.valueOf(TSDataType.DOUBLE),
           String.valueOf(TSDataType.BOOLEAN),
           String.valueOf(TSDataType.BOOLEAN),
-          String.valueOf(TSDataType.FLOAT)
+          String.valueOf(TSDataType.DOUBLE)
         });
     long time = 1L;
 
@@ -1033,7 +1033,7 @@ public class IoTDBSessionSimpleIT {
     time++;
 
     assertNulls(record, new int[] {0, 3, 4});
-    assertEquals(5.0f, record.getFields().get(1).getFloatV(), 0.01);
+    assertEquals(5.0f, record.getFields().get(1).getDoubleV(), 0.01);
     assertEquals(Boolean.TRUE, record.getFields().get(2).getBoolV());
 
     assertTrue(dataSet.hasNext());
@@ -1042,8 +1042,8 @@ public class IoTDBSessionSimpleIT {
     time++;
 
     assertNulls(record, new int[] {1, 2, 3});
-    assertEquals(4, record.getFields().get(0).getFloatV(), 0.01);
-    assertEquals(3, record.getFields().get(4).getFloatV(), 0.01);
+    assertEquals(4, record.getFields().get(0).getDoubleV(), 0.01);
+    assertEquals(3, record.getFields().get(4).getDoubleV(), 0.01);
 
     assertTrue(dataSet.hasNext());
     record = dataSet.next();
@@ -1051,7 +1051,7 @@ public class IoTDBSessionSimpleIT {
 
     assertNulls(record, new int[] {0, 1, 2});
     assertFalse(record.getFields().get(3).getBoolV());
-    assertEquals(6, record.getFields().get(4).getFloatV(), 0.01);
+    assertEquals(6, record.getFields().get(4).getDoubleV(), 0.01);
 
     assertFalse(dataSet.hasNext());
     dataSet.closeOperationHandle();

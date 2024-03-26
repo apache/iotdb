@@ -631,7 +631,7 @@ public class IoTDBConfig {
    * register time series as which type when receiving an integer string and using float may lose
    * precision
    */
-  private TSDataType integerStringInferType = TSDataType.INT64;
+  private TSDataType integerStringInferType = TSDataType.DOUBLE;
 
   /** register time series as which type when receiving a floating number string "6.7" */
   private TSDataType floatingStringInferType = TSDataType.DOUBLE;
@@ -2221,9 +2221,10 @@ public class IoTDBConfig {
     if (nanStringInferType != TSDataType.DOUBLE
         && nanStringInferType != TSDataType.FLOAT
         && nanStringInferType != TSDataType.TEXT) {
-      throw new IllegalArgumentException(
-          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is "
-              + nanStringInferType);
+      logger.warn(
+          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is {}",
+          nanStringInferType);
+      return;
     }
     this.nanStringInferType = nanStringInferType;
   }
