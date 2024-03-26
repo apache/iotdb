@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
-import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
@@ -43,6 +42,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class SubscriptionPrefetchingQueue {
@@ -54,8 +55,7 @@ public class SubscriptionPrefetchingQueue {
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
 
   private final Map<String, SerializedEnrichedEvent> uncommittedEvents;
-  // TODO: replaced with ConcurrentLinkedQueue
-  private final ConcurrentIterableLinkedQueue<SerializedEnrichedEvent> prefetchingQueue;
+  private final LinkedBlockingQueue<SerializedEnrichedEvent> prefetchingQueue;
 
   private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
 
@@ -65,7 +65,7 @@ public class SubscriptionPrefetchingQueue {
     this.topicName = topicName;
     this.inputPendingQueue = inputPendingQueue;
     this.uncommittedEvents = new ConcurrentHashMap<>();
-    this.prefetchingQueue = new ConcurrentIterableLinkedQueue<>();
+    this.prefetchingQueue = new LinkedBlockingQueue<>();
   }
 
   /////////////////////////////// provided for SubscriptionBroker ///////////////////////////////
@@ -76,41 +76,34 @@ public class SubscriptionPrefetchingQueue {
       // without serializeOnce here
     }
 
-    long size = prefetchingQueue.size();
-    long count = 0;
-    SerializedEnrichedEvent event;
-    try (ConcurrentIterableLinkedQueue<SerializedEnrichedEvent>.DynamicIterator iter =
-        prefetchingQueue.iterateFromEarliest()) {
+    SerializedEnrichedEvent currentEvent;
+    try {
       while (Objects.nonNull(
-          event =
-              iter.next(SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs()))) {
+          currentEvent =
+              prefetchingQueue.poll(
+                  SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs(),
+                  TimeUnit.MILLISECONDS))) {
+        if (currentEvent.isCommitted()) {
+          continue;
+        }
+        // Re-enqueue the uncommitted event at the end of the queue.
+        prefetchingQueue.add(currentEvent);
         // timeout control: may not be time-consuming, considering it won't switch to kernel mode
         timer.update();
         if (timer.isExpired()) {
           break;
         }
-        // limit control
-        if (count >= size) {
-          break;
-        }
-        count++;
-        prefetchingQueue.tryRemoveBefore(iter.getNextIndex());
-        if (event.isCommitted()) {
-          continue;
-        }
-        // Re-enqueue the uncommitted event at the end of the queue.
-        prefetchingQueue.add(event);
-        if (!event.pollable()) {
-          continue;
-        }
         // Serialize the uncommitted and pollable event.
-        if (!event.serialize()) {
+        if (!currentEvent.pollable() && !currentEvent.serialize()) {
           // The event returned by poll always has a non-null byte buffer.
           continue;
         }
-        event.recordLastPolledTimestamp();
-        return event;
+        currentEvent.recordLastPolledTimestamp();
+        return currentEvent;
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("Subscription: Interrupted while polling events.", e);
     }
 
     return null;
@@ -157,6 +150,11 @@ public class SubscriptionPrefetchingQueue {
         if (Objects.isNull(tablet)) {
           continue;
         }
+        LOGGER.info(
+            "Subscription: prefetch tablet timestamp {} (topic {}, consumer group {})",
+            EnrichedTablets.timestamps(tablet),
+            topicName,
+            brokerId);
         tablets.add(tablet);
         enrichedEvents.add((EnrichedEvent) event);
         if (tablets.size() >= limit) {
@@ -169,6 +167,11 @@ public class SubscriptionPrefetchingQueue {
           if (Objects.isNull(tablet)) {
             continue;
           }
+          LOGGER.info(
+              "Subscription: prefetch tablet timestamp {} (topic {}, consumer group {})",
+              EnrichedTablets.timestamps(tablet),
+              topicName,
+              brokerId);
           tablets.add(tablet);
         }
         enrichedEvents.add((EnrichedEvent) event);
@@ -197,45 +200,33 @@ public class SubscriptionPrefetchingQueue {
   private void serializeOnce() {
     long size = prefetchingQueue.size();
     long count = 0;
-    SerializedEnrichedEvent event;
-    try (ConcurrentIterableLinkedQueue<SerializedEnrichedEvent>.DynamicIterator iter =
-        prefetchingQueue.iterateFromEarliest()) {
-      // TODO: memory control & avoid unnecessary iteration
+
+    SerializedEnrichedEvent currentEvent;
+    try {
       while (Objects.nonNull(
-          event =
-              iter.next(
-                  SubscriptionConfig.getInstance().getSubscriptionSerializeMaxBlockingTimeMs()))) {
+          currentEvent =
+              prefetchingQueue.poll(
+                  SubscriptionConfig.getInstance().getSubscriptionSerializeMaxBlockingTimeMs(),
+                  TimeUnit.MILLISECONDS))) {
+        if (currentEvent.isCommitted()) {
+          continue;
+        }
+        // Re-enqueue the uncommitted event at the end of the queue.
+        prefetchingQueue.add(currentEvent);
+        // limit control
         if (count >= size) {
           break;
         }
         count++;
         // Serialize the uncommitted and pollable event.
-        if (!event.isCommitted() && event.pollable()) {
+        if (currentEvent.pollable()) {
           // No need to concern whether serialization is successful.
-          event.serialize();
+          currentEvent.serialize();
         }
       }
-    }
-  }
-
-  public void clearCommittedEvents() {
-    long size = prefetchingQueue.size();
-    long count = 0;
-    SerializedEnrichedEvent event;
-    try (ConcurrentIterableLinkedQueue<SerializedEnrichedEvent>.DynamicIterator iter =
-        prefetchingQueue.iterateFromEarliest()) {
-      while (Objects.nonNull(
-          event =
-              iter.next(
-                  SubscriptionConfig.getInstance().getSubscriptionClearMaxBlockingTimeMs()))) {
-        if (count >= size) {
-          break;
-        }
-        count++;
-        if (event.isCommitted()) {
-          prefetchingQueue.tryRemoveBefore(iter.getNextIndex());
-        }
-      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("Subscription: Interrupted while serializing events.", e);
     }
   }
 

@@ -67,6 +67,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -359,6 +360,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                     SubscriptionConfig.getInstance().getSubscriptionMinPollTimeoutMs()));
     List<SerializedEnrichedEvent> events =
         SubscriptionAgent.broker().poll(consumerConfig, topicNames, timer);
+
+    List<Long> timestamps = new ArrayList<>();
+    events.forEach((event -> timestamps.addAll(event.timestamps())));
+    LOGGER.info("Subscription: event timestamps {}", timestamps);
 
     List<ByteBuffer> byteBuffers =
         events.stream()

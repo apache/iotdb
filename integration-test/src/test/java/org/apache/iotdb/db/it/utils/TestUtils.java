@@ -357,7 +357,6 @@ public class TestUtils {
         String header = resultSetMetaData.getColumnName(i);
         String expectedResult = expectedHeaderWithResult.get(header);
         assertEquals(expectedResult, actualResultSet.getString(i));
-        expectedHeaderWithResult.remove(header);
       }
       assertFalse(actualResultSet.next());
     } catch (Exception e) {

@@ -101,4 +101,19 @@ public class EnrichedTablets {
     // should not be included when calculating the hashCode of EnrichedTablets.
     return Objects.hash(topicName, subscriptionCommitId);
   }
+
+  public List<Long> timestamps() {
+    List<Long> res = new ArrayList<>();
+    tablets.forEach((tablet -> res.addAll(timestamps(tablet))));
+    return res;
+  }
+
+  public static List<Long> timestamps(Tablet tablet) {
+    List<Long> res = new ArrayList<>();
+    long[] timestamps = tablet.timestamps;
+    for (int i = 0; i < tablet.rowSize; ++i) {
+      res.add(timestamps[i]);
+    }
+    return res;
+  }
 }

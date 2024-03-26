@@ -111,4 +111,20 @@ public class SerializedEnrichedEvent {
     return System.currentTimeMillis() - lastPolledTimestamp
         > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalSeconds();
   }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    SerializedEnrichedEvent that = (SerializedEnrichedEvent) obj;
+    return Objects.equals(this.enrichedTablets, that.enrichedTablets);
+  }
+
+  public List<Long> timestamps() {
+    return enrichedTablets.timestamps();
+  }
 }

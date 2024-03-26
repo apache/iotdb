@@ -117,10 +117,4 @@ public class SubscriptionBroker {
     }
     prefetchingQueue.executePrefetch();
   }
-
-  public void clearCommittedEvents() {
-    topicNameToPrefetchingQueue
-        .values()
-        .forEach(SubscriptionPrefetchingQueue::clearCommittedEvents);
-  }
 }

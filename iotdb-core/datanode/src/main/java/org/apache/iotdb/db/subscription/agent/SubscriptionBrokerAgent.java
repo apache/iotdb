@@ -130,8 +130,4 @@ public class SubscriptionBrokerAgent {
     }
     broker.executePrefetch(subtask.getTopicName());
   }
-
-  public void clearCommittedEvents() {
-    consumerGroupIdToSubscriptionBroker.values().forEach(SubscriptionBroker::clearCommittedEvents);
-  }
 }
