@@ -2194,6 +2194,12 @@ public class IoTDBConfig {
   }
 
   public void setBooleanStringInferType(TSDataType booleanStringInferType) {
+    if (booleanStringInferType != TSDataType.BOOLEAN && booleanStringInferType != TSDataType.TEXT) {
+      logger.warn(
+          "Config Property boolean_string_infer_type can only be BOOLEAN or TEXT but is {}",
+          booleanStringInferType);
+      return;
+    }
     this.booleanStringInferType = booleanStringInferType;
   }
 
@@ -2210,6 +2216,14 @@ public class IoTDBConfig {
   }
 
   public void setFloatingStringInferType(TSDataType floatingNumberStringInferType) {
+    if (floatingNumberStringInferType != TSDataType.DOUBLE
+        && floatingNumberStringInferType != TSDataType.FLOAT
+        && floatingNumberStringInferType != TSDataType.TEXT) {
+      logger.warn(
+          "Config Property floating_string_infer_type can only be FLOAT, DOUBLE or TEXT but is {}",
+          floatingNumberStringInferType);
+      return;
+    }
     this.floatingStringInferType = floatingNumberStringInferType;
   }
 
