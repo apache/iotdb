@@ -51,6 +51,8 @@ public class IoTDBSubscriptionTopicIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionTopicIT.class);
 
+  private static final long MAX_RETRY_COUNT = 5;
+
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
@@ -100,8 +102,10 @@ public class IoTDBSubscriptionTopicIT {
 
     // subscription
     int count = 0;
+    long retryCount = 0;
     try (SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
+            .autoCommit(false)
             .host(host)
             .port(port)
             .consumerId("c1")
@@ -110,10 +114,14 @@ public class IoTDBSubscriptionTopicIT {
       consumer.open();
       consumer.subscribe("topic1");
       while (true) {
-        Thread.sleep(1000); // wait some time
+        Thread.sleep(1000 * retryCount); // wait some time
         List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
         if (messages.isEmpty()) {
-          break;
+          if (retryCount >= MAX_RETRY_COUNT) {
+            break;
+          }
+          retryCount += 1;
+          continue;
         }
         for (SubscriptionMessage message : messages) {
           ISessionDataSet dataSet = message.getPayload();
@@ -168,8 +176,10 @@ public class IoTDBSubscriptionTopicIT {
 
     // subscription
     int count = 0;
+    long retryCount = 0;
     try (SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
+            .autoCommit(false)
             .host(host)
             .port(port)
             .consumerId("c1")
@@ -178,10 +188,14 @@ public class IoTDBSubscriptionTopicIT {
       consumer.open();
       consumer.subscribe("topic1");
       while (true) {
-        Thread.sleep(1000); // wait some time
+        Thread.sleep(1000 * retryCount); // wait some time
         List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
         if (messages.isEmpty()) {
-          break;
+          if (retryCount >= MAX_RETRY_COUNT) {
+            break;
+          }
+          retryCount += 1;
+          continue;
         }
         for (SubscriptionMessage message : messages) {
           ISessionDataSet dataSet = message.getPayload();
@@ -227,8 +241,10 @@ public class IoTDBSubscriptionTopicIT {
 
     // subscription
     int count = 0;
+    long retryCount = 0;
     try (SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
+            .autoCommit(false)
             .host(EnvFactory.getEnv().getIP())
             .port(Integer.parseInt(EnvFactory.getEnv().getPort()))
             .consumerId("c1")
@@ -237,10 +253,14 @@ public class IoTDBSubscriptionTopicIT {
       consumer.open();
       consumer.subscribe("topic1");
       while (true) {
-        Thread.sleep(1000); // wait some time
+        Thread.sleep(1000 * retryCount); // wait some time
         List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
         if (messages.isEmpty()) {
-          break;
+          if (retryCount >= MAX_RETRY_COUNT) {
+            break;
+          }
+          retryCount += 1;
+          continue;
         }
         for (SubscriptionMessage message : messages) {
           ISessionDataSet dataSet = message.getPayload();

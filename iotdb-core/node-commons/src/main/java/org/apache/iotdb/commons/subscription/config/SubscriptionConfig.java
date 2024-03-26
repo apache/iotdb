@@ -63,8 +63,8 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionRecycleUncommittedEventIntervalSeconds();
   }
 
-  public long getSubscriptionTimeoutThreshold() {
-    return COMMON_CONFIG.getSubscriptionTimeoutThreshold();
+  public long getPollSubscriptionTimeoutThreshold() {
+    return COMMON_CONFIG.getSubscriptionPollTimeoutThreshold();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -88,7 +88,7 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionRecycleUncommittedEventIntervalSeconds: {}",
         getSubscriptionRecycleUncommittedEventIntervalSeconds());
-    LOGGER.info("SubscriptionTimeoutThreshold: {}", getSubscriptionTimeoutThreshold());
+    LOGGER.info("SubscriptionPollTimeoutThreshold: {}", getPollSubscriptionTimeoutThreshold());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

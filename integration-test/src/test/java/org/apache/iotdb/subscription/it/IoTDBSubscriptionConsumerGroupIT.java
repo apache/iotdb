@@ -52,6 +52,8 @@ public class IoTDBSubscriptionConsumerGroupIT {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBSubscriptionConsumerGroupIT.class);
 
+  private static final long MAX_RETRY_COUNT = 5;
+
   private static final int BASE = 233;
 
   @Before
@@ -101,11 +103,16 @@ public class IoTDBSubscriptionConsumerGroupIT {
           new Thread(
               () -> {
                 try {
+                  long retryCount = 0;
                   while (true) {
-                    Thread.sleep(1000); // wait some time
+                    Thread.sleep(1000 * retryCount); // wait some time
                     List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
                     if (messages.isEmpty()) {
-                      break;
+                      if (retryCount >= MAX_RETRY_COUNT) {
+                        break;
+                      }
+                      retryCount += 1;
+                      continue;
                     }
                     for (SubscriptionMessage message : messages) {
                       ISessionDataSet dataSet = message.getPayload();
@@ -142,6 +149,7 @@ public class IoTDBSubscriptionConsumerGroupIT {
       String consumerId, String consumerGroupId, String... topicNames) throws Exception {
     SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
+            .autoCommit(false)
             .host(EnvFactory.getEnv().getIP())
             .port(Integer.parseInt(EnvFactory.getEnv().getPort()))
             .consumerId(consumerId)

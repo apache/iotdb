@@ -59,7 +59,7 @@ public class SubscriptionBroker {
       String topicName = entry.getKey();
       SubscriptionPrefetchingQueue prefetchingQueue = entry.getValue();
       if (topicNames.contains(topicName)) {
-        SerializedEnrichedEvent event = prefetchingQueue.poll(timer);
+        SerializedEnrichedEvent event = prefetchingQueue.poll();
         if (Objects.nonNull(event)) {
           events.add(event);
         }

@@ -29,7 +29,6 @@ import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
@@ -70,7 +69,7 @@ public class SubscriptionPrefetchingQueue {
 
   /////////////////////////////// provided for SubscriptionBroker ///////////////////////////////
 
-  public SerializedEnrichedEvent poll(SubscriptionPollTimer timer) {
+  public SerializedEnrichedEvent poll() {
     if (prefetchingQueue.isEmpty()) {
       prefetchOnce(SubscriptionConfig.getInstance().getSubscriptionMaxTabletsPerPrefetching());
       // without serializeOnce here
@@ -84,11 +83,6 @@ public class SubscriptionPrefetchingQueue {
       while (Objects.nonNull(
           event =
               iter.next(SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs()))) {
-        // timeout control
-        timer.update();
-        if (timer.isExpired()) {
-          break;
-        }
         // limit control
         if (count >= size) {
           break;
