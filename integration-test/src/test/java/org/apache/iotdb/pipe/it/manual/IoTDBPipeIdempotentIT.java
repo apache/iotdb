@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it.manual;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -52,6 +53,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualManualIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
+    // TODO: delete ratis configurations
     // All the schema operations must be under the same database to
     // be in the same region, therefore a non-idempotent operation can block the next one
     // and fail the IT
@@ -59,8 +61,15 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
-        .setDefaultSchemaRegionGroupNumPerDatabase(1);
-    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+        .setDefaultSchemaRegionGroupNumPerDatabase(1)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     // Limit the schemaRegion number to 1 to guarantee the after sql executed on the same region
     // of the tested idempotent sql.

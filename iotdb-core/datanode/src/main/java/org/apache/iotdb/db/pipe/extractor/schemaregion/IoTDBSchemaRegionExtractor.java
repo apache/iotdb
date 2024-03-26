@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeL
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
@@ -33,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -45,6 +48,19 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   private SchemaRegionId schemaRegionId;
 
   private Set<PlanNodeType> listenedTypeSet = new HashSet<>();
+
+  // TODO: Delete this
+  @Override
+  public void validate(PipeParameterValidator validator) throws Exception {
+    if (IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getSchemaRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.SIMPLE_CONSENSUS)) {
+      throw new PipeException(
+          "IoTDBSchemaRegionExtractor does not transferring events under simple consensus");
+    }
+    super.validate(validator);
+  }
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)

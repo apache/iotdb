@@ -29,8 +29,10 @@ import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEv
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.service.ConfigNode;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -41,6 +43,19 @@ import java.util.Set;
 public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   private Set<ConfigPhysicalPlanType> listenedTypeSet = new HashSet<>();
+
+  // TODO: Delete this
+  @Override
+  public void validate(PipeParameterValidator validator) throws Exception {
+    if (ConfigNodeDescriptor.getInstance()
+        .getConf()
+        .getConfigNodeConsensusProtocolClass()
+        .equals(ConsensusFactory.SIMPLE_CONSENSUS)) {
+      throw new PipeException(
+          "IoTDBConfigRegionExtractor does not transferring events under simple consensus");
+    }
+    super.validate(validator);
+  }
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)

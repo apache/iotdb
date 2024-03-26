@@ -22,16 +22,13 @@ package org.apache.iotdb.pipe.it.manual;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
-import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -45,32 +42,6 @@ import java.util.Map;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
 public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
-  @Override
-  @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
-
-    // All the schema operations must be under the same database to
-    // be in the same region, therefore a non-idempotent operation can block the next one
-    // and fail the IT
-    receiverEnv
-        .getConfig()
-        .getCommonConfig()
-        .setAutoCreateSchemaEnabled(false)
-        .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(2)
-        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
-
-    // Limit the schemaRegion number to 1 to guarantee the after sql executed on the same region
-    // of the tested idempotent sql.
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment(3, 3);
-  }
-
   @Test
   public void testPureSchemaInclusion() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
