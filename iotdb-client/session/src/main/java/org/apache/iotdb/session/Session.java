@@ -89,6 +89,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.PrimitiveIterator;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -101,6 +102,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @SuppressWarnings({"java:S107", "java:S1135"}) // need enough parameters, ignore todos
 public class Session implements ISession {
@@ -143,7 +145,8 @@ public class Session implements ISession {
 
   // Cluster version cache
   protected boolean enableRedirection;
-  protected boolean enableRecordsAutoConvertTablet;
+  protected boolean enableRecordsAutoConvertTablet =
+      SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
   private static final double CONVERT_THRESHOLD = 0.5;
   private static final double SAMPLE_PROPORTION = 0.05;
   private static final int MIN_SAMPLE_SIZE = 40;
@@ -2038,7 +2041,7 @@ public class Session implements ISession {
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
-    if (enableRecordsAutoConvertTablet && judgeConvert(measurementsList)) {
+    if (enableRecordsAutoConvertTablet && judgeConvertOfOneDevice(measurementsList)) {
       convertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, false);
       return;
     }
@@ -2189,7 +2192,7 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "times, subMeasurementsList and valuesList's size should be equal");
     }
-    if (enableRecordsAutoConvertTablet && judgeConvert(measurementsList)) {
+    if (enableRecordsAutoConvertTablet && judgeConvertOfOneDevice(measurementsList)) {
       convertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, true);
       return;
     }
@@ -2777,23 +2780,19 @@ public class Session implements ISession {
     request.addToSizeList(tablet.rowSize);
   }
 
-  public boolean judgeConvert(List<List<String>> measurementsList) {
+  // sample some records and judge weather need to add too many null values to convert to tablet.
+  public boolean judgeConvertOfOneDevice(List<List<String>> measurementsList) {
     int size = measurementsList.size();
     int sampleNum = (int) (size * SAMPLE_PROPORTION);
     if (sampleNum < MIN_SAMPLE_SIZE) {
       return false;
     }
-    List<Integer> indexList =
-        ThreadLocalRandom.current()
-            .ints(0, size)
-            .distinct()
-            .limit(sampleNum)
-            .boxed()
-            .collect(Collectors.toList());
+    IntStream indexStream = ThreadLocalRandom.current().ints(0, size).distinct().limit(sampleNum);
     Set<String> allMeasurement =
         measurementsList.stream().flatMap(List::stream).collect(Collectors.toSet());
-    for (int i = 0; i < sampleNum; i++) {
-      int index = indexList.get(i);
+    PrimitiveIterator.OfInt iterator = indexStream.iterator();
+    while (iterator.hasNext()) {
+      int index = iterator.next();
       if ((double) measurementsList.get(index).size() / allMeasurement.size() < CONVERT_THRESHOLD) {
         return false;
       }
