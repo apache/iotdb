@@ -1078,7 +1078,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           : new TPushPipeMetaResp()
               .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (Exception e) {
-      LOGGER.error("Error occurred when pushing multi pipe meta", e);
+      LOGGER.warn("Error occurred when pushing multi pipe meta", e);
       return new TPushPipeMetaResp()
           .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
           .setExceptionMessages(exceptionMessages);
@@ -1102,7 +1102,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()))
               .setExceptionMessages(Collections.singletonList(exceptionMessage));
     } catch (Exception e) {
-      LOGGER.error("Error occurred when pushing topic meta", e);
+      LOGGER.warn("Error occurred when pushing topic meta", e);
       return new TPushTopicMetaResp()
           .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()));
     }
@@ -1176,7 +1176,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           : new TPushTopicMetaResp()
               .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (Exception e) {
-      LOGGER.error("Error occurred when pushing multi topic meta", e);
+      LOGGER.warn("Error occurred when pushing multi topic meta", e);
       return new TPushTopicMetaResp()
           .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()))
           .setExceptionMessages(exceptionMessages);
@@ -1200,7 +1200,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .setStatus(new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode()))
               .setExceptionMessages(Collections.singletonList(exceptionMessage));
     } catch (Exception e) {
-      LOGGER.error("Error occurred when pushing consumer group meta", e);
+      LOGGER.warn("Error occurred when pushing consumer group meta", e);
       return new TPushConsumerGroupMetaResp()
           .setStatus(new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode()));
     }

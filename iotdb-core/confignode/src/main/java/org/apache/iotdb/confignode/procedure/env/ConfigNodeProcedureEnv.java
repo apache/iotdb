@@ -710,7 +710,7 @@ public class ConfigNodeProcedureEnv {
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
-            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2);
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
     return clientHandler.getResponseMap();
   }
 
@@ -726,7 +726,7 @@ public class ConfigNodeProcedureEnv {
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
-            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2);
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
     return clientHandler.getResponseMap();
   }
 
@@ -743,7 +743,7 @@ public class ConfigNodeProcedureEnv {
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
-            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2);
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
     return clientHandler.getResponseMap();
   }
 
@@ -759,7 +759,7 @@ public class ConfigNodeProcedureEnv {
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
-            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2);
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
     return clientHandler.getResponseMap();
   }
 
@@ -821,7 +821,7 @@ public class ConfigNodeProcedureEnv {
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
-            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2);
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
     return clientHandler.getResponseMap();
   }
 
@@ -837,7 +837,7 @@ public class ConfigNodeProcedureEnv {
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
-            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2);
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
     return clientHandler.getResponseMap();
   }
 

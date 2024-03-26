@@ -56,10 +56,13 @@ public class SubscriptionCoordinator {
   private final PipeTaskCoordinatorLock coordinatorLock;
   private AtomicReference<SubscriptionInfo> subscriptionInfoHolder;
 
+  private final SubscriptionMetaSyncer subscriptionMetaSyncer;
+
   public SubscriptionCoordinator(ConfigManager configManager, SubscriptionInfo subscriptionInfo) {
     this.configManager = configManager;
     this.subscriptionInfo = subscriptionInfo;
     this.coordinatorLock = new PipeTaskCoordinatorLock();
+    this.subscriptionMetaSyncer = new SubscriptionMetaSyncer(configManager);
   }
 
   public SubscriptionInfo getSubscriptionInfo() {
@@ -95,6 +98,16 @@ public class SubscriptionCoordinator {
 
   public boolean isLocked() {
     return coordinatorLock.isLocked();
+  }
+
+  /////////////////////////////// Meta sync ///////////////////////////////
+
+  public void startSubscriptionMetaSync() {
+    subscriptionMetaSyncer.start();
+  }
+
+  public void stopSubscriptionMetaSync() {
+    subscriptionMetaSyncer.stop();
   }
 
   public boolean canSkipNextSync() {

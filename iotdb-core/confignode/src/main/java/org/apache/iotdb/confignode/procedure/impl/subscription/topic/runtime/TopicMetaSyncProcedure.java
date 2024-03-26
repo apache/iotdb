@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.topic.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
@@ -30,7 +31,6 @@ import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -103,7 +103,7 @@ public class TopicMetaSyncProcedure extends AbstractOperateSubscriptionProcedure
       response.setMessage(e.getMessage());
     }
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(response.getMessage());
+      throw new SubscriptionException(response.getMessage());
     }
   }
 
@@ -113,7 +113,7 @@ public class TopicMetaSyncProcedure extends AbstractOperateSubscriptionProcedure
 
     Map<Integer, TPushTopicMetaResp> respMap = pushTopicMetaToDataNodes(env);
     if (pushTopicMetaHasException(respMap)) {
-      throw new PipeException(
+      throw new SubscriptionException(
           String.format("Failed to push topic meta to dataNodes, details: %s", respMap));
     }
   }
@@ -147,9 +147,6 @@ public class TopicMetaSyncProcedure extends AbstractOperateSubscriptionProcedure
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
     return o instanceof TopicMetaSyncProcedure;
   }
 

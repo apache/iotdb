@@ -53,8 +53,7 @@ public class SubscriptionMetaSyncer {
 
   // This variable is used to record whether the last sync operation was successful. If successful,
   // before the next sync operation, it can be determined based on SubscriptionInfoVersion whether
-  // the
-  // metadata in DN and the latest metadata in CN have been synchronized, thereby skipping
+  // the metadata in DN and the latest metadata in CN have been synchronized, thereby skipping
   // unnecessary sync operations.
   private boolean isLastSubscriptionSyncSuccessful = false;
 
