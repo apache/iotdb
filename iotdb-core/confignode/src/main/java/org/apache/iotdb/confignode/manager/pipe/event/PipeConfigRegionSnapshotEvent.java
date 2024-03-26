@@ -218,4 +218,15 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
                 ConfigPhysicalPlanType.convertToConfigPhysicalPlanType(Short.parseShort(typeValue)))
         .collect(Collectors.toSet());
   }
+
+  /////////////////////////////// Object ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return String.format(
+            "PipeConfigRegionSnapshotEvent{snapshotPath=%s, templateFilePath=%s, fileType=%s}",
+            snapshotPath, templateFilePath, fileType)
+        + " - "
+        + super.toString();
+  }
 }

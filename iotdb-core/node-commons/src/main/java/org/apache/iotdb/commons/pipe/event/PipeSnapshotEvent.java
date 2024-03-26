@@ -69,4 +69,15 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
         ",",
         transferredTypes.stream().map(type -> Short.toString(type)).collect(Collectors.toSet()));
   }
+
+  /////////////////////////////// Object ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return String.format(
+            "PipeSnapshotEvent{progressIndex=%s, transferredTypes=%s}",
+            progressIndex, transferredTypes)
+        + " - "
+        + super.toString();
+  }
 }

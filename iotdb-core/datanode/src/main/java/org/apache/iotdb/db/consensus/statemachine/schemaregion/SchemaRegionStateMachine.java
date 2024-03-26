@@ -89,34 +89,11 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public boolean takeSnapshot(File snapshotDir) {
-    if (schemaRegion.createSnapshot(snapshotDir)) {
-      Pair<Path, Path> snapshotPaths =
-          SchemaRegionSnapshotParser.getSnapshotPaths(
-              Utils.fromConsensusGroupIdToRaftGroupId(schemaRegion.getSchemaRegionId())
-                  .getUuid()
-                  .toString(),
-              true);
-      SchemaRegionListeningQueue listener =
-          PipeAgent.runtime().schemaListener(schemaRegion.getSchemaRegionId());
-      if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.getLeft())) {
-        logger.error(
-            "Schema Region Listening Queue Listen to snapshot failed, the historical data may not be transferred. snapshotPaths:{}",
-            snapshotPaths);
-
-        // Do not affect the normal operation of the state machine when pipe
-        // snapshot listening failure is encountered
-        listener.createSnapshot(snapshotDir);
-        return true;
-      }
-      listener.tryListenToSnapshot(
-          snapshotPaths.getLeft().toString(),
-          // Transfer tLogSnapshot iff it exists and is non-empty
-          Objects.nonNull(snapshotPaths.getRight())
-                  && snapshotPaths.getRight().toFile().length() > 0
-              ? snapshotPaths.getRight().toString()
-              : null,
-          schemaRegion.getDatabaseFullPath());
-      listener.createSnapshot(snapshotDir);
+    if (schemaRegion.createSnapshot(snapshotDir)
+        && PipeAgent.runtime()
+            .schemaListener(schemaRegion.getSchemaRegionId())
+            .createSnapshot(snapshotDir)) {
+      listen2Snapshot4PipeListener();
       return true;
     }
     return false;
@@ -128,6 +105,33 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     PipeAgent.runtime()
         .schemaListener(schemaRegion.getSchemaRegionId())
         .loadSnapshot(latestSnapshotRootDir);
+    // We recompute the snapshot for pipe listener when loading snapshot
+    // to recover the newest snapshot in cache
+    listen2Snapshot4PipeListener();
+  }
+
+  public void listen2Snapshot4PipeListener() {
+    Pair<Path, Path> snapshotPaths =
+        SchemaRegionSnapshotParser.getSnapshotPaths(
+            Utils.fromConsensusGroupIdToRaftGroupId(schemaRegion.getSchemaRegionId())
+                .getUuid()
+                .toString(),
+            true);
+    SchemaRegionListeningQueue listener =
+        PipeAgent.runtime().schemaListener(schemaRegion.getSchemaRegionId());
+    if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.getLeft())) {
+      logger.error(
+          "Schema Region Listening Queue Listen to snapshot failed, the historical data may not be transferred. snapshotPaths:{}",
+          snapshotPaths);
+      return;
+    }
+    listener.tryListenToSnapshot(
+        snapshotPaths.getLeft().toString(),
+        // Transfer tLogSnapshot iff it exists and is non-empty
+        Objects.nonNull(snapshotPaths.getRight()) && snapshotPaths.getRight().toFile().length() > 0
+            ? snapshotPaths.getRight().toString()
+            : null,
+        schemaRegion.getDatabaseFullPath());
   }
 
   @Override

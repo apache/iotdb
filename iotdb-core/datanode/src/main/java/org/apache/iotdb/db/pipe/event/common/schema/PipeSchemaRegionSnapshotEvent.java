@@ -191,4 +191,15 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
             Arrays.stream(sealTypes.split(",")).map(Short::valueOf).collect(Collectors.toSet()));
     return new HashSet<>(statementTypeMap.values());
   }
+
+  /////////////////////////////// Object ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return String.format(
+            "PipeSchemaRegionSnapshotEvent{mTreeSnapshotPath=%s, tagLogSnapshotPath=%s, databaseName=%s}",
+            mTreeSnapshotPath, tagLogSnapshotPath, databaseName)
+        + " - "
+        + super.toString();
+  }
 }

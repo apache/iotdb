@@ -214,7 +214,17 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
-    executor.loadSnapshot(latestSnapshotRootDir);
+    try {
+      executor.loadSnapshot(latestSnapshotRootDir);
+      // We recompute the snapshot for pipe listener when loading snapshot
+      // to recover the newest snapshot in cache
+      PipeConfigNodeAgent.runtime()
+          .listener()
+          .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
+    } catch (IOException e) {
+      LOGGER.error(
+          "Config Region Listening Queue Listen to snapshot failed when startup, snapshot will be tried again when starting schema transferring pipes");
+    }
   }
 
   @Override
