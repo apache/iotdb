@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.manual;
+package org.apache.iotdb.pipe.it.autocreate;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -45,7 +45,7 @@ import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeIdempotentIT extends AbstractPipeDualManualIT {
+public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
   @Override
   @Before
   public void setUp() {
@@ -61,18 +61,20 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        // Limit the schemaRegion number to 1 to guarantee the after sql executed on the same region
+        // of the tested idempotent sql.
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
-    // Limit the schemaRegion number to 1 to guarantee the after sql executed on the same region
-    // of the tested idempotent sql.
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
   }

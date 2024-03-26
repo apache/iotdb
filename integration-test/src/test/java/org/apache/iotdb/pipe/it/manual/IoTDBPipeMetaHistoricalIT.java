@@ -22,13 +22,16 @@ package org.apache.iotdb.pipe.it.manual;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -42,6 +45,36 @@ import java.util.Map;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
 public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
+  @Override
+  @Before
+  public void setUp() {
+    MultiEnvFactory.createEnv(2);
+    senderEnv = MultiEnvFactory.getEnv(0);
+    receiverEnv = MultiEnvFactory.getEnv(1);
+
+    // TODO: delete ratis configurations
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(false)
+        .setTimestampPrecision("ms")
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(false)
+        .setTimestampPrecision("ms")
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setSchemaReplicationFactor(3)
+        .setDataReplicationFactor(2);
+
+    senderEnv.initClusterEnvironment();
+    receiverEnv.initClusterEnvironment(3, 3);
+  }
+
   @Test
   public void testPureSchemaInclusion() throws Exception {
     DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -67,7 +100,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
               "set schema template t1 to root.ln.wf01",
               "create timeseries using schema template on root.ln.wf01.wt01",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
-              "insert into root.ln.wf01.wt01(time, temperature, status) values (0, 23, true)"))) {
+              // Insert large timestamp to avoid deletion by ttl
+              "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
         return;
       }
 
@@ -102,12 +136,14 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
           receiverEnv,
           "show databases",
           "Database,TTL,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          // Receiver's SchemaReplicationFactor/DataReplicationFactor shall be 3/2 regardless of the
+          // sender
           Collections.singleton("root.ln,null,3,2,604800000,"));
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from root.**",
-          "Time,root.ln.wf01.temperature,root.ln.wf01.status,",
-          Collections.singleton("0,23.0,true,"));
+          "Time,root.ln.wf01.wt01.temperature,root.ln.wf01.wt01.status,",
+          Collections.singleton("1800000000000,23.0,true,"));
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv, "create timeseries using schema template on root.ln.wf01.wt02")) {
@@ -143,8 +179,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
               "create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
               "set schema template t1 to root.ln.wf01",
               "create timeseries using schema template on root.ln.wf01.wt01",
-              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
-              "insert into root.ln.wf01.wt01(time, temperature, status) values (0, 23, true)"))) {
+              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN", // Insert large timestamp to avoid deletion by ttl
+              "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
         return;
       }
 
