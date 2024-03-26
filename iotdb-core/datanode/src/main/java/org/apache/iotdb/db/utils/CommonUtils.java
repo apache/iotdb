@@ -56,10 +56,6 @@ public class CommonUtils {
 
   private CommonUtils() {}
 
-  public static void main(String[] args) throws QueryProcessException {
-    parseValue(TSDataType.BOOLEAN, "1");
-  }
-
   public static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
     try {
       if ("null".equals(value) || "NULL".equals(value)) {
