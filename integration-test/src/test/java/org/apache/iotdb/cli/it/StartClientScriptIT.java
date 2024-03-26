@@ -117,6 +117,8 @@ public class StartClientScriptIT extends AbstractScript {
 
   @Override
   protected void testOnUnix() throws IOException {
+    final String homePath =
+        libPath.substring(0, libPath.lastIndexOf(File.separator + "lib" + File.separator + "*"));
     final String[] output = {
       "Error: Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."
     };
@@ -132,7 +134,7 @@ public class StartClientScriptIT extends AbstractScript {
             "root",
             "-pw",
             "root");
-    builder.environment().put("CLASSPATH", libPath);
+    builder.environment().put("IOTDB_HOME", homePath);
     testOutput(builder, output, 1);
 
     final String[] output2 = {"Msg: The statement is executed successfully."};
@@ -146,7 +148,7 @@ public class StartClientScriptIT extends AbstractScript {
             port,
             "-e",
             "\"flush\"");
-    builder2.environment().put("CLASSPATH", libPath);
+    builder.environment().put("IOTDB_HOME", homePath);
     testOutput(builder2, output2, 0);
   }
 }
