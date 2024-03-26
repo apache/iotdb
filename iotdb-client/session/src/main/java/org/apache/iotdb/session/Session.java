@@ -2038,7 +2038,39 @@ public class Session implements ISession {
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
-    convertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, false);
+    if (judgeConvert(measurementsList)) {
+      convertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, false);
+      return;
+    }
+    TSInsertRecordsOfOneDeviceReq request;
+    try {
+      request =
+          filterAndGenTSInsertRecordsOfOneDeviceReq(
+              deviceId, times, measurementsList, typesList, valuesList, haveSorted, false);
+    } catch (NoValidValueException e) {
+      logger.warn(ALL_VALUES_ARE_NULL_WITH_TIME, deviceId, times, measurementsList);
+      return;
+    }
+    try {
+      getSessionConnection(deviceId).insertRecordsOfOneDevice(request);
+    } catch (RedirectException e) {
+      handleRedirection(deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableRedirection
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(deviceId) != null) {
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(deviceId));
+        deviceIdToEndpoint.remove(deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertRecordsOfOneDevice(request);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
+    }
   }
 
   /**
@@ -2157,7 +2189,39 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "times, subMeasurementsList and valuesList's size should be equal");
     }
-    convertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, true);
+    if (judgeConvert(measurementsList)) {
+      convertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, true);
+      return;
+    }
+    TSInsertRecordsOfOneDeviceReq request;
+    try {
+      request =
+          filterAndGenTSInsertRecordsOfOneDeviceReq(
+              deviceId, times, measurementsList, typesList, valuesList, haveSorted, true);
+    } catch (NoValidValueException e) {
+      logger.warn(ALL_VALUES_ARE_NULL_WITH_TIME, deviceId, times, measurementsList);
+      return;
+    }
+    try {
+      getSessionConnection(deviceId).insertRecordsOfOneDevice(request);
+    } catch (RedirectException e) {
+      handleRedirection(deviceId, e.getEndPoint());
+    } catch (IoTDBConnectionException e) {
+      if (enableRedirection
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(deviceId) != null) {
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(deviceId));
+        deviceIdToEndpoint.remove(deviceId);
+
+        // reconnect with default connection
+        try {
+          defaultSessionConnection.insertRecordsOfOneDevice(request);
+        } catch (RedirectException ignored) {
+        }
+      } else {
+        throw e;
+      }
+    }
   }
 
   /**
@@ -2713,14 +2777,12 @@ public class Session implements ISession {
     request.addToSizeList(tablet.rowSize);
   }
 
-  // sample some records and judge weather need to add too many null values to convert to tablet.
-  public boolean judgeConvert(List<String> deviceIds, List<List<String>> measurementsList) {
-    int size = deviceIds.size();
+  public boolean judgeConvert(List<List<String>> measurementsList) {
+    int size = measurementsList.size();
     int sampleNum = (int) (size * SAMPLE_PROPORTION);
     if (sampleNum < MIN_SAMPLE_SIZE) {
       return false;
     }
-    Map<String, Set<String>> measurementMap = new HashMap<>(sampleNum + 1, 1);
     List<Integer> indexList =
         ThreadLocalRandom.current()
             .ints(0, size)
@@ -2728,15 +2790,10 @@ public class Session implements ISession {
             .limit(sampleNum)
             .boxed()
             .collect(Collectors.toList());
+    Set<String> allMeasurement =
+        measurementsList.stream().flatMap(List::stream).collect(Collectors.toSet());
     for (int i = 0; i < sampleNum; i++) {
       int index = indexList.get(i);
-      Set<String> allMeasurement =
-          measurementMap.computeIfAbsent(deviceIds.get(index), k -> new HashSet<>());
-      allMeasurement.addAll(measurementsList.get(index));
-    }
-    for (int i = 0; i < sampleNum; i++) {
-      int index = indexList.get(i);
-      Set<String> allMeasurement = measurementMap.get(deviceIds.get(index));
       if ((double) measurementsList.get(index).size() / allMeasurement.size() < CONVERT_THRESHOLD) {
         return false;
       }
@@ -2785,6 +2842,37 @@ public class Session implements ISession {
     } else {
       insertTablet(tablet);
     }
+  }
+
+  // sample some records and judge weather need to add too many null values to convert to tablet.
+  public boolean judgeConvert(List<String> deviceIds, List<List<String>> measurementsList) {
+    int size = deviceIds.size();
+    int sampleNum = (int) (size * SAMPLE_PROPORTION);
+    if (sampleNum < MIN_SAMPLE_SIZE) {
+      return false;
+    }
+    Map<String, Set<String>> measurementMap = new HashMap<>(sampleNum + 1, 1);
+    List<Integer> indexList =
+        ThreadLocalRandom.current()
+            .ints(0, size)
+            .distinct()
+            .limit(sampleNum)
+            .boxed()
+            .collect(Collectors.toList());
+    for (int i = 0; i < sampleNum; i++) {
+      int index = indexList.get(i);
+      Set<String> allMeasurement =
+          measurementMap.computeIfAbsent(deviceIds.get(index), k -> new HashSet<>());
+      allMeasurement.addAll(measurementsList.get(index));
+    }
+    for (int i = 0; i < sampleNum; i++) {
+      int index = indexList.get(i);
+      Set<String> allMeasurement = measurementMap.get(deviceIds.get(index));
+      if ((double) measurementsList.get(index).size() / allMeasurement.size() < CONVERT_THRESHOLD) {
+        return false;
+      }
+    }
+    return true;
   }
 
   // convert records of multiple devices to tablets and insert
