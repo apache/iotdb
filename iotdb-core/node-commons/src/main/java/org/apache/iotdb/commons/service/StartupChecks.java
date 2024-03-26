@@ -88,7 +88,7 @@ public abstract class StartupChecks {
       return;
     }
     logger.error(
-        "Perhaps you are using GraalVM, which is strongly not recommended. Please check your JVM version.");
+        "Perhaps you are using GraalVM, which is strongly not recommended. Using GraalVM may cause strange problems after the system has been running for a while. Please check your JVM version.");
   }
 
   protected void envCheck() {
