@@ -189,11 +189,7 @@ public class RegionMigrateService implements IService {
   }
 
   private boolean addToTaskResultMap(long taskId) {
-    if (taskResultMap.containsKey(taskId)) {
-      return false;
-    }
-    taskResultMap.putIfAbsent(taskId, unfinishedResult);
-    return true;
+    return taskResultMap.putIfAbsent(taskId, unfinishedResult) == null;
   }
 
   @Override
