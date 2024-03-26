@@ -411,19 +411,19 @@ public class IoTConsensus implements IConsensus {
     } else if (!impl.isActive()) {
       throw new ConsensusException(
           "peer is inactive and not ready to receive reset configuration request.");
-    } else {
-      for (Peer peer : impl.getConfiguration()) {
-        if (!peers.contains(peer)) {
-          try {
-            removeRemotePeer(groupId, peer);
-          } catch (ConsensusException e) {
-            logger.error("Failed to remove peer {} from group {}", peer, groupId, e);
-            throw e;
-          }
+    }
+
+    for (Peer peer : impl.getConfiguration()) {
+      if (!peers.contains(peer)) {
+        try {
+          removeRemotePeer(groupId, peer);
+        } catch (ConsensusException e) {
+          logger.error("Failed to remove peer {} from group {}", peer, groupId, e);
+          throw e;
         }
       }
-      impl.resetConfiguration(peers);
     }
+    impl.resetConfiguration(peers);
   }
 
   public IoTConsensusServerImpl getImpl(ConsensusGroupId groupId) {
