@@ -269,15 +269,18 @@ public class BatchData {
 
   public void putBooleans(long[] times, boolean[] values) {
     assert times.length == values.length;
+    putBooleans(times, values, 0, times.length);
+  }
 
+  public void putBooleans(long[] times, boolean[] values, int from, int to) {
     // Indicate for progress of data consuming
-    int start = 0;
-    int insertNum = times.length;
+    int start = from;
+    int insertSize = to - from;
     // Dynamic expansion phase for single array
     if (writeCurListIndex == 0) {
       // writeCurArrayIndex points to next insertion position
       // i.e. the element count of current array
-      int total = writeCurArrayIndex + insertNum;
+      int total = writeCurArrayIndex + insertSize;
       int realThreshold = nextPowerOfTwo(CAPACITY_THRESHOLD);
       if (total <= realThreshold) {
         // Direct copy columns to the single array
@@ -286,28 +289,28 @@ public class BatchData {
         if (newCapacity <= capacity) {
           // Merge time columns
           long[] targetTimes = timeRet.get(0);
-          System.arraycopy(times, 0, targetTimes, writeCurArrayIndex, times.length);
+          System.arraycopy(times, from, targetTimes, writeCurArrayIndex, insertSize);
 
           // Merge value columns
           boolean[] targetValues = booleanRet.get(0);
-          System.arraycopy(values, 0, targetValues, writeCurArrayIndex, values.length);
+          System.arraycopy(values, from, targetValues, writeCurArrayIndex, insertSize);
         } else {
           capacity = newCapacity;
 
           long[] oldTimes = timeRet.get(0);
           long[] newTimes = Arrays.copyOf(oldTimes, capacity);
-          System.arraycopy(times, 0, newTimes, writeCurArrayIndex, times.length);
+          System.arraycopy(times, from, newTimes, writeCurArrayIndex, insertSize);
           timeRet.set(0, newTimes);
 
           boolean[] oldValues = booleanRet.get(0);
           boolean[] newValues = Arrays.copyOf(oldValues, capacity);
-          System.arraycopy(values, 0, newValues, writeCurArrayIndex, values.length);
+          System.arraycopy(values, from, newValues, writeCurArrayIndex, insertSize);
           booleanRet.set(0, newValues);
         }
 
         // Update relevant indexes
-        writeCurArrayIndex += insertNum;
-        count += insertNum;
+        writeCurArrayIndex += insertSize;
+        count += insertSize;
 
         return;
       } else {
@@ -318,13 +321,13 @@ public class BatchData {
         // Merge time columns
         long[] oldTimes = timeRet.get(0);
         long[] newTimes = Arrays.copyOf(oldTimes, capacity);
-        System.arraycopy(times, 0, newTimes, writeCurArrayIndex, retained);
+        System.arraycopy(times, from, newTimes, writeCurArrayIndex, retained);
         timeRet.set(0, newTimes);
 
         // Merge value columns
         boolean[] oldValues = booleanRet.get(0);
         boolean[] newValues = Arrays.copyOf(oldValues, capacity);
-        System.arraycopy(values, 0, newValues, writeCurArrayIndex, retained);
+        System.arraycopy(values, from, newValues, writeCurArrayIndex, retained);
         booleanRet.set(0, newValues);
 
         // Create new columns
@@ -335,17 +338,17 @@ public class BatchData {
         writeCurArrayIndex = 0;
         writeCurListIndex++;
         count += retained;
-        insertNum -= retained;
+        insertSize -= retained;
 
         // Continue to insert elements into new array
         // Use index to avoid copy
-        start = retained;
+        start = from + retained;
       }
     }
 
     // Fill the whole array
-    while (insertNum > 0) {
-      int consumed = Math.min(insertNum, capacity - writeCurArrayIndex);
+    while (insertSize > 0) {
+      int consumed = Math.min(insertSize, capacity - writeCurArrayIndex);
       consumed = start + consumed > times.length? times.length - start : consumed;
 
       // Insert a whole time array
@@ -356,7 +359,7 @@ public class BatchData {
       boolean[] targetValues = booleanRet.get(writeCurListIndex);
       System.arraycopy(values, start, targetValues, writeCurArrayIndex, consumed);
 
-      if (insertNum >= capacity) {
+      if (insertSize >= capacity) {
         // Create new columns
         timeRet.add(new long[capacity]);
         booleanRet.add(new boolean[capacity]);
@@ -370,7 +373,7 @@ public class BatchData {
       }
 
       // Update indexes for both cases
-      insertNum -= consumed;
+      insertSize -= consumed;
       start += consumed;
       count += consumed;
     }
@@ -413,15 +416,18 @@ public class BatchData {
 
   public void putInts(long[] times, int[] values) {
     assert times.length == values.length;
+    putInts(times, values, 0, times.length);
+  }
 
+  public void putInts(long[] times, int[] values, int from, int to) {
     // Indicate for progress of data consuming
-    int start = 0;
-    int insertNum = times.length;
+    int start = from;
+    int insertSize = to - from;
     // Dynamic expansion phase for single array
     if (writeCurListIndex == 0) {
       // writeCurArrayIndex points to next insertion position
       // i.e. the element count of current array
-      int total = writeCurArrayIndex + insertNum;
+      int total = writeCurArrayIndex + insertSize;
       int realThreshold = nextPowerOfTwo(CAPACITY_THRESHOLD);
       if (total <= realThreshold) {
         // Direct copy columns to the single array
@@ -430,28 +436,28 @@ public class BatchData {
         if (newCapacity <= capacity) {
           // Merge time columns
           long[] targetTimes = timeRet.get(0);
-          System.arraycopy(times, 0, targetTimes, writeCurArrayIndex, times.length);
+          System.arraycopy(times, from, targetTimes, writeCurArrayIndex, insertSize);
 
           // Merge value columns
           int[] targetValues = intRet.get(0);
-          System.arraycopy(values, 0, targetValues, writeCurArrayIndex, values.length);
+          System.arraycopy(values, from, targetValues, writeCurArrayIndex, insertSize);
         } else {
           capacity = newCapacity;
 
           long[] oldTimes = timeRet.get(0);
           long[] newTimes = Arrays.copyOf(oldTimes, capacity);
-          System.arraycopy(times, 0, newTimes, writeCurArrayIndex, times.length);
+          System.arraycopy(times, from, newTimes, writeCurArrayIndex, insertSize);
           timeRet.set(0, newTimes);
 
           int[] oldValues = intRet.get(0);
           int[] newValues = Arrays.copyOf(oldValues, capacity);
-          System.arraycopy(values, 0, newValues, writeCurArrayIndex, values.length);
+          System.arraycopy(values, from, newValues, writeCurArrayIndex, insertSize);
           intRet.set(0, newValues);
         }
 
         // Update relevant indexes
-        writeCurArrayIndex += insertNum;
-        count += insertNum;
+        writeCurArrayIndex += insertSize;
+        count += insertSize;
 
         return;
       } else {
@@ -462,13 +468,13 @@ public class BatchData {
         // Merge time columns
         long[] oldTimes = timeRet.get(0);
         long[] newTimes = Arrays.copyOf(oldTimes, capacity);
-        System.arraycopy(times, 0, newTimes, writeCurArrayIndex, retained);
+        System.arraycopy(times, from, newTimes, writeCurArrayIndex, retained);
         timeRet.set(0, newTimes);
 
         // Merge value columns
         int[] oldValues = intRet.get(0);
         int[] newValues = Arrays.copyOf(oldValues, capacity);
-        System.arraycopy(values, 0, newValues, writeCurArrayIndex, retained);
+        System.arraycopy(values, from, newValues, writeCurArrayIndex, retained);
         intRet.set(0, newValues);
 
         // Create new columns
@@ -479,17 +485,17 @@ public class BatchData {
         writeCurArrayIndex = 0;
         writeCurListIndex++;
         count += retained;
-        insertNum -= retained;
+        insertSize -= retained;
 
         // Continue to insert elements into new array
         // Use index to avoid copy
-        start = retained;
+        start = from + retained;
       }
     }
 
     // Fill the whole array
-    while (insertNum > 0) {
-      int consumed = Math.min(insertNum, capacity - writeCurArrayIndex);
+    while (insertSize > 0) {
+      int consumed = Math.min(insertSize, capacity - writeCurArrayIndex);
       consumed = start + consumed > times.length? times.length - start : consumed;
 
       // Insert a whole time array
@@ -500,7 +506,7 @@ public class BatchData {
       int[] targetValues = intRet.get(writeCurListIndex);
       System.arraycopy(values, start, targetValues, writeCurArrayIndex, consumed);
 
-      if (insertNum >= capacity) {
+      if (insertSize >= capacity) {
         // Create new columns
         timeRet.add(new long[capacity]);
         intRet.add(new int[capacity]);
@@ -514,7 +520,7 @@ public class BatchData {
       }
 
       // Update indexes for both cases
-      insertNum -= consumed;
+      insertSize -= consumed;
       start += consumed;
       count += consumed;
     }
@@ -557,15 +563,20 @@ public class BatchData {
 
   public void putLongs(long[] times, long[] values) {
     assert times.length == values.length;
+    putLongs(times, values, 0, times.length);
+  }
+
+  public void putLongs(long[] times, long[] values, int from, int to) {
+    assert times.length == values.length;
 
     // Indicate for progress of data consuming
-    int start = 0;
-    int insertNum = times.length;
+    int start = from;
+    int insertSize = to - from;
     // Dynamic expansion phase for single array
     if (writeCurListIndex == 0) {
       // writeCurArrayIndex points to next insertion position
       // i.e. the element count of current array
-      int total = writeCurArrayIndex + insertNum;
+      int total = writeCurArrayIndex + insertSize;
       int realThreshold = nextPowerOfTwo(CAPACITY_THRESHOLD);
       if (total <= realThreshold) {
         // Direct copy columns to the single array
@@ -574,28 +585,28 @@ public class BatchData {
         if (newCapacity <= capacity) {
           // Merge time columns
           long[] targetTimes = timeRet.get(0);
-          System.arraycopy(times, 0, targetTimes, writeCurArrayIndex, times.length);
+          System.arraycopy(times, from, targetTimes, writeCurArrayIndex, insertSize);
 
           // Merge value columns
           long[] targetValues = longRet.get(0);
-          System.arraycopy(values, 0, targetValues, writeCurArrayIndex, values.length);
+          System.arraycopy(values, from, targetValues, writeCurArrayIndex, insertSize);
         } else {
           capacity = newCapacity;
 
           long[] oldTimes = timeRet.get(0);
           long[] newTimes = Arrays.copyOf(oldTimes, capacity);
-          System.arraycopy(times, 0, newTimes, writeCurArrayIndex, times.length);
+          System.arraycopy(times, from, newTimes, writeCurArrayIndex, insertSize);
           timeRet.set(0, newTimes);
 
           long[] oldValues = longRet.get(0);
           long[] newValues = Arrays.copyOf(oldValues, capacity);
-          System.arraycopy(values, 0, newValues, writeCurArrayIndex, values.length);
+          System.arraycopy(values, from, newValues, writeCurArrayIndex, insertSize);
           longRet.set(0, newValues);
         }
 
         // Update relevant indexes
-        writeCurArrayIndex += insertNum;
-        count += insertNum;
+        writeCurArrayIndex += insertSize;
+        count += insertSize;
 
         return;
       } else {
@@ -606,13 +617,13 @@ public class BatchData {
         // Merge time columns
         long[] oldTimes = timeRet.get(0);
         long[] newTimes = Arrays.copyOf(oldTimes, capacity);
-        System.arraycopy(times, 0, newTimes, writeCurArrayIndex, retained);
+        System.arraycopy(times, from, newTimes, writeCurArrayIndex, retained);
         timeRet.set(0, newTimes);
 
         // Merge value columns
         long[] oldValues = longRet.get(0);
         long[] newValues = Arrays.copyOf(oldValues, capacity);
-        System.arraycopy(values, 0, newValues, writeCurArrayIndex, retained);
+        System.arraycopy(values, from, newValues, writeCurArrayIndex, retained);
         longRet.set(0, newValues);
 
         // Create new columns
@@ -623,17 +634,17 @@ public class BatchData {
         writeCurArrayIndex = 0;
         writeCurListIndex++;
         count += retained;
-        insertNum -= retained;
+        insertSize -= retained;
 
         // Continue to insert elements into new array
         // Use index to avoid copy
-        start = retained;
+        start = from + retained;
       }
     }
 
     // Fill the whole array
-    while (insertNum > 0) {
-      int consumed = Math.min(insertNum, capacity - writeCurArrayIndex);
+    while (insertSize > 0) {
+      int consumed = Math.min(insertSize, capacity - writeCurArrayIndex);
       consumed = start + consumed > times.length? times.length - start : consumed;
 
       // Insert a whole time array
@@ -644,7 +655,7 @@ public class BatchData {
       long[] targetValues = longRet.get(writeCurListIndex);
       System.arraycopy(values, start, targetValues, writeCurArrayIndex, consumed);
 
-      if (insertNum >= capacity) {
+      if (insertSize >= capacity) {
         // Create new columns
         timeRet.add(new long[capacity]);
         longRet.add(new long[capacity]);
@@ -658,7 +669,7 @@ public class BatchData {
       }
 
       // Update indexes for both cases
-      insertNum -= consumed;
+      insertSize -= consumed;
       start += consumed;
       count += consumed;
     }
@@ -701,15 +712,18 @@ public class BatchData {
 
   public void putFloats(long[] times, float[] values) {
     assert times.length == values.length;
+    putFloats(times, values, 0, times.length);
+  }
 
+  public void putFloats(long[] times, float[] values, int from, int to) {
     // Indicate for progress of data consuming
-    int start = 0;
-    int insertNum = times.length;
+    int start = from;
+    int insertSize = to - from;
     // Dynamic expansion phase for single array
     if (writeCurListIndex == 0) {
       // writeCurArrayIndex points to next insertion position
       // i.e. the element count of current array
-      int total = writeCurArrayIndex + insertNum;
+      int total = writeCurArrayIndex + insertSize;
       int realThreshold = nextPowerOfTwo(CAPACITY_THRESHOLD);
       if (total <= realThreshold) {
         // Direct copy columns to the single array
@@ -718,28 +732,28 @@ public class BatchData {
         if (newCapacity <= capacity) {
           // Merge time columns
           long[] targetTimes = timeRet.get(0);
-          System.arraycopy(times, 0, targetTimes, writeCurArrayIndex, times.length);
+          System.arraycopy(times, from, targetTimes, writeCurArrayIndex, insertSize);
 
           // Merge value columns
           float[] targetValues = floatRet.get(0);
-          System.arraycopy(values, 0, targetValues, writeCurArrayIndex, values.length);
+          System.arraycopy(values, from, targetValues, writeCurArrayIndex, insertSize);
         } else {
           capacity = newCapacity;
 
           long[] oldTimes = timeRet.get(0);
           long[] newTimes = Arrays.copyOf(oldTimes, capacity);
-          System.arraycopy(times, 0, newTimes, writeCurArrayIndex, times.length);
+          System.arraycopy(times, from, newTimes, writeCurArrayIndex, insertSize);
           timeRet.set(0, newTimes);
 
           float[] oldValues = floatRet.get(0);
           float[] newValues = Arrays.copyOf(oldValues, capacity);
-          System.arraycopy(values, 0, newValues, writeCurArrayIndex, values.length);
+          System.arraycopy(values, from, newValues, writeCurArrayIndex, insertSize);
           floatRet.set(0, newValues);
         }
 
         // Update relevant indexes
-        writeCurArrayIndex += insertNum;
-        count += insertNum;
+        writeCurArrayIndex += insertSize;
+        count += insertSize;
 
         return;
       } else {
@@ -750,13 +764,13 @@ public class BatchData {
         // Merge time columns
         long[] oldTimes = timeRet.get(0);
         long[] newTimes = Arrays.copyOf(oldTimes, capacity);
-        System.arraycopy(times, 0, newTimes, writeCurArrayIndex, retained);
+        System.arraycopy(times, from, newTimes, writeCurArrayIndex, retained);
         timeRet.set(0, newTimes);
 
         // Merge value columns
         float[] oldValues = floatRet.get(0);
         float[] newValues = Arrays.copyOf(oldValues, capacity);
-        System.arraycopy(values, 0, newValues, writeCurArrayIndex, retained);
+        System.arraycopy(values, from, newValues, writeCurArrayIndex, retained);
         floatRet.set(0, newValues);
 
         // Create new columns
@@ -767,17 +781,17 @@ public class BatchData {
         writeCurArrayIndex = 0;
         writeCurListIndex++;
         count += retained;
-        insertNum -= retained;
+        insertSize -= retained;
 
         // Continue to insert elements into new array
         // Use index to avoid copy
-        start = retained;
+        start = from + retained;
       }
     }
 
     // Fill the whole array
-    while (insertNum > 0) {
-      int consumed = Math.min(insertNum, capacity - writeCurArrayIndex);
+    while (insertSize > 0) {
+      int consumed = Math.min(insertSize, capacity - writeCurArrayIndex);
       consumed = start + consumed > times.length? times.length - start : consumed;
 
       // Insert a whole time array
@@ -788,7 +802,7 @@ public class BatchData {
       float[] targetValues = floatRet.get(writeCurListIndex);
       System.arraycopy(values, start, targetValues, writeCurArrayIndex, consumed);
 
-      if (insertNum >= capacity) {
+      if (insertSize >= capacity) {
         // Create new columns
         timeRet.add(new long[capacity]);
         floatRet.add(new float[capacity]);
@@ -802,7 +816,7 @@ public class BatchData {
       }
 
       // Update indexes for both cases
-      insertNum -= consumed;
+      insertSize -= consumed;
       start += consumed;
       count += consumed;
     }
@@ -844,15 +858,20 @@ public class BatchData {
 
   public void putDoubles(long[] times, double[] values) {
     assert times.length == values.length;
+    putDoubles(times, values, 0, times.length);
+  }
+
+  public void putDoubles(long[] times, double[] values, int from, int to) {
+    assert times.length == values.length;
 
     // Indicate for progress of data consuming
-    int start = 0;
-    int insertNum = times.length;
+    int start = from;
+    int insertSize = to - from;
     // Dynamic expansion phase for single array
     if (writeCurListIndex == 0) {
       // writeCurArrayIndex points to next insertion position
       // i.e. the element count of current array
-      int total = writeCurArrayIndex + insertNum;
+      int total = writeCurArrayIndex + insertSize;
       int realThreshold = nextPowerOfTwo(CAPACITY_THRESHOLD);
       if (total <= realThreshold) {
         // Direct copy columns to the single array
@@ -861,28 +880,28 @@ public class BatchData {
         if (newCapacity <= capacity) {
           // Merge time columns
           long[] targetTimes = timeRet.get(0);
-          System.arraycopy(times, 0, targetTimes, writeCurArrayIndex, times.length);
+          System.arraycopy(times, from, targetTimes, writeCurArrayIndex, insertSize);
 
           // Merge value columns
           double[] targetValues = doubleRet.get(0);
-          System.arraycopy(values, 0, targetValues, writeCurArrayIndex, values.length);
+          System.arraycopy(values, from, targetValues, writeCurArrayIndex, insertSize);
         } else {
           capacity = newCapacity;
 
           long[] oldTimes = timeRet.get(0);
           long[] newTimes = Arrays.copyOf(oldTimes, capacity);
-          System.arraycopy(times, 0, newTimes, writeCurArrayIndex, times.length);
+          System.arraycopy(times, from, newTimes, writeCurArrayIndex, insertSize);
           timeRet.set(0, newTimes);
 
           double[] oldValues = doubleRet.get(0);
           double[] newValues = Arrays.copyOf(oldValues, capacity);
-          System.arraycopy(values, 0, newValues, writeCurArrayIndex, values.length);
+          System.arraycopy(values, from, newValues, writeCurArrayIndex, insertSize);
           doubleRet.set(0, newValues);
         }
 
         // Update relevant indexes
-        writeCurArrayIndex += insertNum;
-        count += insertNum;
+        writeCurArrayIndex += insertSize;
+        count += insertSize;
 
         return;
       } else {
@@ -893,13 +912,13 @@ public class BatchData {
         // Merge time columns
         long[] oldTimes = timeRet.get(0);
         long[] newTimes = Arrays.copyOf(oldTimes, capacity);
-        System.arraycopy(times, 0, newTimes, writeCurArrayIndex, retained);
+        System.arraycopy(times, from, newTimes, writeCurArrayIndex, retained);
         timeRet.set(0, newTimes);
 
         // Merge value columns
         double[] oldValues = doubleRet.get(0);
         double[] newValues = Arrays.copyOf(oldValues, capacity);
-        System.arraycopy(values, 0, newValues, writeCurArrayIndex, retained);
+        System.arraycopy(values, from, newValues, writeCurArrayIndex, retained);
         doubleRet.set(0, newValues);
 
         // Create new columns
@@ -910,17 +929,17 @@ public class BatchData {
         writeCurArrayIndex = 0;
         writeCurListIndex++;
         count += retained;
-        insertNum -= retained;
+        insertSize -= retained;
 
         // Continue to insert elements into new array
         // Use index to avoid copy
-        start = retained;
+        start = from + retained;
       }
     }
 
     // Fill the whole array
-    while (insertNum > 0) {
-      int consumed = Math.min(insertNum, capacity - writeCurArrayIndex);
+    while (insertSize > 0) {
+      int consumed = Math.min(insertSize, capacity - writeCurArrayIndex);
       consumed = start + consumed > times.length? times.length - start : consumed;
 
       // Insert a whole time array
@@ -931,7 +950,7 @@ public class BatchData {
       double[] targetValues = doubleRet.get(writeCurListIndex);
       System.arraycopy(values, start, targetValues, writeCurArrayIndex, consumed);
 
-      if (insertNum >= capacity) {
+      if (insertSize >= capacity) {
         // Create new columns
         timeRet.add(new long[capacity]);
         doubleRet.add(new double[capacity]);
@@ -945,7 +964,7 @@ public class BatchData {
       }
 
       // Update indexes for both cases
-      insertNum -= consumed;
+      insertSize -= consumed;
       start += consumed;
       count += consumed;
     }
@@ -988,15 +1007,20 @@ public class BatchData {
 
   public void putBinaries(long[] times, Binary[] values) {
     assert times.length == values.length;
+    putBinaries(times, values, 0, times.length);
+  }
+
+  public void putBinaries(long[] times, Binary[] values, int from, int to) {
+    assert times.length == values.length;
 
     // Indicate for progress of data consuming
-    int start = 0;
-    int insertNum = times.length;
+    int start = from;
+    int insertSize = to - from;
     // Dynamic expansion phase for single array
     if (writeCurListIndex == 0) {
       // writeCurArrayIndex points to next insertion position
       // i.e. the element count of current array
-      int total = writeCurArrayIndex + insertNum;
+      int total = writeCurArrayIndex + insertSize;
       int realThreshold = nextPowerOfTwo(CAPACITY_THRESHOLD);
       if (total <= realThreshold) {
         // Direct copy columns to the single array
@@ -1005,28 +1029,28 @@ public class BatchData {
         if (newCapacity <= capacity) {
           // Merge time columns
           long[] targetTimes = timeRet.get(0);
-          System.arraycopy(times, 0, targetTimes, writeCurArrayIndex, times.length);
+          System.arraycopy(times, from, targetTimes, writeCurArrayIndex, insertSize);
 
           // Merge value columns
           Binary[] targetValues = binaryRet.get(0);
-          System.arraycopy(values, 0, targetValues, writeCurArrayIndex, values.length);
+          System.arraycopy(values, from, targetValues, writeCurArrayIndex, insertSize);
         } else {
           capacity = newCapacity;
 
           long[] oldTimes = timeRet.get(0);
           long[] newTimes = Arrays.copyOf(oldTimes, capacity);
-          System.arraycopy(times, 0, newTimes, writeCurArrayIndex, times.length);
+          System.arraycopy(times, from, newTimes, writeCurArrayIndex, insertSize);
           timeRet.set(0, newTimes);
 
           Binary[] oldValues = binaryRet.get(0);
           Binary[] newValues = Arrays.copyOf(oldValues, capacity);
-          System.arraycopy(values, 0, newValues, writeCurArrayIndex, values.length);
+          System.arraycopy(values, from, newValues, writeCurArrayIndex, insertSize);
           binaryRet.set(0, newValues);
         }
 
         // Update relevant indexes
-        writeCurArrayIndex += insertNum;
-        count += insertNum;
+        writeCurArrayIndex += insertSize;
+        count += insertSize;
 
         return;
       } else {
@@ -1037,13 +1061,13 @@ public class BatchData {
         // Merge time columns
         long[] oldTimes = timeRet.get(0);
         long[] newTimes = Arrays.copyOf(oldTimes, capacity);
-        System.arraycopy(times, 0, newTimes, writeCurArrayIndex, retained);
+        System.arraycopy(times, from, newTimes, writeCurArrayIndex, retained);
         timeRet.set(0, newTimes);
 
         // Merge value columns
         Binary[] oldValues = binaryRet.get(0);
         Binary[] newValues = Arrays.copyOf(oldValues, capacity);
-        System.arraycopy(values, 0, newValues, writeCurArrayIndex, retained);
+        System.arraycopy(values, from, newValues, writeCurArrayIndex, retained);
         binaryRet.set(0, newValues);
 
         // Create new columns
@@ -1054,17 +1078,17 @@ public class BatchData {
         writeCurArrayIndex = 0;
         writeCurListIndex++;
         count += retained;
-        insertNum -= retained;
+        insertSize -= retained;
 
         // Continue to insert elements into new array
         // Use index to avoid copy
-        start = retained;
+        start = from + retained;
       }
     }
 
     // Fill the whole array
-    while (insertNum > 0) {
-      int consumed = Math.min(insertNum, capacity - writeCurArrayIndex);
+    while (insertSize > 0) {
+      int consumed = Math.min(insertSize, capacity - writeCurArrayIndex);
       consumed = start + consumed > times.length? times.length - start : consumed;
 
       // Insert a whole time array
@@ -1075,7 +1099,7 @@ public class BatchData {
       Binary[] targetValues = binaryRet.get(writeCurListIndex);
       System.arraycopy(values, start, targetValues, writeCurArrayIndex, consumed);
 
-      if (insertNum >= capacity) {
+      if (insertSize >= capacity) {
         // Create new columns
         timeRet.add(new long[capacity]);
         binaryRet.add(new Binary[capacity]);
@@ -1089,7 +1113,7 @@ public class BatchData {
       }
 
       // Update indexes for both cases
-      insertNum -= consumed;
+      insertSize -= consumed;
       start += consumed;
       count += consumed;
     }

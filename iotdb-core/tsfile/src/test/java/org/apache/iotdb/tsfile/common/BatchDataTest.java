@@ -11,22 +11,22 @@ import org.junit.Test;
 public class BatchDataTest {
   @Test
   public void batchInsertBooleansInSingleArrayTest() {
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.BOOLEAN);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Insert small columns first
     int step1 = 10;
-    long[] times = new long[step1];
-    boolean[] values = new boolean[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = (counter & 1) == 0;
-      counter++;
+    int step2 = 10;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    boolean[] values = new boolean[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = (i & 1) == 0;
     }
-    batchData.putBooleans(times, values);
 
-    int expected = 0;
+    batchData.putBooleans(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       boolean value = (boolean) iterator.currentValue();
@@ -39,16 +39,7 @@ public class BatchDataTest {
     }
 
     // Insert columns to do expansion on single column
-    int step2 = 10;
-    times = new long[step2];
-    values = new boolean[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = (counter & 1) == 0;
-      counter++;
-    }
-    batchData.putBooleans(times, values);
-
+    batchData.putBooleans(times, values, step1, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       boolean value = (boolean) iterator.currentValue();
@@ -61,27 +52,28 @@ public class BatchDataTest {
     }
 
     // Prevent early stopping
-    Assert.assertEquals(20, expected);
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertBooleansSpilledTest1() {
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.BOOLEAN);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Less than realThreshold(=1024)
-    int count = 1000;
-    long[] times = new long[count];
-    boolean[] values = new boolean[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = (counter & 1) == 0;
-      counter++;
+    int step1 = 1000;
+    int step2 = 24;
+    int step3 = 10;
+    int total = step1 + step2 + step3;
+    long[] times = new long[total];
+    boolean[] values = new boolean[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = (i & 1) == 0;
     }
-    batchData.putBooleans(times, values);
 
-    int expected = 0;
+    batchData.putBooleans(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       boolean value = (boolean) iterator.currentValue();
@@ -94,16 +86,7 @@ public class BatchDataTest {
     }
 
     // Equal to realThreshold(not spilled)
-    count = 1024 - 1000;
-    times = new long[count];
-    values = new boolean[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = (counter & 1) == 0;
-      counter++;
-    }
-    batchData.putBooleans(times, values);
-
+    batchData.putBooleans(times, values, step1, step1 + step2);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       boolean value = (boolean) iterator.currentValue();
@@ -116,16 +99,7 @@ public class BatchDataTest {
     }
 
     // More than realThreshold(spilled)
-    count = 10;
-    times = new long[count];
-    values = new boolean[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = (counter & 1) == 0;
-      counter++;
-    }
-    batchData.putBooleans(times, values);
-
+    batchData.putBooleans(times, values, step1 + step2, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       boolean value = (boolean) iterator.currentValue();
@@ -137,29 +111,29 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1034, expected);
+    Assert.assertEquals(total, expected);
   }
 
 
   @Test
   public void batchInsertBooleansSpilledTest2() {
     // Test without 'equal to realThreshold' insertion
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.BOOLEAN);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Less than realThreshold
-    int count = 800;
-    long[] times = new long[count];
-    boolean[] values = new boolean[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = (counter & 1) == 0;
-      counter++;
+    int step1 = 800;
+    int step2 = 400;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    boolean[] values = new boolean[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = (i & 1) == 0;
     }
-    batchData.putBooleans(times, values);
 
-    int expected = 0;
+    batchData.putBooleans(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       boolean value = (boolean) iterator.currentValue();
@@ -172,16 +146,7 @@ public class BatchDataTest {
     }
 
     // More than realThreshold
-    count = 1200 - 800;
-    times = new long[count];
-    values = new boolean[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = (counter & 1) == 0;
-      counter++;
-    }
-    batchData.putBooleans(times, values);
-
+    batchData.putBooleans(times, values, step1, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       boolean value = (boolean) iterator.currentValue();
@@ -193,7 +158,7 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1200, expected);
+    Assert.assertEquals(total, expected);
   }
 
   @Test
@@ -224,7 +189,7 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1500, expected);
+    Assert.assertEquals(count, expected);
   }
 
   @Test
@@ -254,51 +219,28 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(3000, expected);
+    Assert.assertEquals(count, expected);
   }
 
   @Test
   public void batchInsertBooleansInMultipleArraysTest2() {
     // Insert huge columns with some element remained
     // Here we only iterate while loop once
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.BOOLEAN);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     int step1 = 1500;
-    long[] times = new long[step1];
-    boolean[] values = new boolean[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = (counter & 1) == 0;
-      counter++;
-    }
-    batchData.putBooleans(times, values);
-
-    int expected = 0;
-    while (iterator.hasNext()) {
-      long time = iterator.currentTime();
-      boolean value = (boolean) iterator.currentValue();
-
-      Assert.assertEquals(expected, time);
-      Assert.assertEquals((expected & 1) == 0, value);
-      expected++;
-
-      iterator.next();
-    }
-
-    Assert.assertEquals(1500, expected);
-
     int step2 = 1500;
-    times = new long[step2];
-    values = new boolean[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = (counter & 1) == 0;
-      counter++;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    boolean[] values = new boolean[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = (i & 1) == 0;
     }
-    batchData.putBooleans(times, values);
 
+    batchData.putBooleans(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       boolean value = (boolean) iterator.currentValue();
@@ -309,52 +251,54 @@ public class BatchDataTest {
 
       iterator.next();
     }
+    Assert.assertEquals(step1, expected);
 
-    Assert.assertEquals(3000, expected);
+    batchData.putBooleans(times, values, step1, total);
+    while (iterator.hasNext()) {
+      long time = iterator.currentTime();
+      boolean value = (boolean) iterator.currentValue();
+
+      Assert.assertEquals(expected, time);
+      Assert.assertEquals((expected & 1) == 0, value);
+      expected++;
+
+      iterator.next();
+    }
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertBooleansInMultipleArraysTest3() {
     // Insert huge columns with some element remained
     // This test will repeat while loop multiple times
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.BOOLEAN);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     int step1 = 2500;
-    long[] times = new long[step1];
-    boolean[] values = new boolean[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = (counter & 1) == 0;
-      counter++;
-    }
-    batchData.putBooleans(times, values);
-
-    int expected = 0;
-    while (iterator.hasNext()) {
-      long time = iterator.currentTime();
-      boolean value = (boolean) iterator.currentValue();
-
-      Assert.assertEquals(expected, time);
-      Assert.assertEquals((expected & 1) == 0, value);
-      expected++;
-
-      iterator.next();
-    }
-
-    Assert.assertEquals(2500, expected);
-
     int step2 = 2500;
-    times = new long[step2];
-    values = new boolean[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = (counter & 1) == 0;
-      counter++;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    boolean[] values = new boolean[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = (i & 1) == 0;
     }
-    batchData.putBooleans(times, values);
 
+    batchData.putBooleans(times, values, 0, step1);
+    while (iterator.hasNext()) {
+      long time = iterator.currentTime();
+      boolean value = (boolean) iterator.currentValue();
+
+      Assert.assertEquals(expected, time);
+      Assert.assertEquals((expected & 1) == 0, value);
+      expected++;
+
+      iterator.next();
+    }
+    Assert.assertEquals(step1, expected);
+
+    batchData.putBooleans(times, values, step1, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       boolean value = (boolean) iterator.currentValue();
@@ -366,27 +310,27 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(5000, expected);
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertIntsInSingleArrayTest() {
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.INT32);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Insert small columns first
     int step1 = 10;
-    long[] times = new long[step1];
-    int[] values = new int[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int step2 = 10;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    int[] values = new int[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putInts(times, values);
+    batchData.putInts(times, values, 0, step1);
 
-    int expected = 0;
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       int value = (int) iterator.currentValue();
@@ -399,16 +343,7 @@ public class BatchDataTest {
     }
 
     // Insert columns to do expansion on single column
-    int step2 = 10;
-    times = new long[step2];
-    values = new int[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putInts(times, values);
-
+    batchData.putInts(times, values, step1, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       int value = (int) iterator.currentValue();
@@ -421,27 +356,28 @@ public class BatchDataTest {
     }
 
     // Prevent early stopping
-    Assert.assertEquals(20, expected);
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertIntsSpilledTest1() {
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.INT32);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Less than realThreshold(=1024)
-    int count = 1000;
-    long[] times = new long[count];
-    int[] values = new int[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int step1 = 1000;
+    int step2 = 24;
+    int step3 = 10;
+    int total = step1 + step2 + step3;
+    long[] times = new long[total];
+    int[] values = new int[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putInts(times, values);
 
-    int expected = 0;
+    batchData.putInts(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       int value = (int) iterator.currentValue();
@@ -454,16 +390,7 @@ public class BatchDataTest {
     }
 
     // Equal to realThreshold(not spilled)
-    count = 1024 - 1000;
-    times = new long[count];
-    values = new int[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putInts(times, values);
-
+    batchData.putInts(times, values, step1, step1 + step2);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       int value = (int) iterator.currentValue();
@@ -476,16 +403,7 @@ public class BatchDataTest {
     }
 
     // More than realThreshold(spilled)
-    count = 10;
-    times = new long[count];
-    values = new int[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putInts(times, values);
-
+    batchData.putInts(times, values, step1 + step2, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       int value = (int) iterator.currentValue();
@@ -497,29 +415,29 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1034, expected);
+    Assert.assertEquals(total, expected);
   }
 
 
   @Test
   public void batchInsertIntsSpilledTest2() {
     // Test without 'equal to realThreshold' insertion
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.INT32);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Less than realThreshold
-    int count = 800;
-    long[] times = new long[count];
-    int[] values = new int[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int step1 = 800;
+    int step2 = 400;
+    int total= step1 + step2;
+    long[] times = new long[total];
+    int[] values = new int[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putInts(times, values);
 
-    int expected = 0;
+    batchData.putInts(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       int value = (int) iterator.currentValue();
@@ -532,16 +450,7 @@ public class BatchDataTest {
     }
 
     // More than realThreshold
-    count = 1200 - 800;
-    times = new long[count];
-    values = new int[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putInts(times, values);
-
+    batchData.putInts(times, values, step1, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       int value = (int) iterator.currentValue();
@@ -553,7 +462,7 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1200, expected);
+    Assert.assertEquals(total, expected);
   }
 
   @Test
@@ -584,7 +493,7 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1500, expected);
+    Assert.assertEquals(count, expected);
   }
 
   @Test
@@ -614,51 +523,28 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(3000, expected);
+    Assert.assertEquals(count, expected);
   }
 
   @Test
   public void batchInsertIntsInMultipleArraysTest2() {
     // Insert huge columns with some element remained
     // Here we only iterate while loop once
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.INT32);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     int step1 = 1500;
-    long[] times = new long[step1];
-    int[] values = new int[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putInts(times, values);
-
-    int expected = 0;
-    while (iterator.hasNext()) {
-      long time = iterator.currentTime();
-      int value = (int) iterator.currentValue();
-
-      Assert.assertEquals(expected, time);
-      Assert.assertEquals(expected, value);
-      expected++;
-
-      iterator.next();
-    }
-
-    Assert.assertEquals(1500, expected);
-
     int step2 = 1500;
-    times = new long[step2];
-    values = new int[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    int[] values = new int[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putInts(times, values);
 
+    batchData.putInts(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       int value = (int) iterator.currentValue();
@@ -669,52 +555,41 @@ public class BatchDataTest {
 
       iterator.next();
     }
+    Assert.assertEquals(step1, expected);
 
-    Assert.assertEquals(3000, expected);
+    batchData.putInts(times, values, step1, total);
+    while (iterator.hasNext()) {
+      long time = iterator.currentTime();
+      int value = (int) iterator.currentValue();
+
+      Assert.assertEquals(expected, time);
+      Assert.assertEquals(expected, value);
+      expected++;
+
+      iterator.next();
+    }
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertIntsInMultipleArraysTest3() {
     // Insert huge columns with some element remained
     // This test will repeat while loop multiple times
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.INT32);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     int step1 = 2500;
-    long[] times = new long[step1];
-    int[] values = new int[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putInts(times, values);
-
-    int expected = 0;
-    while (iterator.hasNext()) {
-      long time = iterator.currentTime();
-      int value = (int) iterator.currentValue();
-
-      Assert.assertEquals(expected, time);
-      Assert.assertEquals(expected, value);
-      expected++;
-
-      iterator.next();
-    }
-
-    Assert.assertEquals(2500, expected);
-
     int step2 = 2500;
-    times = new long[step2];
-    values = new int[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    int[] values = new int[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putInts(times, values);
 
+    batchData.putInts(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       int value = (int) iterator.currentValue();
@@ -725,28 +600,40 @@ public class BatchDataTest {
 
       iterator.next();
     }
+    Assert.assertEquals(step1, expected);
 
-    Assert.assertEquals(5000, expected);
+    batchData.putInts(times, values, step1, total);
+    while (iterator.hasNext()) {
+      long time = iterator.currentTime();
+      int value = (int) iterator.currentValue();
+
+      Assert.assertEquals(expected, time);
+      Assert.assertEquals(expected, value);
+      expected++;
+
+      iterator.next();
+    }
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertLongsInSingleArrayTest() {
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.INT64);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Insert small columns first
     int step1 = 10;
-    long[] times = new long[step1];
-    long[] values = new long[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int step2 = 10;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    long[] values = new long[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putLongs(times, values);
 
-    int expected = 0;
+    batchData.putLongs(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       long value = (long) iterator.currentValue();
@@ -759,16 +646,7 @@ public class BatchDataTest {
     }
 
     // Insert columns to do expansion on single column
-    int step2 = 10;
-    times = new long[step2];
-    values = new long[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putLongs(times, values);
-
+    batchData.putLongs(times, values, step1, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       long value = (long) iterator.currentValue();
@@ -781,27 +659,28 @@ public class BatchDataTest {
     }
 
     // Prevent early stopping
-    Assert.assertEquals(20, expected);
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertLongsSpilledTest1() {
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.INT64);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Less than realThreshold(=1024)
-    int count = 1000;
-    long[] times = new long[count];
-    long[] values = new long[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int step1 = 1000;
+    int step2 = 24;
+    int step3 = 10;
+    int total = step1 + step2 + step3;
+    long[] times = new long[total];
+    long[] values = new long[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putLongs(times, values);
 
-    int expected = 0;
+    batchData.putLongs(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       long value = (long) iterator.currentValue();
@@ -814,16 +693,7 @@ public class BatchDataTest {
     }
 
     // Equal to realThreshold(not spilled)
-    count = 1024 - 1000;
-    times = new long[count];
-    values = new long[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putLongs(times, values);
-
+    batchData.putLongs(times, values, step1, step1 + step2);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       long value = (long) iterator.currentValue();
@@ -836,16 +706,7 @@ public class BatchDataTest {
     }
 
     // More than realThreshold(spilled)
-    count = 10;
-    times = new long[count];
-    values = new long[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putLongs(times, values);
-
+    batchData.putLongs(times, values, step1 + step2, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       long value = (long) iterator.currentValue();
@@ -857,29 +718,29 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1034, expected);
+    Assert.assertEquals(total, expected);
   }
 
 
   @Test
   public void batchInsertLongsSpilledTest2() {
     // Test without 'equal to realThreshold' insertion
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.INT64);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Less than realThreshold
-    int count = 800;
-    long[] times = new long[count];
-    long[] values = new long[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int step1 = 800;
+    int step2 = 400;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    long[] values = new long[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putLongs(times, values);
 
-    int expected = 0;
+    batchData.putLongs(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       long value = (long) iterator.currentValue();
@@ -892,16 +753,7 @@ public class BatchDataTest {
     }
 
     // More than realThreshold
-    count = 1200 - 800;
-    times = new long[count];
-    values = new long[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putLongs(times, values);
-
+    batchData.putLongs(times, values, step1, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       long value = (long) iterator.currentValue();
@@ -913,7 +765,7 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1200, expected);
+    Assert.assertEquals(total, expected);
   }
 
   @Test
@@ -944,7 +796,7 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1500, expected);
+    Assert.assertEquals(count, expected);
   }
 
   @Test
@@ -974,51 +826,28 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(3000, expected);
+    Assert.assertEquals(count, expected);
   }
 
   @Test
   public void batchInsertLongsInMultipleArraysTest2() {
     // Insert huge columns with some element remained
     // Here we only iterate while loop once
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.INT64);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     int step1 = 1500;
-    long[] times = new long[step1];
-    long[] values = new long[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putLongs(times, values);
-
-    int expected = 0;
-    while (iterator.hasNext()) {
-      long time = iterator.currentTime();
-      long value = (long) iterator.currentValue();
-
-      Assert.assertEquals(expected, time);
-      Assert.assertEquals(expected, value);
-      expected++;
-
-      iterator.next();
-    }
-
-    Assert.assertEquals(1500, expected);
-
     int step2 = 1500;
-    times = new long[step2];
-    values = new long[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    long[] values = new long[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putLongs(times, values);
 
+    batchData.putLongs(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       long value = (long) iterator.currentValue();
@@ -1029,52 +858,42 @@ public class BatchDataTest {
 
       iterator.next();
     }
+    Assert.assertEquals(step1, expected);
 
-    Assert.assertEquals(3000, expected);
+
+    batchData.putLongs(times, values, step1, total);
+    while (iterator.hasNext()) {
+      long time = iterator.currentTime();
+      long value = (long) iterator.currentValue();
+
+      Assert.assertEquals(expected, time);
+      Assert.assertEquals(expected, value);
+      expected++;
+
+      iterator.next();
+    }
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertLongsInMultipleArraysTest3() {
     // Insert huge columns with some element remained
     // This test will repeat while loop multiple times
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.INT64);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     int step1 = 2500;
-    long[] times = new long[step1];
-    long[] values = new long[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putLongs(times, values);
-
-    int expected = 0;
-    while (iterator.hasNext()) {
-      long time = iterator.currentTime();
-      long value = (long) iterator.currentValue();
-
-      Assert.assertEquals(expected, time);
-      Assert.assertEquals(expected, value);
-      expected++;
-
-      iterator.next();
-    }
-
-    Assert.assertEquals(2500, expected);
-
     int step2 = 2500;
-    times = new long[step2];
-    values = new long[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    long[] values = new long[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putLongs(times, values);
 
+    batchData.putLongs(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       long value = (long) iterator.currentValue();
@@ -1085,28 +904,40 @@ public class BatchDataTest {
 
       iterator.next();
     }
+    Assert.assertEquals(step1, expected);
 
-    Assert.assertEquals(5000, expected);
+    batchData.putLongs(times, values, step1, total);
+    while (iterator.hasNext()) {
+      long time = iterator.currentTime();
+      long value = (long) iterator.currentValue();
+
+      Assert.assertEquals(expected, time);
+      Assert.assertEquals(expected, value);
+      expected++;
+
+      iterator.next();
+    }
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertFloatsInSingleArrayTest() {
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.FLOAT);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
-    // Insert small columns first
     int step1 = 10;
-    long[] times = new long[step1];
-    float[] values = new float[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int step2 = 10;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    float[] values = new float[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putFloats(times, values);
 
-    int expected = 0;
+    // Insert small columns first
+    batchData.putFloats(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       float value = (float) iterator.currentValue();
@@ -1119,16 +950,7 @@ public class BatchDataTest {
     }
 
     // Insert columns to do expansion on single column
-    int step2 = 10;
-    times = new long[step2];
-    values = new float[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putFloats(times, values);
-
+    batchData.putFloats(times, values, step1, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       float value = (float) iterator.currentValue();
@@ -1141,27 +963,28 @@ public class BatchDataTest {
     }
 
     // Prevent early stopping
-    Assert.assertEquals(20, expected);
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertFloatsSpilledTest1() {
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.FLOAT);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
-    // Less than realThreshold(=1024)
-    int count = 1000;
-    long[] times = new long[count];
-    float[] values = new float[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int step1 = 1000;
+    int step2 = 24;
+    int step3 = 10;
+    int total = step1 + step2 + step3;
+    long[] times = new long[total];
+    float[] values = new float[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putFloats(times, values);
 
-    int expected = 0;
+    // Less than realThreshold(=1024)
+    batchData.putFloats(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       float value = (float) iterator.currentValue();
@@ -1174,16 +997,7 @@ public class BatchDataTest {
     }
 
     // Equal to realThreshold(not spilled)
-    count = 1024 - 1000;
-    times = new long[count];
-    values = new float[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putFloats(times, values);
-
+    batchData.putFloats(times, values, step1, step1 + step2);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       float value = (float) iterator.currentValue();
@@ -1196,16 +1010,7 @@ public class BatchDataTest {
     }
 
     // More than realThreshold(spilled)
-    count = 10;
-    times = new long[count];
-    values = new float[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putFloats(times, values);
-
+    batchData.putFloats(times, values, step1 + step2, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       float value = (float) iterator.currentValue();
@@ -1217,33 +1022,32 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1034, expected);
+    Assert.assertEquals(total, expected);
   }
 
 
   @Test
   public void batchInsertFloatsSpilledTest2() {
     // Test without 'equal to realThreshold' insertion
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.FLOAT);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Less than realThreshold
-    int count = 800;
-    long[] times = new long[count];
-    float[] values = new float[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int step1 = 800;
+    int step2 = 400;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    float[] values = new float[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putFloats(times, values);
 
-    int expected = 0;
+    batchData.putFloats(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       float value = (float) iterator.currentValue();
-
       Assert.assertEquals(expected, time);
       Assert.assertEquals(expected, value, 1E-5);
       expected++;
@@ -1252,16 +1056,7 @@ public class BatchDataTest {
     }
 
     // More than realThreshold
-    count = 1200 - 800;
-    times = new long[count];
-    values = new float[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putFloats(times, values);
-
+    batchData.putFloats(times, values, step1, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       float value = (float) iterator.currentValue();
@@ -1273,7 +1068,7 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1200, expected);
+    Assert.assertEquals(total, expected);
   }
 
   @Test
@@ -1304,7 +1099,7 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1500, expected);
+    Assert.assertEquals(count, expected);
   }
 
   @Test
@@ -1334,51 +1129,28 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(3000, expected);
+    Assert.assertEquals(count, expected);
   }
 
   @Test
   public void batchInsertFloatsInMultipleArraysTest2() {
     // Insert huge columns with some element remained
     // Here we only iterate while loop once
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.FLOAT);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     int step1 = 1500;
-    long[] times = new long[step1];
-    float[] values = new float[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putFloats(times, values);
-
-    int expected = 0;
-    while (iterator.hasNext()) {
-      long time = iterator.currentTime();
-      float value = (float) iterator.currentValue();
-
-      Assert.assertEquals(expected, time);
-      Assert.assertEquals(expected, value, 1E-5);
-      expected++;
-
-      iterator.next();
-    }
-
-    Assert.assertEquals(1500, expected);
-
     int step2 = 1500;
-    times = new long[step2];
-    values = new float[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    float[] values = new float[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putFloats(times, values);
 
+    batchData.putFloats(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       float value = (float) iterator.currentValue();
@@ -1389,52 +1161,41 @@ public class BatchDataTest {
 
       iterator.next();
     }
+    Assert.assertEquals(step1, expected);
 
-    Assert.assertEquals(3000, expected);
+    batchData.putFloats(times, values, step1, total);
+    while (iterator.hasNext()) {
+      long time = iterator.currentTime();
+      float value = (float) iterator.currentValue();
+
+      Assert.assertEquals(expected, time);
+      Assert.assertEquals(expected, value, 1E-5);
+      expected++;
+
+      iterator.next();
+    }
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertFloatsInMultipleArraysTest3() {
     // Insert huge columns with some element remained
     // This test will repeat while loop multiple times
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.FLOAT);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     int step1 = 2500;
-    long[] times = new long[step1];
-    float[] values = new float[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putFloats(times, values);
-
-    int expected = 0;
-    while (iterator.hasNext()) {
-      long time = iterator.currentTime();
-      float value = (float) iterator.currentValue();
-
-      Assert.assertEquals(expected, time);
-      Assert.assertEquals(expected, value, 1E-5);
-      expected++;
-
-      iterator.next();
-    }
-
-    Assert.assertEquals(2500, expected);
-
     int step2 = 2500;
-    times = new long[step2];
-    values = new float[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    float[] values = new float[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putFloats(times, values);
 
+    batchData.putFloats(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       float value = (float) iterator.currentValue();
@@ -1445,27 +1206,40 @@ public class BatchDataTest {
 
       iterator.next();
     }
+    Assert.assertEquals(step1, expected);
 
-    Assert.assertEquals(5000, expected);
+    batchData.putFloats(times, values, step1, total);
+    while (iterator.hasNext()) {
+      long time = iterator.currentTime();
+      float value = (float) iterator.currentValue();
+
+      Assert.assertEquals(expected, time);
+      Assert.assertEquals(expected, value, 1E-5);
+      expected++;
+
+      iterator.next();
+    }
+    Assert.assertEquals(total, expected);
   }
+
   @Test
   public void batchInsertDoublesInSingleArrayTest() {
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.DOUBLE);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Insert small columns first
     int step1 = 10;
-    long[] times = new long[step1];
-    double[] values = new double[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int step2 = 10;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    double[] values = new double[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putDoubles(times, values);
 
-    int expected = 0;
+    batchData.putDoubles(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       double value = (double) iterator.currentValue();
@@ -1478,16 +1252,7 @@ public class BatchDataTest {
     }
 
     // Insert columns to do expansion on single column
-    int step2 = 10;
-    times = new long[step2];
-    values = new double[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putDoubles(times, values);
-
+    batchData.putDoubles(times, values, step1, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       double value = (double) iterator.currentValue();
@@ -1500,27 +1265,28 @@ public class BatchDataTest {
     }
 
     // Prevent early stopping
-    Assert.assertEquals(20, expected);
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertDoublesSpilledTest1() {
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.DOUBLE);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Less than realThreshold(=1024)
-    int count = 1000;
-    long[] times = new long[count];
-    double[] values = new double[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int step1 = 1000;
+    int step2 = 24;
+    int step3 = 10;
+    int total = step1 + step2 + step3;
+    long[] times = new long[total];
+    double[] values = new double[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putDoubles(times, values);
 
-    int expected = 0;
+    batchData.putDoubles(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       double value = (double) iterator.currentValue();
@@ -1533,16 +1299,7 @@ public class BatchDataTest {
     }
 
     // Equal to realThreshold(not spilled)
-    count = 1024 - 1000;
-    times = new long[count];
-    values = new double[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putDoubles(times, values);
-
+    batchData.putDoubles(times, values, step1, step1 + step2);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       double value = (double) iterator.currentValue();
@@ -1555,16 +1312,7 @@ public class BatchDataTest {
     }
 
     // More than realThreshold(spilled)
-    count = 10;
-    times = new long[count];
-    values = new double[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putDoubles(times, values);
-
+    batchData.putDoubles(times, values, step1 + step2, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       double value = (double) iterator.currentValue();
@@ -1576,29 +1324,29 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1034, expected);
+    Assert.assertEquals(total, expected);
   }
 
 
   @Test
   public void batchInsertDoublesSpilledTest2() {
     // Test without 'equal to realThreshold' insertion
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.DOUBLE);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Less than realThreshold
-    int count = 800;
-    long[] times = new long[count];
-    double[] values = new double[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int step1 = 800;
+    int step2 = 400;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    double[] values = new double[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putDoubles(times, values);
 
-    int expected = 0;
+    batchData.putDoubles(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       double value = (double) iterator.currentValue();
@@ -1611,16 +1359,7 @@ public class BatchDataTest {
     }
 
     // More than realThreshold
-    count = 1200 - 800;
-    times = new long[count];
-    values = new double[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putDoubles(times, values);
-
+    batchData.putDoubles(times, values, step1, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       double value = (double) iterator.currentValue();
@@ -1631,8 +1370,7 @@ public class BatchDataTest {
 
       iterator.next();
     }
-
-    Assert.assertEquals(1200, expected);
+    Assert.assertEquals(total, expected);
   }
 
   @Test
@@ -1663,7 +1401,7 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1500, expected);
+    Assert.assertEquals(count, expected);
   }
 
   @Test
@@ -1692,52 +1430,28 @@ public class BatchDataTest {
 
       iterator.next();
     }
-
-    Assert.assertEquals(3000, expected);
+    Assert.assertEquals(count, expected);
   }
 
   @Test
   public void batchInsertDoublesInMultipleArraysTest2() {
     // Insert huge columns with some element remained
     // Here we only iterate while loop once
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.DOUBLE);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     int step1 = 1500;
-    long[] times = new long[step1];
-    double[] values = new double[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putDoubles(times, values);
-
-    int expected = 0;
-    while (iterator.hasNext()) {
-      long time = iterator.currentTime();
-      double value = (double) iterator.currentValue();
-
-      Assert.assertEquals(expected, time);
-      Assert.assertEquals(expected, value, 1E-5);
-      expected++;
-
-      iterator.next();
-    }
-
-    Assert.assertEquals(1500, expected);
-
     int step2 = 1500;
-    times = new long[step2];
-    values = new double[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    double[] values = new double[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putDoubles(times, values);
 
+    batchData.putDoubles(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       double value = (double) iterator.currentValue();
@@ -1748,52 +1462,41 @@ public class BatchDataTest {
 
       iterator.next();
     }
+    Assert.assertEquals(step1, expected);
 
-    Assert.assertEquals(3000, expected);
+    batchData.putDoubles(times, values, step1, total);
+    while (iterator.hasNext()) {
+      long time = iterator.currentTime();
+      double value = (double) iterator.currentValue();
+
+      Assert.assertEquals(expected, time);
+      Assert.assertEquals(expected, value, 1E-5);
+      expected++;
+
+      iterator.next();
+    }
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertDoublesInMultipleArraysTest3() {
     // Insert huge columns with some element remained
     // This test will repeat while loop multiple times
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.DOUBLE);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     int step1 = 2500;
-    long[] times = new long[step1];
-    double[] values = new double[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
-    }
-    batchData.putDoubles(times, values);
-
-    int expected = 0;
-    while (iterator.hasNext()) {
-      long time = iterator.currentTime();
-      double value = (double) iterator.currentValue();
-
-      Assert.assertEquals(expected, time);
-      Assert.assertEquals(expected, value, 1E-5);
-      expected++;
-
-      iterator.next();
-    }
-
-    Assert.assertEquals(2500, expected);
-
     int step2 = 2500;
-    times = new long[step2];
-    values = new double[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = counter;
-      counter++;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    double[] values = new double[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = i;
     }
-    batchData.putDoubles(times, values);
 
+    batchData.putDoubles(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       double value = (double) iterator.currentValue();
@@ -1804,28 +1507,40 @@ public class BatchDataTest {
 
       iterator.next();
     }
+    Assert.assertEquals(step1, expected);
 
-    Assert.assertEquals(5000, expected);
+    batchData.putDoubles(times, values, step1, total);
+    while (iterator.hasNext()) {
+      long time = iterator.currentTime();
+      double value = (double) iterator.currentValue();
+
+      Assert.assertEquals(expected, time);
+      Assert.assertEquals(expected, value, 1E-5);
+      expected++;
+
+      iterator.next();
+    }
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertBinariesInSingleArrayTest() {
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.TEXT);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Insert small columns first
     int step1 = 10;
-    long[] times = new long[step1];
-    Binary[] values = new Binary[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = new Binary(String.valueOf(counter), TSFileConfig.STRING_CHARSET);
-      counter++;
+    int step2 = 10;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    Binary[] values = new Binary[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = new Binary(String.valueOf(i), TSFileConfig.STRING_CHARSET);
     }
-    batchData.putBinaries(times, values);
 
-    int expected = 0;
+    batchData.putBinaries(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       Binary value = (Binary) iterator.currentValue();
@@ -1839,16 +1554,7 @@ public class BatchDataTest {
     }
 
     // Insert columns to do expansion on single column
-    int step2 = 10;
-    times = new long[step2];
-    values = new Binary[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = new Binary(String.valueOf(counter), TSFileConfig.STRING_CHARSET);
-      counter++;
-    }
-    batchData.putBinaries(times, values);
-
+    batchData.putBinaries(times, values, step1, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       Binary value = (Binary) iterator.currentValue();
@@ -1862,27 +1568,28 @@ public class BatchDataTest {
     }
 
     // Prevent early stopping
-    Assert.assertEquals(20, expected);
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertBinariesSpilledTest1() {
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.TEXT);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Less than realThreshold(=1024)
-    int count = 1000;
-    long[] times = new long[count];
-    Binary[] values = new Binary[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = new Binary(String.valueOf(counter), TSFileConfig.STRING_CHARSET);
-      counter++;
+    int step1 = 1000;
+    int step2 = 24;
+    int step3 = 10;
+    int total = step1 + step2 + step3;
+    long[] times = new long[total];
+    Binary[] values = new Binary[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = new Binary(String.valueOf(i), TSFileConfig.STRING_CHARSET);
     }
-    batchData.putBinaries(times, values);
 
-    int expected = 0;
+    batchData.putBinaries(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       Binary value = (Binary) iterator.currentValue();
@@ -1896,16 +1603,7 @@ public class BatchDataTest {
     }
 
     // Equal to realThreshold(not spilled)
-    count = 1024 - 1000;
-    times = new long[count];
-    values = new Binary[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = new Binary(String.valueOf(counter), TSFileConfig.STRING_CHARSET);
-      counter++;
-    }
-    batchData.putBinaries(times, values);
-
+    batchData.putBinaries(times, values, step1, step1 + step2);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       Binary value = (Binary) iterator.currentValue();
@@ -1919,16 +1617,7 @@ public class BatchDataTest {
     }
 
     // More than realThreshold(spilled)
-    count = 10;
-    times = new long[count];
-    values = new Binary[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = new Binary(String.valueOf(counter), TSFileConfig.STRING_CHARSET);
-      counter++;
-    }
-    batchData.putBinaries(times, values);
-
+    batchData.putBinaries(times, values, step1 + step2, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       Binary value = (Binary) iterator.currentValue();
@@ -1941,29 +1630,29 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1034, expected);
+    Assert.assertEquals(total, expected);
   }
 
 
   @Test
   public void batchInsertBinariesSpilledTest2() {
     // Test without 'equal to realThreshold' insertion
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.TEXT);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     // Less than realThreshold
-    int count = 800;
-    long[] times = new long[count];
-    Binary[] values = new Binary[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = new Binary(String.valueOf(counter), TSFileConfig.STRING_CHARSET);
-      counter++;
+    int step1 = 800;
+    int step2 = 400;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    Binary[] values = new Binary[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = new Binary(String.valueOf(i), TSFileConfig.STRING_CHARSET);
     }
-    batchData.putBinaries(times, values);
 
-    int expected = 0;
+    batchData.putBinaries(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       Binary value = (Binary) iterator.currentValue();
@@ -1977,16 +1666,7 @@ public class BatchDataTest {
     }
 
     // More than realThreshold
-    count = 1200 - 800;
-    times = new long[count];
-    values = new Binary[count];
-    for (int i = 0; i < count; i++) {
-      times[i] = counter;
-      values[i] = new Binary(String.valueOf(counter), TSFileConfig.STRING_CHARSET);
-      counter++;
-    }
-    batchData.putBinaries(times, values);
-
+    batchData.putBinaries(times, values, step1, total);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       Binary value = (Binary) iterator.currentValue();
@@ -1999,7 +1679,7 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1200, expected);
+    Assert.assertEquals(total, expected);
   }
 
   @Test
@@ -2031,7 +1711,7 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(1500, expected);
+    Assert.assertEquals(count, expected);
   }
 
   @Test
@@ -2062,52 +1742,28 @@ public class BatchDataTest {
       iterator.next();
     }
 
-    Assert.assertEquals(3000, expected);
+    Assert.assertEquals(count, expected);
   }
 
   @Test
   public void batchInsertBinariesInMultipleArraysTest2() {
     // Insert huge columns with some element remained
     // Here we only iterate while loop once
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.TEXT);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     int step1 = 1500;
-    long[] times = new long[step1];
-    Binary[] values = new Binary[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = new Binary(String.valueOf(counter), TSFileConfig.STRING_CHARSET);
-      counter++;
-    }
-    batchData.putBinaries(times, values);
-
-    int expected = 0;
-    while (iterator.hasNext()) {
-      long time = iterator.currentTime();
-      Binary value = (Binary) iterator.currentValue();
-      Binary expectedBinary = new Binary(String.valueOf(expected), TSFileConfig.STRING_CHARSET);
-
-      Assert.assertEquals(expected, time);
-      Assert.assertEquals(expectedBinary, value);
-      expected++;
-
-      iterator.next();
-    }
-
-    Assert.assertEquals(1500, expected);
-
     int step2 = 1500;
-    times = new long[step2];
-    values = new Binary[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = new Binary(String.valueOf(counter), TSFileConfig.STRING_CHARSET);
-      counter++;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    Binary[] values = new Binary[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = new Binary(String.valueOf(i), TSFileConfig.STRING_CHARSET);
     }
-    batchData.putBinaries(times, values);
 
+    batchData.putBinaries(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       Binary value = (Binary) iterator.currentValue();
@@ -2119,53 +1775,42 @@ public class BatchDataTest {
 
       iterator.next();
     }
+    Assert.assertEquals(step1, expected);
 
-    Assert.assertEquals(3000, expected);
+    batchData.putBinaries(times, values, step1, total);
+    while (iterator.hasNext()) {
+      long time = iterator.currentTime();
+      Binary value = (Binary) iterator.currentValue();
+      Binary expectedBinary = new Binary(String.valueOf(expected), TSFileConfig.STRING_CHARSET);
+
+      Assert.assertEquals(expected, time);
+      Assert.assertEquals(expectedBinary, value);
+      expected++;
+
+      iterator.next();
+    }
+    Assert.assertEquals(total, expected);
   }
 
   @Test
   public void batchInsertBinariesInMultipleArraysTest3() {
     // Insert huge columns with some element remained
     // This test will repeat while loop multiple times
-    int counter = 0;
+    int expected = 0;
     BatchData batchData = new BatchData(TSDataType.TEXT);
     IBatchDataIterator iterator = batchData.getBatchDataIterator();
 
     int step1 = 2500;
-    long[] times = new long[step1];
-    Binary[] values = new Binary[step1];
-    for (int i = 0; i < step1; i++) {
-      times[i] = counter;
-      values[i] = new Binary(String.valueOf(counter), TSFileConfig.STRING_CHARSET);
-      counter++;
-    }
-    batchData.putBinaries(times, values);
-
-    int expected = 0;
-    while (iterator.hasNext()) {
-      long time = iterator.currentTime();
-      Binary value = (Binary) iterator.currentValue();
-      Binary expectedBinary = new Binary(String.valueOf(expected), TSFileConfig.STRING_CHARSET);
-
-      Assert.assertEquals(expected, time);
-      Assert.assertEquals(expectedBinary, value);
-      expected++;
-
-      iterator.next();
-    }
-
-    Assert.assertEquals(2500, expected);
-
     int step2 = 2500;
-    times = new long[step2];
-    values = new Binary[step2];
-    for (int i = 0; i < step2; i++) {
-      times[i] = counter;
-      values[i] = new Binary(String.valueOf(counter), TSFileConfig.STRING_CHARSET);
-      counter++;
+    int total = step1 + step2;
+    long[] times = new long[total];
+    Binary[] values = new Binary[total];
+    for (int i = 0; i < total; i++) {
+      times[i] = i;
+      values[i] = new Binary(String.valueOf(i), TSFileConfig.STRING_CHARSET);
     }
-    batchData.putBinaries(times, values);
 
+    batchData.putBinaries(times, values, 0, step1);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       Binary value = (Binary) iterator.currentValue();
@@ -2177,7 +1822,20 @@ public class BatchDataTest {
 
       iterator.next();
     }
+    Assert.assertEquals(step1, expected);
 
-    Assert.assertEquals(5000, expected);
+    batchData.putBinaries(times, values, step1, total);
+    while (iterator.hasNext()) {
+      long time = iterator.currentTime();
+      Binary value = (Binary) iterator.currentValue();
+      Binary expectedBinary = new Binary(String.valueOf(expected), TSFileConfig.STRING_CHARSET);
+
+      Assert.assertEquals(expected, time);
+      Assert.assertEquals(expectedBinary, value);
+      expected++;
+
+      iterator.next();
+    }
+    Assert.assertEquals(total, expected);
   }
 }
