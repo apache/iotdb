@@ -3509,7 +3509,8 @@ public class SessionPool implements ISessionPool {
     private boolean enableCompression = false;
     private ZoneId zoneId = null;
     private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
-    private boolean enableRecordsAutoConvertTablet = SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
+    private boolean enableRecordsAutoConvertTablet =
+        SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
     private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
     private Version version = SessionConfig.DEFAULT_VERSION;
 
