@@ -69,7 +69,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   // FOR PRE VERSION END -----
 
-  BasicAuthorizer(IUserManager userManager, IRoleManager roleManager) throws AuthException {
+  public BasicAuthorizer(IUserManager userManager, IRoleManager roleManager) throws AuthException {
     this.userManager = userManager;
     this.roleManager = roleManager;
   }
@@ -113,7 +113,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   /** Checks if a user has admin privileges */
-  abstract boolean isAdmin(String username);
+  protected abstract boolean isAdmin(String username);
 
   @Override
   public boolean login(String username, String password) throws AuthException {
