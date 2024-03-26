@@ -17,14 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.subscription.config;
+package org.apache.iotdb.rpc.subscription.payload.config;
 
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+public class TopicConstant {
 
-import java.util.Map;
+  public static final String PATH_KEY = "path";
+  public static final String PATH_DEFAULT_VALUE = "root.**";
+  public static final String PATTERN_KEY = "pattern";
 
-public class ConsumerConfig extends PipeParameters {
-  public ConsumerConfig(Map<String, String> attributes) {
-    super(attributes);
+  public static final String START_TIME_KEY = "start-time";
+  public static final String END_TIME_KEY = "end-time";
+  public static final String NOW_TIME_VALUE = "now";
+
+  public static final String FORMAT_KEY = "format";
+  public static final String FORMAT_DEFAULT_VALUE = "log";
+
+  private TopicConstant() {
+    throw new IllegalStateException("Utility class");
   }
 }

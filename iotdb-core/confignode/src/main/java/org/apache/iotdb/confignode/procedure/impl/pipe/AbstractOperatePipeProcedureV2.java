@@ -483,4 +483,12 @@ public abstract class AbstractOperatePipeProcedureV2
     super.deserialize(byteBuffer);
     isRollbackFromOperateOnDataNodesSuccessful = ReadWriteIOUtils.readBool(byteBuffer);
   }
+
+  public void setPipeTaskInfo(AtomicReference<PipeTaskInfo> pipeTaskInfo) {
+    this.pipeTaskInfo = pipeTaskInfo;
+  }
+
+  public void unsetPipeTaskInfo() {
+    this.pipeTaskInfo = null;
+  }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -73,6 +74,13 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
   }
 
   @Override
+  protected void unlockPipeProcedure() {
+    for (AbstractOperatePipeProcedureV2 dropPipeProcedure : dropPipeProcedures) {
+      dropPipeProcedure.unsetPipeTaskInfo();
+    }
+  }
+
+  @Override
   protected void executeFromValidate(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropSubscriptionProcedure: executeFromValidate");
 
@@ -97,8 +105,17 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
 
         alterTopicProcedures.add(new AlterTopicProcedure(updatedTopicMeta));
         dropPipeProcedures.add(
-            new DropPipeProcedureV2(topic + "_" + unsubscribeReq.getConsumerGroupId()));
+            new DropPipeProcedureV2(
+                PipeStaticMeta.generateSubscriptionPipeName(
+                    topic, unsubscribeReq.getConsumerGroupId())));
       }
+    }
+
+    for (int i = 0, topicCount = alterTopicProcedures.size(); i < topicCount; ++i) {
+      // TODO: temporary fix
+      dropPipeProcedures.get(i).setPipeTaskInfo(pipeTaskInfo);
+      dropPipeProcedures.get(i).executeFromValidateTask(env);
+      dropPipeProcedures.get(i).executeFromCalculateInfoForTask(env);
     }
   }
 
@@ -106,17 +123,9 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionProced
   protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropSubscriptionProcedure: executeFromOperateOnConfigNodes");
 
-    int topicCount = alterTopicProcedures.size();
-    for (int i = 0; i < topicCount; ++i) {
-      dropPipeProcedures.get(i).executeFromValidateTask(env);
-    }
-
-    for (int i = 0; i < topicCount; ++i) {
-      dropPipeProcedures.get(i).executeFromCalculateInfoForTask(env);
-    }
-
     alterConsumerGroupProcedure.executeFromOperateOnConfigNodes(env);
 
+    int topicCount = alterTopicProcedures.size();
     for (int i = 0; i < topicCount; ++i) {
       alterTopicProcedures.get(i).executeFromOperateOnConfigNodes(env);
       dropPipeProcedures.get(i).executeFromWriteConfigNodeConsensus(env);

@@ -60,16 +60,16 @@ public class CreateConsumerProcedure extends AlterConsumerGroupProcedure {
     existingConsumerGroupMeta =
         subscriptionInfo.get().getConsumerGroupMeta(createConsumerReq.getConsumerGroupId());
 
-    final long createTime = System.currentTimeMillis();
+    final long creationTime = System.currentTimeMillis();
     final ConsumerMeta newConsumerMeta =
         new ConsumerMeta(
             createConsumerReq.getConsumerId(),
-            createTime,
+            creationTime,
             createConsumerReq.getConsumerAttributes());
     if (existingConsumerGroupMeta == null) {
       updatedConsumerGroupMeta =
           new ConsumerGroupMeta(
-              createConsumerReq.getConsumerGroupId(), createTime, newConsumerMeta);
+              createConsumerReq.getConsumerGroupId(), creationTime, newConsumerMeta);
     } else {
       updatedConsumerGroupMeta = existingConsumerGroupMeta.deepCopy();
       updatedConsumerGroupMeta.addConsumer(newConsumerMeta);

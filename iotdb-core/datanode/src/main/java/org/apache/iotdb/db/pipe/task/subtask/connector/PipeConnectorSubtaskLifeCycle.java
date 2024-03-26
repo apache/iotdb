@@ -30,8 +30,8 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtaskLifeCycle.class);
 
-  private final PipeConnectorSubtaskExecutor executor;
-  private final PipeConnectorSubtask subtask;
+  protected final PipeConnectorSubtaskExecutor executor;
+  protected final PipeConnectorSubtask subtask;
   private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
   private int runningTaskCount;

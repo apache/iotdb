@@ -26,10 +26,12 @@ import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.common.AbstractMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.snapshot.MemMTreeSnapshotUtil;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -46,6 +48,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.Map;
@@ -270,8 +273,14 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     @Override
     public Statement visitMeasurementMNode(
         AbstractMeasurementMNode<?, ? extends IMNode<?>> node, PartialPath path) {
-      if (node.isLogicalView() || node.getParent().getAsDeviceMNode().isAligned()) {
+      if (node.getParent().getAsDeviceMNode().isAligned()) {
         return null;
+      } else if (node.isLogicalView()) {
+        CreateLogicalViewStatement stmt = new CreateLogicalViewStatement();
+        LogicalViewSchema viewSchema = (LogicalViewSchema) node.getAsMeasurementMNode().getSchema();
+        stmt.setTargetFullPaths(Collections.singletonList(path));
+        stmt.setViewExpressions(Collections.singletonList(viewSchema.getExpression()));
+        return stmt;
       } else {
         CreateTimeSeriesStatement stmt = new CreateTimeSeriesStatement();
         stmt.setPath(path);
@@ -279,7 +288,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         stmt.setCompressor(node.getAsMeasurementMNode().getSchema().getCompressor());
         stmt.setDataType(node.getDataType());
         stmt.setEncoding(node.getAsMeasurementMNode().getSchema().getEncodingType());
-        if (node.getOffset() != 0) {
+        if (node.getOffset() >= 0) {
           if (tagFileChannel != null) {
             try {
               ByteBuffer byteBuffer = ByteBuffer.allocate(COMMON_CONFIG.getTagAttributeTotalSize());

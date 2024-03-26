@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.subscription.meta.consumer;
 
-import org.apache.iotdb.commons.subscription.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 

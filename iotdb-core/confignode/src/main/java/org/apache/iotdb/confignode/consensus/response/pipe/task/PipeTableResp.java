@@ -34,6 +34,7 @@ import org.apache.iotdb.db.utils.DateTimeUtils;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class PipeTableResp implements DataSet {
@@ -135,6 +136,8 @@ public class PipeTableResp implements DataSet {
               exceptionMessageBuilder.toString()));
     }
 
+    // sorted by pipe name
+    showPipeInfoList.sort(Comparator.comparing(pipeInfo -> pipeInfo.id));
     return new TShowPipeResp().setStatus(status).setPipeInfoList(showPipeInfoList);
   }
 }

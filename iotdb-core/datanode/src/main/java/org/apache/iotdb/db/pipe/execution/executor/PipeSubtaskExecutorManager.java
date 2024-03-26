@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.execution.executor;
 
+import org.apache.iotdb.db.subscription.execution.executor.SubscriptionSubtaskExecutor;
+
 /**
  * PipeTaskExecutor is responsible for executing the pipe tasks, and it is scheduled by the
  * PipeTaskScheduler. It is a singleton class.
@@ -26,6 +28,7 @@ package org.apache.iotdb.db.pipe.execution.executor;
 public class PipeSubtaskExecutorManager {
   private final PipeProcessorSubtaskExecutor processorExecutor;
   private final PipeConnectorSubtaskExecutor connectorExecutor;
+  private final SubscriptionSubtaskExecutor subscriptionExecutor;
 
   public PipeProcessorSubtaskExecutor getProcessorExecutor() {
     return processorExecutor;
@@ -35,11 +38,16 @@ public class PipeSubtaskExecutorManager {
     return connectorExecutor;
   }
 
+  public SubscriptionSubtaskExecutor getSubscriptionExecutor() {
+    return subscriptionExecutor;
+  }
+
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
   private PipeSubtaskExecutorManager() {
     processorExecutor = new PipeProcessorSubtaskExecutor();
     connectorExecutor = new PipeConnectorSubtaskExecutor();
+    subscriptionExecutor = new SubscriptionSubtaskExecutor();
   }
 
   private static class PipeTaskExecutorHolder {

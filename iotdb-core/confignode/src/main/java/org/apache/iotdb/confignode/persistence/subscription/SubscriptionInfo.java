@@ -50,6 +50,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -127,9 +128,24 @@ public class SubscriptionInfo implements SnapshotProcessor {
           isTopicExisted(topicName));
     }
 
-    // DO NOTHING HERE!
-    // No matter whether the topic exists, we allow the drop operation
-    // executed on all nodes to ensure the consistency.
+    TopicMeta topicMeta = topicMetaKeeper.getTopicMeta(topicName);
+    if (Objects.isNull(topicMeta)) {
+      // DO NOTHING HERE!
+      // No matter whether the topic exists, we allow the drop operation
+      // executed on all nodes to ensure the consistency.
+      return;
+    } else {
+      if (!topicMeta.hasSubscribedConsumerGroup()) {
+        return;
+      }
+    }
+
+    final String exceptionMessage =
+        String.format(
+            "Failed to drop topic %s, the topic is subscribed by some consumers",
+            topicMeta.getTopicName());
+    LOGGER.warn(exceptionMessage);
+    throw new SubscriptionException(exceptionMessage);
   }
 
   public void validateBeforeAlteringTopic(TopicMeta topicMeta) throws SubscriptionException {
@@ -336,10 +352,13 @@ public class SubscriptionInfo implements SnapshotProcessor {
   public TSStatus alterConsumerGroup(AlterConsumerGroupPlan plan) {
     acquireWriteLock();
     try {
-      if (plan.getConsumerGroupMeta() != null) {
-        String consumerGroupId = plan.getConsumerGroupMeta().getConsumerGroupId();
+      ConsumerGroupMeta consumerGroupMeta = plan.getConsumerGroupMeta();
+      if (Objects.nonNull(consumerGroupMeta)) {
+        String consumerGroupId = consumerGroupMeta.getConsumerGroupId();
         consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
-        consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, plan.getConsumerGroupMeta());
+        if (!consumerGroupMeta.isEmpty()) {
+          consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, consumerGroupMeta);
+        }
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
@@ -422,7 +441,9 @@ public class SubscriptionInfo implements SnapshotProcessor {
     acquireReadLock();
     try {
       return new SubscriptionTableResp(
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), getAllSubscriptionMeta());
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          getAllSubscriptionMeta(),
+          getAllConsumerGroupMeta());
     } finally {
       releaseReadLock();
     }
@@ -431,7 +452,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
   private List<SubscriptionMeta> getAllSubscriptionMeta() {
     List<SubscriptionMeta> allSubscriptions = new ArrayList<>();
     for (TopicMeta topicMeta : topicMetaKeeper.getAllTopicMeta()) {
-      for (String consumerGroupId : topicMeta.getSubscribedConsumerGroupIDs()) {
+      for (String consumerGroupId : topicMeta.getSubscribedConsumerGroupIds()) {
         Set<String> subscribedConsumerIDs =
             consumerGroupMetaKeeper.getConsumersSubscribingTopic(
                 consumerGroupId, topicMeta.getTopicName());
@@ -443,6 +464,12 @@ public class SubscriptionInfo implements SnapshotProcessor {
       }
     }
     return allSubscriptions;
+  }
+
+  private List<ConsumerGroupMeta> getAllConsumerGroupMeta() {
+    return StreamSupport.stream(
+            consumerGroupMetaKeeper.getAllConsumerGroupMeta().spliterator(), false)
+        .collect(Collectors.toList());
   }
 
   /////////////////////////////////  Snapshot  /////////////////////////////////

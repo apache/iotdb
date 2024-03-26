@@ -25,7 +25,8 @@ import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopic
 import org.apache.iotdb.confignode.consensus.response.subscription.SubscriptionTableResp;
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinatorLock;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinator;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
@@ -39,11 +40,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionCoordinator {
@@ -53,7 +56,7 @@ public class SubscriptionCoordinator {
   private final ConfigManager configManager;
   private final SubscriptionInfo subscriptionInfo;
 
-  private final PipeTaskCoordinatorLock coordinatorLock;
+  private final PipeTaskCoordinator pipeTaskCoordinator;
   private AtomicReference<SubscriptionInfo> subscriptionInfoHolder;
 
   public SubscriptionCoordinator(ConfigManager configManager, SubscriptionInfo subscriptionInfo) {
@@ -62,8 +65,7 @@ public class SubscriptionCoordinator {
 
     // TODO: check if
     // Subscription related procedures also manage pipe tasks, so we use the same lock.
-    this.coordinatorLock =
-        configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskCoordinatorLock();
+    this.pipeTaskCoordinator = configManager.getPipeManager().getPipeTaskCoordinator();
   }
 
   public SubscriptionInfo getSubscriptionInfo() {
@@ -72,10 +74,12 @@ public class SubscriptionCoordinator {
 
   /////////////////////////////// Lock ///////////////////////////////
 
-  public AtomicReference<SubscriptionInfo> tryLock() {
-    if (coordinatorLock.tryLock()) {
+  public Pair<AtomicReference<SubscriptionInfo>, AtomicReference<PipeTaskInfo>> tryLock() {
+    AtomicReference<PipeTaskInfo> pipeTaskInfoHolder = pipeTaskCoordinator.tryLock();
+
+    if (Objects.nonNull(pipeTaskInfoHolder)) {
       subscriptionInfoHolder = new AtomicReference<>(subscriptionInfo);
-      return subscriptionInfoHolder;
+      return new Pair<>(subscriptionInfoHolder, pipeTaskInfoHolder);
     }
 
     return null;
@@ -88,7 +92,7 @@ public class SubscriptionCoordinator {
     }
 
     try {
-      coordinatorLock.unlock();
+      pipeTaskCoordinator.unlock();
       return true;
     } catch (IllegalMonitorStateException ignored) {
       // This is thrown if unlock() is called without lock() called first.
@@ -207,6 +211,7 @@ public class SubscriptionCoordinator {
       return new SubscriptionTableResp(
               new TSStatus(TSStatusCode.SHOW_SUBSCRIPTION_ERROR.getStatusCode())
                   .setMessage(e.getMessage()),
+              Collections.emptyList(),
               Collections.emptyList())
           .convertToTShowSubscriptionResp();
     }

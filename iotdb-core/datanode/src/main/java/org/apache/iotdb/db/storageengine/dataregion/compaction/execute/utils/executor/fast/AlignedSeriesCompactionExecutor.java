@@ -169,11 +169,16 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
             valueChunkMetadatas.add(null);
           } else {
             // current file contains this aligned timeseries
-            valueChunkMetadatas.add(
+            List<IChunkMetadata> valueColumnChunkMetadataList =
                 readerCacheMap
                     .get(resource)
                     .getChunkMetadataListByTimeseriesMetadataOffset(
-                        timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right));
+                        timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right);
+            if (isValueChunkDataTypeMatchSchema(valueColumnChunkMetadataList)) {
+              valueChunkMetadatas.add(valueColumnChunkMetadataList);
+            } else {
+              valueChunkMetadatas.add(null);
+            }
           }
         }
       }
@@ -237,6 +242,19 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
                 fileElement));
       }
     }
+  }
+
+  private boolean isValueChunkDataTypeMatchSchema(
+      List<IChunkMetadata> chunkMetadataListOfOneValueColumn) {
+    for (IChunkMetadata chunkMetadata : chunkMetadataListOfOneValueColumn) {
+      if (chunkMetadata == null) {
+        continue;
+      }
+      String measurement = chunkMetadata.getMeasurementUid();
+      IMeasurementSchema schema = measurementSchemaMap.get(measurement);
+      return schema.getType() == chunkMetadata.getDataType();
+    }
+    return true;
   }
 
   /**
