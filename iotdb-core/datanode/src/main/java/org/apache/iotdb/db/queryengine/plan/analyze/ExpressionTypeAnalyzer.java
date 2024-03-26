@@ -90,6 +90,16 @@ public class ExpressionTypeAnalyzer {
     types.putAll(analyzer.getExpressionTypes());
   }
 
+  public static void analyzeExpressionUsingTemplatedInfo(
+      Map<NodeRef<Expression>, TSDataType> types,
+      Expression expression,
+      TemplatedInfo templatedInfo) {
+    ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
+    analyzer.analyze(expression, templatedInfo.getSchemaMap());
+
+    types.putAll(analyzer.getExpressionTypes());
+  }
+
   private static void addExpressionTypes(Analysis analysis, ExpressionTypeAnalyzer analyzer) {
     analysis.addTypes(analyzer.getExpressionTypes());
   }

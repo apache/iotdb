@@ -25,6 +25,8 @@ import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -61,7 +63,7 @@ public class TsFileIOWriterMemoryControlTest {
   private static File emptyFile = new File("target", "temp");
   private long TEST_CHUNK_SIZE = 1000;
   private List<String> sortedSeriesId = new ArrayList<>();
-  private List<String> sortedDeviceId = new ArrayList<>();
+  private List<IDeviceID> sortedDeviceId = new ArrayList<>();
   private boolean init = false;
 
   @Before
@@ -70,10 +72,10 @@ public class TsFileIOWriterMemoryControlTest {
       init = true;
       for (int i = 0; i < 2048; ++i) {
         sortedSeriesId.add("s" + i);
-        sortedDeviceId.add("root.sg.d" + i);
+        sortedDeviceId.add(new PlainDeviceID("root.sg.d" + i));
       }
       sortedSeriesId.sort((String::compareTo));
-      sortedDeviceId.sort((String::compareTo));
+      sortedDeviceId.sort((IDeviceID::compareTo));
     }
     TEST_CHUNK_SIZE = 1000;
   }
@@ -98,7 +100,7 @@ public class TsFileIOWriterMemoryControlTest {
     try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024 * 1024 * 10)) {
       List<ChunkMetadata> originChunkMetadataList = new ArrayList<>();
       for (int i = 0; i < 10; ++i) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         writer.startChunkGroup(deviceId);
         for (int j = 0; j < 5; ++j) {
           ChunkWriterImpl chunkWriter;
@@ -150,7 +152,7 @@ public class TsFileIOWriterMemoryControlTest {
     try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024 * 1024 * 10)) {
       List<ChunkMetadata> originChunkMetadataList = new ArrayList<>();
       for (int i = 0; i < 10; ++i) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         writer.startChunkGroup(deviceId);
         AlignedChunkWriterImpl chunkWriter = generateVectorData(0L, new ArrayList<>(), 6);
         chunkWriter.writeToFileWriter(writer);
@@ -162,9 +164,9 @@ public class TsFileIOWriterMemoryControlTest {
 
       List<String> measurementIds = new ArrayList<>();
       for (int i = 0; i < 10; ++i) {
-        measurementIds.add(sortedDeviceId.get(i) + ".");
+        measurementIds.add(((PlainDeviceID) sortedDeviceId.get(i)).toStringID() + ".");
         for (int j = 1; j <= 6; ++j) {
-          measurementIds.add(sortedDeviceId.get(i) + ".s" + j);
+          measurementIds.add(((PlainDeviceID) sortedDeviceId.get(i)).toStringID() + ".s" + j);
         }
       }
       TSMIterator iterator =
@@ -189,7 +191,7 @@ public class TsFileIOWriterMemoryControlTest {
       List<IChunkMetadata> originChunkMetadataList = new ArrayList<>();
       List<String> seriesIds = new ArrayList<>();
       for (int i = 0; i < 10; ++i) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         writer.startChunkGroup(deviceId);
         if (i % 2 == 0) {
           // write normal series
@@ -214,15 +216,15 @@ public class TsFileIOWriterMemoryControlTest {
                 break;
             }
             chunkWriter.writeToFileWriter(writer);
-            seriesIds.add(deviceId + "." + sortedSeriesId.get(j));
+            seriesIds.add(((PlainDeviceID) deviceId).toStringID() + "." + sortedSeriesId.get(j));
           }
         } else {
           // write vector
           AlignedChunkWriterImpl chunkWriter = generateVectorData(0L, new ArrayList<>(), 6);
           chunkWriter.writeToFileWriter(writer);
-          seriesIds.add(deviceId + ".");
+          seriesIds.add(((PlainDeviceID) deviceId).toStringID() + ".");
           for (int l = 1; l <= 6; ++l) {
-            seriesIds.add(deviceId + ".s" + l);
+            seriesIds.add(((PlainDeviceID) deviceId).toStringID() + ".s" + l);
           }
         }
         originChunkMetadataList.addAll(writer.chunkMetadataList);
@@ -257,10 +259,11 @@ public class TsFileIOWriterMemoryControlTest {
    */
   @Test
   public void testWriteCompleteFileWithNormalChunk() throws IOException {
-    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData = new HashMap<>();
+    Map<IDeviceID, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData =
+        new HashMap<>();
     try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024)) {
       for (int i = 0; i < 10; ++i) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         writer.startChunkGroup(deviceId);
         for (int j = 0; j < 5; ++j) {
           List<Pair<Long, TsPrimitiveType>> valList = new ArrayList<>();
@@ -310,10 +313,11 @@ public class TsFileIOWriterMemoryControlTest {
    */
   @Test
   public void testWriteCompleteFileWithMultipleNormalChunk() throws IOException {
-    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData = new HashMap<>();
+    Map<IDeviceID, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData =
+        new HashMap<>();
     try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024)) {
       for (int i = 0; i < 10; ++i) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         writer.startChunkGroup(deviceId);
         for (int j = 0; j < 5; ++j) {
           ChunkWriterImpl chunkWriter;
@@ -397,10 +401,11 @@ public class TsFileIOWriterMemoryControlTest {
    */
   @Test
   public void testWriteCompleteFileWithMetadataRemainsInMemoryWhenEndFile() throws IOException {
-    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData = new HashMap<>();
+    Map<IDeviceID, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData =
+        new HashMap<>();
     try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024)) {
       for (int i = 0; i < 10; ++i) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         writer.startChunkGroup(deviceId);
         for (int j = 0; j < 5; ++j) {
           ChunkWriterImpl chunkWriter;
@@ -487,12 +492,13 @@ public class TsFileIOWriterMemoryControlTest {
    */
   @Test
   public void testWriteCompleteFileWithEnormousNormalChunk() throws IOException {
-    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData = new HashMap<>();
+    Map<IDeviceID, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData =
+        new HashMap<>();
     long originTestChunkSize = TEST_CHUNK_SIZE;
     TEST_CHUNK_SIZE = 10;
     try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024)) {
       for (int i = 0; i < 2; ++i) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         writer.startChunkGroup(deviceId);
         for (int j = 0; j < 5; ++j) {
           ChunkWriterImpl chunkWriter;
@@ -578,12 +584,13 @@ public class TsFileIOWriterMemoryControlTest {
    */
   @Test
   public void testWriteCompleteFileWithEnormousSeriesNum() throws IOException {
-    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originTimes = new HashMap<>();
+    Map<IDeviceID, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originTimes =
+        new HashMap<>();
     long originTestChunkSize = TEST_CHUNK_SIZE;
     TEST_CHUNK_SIZE = 1;
     try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024)) {
       for (int i = 0; i < 2; ++i) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         writer.startChunkGroup(deviceId);
         for (int j = 0; j < 1024; ++j) {
           ChunkWriterImpl chunkWriter;
@@ -669,12 +676,13 @@ public class TsFileIOWriterMemoryControlTest {
    */
   @Test
   public void testWriteCompleteFileWithEnormousDeviceNum() throws IOException {
-    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originTimes = new HashMap<>();
+    Map<IDeviceID, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originTimes =
+        new HashMap<>();
     long originTestChunkSize = TEST_CHUNK_SIZE;
     TEST_CHUNK_SIZE = 10;
     try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024)) {
       for (int i = 0; i < 1024; ++i) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         writer.startChunkGroup(deviceId);
         for (int j = 0; j < 5; ++j) {
           ChunkWriterImpl chunkWriter;
@@ -761,10 +769,11 @@ public class TsFileIOWriterMemoryControlTest {
    */
   @Test
   public void testWriteCompleteFileWithAlignedSeriesWithOneChunk() throws IOException {
-    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData = new HashMap<>();
+    Map<IDeviceID, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData =
+        new HashMap<>();
     try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024)) {
       for (int i = 0; i < 10; ++i) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         writer.startChunkGroup(deviceId);
         List<List<Pair<Long, TsPrimitiveType>>> valList = new ArrayList<>();
         AlignedChunkWriterImpl chunkWriter = generateVectorData(0L, valList, 6);
@@ -796,11 +805,12 @@ public class TsFileIOWriterMemoryControlTest {
    */
   @Test
   public void testWriteCompleteFileWithAlignedSeriesWithMultiChunks() throws IOException {
-    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData = new HashMap<>();
+    Map<IDeviceID, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData =
+        new HashMap<>();
     int chunkNum = 512, seriesNum = 6;
     try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024)) {
       for (int i = 0; i < 1; ++i) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         for (int k = 0; k < chunkNum; ++k) {
           writer.startChunkGroup(deviceId);
           List<List<Pair<Long, TsPrimitiveType>>> valList = new ArrayList<>();
@@ -835,14 +845,15 @@ public class TsFileIOWriterMemoryControlTest {
    */
   @Test
   public void testWriteCompleteFileWithAlignedSeriesWithManyComponents() throws IOException {
-    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData = new HashMap<>();
+    Map<IDeviceID, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData =
+        new HashMap<>();
     int chunkNum = 5, seriesNum = 1024;
     long originTestPointNum = TEST_CHUNK_SIZE;
     TEST_CHUNK_SIZE = 10;
     try {
       try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024)) {
         for (int i = 0; i < 10; ++i) {
-          String deviceId = sortedDeviceId.get(i);
+          IDeviceID deviceId = sortedDeviceId.get(i);
           for (int k = 0; k < chunkNum; ++k) {
             writer.startChunkGroup(deviceId);
             List<List<Pair<Long, TsPrimitiveType>>> valList = new ArrayList<>();
@@ -875,7 +886,8 @@ public class TsFileIOWriterMemoryControlTest {
 
   @Test
   public void testWriteCompleteFileWithLotsAlignedSeries() throws IOException {
-    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData = new HashMap<>();
+    Map<IDeviceID, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData =
+        new HashMap<>();
     int chunkNum = 5, seriesNum = 12;
     long originTestPointNum = TEST_CHUNK_SIZE;
     TEST_CHUNK_SIZE = 10;
@@ -883,7 +895,7 @@ public class TsFileIOWriterMemoryControlTest {
     try {
       try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024)) {
         for (int i = 0; i < deviceNum; ++i) {
-          String deviceId = sortedDeviceId.get(i);
+          IDeviceID deviceId = sortedDeviceId.get(i);
           for (int k = 0; k < chunkNum; ++k) {
             writer.startChunkGroup(deviceId);
             List<List<Pair<Long, TsPrimitiveType>>> valList = new ArrayList<>();
@@ -916,11 +928,12 @@ public class TsFileIOWriterMemoryControlTest {
 
   @Test
   public void testWritingAlignedSeriesByColumnWithMultiComponents() throws IOException {
-    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originValue = new HashMap<>();
+    Map<IDeviceID, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originValue =
+        new HashMap<>();
     TEST_CHUNK_SIZE = 10;
     try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024)) {
       for (int i = 0; i < 5; i++) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         writer.startChunkGroup(deviceId);
         TSEncoding timeEncoding =
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
@@ -975,10 +988,11 @@ public class TsFileIOWriterMemoryControlTest {
 
   @Test
   public void testWritingCompleteMixedFiles() throws IOException {
-    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData = new HashMap<>();
+    Map<IDeviceID, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originData =
+        new HashMap<>();
     try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024)) {
       for (int i = 0; i < 5; ++i) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         for (int k = 0; k < 10; ++k) {
           writer.startChunkGroup(deviceId);
           List<List<Pair<Long, TsPrimitiveType>>> valList = new ArrayList<>();
@@ -996,7 +1010,7 @@ public class TsFileIOWriterMemoryControlTest {
         writer.checkMetadataSizeAndMayFlush();
       }
       for (int i = 5; i < 10; ++i) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         writer.startChunkGroup(deviceId);
         for (int j = 0; j < 5; ++j) {
           ChunkWriterImpl chunkWriter;
@@ -1074,10 +1088,11 @@ public class TsFileIOWriterMemoryControlTest {
 
   @Test
   public void testWritingAlignedSeriesByColumn() throws IOException {
-    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originValue = new HashMap<>();
+    Map<IDeviceID, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originValue =
+        new HashMap<>();
     try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024)) {
       for (int i = 0; i < 5; i++) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         writer.startChunkGroup(deviceId);
         TSEncoding timeEncoding =
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
@@ -1128,10 +1143,11 @@ public class TsFileIOWriterMemoryControlTest {
 
   @Test
   public void testWritingAlignedSeriesByColumnWithMultiChunks() throws IOException {
-    Map<String, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originValue = new HashMap<>();
+    Map<IDeviceID, Map<String, List<List<Pair<Long, TsPrimitiveType>>>>> originValue =
+        new HashMap<>();
     try (TsFileIOWriter writer = new TsFileIOWriter(testFile, 1024)) {
       for (int i = 0; i < 5; i++) {
-        String deviceId = sortedDeviceId.get(i);
+        IDeviceID deviceId = sortedDeviceId.get(i);
         writer.startChunkGroup(deviceId);
         TSEncoding timeEncoding =
             TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());

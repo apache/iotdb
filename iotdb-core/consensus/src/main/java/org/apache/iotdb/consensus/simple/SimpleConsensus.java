@@ -168,11 +168,13 @@ class SimpleConsensus implements IConsensus {
                     return null;
                   }
 
-                  SimpleConsensusServerImpl impl =
-                      new SimpleConsensusServerImpl(peers.get(0), registry.apply(groupId));
-                  impl.start();
-                  return impl;
+                  return new SimpleConsensusServerImpl(peers.get(0), registry.apply(groupId));
                 }))
+        .map(
+            impl -> {
+              impl.start();
+              return impl;
+            })
         .orElseThrow(
             () ->
                 new ConsensusException(
@@ -239,6 +241,11 @@ class SimpleConsensus implements IConsensus {
   @Override
   public List<ConsensusGroupId> getAllConsensusGroupIds() {
     return new ArrayList<>(stateMachineMap.keySet());
+  }
+
+  @Override
+  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
+    throw new ConsensusException("SimpleConsensus does not support reset peer list");
   }
 
   private String buildPeerDir(ConsensusGroupId groupId) {

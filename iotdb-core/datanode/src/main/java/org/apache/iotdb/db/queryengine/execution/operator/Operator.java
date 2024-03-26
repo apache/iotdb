@@ -43,13 +43,17 @@ public interface Operator extends AutoCloseable {
   default TsBlock nextWithTimer() throws Exception {
     OperatorContext context = getOperatorContext();
     long startTime = System.nanoTime();
-
+    TsBlock output = null;
     try {
-      return next();
+      output = next();
     } finally {
       context.recordExecutionTime(System.nanoTime() - startTime);
+      if (output != null) {
+        context.addOutputRows(output.getPositionCount());
+      }
       context.recordNextCalled();
     }
+    return output;
   }
 
   /**
@@ -68,7 +72,14 @@ public interface Operator extends AutoCloseable {
       return hasNext();
     } finally {
       context.recordExecutionTime(System.nanoTime() - startTime);
+      context.recordHasNextCalled();
     }
+  }
+
+  default long calculateMaxPeekMemoryWithCounter() {
+    long maxPeekMemory = calculateMaxPeekMemory();
+    getOperatorContext().setEstimatedMemorySize(maxPeekMemory);
+    return maxPeekMemory;
   }
 
   /**

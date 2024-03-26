@@ -114,6 +114,11 @@ public class AlignedLastQueryScanNode extends LastSeriesSourceNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.ALIGNED_LAST_QUERY_SCAN;
+  }
+
+  @Override
   public PlanNode clone() {
     return new AlignedLastQueryScanNode(
         getPlanNodeId(), seriesPath, getDataNodeSeriesScanNum(), outputViewPath, regionReplicaSet);

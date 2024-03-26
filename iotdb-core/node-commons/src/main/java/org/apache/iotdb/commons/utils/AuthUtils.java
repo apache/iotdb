@@ -490,4 +490,89 @@ public class AuthUtils {
     }
     role.setServiceReady(true);
   }
+
+  public static int posToSysPri(int pos) {
+    switch (pos) {
+      case 0:
+        return PrivilegeType.MANAGE_DATABASE.ordinal();
+      case 1:
+        return PrivilegeType.MANAGE_USER.ordinal();
+      case 2:
+        return PrivilegeType.MANAGE_ROLE.ordinal();
+      case 3:
+        return PrivilegeType.USE_TRIGGER.ordinal();
+      case 4:
+        return PrivilegeType.USE_UDF.ordinal();
+      case 5:
+        return PrivilegeType.USE_CQ.ordinal();
+      case 6:
+        return PrivilegeType.USE_PIPE.ordinal();
+      case 7:
+        return PrivilegeType.EXTEND_TEMPLATE.ordinal();
+      case 8:
+        return PrivilegeType.MAINTAIN.ordinal();
+      case 9:
+        return PrivilegeType.USE_MODEL.ordinal();
+      default:
+        return -1;
+    }
+  }
+
+  public static int sysPriTopos(int privilegeId) {
+    PrivilegeType type = PrivilegeType.values()[privilegeId];
+    switch (type) {
+      case MANAGE_DATABASE:
+        return 0;
+      case MANAGE_USER:
+        return 1;
+      case MANAGE_ROLE:
+        return 2;
+      case USE_TRIGGER:
+        return 3;
+      case USE_UDF:
+        return 4;
+      case USE_CQ:
+        return 5;
+      case USE_PIPE:
+        return 6;
+      case EXTEND_TEMPLATE:
+        return 7;
+      case MAINTAIN:
+        return 8;
+      case USE_MODEL:
+        return 9;
+      default:
+        return -1;
+    }
+  }
+
+  public static int pathPosToPri(int pos) {
+    switch (pos) {
+      case 0:
+        return PrivilegeType.READ_DATA.ordinal();
+      case 1:
+        return PrivilegeType.WRITE_DATA.ordinal();
+      case 2:
+        return PrivilegeType.READ_SCHEMA.ordinal();
+      case 3:
+        return PrivilegeType.WRITE_SCHEMA.ordinal();
+      default:
+        return -1;
+    }
+  }
+
+  public static int pathPriToPos(PrivilegeType pri) {
+    switch (pri) {
+      case READ_DATA:
+        return 0;
+      case WRITE_DATA:
+        return 1;
+      case READ_SCHEMA:
+        return 2;
+      case WRITE_SCHEMA:
+        return 3;
+      default:
+        return -1;
+    }
+  }
 }

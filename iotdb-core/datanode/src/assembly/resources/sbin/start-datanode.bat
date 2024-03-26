@@ -18,6 +18,11 @@
 @REM
 
 @echo off
+@REM set cmd format
+chcp 65001
+
+title IoTDB DataNode
+
 echo ````````````````````````
 echo Starting IoTDB DataNode
 echo ````````````````````````

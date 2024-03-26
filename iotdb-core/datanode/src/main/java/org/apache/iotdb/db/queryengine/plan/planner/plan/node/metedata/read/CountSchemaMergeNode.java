@@ -35,6 +35,11 @@ public class CountSchemaMergeNode extends AbstractSchemaMergeNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.COUNT_MERGE;
+  }
+
+  @Override
   public PlanNode clone() {
     return new CountSchemaMergeNode(getPlanNodeId());
   }

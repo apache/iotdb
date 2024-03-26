@@ -31,6 +31,7 @@ import org.apache.iotdb.db.protocol.thrift.handler.InternalServiceThriftHandler;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeInternalRPCServiceImpl;
 import org.apache.iotdb.db.service.metrics.DataNodeInternalRPCServiceMetrics;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService.Processor;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 
 public class DataNodeInternalRPCService extends ThriftService
     implements DataNodeInternalRPCServiceMBean {
@@ -67,7 +68,8 @@ public class DataNodeInternalRPCService extends ThriftService
               config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new InternalServiceThriftHandler(),
-              config.isRpcThriftCompressionEnable());
+              config.isRpcThriftCompressionEnable(),
+              DeepCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

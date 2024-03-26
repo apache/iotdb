@@ -123,10 +123,6 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     this.queryBodyStatement = queryBodyStatement;
   }
 
-  public String getZoneId() {
-    return queryBodyStatement.getSelectComponent().getZoneId().getId();
-  }
-
   public String getSql() {
     return constructFormattedSQL();
   }

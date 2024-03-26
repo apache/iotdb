@@ -21,8 +21,8 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
@@ -80,12 +80,12 @@ public class ThriftConnection {
       ZoneId zoneId,
       String version)
       throws IoTDBConnectionException {
-    RpcTransportFactory.setDefaultBufferCapacity(thriftDefaultBufferSize);
-    RpcTransportFactory.setThriftMaxFrameSize(thriftMaxFrameSize);
+    DeepCopyRpcTransportFactory.setDefaultBufferCapacity(thriftDefaultBufferSize);
+    DeepCopyRpcTransportFactory.setThriftMaxFrameSize(thriftMaxFrameSize);
     try {
       if (useSSL) {
         transport =
-            RpcTransportFactory.INSTANCE.getTransport(
+            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                 endPoint.getIp(),
                 endPoint.getPort(),
                 connectionTimeoutInMs,
@@ -93,7 +93,7 @@ public class ThriftConnection {
                 trustStorePwd);
       } else {
         transport =
-            RpcTransportFactory.INSTANCE.getTransport(
+            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                 // as there is a try-catch already, we do not need to use TSocket.wrap
                 endPoint.getIp(), endPoint.getPort(), connectionTimeoutInMs);
       }

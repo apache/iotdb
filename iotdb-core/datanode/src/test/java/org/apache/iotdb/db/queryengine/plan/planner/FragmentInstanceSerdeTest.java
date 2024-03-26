@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.TreeModelTimePredicate;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
@@ -54,8 +56,7 @@ import static org.junit.Assert.assertNull;
 
 public class FragmentInstanceSerdeTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final SessionInfo sessionInfo =
-      new SessionInfo(1, "test", ZoneId.systemDefault().getId());
+  private static final SessionInfo sessionInfo = new SessionInfo(1, "test", ZoneId.systemDefault());
 
   @Test
   public void testSerializeAndDeserializeForTree1() throws IllegalPathException {
@@ -72,7 +73,7 @@ public class FragmentInstanceSerdeTest {
         new FragmentInstance(
             new PlanFragment(planFragmentId, constructPlanNodeTree()),
             planFragmentId.genFragmentInstanceId(),
-            ExpressionFactory.groupByTime(1, 2, 3, 4),
+            new TreeModelTimePredicate(ExpressionFactory.groupByTime(1, 2, 3, 4)),
             QueryType.READ,
             config.getQueryTimeoutThreshold(),
             sessionInfo);

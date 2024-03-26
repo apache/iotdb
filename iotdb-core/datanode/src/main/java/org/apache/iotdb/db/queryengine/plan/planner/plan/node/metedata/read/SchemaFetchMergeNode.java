@@ -51,6 +51,11 @@ public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.SCHEMA_FETCH_MERGE;
+  }
+
+  @Override
   public PlanNode clone() {
     return new SchemaFetchMergeNode(getPlanNodeId(), storageGroupList);
   }

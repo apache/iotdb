@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import java.io.IOException;
 import java.util.List;
@@ -29,6 +33,15 @@ import java.util.List;
  * its corresponding implementation.
  */
 public abstract class AbstractInnerSpaceEstimator extends AbstractCompactionEstimator {
+
+  @Override
+  protected TsFileSequenceReader getReader(String filePath) throws IOException {
+    if (filePath.contains(IoTDBConstant.UNSEQUENCE_FOLDER_NAME)) {
+      return new CompactionTsFileReader(filePath, CompactionType.INNER_UNSEQ_COMPACTION);
+    } else {
+      return new CompactionTsFileReader(filePath, CompactionType.INNER_SEQ_COMPACTION);
+    }
+  }
 
   public long estimateInnerCompactionMemory(List<TsFileResource> resources) throws IOException {
     if (!CompactionEstimateUtils.addReadLock(resources)) {

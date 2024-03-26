@@ -100,6 +100,11 @@ public class SlidingWindowAggregationNode extends SingleChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.SLIDING_WINDOW_AGGREGATION;
+  }
+
+  @Override
   public PlanNode clone() {
     return new SlidingWindowAggregationNode(
         getPlanNodeId(),

@@ -34,6 +34,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
 
@@ -78,9 +79,23 @@ public class TimeJoinNodeSerdeTest {
   }
 
   @Test
-  public void testSerializeAndDeserializeInnerTimeJoin() throws IllegalPathException {
+  public void testSerializeAndDeserializeInnerTimeJoin1() throws IllegalPathException {
     InnerTimeJoinNode innerTimeJoinNode =
-        new InnerTimeJoinNode(new PlanNodeId("TestInnerTimeJoinNode"), Ordering.ASC);
+        new InnerTimeJoinNode(new PlanNodeId("TestInnerTimeJoinNode"), Ordering.ASC, null, null);
+    innerTimeJoinNode.addChild(seriesScanNode1);
+    innerTimeJoinNode.addChild(seriesScanNode2);
+
+    testSerde(innerTimeJoinNode);
+  }
+
+  @Test
+  public void testSerializeAndDeserializeInnerTimeJoin2() throws IllegalPathException {
+    InnerTimeJoinNode innerTimeJoinNode =
+        new InnerTimeJoinNode(
+            new PlanNodeId("TestInnerTimeJoinNode"),
+            Ordering.ASC,
+            Arrays.asList(0L, 1L),
+            Arrays.asList("root.sg.d1.s1", "root.sg.d1.s2"));
     innerTimeJoinNode.addChild(seriesScanNode1);
     innerTimeJoinNode.addChild(seriesScanNode2);
 

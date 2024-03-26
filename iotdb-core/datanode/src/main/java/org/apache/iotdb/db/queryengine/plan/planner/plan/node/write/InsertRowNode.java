@@ -130,6 +130,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.INSERT_ROW;
+  }
+
+  @Override
   public PlanNode clone() {
     throw new NotImplementedException("clone of Insert is not implemented");
   }

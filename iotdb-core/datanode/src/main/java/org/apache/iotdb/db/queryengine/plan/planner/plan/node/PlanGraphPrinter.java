@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -74,6 +76,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
 
@@ -112,6 +116,12 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     if (offset > 0) {
       boxValue.add(String.format("Offset: %s", offset));
     }
+
+    Expression predicate = node.getPushDownPredicate();
+    if (predicate != null) {
+      boxValue.add(String.format("Predicate: %s", predicate));
+    }
+
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -133,6 +143,12 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     if (offset > 0) {
       boxValue.add(String.format("Offset: %s", offset));
     }
+
+    Expression predicate = node.getPushDownPredicate();
+    if (predicate != null) {
+      boxValue.add(String.format("Predicate: %s", predicate));
+    }
+
     boxValue.add(String.format("QueryAllSensors: %s", node.isQueryAllSensors()));
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
@@ -403,6 +419,25 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       Expression exp = node.getOutputExpressions()[i];
       boxValue.add(
           String.format("Exp-%d[%s]: %s", i, exp.getExpressionType(), exp.getExpressionString()));
+    }
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitProject(ProjectNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Project-%s", node.getPlanNodeId().getId()));
+    List<String> outputColumns = node.getOutputColumnNames();
+    if (outputColumns == null) {
+      checkArgument(context.getTemplatedInfo() != null);
+      outputColumns = context.getTemplatedInfo().getSelectMeasurements();
+      // skip device column
+      outputColumns = outputColumns.subList(1, outputColumns.size());
+    }
+
+    for (int i = 0; i < outputColumns.size(); i++) {
+      String outputColumn = outputColumns.get(i);
+      boxValue.add(String.format("OutputColumn-%d: %s", i, outputColumn));
     }
     return render(node, boxValue, context);
   }
@@ -750,10 +785,20 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     }
   }
 
-  public static class GraphContext {}
+  public static class GraphContext {
+    private final TemplatedInfo templatedInfo;
+
+    public GraphContext(TemplatedInfo templatedInfo) {
+      this.templatedInfo = templatedInfo;
+    }
+
+    public TemplatedInfo getTemplatedInfo() {
+      return templatedInfo;
+    }
+  }
 
   public static List<String> getGraph(PlanNode node) {
-    return node.accept(new PlanGraphPrinter(), new PlanGraphPrinter.GraphContext());
+    return node.accept(new PlanGraphPrinter(), new PlanGraphPrinter.GraphContext(null));
   }
 
   public static void print(PlanNode node) {

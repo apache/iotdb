@@ -26,9 +26,9 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.openjdk.jol.info.ClassLayout;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -327,7 +327,8 @@ public class LastQueryMergeOperator implements ProcessOperator {
 
   private static class Location {
 
-    private static final int INSTANCE_SIZE = ClassLayout.parseClass(Location.class).instanceSize();
+    private static final long INSTANCE_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(Location.class);
     int tsBlockIndex;
     int rowIndex;
 

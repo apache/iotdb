@@ -172,6 +172,11 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.CREATE_ALIGNED_TIME_SERIES;
+  }
+
+  @Override
   public PlanNode clone() {
     throw new NotImplementedException("Clone of CreateAlignedTimeSeriesNode is not implemented");
   }
@@ -193,7 +198,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
 
   public static CreateAlignedTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
     String id;
-    PartialPath devicePath = null;
+    PartialPath devicePath;
     List<String> measurements;
     List<TSDataType> dataTypes;
     List<TSEncoding> encodings;

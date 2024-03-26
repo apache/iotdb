@@ -39,7 +39,7 @@ public class DropTriggerProcedureTest {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    DropTriggerProcedure p1 = new DropTriggerProcedure("test");
+    DropTriggerProcedure p1 = new DropTriggerProcedure("test", false);
 
     try {
       p1.serialize(outputStream);

@@ -230,6 +230,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void grantRoleToUser(String roleName, String username) throws AuthException {
+    if (isAdmin(username)) {
+      throw new AuthException(
+          TSStatusCode.NO_PERMISSION, "Invalid operation, cannot grant role to administrator ");
+    }
+
     Role role = roleManager.getRole(roleName);
     if (role == null) {
       throw new AuthException(
@@ -252,6 +257,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void revokeRoleFromUser(String roleName, String username) throws AuthException {
+    if (isAdmin(username)) {
+      throw new AuthException(
+          TSStatusCode.NO_PERMISSION, "Invalid operation, cannot revoke role from administrator ");
+    }
+
     Role role = roleManager.getRole(roleName);
     if (role == null) {
       throw new AuthException(

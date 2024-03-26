@@ -85,10 +85,8 @@ public class UDTFExecutor {
     udtf = (UDTF) UDFManagementService.getInstance().reflect(functionName);
 
     final UDFParameters parameters =
-        new UDFParameters(
-            childExpressions,
-            UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
-            attributes);
+        UDFParametersFactory.buildUdfParameters(
+            childExpressions, childExpressionDataTypes, attributes);
 
     try {
       udtf.validate(new UDFParameterValidator(parameters));

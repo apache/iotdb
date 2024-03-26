@@ -25,10 +25,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Analysis> {
 
@@ -42,20 +38,6 @@ public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Analysis
               ExpressionTypeAnalyzer.analyzeExpression(analysis, expression)));
     }
     return expression.accept(this, analysis);
-  }
-
-  @Override
-  public Expression visitFunctionExpression(
-      FunctionExpression functionExpression, Analysis analysis) {
-    List<Expression> childExpressions = new ArrayList<>();
-    for (Expression suffixExpression : functionExpression.getExpressions()) {
-      childExpressions.add(process(suffixExpression, analysis));
-    }
-    return new FunctionExpression(
-        functionExpression.getFunctionName(),
-        functionExpression.getFunctionAttributes(),
-        childExpressions,
-        functionExpression.getCountTimeExpressions());
   }
 
   @Override

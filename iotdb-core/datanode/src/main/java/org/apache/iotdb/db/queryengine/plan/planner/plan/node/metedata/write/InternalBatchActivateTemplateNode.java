@@ -80,6 +80,11 @@ public class InternalBatchActivateTemplateNode extends WritePlanNode {
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.INTERNAL_BATCH_ACTIVATE_TEMPLATE;
+  }
+
+  @Override
   public PlanNode clone() {
     return new InternalBatchActivateTemplateNode(
         getPlanNodeId(), templateActivationMap, regionReplicaSet);

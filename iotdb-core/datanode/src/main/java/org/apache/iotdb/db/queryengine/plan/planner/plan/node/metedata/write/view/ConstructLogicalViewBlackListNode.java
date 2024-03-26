@@ -53,6 +53,11 @@ public class ConstructLogicalViewBlackListNode extends PlanNode {
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.CONSTRUCT_LOGICAL_VIEW_BLACK_LIST;
+  }
+
+  @Override
   public PlanNode clone() {
     return new ConstructLogicalViewBlackListNode(getPlanNodeId(), patternTree);
   }

@@ -29,6 +29,6 @@ import java.lang.annotation.Target;
  * TestOnly implies that the class or method should only be used in the tests, otherwise its
  * functionality is not guaranteed and may interfere with the normal code.
  */
-@Target({ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.TYPE})
+@Target({ElementType.FIELD, ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.TYPE})
 @Retention(RetentionPolicy.SOURCE)
 public @interface TestOnly {}

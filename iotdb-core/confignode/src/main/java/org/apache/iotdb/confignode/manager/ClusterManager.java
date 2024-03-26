@@ -55,6 +55,19 @@ public class ClusterManager {
     return clusterInfo.getClusterId();
   }
 
+  public String getClusterIdWithRetry(long maxWaitTime) {
+    long startTime = System.currentTimeMillis();
+    while (clusterInfo.getClusterId() == null
+        && System.currentTimeMillis() - startTime < maxWaitTime) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+    return clusterInfo.getClusterId();
+  }
+
   private void generateClusterId() {
     String clusterId = String.valueOf(UUID.randomUUID());
     UpdateClusterIdPlan updateClusterIdPlan = new UpdateClusterIdPlan(clusterId);

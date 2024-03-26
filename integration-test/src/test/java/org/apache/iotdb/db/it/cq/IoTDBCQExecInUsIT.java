@@ -57,7 +57,7 @@ public class IoTDBCQExecInUsIT {
   @Test
   public void testCQExecution1() {
     String insertTemplate =
-        "INSERT INTO root.sg.d1(time, s1) VALUES (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d)";
+        "INSERT INTO root.sg.d1(time, s1) VALUES (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       long now = System.currentTimeMillis() * 1_000L;
@@ -147,7 +147,7 @@ public class IoTDBCQExecInUsIT {
   @Test
   public void testCQExecution2() {
     String insertTemplate =
-        "INSERT INTO root.sg.d2(time, s1) VALUES (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d)";
+        "INSERT INTO root.sg.d2(time, s1) VALUES (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       long now = System.currentTimeMillis() * 1_000L;
@@ -239,7 +239,7 @@ public class IoTDBCQExecInUsIT {
   @Test
   public void testCQExecution3() {
     String insertTemplate =
-        "INSERT INTO root.sg.d3(time, s1) VALUES (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d)";
+        "INSERT INTO root.sg.d3(time, s1) VALUES (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       long now = System.currentTimeMillis() * 1_000L;
@@ -338,7 +338,7 @@ public class IoTDBCQExecInUsIT {
   @Test
   public void testCQExecution4() {
     String insertTemplate =
-        "INSERT INTO root.sg.d4(time, s1) VALUES (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d)";
+        "INSERT INTO root.sg.d4(time, s1) VALUES (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       long now = System.currentTimeMillis() * 1_000L;
@@ -424,7 +424,7 @@ public class IoTDBCQExecInUsIT {
   @Test
   public void testCQExecution5() {
     String insertTemplate =
-        "INSERT INTO root.sg.d5(time, s1) VALUES (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d) (%d, %d)";
+        "INSERT INTO root.sg.d5(time, s1) VALUES (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d), (%d, %d)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       long now = System.currentTimeMillis() * 1_000L;

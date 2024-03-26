@@ -55,6 +55,11 @@ public class NodePathsCountNode extends ProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.NODE_PATHS_COUNT;
+  }
+
+  @Override
   public PlanNode clone() {
     return new NodePathsCountNode(getPlanNodeId());
   }

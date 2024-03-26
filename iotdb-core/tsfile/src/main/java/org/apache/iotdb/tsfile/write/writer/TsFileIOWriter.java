@@ -27,7 +27,8 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.MeasurementMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -95,7 +96,7 @@ public class TsFileIOWriter implements AutoCloseable {
   protected List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
 
   private long markedPosition;
-  private String currentChunkGroupDeviceId;
+  private IDeviceID currentChunkGroupDeviceId;
 
   // the two longs marks the index range of operations in current MemTable
   // and are serialized after MetaMarker.OPERATION_INDEX_RANGE to recover file-level range
@@ -171,7 +172,7 @@ public class TsFileIOWriter implements AutoCloseable {
     out.write(VERSION_NUMBER_BYTE);
   }
 
-  public int startChunkGroup(String deviceId) throws IOException {
+  public int startChunkGroup(IDeviceID deviceId) throws IOException {
     this.currentChunkGroupDeviceId = deviceId;
     if (logger.isDebugEnabled()) {
       logger.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
@@ -363,10 +364,10 @@ public class TsFileIOWriter implements AutoCloseable {
             ? TSMIterator.getTSMIteratorInDisk(
                 chunkMetadataTempFile, chunkGroupMetadataList, endPosInCMTForDevice)
             : TSMIterator.getTSMIteratorInMemory(chunkGroupMetadataList);
-    Map<String, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
+    Map<IDeviceID, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
     Queue<MetadataIndexNode> measurementMetadataIndexQueue = new ArrayDeque<>();
-    String currentDevice = null;
-    String prevDevice = null;
+    IDeviceID currentDevice = null;
+    IDeviceID prevDevice = null;
     Path currentPath = null;
     MetadataIndexNode currentIndexNode =
         new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
@@ -386,7 +387,7 @@ public class TsFileIOWriter implements AutoCloseable {
       filter.add(currentPath.getFullPath());
       // construct the index tree node for the series
 
-      currentDevice = currentPath.getDevice();
+      currentDevice = currentPath.getIDeviceID();
       if (!currentDevice.equals(prevDevice)) {
         if (prevDevice != null) {
           addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
@@ -407,9 +408,9 @@ public class TsFileIOWriter implements AutoCloseable {
         }
         if (timeseriesMetadata.getTsDataType() != TSDataType.VECTOR) {
           currentIndexNode.addEntry(
-              new MetadataIndexEntry(currentPath.getMeasurement(), out.getPosition()));
+              new MeasurementMetadataIndexEntry(currentPath.getMeasurement(), out.getPosition()));
         } else {
-          currentIndexNode.addEntry(new MetadataIndexEntry("", out.getPosition()));
+          currentIndexNode.addEntry(new MeasurementMetadataIndexEntry("", out.getPosition()));
         }
       }
 
@@ -451,8 +452,8 @@ public class TsFileIOWriter implements AutoCloseable {
   }
 
   // device -> ChunkMetadataList
-  public Map<String, List<ChunkMetadata>> getDeviceChunkMetadataMap() {
-    Map<String, List<ChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
+  public Map<IDeviceID, List<ChunkMetadata>> getDeviceChunkMetadataMap() {
+    Map<IDeviceID, List<ChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
 
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       deviceChunkMetadataMap
@@ -535,9 +536,9 @@ public class TsFileIOWriter implements AutoCloseable {
    *
    * @return DeviceTimeseriesMetadataMap
    */
-  public Map<String, List<TimeseriesMetadata>> getDeviceTimeseriesMetadataMap() {
-    Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap = new TreeMap<>();
-    Map<String, Map<String, List<IChunkMetadata>>> chunkMetadataMap = new TreeMap<>();
+  public Map<IDeviceID, List<TimeseriesMetadata>> getDeviceTimeseriesMetadataMap() {
+    Map<IDeviceID, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap = new TreeMap<>();
+    Map<IDeviceID, Map<String, List<IChunkMetadata>>> chunkMetadataMap = new TreeMap<>();
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
         chunkMetadataMap
@@ -546,7 +547,7 @@ public class TsFileIOWriter implements AutoCloseable {
             .add(chunkMetadata);
       }
     }
-    for (String device : chunkMetadataMap.keySet()) {
+    for (IDeviceID device : chunkMetadataMap.keySet()) {
       Map<String, List<IChunkMetadata>> seriesToChunkMetadataMap = chunkMetadataMap.get(device);
       for (Map.Entry<String, List<IChunkMetadata>> entry : seriesToChunkMetadataMap.entrySet()) {
         try {

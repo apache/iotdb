@@ -86,7 +86,7 @@ jobs:
       - name: Install Win_Flex_Bison
         run: choco install winflexbison3
       - name: Download Boost
-        run: choco install boost-msvc-14.3 --version=1.84.0
+        run: choco install boost-msvc-14.3 --version=1.84.0.1
       - name: Build IoTDB server
         shell: bash
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older

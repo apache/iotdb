@@ -83,7 +83,7 @@ class AutoCreateSchemaExecutor {
 
   private ExecutionResult executeStatement(Statement statement, MPPQueryContext context) {
 
-    return coordinator.execute(
+    return coordinator.executeForTreeModel(
         statement,
         SessionManager.getInstance().requestQueryId(),
         context == null ? null : context.getSession(),

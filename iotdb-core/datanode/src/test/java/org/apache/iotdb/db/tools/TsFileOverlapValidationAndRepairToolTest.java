@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactio
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.tools.validate.TsFileOverlapValidationAndRepairTool;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.junit.After;
@@ -51,26 +52,26 @@ public class TsFileOverlapValidationAndRepairToolTest extends AbstractCompaction
   public void test1() throws IOException {
     String device1 = "d1", device2 = "d2";
     TsFileResource resource1 = createTsFileAndResource();
-    resource1.updateStartTime(device1, 10);
-    resource1.updateEndTime(device1, 30);
-    resource1.updateStartTime(device2, 20);
-    resource1.updateEndTime(device2, 40);
+    resource1.updateStartTime(new PlainDeviceID(device1), 10);
+    resource1.updateEndTime(new PlainDeviceID(device1), 30);
+    resource1.updateStartTime(new PlainDeviceID(device2), 20);
+    resource1.updateEndTime(new PlainDeviceID(device2), 40);
     resource1.serialize();
     resource1.close();
 
     TsFileResource resource2 = createTsFileAndResource();
-    resource2.updateStartTime(device1, 29);
-    resource2.updateEndTime(device1, 30);
-    resource2.updateStartTime(device2, 50);
-    resource2.updateEndTime(device2, 60);
+    resource2.updateStartTime(new PlainDeviceID(device1), 29);
+    resource2.updateEndTime(new PlainDeviceID(device1), 30);
+    resource2.updateStartTime(new PlainDeviceID(device2), 50);
+    resource2.updateEndTime(new PlainDeviceID(device2), 60);
     resource2.serialize();
     resource2.close();
 
     TsFileResource resource3 = createTsFileAndResource();
-    resource3.updateStartTime(device1, 40);
-    resource3.updateEndTime(device1, 50);
-    resource3.updateStartTime(device2, 70);
-    resource3.updateEndTime(device2, 80);
+    resource3.updateStartTime(new PlainDeviceID(device1), 40);
+    resource3.updateEndTime(new PlainDeviceID(device1), 50);
+    resource3.updateStartTime(new PlainDeviceID(device2), 70);
+    resource3.updateEndTime(new PlainDeviceID(device2), 80);
     resource3.serialize();
     resource3.close();
 
@@ -85,26 +86,26 @@ public class TsFileOverlapValidationAndRepairToolTest extends AbstractCompaction
   public void test2() throws IOException {
     String device1 = "d1", device2 = "d2";
     TsFileResource resource1 = createTsFileAndResource();
-    resource1.updateStartTime(device1, 10);
-    resource1.updateEndTime(device1, 30);
-    resource1.updateStartTime(device2, 20);
-    resource1.updateEndTime(device2, 40);
+    resource1.updateStartTime(new PlainDeviceID(device1), 10);
+    resource1.updateEndTime(new PlainDeviceID(device1), 30);
+    resource1.updateStartTime(new PlainDeviceID(device2), 20);
+    resource1.updateEndTime(new PlainDeviceID(device2), 40);
     resource1.serialize();
     resource1.close();
 
     TsFileResource resource2 = createTsFileAndResource();
-    resource2.updateStartTime(device1, 29);
-    resource2.updateEndTime(device1, 30);
-    resource2.updateStartTime(device2, 50);
-    resource2.updateEndTime(device2, 60);
+    resource2.updateStartTime(new PlainDeviceID(device1), 29);
+    resource2.updateEndTime(new PlainDeviceID(device1), 30);
+    resource2.updateStartTime(new PlainDeviceID(device2), 50);
+    resource2.updateEndTime(new PlainDeviceID(device2), 60);
     resource2.serialize();
     resource2.close();
 
     TsFileResource resource3 = createTsFileAndResource();
-    resource3.updateStartTime(device1, 30);
-    resource3.updateEndTime(device1, 50);
-    resource3.updateStartTime(device2, 70);
-    resource3.updateEndTime(device2, 80);
+    resource3.updateStartTime(new PlainDeviceID(device1), 30);
+    resource3.updateEndTime(new PlainDeviceID(device1), 50);
+    resource3.updateStartTime(new PlainDeviceID(device2), 70);
+    resource3.updateEndTime(new PlainDeviceID(device2), 80);
     resource3.serialize();
     resource3.close();
 
@@ -119,26 +120,26 @@ public class TsFileOverlapValidationAndRepairToolTest extends AbstractCompaction
   public void test3() throws IOException {
     String device1 = "d1", device2 = "d2";
     TsFileResource resource1 = createTsFileAndResource();
-    resource1.updateStartTime(device1, 10);
-    resource1.updateEndTime(device1, 30);
-    resource1.updateStartTime(device2, 20);
-    resource1.updateEndTime(device2, 40);
+    resource1.updateStartTime(new PlainDeviceID(device1), 10);
+    resource1.updateEndTime(new PlainDeviceID(device1), 30);
+    resource1.updateStartTime(new PlainDeviceID(device2), 20);
+    resource1.updateEndTime(new PlainDeviceID(device2), 40);
     resource1.serialize();
     resource1.close();
 
     TsFileResource resource2 = createTsFileAndResource();
-    resource2.updateStartTime(device1, 10);
-    resource2.updateEndTime(device1, 20);
-    resource2.updateStartTime(device2, 50);
-    resource2.updateEndTime(device2, 60);
+    resource2.updateStartTime(new PlainDeviceID(device1), 10);
+    resource2.updateEndTime(new PlainDeviceID(device1), 20);
+    resource2.updateStartTime(new PlainDeviceID(device2), 50);
+    resource2.updateEndTime(new PlainDeviceID(device2), 60);
     resource2.serialize();
     resource2.close();
 
     TsFileResource resource3 = createTsFileAndResource();
-    resource3.updateStartTime(device1, 30);
-    resource3.updateEndTime(device1, 50);
-    resource3.updateStartTime(device2, 70);
-    resource3.updateEndTime(device2, 80);
+    resource3.updateStartTime(new PlainDeviceID(device1), 30);
+    resource3.updateEndTime(new PlainDeviceID(device1), 50);
+    resource3.updateStartTime(new PlainDeviceID(device2), 70);
+    resource3.updateEndTime(new PlainDeviceID(device2), 80);
     resource3.serialize();
     resource3.close();
 
@@ -153,26 +154,26 @@ public class TsFileOverlapValidationAndRepairToolTest extends AbstractCompaction
   public void test4() throws IOException {
     String device1 = "d1", device2 = "d2";
     TsFileResource resource1 = createTsFileAndResource();
-    resource1.updateStartTime(device1, 10);
-    resource1.updateEndTime(device1, 30);
-    resource1.updateStartTime(device2, 20);
-    resource1.updateEndTime(device2, 40);
+    resource1.updateStartTime(new PlainDeviceID(device1), 10);
+    resource1.updateEndTime(new PlainDeviceID(device1), 30);
+    resource1.updateStartTime(new PlainDeviceID(device2), 20);
+    resource1.updateEndTime(new PlainDeviceID(device2), 40);
     resource1.serialize();
     resource1.close();
 
     TsFileResource resource2 = createTsFileAndResource();
-    resource2.updateStartTime(device1, 10);
-    resource2.updateEndTime(device1, 50);
-    resource2.updateStartTime(device2, 50);
-    resource2.updateEndTime(device2, 60);
+    resource2.updateStartTime(new PlainDeviceID(device1), 10);
+    resource2.updateEndTime(new PlainDeviceID(device1), 50);
+    resource2.updateStartTime(new PlainDeviceID(device2), 50);
+    resource2.updateEndTime(new PlainDeviceID(device2), 60);
     resource2.serialize();
     resource2.close();
 
     TsFileResource resource3 = createTsFileAndResource();
-    resource3.updateStartTime(device1, 40);
-    resource3.updateEndTime(device1, 50);
-    resource3.updateStartTime(device2, 70);
-    resource3.updateEndTime(device2, 80);
+    resource3.updateStartTime(new PlainDeviceID(device1), 40);
+    resource3.updateEndTime(new PlainDeviceID(device1), 50);
+    resource3.updateStartTime(new PlainDeviceID(device2), 70);
+    resource3.updateEndTime(new PlainDeviceID(device2), 80);
     resource3.serialize();
     resource3.close();
 

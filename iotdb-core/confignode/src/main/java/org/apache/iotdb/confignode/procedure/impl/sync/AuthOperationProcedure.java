@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
@@ -68,16 +69,17 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
   private static final int RETRY_THRESHOLD = 2;
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-  private List<Pair<TDataNodeConfiguration, Long>> dataNodesToInvalid;
+  private final List<Pair<TDataNodeConfiguration, Long>> dataNodesToInvalid = new ArrayList<>();
 
   private List<TDataNodeConfiguration> datanodes;
 
-  public AuthOperationProcedure() {
-    super();
+  public AuthOperationProcedure(boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
-  public AuthOperationProcedure(AuthorPlan plan, List<TDataNodeConfiguration> alldns) {
-    super();
+  public AuthOperationProcedure(
+      AuthorPlan plan, List<TDataNodeConfiguration> alldns, boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.user = plan.getUserName();
     this.role = plan.getRoleName();
     this.plan = plan;
@@ -115,6 +117,7 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
             }
           }
           if (dataNodesToInvalid.isEmpty()) {
+            LOGGER.info("Auth procedure: clean datanode cache successfully");
             return Flow.NO_MORE_STATE;
           } else {
             setNextState(AuthOperationProcedureState.DATANODE_AUTHCACHE_INVALIDING);
@@ -140,19 +143,22 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
   private void writePlan(ConfigNodeProcedureEnv env) {
     TSStatus res;
     try {
-      res = env.getConfigManager().getConsensusManager().write(this.plan);
+      res =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(isGeneratedByPipe ? new PipeEnrichedPlan(plan) : plan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
     }
     if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.debug("Execute auth plan {} success.", plan);
       setNextState(DATANODE_AUTHCACHE_INVALIDING);
-      dataNodesToInvalid = new ArrayList<>();
       for (TDataNodeConfiguration item : datanodes) {
         this.dataNodesToInvalid.add(new Pair<>(item, System.currentTimeMillis()));
       }
+      LOGGER.info(
+          "Execute auth plan {} success. To invalidate datanodes: {}", plan, dataNodesToInvalid);
     } else {
       LOGGER.info("Failed to execute plan {} because {}", plan, res.message);
       setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
@@ -184,7 +190,10 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.AUTH_OPERATE_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_AUTH_OPERATE_PROCEDURE.getTypeCode()
+            : ProcedureType.AUTH_OPERATE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(datanodes.size(), stream);
     for (TDataNodeConfiguration item : datanodes) {
@@ -192,6 +201,11 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
     }
     ReadWriteIOUtils.write(timeoutMS, stream);
     ReadWriteIOUtils.write(plan.serializeToByteBuffer(), stream);
+    ReadWriteIOUtils.write(dataNodesToInvalid.size(), stream);
+    for (Pair<TDataNodeConfiguration, Long> item : dataNodesToInvalid) {
+      ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(item.left, stream);
+      ReadWriteIOUtils.write(item.right, stream);
+    }
   }
 
   @Override
@@ -211,6 +225,15 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
     } catch (IOException e) {
       LOGGER.error("IO error when deserialize authplan.", e);
     }
+    if (byteBuffer.hasRemaining()) {
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      for (int i = 0; i < size; i++) {
+        TDataNodeConfiguration datanode =
+            ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(byteBuffer);
+        Long timeStamp = ReadWriteIOUtils.readLong(byteBuffer);
+        this.dataNodesToInvalid.add(new Pair<>(datanode, timeStamp));
+      }
+    }
   }
 
   @Override
@@ -225,11 +248,12 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
     return timeoutMS == that.timeoutMS
         && Objects.equals(plan, that.plan)
         && Objects.equals(dataNodesToInvalid, that.dataNodesToInvalid)
-        && Objects.equals(datanodes, that.datanodes);
+        && Objects.equals(datanodes, that.datanodes)
+        && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(plan, timeoutMS, dataNodesToInvalid, datanodes);
+    return Objects.hash(plan, timeoutMS, dataNodesToInvalid, datanodes, isGeneratedByPipe);
   }
 }

@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -550,7 +551,7 @@ public class TsFileWriteApiTest {
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(3));
 
       TsFileIOWriter tsFileIOWriter = tsFileWriter.getIOWriter();
-      tsFileIOWriter.startChunkGroup(deviceId);
+      tsFileIOWriter.startChunkGroup(new PlainDeviceID(deviceId));
 
       AlignedChunkWriterImpl alignedChunkWriter =
           new AlignedChunkWriterImpl(writeMeasurementScheams);
@@ -629,9 +630,9 @@ public class TsFileWriteApiTest {
     File file = FSFactoryProducer.getFSFactory().getFile("test.tsfile");
     try (TsFileSequenceReader reader = new TsFileSequenceReader(f.getAbsolutePath());
         TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(file)) {
-      tsFileIOWriter.startChunkGroup(deviceId);
+      tsFileIOWriter.startChunkGroup(new PlainDeviceID(deviceId));
       for (List<ChunkMetadata> chunkMetadatas :
-          reader.readChunkMetadataInDevice(deviceId).values()) {
+          reader.readChunkMetadataInDevice(new PlainDeviceID(deviceId)).values()) {
         for (ChunkMetadata chunkMetadata : chunkMetadatas) {
           Chunk chunk = reader.readMemChunk(chunkMetadata);
           ByteBuffer chunkDataBuffer = chunk.getData();

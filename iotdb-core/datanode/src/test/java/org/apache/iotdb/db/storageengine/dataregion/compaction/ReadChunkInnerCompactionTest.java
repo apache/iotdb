@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -107,7 +108,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
       // write the data in device
       for (int deviceIndex = 0; deviceIndex < 10; deviceIndex++) {
-        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+        tsFileIOWriter.startChunkGroup(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -135,8 +137,10 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
           writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
         }
         tsFileIOWriter.endChunkGroup();
-        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 0);
-        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 600);
+        resource.updateStartTime(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex), 0);
+        resource.updateEndTime(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex), 600);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
       }
@@ -151,7 +155,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
       // write the data in device
       for (int deviceIndex = 0; deviceIndex < 12; deviceIndex++) {
-        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+        tsFileIOWriter.startChunkGroup(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -180,8 +185,10 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
           writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
         }
         tsFileIOWriter.endChunkGroup();
-        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 900);
-        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 2000);
+        resource.updateStartTime(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex), 900);
+        resource.updateEndTime(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex), 2000);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
       }
@@ -219,7 +226,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
       // write the data in device
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
-        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+        tsFileIOWriter.startChunkGroup(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -253,8 +261,10 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         }
 
         tsFileIOWriter.endChunkGroup();
-        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 0);
-        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 1400);
+        resource.updateStartTime(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex), 0);
+        resource.updateEndTime(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex), 1400);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
 
@@ -272,7 +282,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
       // write the data in device
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
-        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+        tsFileIOWriter.startChunkGroup(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -297,8 +308,10 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         }
 
         tsFileIOWriter.endChunkGroup();
-        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 1800);
-        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 2500);
+        resource.updateStartTime(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex), 1800);
+        resource.updateEndTime(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex), 2500);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
 
@@ -317,7 +330,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
       // write the data in device
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
-        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+        tsFileIOWriter.startChunkGroup(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -350,8 +364,10 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         }
 
         tsFileIOWriter.endChunkGroup();
-        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 2801);
-        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 4300);
+        resource.updateStartTime(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex), 2801);
+        resource.updateEndTime(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex), 4300);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
 
@@ -727,7 +743,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
       // write the data in device
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
-        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex);
+        tsFileIOWriter.startChunkGroup(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex));
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
         List<TSEncoding> encodings = createEncodingType(measurementNum);
@@ -757,8 +774,10 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         }
 
         tsFileIOWriter.endChunkGroup();
-        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 0);
-        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex, 1400);
+        resource.updateStartTime(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex), 0);
+        resource.updateEndTime(
+            new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + deviceIndex), 1400);
         timeserisPathList.addAll(timeseriesPath);
         tsDataTypes.addAll(dataTypes);
         if (deviceIndex == 0) {

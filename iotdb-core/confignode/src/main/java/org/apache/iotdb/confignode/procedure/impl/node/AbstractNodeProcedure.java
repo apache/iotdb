@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.node;
 
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 
 import org.slf4j.Logger;
@@ -30,6 +30,14 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractNodeProcedure<TState>
     extends StateMachineProcedure<ConfigNodeProcedureEnv, TState> {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractNodeProcedure.class);
+
+  protected AbstractNodeProcedure() {
+    super();
+  }
+
+  protected AbstractNodeProcedure(boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
+  }
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {

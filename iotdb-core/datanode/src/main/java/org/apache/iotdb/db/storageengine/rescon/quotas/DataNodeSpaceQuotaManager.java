@@ -56,7 +56,7 @@ public class DataNodeSpaceQuotaManager {
     this.spaceQuotaUsage = spaceQuotaUsage;
   }
 
-  /** SingleTone */
+  /** SingleTon */
   private static class DataNodeSpaceQuotaManagerHolder {
     private static final DataNodeSpaceQuotaManager INSTANCE = new DataNodeSpaceQuotaManager();
 

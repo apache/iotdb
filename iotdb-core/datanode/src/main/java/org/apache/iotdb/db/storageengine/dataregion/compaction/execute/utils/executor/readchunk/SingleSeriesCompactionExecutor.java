@@ -27,6 +27,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFi
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -45,7 +47,7 @@ import java.util.List;
 /** This class is used to compact one series during inner space compaction. */
 @SuppressWarnings("squid:S1319")
 public class SingleSeriesCompactionExecutor {
-  private String device;
+  private IDeviceID device;
   private PartialPath series;
   private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList;
   private CompactionTsFileWriter fileWriter;
@@ -77,7 +79,7 @@ public class SingleSeriesCompactionExecutor {
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
       CompactionTsFileWriter fileWriter,
       TsFileResource targetResource) {
-    this.device = series.getDevice();
+    this.device = new PlainDeviceID(series.getDevice());
     this.series = series;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
@@ -95,7 +97,7 @@ public class SingleSeriesCompactionExecutor {
       CompactionTsFileWriter fileWriter,
       TsFileResource targetResource,
       CompactionTaskSummary summary) {
-    this.device = series.getDevice();
+    this.device = new PlainDeviceID(series.getDevice());
     this.series = series;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;

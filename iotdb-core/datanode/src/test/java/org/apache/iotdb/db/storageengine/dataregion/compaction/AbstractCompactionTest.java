@@ -48,6 +48,8 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -357,10 +359,18 @@ public class AbstractCompactionTest {
       int deviceStartindex = isAlign ? TsFileGeneratorUtils.getAlignDeviceOffset() : 0;
       for (int j = 0; j < deviceIndexes.size(); j++) {
         resource.updateStartTime(
-            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + (deviceIndexes.get(j) + deviceStartindex),
+            new PlainDeviceID(
+                COMPACTION_TEST_SG
+                    + PATH_SEPARATOR
+                    + "d"
+                    + (deviceIndexes.get(j) + deviceStartindex)),
             startTime + pointNum * i + timeInterval * i);
         resource.updateEndTime(
-            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + (deviceIndexes.get(j) + deviceStartindex),
+            new PlainDeviceID(
+                COMPACTION_TEST_SG
+                    + PATH_SEPARATOR
+                    + "d"
+                    + (deviceIndexes.get(j) + deviceStartindex)),
             startTime + pointNum * i + timeInterval * i + pointNum - 1);
       }
       resource.updatePlanIndexes(fileVersion);
@@ -387,8 +397,10 @@ public class AbstractCompactionTest {
     int deviceStartindex = isAlign ? TsFileGeneratorUtils.getAlignDeviceOffset() : 0;
 
     for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
-      resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, startTime);
-      resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, endTime);
+      resource.updateStartTime(
+          new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i), startTime);
+      resource.updateEndTime(
+          new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i), endTime);
     }
 
     resource.updatePlanIndexes(fileVersion);
@@ -597,7 +609,7 @@ public class AbstractCompactionTest {
    * Check whether target file contain empty chunk group or not. Assert fail if it contains empty
    * chunk group whose deviceID is not in the deviceIdList.
    */
-  protected void check(TsFileResource targetResource, List<String> deviceIdList)
+  protected void check(TsFileResource targetResource, List<IDeviceID> deviceIdList)
       throws IOException {
     byte marker;
     try (TsFileSequenceReader reader =
@@ -617,13 +629,13 @@ public class AbstractCompactionTest {
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
-            String deviceID = chunkGroupHeader.getDeviceID();
+            IDeviceID deviceID = chunkGroupHeader.getDeviceID();
             if (!deviceIdList.contains(deviceID)) {
               Assert.fail(
                   "Target file "
                       + targetResource.getTsFile().getPath()
                       + " contains empty chunk group "
-                      + deviceID);
+                      + ((PlainDeviceID) deviceID).toStringID());
             }
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:

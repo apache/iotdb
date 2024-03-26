@@ -22,7 +22,7 @@ package org.apache.iotdb.db.metadata.idtable.entry;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 
 import org.junit.Test;
 

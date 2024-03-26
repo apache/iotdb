@@ -102,7 +102,7 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
       SESSION_MANAGER.supplySession(
           SESSION_MANAGER.getCurrSession(),
           user.getUsername(),
-          ZoneId.systemDefault().getId(),
+          ZoneId.systemDefault(),
           IoTDBConstant.ClientVersion.V_1_0);
     }
     BasicSecurityContext basicSecurityContext =

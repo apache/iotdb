@@ -39,6 +39,11 @@ public class IdentitySinkNode extends MultiChildrenSinkNode {
     super(id);
   }
 
+  @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.IDENTITY_SINK;
+  }
+
   public IdentitySinkNode(
       PlanNodeId id, List<DownStreamChannelLocation> downStreamChannelLocationList) {
     super(id, downStreamChannelLocationList);

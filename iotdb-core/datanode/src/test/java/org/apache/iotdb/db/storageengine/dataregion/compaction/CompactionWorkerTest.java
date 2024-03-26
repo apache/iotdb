@@ -23,7 +23,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskQueue;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,11 +42,18 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class CompactionWorkerTest {
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
+    SystemInfo.getInstance().getCompactionFileNumCost().set(0);
+    SystemInfo.getInstance().getCompactionMemoryCost().set(0);
+  }
+
+  @After
+  public void teardown() {
     SystemInfo.getInstance().getCompactionFileNumCost().set(0);
     SystemInfo.getInstance().getCompactionMemoryCost().set(0);
   }
@@ -80,11 +89,20 @@ public class CompactionWorkerTest {
             0);
     CrossSpaceCompactionTask taskMock = Mockito.spy(task);
     Mockito.doReturn(true).when(taskMock).start();
-    FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
-        Mockito.mock(FixedPriorityBlockingQueue.class);
-    Mockito.when(mockQueue.take()).thenReturn(taskMock).thenThrow(new InterruptedException());
-    CompactionWorker worker = new CompactionWorker(0, mockQueue);
-    worker.run();
+    FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
+        new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
+    queue.put(taskMock);
+    Thread thread =
+        new Thread(
+            () -> {
+              try {
+                queue.take();
+                Assert.fail();
+              } catch (InterruptedException ignored) {
+              }
+            });
+    thread.start();
+    thread.join(TimeUnit.SECONDS.toMillis(2));
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
     for (TsFileResource tsFileResource : sequenceFiles) {
@@ -95,13 +113,15 @@ public class CompactionWorkerTest {
       Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
       Assert.assertTrue(tsFileResource.tryWriteLock());
     }
+    thread.interrupt();
+    thread.join();
   }
 
   @Test
   public void testFailedToAllocateFileNumInCrossTask() throws InterruptedException {
     int oldMaxCrossCompactionCandidateFileNum =
-        SystemInfo.getInstance().getTotalFileLimitForCrossTask();
-    SystemInfo.getInstance().setTotalFileLimitForCrossTask(2);
+        SystemInfo.getInstance().getTotalFileLimitForCompaction();
+    SystemInfo.getInstance().setTotalFileLimitForCompactionTask(2);
     try {
       List<TsFileResource> sequenceFiles = new ArrayList<>();
       for (int i = 1; i <= 10; i++) {
@@ -126,11 +146,19 @@ public class CompactionWorkerTest {
               0L, tsFileManager, sequenceFiles, unsequenceFiles, null, 1000, 0);
       CrossSpaceCompactionTask taskMock = Mockito.spy(task);
       Mockito.doReturn(true).when(taskMock).start();
-      FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
-          Mockito.mock(FixedPriorityBlockingQueue.class);
-      Mockito.when(mockQueue.take()).thenReturn(taskMock).thenThrow(new InterruptedException());
-      CompactionWorker worker = new CompactionWorker(0, mockQueue);
-      worker.run();
+      FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
+          new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
+      queue.put(taskMock);
+      Thread thread =
+          new Thread(
+              () -> {
+                try {
+                  queue.take();
+                } catch (InterruptedException ignored) {
+                }
+              });
+      thread.start();
+      thread.join(TimeUnit.SECONDS.toMillis(2));
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
       for (TsFileResource tsFileResource : sequenceFiles) {
@@ -141,8 +169,11 @@ public class CompactionWorkerTest {
         Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
         Assert.assertTrue(tsFileResource.tryWriteLock());
       }
+      thread.interrupt();
+      thread.join();
     } finally {
-      SystemInfo.getInstance().setTotalFileLimitForCrossTask(oldMaxCrossCompactionCandidateFileNum);
+      SystemInfo.getInstance()
+          .setTotalFileLimitForCompactionTask(oldMaxCrossCompactionCandidateFileNum);
     }
   }
 
@@ -169,21 +200,27 @@ public class CompactionWorkerTest {
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0L, tsFileManager, sequenceFiles, unsequenceFiles, null, 1000, 0);
-    FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
-        Mockito.mock(FixedPriorityBlockingQueue.class);
-    Mockito.when(mockQueue.take()).thenReturn(task).thenThrow(new InterruptedException());
-    CompactionWorker worker = new CompactionWorker(0, mockQueue);
-    worker.run();
+    FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
+        new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
+    queue.put(task);
+    Thread thread =
+        new Thread(
+            () -> {
+              try {
+                queue.take();
+              } catch (InterruptedException ignored) {
+              }
+            });
+    thread.start();
+    thread.join(TimeUnit.SECONDS.toMillis(2));
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
     for (TsFileResource tsFileResource : sequenceFiles) {
       Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
       Assert.assertTrue(tsFileResource.tryWriteLock());
     }
-    for (TsFileResource tsFileResource : unsequenceFiles) {
-      Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
-      Assert.assertTrue(tsFileResource.tryWriteLock());
-    }
+    thread.interrupt();
+    thread.join();
   }
 
   /** AllowCompaction is false. */
@@ -202,16 +239,26 @@ public class CompactionWorkerTest {
     // fail to check valid when tsfile manager is not allowed to compaction in inner task
     InnerSpaceCompactionTask innerTask =
         new InnerSpaceCompactionTask(0L, tsFileManager, sequenceFiles, true, null, 0L);
-    FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
-        Mockito.mock(FixedPriorityBlockingQueue.class);
-    Mockito.when(mockQueue.take()).thenReturn(innerTask).thenThrow(new InterruptedException());
-    CompactionWorker worker = new CompactionWorker(0, mockQueue);
-    worker.run();
+    FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
+        new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
+    queue.put(innerTask);
+    Thread thread =
+        new Thread(
+            () -> {
+              try {
+                queue.take();
+              } catch (InterruptedException ignored) {
+              }
+            });
+    thread.start();
+    thread.join(TimeUnit.SECONDS.toMillis(2));
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
     for (TsFileResource tsFileResource : sequenceFiles) {
       Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
       Assert.assertTrue(tsFileResource.tryWriteLock());
     }
+    thread.interrupt();
+    thread.join();
   }
 }

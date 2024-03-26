@@ -18,6 +18,9 @@
 @REM
 
 @echo off
+
+title IoTDB Import
+
 echo ````````````````````````````````````````````````
 echo Starting IoTDB Client Import Script
 echo ````````````````````````````````````````````````

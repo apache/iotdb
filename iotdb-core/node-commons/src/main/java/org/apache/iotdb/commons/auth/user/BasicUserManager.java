@@ -82,7 +82,7 @@ public abstract class BasicUserManager implements IUserManager {
     this.accessor = accessor;
     this.lock = new HashLock();
 
-    reset();
+    init();
   }
 
   /**
@@ -119,7 +119,9 @@ public abstract class BasicUserManager implements IUserManager {
           pathPri.grantPrivilege(item.ordinal(), true);
         }
       }
+      admin.getPathPrivilegeList().clear();
       admin.getPathPrivilegeList().add(pathPri);
+      admin.setServiceReady(true);
     } catch (IllegalPathException e) {
       // This error only leads to  a lack of permissions for list.
       LOGGER.warn("Got a wrong path for root to init");
@@ -309,6 +311,11 @@ public abstract class BasicUserManager implements IUserManager {
     } finally {
       lock.writeUnlock(username);
     }
+  }
+
+  private void init() throws AuthException {
+    this.accessor.reset();
+    initAdmin();
   }
 
   @Override

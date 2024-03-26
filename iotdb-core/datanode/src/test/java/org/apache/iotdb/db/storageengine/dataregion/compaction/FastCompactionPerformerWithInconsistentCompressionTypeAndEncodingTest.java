@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -593,7 +594,7 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
   private void validateSingleTsFileWithNonAlignedSeries(TsFileSequenceReader reader)
       throws IOException {
     Map<String, CompressionType> compressionTypeMap = new HashMap<>();
-    for (String device : reader.getAllDevices()) {
+    for (IDeviceID device : reader.getAllDevices()) {
       Map<String, List<ChunkMetadata>> seriesMetaData = reader.readChunkMetadataInDevice(device);
       for (Map.Entry<String, List<ChunkMetadata>> entry : seriesMetaData.entrySet()) {
         String series = entry.getKey();
@@ -615,7 +616,7 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
   private void validateSingleTsFileWithAlignedSeries(TsFileSequenceReader reader)
       throws IOException {
     Map<String, CompressionType> compressionTypeMap = new HashMap<>();
-    for (String device : reader.getAllDevices()) {
+    for (IDeviceID device : reader.getAllDevices()) {
       List<AlignedChunkMetadata> alignedChunkMetadataList = reader.getAlignedChunkMetadata(device);
       for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
         IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();

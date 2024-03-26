@@ -126,11 +126,17 @@ public class TriggerManager {
             req.getJarMD5());
     return configManager
         .getProcedureManager()
-        .createTrigger(triggerInformation, needToSaveJar ? new Binary(req.getJarFile()) : null);
+        .createTrigger(
+            triggerInformation,
+            needToSaveJar ? new Binary(req.getJarFile()) : null,
+            req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
   }
 
   public TSStatus dropTrigger(TDropTriggerReq req) {
-    return configManager.getProcedureManager().dropTrigger(req.getTriggerName());
+    return configManager
+        .getProcedureManager()
+        .dropTrigger(
+            req.getTriggerName(), req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
   }
 
   public TGetTriggerTableResp getTriggerTable(boolean onlyStateful) {

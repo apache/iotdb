@@ -31,5 +31,7 @@ public interface IPointReader {
 
   TimeValuePair currentTimeValuePair() throws IOException;
 
+  long getUsedMemorySize();
+
   void close() throws IOException;
 }

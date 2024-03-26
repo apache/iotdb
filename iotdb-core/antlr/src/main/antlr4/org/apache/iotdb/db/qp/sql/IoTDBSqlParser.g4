@@ -56,6 +56,10 @@ ddlStatement
     | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
+    // TOPIC
+    | createTopic | dropTopic | showTopics
+    // Subscription
+    | showSubscriptions
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
@@ -78,10 +82,11 @@ dclStatement
     ;
 
 utilityStatement
-    : | flush | clearCache | settle | repairData | explain
+    : flush | clearCache | settle | startRepairData | stopRepairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
-    | showQueries | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
-    | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile
+    | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
+    | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
+    | removeFile | unloadFile
     ;
 
 /**
@@ -610,6 +615,32 @@ showPipePlugins
     : SHOW PIPEPLUGINS
     ;
 
+// Topic =========================================================================================
+createTopic
+    : CREATE TOPIC topicName=identifier topicAttributesClause?
+    ;
+
+topicAttributesClause
+    : WITH LR_BRACKET topicAttributeClause (COMMA topicAttributeClause)* RR_BRACKET
+    ;
+
+topicAttributeClause
+    : topicKey=STRING_LITERAL OPERATOR_SEQ topicValue=STRING_LITERAL
+    ;
+
+dropTopic
+    : DROP TOPIC topicName=identifier
+    ;
+
+showTopics
+    : SHOW ((TOPIC topicName=identifier) | TOPICS )
+    ;
+
+// Subscriptions =========================================================================================
+showSubscriptions
+    : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    ;
+
 // Create Logical View
 createLogicalView
     : CREATE VIEW viewTargetPaths AS viewSourcePaths
@@ -806,21 +837,21 @@ insertStatement
     ;
 
 insertColumnsSpec
-    : LR_BRACKET (TIMESTAMP|TIME)? (COMMA? nodeNameWithoutWildcard)+ RR_BRACKET
+    : LR_BRACKET insertColumn (COMMA insertColumn)* RR_BRACKET
+    ;
+
+insertColumn
+    : identifier
+    | TIME
+    | TIMESTAMP
     ;
 
 insertValuesSpec
-    : (COMMA? insertMultiValue)*
+    : row (COMMA row)*
     ;
 
-insertMultiValue
-    : LR_BRACKET timeValue (COMMA measurementValue)+ RR_BRACKET
-    | LR_BRACKET (measurementValue COMMA?)+ RR_BRACKET
-    ;
-
-measurementValue
-    : constant
-    | LR_BRACKET constant (COMMA constant)+ RR_BRACKET
+row
+    : LR_BRACKET constant (COMMA constant)* RR_BRACKET
     ;
 
 // Delete Statement
@@ -948,14 +979,19 @@ settle
     : SETTLE (prefixPath|tsFilePath=STRING_LITERAL)
     ;
 
-// Repair Data
-repairData
-    : REPAIR DATA (ON (LOCAL | CLUSTER))?
+// Start Repair Data
+startRepairData
+    : START REPAIR DATA (ON (LOCAL | CLUSTER))?
+    ;
+
+// Stop Repair Data
+stopRepairData
+    : STOP REPAIR DATA (ON (LOCAL | CLUSTER))?
     ;
 
 // Explain
 explain
-    : EXPLAIN selectStatement
+    : EXPLAIN (ANALYZE VERBOSE?)? selectStatement?
     ;
 
 // Set System To readonly/running/error
@@ -990,6 +1026,11 @@ showQueries
     whereClause?
     orderByClause?
     rowPaginationClause?
+    ;
+
+// Show Current Timestamp
+showCurrentTimestamp
+    : SHOW CURRENT_TIMESTAMP
     ;
 
 // Kill Query

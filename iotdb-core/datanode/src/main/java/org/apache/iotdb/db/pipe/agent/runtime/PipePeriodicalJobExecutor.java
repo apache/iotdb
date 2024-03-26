@@ -25,20 +25,21 @@ import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Single thread to execute pipe periodical jobs on dataNode. This is for limiting the thread num on
- * the DataNode instance.
+ * Single thread to execute pipe periodical jobs on {@link DataNode}. This is for limiting the
+ * thread num on the {@link DataNode} instance.
  */
 public class PipePeriodicalJobExecutor {
 
@@ -55,7 +56,8 @@ public class PipePeriodicalJobExecutor {
   private Future<?> executorFuture;
 
   // <Periodical job, Interval in rounds>
-  private static final List<Pair<WrappedRunnable, Long>> periodicalJobs = new ArrayList<>();
+  private static final List<Pair<WrappedRunnable, Long>> periodicalJobs =
+      new CopyOnWriteArrayList<>();
 
   public synchronized void register(String id, Runnable periodicalJob, long intervalInSeconds) {
     periodicalJobs.add(

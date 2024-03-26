@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.common;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
@@ -37,6 +38,31 @@ public class DataNodeEndPoints {
       new TEndPoint(
           IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
           IoTDBDescriptor.getInstance().getConfig().getInternalPort());
+
+  public static final TEndPoint LOCAL_DATA_REGION_CONSENSUS_ENDPOINT =
+      new TEndPoint(
+          IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+          IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusPort());
+
+  public static final TEndPoint LOCAL_SCHEMA_REGION_CONSENSUS_CLIENT_ENDPOINT =
+      new TEndPoint(
+          IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+          IoTDBDescriptor.getInstance().getConfig().getSchemaRegionConsensusPort());
+
+  public static final TEndPoint LOCAL_CLIENT_RPC_ENDPOINT =
+      new TEndPoint(
+          IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+          IoTDBDescriptor.getInstance().getConfig().getRpcPort());
+
+  public static final TDataNodeLocation getLocalDataNodeLocation() {
+    return new TDataNodeLocation(
+        IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
+        LOCAL_CLIENT_RPC_ENDPOINT,
+        LOCAL_HOST_INTERNAL_ENDPOINT,
+        LOCAL_HOST_DATA_BLOCK_ENDPOINT,
+        LOCAL_DATA_REGION_CONSENSUS_ENDPOINT,
+        LOCAL_SCHEMA_REGION_CONSENSUS_CLIENT_ENDPOINT);
+  }
 
   public static boolean isSameNode(TEndPoint endPoint) {
     return endPoint.equals(LOCAL_HOST_DATA_BLOCK_ENDPOINT);

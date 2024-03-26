@@ -19,11 +19,18 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
+@TestOnly
 public class NoopProcedureStore implements IProcedureStore {
+
+  AtomicLong lastProcId = new AtomicLong(-1);
 
   private volatile boolean running = false;
 
@@ -38,7 +45,24 @@ public class NoopProcedureStore implements IProcedureStore {
   }
 
   @Override
-  public void load(List<Procedure> procedureList) {}
+  public List<Procedure> load() {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public List<Procedure> getProcedures() {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public ProcedureInfo getProcedureInfo() {
+    return null;
+  }
+
+  @Override
+  public synchronized long getNextProcId() {
+    return lastProcId.addAndGet(1);
+  }
 
   @Override
   public void update(Procedure procedure) {}
@@ -66,5 +90,10 @@ public class NoopProcedureStore implements IProcedureStore {
   @Override
   public void start() {
     running = true;
+  }
+
+  @Override
+  public boolean isOldVersionProcedureStore() {
+    return true;
   }
 }

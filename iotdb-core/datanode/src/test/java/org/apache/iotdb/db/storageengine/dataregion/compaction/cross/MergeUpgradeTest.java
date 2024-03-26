@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -191,8 +192,8 @@ public class MergeUpgradeTest {
                 String.valueOf(i + valueOffset)));
       }
       fileWriter.write(record);
-      tsFileResource.updateStartTime(deviceName, i);
-      tsFileResource.updateEndTime(deviceName, i);
+      tsFileResource.updateStartTime(new PlainDeviceID(deviceName), i);
+      tsFileResource.updateEndTime(new PlainDeviceID(deviceName), i);
     }
   }
 }

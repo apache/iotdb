@@ -19,6 +19,8 @@
 
 @echo off
 
+title IoTDB Collect
+
 if "%OS%" == "Windows_NT" setlocal
 pushd %~dp0..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%

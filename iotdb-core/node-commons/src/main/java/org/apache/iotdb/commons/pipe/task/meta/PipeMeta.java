@@ -23,8 +23,8 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -53,12 +53,7 @@ public class PipeMeta {
     return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
   }
 
-  public void serialize(DataOutputStream outputStream) throws IOException {
-    staticMeta.serialize(outputStream);
-    runtimeMeta.serialize(outputStream);
-  }
-
-  public void serialize(FileOutputStream outputStream) throws IOException {
+  public void serialize(OutputStream outputStream) throws IOException {
     staticMeta.serialize(outputStream);
     runtimeMeta.serialize(outputStream);
   }
@@ -73,6 +68,10 @@ public class PipeMeta {
     final PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(byteBuffer);
     final PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(byteBuffer);
     return new PipeMeta(staticMeta, runtimeMeta);
+  }
+
+  public PipeMeta deepCopy() throws IOException {
+    return PipeMeta.deserialize(serialize());
   }
 
   public String coreReportMessage() {

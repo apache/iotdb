@@ -70,6 +70,10 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
     pipeLeaderChangeHandler.onClusterStatisticsChanged(event);
   }
 
+  public void onConfigRegionGroupLeaderChanged() {
+    pipeLeaderChangeHandler.onConfigRegionGroupLeaderChanged();
+  }
+
   @Override
   public void onRegionGroupLeaderChanged(RouteChangeEvent event) {
     pipeLeaderChangeHandler.onRegionGroupLeaderChanged(event);

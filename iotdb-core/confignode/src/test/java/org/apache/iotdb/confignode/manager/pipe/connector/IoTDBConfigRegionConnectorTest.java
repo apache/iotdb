@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.connector;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.confignode.manager.pipe.transfer.connector.config.IoTDBConfigRegionConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 

@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -43,7 +45,7 @@ import java.util.List;
 
 public class TsFileSketchToolTest {
   String path =
-      "data"
+      "target"
           .concat(File.separator)
           .concat("data")
           .concat(File.separator)
@@ -57,8 +59,8 @@ public class TsFileSketchToolTest {
           .concat(File.separator)
           .concat("1-0-0-0.tsfile");
   String sketchOut = "sketch.out";
-  String device = "root.device_0";
-  String alignedDevice = "root.device_1";
+  IDeviceID device = new PlainDeviceID("root.device_0");
+  IDeviceID alignedDevice = new PlainDeviceID("root.device_1");
   String sensorPrefix = "sensor_";
   // the number of rows to include in the tablet
   int rowNum = 1000000;
@@ -101,7 +103,7 @@ public class TsFileSketchToolTest {
 
         // add measurements into TSFileWriter
         // construct the tablet
-        Tablet tablet = new Tablet(device, measurementSchemas);
+        Tablet tablet = new Tablet(((PlainDeviceID) device).toStringID(), measurementSchemas);
         long[] timestamps = tablet.timestamps;
         Object[] values = tablet.values;
         long timestamp = 1;
@@ -127,7 +129,8 @@ public class TsFileSketchToolTest {
 
         // add aligned measurements into TSFileWriter
         // construct the tablet
-        tablet = new Tablet(alignedDevice, alignedMeasurementSchemas);
+        tablet =
+            new Tablet(((PlainDeviceID) alignedDevice).toStringID(), alignedMeasurementSchemas);
         timestamps = tablet.timestamps;
         values = tablet.values;
         timestamp = 1;

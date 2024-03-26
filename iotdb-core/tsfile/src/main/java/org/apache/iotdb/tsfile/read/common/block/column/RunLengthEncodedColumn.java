@@ -21,9 +21,8 @@ package org.apache.iotdb.tsfile.read.common.block.column;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-
-import org.openjdk.jol.info.ClassLayout;
 
 import java.util.Arrays;
 
@@ -34,7 +33,7 @@ import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkV
 public class RunLengthEncodedColumn implements Column {
 
   private static final int INSTANCE_SIZE =
-      ClassLayout.parseClass(RunLengthEncodedColumn.class).instanceSize();
+      (int) RamUsageEstimator.shallowSizeOfInstance(RunLengthEncodedColumn.class);
 
   private final Column value;
   private final int positionCount;

@@ -88,17 +88,17 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
 
   @Override
   public Filter visitIsNullExpression(IsNullExpression isNullExpression, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support IS NULL");
+    throw new UnsupportedOperationException("TIMESTAMP does not support IS NULL/IS NOT NULL");
   }
 
   @Override
   public Filter visitLikeExpression(LikeExpression likeExpression, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support LIKE");
+    throw new UnsupportedOperationException("TIMESTAMP does not support LIKE/NOT LIKE");
   }
 
   @Override
   public Filter visitRegularExpression(RegularExpression regularExpression, Void context) {
-    throw new UnsupportedOperationException("TIMESTAMP does not support REGEXP");
+    throw new UnsupportedOperationException("TIMESTAMP does not support REGEXP/NOT REGEXP");
   }
 
   @Override
@@ -209,11 +209,35 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
     } else if (secondExpression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
       // secondExpression is TIMESTAMP
       long value = Long.parseLong(((ConstantOperand) firstExpression).getValueString());
+      long maxValue = Long.parseLong(((ConstantOperand) thirdExpression).getValueString());
+
+      // cases:
+      // 1 BETWEEN time AND 2 => time <= 1
+      // 1 BETWEEN time AND 1 => time <= 1
+      // 1 BETWEEN time AND 0 => FALSE
+      // 1 NOT BETWEEN time AND 2 => time > 1
+      // 1 NOT BETWEEN time AND 1 => time > 1
+      // 1 NOT BETWEEN time AND 0 => TRUE
+      checkArgument(
+          value <= maxValue,
+          String.format("Predicate [%s] should be simplified in previous step", betweenExpression));
       return isNot ? TimeFilterApi.gt(value) : TimeFilterApi.ltEq(value);
     }
 
     // thirdExpression is TIMESTAMP
     long value = Long.parseLong(((ConstantOperand) firstExpression).getValueString());
+    long minValue = Long.parseLong(((ConstantOperand) secondExpression).getValueString());
+
+    // cases:
+    // 1 BETWEEN 2 AND time => FALSE
+    // 1 BETWEEN 1 AND time => time >= 1
+    // 1 BETWEEN 0 AND time => time >= 1
+    // 1 NOT BETWEEN 2 AND time => TRUE
+    // 1 NOT BETWEEN 1 AND time => time < 1
+    // 1 NOT BETWEEN 0 AND time => time < 1
+    checkArgument(
+        value >= minValue,
+        String.format("Predicate [%s] should be simplified in previous step", betweenExpression));
     return isNot ? TimeFilterApi.lt(value) : TimeFilterApi.gtEq(value);
   }
 

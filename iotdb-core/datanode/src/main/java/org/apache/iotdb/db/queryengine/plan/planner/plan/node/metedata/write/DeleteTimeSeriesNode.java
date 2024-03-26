@@ -53,6 +53,11 @@ public class DeleteTimeSeriesNode extends PlanNode {
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.DELETE_TIMESERIES;
+  }
+
+  @Override
   public PlanNode clone() {
     return new DeleteTimeSeriesNode(getPlanNodeId(), patternTree);
   }

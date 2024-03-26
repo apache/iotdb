@@ -209,8 +209,7 @@ public class IoTDBStartCheck {
     for (String dataDir : config.getLocalDataDirs()) {
       DirectoryChecker.getInstance().registerDirectory(new File(dataDir));
     }
-    if (config.isClusterMode()
-        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       if (DirectoryChecker.getInstance().isCrossDisk(config.getDataDirs())) {
         throw new ConfigurationException(
             "Configuring the data directories as cross-disk directories is not supported under RatisConsensus(it will be supported in a later version).");
@@ -219,19 +218,14 @@ public class IoTDBStartCheck {
     // check system dir
     DirectoryChecker.getInstance().registerDirectory(new File(config.getSystemDir()));
     // check WAL dir
-    if (!(config.isClusterMode()
-            && config
-                .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.RATIS_CONSENSUS))
+    if (!(config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS))
         && !config.getWalMode().equals(WALMode.DISABLE)) {
       for (String walDir : commonConfig.getWalDirs()) {
         DirectoryChecker.getInstance().registerDirectory(new File(walDir));
       }
     }
-    // in cluster mode, check consensus dir
-    if (config.isClusterMode()) {
-      DirectoryChecker.getInstance().registerDirectory(new File(config.getConsensusDir()));
-    }
+    // check consensus dir
+    DirectoryChecker.getInstance().registerDirectory(new File(config.getConsensusDir()));
   }
 
   /**
@@ -274,8 +268,7 @@ public class IoTDBStartCheck {
         systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
         properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
       }
-      if (config.isClusterMode()
-          && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
           && config.getWalMode().equals(WALMode.DISABLE)) {
         throw new ConfigurationException(
             "Configuring the WALMode as disable is not supported under IoTConsensus");

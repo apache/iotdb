@@ -26,18 +26,20 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
@@ -181,34 +183,31 @@ public class AlignByDeviceOrderByLimitOffsetTest {
   }
 
   /*
-   * IdentitySinkNode-38
-   *   └──LimitNode-33
+   * IdentitySinkNode-37
+   *   └──LimitNode-32
    *       └──TransformNode-12
-   *           └──MergeSort-32
-   *               ├──DeviceView-19
-   *               │   └──SortNode-18
-   *               │       └──FilterNode-17
-   *               │           └──FullOuterTimeJoinNode-16
-   *               │               ├──SeriesScanNode-14:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *               │               └──SeriesScanNode-15:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *               ├──ExchangeNode-34: [SourceAddress:192.0.3.1/test.2.0/36]
-   *               └──ExchangeNode-35: [SourceAddress:192.0.2.1/test.3.0/37]
+   *           └──MergeSort-31
+   *               ├──DeviceView-20
+   *               │   └──SortNode-19
+   *               │       └──LeftOuterTimeJoinNode-18
+   *               │           ├──SeriesScanNode-16:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               │           └──SeriesScanNode-17:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               ├──ExchangeNode-33: [SourceAddress:192.0.3.1/test.2.0/35]
+   *               └──ExchangeNode-34: [SourceAddress:192.0.2.1/test.3.0/36]
    *
    *  IdentitySinkNode-36
    *   └──DeviceView-25
    *       └──SortNode-24
-   *           └──FilterNode-23
-   *               └──FullOuterTimeJoinNode-22
-   *                   ├──SeriesScanNode-20:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *                   └──SeriesScanNode-21:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *           └──LeftOuterTimeJoinNode-23
+   *               ├──SeriesScanNode-21:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──SeriesScanNode-22:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
    *  IdentitySinkNode-37
-   *   └──DeviceView-31
-   *       └──SortNode-30
-   *           └──FilterNode-29
-   *               └──FullOuterTimeJoinNode-28
-   *                   ├──SeriesScanNode-26:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *                   └──SeriesScanNode-27:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *   └──DeviceView-30
+   *       └──SortNode-29
+   *           └──LeftOuterTimeJoinNode-28
+   *               ├──SeriesScanNode-26:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               └──SeriesScanNode-27:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    */
   @Test
   public void orderByDeviceTest3() {
@@ -233,29 +232,31 @@ public class AlignByDeviceOrderByLimitOffsetTest {
   }
 
   /*
-   * IdentitySinkNode-27
-   *   └──LimitNode-22
+   * IdentitySinkNode-33
+   *   └──LimitNode-27
    *       └──FilterNode-12
-   *           └──DeviceView-14
+   *           └──DeviceView-18
    *               ├──AggregationNode-5
-   *               │   └──FilterNode-4
-   *               │       └──FullOuterTimeJoinNode-3
-   *               │           ├──SeriesScanNode-15:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *               │           ├──SeriesScanNode-17:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *               │           └──ExchangeNode-23: [SourceAddress:192.0.2.1/test.2.0/25]
-   *               └──ExchangeNode-24: [SourceAddress:192.0.3.1/test.3.0/26]
+   *               │   └──ProjectNode-15
+   *               │       └──LeftOuterTimeJoinNode-14
+   *               │           ├──FullOuterTimeJoinNode-19
+   *               │           │   ├──SeriesScanNode-20:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               │           │   └──ExchangeNode-28: [SourceAddress:192.0.2.1/test.2.0/31]
+   *               │           └──FullOuterTimeJoinNode-22
+   *               │               ├──SeriesScanNode-23:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *               │               └──ExchangeNode-29: [SourceAddress:192.0.2.1/test.2.0/31]
+   *               └──ExchangeNode-30: [SourceAddress:192.0.3.1/test.3.0/32]
    *
-   *  IdentitySinkNode-25
-   *   └──FullOuterTimeJoinNode-19
-   *       ├──SeriesScanNode-16:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *       └──SeriesScanNode-18:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *  IdentitySinkNode-31
+   *   ├──SeriesScanNode-21:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *   └──SeriesScanNode-24:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
-   *  IdentitySinkNode-26
+   *  IdentitySinkNode-32
    *   └──AggregationNode-10
-   *       └──FilterNode-9
-   *           └──FullOuterTimeJoinNode-8
-   *               ├──SeriesScanNode-20:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *               └──SeriesScanNode-21:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *       └──ProjectNode-17
+   *           └──LeftOuterTimeJoinNode-16
+   *               ├──SeriesScanNode-7:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──SeriesScanNode-6:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    */
   @Test
   public void orderByDeviceTest4() {
@@ -272,15 +273,15 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiRoot.getChildren().get(0) instanceof LimitNode);
     PlanNode filterNode = ((LimitNode) firstFiRoot.getChildren().get(0)).getChild();
     assertTrue(filterNode instanceof FilterNode);
-    assertTrue(filterNode.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(filterNode.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
+    assertTrue(filterNode.getChildren().get(0) instanceof AggregationMergeSortNode);
+    assertTrue(filterNode.getChildren().get(0).getChildren().get(0) instanceof DeviceViewNode);
     assertTrue(
         filterNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof AggregationNode);
     PlanNode thirdFiRoot = plan.getInstances().get(2).getFragment().getPlanNodeTree();
     assertTrue(thirdFiRoot instanceof IdentitySinkNode);
-    assertTrue(thirdFiRoot.getChildren().get(0) instanceof AggregationNode);
-    assertTrue(thirdFiRoot.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    assertTrue(thirdFiRoot.getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(thirdFiRoot.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
   }
 
   /*
@@ -354,51 +355,51 @@ public class AlignByDeviceOrderByLimitOffsetTest {
   }
 
   /*
-   * IdentitySinkNode-60
+   * IdentitySinkNode-66
    *   └──TopK-13
-   *       ├──TopK-50
-   *       │   ├──SingleDeviceView-25
-   *       │   │   └──LimitNode-24
-   *       │   │       └──FilterNode-23
-   *       │   │           └──FullOuterTimeJoinNode-22
-   *       │   │               ├──SeriesScanNode-20:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │   │               └──SeriesScanNode-21:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │   └──SingleDeviceView-43
-   *       │       └──LimitNode-42
-   *       │           └──FilterNode-41
-   *       │               └──FullOuterTimeJoinNode-40
-   *       │                   ├──SeriesScanNode-38:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │                   └──SeriesScanNode-39:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       ├──ExchangeNode-54: [SourceAddress:192.0.3.1/test.2.0/57]
-   *       ├──ExchangeNode-55: [SourceAddress:192.0.2.1/test.3.0/58]
-   *       └──ExchangeNode-56: [SourceAddress:192.0.4.1/test.4.0/59]
+   *       ├──TopK-56
+   *       │   ├──SingleDeviceView-31
+   *       │   │   └──LimitNode-30
+   *       │   │       └──ProjectNode-29
+   *       │   │           └──LeftOuterTimeJoinNode-28
+   *       │   │               ├──SeriesScanNode-26:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │   │               └──SeriesScanNode-27:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │   └──SingleDeviceView-49
+   *       │       └──LimitNode-48
+   *       │           └──ProjectNode-47
+   *       │               └──LeftOuterTimeJoinNode-46
+   *       │                   ├──SeriesScanNode-44:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │                   └──SeriesScanNode-45:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       ├──ExchangeNode-60: [SourceAddress:192.0.3.1/test.2.0/63]
+   *       ├──ExchangeNode-61: [SourceAddress:192.0.2.1/test.3.0/64]
+   *       └──ExchangeNode-62: [SourceAddress:192.0.4.1/test.4.0/65]
    *
-   *  IdentitySinkNode-57
-   *   └──TopK-52
+   *  IdentitySinkNode-63
+   *   └──TopK-58
+   *       └──SingleDeviceView-43
+   *           └──LimitNode-42
+   *               └──ProjectNode-41
+   *                   └──LeftOuterTimeJoinNode-40
+   *                       ├──SeriesScanNode-38:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *                       └──SeriesScanNode-39:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *
+   *  IdentitySinkNode-64
+   *   └──TopK-57
    *       └──SingleDeviceView-37
    *           └──LimitNode-36
-   *               └──FilterNode-35
-   *                   └──FullOuterTimeJoinNode-34
-   *                       ├──SeriesScanNode-32:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *                       └──SeriesScanNode-33:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──ProjectNode-35
+   *                   └──LeftOuterTimeJoinNode-34
+   *                       ├──SeriesScanNode-32:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *                       └──SeriesScanNode-33:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
-   *  IdentitySinkNode-58
-   *   └──TopK-51
-   *       └──SingleDeviceView-31
-   *           └──LimitNode-30
-   *               └──FilterNode-29
-   *                   └──FullOuterTimeJoinNode-28
-   *                       ├──SeriesScanNode-26:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *                       └──SeriesScanNode-27:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *
-   *  IdentitySinkNode-59
-   *   └──TopK-53
-   *       └──SingleDeviceView-49
-   *           └──LimitNode-48
-   *               └──FilterNode-47
-   *                   └──FullOuterTimeJoinNode-46
-   *                       ├──SeriesScanNode-44:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *                       └──SeriesScanNode-45:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *  IdentitySinkNode-65
+   *   └──TopK-59
+   *       └──SingleDeviceView-55
+   *           └──LimitNode-54
+   *               └──ProjectNode-53
+   *                   └──LeftOuterTimeJoinNode-52
+   *                       ├──SeriesScanNode-50:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *                       └──SeriesScanNode-51:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByTimeTest2() {
@@ -419,7 +420,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     for (PlanNode node : firstFiTopNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof SingleDeviceViewNode);
       assertTrue(node.getChildren().get(0) instanceof LimitNode);
-      assertTrue(node.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+      assertTrue(node.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
     }
     assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(firstFiTopNode.getChildren().get(2) instanceof ExchangeNode);
@@ -431,50 +432,40 @@ public class AlignByDeviceOrderByLimitOffsetTest {
   }
 
   /*
-   * IdentitySinkNode-98
-   *   └──TopK-54
-   *       ├──TopK-88
-   *       │   └──DeviceView-69
-   *       │       ├──LimitNode-63
-   *       │       │   └──FilterNode-62
-   *       │       │       └──FullOuterTimeJoinNode-61
-   *       │       │           ├──SeriesScanNode-59:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │       │           └──SeriesScanNode-60:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │       └──LimitNode-68
-   *       │           └──FilterNode-67
-   *       │               └──FullOuterTimeJoinNode-66
-   *       │                   ├──SeriesScanNode-64:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       │                   └──SeriesScanNode-65:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
-   *       ├──ExchangeNode-92: [SourceAddress:192.0.3.1/test.6.0/95]
-   *       ├──ExchangeNode-93: [SourceAddress:192.0.2.1/test.7.0/96]
-   *       └──ExchangeNode-94: [SourceAddress:192.0.4.1/test.8.0/97]
+   * IdentitySinkNode-41
+   *   └──TopK-10
+   *       ├──TopK-31
+   *       │   └──DeviceView-18
+   *       │       ├──FullOuterTimeJoinNode-14
+   *       │       │   ├──SeriesScanNode-12:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │       │   └──SeriesScanNode-13:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │       └──FullOuterTimeJoinNode-17
+   *       │           ├──SeriesScanNode-15:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │           └──SeriesScanNode-16:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       ├──ExchangeNode-35: [SourceAddress:192.0.3.1/test.6.0/38]
+   *       ├──ExchangeNode-36: [SourceAddress:192.0.2.1/test.7.0/39]
+   *       └──ExchangeNode-37: [SourceAddress:192.0.4.1/test.8.0/40]
    *
-   *  IdentitySinkNode-95
-   *   └──TopK-89
-   *       └──DeviceView-75
-   *           └──LimitNode-74
-   *               └──FilterNode-73
-   *                   └──FullOuterTimeJoinNode-72
-   *                       ├──SeriesScanNode-70:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
-   *                       └──SeriesScanNode-71:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *  IdentitySinkNode-38
+   *   └──TopK-32
+   *       └──DeviceView-22
+   *           └──FullOuterTimeJoinNode-21
+   *               ├──SeriesScanNode-19:[SeriesPath: root.sg.d22.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──SeriesScanNode-20:[SeriesPath: root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
    *
-   *  IdentitySinkNode-96
-   *   └──TopK-90
-   *       └──DeviceView-81
-   *           └──LimitNode-80
-   *               └──FilterNode-79
-   *                   └──FullOuterTimeJoinNode-78
-   *                       ├──SeriesScanNode-76:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
-   *                       └──SeriesScanNode-77:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *  IdentitySinkNode-39
+   *   └──TopK-33
+   *       └──DeviceView-26
+   *           └──FullOuterTimeJoinNode-25
+   *               ├──SeriesScanNode-23:[SeriesPath: root.sg.d1.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               └──SeriesScanNode-24:[SeriesPath: root.sg.d1.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    *
-   *  IdentitySinkNode-97
-   *   └──TopK-91
-   *       └──DeviceView-87
-   *           └──LimitNode-86
-   *               └──FilterNode-85
-   *                   └──FullOuterTimeJoinNode-84
-   *                       ├──SeriesScanNode-82:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
-   *                       └──SeriesScanNode-83:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *  IdentitySinkNode-40
+   *   └──TopK-34
+   *       └──DeviceView-30
+   *           └──FullOuterTimeJoinNode-29
+   *               ├──SeriesScanNode-27:[SeriesPath: root.sg.d333.s1, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *               └──SeriesScanNode-28:[SeriesPath: root.sg.d333.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
   @Test
   public void orderByTimeTest3() {
@@ -528,7 +519,10 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     for (PlanNode node : firstFiTopNode.getChildren().get(0).getChildren()) {
       assertTrue(node instanceof DeviceViewNode);
       assertTrue(node.getChildren().get(0) instanceof LimitNode);
-      assertTrue(node.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+      assertTrue(node.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
+      assertTrue(
+          node.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+              instanceof LeftOuterTimeJoinNode);
     }
     assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
     assertTrue(firstFiTopNode.getChildren().get(2) instanceof ExchangeNode);
@@ -911,7 +905,7 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     }
   }
 
-  /*
+  /* BEFORE:
    * IdentitySinkNode-35
    *   └──TransformNode-12
    *       └──SortNode-11
@@ -940,6 +934,36 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *   └──HorizontallyConcatNode-28
    *       ├──SeriesAggregationScanNode-24:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    *       └──SeriesAggregationScanNode-26:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *
+   * AFTER:
+   * IdentitySinkNode-43
+   *   └──TransformNode-12
+   *       └──MergeSort-32
+   *           ├──SortNode-33
+   *           │   └──DeviceView-19
+   *           │       ├──FullOuterTimeJoinNode-15
+   *           │       │   ├──SeriesAggregationScanNode-13:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │       │   └──SeriesAggregationScanNode-14:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │       └──FullOuterTimeJoinNode-18
+   *           │           ├──SeriesAggregationScanNode-16:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           │           └──SeriesAggregationScanNode-17:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *           ├──ExchangeNode-37: [SourceAddress:192.0.3.1/test.2.0/40]
+   *           ├──ExchangeNode-38: [SourceAddress:192.0.2.1/test.3.0/41]
+   *           └──ExchangeNode-39: [SourceAddress:192.0.4.1/test.4.0/42]
+   *
+   *  IdentitySinkNode-40
+   *   └──SortNode-34
+   *       └──DeviceView-23
+   *           └──FullOuterTimeJoinNode-22
+   *               ├──SeriesAggregationScanNode-20:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──SeriesAggregationScanNode-21:[SeriesPath: root.sg.d22.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *
+   *  IdentitySinkNode-41
+   *   └──SortNode-35
+   *       └──DeviceView-27
+   *           └──FullOuterTimeJoinNode-26
+   *               ├──SeriesAggregationScanNode-24:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               └──SeriesAggregationScanNode-25:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
    */
   @Test
   public void orderByExpressionTest3() {
@@ -955,29 +979,25 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
     firstFiTopNode = firstFiRoot.getChildren().get(0);
     assertTrue(firstFiTopNode instanceof TransformNode);
-    assertTrue(firstFiTopNode.getChildren().get(0) instanceof SortNode);
-    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof MergeSortNode);
+    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof SortNode);
     assertTrue(
         firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof AggregationNode);
+            instanceof DeviceViewNode);
     assertTrue(
-        firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(1)
-            instanceof ExchangeNode);
+        plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0)
+            instanceof SortNode);
     assertTrue(
-        firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(2)
-            instanceof AggregationNode);
-    for (int i = 1; i < 4; i++) {
-      assertTrue(
-          plan.getInstances().get(i).getFragment().getPlanNodeTree().getChildren().get(0)
-              instanceof HorizontallyConcatNode);
-    }
+        plan.getInstances().get(2).getFragment().getPlanNodeTree().getChildren().get(0)
+            instanceof SortNode);
     for (int i = 0; i < 4; i++) {
       assertScanNodeLimitValue(plan.getInstances().get(i).getFragment().getPlanNodeTree(), 0);
     }
   }
 
   /*
-   * IdentitySinkNode-34
+   *  BEFORE:
+   *  IdentitySinkNode-34
    *   └──TopK-10
    *       └──DeviceView-12
    *           ├──AggregationNode-17
@@ -1005,6 +1025,43 @@ public class AlignByDeviceOrderByLimitOffsetTest {
    *       ├──SeriesAggregationScanNode-23:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    *       └──SeriesAggregationScanNode-25:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, PARTIAL)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
+
+  /* AFTER:
+   * IdentitySinkNode-41
+   *   └──TopK-10
+   *       ├──TopK-31
+   *       │   └──DeviceView-18
+   *       │       ├──FullOuterTimeJoinNode-14
+   *       │       │   ├──SeriesAggregationScanNode-12:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │       │   └──SeriesAggregationScanNode-13:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │       └──FullOuterTimeJoinNode-17
+   *       │           ├──SeriesAggregationScanNode-15:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       │           └──SeriesAggregationScanNode-16:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:1)]
+   *       ├──ExchangeNode-35: [SourceAddress:192.0.3.1/test.2.0/38]
+   *       ├──ExchangeNode-36: [SourceAddress:192.0.2.1/test.3.0/39]
+   *       └──ExchangeNode-37: [SourceAddress:192.0.4.1/test.4.0/40]
+   *
+   *  IdentitySinkNode-38
+   *   └──TopK-32
+   *       └──DeviceView-22
+   *           └──FullOuterTimeJoinNode-21
+   *               ├──SeriesAggregationScanNode-19:[SeriesPath: root.sg.d22.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *               └──SeriesAggregationScanNode-20:[SeriesPath: root.sg.d22.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:3)]
+   *
+   *  IdentitySinkNode-39
+   *   └──TopK-33
+   *       └──DeviceView-26
+   *           └──FullOuterTimeJoinNode-25
+   *               ├──SeriesAggregationScanNode-23:[SeriesPath: root.sg.d1.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *               └──SeriesAggregationScanNode-24:[SeriesPath: root.sg.d1.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:2)]
+   *
+   *  IdentitySinkNode-40
+   *   └──TopK-34
+   *       └──DeviceView-30
+   *           └──FullOuterTimeJoinNode-29
+   *               ├──SeriesAggregationScanNode-27:[SeriesPath: root.sg.d333.s2, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   *               └──SeriesAggregationScanNode-28:[SeriesPath: root.sg.d333.s1, Descriptor: [AggregationDescriptor(count, SINGLE)], DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   */
   @Test
   public void orderByExpressionTest4() {
     // aggregation, order by expression, has LIMIT
@@ -1019,14 +1076,22 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
     firstFiTopNode = firstFiRoot.getChildren().get(0);
     assertTrue(firstFiTopNode instanceof TopKNode);
-    assertTrue(firstFiTopNode.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
-    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(1) instanceof ExchangeNode);
-    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(2) instanceof AggregationNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof TopKNode);
+    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof DeviceViewNode);
+    assertTrue(
+        firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof FullOuterTimeJoinNode);
     for (int i = 1; i < 4; i++) {
       assertTrue(
-          plan.getInstances().get(i).getFragment().getPlanNodeTree().getChildren().get(0)
-              instanceof HorizontallyConcatNode);
+          plan.getInstances()
+                  .get(i)
+                  .getFragment()
+                  .getPlanNodeTree()
+                  .getChildren()
+                  .get(0)
+                  .getChildren()
+                  .get(0)
+              instanceof DeviceViewNode);
     }
     for (int i = 0; i < 4; i++) {
       assertScanNodeLimitValue(plan.getInstances().get(i).getFragment().getPlanNodeTree(), 0);

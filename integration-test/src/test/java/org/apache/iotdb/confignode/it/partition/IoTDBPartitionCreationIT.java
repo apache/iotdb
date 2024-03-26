@@ -129,12 +129,14 @@ public class IoTDBPartitionCreationIT {
               testTimePartitionInterval);
       TDataPartitionReq dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
       TDataPartitionTableResp dataPartitionTableResp = null;
-      for (int retry = 0; retry < 5; retry++) {
+      for (int retry = 0; retry < 30; retry++) {
         // Build new Client since it's unstable in Win8 environment
         try (SyncConfigNodeIServiceClient configNodeClient =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
           dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
-          if (dataPartitionTableResp != null) {
+          if (dataPartitionTableResp != null
+              && dataPartitionTableResp.getStatus().getCode()
+                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             break;
           }
         } catch (Exception e) {
@@ -205,12 +207,14 @@ public class IoTDBPartitionCreationIT {
               1 + testTimePartitionBatchSize,
               testTimePartitionInterval);
       dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
-      for (int retry = 0; retry < 5; retry++) {
+      for (int retry = 0; retry < 30; retry++) {
         // Build new Client since it's unstable in Win8 environment
         try (SyncConfigNodeIServiceClient configNodeClient =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
           dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
-          if (dataPartitionTableResp != null) {
+          if (dataPartitionTableResp != null
+              && dataPartitionTableResp.getStatus().getCode()
+                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             break;
           }
         } catch (Exception e) {
@@ -281,12 +285,14 @@ public class IoTDBPartitionCreationIT {
               2 + testTimePartitionBatchSize,
               testTimePartitionInterval);
       dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
-      for (int retry = 0; retry < 5; retry++) {
+      for (int retry = 0; retry < 30; retry++) {
         // Build new Client since it's unstable in Win8 environment
         try (SyncConfigNodeIServiceClient configNodeClient =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
           dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
-          if (dataPartitionTableResp != null) {
+          if (dataPartitionTableResp != null
+              && dataPartitionTableResp.getStatus().getCode()
+                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             break;
           }
         } catch (Exception e) {
@@ -352,12 +358,14 @@ public class IoTDBPartitionCreationIT {
               3 + testTimePartitionBatchSize,
               testTimePartitionInterval);
       dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
-      for (int retry = 0; retry < 5; retry++) {
+      for (int retry = 0; retry < 30; retry++) {
         // Build new Client since it's unstable in Win8 environment
         try (SyncConfigNodeIServiceClient configNodeClient =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
           dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
-          if (dataPartitionTableResp != null) {
+          if (dataPartitionTableResp != null
+              && dataPartitionTableResp.getStatus().getCode()
+                  == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             break;
           }
         } catch (Exception e) {

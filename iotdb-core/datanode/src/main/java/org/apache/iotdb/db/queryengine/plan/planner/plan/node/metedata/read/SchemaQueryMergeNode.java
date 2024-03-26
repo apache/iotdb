@@ -37,6 +37,11 @@ public class SchemaQueryMergeNode extends AbstractSchemaMergeNode {
     super(id);
   }
 
+  @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.SCHEMA_QUERY_MERGE;
+  }
+
   public SchemaQueryMergeNode(PlanNodeId id, boolean orderByHeat) {
     this(id);
     this.orderByHeat = orderByHeat;

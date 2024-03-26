@@ -95,7 +95,22 @@ enum TRegionMigrateFailedType {
   RemovePeerFailed,
   RemoveConsensusGroupFailed,
   DeleteRegionFailed,
-  CreateRegionFailed
+  CreateRegionFailed,
+  Disconnect,
+}
+
+enum TRegionMaintainTaskStatus {
+  TASK_NOT_EXIST,
+  PROCESSING,
+  SUCCESS,
+  FAIL,
+}
+
+struct TRegionMigrateResult {
+  1: optional TConsensusGroupId regionId
+  2: optional TSStatus migrateResult
+  3: optional map<TDataNodeLocation, TRegionMigrateFailedType> failedNodeAndReason
+  4: required TRegionMaintainTaskStatus taskStatus
 }
 
 struct TFlushReq {

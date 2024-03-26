@@ -237,7 +237,7 @@ public class TopKOperator implements ProcessOperator {
     // so no need to accumulate the returnSize and retainedSize of each child
     long maxPeekMemory = calculateMaxReturnSize();
     for (Operator operator : childrenOperators) {
-      maxPeekMemory = Math.max(maxPeekMemory, operator.calculateMaxPeekMemory());
+      maxPeekMemory = Math.max(maxPeekMemory, operator.calculateMaxPeekMemoryWithCounter());
     }
     return Math.max(maxPeekMemory, topValue * getMemoryUsageOfOneMergeSortKey() * 2);
   }

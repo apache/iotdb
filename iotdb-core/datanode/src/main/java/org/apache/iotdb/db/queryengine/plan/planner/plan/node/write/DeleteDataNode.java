@@ -119,6 +119,11 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.DELETE_DATA;
+  }
+
+  @Override
   public PlanNode clone() {
     return new DeleteDataNode(getPlanNodeId(), pathList, deleteStartTime, deleteEndTime);
   }

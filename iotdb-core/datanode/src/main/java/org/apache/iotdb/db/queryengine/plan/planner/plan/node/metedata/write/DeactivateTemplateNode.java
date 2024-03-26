@@ -55,6 +55,11 @@ public class DeactivateTemplateNode extends PlanNode implements IDeactivateTempl
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.DEACTIVATE_TEMPLATE_NODE;
+  }
+
+  @Override
   public PlanNode clone() {
     return new DeactivateTemplateNode(getPlanNodeId(), templateSetInfo);
   }

@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
@@ -40,8 +39,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 
 public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaInfo> {
 
@@ -112,14 +109,12 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
 
   @Override
   public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
-    return pathPattern.equals(ALL_MATCH_PATTERN)
-        && (schemaFilter == null)
-        && scope.equals(SchemaConstant.ALL_MATCH_SCOPE);
+    return false;
   }
 
   @Override
   public long getSchemaStatistic(ISchemaRegion schemaRegion) {
-    return schemaRegion.getSchemaRegionStatistics().getSeriesNumber();
+    return 0;
   }
 
   private String mapToString(Map<String, String> map) {

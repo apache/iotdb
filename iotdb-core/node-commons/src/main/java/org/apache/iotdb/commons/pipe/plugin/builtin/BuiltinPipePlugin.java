@@ -31,8 +31,13 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.connector.websocket.WebSocke
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.writeback.WriteBackConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.donothing.DoNothingExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBExtractor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate.AggregateProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate.StandardStatisticsProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate.TumblingWindowingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
-import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.DownSamplingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.SwingingDoorTrendingSamplingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.TumblingTimeSamplingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.throwing.ThrowingExceptionProcessor;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,7 +55,15 @@ public enum BuiltinPipePlugin {
 
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
-  DOWN_SAMPLING_PROCESSOR("down-sampling-processor", DownSamplingProcessor.class),
+  TUMBLING_TIME_SAMPLING_PROCESSOR(
+      "tumbling-time-sampling-processor", TumblingTimeSamplingProcessor.class),
+  SDT_SAMPLING_PROCESSOR("sdt-sampling-processor", SwingingDoorTrendingSamplingProcessor.class),
+  THROWING_EXCEPTION_PROCESSOR("throwing-exception-processor", ThrowingExceptionProcessor.class),
+  AGGREGATE_PROCESSOR("aggregate-processor", AggregateProcessor.class),
+
+  // Hidden-processors, which are plugins of the processors
+  STANDARD_STATISTICS_PROCESSOR("standard-statistics-processor", StandardStatisticsProcessor.class),
+  TUMBLING_WINDOWING_PROCESSOR("tumbling-windowing-processor", TumblingWindowingProcessor.class),
 
   // connectors
   DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingConnector.class),
@@ -74,6 +87,7 @@ public enum BuiltinPipePlugin {
   WEBSOCKET_SINK("websocket-sink", WebSocketConnector.class),
   OPC_UA_SINK("opc-ua-sink", OpcUaConnector.class),
   WRITE_BACK_SINK("write-back-sink", WriteBackConnector.class),
+  SUBSCRIPTION_SINK("subscription-sink", DoNothingConnector.class),
   ;
 
   private final String pipePluginName;
@@ -108,7 +122,12 @@ public enum BuiltinPipePlugin {
                   // Sources
                   DO_NOTHING_SOURCE.getPipePluginName().toUpperCase(),
                   // Processors
-                  DOWN_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
+                  TUMBLING_TIME_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
+                  SDT_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
+                  THROWING_EXCEPTION_PROCESSOR.getPipePluginName().toUpperCase(),
+                  AGGREGATE_PROCESSOR.getPipePluginName().toUpperCase(),
+                  STANDARD_STATISTICS_PROCESSOR.getPipePluginName().toUpperCase(),
+                  TUMBLING_WINDOWING_PROCESSOR.getPipePluginName().toUpperCase(),
                   // Connectors
                   DO_NOTHING_CONNECTOR.getPipePluginName().toUpperCase(),
                   IOTDB_THRIFT_CONNECTOR.getPipePluginName().toUpperCase(),
@@ -126,5 +145,6 @@ public enum BuiltinPipePlugin {
                   IOTDB_LEGACY_PIPE_SINK.getPipePluginName().toUpperCase(),
                   WEBSOCKET_SINK.getPipePluginName().toUpperCase(),
                   OPC_UA_SINK.getPipePluginName().toUpperCase(),
-                  WRITE_BACK_SINK.getPipePluginName().toUpperCase())));
+                  WRITE_BACK_SINK.getPipePluginName().toUpperCase(),
+                  SUBSCRIPTION_SINK.getPipePluginName().toUpperCase())));
 }

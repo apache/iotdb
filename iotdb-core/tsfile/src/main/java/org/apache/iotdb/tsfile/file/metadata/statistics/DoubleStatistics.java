@@ -21,9 +21,8 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import org.openjdk.jol.info.ClassLayout;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,8 +32,8 @@ import java.util.Objects;
 
 public class DoubleStatistics extends Statistics<Double> {
 
-  public static final int INSTANCE_SIZE =
-      ClassLayout.parseClass(DoubleStatistics.class).instanceSize();
+  public static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DoubleStatistics.class);
 
   private double minValue;
   private double maxValue;

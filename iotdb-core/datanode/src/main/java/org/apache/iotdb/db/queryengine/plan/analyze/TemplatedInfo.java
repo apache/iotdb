@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -30,15 +33,11 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 
@@ -47,31 +46,40 @@ import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOper
  * variables in TemplatedInfo to avoid repeated creation.
  */
 public class TemplatedInfo {
-  private List<String> measurementList;
-  private List<IMeasurementSchema> schemaList;
-  private List<TSDataType> dataTypes;
-  private Set<String> allSensors;
-  private Ordering scanOrder;
-  private boolean queryAllSensors;
-  private List<String> selectMeasurements;
-  private List<Integer> deviceToMeasurementIndexes;
+
+  // measurement info
+  private final List<String> measurementList;
+  private final List<IMeasurementSchema> schemaList;
+  private final List<TSDataType> dataTypes;
+
+  // query info
+  private final Ordering scanOrder;
+  private final boolean queryAllSensors;
+
+  // variables used in DeviceViewOperator
+  private final List<String> selectMeasurements;
+  private final List<Integer> deviceToMeasurementIndexes;
+
+  // variables related to LIMIT/OFFSET push down
   private final long offsetValue;
-  private long limitValue;
-  // these variables below are use in value filter condition
+  private final long limitValue;
+
+  // variables used in FilterOperator
   private final Expression predicate;
-  private ZoneId zoneId;
   private boolean keepNull;
-  // not serialize
+
+  // utils variables, not serialize
   private Map<String, IMeasurementSchema> schemaMap;
-  // not serialize
   private Map<String, List<InputLocation>> layoutMap;
   private int maxTsBlockLineNum = -1;
+
+  // variables related to predicate push down
+  private Expression pushDownPredicate;
 
   public TemplatedInfo(
       List<String> measurementList,
       List<IMeasurementSchema> schemaList,
       List<TSDataType> dataTypes,
-      Set<String> allSensors,
       Ordering scanOrder,
       boolean queryAllSensors,
       List<String> selectMeasurements,
@@ -79,13 +87,13 @@ public class TemplatedInfo {
       long offsetValue,
       long limitValue,
       Expression predicate,
-      ZoneId zoneId,
+      boolean keepNull,
       Map<String, IMeasurementSchema> schemaMap,
-      Map<String, List<InputLocation>> layoutMap) {
+      Map<String, List<InputLocation>> layoutMap,
+      Expression pushDownPredicate) {
     this.measurementList = measurementList;
     this.schemaList = schemaList;
     this.dataTypes = dataTypes;
-    this.allSensors = allSensors;
     this.scanOrder = scanOrder;
     this.queryAllSensors = queryAllSensors;
     this.selectMeasurements = selectMeasurements;
@@ -94,78 +102,39 @@ public class TemplatedInfo {
     this.limitValue = limitValue;
     this.predicate = predicate;
     if (predicate != null) {
-      this.zoneId = zoneId;
+      this.keepNull = keepNull;
       this.schemaMap = schemaMap;
       this.layoutMap = layoutMap;
     }
-  }
-
-  public void setMeasurementList(List<String> measurementList) {
-    this.measurementList = measurementList;
+    this.pushDownPredicate = pushDownPredicate;
   }
 
   public List<String> getMeasurementList() {
     return this.measurementList;
   }
 
-  public void setSchemaList(List<IMeasurementSchema> schemaList) {
-    this.schemaList = schemaList;
-  }
-
   public List<IMeasurementSchema> getSchemaList() {
     return this.schemaList;
-  }
-
-  public void setDataTypes(List<TSDataType> dataTypes) {
-    this.dataTypes = dataTypes;
   }
 
   public List<TSDataType> getDataTypes() {
     return this.dataTypes;
   }
 
-  public void setAllSensors(Set<String> allSensors) {
-    this.allSensors = allSensors;
-  }
-
-  public Set<String> getAllSensors() {
-    return this.allSensors;
-  }
-
-  public void setScanOrder(Ordering scanOrder) {
-    this.scanOrder = scanOrder;
-  }
-
   public Ordering getScanOrder() {
     return this.scanOrder;
-  }
-
-  public void setQueryAllSensors(boolean queryAllSensors) {
-    this.queryAllSensors = queryAllSensors;
   }
 
   public boolean isQueryAllSensors() {
     return this.queryAllSensors;
   }
 
-  public void setSelectMeasurements(List<String> selectMeasurements) {
-    this.selectMeasurements = selectMeasurements;
-  }
-
   public List<String> getSelectMeasurements() {
     return this.selectMeasurements;
   }
 
-  public void setDeviceToMeasurementIndexes(List<Integer> deviceToMeasurementIndexes) {
-    this.deviceToMeasurementIndexes = deviceToMeasurementIndexes;
-  }
-
   public long getOffsetValue() {
     return this.offsetValue;
-  }
-
-  public void setLimitValue(long limitValue) {
-    this.limitValue = limitValue;
   }
 
   public long getLimitValue() {
@@ -180,10 +149,6 @@ public class TemplatedInfo {
     return this.predicate;
   }
 
-  public ZoneId getZoneId() {
-    return this.zoneId;
-  }
-
   public boolean isKeepNull() {
     return this.keepNull;
   }
@@ -194,6 +159,29 @@ public class TemplatedInfo {
 
   public Map<String, List<InputLocation>> getLayoutMap() {
     return this.layoutMap;
+  }
+
+  public Expression getPushDownPredicate() {
+    return this.pushDownPredicate;
+  }
+
+  public void setPushDownPredicate(Expression pushDownPredicate) {
+    this.pushDownPredicate = pushDownPredicate;
+  }
+
+  public boolean hasPushDownPredicate() {
+    return this.pushDownPredicate != null;
+  }
+
+  public Expression[] getProjectExpressions() {
+    Expression[] projectExpressions = new Expression[measurementList.size()];
+    for (int i = 0; i < measurementList.size(); i++) {
+      projectExpressions[i] =
+          new TimeSeriesOperand(
+              new MeasurementPath(
+                  new PartialPath(new String[] {measurementList.get(i)}), schemaList.get(i)));
+    }
+    return projectExpressions;
   }
 
   public static Map<String, List<InputLocation>> makeLayout(List<String> measurementList) {
@@ -223,10 +211,6 @@ public class TemplatedInfo {
     for (TSDataType dataType : dataTypes) {
       ReadWriteIOUtils.write(dataType, byteBuffer);
     }
-    ReadWriteIOUtils.write(allSensors.size(), byteBuffer);
-    for (String dataType : allSensors) {
-      ReadWriteIOUtils.write(dataType, byteBuffer);
-    }
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(queryAllSensors, byteBuffer);
 
@@ -246,7 +230,14 @@ public class TemplatedInfo {
     if (predicate != null) {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       Expression.serialize(predicate, byteBuffer);
-      ReadWriteIOUtils.write(zoneId.getId(), byteBuffer);
+      ReadWriteIOUtils.write(keepNull, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    }
+
+    if (pushDownPredicate != null) {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      Expression.serialize(pushDownPredicate, byteBuffer);
     } else {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     }
@@ -261,10 +252,6 @@ public class TemplatedInfo {
       schema.serializeTo(stream);
     }
     for (TSDataType dataType : dataTypes) {
-      ReadWriteIOUtils.write(dataType, stream);
-    }
-    ReadWriteIOUtils.write(allSensors.size(), stream);
-    for (String dataType : allSensors) {
       ReadWriteIOUtils.write(dataType, stream);
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
@@ -286,7 +273,14 @@ public class TemplatedInfo {
     if (predicate != null) {
       ReadWriteIOUtils.write((byte) 1, stream);
       Expression.serialize(predicate, stream);
-      ReadWriteIOUtils.write(zoneId.getId(), stream);
+      ReadWriteIOUtils.write(keepNull, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
+
+    if (pushDownPredicate != null) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      Expression.serialize(pushDownPredicate, stream);
     } else {
       ReadWriteIOUtils.write((byte) 0, stream);
     }
@@ -314,12 +308,6 @@ public class TemplatedInfo {
       dataTypeList.add(ReadWriteIOUtils.readDataType(byteBuffer));
     }
 
-    int allSensorSize = ReadWriteIOUtils.readInt(byteBuffer);
-    Set<String> allSensorSet = new HashSet<>();
-    while (allSensorSize-- > 0) {
-      allSensorSet.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
-
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
 
     boolean queryAllSensors = ReadWriteIOUtils.readBool(byteBuffer);
@@ -341,13 +329,13 @@ public class TemplatedInfo {
     long limitValue = ReadWriteIOUtils.readLong(byteBuffer);
 
     Expression predicate = null;
-    ZoneId zone = null;
     byte hasFilter = ReadWriteIOUtils.readByte(byteBuffer);
     Map<String, IMeasurementSchema> currentSchemaMap = null;
     Map<String, List<InputLocation>> layoutMap = null;
+    boolean keepNull = false;
     if (hasFilter == 1) {
       predicate = Expression.deserialize(byteBuffer);
-      zone = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
+      keepNull = ReadWriteIOUtils.readBool(byteBuffer);
       currentSchemaMap = new HashMap<>();
       for (IMeasurementSchema measurementSchema : measurementSchemaList) {
         currentSchemaMap.put(measurementSchema.getMeasurementId(), measurementSchema);
@@ -355,11 +343,16 @@ public class TemplatedInfo {
       layoutMap = makeLayout(measurementList);
     }
 
+    Expression pushDownPredicate = null;
+    byte hasPushDownFilter = ReadWriteIOUtils.readByte(byteBuffer);
+    if (hasPushDownFilter == 1) {
+      pushDownPredicate = Expression.deserialize(byteBuffer);
+    }
+
     return new TemplatedInfo(
         measurementList,
         measurementSchemaList,
         dataTypeList,
-        allSensorSet,
         scanOrder,
         queryAllSensors,
         selectMeasurements,
@@ -367,8 +360,9 @@ public class TemplatedInfo {
         offsetValue,
         limitValue,
         predicate,
-        zone,
+        keepNull,
         currentSchemaMap,
-        layoutMap);
+        layoutMap,
+        pushDownPredicate);
   }
 }

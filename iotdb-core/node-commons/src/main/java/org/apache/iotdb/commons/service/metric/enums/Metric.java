@@ -101,6 +101,7 @@ public enum Metric {
   OPERATOR_EXECUTION_COST("operator_execution_cost"),
   OPERATOR_EXECUTION_COUNT("operator_execution_count"),
   SERIES_SCAN_COST("series_scan_cost"),
+  MEMORY_USAGE_MONITOR("memory_usage_monitor"),
   METRIC_LOAD_TIME_SERIES_METADATA("metric_load_time_series_metadata"),
   QUERY_METADATA_COST("query_metadata_cost"),
   DISPATCHER("dispatcher"),

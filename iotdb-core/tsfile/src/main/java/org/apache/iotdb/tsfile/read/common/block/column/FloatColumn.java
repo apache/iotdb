@@ -20,20 +20,20 @@
 package org.apache.iotdb.tsfile.read.common.block.column;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-
-import org.openjdk.jol.info.ClassLayout;
 
 import java.util.Arrays;
 import java.util.Optional;
 
-import static io.airlift.slice.SizeOf.sizeOfBooleanArray;
-import static io.airlift.slice.SizeOf.sizeOfFloatArray;
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOfBooleanArray;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOfFloatArray;
 
 public class FloatColumn implements Column {
 
-  private static final int INSTANCE_SIZE = ClassLayout.parseClass(FloatColumn.class).instanceSize();
+  private static final int INSTANCE_SIZE =
+      (int) RamUsageEstimator.shallowSizeOfInstance(FloatColumn.class);
   public static final int SIZE_IN_BYTES_PER_POSITION = Float.BYTES + Byte.BYTES;
 
   private final int arrayOffset;

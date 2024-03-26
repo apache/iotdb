@@ -32,7 +32,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanN
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -108,7 +107,7 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
   }
 
   public TemplatedLogicalPlanBuilder planFilter(
-      Expression filterExpression, boolean isGroupByTime, ZoneId zoneId, Ordering scanOrder) {
+      Expression filterExpression, boolean isGroupByTime, Ordering scanOrder) {
 
     if (filterExpression == null) {
       return this;
@@ -121,7 +120,6 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
             null,
             filterExpression,
             isGroupByTime,
-            zoneId,
             scanOrder);
 
     return this;

@@ -55,6 +55,11 @@ public class PreDeactivateTemplateNode extends PlanNode implements IPreDeactivat
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.PRE_DEACTIVATE_TEMPLATE_NODE;
+  }
+
+  @Override
   public PlanNode clone() {
     return new PreDeactivateTemplateNode(getPlanNodeId(), templateSetInfo);
   }

@@ -99,6 +99,12 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   }
 
   @Override
+  public long getUsedMemorySize() {
+    // not used
+    return timeValuePairIterator.getUsedMemorySize();
+  }
+
+  @Override
   public void close() {
     // Do nothing because mem chunk reader will not open files
   }

@@ -58,6 +58,7 @@ import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.UnsortedFileRepairTaskScheduler;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
@@ -210,8 +211,7 @@ public class StorageEngine implements IService {
     asyncRecover(futures);
 
     // wait until wal is recovered
-    if (!CONFIG.isClusterMode()
-        || !CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (!CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       try {
         WALRecoverManager.getInstance().recover();
       } catch (WALException e) {
@@ -224,7 +224,7 @@ public class StorageEngine implements IService {
         new Thread(
             () -> {
               checkResults(futures, "StorageEngine failed to recover.");
-              recoverRepairDataScheduleTask();
+              recoverRepairData();
               setAllSgReady(true);
               ttlMapForRecover.clear();
             },
@@ -382,8 +382,7 @@ public class StorageEngine implements IService {
   public void stop() {
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
-        ThreadUtils.stopThreadPool(
-            dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
+        CompactionScheduleTaskManager.getInstance().unregisterDataRegion(dataRegion);
       }
     }
     syncCloseAllProcessor();
@@ -402,8 +401,9 @@ public class StorageEngine implements IService {
   public void shutdown(long milliseconds) throws ShutdownException {
     try {
       for (DataRegion dataRegion : dataRegionMap.values()) {
-        ThreadUtils.stopThreadPool(
-            dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
+        if (dataRegion != null) {
+          CompactionScheduleTaskManager.getInstance().unregisterDataRegion(dataRegion);
+        }
       }
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
@@ -571,17 +571,36 @@ public class StorageEngine implements IService {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
-    if (!UnsortedFileRepairTaskScheduler.markRepairTaskStart()) {
+    if (!CompactionScheduleTaskManager.getRepairTaskManagerInstance().markRepairTaskStart()) {
       return false;
     }
     LOGGER.info("start repair data");
     List<DataRegion> dataRegionList = new ArrayList<>(dataRegionMap.values());
-    cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList));
+    cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList, false));
     return true;
   }
 
+  /**
+   * stop repair data by interrupt
+   *
+   * @throws StorageEngineException StorageEngineException
+   */
+  public void stopRepairData() throws StorageEngineException {
+    CompactionScheduleTaskManager.RepairDataTaskManager repairDataTaskManager =
+        CompactionScheduleTaskManager.getRepairTaskManagerInstance();
+    if (!CompactionScheduleTaskManager.getRepairTaskManagerInstance().hasRunningRepairTask()) {
+      return;
+    }
+    LOGGER.info("stop repair data");
+    try {
+      repairDataTaskManager.markRepairTaskStopping();
+      repairDataTaskManager.abortRepairTask();
+    } catch (IOException ignored) {
+    }
+  }
+
   /** recover the progress of unfinished repair schedule task */
-  public void recoverRepairDataScheduleTask() {
+  public void recoverRepairData() {
     List<DataRegion> dataRegionList = new ArrayList<>(dataRegionMap.values());
     String repairLogDirPath =
         IoTDBDescriptor.getInstance().getConfig().getSystemDir()
@@ -594,18 +613,24 @@ public class StorageEngine implements IService {
     File[] files = repairLogDir.listFiles();
     List<File> fileList =
         Stream.of(files == null ? new File[0] : files)
-            .filter(f -> f.getName().endsWith(RepairLogger.repairLogSuffix) && f.isFile())
+            .filter(
+                f -> {
+                  String fileName = f.getName();
+                  return f.isFile()
+                      && (RepairLogger.repairProgressFileName.equals(fileName)
+                          || RepairLogger.repairProgressStoppedFileName.equals(fileName));
+                })
             .collect(Collectors.toList());
     if (!fileList.isEmpty()) {
-      UnsortedFileRepairTaskScheduler.markRepairTaskStart();
-      cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList, fileList.get(0)));
+      CompactionScheduleTaskManager.getRepairTaskManagerInstance().markRepairTaskStart();
+      cachedThreadPool.submit(new UnsortedFileRepairTaskScheduler(dataRegionList, true));
     }
   }
 
   public void operateFlush(TFlushReq req) {
     if (req.storageGroups == null) {
       StorageEngine.getInstance().syncCloseAllProcessor();
-      WALManager.getInstance().deleteOutdatedFilesInWALNodes();
+      WALManager.getInstance().syncDeleteOutdatedFilesInWALNodes();
     } else {
       for (String storageGroup : req.storageGroups) {
         if (req.isSeq == null) {
@@ -704,10 +729,7 @@ public class StorageEngine implements IService {
         region.abortCompaction();
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
-        if (CONFIG.isClusterMode()
-            && CONFIG
-                .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.IOT_CONSENSUS)) {
+        if (CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
           // delete wal
           WALManager.getInstance()
               .deleteWALNode(

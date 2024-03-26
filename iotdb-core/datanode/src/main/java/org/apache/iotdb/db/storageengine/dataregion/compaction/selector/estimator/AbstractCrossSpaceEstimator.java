@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,6 +33,11 @@ import java.util.List;
  * its corresponding implementation.
  */
 public abstract class AbstractCrossSpaceEstimator extends AbstractCompactionEstimator {
+
+  @Override
+  protected TsFileSequenceReader getReader(String filePath) throws IOException {
+    return new CompactionTsFileReader(filePath, CompactionType.CROSS_COMPACTION);
+  }
 
   public long estimateCrossCompactionMemory(
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {

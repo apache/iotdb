@@ -20,10 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -31,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import org.junit.Test;
@@ -43,47 +38,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.schemaMap;
+
 public class ColumnInjectionPushDownTest {
-
-  private static final Map<String, PartialPath> schemaMap = new HashMap<>();
-
-  static {
-    try {
-      schemaMap.put("root.sg.d1.s1", new MeasurementPath("root.sg.d1.s1", TSDataType.INT32));
-      schemaMap.put("root.sg.d1.s2", new MeasurementPath("root.sg.d1.s2", TSDataType.DOUBLE));
-
-      MeasurementPath d2s1 = new MeasurementPath("root.sg.d2.a.s1", TSDataType.INT32);
-      d2s1.setUnderAlignedEntity(true);
-      schemaMap.put("root.sg.d2.a.s1", d2s1);
-
-      AlignedPath aligned_d2s1 =
-          new AlignedPath(
-              "root.sg.d2.a",
-              Collections.singletonList("s1"),
-              Collections.singletonList(d2s1.getMeasurementSchema()));
-      schemaMap.put("aligned_root.sg.d2.a.s1", aligned_d2s1);
-
-      MeasurementPath d2s2 = new MeasurementPath("root.sg.d2.a.s2", TSDataType.DOUBLE);
-      d2s2.setUnderAlignedEntity(true);
-      schemaMap.put("root.sg.d2.a.s2", d2s2);
-
-      AlignedPath aligned_d2s2 =
-          new AlignedPath(
-              "root.sg.d2.a",
-              Collections.singletonList("s2"),
-              Collections.singletonList(d2s2.getMeasurementSchema()));
-      schemaMap.put("aligned_root.sg.d2.a.s2", aligned_d2s2);
-
-      AlignedPath alignedPath =
-          new AlignedPath(
-              "root.sg.d2.a",
-              Arrays.asList("s2", "s1"),
-              Arrays.asList(d2s2.getMeasurementSchema(), d2s1.getMeasurementSchema()));
-      schemaMap.put("root.sg.d2.a", alignedPath);
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-    }
-  }
 
   private void checkPushDown(String sql, PlanNode rawPlan, PlanNode optPlan) {
     OptimizationTestUtil.checkPushDown(new ColumnInjectionPushDown(), sql, rawPlan, optPlan);
@@ -612,7 +569,7 @@ public class ColumnInjectionPushDownTest {
                     new TestPlanBuilder()
                         .alignedAggregationScan(
                             "4",
-                            schemaMap.get("root.sg.d2.a"),
+                            schemaMap.get("desc_root.sg.d2.a"),
                             aggregationDescriptorList2,
                             groupByTimeParameter,
                             false)
@@ -639,7 +596,7 @@ public class ColumnInjectionPushDownTest {
                     new TestPlanBuilder()
                         .alignedAggregationScan(
                             "4",
-                            schemaMap.get("root.sg.d2.a"),
+                            schemaMap.get("desc_root.sg.d2.a"),
                             aggregationDescriptorList2,
                             groupByTimeParameter,
                             true)

@@ -21,8 +21,9 @@ package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -50,11 +51,12 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
 
   private final WALEntryHandler walEntryHandler;
-  private final ProgressIndex progressIndex;
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
 
   private TabletInsertionDataContainer dataContainer;
+
+  private ProgressIndex progressIndex;
 
   public PipeInsertNodeTabletInsertionEvent(
       WALEntryHandler walEntryHandler,
@@ -80,7 +82,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       boolean isGeneratedByPipe,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
-      String pattern,
+      PipePattern pattern,
       long startTime,
       long endTime) {
     super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
@@ -127,6 +129,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
       PipeResourceManager.wal().unpin(walEntryHandler);
+      // Release the container's memory.
+      dataContainer = null;
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -139,13 +143,22 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   @Override
+  public void bindProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
+  }
+
+  @Override
   public ProgressIndex getProgressIndex() {
     return progressIndex == null ? MinimumProgressIndex.INSTANCE : progressIndex;
   }
 
   @Override
   public PipeInsertNodeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
+      String pipeName,
+      PipeTaskMeta pipeTaskMeta,
+      PipePattern pattern,
+      long startTime,
+      long endTime) {
     return new PipeInsertNodeTabletInsertionEvent(
         walEntryHandler,
         progressIndex,
@@ -164,14 +177,14 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   @Override
-  public boolean isEventTimeOverlappedWithTimeRange() {
+  public boolean mayEventTimeOverlappedWithTimeRange() {
     try {
-      InsertNode insertNode = getInsertNode();
+      final InsertNode insertNode = getInsertNode();
       if (insertNode instanceof InsertRowNode) {
-        long timestamp = ((InsertRowNode) insertNode).getTime();
+        final long timestamp = ((InsertRowNode) insertNode).getTime();
         return startTime <= timestamp && timestamp <= endTime;
       } else if (insertNode instanceof InsertTabletNode) {
-        long[] timestamps = ((InsertTabletNode) insertNode).getTimes();
+        final long[] timestamps = ((InsertTabletNode) insertNode).getTimes();
         if (Objects.isNull(timestamps) || timestamps.length == 0) {
           return false;
         }
@@ -199,7 +212,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     try {
       if (dataContainer == null) {
         dataContainer =
-            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), pipePattern);
       }
       return dataContainer.processRowByRow(consumer);
     } catch (Exception e) {
@@ -212,7 +225,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     try {
       if (dataContainer == null) {
         dataContainer =
-            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), pipePattern);
       }
       return dataContainer.processTablet(consumer);
     } catch (Exception e) {
@@ -230,7 +243,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     try {
       if (dataContainer == null) {
         dataContainer =
-            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), pipePattern);
       }
       return dataContainer.convertToTablet();
     } catch (Exception e) {
@@ -244,7 +257,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public boolean shouldParsePattern() {
     final InsertNode node = getInsertNodeViaCacheIfPossible();
     return super.shouldParsePattern()
-        && (Objects.isNull(node) || !node.getDevicePath().getFullPath().startsWith(pattern));
+        && Objects.nonNull(pipePattern)
+        && (Objects.isNull(node) || !pipePattern.coversDevice(node.getDevicePath().getFullPath()));
   }
 
   public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {

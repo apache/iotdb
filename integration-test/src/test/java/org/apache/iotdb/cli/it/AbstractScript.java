@@ -24,13 +24,10 @@ import org.apache.thrift.annotation.Nullable;
 import org.junit.runner.RunWith;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -77,28 +74,6 @@ public abstract class AbstractScript {
       }
     }
     assertEquals(statusCode, p.exitValue());
-  }
-
-  protected String getCliPath() {
-    // This is usually always set by the JVM
-
-    File userDir = new File(System.getProperty("user.dir"));
-    if (!userDir.exists()) {
-      throw new RuntimeException("user.dir " + userDir.getAbsolutePath() + " doesn't exist.");
-    }
-    File target = new File(userDir, "target/maven-archiver/pom.properties");
-    Properties properties = new Properties();
-    try {
-      properties.load(new FileReader(target));
-    } catch (IOException e) {
-      return "target/iotdb-cli-";
-    }
-    return new File(
-            userDir,
-            String.format(
-                "target/%s-%s",
-                properties.getProperty("artifactId"), properties.getProperty("version")))
-        .getAbsolutePath();
   }
 
   protected abstract void testOnWindows() throws IOException;

@@ -98,6 +98,11 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.LOAD_TSFILE;
+  }
+
+  @Override
   public PlanNode clone() {
     throw new NotImplementedException("clone of load piece TsFile is not implemented");
   }

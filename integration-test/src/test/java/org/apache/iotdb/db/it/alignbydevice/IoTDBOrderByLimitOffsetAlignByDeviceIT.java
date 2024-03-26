@@ -105,7 +105,7 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
           "1,root.fill.d1,1,null,",
           "1,root.fill.d2,2,null,",
           "1,root.fill.d3,3,null,",
-          "2,root.fill.d1,12,11.0,",
+          "2,root.fill.d1,22,11.0,",
         };
     resultSetEqualTest(
         "select * from root.fill.** order by time fill(linear) limit 4 align by device;",

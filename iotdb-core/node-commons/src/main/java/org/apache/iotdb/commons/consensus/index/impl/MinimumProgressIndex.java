@@ -73,7 +73,7 @@ public class MinimumProgressIndex extends ProgressIndex {
   }
 
   @Override
-  public ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex) {
+  public ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(ProgressIndex progressIndex) {
     return progressIndex == null ? this : progressIndex;
   }
 

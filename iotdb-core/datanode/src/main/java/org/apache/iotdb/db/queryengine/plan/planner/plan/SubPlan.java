@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SubPlan {
-  private PlanFragment planFragment;
+  private final PlanFragment planFragment;
   private List<SubPlan> children;
 
   public SubPlan(PlanFragment planFragment) {

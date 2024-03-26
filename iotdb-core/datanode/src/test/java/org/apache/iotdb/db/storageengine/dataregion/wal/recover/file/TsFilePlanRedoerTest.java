@@ -36,6 +36,8 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -72,22 +74,19 @@ import static org.junit.Assert.assertTrue;
 
 public class TsFilePlanRedoerTest {
   private static final String SG_NAME = "root.recover_sg";
-  private static final String DEVICE1_NAME = SG_NAME.concat(".d1");
-  private static final String DEVICE2_NAME = SG_NAME.concat(".d2");
-  private static final String DEVICE3_NAME = SG_NAME.concat(".d3");
+  private static final IDeviceID DEVICE1_NAME = new PlainDeviceID(SG_NAME.concat(".d1"));
+  private static final IDeviceID DEVICE2_NAME = new PlainDeviceID(SG_NAME.concat(".d2"));
+  private static final IDeviceID DEVICE3_NAME = new PlainDeviceID(SG_NAME.concat(".d3"));
   private static final String FILE_NAME =
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 0, 1);
   private TsFileResource tsFileResource;
   private CompressionType compressionType;
   boolean prevIsAutoCreateSchemaEnabled;
   boolean prevIsEnablePartialInsert;
-  boolean prevIsCluster;
 
   @Before
   public void setUp() throws Exception {
-    prevIsCluster = IoTDBDescriptor.getInstance().getConfig().isClusterMode();
     EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance().getConfig().setClusterMode(true);
 
     // set recover config, avoid creating deleted time series when recovering wal
     prevIsAutoCreateSchemaEnabled =
@@ -107,7 +106,6 @@ public class TsFilePlanRedoerTest {
     if (modsFile.exists()) {
       modsFile.delete();
     }
-    IoTDBDescriptor.getInstance().getConfig().setClusterMode(prevIsCluster);
     EnvironmentUtils.cleanEnv();
     // reset config
     //    IoTDBDescriptor.getInstance()
@@ -249,7 +247,7 @@ public class TsFilePlanRedoerTest {
     // check d3
     AlignedPath fullPath =
         new AlignedPath(
-            DEVICE3_NAME,
+            ((PlainDeviceID) DEVICE3_NAME).toStringID(),
             Arrays.asList("s1", "s2", "s3", "s4", "s5"),
             Arrays.asList(
                 new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE),
@@ -442,7 +440,7 @@ public class TsFilePlanRedoerTest {
     // check d3
     AlignedPath fullPath =
         new AlignedPath(
-            DEVICE3_NAME,
+            ((PlainDeviceID) DEVICE3_NAME).toStringID(),
             Arrays.asList("s1", "s2", "s3", "s4", "s5"),
             Arrays.asList(
                 new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE),
@@ -725,7 +723,7 @@ public class TsFilePlanRedoerTest {
     // check d3
     AlignedPath fullPath =
         new AlignedPath(
-            DEVICE3_NAME,
+            ((PlainDeviceID) DEVICE3_NAME).toStringID(),
             Arrays.asList("s1", "s2", "s3", "s4", "s5"),
             Arrays.asList(
                 new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE),

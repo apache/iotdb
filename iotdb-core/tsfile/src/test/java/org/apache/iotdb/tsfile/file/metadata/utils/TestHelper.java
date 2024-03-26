@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.file.metadata.utils;
 
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.metadata.MeasurementMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -45,7 +45,7 @@ public class TestHelper {
   private static MetadataIndexNode generateMetaDataIndex() {
     MetadataIndexNode metaDataIndex = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
     for (int i = 0; i < 5; i++) {
-      metaDataIndex.addEntry(new MetadataIndexEntry("d" + i, (long) i * 5));
+      metaDataIndex.addEntry(new MeasurementMetadataIndexEntry("d" + i, (long) i * 5));
     }
     return metaDataIndex;
   }

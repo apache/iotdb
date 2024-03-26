@@ -38,6 +38,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.tsfile.exception.StopReadTsFileByInterruptException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,7 +129,11 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           candidate.getUnseqFiles().size());
 
       return executeTaskResourceSelection(candidate);
-    } catch (IOException e) {
+    } catch (Exception e) {
+      if (e instanceof StopReadTsFileByInterruptException || Thread.interrupted()) {
+        Thread.currentThread().interrupt();
+        return new CrossCompactionTaskResource();
+      }
       throw new MergeException(e);
     } finally {
       compactionEstimator.cleanup();
@@ -435,7 +441,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
       boolean hasPreviousSeqFile = false;
       for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
-        String deviceId = unseqDeviceInfo.deviceId;
+        IDeviceID deviceId = unseqDeviceInfo.deviceId;
         long startTimeOfUnSeqDevice = unseqDeviceInfo.startTime;
         long endTimeOfUnSeqDevice = unseqDeviceInfo.endTime;
         for (int i = 0; i < seqFiles.size(); i++) {

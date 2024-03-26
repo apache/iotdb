@@ -482,7 +482,20 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.error("Waiting node to shutdown error. %s", e);
+      logger.error("Waiting node to shutdown error.", e);
+    }
+  }
+
+  @Override
+  public void stopForcibly() {
+    if (this.instance == null) {
+      return;
+    }
+    try {
+      this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("Waiting node to shutdown error.", e);
     }
   }
 
@@ -518,7 +531,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     return getLogDirPath() + File.separator + getId() + ".log";
   }
 
-  protected String getLogDirPath() {
+  public String getLogDirPath() {
     String baseDir =
         System.getProperty(USER_DIR)
             + File.separator
@@ -540,7 +553,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     return clusterIndex + HYPHEN + outputCommonConfig.getClusterConfigStr();
   }
 
-  protected String getNodePath() {
+  public String getNodePath() {
     return System.getProperty(USER_DIR) + File.separator + TARGET + File.separator + getId();
   }
 

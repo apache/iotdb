@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -215,17 +216,17 @@ public class TsFileProcessorTest {
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
 
     RestorableTsFileIOWriter tsFileIOWriter = processor.getWriter();
-    Map<String, List<ChunkMetadata>> chunkMetaDataListInChunkGroups =
+    Map<IDeviceID, List<ChunkMetadata>> chunkMetaDataListInChunkGroups =
         tsFileIOWriter.getDeviceChunkMetadataMap();
     RestorableTsFileIOWriter restorableTsFileIOWriter =
         new RestorableTsFileIOWriter(SystemFileFactory.INSTANCE.getFile(filePath));
-    Map<String, List<ChunkMetadata>> restoredChunkMetaDataListInChunkGroups =
+    Map<IDeviceID, List<ChunkMetadata>> restoredChunkMetaDataListInChunkGroups =
         restorableTsFileIOWriter.getDeviceChunkMetadataMap();
     assertEquals(
         chunkMetaDataListInChunkGroups.size(), restoredChunkMetaDataListInChunkGroups.size());
-    for (Map.Entry<String, List<ChunkMetadata>> entry1 :
+    for (Map.Entry<IDeviceID, List<ChunkMetadata>> entry1 :
         chunkMetaDataListInChunkGroups.entrySet()) {
-      for (Map.Entry<String, List<ChunkMetadata>> entry2 :
+      for (Map.Entry<IDeviceID, List<ChunkMetadata>> entry2 :
           restoredChunkMetaDataListInChunkGroups.entrySet()) {
         assertEquals(entry1.getKey(), entry2.getKey());
         assertEquals(entry1.getValue().size(), entry2.getValue().size());
@@ -476,7 +477,7 @@ public class TsFileProcessorTest {
       throws TsFileProcessorException {
     TsFileResource resource = unsealedTsFileProcessor.getTsFileResource();
     synchronized (resource) {
-      for (String deviceId : resource.getDevices()) {
+      for (IDeviceID deviceId : resource.getDevices()) {
         resource.updateEndTime(deviceId, resource.getStartTime(deviceId));
       }
       try {

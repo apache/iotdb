@@ -52,10 +52,10 @@ public abstract class AbstractSchemaRegionTest {
   @Parameterized.Parameters(name = "{0}")
   public static List<SchemaRegionTestParams> getTestModes() {
     return Arrays.asList(
-        new SchemaRegionTestParams("MemoryMode", "Memory", -1, true),
-        new SchemaRegionTestParams("PBTree-FullMemory", "PBTree", 10000, true),
-        new SchemaRegionTestParams("PBTree-PartialMemory", "PBTree", 3, true),
-        new SchemaRegionTestParams("PBTree-NonMemory", "PBTree", 0, true));
+        new SchemaRegionTestParams("MemoryMode", "Memory", -1),
+        new SchemaRegionTestParams("PBTree-FullMemory", "PBTree", 10000),
+        new SchemaRegionTestParams("PBTree-PartialMemory", "PBTree", 3),
+        new SchemaRegionTestParams("PBTree-NonMemory", "PBTree", 0));
   }
 
   public AbstractSchemaRegionTest(SchemaRegionTestParams testParams) {
@@ -68,11 +68,9 @@ public abstract class AbstractSchemaRegionTest {
         new SchemaRegionTestParams(
             "Raw-Config",
             COMMON_CONFIG.getSchemaEngineMode(),
-            config.getCachedMNodeSizeInPBTreeMode(),
-            config.isClusterMode());
+            config.getCachedMNodeSizeInPBTreeMode());
     COMMON_CONFIG.setSchemaEngineMode(testParams.schemaEngineMode);
     config.setCachedMNodeSizeInPBTreeMode(testParams.cachedMNodeSize);
-    config.setClusterMode(testParams.isClusterMode);
     SchemaEngine.getInstance().init();
   }
 
@@ -82,7 +80,6 @@ public abstract class AbstractSchemaRegionTest {
     cleanEnv();
     COMMON_CONFIG.setSchemaEngineMode(rawConfig.schemaEngineMode);
     config.setCachedMNodeSizeInPBTreeMode(rawConfig.cachedMNodeSize);
-    config.setClusterMode(rawConfig.isClusterMode);
   }
 
   protected void cleanEnv() throws IOException {
@@ -110,14 +107,11 @@ public abstract class AbstractSchemaRegionTest {
 
     private final int cachedMNodeSize;
 
-    private final boolean isClusterMode;
-
     private SchemaRegionTestParams(
-        String testModeName, String schemaEngineMode, int cachedMNodeSize, boolean isClusterMode) {
+        String testModeName, String schemaEngineMode, int cachedMNodeSize) {
       this.testModeName = testModeName;
       this.schemaEngineMode = schemaEngineMode;
       this.cachedMNodeSize = cachedMNodeSize;
-      this.isClusterMode = isClusterMode;
     }
 
     public String getTestModeName() {
@@ -130,10 +124,6 @@ public abstract class AbstractSchemaRegionTest {
 
     public int getCachedMNodeSize() {
       return cachedMNodeSize;
-    }
-
-    public boolean isClusterMode() {
-      return isClusterMode;
     }
 
     @Override

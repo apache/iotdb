@@ -166,7 +166,7 @@ public class UDTFSample implements UDTF {
         }
       } else { // Method.ISOMETRIC
         for (long i = 0; i < this.k; i++) {
-          long j = Math.floorDiv(i * n, k); // avoid intermediate result overflows
+          long j = Math.floorDiv(i * n, (long) k); // avoid intermediate result overflows
           Row row = rowWindow.getRow((int) j);
           Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
         }

@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -59,6 +61,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   public PartialPath() {}
 
+  public PartialPath(IDeviceID device) throws IllegalPathException {
+    this(((PlainDeviceID) device).toStringID());
+  }
+
   /**
    * Construct the PartialPath using a String, will split the given String into String[] E.g., path
    * = "root.sg.`d.1`.`s.1`" nodes = {"root", "sg", "`d.1`", "`s.1`"}
@@ -76,6 +82,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     // path is root.sg.`a.b`, fullPath is root.sg.`a.b`
     // path is root.sg.`a``b`, fullPath is root.sg.`a``b`
     this.fullPath = getFullPath();
+  }
+
+  public PartialPath(IDeviceID device, String measurement) throws IllegalPathException {
+    this(((PlainDeviceID) device).toStringID(), measurement);
   }
 
   public PartialPath(String device, String measurement) throws IllegalPathException {

@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -200,7 +200,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return sortedBitMap;
   }
 
-  /////////////////////////////// WriteBack ///////////////////////////////
+  /////////////////////////////// WriteBack & Batch ///////////////////////////////
 
   public static PipeTransferTabletRawReq toTPipeTransferRawReq(Tablet tablet, boolean isAligned) {
     final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
@@ -248,8 +248,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferTabletBytes(Tablet tablet, boolean isAligned)
-      throws IOException {
+  public static byte[] toTPipeTransferBytes(Tablet tablet, boolean isAligned) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
@@ -271,11 +270,11 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       return false;
     }
     PipeTransferTabletRawReq that = (PipeTransferTabletRawReq) obj;
-    return tablet.equals(that.tablet)
+    return Objects.equals(tablet, that.tablet)
         && isAligned == that.isAligned
         && version == that.version
         && type == that.type
-        && body.equals(that.body);
+        && Objects.equals(body, that.body);
   }
 
   @Override

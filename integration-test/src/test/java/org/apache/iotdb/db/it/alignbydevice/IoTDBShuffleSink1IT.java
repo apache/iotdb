@@ -56,6 +56,7 @@ public class IoTDBShuffleSink1IT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setSeriesSlotNum(1);
     EnvFactory.getEnv().getConfig().getCommonConfig().setDataRegionGroupExtensionPolicy("CUSTOM");
     EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultDataRegionGroupNumPerDatabase(2);
     EnvFactory.getEnv().initClusterEnvironment();

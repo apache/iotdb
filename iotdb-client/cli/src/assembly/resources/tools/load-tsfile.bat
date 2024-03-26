@@ -22,6 +22,8 @@
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%
 
+title IoTDB Load
+
 if "%OS%" == "Windows_NT" setlocal
 
 pushd %~dp0..

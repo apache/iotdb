@@ -58,6 +58,10 @@ public class PipeTaskCoordinator {
     this.pipeTaskCoordinatorLock = new PipeTaskCoordinatorLock();
   }
 
+  public PipeTaskCoordinatorLock getPipeTaskCoordinatorLock() {
+    return pipeTaskCoordinatorLock;
+  }
+
   /**
    * Lock the pipe task coordinator.
    *
@@ -77,7 +81,8 @@ public class PipeTaskCoordinator {
    * Unlock the pipe task coordinator. Calling this method will clear the pipe task info holder,
    * which means that the holder will be null after calling this method.
    *
-   * @return true if successfully unlocked, false if current thread is not holding the lock.
+   * @return {@code true} if successfully unlocked, {@code false} if current thread is not holding
+   *     the lock.
    */
   public boolean unlock() {
     if (pipeTaskInfoHolder != null) {

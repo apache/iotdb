@@ -22,8 +22,8 @@ package org.apache.iotdb.db.pipe.connector;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.connector.protocol.legacy.IoTDBLegacyPipeConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBDataRegionSyncConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
@@ -75,7 +75,7 @@ public class PipeConnectorTest {
 
   @Test(expected = PipeParameterNotValidException.class)
   public void testIoTDBThriftSyncConnectorToSelf() throws Exception {
-    try (IoTDBThriftSyncConnector connector = new IoTDBThriftSyncConnector()) {
+    try (IoTDBDataRegionSyncConnector connector = new IoTDBDataRegionSyncConnector()) {
       connector.validate(
           new PipeParameterValidator(
               new PipeParameters(
@@ -93,7 +93,7 @@ public class PipeConnectorTest {
 
   @Test
   public void testIoTDBThriftSyncConnectorToOthers() {
-    try (IoTDBThriftSyncConnector connector = new IoTDBThriftSyncConnector()) {
+    try (IoTDBDataRegionSyncConnector connector = new IoTDBDataRegionSyncConnector()) {
       connector.validate(
           new PipeParameterValidator(
               new PipeParameters(
@@ -113,7 +113,7 @@ public class PipeConnectorTest {
 
   @Test(expected = PipeParameterNotValidException.class)
   public void testIoTDBThriftAsyncConnectorToSelf() throws Exception {
-    try (IoTDBThriftAsyncConnector connector = new IoTDBThriftAsyncConnector()) {
+    try (IoTDBDataRegionAsyncConnector connector = new IoTDBDataRegionAsyncConnector()) {
       connector.validate(
           new PipeParameterValidator(
               new PipeParameters(
@@ -130,7 +130,7 @@ public class PipeConnectorTest {
 
   @Test
   public void testIoTDBThriftAsyncConnectorToOthers() {
-    try (IoTDBThriftAsyncConnector connector = new IoTDBThriftAsyncConnector()) {
+    try (IoTDBDataRegionAsyncConnector connector = new IoTDBDataRegionAsyncConnector()) {
       connector.validate(
           new PipeParameterValidator(
               new PipeParameters(

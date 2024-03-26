@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.service;
 
-import org.apache.iotdb.rpc.RpcTransportFactory;
-
 import org.apache.thrift.TBaseAsyncProcessor;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.server.TServerEventHandler;
@@ -44,7 +42,8 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
       boolean compress,
       int connectionTimeoutInMS,
       int maxReadBufferBytes,
-      ServerType serverType) {
+      ServerType serverType,
+      TTransportFactory transportFactory) {
     super(
         processor,
         serviceName,
@@ -59,7 +58,8 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
         compress,
         connectionTimeoutInMS,
         maxReadBufferBytes,
-        serverType);
+        serverType,
+        transportFactory);
   }
 
   /** for synced ThriftServiceThread */
@@ -76,7 +76,8 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
       boolean compress,
       String keyStorePath,
       String keyStorePwd,
-      int clientTimeout) {
+      int clientTimeout,
+      TTransportFactory transportFactory) {
     super(
         processor,
         serviceName,
@@ -89,7 +90,8 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
         compress,
         keyStorePath,
         keyStorePwd,
-        clientTimeout);
+        clientTimeout,
+        transportFactory);
   }
 
   public ThriftServiceThread(
@@ -101,7 +103,8 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
       int maxWorkerThreads,
       int timeoutSecond,
       TServerEventHandler serverEventHandler,
-      boolean compress) {
+      boolean compress,
+      TTransportFactory transportFactory) {
     super(
         processor,
         serviceName,
@@ -111,11 +114,7 @@ public class ThriftServiceThread extends AbstractThriftServiceThread {
         maxWorkerThreads,
         timeoutSecond,
         serverEventHandler,
-        compress);
-  }
-
-  @Override
-  public TTransportFactory getTTransportFactory() {
-    return RpcTransportFactory.INSTANCE;
+        compress,
+        transportFactory);
   }
 }

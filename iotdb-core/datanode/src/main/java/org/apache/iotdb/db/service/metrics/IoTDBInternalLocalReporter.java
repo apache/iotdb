@@ -82,7 +82,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
   public IoTDBInternalLocalReporter() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
-    sessionInfo = new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault().getId());
+    sessionInfo = new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
 
     IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
         ConfigNodeClientManager.getInstance();
@@ -180,7 +180,8 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
             InsertRowStatement s = StatementGenerator.createStatement(request);
             final long queryId = SESSION_MANAGER.requestQueryId();
             ExecutionResult result =
-                COORDINATOR.execute(s, queryId, sessionInfo, "", partitionFetcher, schemaFetcher);
+                COORDINATOR.executeForTreeModel(
+                    s, queryId, sessionInfo, "", partitionFetcher, schemaFetcher);
             if (result.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               LOGGER.error("Failed to update the value of metric with status {}", result.status);
             }

@@ -50,7 +50,7 @@ public class UnsetTemplateProcedureTest {
         new CompressionType[] {CompressionType.UNCOMPRESSED, CompressionType.GZIP});
     PartialPath path = new PartialPath("root.sg");
     UnsetTemplateProcedure unsetTemplateProcedure =
-        new UnsetTemplateProcedure(queryId, template, path);
+        new UnsetTemplateProcedure(queryId, template, path, false);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -61,7 +61,7 @@ public class UnsetTemplateProcedureTest {
     Assert.assertEquals(
         ProcedureType.UNSET_TEMPLATE_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    UnsetTemplateProcedure deserializedProcedure = new UnsetTemplateProcedure();
+    UnsetTemplateProcedure deserializedProcedure = new UnsetTemplateProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(queryId, deserializedProcedure.getQueryId());

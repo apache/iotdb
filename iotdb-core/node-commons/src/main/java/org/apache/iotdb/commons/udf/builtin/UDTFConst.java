@@ -157,8 +157,8 @@ public class UDTFConst implements UDTF {
       case INT32:
         for (int i = 0; i < count; i++) {
           boolean hasWritten = false;
-          for (Column column : columns) {
-            if (!column.isNull(i)) {
+          for (int j = 0; j < columns.length - 1; j++) {
+            if (!columns[j].isNull(i)) {
               builder.writeInt(intValue);
               hasWritten = true;
               break;
@@ -172,8 +172,8 @@ public class UDTFConst implements UDTF {
       case INT64:
         for (int i = 0; i < count; i++) {
           boolean hasWritten = false;
-          for (Column column : columns) {
-            if (!column.isNull(i)) {
+          for (int j = 0; j < columns.length - 1; j++) {
+            if (!columns[j].isNull(i)) {
               builder.writeLong(longValue);
               hasWritten = true;
               break;
@@ -187,8 +187,8 @@ public class UDTFConst implements UDTF {
       case FLOAT:
         for (int i = 0; i < count; i++) {
           boolean hasWritten = false;
-          for (Column column : columns) {
-            if (!column.isNull(i)) {
+          for (int j = 0; j < columns.length - 1; j++) {
+            if (!columns[j].isNull(i)) {
               builder.writeFloat(floatValue);
               hasWritten = true;
               break;
@@ -202,8 +202,8 @@ public class UDTFConst implements UDTF {
       case DOUBLE:
         for (int i = 0; i < count; i++) {
           boolean hasWritten = false;
-          for (Column column : columns) {
-            if (!column.isNull(i)) {
+          for (int j = 0; j < columns.length - 1; j++) {
+            if (!columns[j].isNull(i)) {
               builder.writeDouble(doubleValue);
               hasWritten = true;
               break;
@@ -217,8 +217,8 @@ public class UDTFConst implements UDTF {
       case BOOLEAN:
         for (int i = 0; i < count; i++) {
           boolean hasWritten = false;
-          for (Column column : columns) {
-            if (!column.isNull(i)) {
+          for (int j = 0; j < columns.length - 1; j++) {
+            if (!columns[j].isNull(i)) {
               builder.writeBoolean(booleanValue);
               hasWritten = true;
               break;
@@ -232,8 +232,8 @@ public class UDTFConst implements UDTF {
       case TEXT:
         for (int i = 0; i < count; i++) {
           boolean hasWritten = false;
-          for (Column column : columns) {
-            if (!column.isNull(i)) {
+          for (int j = 0; j < columns.length - 1; j++) {
+            if (!columns[j].isNull(i)) {
               builder.writeBinary(binaryValue);
               hasWritten = true;
               break;

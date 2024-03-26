@@ -57,6 +57,11 @@ public class NodePathsSchemaScanNode extends SchemaQueryScanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.NODE_PATHS_SCAN;
+  }
+
+  @Override
   public PlanNode clone() {
     return new NodePathsSchemaScanNode(getPlanNodeId(), prefixPath, level, scope);
   }

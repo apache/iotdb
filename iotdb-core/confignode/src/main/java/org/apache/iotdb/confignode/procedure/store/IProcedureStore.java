@@ -19,21 +19,28 @@
 
 package org.apache.iotdb.confignode.procedure.store;
 
+import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 
 import java.util.List;
 
-public interface IProcedureStore {
+public interface IProcedureStore<Env> {
 
   boolean isRunning();
 
   void setRunning(boolean running);
 
-  void load(List<Procedure> procedureList);
+  List<Procedure<Env>> load();
 
-  void update(Procedure procedure);
+  List<Procedure<Env>> getProcedures();
 
-  void update(Procedure[] subprocs);
+  ProcedureInfo getProcedureInfo();
+
+  long getNextProcId();
+
+  void update(Procedure<Env> procedure);
+
+  void update(Procedure<Env>[] subprocs);
 
   void delete(long procId);
 
@@ -46,4 +53,6 @@ public interface IProcedureStore {
   void stop();
 
   void start();
+
+  boolean isOldVersionProcedureStore();
 }

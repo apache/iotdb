@@ -29,18 +29,22 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteLogicalViewState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.view.ViewNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -71,12 +75,16 @@ public class DeleteLogicalViewProcedure
 
   private transient String requestMessage;
 
-  public DeleteLogicalViewProcedure() {
-    super();
+  private static final String CONSENSUS_WRITE_ERROR =
+      "Failed in the write API executing the consensus layer due to: ";
+
+  public DeleteLogicalViewProcedure(boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
-  public DeleteLogicalViewProcedure(String queryId, PathPatternTree patternTree) {
-    super();
+  public DeleteLogicalViewProcedure(
+      String queryId, PathPatternTree patternTree, boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.queryId = queryId;
     setPatternTree(patternTree);
   }
@@ -108,6 +116,7 @@ public class DeleteLogicalViewProcedure
         case DELETE_VIEW_SCHEMA:
           LOGGER.info("Delete view schemaengine of {}", requestMessage);
           deleteViewSchema(env);
+          collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized state " + state));
@@ -204,8 +213,29 @@ public class DeleteLogicalViewProcedure
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
             DataNodeRequestType.DELETE_VIEW,
             ((dataNodeLocation, consensusGroupIdList) ->
-                new TDeleteViewSchemaReq(consensusGroupIdList, patternTreeBytes)));
+                new TDeleteViewSchemaReq(consensusGroupIdList, patternTreeBytes)
+                    .setIsGeneratedByPipe(isGeneratedByPipe)));
     deleteTimeSeriesTask.execute();
+  }
+
+  private void collectPayload4Pipe(ConfigNodeProcedureEnv env) {
+    TSStatus result;
+    try {
+      result =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlan(new PipeDeleteLogicalViewPlan(patternTreeBytes))
+                      : new PipeDeleteLogicalViewPlan(patternTreeBytes));
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+    }
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(result.getMessage());
+    }
   }
 
   @Override
@@ -270,7 +300,10 @@ public class DeleteLogicalViewProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_DELETE_LOGICAL_VIEW_PROCEDURE.getTypeCode()
+            : ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(queryId, stream);
     patternTree.serialize(stream);
@@ -289,13 +322,16 @@ public class DeleteLogicalViewProcedure
     if (o == null || getClass() != o.getClass()) return false;
     DeleteLogicalViewProcedure that = (DeleteLogicalViewProcedure) o;
     return this.getProcId() == that.getProcId()
-        && this.getState() == that.getState()
+        && this.getCurrentState().equals(that.getCurrentState())
+        && this.getCycles() == that.getCycles()
+        && isGeneratedByPipe == that.isGeneratedByPipe
         && patternTree.equals(that.patternTree);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), patternTree);
+    return Objects.hash(
+        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, patternTree);
   }
 
   private class DeleteLogicalViewRegionTaskExecutor<Q>

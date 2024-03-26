@@ -150,7 +150,8 @@ public class PipeMemoryManager {
   }
 
   /**
-   * Allocate a memory block for pipe only if memory already used is less than specified threshold.
+   * Allocate a {@link PipeMemoryBlock} for pipe only if memory already used is less than the
+   * specified threshold.
    *
    * @param sizeInBytes size of memory needed to allocate
    * @param usedThreshold proportion of memory used, ranged from 0.0 to 1.0
@@ -182,7 +183,7 @@ public class PipeMemoryManager {
     return null;
   }
 
-  private long calculateTabletSizeInBytes(Tablet tablet) {
+  public static long calculateTabletSizeInBytes(Tablet tablet) {
     long totalSizeInBytes = 0;
 
     if (tablet == null) {

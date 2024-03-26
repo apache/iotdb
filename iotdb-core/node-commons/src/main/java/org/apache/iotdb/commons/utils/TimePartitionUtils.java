@@ -70,7 +70,12 @@ public class TimePartitionUtils {
   public static boolean satisfyPartitionStartTime(Filter timeFilter, long partitionStartTime) {
     return timeFilter == null
         || timeFilter.satisfyStartEndTime(
-            partitionStartTime, partitionStartTime + timePartitionInterval);
+            partitionStartTime, partitionStartTime + timePartitionInterval - 1);
+  }
+
+  public static boolean satisfyTimePartition(Filter timeFilter, long partitionId) {
+    long partitionStartTime = partitionId * timePartitionInterval;
+    return satisfyPartitionStartTime(timeFilter, partitionStartTime);
   }
 
   public static void setTimePartitionInterval(long timePartitionInterval) {

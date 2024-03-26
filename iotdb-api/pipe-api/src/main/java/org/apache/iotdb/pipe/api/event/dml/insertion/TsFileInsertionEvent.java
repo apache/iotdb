@@ -28,9 +28,10 @@ import org.apache.iotdb.pipe.api.event.Event;
 public interface TsFileInsertionEvent extends Event, AutoCloseable {
 
   /**
-   * The method is used to convert the TsFileInsertionEvent into several TabletInsertionEvents.
+   * The method is used to convert the {@link TsFileInsertionEvent} into several {@link
+   * TabletInsertionEvent}s.
    *
-   * @return {@code Iterable<TabletInsertionEvent>} the list of TabletInsertionEvent
+   * @return {@code Iterable<TabletInsertionEvent>} the list of {@link TabletInsertionEvent}
    */
   Iterable<TabletInsertionEvent> toTabletInsertionEvents();
 }

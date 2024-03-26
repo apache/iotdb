@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -110,7 +111,7 @@ public class TsFileSplitTool {
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
       Iterator<List<Path>> pathIterator = reader.getPathsIterator();
-      Set<String> devices = new HashSet<>();
+      Set<IDeviceID> devices = new HashSet<>();
       String[] filePathSplit = filename.split(IoTDBConstant.FILE_NAME_SEPARATOR);
       int originVersionIndex = Integer.parseInt(filePathSplit[filePathSplit.length - 3]);
       int versionIndex = originVersionIndex + 1;
@@ -118,7 +119,7 @@ public class TsFileSplitTool {
 
       while (pathIterator.hasNext()) {
         for (Path path : pathIterator.next()) {
-          String deviceId = path.getDevice();
+          IDeviceID deviceId = path.getIDeviceID();
           if (devices.add(deviceId)) {
             if (writer != null && writer.getPos() < targetSplitFileSize) {
               writer.endChunkGroup();
@@ -267,11 +268,11 @@ public class TsFileSplitTool {
     writer.endFile();
 
     TsFileResource tsFileResource = new TsFileResource(writer.getFile());
-    Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap =
+    Map<IDeviceID, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap =
         writer.getDeviceTimeseriesMetadataMap();
-    for (Map.Entry<String, List<TimeseriesMetadata>> entry :
+    for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
         deviceTimeseriesMetadataMap.entrySet()) {
-      String device = entry.getKey();
+      IDeviceID device = entry.getKey();
       for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
         tsFileResource.updateStartTime(device, timeseriesMetaData.getStatistics().getStartTime());
         tsFileResource.updateEndTime(device, timeseriesMetaData.getStatistics().getEndTime());

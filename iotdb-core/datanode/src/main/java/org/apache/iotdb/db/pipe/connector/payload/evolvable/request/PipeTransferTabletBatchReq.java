@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
-import org.apache.iotdb.commons.pipe.connector.payload.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.commons.pipe.connector.payload.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -146,8 +146,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     return batchReq;
   }
 
-  public static PipeTransferTabletBatchReq fromTPipeTransferReq(TPipeTransferReq transferReq)
-      throws IOException {
+  public static PipeTransferTabletBatchReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
     final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
 
     int size = ReadWriteIOUtils.readInt(transferReq.body);
@@ -162,14 +161,14 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
       batchReq.insertNodeReqs.add(
-          PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
+          PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(
               (InsertNode) PlanFragment.deserializeHelper(transferReq.body, null)));
     }
 
     size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
       batchReq.tabletReqs.add(
-          PipeTransferTabletRawReq.toTPipeTransferReq(
+          PipeTransferTabletRawReq.toTPipeTransferRawReq(
               Tablet.deserialize(transferReq.body), ReadWriteIOUtils.readBool(transferReq.body)));
     }
 

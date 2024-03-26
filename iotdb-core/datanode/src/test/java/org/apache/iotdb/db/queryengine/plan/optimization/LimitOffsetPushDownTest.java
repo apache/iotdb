@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -36,7 +33,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -45,46 +41,17 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.add;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.function;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.intValue;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.timeSeries;
-import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.checkCannotPushDown;
-import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.checkPushDown;
+import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.schemaMap;
 
 public class LimitOffsetPushDownTest {
-
-  private static final Map<String, PartialPath> schemaMap = new HashMap<>();
-
-  static {
-    try {
-      schemaMap.put("root.sg.d1.s1", new MeasurementPath("root.sg.d1.s1", TSDataType.INT32));
-      schemaMap.put("root.sg.d1.s2", new MeasurementPath("root.sg.d1.s2", TSDataType.DOUBLE));
-      schemaMap.put("root.sg.d2.s1", new MeasurementPath("root.sg.d2.s1", TSDataType.INT32));
-      schemaMap.put("root.sg.d2.s2", new MeasurementPath("root.sg.d2.s2", TSDataType.DOUBLE));
-
-      MeasurementPath aS1 = new MeasurementPath("root.sg.d2.a.s1", TSDataType.INT32);
-      MeasurementPath aS2 = new MeasurementPath("root.sg.d2.a.s2", TSDataType.DOUBLE);
-      AlignedPath alignedPath =
-          new AlignedPath(
-              "root.sg.d2.a",
-              Arrays.asList("s1", "s2"),
-              Arrays.asList(aS1.getMeasurementSchema(), aS2.getMeasurementSchema()));
-      aS1.setUnderAlignedEntity(true);
-      aS2.setUnderAlignedEntity(true);
-      schemaMap.put("root.sg.d2.a.s1", aS1);
-      schemaMap.put("root.sg.d2.a.s2", aS2);
-      schemaMap.put("root.sg.d2.a", alignedPath);
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-    }
-  }
 
   @Test
   public void testNonAlignedPushDown() {
@@ -207,7 +174,8 @@ public class LimitOffsetPushDownTest {
     checkCannotPushDown(
         "select s1, s2 from root.sg.d1 limit 100;",
         new TestPlanBuilder()
-            .timeJoin(Arrays.asList(schemaMap.get("root.sg.d1.s1"), schemaMap.get("root.sg.d1.s2")))
+            .fullOuterTimeJoin(
+                Arrays.asList(schemaMap.get("root.sg.d1.s1"), schemaMap.get("root.sg.d1.s2")))
             .limit("3", 100)
             .getRoot());
 

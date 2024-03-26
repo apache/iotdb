@@ -28,13 +28,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
@@ -176,6 +176,20 @@ public class AggregationAlignByDeviceTest {
    *                   └──SeriesScanNode-27:[SeriesPath: root.sg.d55555.s2,
    *                      DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
    */
+
+  /**
+   * IdentitySinkNode-35 └──MergeSort-32 ├──DeviceView-16 │ └──AggregationNode-21 │
+   * └──ProjectNode-20 │ └──LeftOuterTimeJoinNode-19 │ ├──SeriesScanNode-17:[SeriesPath:
+   * root.sg.d22.s2, DataRegion: TConsensusGroupId(type:DataRegion, id:3)] │
+   * └──SeriesScanNode-18:[SeriesPath: root.sg.d22.s1, DataRegion:
+   * TConsensusGroupId(type:DataRegion, id:3)] └──ExchangeNode-33:
+   * [SourceAddress:192.0.4.1/test.2.0/34]
+   *
+   * <p>IdentitySinkNode-34 └──DeviceView-24 └──AggregationNode-29 └──ProjectNode-28
+   * └──LeftOuterTimeJoinNode-27 ├──SeriesScanNode-25:[SeriesPath: root.sg.d55555.s2, DataRegion:
+   * TConsensusGroupId(type:DataRegion, id:4)] └──SeriesScanNode-26:[SeriesPath: root.sg.d55555.s1,
+   * DataRegion: TConsensusGroupId(type:DataRegion, id:4)]
+   */
   @Test
   public void orderByDeviceTest2() {
     // one aggregation measurement, two devices, with filter
@@ -194,7 +208,7 @@ public class AggregationAlignByDeviceTest {
     assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
     assertTrue(
         firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         firstFiTopNode
                 .getChildren()
@@ -205,7 +219,7 @@ public class AggregationAlignByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
-            instanceof FullOuterTimeJoinNode);
+            instanceof LeftOuterTimeJoinNode);
 
     secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree();
     assertTrue(secondFiRoot instanceof IdentitySinkNode);
@@ -213,7 +227,7 @@ public class AggregationAlignByDeviceTest {
     assertTrue(secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
     assertTrue(
         secondFiRoot.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         secondFiRoot
                 .getChildren()
@@ -224,7 +238,7 @@ public class AggregationAlignByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
-            instanceof FullOuterTimeJoinNode);
+            instanceof LeftOuterTimeJoinNode);
 
     // two aggregation measurement, two devices, with filter
     sql =
@@ -243,7 +257,7 @@ public class AggregationAlignByDeviceTest {
     assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
     assertTrue(
         firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         firstFiTopNode
                 .getChildren()
@@ -254,7 +268,7 @@ public class AggregationAlignByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
-            instanceof FullOuterTimeJoinNode);
+            instanceof LeftOuterTimeJoinNode);
 
     secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree();
     assertTrue(secondFiRoot instanceof IdentitySinkNode);
@@ -262,7 +276,7 @@ public class AggregationAlignByDeviceTest {
     assertTrue(secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
     assertTrue(
         secondFiRoot.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FilterNode);
+            instanceof ProjectNode);
     assertTrue(
         secondFiRoot
                 .getChildren()
@@ -273,7 +287,7 @@ public class AggregationAlignByDeviceTest {
                 .get(0)
                 .getChildren()
                 .get(0)
-            instanceof FullOuterTimeJoinNode);
+            instanceof LeftOuterTimeJoinNode);
   }
 
   /*

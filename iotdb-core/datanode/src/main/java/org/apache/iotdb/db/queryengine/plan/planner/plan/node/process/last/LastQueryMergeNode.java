@@ -61,6 +61,11 @@ public class LastQueryMergeNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.LAST_QUERY_MERGE;
+  }
+
+  @Override
   public PlanNode clone() {
     return new LastQueryMergeNode(getPlanNodeId(), timeseriesOrdering, containsLastTransformNode);
   }

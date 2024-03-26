@@ -76,6 +76,10 @@ public class IoTDBFilterIT {
           "create TIMESERIES root.vehicle.testTimeSeries.s1 with datatype=BOOLEAN,encoding=PLAIN");
       statement.execute(
           "create TIMESERIES root.vehicle.testTimeSeries.s2 with datatype=BOOLEAN,encoding=PLAIN");
+      statement.execute(
+          "create TIMESERIES root.vehicle.testUDTF.s1 with datatype=TEXT,encoding=PLAIN");
+      statement.execute(
+          "create TIMESERIES root.vehicle.testUDTF.s2 with datatype=DOUBLE,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -112,6 +116,8 @@ public class IoTDBFilterIT {
       }
       statement.execute(
           " insert into root.sg1.d1(time, s1, s2) aligned values (1,1, \"1\"), (2,2,\"2\")");
+      statement.execute(
+          " insert into root.vehicle.testUDTF(time, s1, s2) values (1,\"ss\",0), (2,\"d\",3)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -203,5 +209,33 @@ public class IoTDBFilterIT {
     assertTestFail(
         "select count(s1) from root.sg1.d1 group by ([0, 40), 5ms) having count(s1) + 1 align by device;",
         "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: DOUBLE.");
+  }
+
+  @Test
+  public void testFilterWithUDTF() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet containsResultSet =
+            statement.executeQuery(
+                "select s1 from root.vehicle.testUDTF where STRING_CONTAINS(s1, 's'='s')");
+        ResultSet sinResultSet =
+            statement.executeQuery("select s1 from root.vehicle.testUDTF where sin(s2) = 0")) {
+      int containsCnt = 0;
+      while (containsResultSet.next()) {
+        ++containsCnt;
+      }
+      assertEquals(1, containsCnt);
+
+      int sinCnt = 0;
+      while (sinResultSet.next()) {
+        ++sinCnt;
+      }
+      assertEquals(1, sinCnt);
+      assertTestFail(
+          "select s1 from root.vehicle.testUDTF where sin(s2)",
+          "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: DOUBLE.");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
   }
 }

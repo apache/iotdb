@@ -53,6 +53,11 @@ public class LastQueryTransformNode extends SingleChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.LAST_QUERY_TRANSFORM;
+  }
+
+  @Override
   public PlanNode clone() {
     return new LastQueryTransformNode(getPlanNodeId(), viewPath, dataType);
   }

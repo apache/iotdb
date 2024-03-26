@@ -625,7 +625,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
-    Assert.assertEquals(8, summary.getDirectlyFlushChunkNum());
+    Assert.assertEquals(16, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDirectlyFlushPageCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(

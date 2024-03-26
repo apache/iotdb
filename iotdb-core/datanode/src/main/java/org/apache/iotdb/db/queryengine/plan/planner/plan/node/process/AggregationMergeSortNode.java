@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -30,8 +31,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public class AggregationMergeSortNode extends MultiChildProcessNode {
 
@@ -39,30 +42,53 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
 
   private final List<String> outputColumns;
 
+  private final Set<Expression> selectExpressions;
+
+  private boolean hasGroupBy;
+
   public AggregationMergeSortNode(
-      PlanNodeId id, OrderByParameter mergeOrderParameter, List<String> outputColumns) {
+      PlanNodeId id,
+      OrderByParameter mergeOrderParameter,
+      List<String> outputColumns,
+      Set<Expression> selectExpressions,
+      boolean hasGroupBy) {
     super(id);
     this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumns = outputColumns;
+    this.selectExpressions = selectExpressions;
+    this.hasGroupBy = hasGroupBy;
   }
 
   public AggregationMergeSortNode(
       PlanNodeId id,
       List<PlanNode> children,
       OrderByParameter mergeOrderParameter,
-      List<String> outputColumns) {
+      List<String> outputColumns,
+      Set<Expression> selectExpressions,
+      boolean hasGroupBy) {
     super(id, children);
     this.mergeOrderParameter = mergeOrderParameter;
     this.outputColumns = outputColumns;
+    this.selectExpressions = selectExpressions;
+    this.hasGroupBy = hasGroupBy;
   }
 
   public OrderByParameter getMergeOrderParameter() {
     return mergeOrderParameter;
   }
 
+  public Set<Expression> getSelectExpressions() {
+    return this.selectExpressions;
+  }
+
+  public boolean isHasGroupBy() {
+    return this.hasGroupBy;
+  }
+
   @Override
   public PlanNode clone() {
-    return new AggregationMergeSortNode(getPlanNodeId(), getMergeOrderParameter(), outputColumns);
+    return new AggregationMergeSortNode(
+        getPlanNodeId(), getMergeOrderParameter(), outputColumns, selectExpressions, hasGroupBy);
   }
 
   @Override
@@ -71,7 +97,9 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
         new PlanNodeId(String.format("%s-%s", getPlanNodeId(), subNodeId)),
         new ArrayList<>(children.subList(startIndex, endIndex)),
         getMergeOrderParameter(),
-        outputColumns);
+        outputColumns,
+        selectExpressions,
+        hasGroupBy);
   }
 
   @Override
@@ -92,6 +120,11 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
     for (String column : outputColumns) {
       ReadWriteIOUtils.write(column, byteBuffer);
     }
+    ReadWriteIOUtils.write(selectExpressions.size(), byteBuffer);
+    for (Expression expression : selectExpressions) {
+      Expression.serialize(expression, byteBuffer);
+    }
+    ReadWriteIOUtils.write(hasGroupBy, byteBuffer);
   }
 
   @Override
@@ -102,6 +135,11 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
     for (String column : outputColumns) {
       ReadWriteIOUtils.write(column, stream);
     }
+    ReadWriteIOUtils.write(selectExpressions.size(), stream);
+    for (Expression expression : selectExpressions) {
+      Expression.serialize(expression, stream);
+    }
+    ReadWriteIOUtils.write(hasGroupBy, stream);
   }
 
   public static AggregationMergeSortNode deserialize(ByteBuffer byteBuffer) {
@@ -112,8 +150,16 @@ public class AggregationMergeSortNode extends MultiChildProcessNode {
       outputColumns.add(ReadWriteIOUtils.readString(byteBuffer));
       columnSize--;
     }
+    Set<Expression> expressions = new LinkedHashSet<>();
+    int expressionSize = ReadWriteIOUtils.readInt(byteBuffer);
+    while (expressionSize > 0) {
+      expressions.add(Expression.deserialize(byteBuffer));
+      expressionSize--;
+    }
+    boolean hasGroupBy = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new AggregationMergeSortNode(planNodeId, orderByParameter, outputColumns);
+    return new AggregationMergeSortNode(
+        planNodeId, orderByParameter, outputColumns, expressions, hasGroupBy);
   }
 
   @Override

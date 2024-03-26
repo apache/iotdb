@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -29,7 +30,8 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeighUtil;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileReader;
@@ -52,12 +54,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 public class TsFileInsertionDataContainer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionDataContainer.class);
 
-  private final String pattern; // used to filter data
+  private final PipePattern pattern; // used to filter data
   private final IExpression timeFilterExpression; // used to filter data
 
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
@@ -68,20 +71,20 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private final TsFileSequenceReader tsFileSequenceReader;
   private final TsFileReader tsFileReader;
 
-  private final Iterator<Map.Entry<String, List<String>>> deviceMeasurementsMapIterator;
-  private final Map<String, Boolean> deviceIsAlignedMap;
+  private final Iterator<Map.Entry<IDeviceID, List<String>>> deviceMeasurementsMapIterator;
+  private final Map<IDeviceID, Boolean> deviceIsAlignedMap;
   private final Map<String, TSDataType> measurementDataTypeMap;
 
   private boolean shouldParsePattern = false;
 
-  public TsFileInsertionDataContainer(File tsFile, String pattern, long startTime, long endTime)
-      throws IOException {
+  public TsFileInsertionDataContainer(
+      File tsFile, PipePattern pattern, long startTime, long endTime) throws IOException {
     this(tsFile, pattern, startTime, endTime, null, null);
   }
 
   public TsFileInsertionDataContainer(
       File tsFile,
-      String pattern,
+      PipePattern pattern,
       long startTime,
       long endTime,
       PipeTaskMeta pipeTaskMeta,
@@ -100,7 +103,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
     try {
       final PipeTsFileResourceManager tsFileResourceManager = PipeResourceManager.tsfile();
-      final Map<String, List<String>> deviceMeasurementsMap;
+      final Map<IDeviceID, List<String>> deviceMeasurementsMap;
 
       // TsFileReader is not thread-safe, so we need to create it here and close it later.
       long memoryRequiredInBytes =
@@ -116,13 +119,14 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       } else {
         // We need to create these objects here and remove them later.
         deviceIsAlignedMap = readDeviceIsAlignedMap();
-        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2Bool(deviceIsAlignedMap);
+        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfIDeviceId2Bool(deviceIsAlignedMap);
 
         measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
         memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
 
         deviceMeasurementsMap = tsFileSequenceReader.getDeviceMeasurementsMap();
-        memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2StrList(deviceMeasurementsMap);
+        memoryRequiredInBytes +=
+            PipeMemoryWeighUtil.memoryOfIDeviceID2StrList(deviceMeasurementsMap);
       }
       allocatedMemoryBlock = PipeResourceManager.memory().forceAllocate(memoryRequiredInBytes);
 
@@ -137,31 +141,27 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     }
   }
 
-  private Map<String, List<String>> filterDeviceMeasurementsMapByPattern(
-      Map<String, List<String>> originalDeviceMeasurementsMap) {
-    final Map<String, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
-    for (Map.Entry<String, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
-      final String deviceId = entry.getKey();
+  private Map<IDeviceID, List<String>> filterDeviceMeasurementsMapByPattern(
+      Map<IDeviceID, List<String>> originalDeviceMeasurementsMap) {
+    final Map<IDeviceID, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
+    for (Map.Entry<IDeviceID, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
+      final String deviceId = ((PlainDeviceID) entry.getKey()).toStringID();
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
       // in this case, all data can be matched without checking the measurements
-      if (pattern == null
-          || pattern.length() <= deviceId.length() && deviceId.startsWith(pattern)) {
+      if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
         if (!entry.getValue().isEmpty()) {
-          filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
+          filteredDeviceMeasurementsMap.put(new PlainDeviceID(deviceId), entry.getValue());
         }
       }
 
       // case 2: for example, pattern is root.a.b.c and device is root.a.b
       // in this case, we need to check the full path
-      else if (pattern.length() > deviceId.length() && pattern.startsWith(deviceId)) {
+      else if (pattern.mayOverlapWithDevice(deviceId)) {
         final List<String> filteredMeasurements = new ArrayList<>();
 
         for (final String measurement : entry.getValue()) {
-          // low cost check comes first
-          if (pattern.length() == deviceId.length() + measurement.length() + 1
-              // high cost check comes later
-              && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
+          if (pattern.matchesMeasurement(deviceId, measurement)) {
             filteredMeasurements.add(measurement);
           } else {
             // Parse pattern iff there are measurements filtered out
@@ -170,7 +170,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
         }
 
         if (!filteredMeasurements.isEmpty()) {
-          filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
+          filteredDeviceMeasurementsMap.put(new PlainDeviceID(deviceId), filteredMeasurements);
         }
       }
 
@@ -185,18 +185,18 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     return filteredDeviceMeasurementsMap;
   }
 
-  private Map<String, Boolean> readDeviceIsAlignedMap() throws IOException {
-    final Map<String, Boolean> deviceIsAlignedResultMap = new HashMap<>();
+  private Map<IDeviceID, Boolean> readDeviceIsAlignedMap() throws IOException {
+    final Map<IDeviceID, Boolean> deviceIsAlignedResultMap = new HashMap<>();
     final TsFileDeviceIterator deviceIsAlignedIterator =
         tsFileSequenceReader.getAllDevicesIteratorWithIsAligned();
     while (deviceIsAlignedIterator.hasNext()) {
-      final Pair<String, Boolean> deviceIsAlignedPair = deviceIsAlignedIterator.next();
+      final Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceIsAlignedIterator.next();
       deviceIsAlignedResultMap.put(deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
     }
     return deviceIsAlignedResultMap;
   }
 
-  /** @return TabletInsertionEvent in a streaming way */
+  /** @return {@link TabletInsertionEvent} in a streaming way */
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
     return () ->
         new Iterator<TabletInsertionEvent>() {
@@ -211,14 +211,14 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
                 return false;
               }
 
-              final Map.Entry<String, List<String>> entry = deviceMeasurementsMapIterator.next();
+              final Map.Entry<IDeviceID, List<String>> entry = deviceMeasurementsMapIterator.next();
 
               try {
                 tabletIterator =
                     new TsFileInsertionDataTabletIterator(
                         tsFileReader,
                         measurementDataTypeMap,
-                        entry.getKey(),
+                        ((PlainDeviceID) entry.getKey()).toStringID(),
                         entry.getValue(),
                         timeFilterExpression);
               } catch (IOException e) {
@@ -238,7 +238,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
             }
 
             final Tablet tablet = tabletIterator.next();
-            final boolean isAligned = deviceIsAlignedMap.getOrDefault(tablet.deviceId, false);
+            final boolean isAligned =
+                deviceIsAlignedMap.getOrDefault(new PlainDeviceID(tablet.deviceId), false);
 
             final TabletInsertionEvent next;
             if (!hasNext()) {

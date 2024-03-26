@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.execution;
 
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.execution.executor.dataregion.PipeDataRegionConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.pipe.api.PipeConnector;
 
@@ -33,7 +33,7 @@ public class PipeConnectorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
 
   @Before
   public void setUp() throws Exception {
-    executor = new PipeDataRegionConnectorSubtaskExecutor();
+    executor = new PipeConnectorSubtaskExecutor();
 
     subtask =
         Mockito.spy(

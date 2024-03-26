@@ -162,6 +162,11 @@ public class AggregationNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.AGGREGATE;
+  }
+
+  @Override
   public PlanNode clone() {
     return new AggregationNode(
         getPlanNodeId(),

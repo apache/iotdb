@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.thrift.IoTConsensusIService;
+import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
 import org.apache.thrift.TBaseAsyncProcessor;
 import org.slf4j.Logger;
@@ -85,7 +86,8 @@ public class IoTConsensusRPCService extends ThriftService implements IoTConsensu
               config.getRpc().isRpcThriftCompressionEnabled(),
               config.getRpc().getConnectionTimeoutInMs(),
               config.getRpc().getThriftMaxFrameSize(),
-              ThriftServiceThread.ServerType.SELECTOR);
+              ThriftServiceThread.ServerType.SELECTOR,
+              ZeroCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

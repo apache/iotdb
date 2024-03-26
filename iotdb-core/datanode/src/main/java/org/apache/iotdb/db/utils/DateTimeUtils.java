@@ -97,9 +97,7 @@ public class DateTimeUtils {
             .appendLiteral(':')
             .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
             .optionalStart()
-            .appendLiteral('.')
-            .appendValue(ChronoField.MILLI_OF_SECOND, 3)
-            .optionalEnd()
+            .appendFraction(ChronoField.MILLI_OF_SECOND, 0, 3, true)
             .toFormatter();
   }
 
@@ -115,9 +113,7 @@ public class DateTimeUtils {
             .appendLiteral(':')
             .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
             .optionalStart()
-            .appendLiteral('.')
-            .appendValue(ChronoField.MICRO_OF_SECOND, 6)
-            .optionalEnd()
+            .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
             .toFormatter();
   }
 
@@ -133,8 +129,7 @@ public class DateTimeUtils {
             .appendLiteral(':')
             .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
             .optionalStart()
-            .appendLiteral('.')
-            .appendValue(ChronoField.NANO_OF_SECOND, 9)
+            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
             .optionalEnd()
             .toFormatter();
   }

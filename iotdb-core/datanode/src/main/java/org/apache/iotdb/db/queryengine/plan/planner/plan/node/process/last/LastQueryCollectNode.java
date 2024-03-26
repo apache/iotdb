@@ -56,6 +56,11 @@ public class LastQueryCollectNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.LAST_QUERY_COLLECT;
+  }
+
+  @Override
   public PlanNode clone() {
     return new LastQueryCollectNode(getPlanNodeId(), containsLastTransformNode);
   }

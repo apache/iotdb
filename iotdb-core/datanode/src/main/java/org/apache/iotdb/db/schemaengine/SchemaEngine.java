@@ -119,10 +119,7 @@ public class SchemaEngine {
 
     initSchemaRegion();
 
-    if (!(config.isClusterMode()
-            && config
-                .getSchemaRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.RATIS_CONSENSUS))
+    if (!(config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS))
         && config.getSyncMlogPeriodInMs() != 0) {
       timedForceMLogThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
@@ -253,6 +250,10 @@ public class SchemaEngine {
 
   public Collection<ISchemaRegion> getAllSchemaRegions() {
     return schemaRegionMap.values();
+  }
+
+  public List<SchemaRegionId> getAllSchemaRegionIds() {
+    return new ArrayList<>(schemaRegionMap.keySet());
   }
 
   public synchronized void createSchemaRegion(

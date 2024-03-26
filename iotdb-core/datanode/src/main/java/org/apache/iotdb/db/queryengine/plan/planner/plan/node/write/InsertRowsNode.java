@@ -126,6 +126,11 @@ public class InsertRowsNode extends InsertNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.INSERT_ROWS;
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;

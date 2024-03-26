@@ -31,8 +31,11 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
   private AutoScalingBufferReadTransport readCompressBuffer;
 
   protected TCompressedElasticFramedTransport(
-      TTransport underlying, int thriftDefaultBufferSize, int thriftMaxFrameSize) {
-    super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize);
+      TTransport underlying,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean copyBinary) {
+    super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
     writeCompressBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
     readCompressBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
   }

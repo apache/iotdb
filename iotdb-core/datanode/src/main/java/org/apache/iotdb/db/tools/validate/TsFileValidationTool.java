@@ -27,6 +27,8 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -90,7 +92,7 @@ public class TsFileValidationTool {
   private static final Map<String, Pair<String, long[]>> measurementLastTime = new HashMap<>();
 
   // deviceID -> <fileName, endTime>, the endTime of device in the last seq file
-  private static final Map<String, Pair<String, Long>> deviceEndTime = new HashMap<>();
+  private static final Map<IDeviceID, Pair<String, Long>> deviceEndTime = new HashMap<>();
 
   // fileName -> isBadFile
   private static final Map<String, Boolean> isBadFileMap = new HashMap<>();
@@ -203,10 +205,10 @@ public class TsFileValidationTool {
 
         try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
           // deviceID -> has checked overlap or not
-          Map<String, Boolean> hasCheckedDeviceOverlap = new HashMap<>();
+          Map<IDeviceID, Boolean> hasCheckedDeviceOverlap = new HashMap<>();
           reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
           byte marker;
-          String deviceID = "";
+          IDeviceID deviceID = new PlainDeviceID("");
           Map<String, boolean[]> hasMeasurementPrintedDetails = new HashMap<>();
           // measurementId -> lastChunkEndTime in current file
           Map<String, Long> lashChunkEndTime = new HashMap<>();
@@ -226,7 +228,10 @@ public class TsFileValidationTool {
                   break;
                 }
                 long currentChunkEndTime = Long.MIN_VALUE;
-                String measurementID = deviceID + PATH_SEPARATOR + header.getMeasurementID();
+                String measurementID =
+                    ((PlainDeviceID) deviceID).toStringID()
+                        + PATH_SEPARATOR
+                        + header.getMeasurementID();
                 hasMeasurementPrintedDetails.computeIfAbsent(measurementID, k -> new boolean[4]);
                 measurementLastTime.computeIfAbsent(
                     measurementID,
@@ -433,7 +438,7 @@ public class TsFileValidationTool {
                         currentChunkEndTime));
                 break;
               case MetaMarker.CHUNK_GROUP_HEADER:
-                if (!deviceID.equals("")) {
+                if (!deviceID.equals(new PlainDeviceID(""))) {
                   // record the end time of last device in current file
                   if (resource.getEndTime(deviceID)
                       > deviceEndTime.computeIfAbsent(

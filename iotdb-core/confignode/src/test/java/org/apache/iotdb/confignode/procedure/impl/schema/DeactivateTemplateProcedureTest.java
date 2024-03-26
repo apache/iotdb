@@ -67,7 +67,7 @@ public class DeactivateTemplateProcedureTest {
     templateSetInfo.put(new PartialPath("root.sg2.**"), Arrays.asList(t2, t1));
 
     DeactivateTemplateProcedure deactivateTemplateProcedure =
-        new DeactivateTemplateProcedure(queryId, templateSetInfo);
+        new DeactivateTemplateProcedure(queryId, templateSetInfo, false);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -78,7 +78,7 @@ public class DeactivateTemplateProcedureTest {
     Assert.assertEquals(
         ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    DeactivateTemplateProcedure deserializedProcedure = new DeactivateTemplateProcedure();
+    DeactivateTemplateProcedure deserializedProcedure = new DeactivateTemplateProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(queryId, deserializedProcedure.getQueryId());

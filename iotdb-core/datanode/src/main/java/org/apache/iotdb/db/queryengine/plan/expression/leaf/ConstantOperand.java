@@ -26,23 +26,30 @@ import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssi
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.apache.commons.lang3.Validate;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /** Constant operand */
 public class ConstantOperand extends LeafOperand {
+
+  public static final ConstantOperand FALSE = new ConstantOperand(TSDataType.BOOLEAN, "false");
+  public static final ConstantOperand TRUE = new ConstantOperand(TSDataType.BOOLEAN, "true");
 
   private final String valueString;
   private final TSDataType dataType;
 
   public ConstantOperand(TSDataType dataType, String valueString) {
-    this.dataType = Validate.notNull(dataType);
-    this.valueString = Validate.notNull(valueString);
+    this.dataType = Objects.requireNonNull(dataType);
+
+    if (dataType.equals(TSDataType.BOOLEAN)) {
+      this.valueString = Objects.requireNonNull(valueString).toLowerCase();
+    } else {
+      this.valueString = Objects.requireNonNull(valueString);
+    }
   }
 
   public ConstantOperand(ByteBuffer byteBuffer) {

@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+
 public interface ILastFlushTime {
 
-  long getLastFlushTime(String device);
+  long getLastFlushTime(IDeviceID device);
 
-  void updateLastFlushTime(String device, long time);
+  void updateLastFlushTime(IDeviceID device, long time);
 
   ILastFlushTime degradeLastFlushTime();
 }

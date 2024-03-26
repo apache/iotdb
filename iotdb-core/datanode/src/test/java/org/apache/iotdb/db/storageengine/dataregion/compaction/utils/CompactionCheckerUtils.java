@@ -40,6 +40,8 @@ import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -194,7 +196,7 @@ public class CompactionCheckerUtils {
         // Because we do not know how many chunks a ChunkGroup may have, we should read one byte
         // (the
         // marker) ahead and judge accordingly.
-        String device = "";
+        IDeviceID device = new PlainDeviceID("");
         String measurementID = "";
         List<TimeValuePair> currTimeValuePairs = new ArrayList<>();
         reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
@@ -317,10 +319,10 @@ public class CompactionCheckerUtils {
   private static void checkTsFileResource(
       Map<String, List<TimeValuePair>> sourceData, List<TsFileResource> mergedFiles)
       throws IllegalPathException {
-    Map<String, long[]> devicePointNumMap = new HashMap<>();
+    Map<IDeviceID, long[]> devicePointNumMap = new HashMap<>();
     for (Entry<String, List<TimeValuePair>> dataEntry : sourceData.entrySet()) {
       PartialPath partialPath = new PartialPath(dataEntry.getKey());
-      String device = partialPath.getDevice();
+      IDeviceID device = new PlainDeviceID(partialPath.getDevice());
       long[] statistics =
           devicePointNumMap.computeIfAbsent(
               device, k -> new long[] {Long.MAX_VALUE, Long.MIN_VALUE});
@@ -331,8 +333,8 @@ public class CompactionCheckerUtils {
               statistics[1],
               timeValuePairs.get(timeValuePairs.size() - 1).getTimestamp()); // end time
     }
-    for (Entry<String, long[]> deviceCountEntry : devicePointNumMap.entrySet()) {
-      String device = deviceCountEntry.getKey();
+    for (Entry<IDeviceID, long[]> deviceCountEntry : devicePointNumMap.entrySet()) {
+      IDeviceID device = deviceCountEntry.getKey();
       long[] statistics = deviceCountEntry.getValue();
       long startTime = Long.MAX_VALUE;
       for (TsFileResource mergedFile : mergedFiles) {
@@ -388,7 +390,7 @@ public class CompactionCheckerUtils {
     Map<String, List<List<Long>>> mergedChunkPagePointsNum = new HashMap<>();
     List<Long> pagePointsNum = new ArrayList<>();
     try (TsFileSequenceReader reader = new TsFileSequenceReader(mergedFile.getTsFilePath())) {
-      String entity = "";
+      IDeviceID entity = new PlainDeviceID("");
       String measurement = "";
       // Sequential reading of one ChunkGroup now follows this order:
       // first the CHUNK_GROUP_HEADER, then SeriesChunks (headers and data) in one ChunkGroup

@@ -78,6 +78,10 @@ public class RepairTimePartition {
     this.repaired = repaired;
   }
 
+  public boolean needRepair() {
+    return !getAllFileSnapshot().isEmpty();
+  }
+
   public List<TsFileResource> getSeqFileSnapshot() {
     return tsFileManager.getTsFileListSnapshot(timePartitionId, true).stream()
         .filter(this::resourceTimestampFilter)

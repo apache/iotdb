@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,24 +34,24 @@ public class UnseqSpaceStatistics {
   public long minStartTime = Long.MAX_VALUE;
 
   public long maxEndTime = Long.MIN_VALUE;
-  private Map<String, Map<String, ITimeRange>> chunkStatisticMap = new HashMap<>();
+  private Map<IDeviceID, Map<String, ITimeRange>> chunkStatisticMap = new HashMap<>();
 
-  private Map<String, ITimeRange> chunkGroupStatisticMap = new HashMap<>();
+  private Map<IDeviceID, ITimeRange> chunkGroupStatisticMap = new HashMap<>();
 
-  public void updateMeasurement(String device, String measurementUID, Interval interval) {
+  public void updateMeasurement(IDeviceID device, String measurementUID, Interval interval) {
     chunkStatisticMap
         .computeIfAbsent(device, key -> new HashMap<>())
         .computeIfAbsent(measurementUID, key -> new ListTimeRangeImpl())
         .addInterval(interval);
   }
 
-  public void updateDevice(String device, Interval interval) {
+  public void updateDevice(IDeviceID device, Interval interval) {
     chunkGroupStatisticMap
         .computeIfAbsent(device, key -> new ListTimeRangeImpl())
         .addInterval(interval);
   }
 
-  public boolean chunkHasOverlap(String device, String measurementUID, Interval interval) {
+  public boolean chunkHasOverlap(IDeviceID device, String measurementUID, Interval interval) {
     if (!chunkStatisticMap.containsKey(device)) {
       return false;
     }
@@ -59,18 +61,18 @@ public class UnseqSpaceStatistics {
     return chunkStatisticMap.get(device).get(measurementUID).isOverlapped(interval);
   }
 
-  public boolean chunkGroupHasOverlap(String device, Interval interval) {
+  public boolean chunkGroupHasOverlap(IDeviceID device, Interval interval) {
     if (!chunkGroupStatisticMap.containsKey(device)) {
       return false;
     }
     return chunkGroupStatisticMap.get(device).isOverlapped(interval);
   }
 
-  public Map<String, Map<String, ITimeRange>> getChunkStatisticMap() {
+  public Map<IDeviceID, Map<String, ITimeRange>> getChunkStatisticMap() {
     return chunkStatisticMap;
   }
 
-  public Map<String, ITimeRange> getChunkGroupStatisticMap() {
+  public Map<IDeviceID, ITimeRange> getChunkGroupStatisticMap() {
     return chunkGroupStatisticMap;
   }
 

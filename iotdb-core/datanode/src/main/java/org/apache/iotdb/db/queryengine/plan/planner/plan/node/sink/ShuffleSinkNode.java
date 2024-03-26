@@ -40,6 +40,11 @@ public class ShuffleSinkNode extends MultiChildrenSinkNode {
     super(id);
   }
 
+  @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.SHUFFLE_SINK;
+  }
+
   public ShuffleSinkNode(
       PlanNodeId id, List<DownStreamChannelLocation> downStreamChannelLocationList) {
     super(id, downStreamChannelLocationList);

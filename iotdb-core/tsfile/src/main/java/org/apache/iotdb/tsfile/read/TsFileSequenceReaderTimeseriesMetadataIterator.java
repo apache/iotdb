@@ -20,7 +20,9 @@
 package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.exception.TsFileSequenceReaderTimeseriesMetadataIteratorException;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.IMetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.metadata.DeviceMetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
@@ -37,7 +39,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 public class TsFileSequenceReaderTimeseriesMetadataIterator
-    implements Iterator<Map<String, List<TimeseriesMetadata>>> {
+    implements Iterator<Map<IDeviceID, List<TimeseriesMetadata>>> {
 
   private static final int DEFAULT_TIMESERIES_BATCH_READ_NUMBER = 4000;
   private final TsFileSequenceReader reader;
@@ -46,7 +48,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
   private ByteBuffer currentBuffer = null;
   private long currentEndOffset = Long.MIN_VALUE;
   private final Deque<MetadataIndexEntryInfo> metadataIndexEntryStack = new ArrayDeque<>();
-  private String currentDeviceId;
+  private IDeviceID currentDeviceId;
   private int currentTimeseriesMetadataCount = 0;
 
   public TsFileSequenceReaderTimeseriesMetadataIterator(
@@ -62,7 +64,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
 
     final MetadataIndexNode metadataIndexNode = reader.tsFileMetaData.getMetadataIndex();
     long curEntryEndOffset = metadataIndexNode.getEndOffset();
-    List<MetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
+    List<IMetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
 
     for (int i = metadataIndexEntryList.size() - 1; i >= 0; i--) {
       metadataIndexEntryStack.push(
@@ -84,12 +86,12 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
   }
 
   @Override
-  public Map<String, List<TimeseriesMetadata>> next() {
+  public Map<IDeviceID, List<TimeseriesMetadata>> next() {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
 
-    final Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new HashMap<>();
+    final Map<IDeviceID, List<TimeseriesMetadata>> timeseriesMetadataMap = new HashMap<>();
 
     while (currentTimeseriesMetadataCount < timeseriesBatchReadNumber) {
       // 1. Check Buffer
@@ -144,7 +146,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
 
   private void deserializeMetadataIndexEntry(
       MetadataIndexEntryInfo metadataIndexEntryInfo,
-      Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap)
+      Map<IDeviceID, List<TimeseriesMetadata>> timeseriesMetadataMap)
       throws IOException {
     if (metadataIndexEntryInfo
         .getMetadataIndexNodeType()
@@ -158,16 +160,14 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
       deserializeInternalNode(
           metadataIndexEntryInfo.getMetadataIndexEntry(),
           metadataIndexEntryInfo.getEndOffset(),
-          metadataIndexEntryInfo
-              .getMetadataIndexNodeType()
-              .equals(MetadataIndexNodeType.LEAF_DEVICE));
+          metadataIndexEntryInfo.getMetadataIndexNodeType());
     }
   }
 
   private void deserializeLeafMeasurement(
-      MetadataIndexEntry metadataIndexEntry,
+      IMetadataIndexEntry metadataIndexEntry,
       long endOffset,
-      Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap)
+      Map<IDeviceID, List<TimeseriesMetadata>> timeseriesMetadataMap)
       throws IOException {
     if (currentBuffer != null && currentBuffer.hasRemaining()) {
       throw new TsFileSequenceReaderTimeseriesMetadataIteratorException(
@@ -214,17 +214,18 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
   }
 
   private void deserializeInternalNode(
-      MetadataIndexEntry metadataIndexEntry, long endOffset, boolean isLeafDevice)
+      IMetadataIndexEntry metadataIndexEntry, long endOffset, MetadataIndexNodeType type)
       throws IOException {
-    if (isLeafDevice) {
-      currentDeviceId = metadataIndexEntry.getName();
+    if (MetadataIndexNodeType.LEAF_DEVICE.equals(type)) {
+      currentDeviceId = ((DeviceMetadataIndexEntry) metadataIndexEntry).getDeviceID();
     }
 
+    boolean currentChildLevelIsDevice = MetadataIndexNodeType.INTERNAL_DEVICE.equals(type);
     final MetadataIndexNode metadataIndexNode =
         MetadataIndexNode.deserializeFrom(
-            reader.readData(metadataIndexEntry.getOffset(), endOffset));
+            reader.readData(metadataIndexEntry.getOffset(), endOffset), currentChildLevelIsDevice);
     MetadataIndexNodeType metadataIndexNodeType = metadataIndexNode.getNodeType();
-    List<MetadataIndexEntry> children = metadataIndexNode.getChildren();
+    List<IMetadataIndexEntry> children = metadataIndexNode.getChildren();
     long curEntryEndOffset = metadataIndexNode.getEndOffset();
 
     for (int i = children.size() - 1; i >= 0; i--) {
@@ -235,12 +236,12 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
   }
 
   private static class MetadataIndexEntryInfo {
-    private final MetadataIndexEntry metadataIndexEntry;
+    private final IMetadataIndexEntry metadataIndexEntry;
     private final MetadataIndexNodeType metadataIndexNodeType;
     private final long endOffset;
 
     public MetadataIndexEntryInfo(
-        MetadataIndexEntry metadataIndexEntry,
+        IMetadataIndexEntry metadataIndexEntry,
         MetadataIndexNodeType metadataIndexNodeType,
         long endOffset) {
       this.metadataIndexEntry = metadataIndexEntry;
@@ -248,7 +249,7 @@ public class TsFileSequenceReaderTimeseriesMetadataIterator
       this.endOffset = endOffset;
     }
 
-    public MetadataIndexEntry getMetadataIndexEntry() {
+    public IMetadataIndexEntry getMetadataIndexEntry() {
       return metadataIndexEntry;
     }
 

@@ -26,25 +26,12 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperand;
 
 public class BindTypeForTimeSeriesOperandVisitor extends ReconstructVisitor<List<ColumnHeader>> {
-  @Override
-  public Expression visitFunctionExpression(
-      FunctionExpression predicate, List<ColumnHeader> columnHeaders) {
-    List<Expression> expressions = predicate.getExpressions();
-    List<Expression> childrenExpressions = new ArrayList<>();
-    for (Expression expression : expressions) {
-      childrenExpressions.add(process(expression, columnHeaders));
-    }
-    return reconstructFunctionExpression(predicate, childrenExpressions);
-  }
 
   @Override
   public Expression visitTimeSeriesOperand(

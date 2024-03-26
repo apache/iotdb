@@ -69,6 +69,11 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.SINGLE_DEVICE_VIEW;
+  }
+
+  @Override
   public PlanNode clone() {
     return new SingleDeviceViewNode(
         getPlanNodeId(),

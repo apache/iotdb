@@ -26,9 +26,9 @@ import java.io.IOException;
 
 public class Element {
 
-  public PriorityMergeReader.MergeReaderPriority priority;
-  protected IPointReader reader;
-  public TimeValuePair timeValuePair;
+  private final PriorityMergeReader.MergeReaderPriority priority;
+  private final IPointReader reader;
+  private TimeValuePair timeValuePair;
 
   public Element(
       IPointReader reader,
@@ -65,6 +65,10 @@ public class Element {
 
   public TimeValuePair getTimeValuePair() {
     return timeValuePair;
+  }
+
+  public void setTimeValuePair(TimeValuePair timeValuePair) {
+    this.timeValuePair = timeValuePair;
   }
 
   public PriorityMergeReader.MergeReaderPriority getPriority() {

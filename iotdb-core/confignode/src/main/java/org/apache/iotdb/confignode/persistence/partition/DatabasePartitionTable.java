@@ -519,20 +519,8 @@ public class DatabasePartitionTable {
       return schemaPartitionTable.getSeriesSlotList();
     }
   }
-  /**
-   * update region location.
-   *
-   * @param regionId regionId
-   * @param oldNode old location, will remove it
-   * @param newNode new location, will add it
-   */
-  public void updateRegionLocation(
-      TConsensusGroupId regionId, TDataNodeLocation oldNode, TDataNodeLocation newNode) {
-    addRegionNewLocation(regionId, newNode);
-    removeRegionOldLocation(regionId, oldNode);
-  }
 
-  private void addRegionNewLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
+  void addRegionNewLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
       LOGGER.warn(
@@ -553,7 +541,7 @@ public class DatabasePartitionTable {
     regionGroup.addRegionLocation(node);
   }
 
-  private void removeRegionOldLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
+  void removeRegionLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
     RegionGroup regionGroup = regionGroupMap.get(regionId);
     if (regionGroup == null) {
       LOGGER.warn(

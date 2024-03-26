@@ -39,8 +39,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
-import io.airlift.stats.CounterStat;
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,9 +75,6 @@ public class FragmentInstanceManager {
   public final ExecutorService instanceNotificationExecutor;
 
   private final Duration infoCacheTime;
-
-  // record failed instances count
-  private final CounterStat failedInstances = new CounterStat();
 
   private final ExecutorService intoOperationExecutor;
 
@@ -176,8 +173,8 @@ public class FragmentInstanceManager {
                       drivers,
                       sink,
                       stateMachine,
-                      failedInstances,
                       instance.getTimeOut(),
+                      instance.isExplainAnalyze(),
                       exchangeManager);
                 } catch (Throwable t) {
                   logger.warn("error when create FragmentInstanceExecution.", t);
@@ -248,8 +245,8 @@ public class FragmentInstanceManager {
                     drivers,
                     sink,
                     stateMachine,
-                    failedInstances,
                     instance.getTimeOut(),
+                    false,
                     exchangeManager);
               } catch (Throwable t) {
                 logger.warn("Execute error caused by ", t);
@@ -316,8 +313,29 @@ public class FragmentInstanceManager {
     return context.getInstanceInfo();
   }
 
-  public CounterStat getFailedInstances() {
-    return failedInstances;
+  public TFetchFragmentInstanceStatisticsResp getFragmentInstanceStatistics(
+      FragmentInstanceId instanceId) {
+    requireNonNull(instanceId, "instanceId is null");
+    // If the instance is still running, we directly get the statistics from instanceExecution
+    FragmentInstanceExecution fragmentInstanceExecution = instanceExecution.get(instanceId);
+    if (fragmentInstanceExecution != null) {
+      try {
+        fragmentInstanceExecution.lockStatistics();
+        if (!fragmentInstanceExecution.isStaticsRemoved()) {
+          return fragmentInstanceExecution.buildStatistics();
+        }
+      } finally {
+        fragmentInstanceExecution.unlockStatistics();
+      }
+    }
+    // If the instance has finished, we get the statistics which was cached in the instanceContext
+    // when instanceExecution was removed.
+    FragmentInstanceContext context = instanceContext.get(instanceId);
+    if (context == null) {
+      return new TFetchFragmentInstanceStatisticsResp();
+    }
+    TFetchFragmentInstanceStatisticsResp statisticsResp = context.getFragmentInstanceStatistics();
+    return statisticsResp == null ? new TFetchFragmentInstanceStatisticsResp() : statisticsResp;
   }
 
   private FragmentInstanceInfo createFailedInstanceInfo(FragmentInstanceId instanceId) {

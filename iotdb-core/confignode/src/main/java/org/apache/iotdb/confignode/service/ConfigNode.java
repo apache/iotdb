@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeMetrics;
+import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
@@ -92,7 +93,7 @@ public class ConfigNode implements ConfigNodeMBean {
       String.format(
           "%s:%s=%s",
           IoTDBConstant.IOTDB_SERVICE_JMX_NAME,
-          ConfigNodeConstant.JMX_TYPE,
+          IoTDBConstant.JMX_TYPE,
           ServiceType.CONFIG_NODE.getJmxName());
   private final RegisterManager registerManager = new RegisterManager();
 
@@ -237,7 +238,7 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   void processPid() {
-    String pidFile = System.getProperty(ConfigNodeConstant.IOTDB_PIDFILE);
+    String pidFile = System.getProperty(IoTDBConstant.IOTDB_PIDFILE);
     if (pidFile != null) {
       new File(pidFile).deleteOnExit();
     }
@@ -247,6 +248,9 @@ public class ConfigNode implements ConfigNodeMBean {
     // Setup JMXService
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
+
+    // Init Pipe Runtime Agent
+    registerManager.register(PipeConfigNodeAgent.runtime());
 
     LOGGER.info("Successfully setup internal services.");
   }

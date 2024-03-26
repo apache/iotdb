@@ -71,7 +71,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
     super(id);
     measurementGroupMap = new HashMap<>();
 
-    // gather measurements of same device
+    // Gather measurements of same device
     int size = paths.size();
     PartialPath devicePath;
     MeasurementGroup measurementGroup;
@@ -136,6 +136,11 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
 
   @Override
   public void addChild(PlanNode child) {}
+
+  @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.CREATE_MULTI_TIME_SERIES;
+  }
 
   @Override
   public PlanNode clone() {

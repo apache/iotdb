@@ -18,6 +18,9 @@
 @REM
 
 @echo off
+
+title IoTDB Export
+
 echo ````````````````````````````````````````````````
 echo Starting IoTDB Client Export Script
 echo ````````````````````````````````````````````````

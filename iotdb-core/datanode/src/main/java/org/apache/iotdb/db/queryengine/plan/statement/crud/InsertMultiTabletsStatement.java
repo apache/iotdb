@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 
 public class InsertMultiTabletsStatement extends InsertBaseStatement {
 
-  /** the InsertTabletStatement list */
+  /** The {@link InsertTabletStatement} list */
   List<InsertTabletStatement> insertTabletStatementList;
 
   public InsertMultiTabletsStatement() {

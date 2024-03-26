@@ -50,7 +50,7 @@ public class IoTDBCountTimeAlignedDeviceIT {
         "CREATE ALIGNED TIMESERIES root.aligned.downsampling.d2(s1 INT32, s2 INT32);",
         "INSERT INTO root.aligned.downsampling.d1(time, s1, s2) ALIGNED VALUES(0, 0, null), (1, null, 1), "
             + "(2, null, 2), (4,4,null), (5,5,5), (7,null,7), (8,8,8), (9,null,9);",
-        "INSERT INTO root.aligned.downsampling.d2(time, s1, s2) ALIGNED VALUES(0,null,0) (1, 1, null), (2,2,null), "
+        "INSERT INTO root.aligned.downsampling.d2(time, s1, s2) ALIGNED VALUES(0,null,0), (1, 1, null), (2,2,null), "
             + "(4,null,4), (5,5,5), (7,7,null), (8,8,8);",
 
         // test group by variation

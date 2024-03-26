@@ -61,14 +61,15 @@ public class DictionaryEncoder extends Encoder {
 
   @Override
   public void encode(Binary value, ByteArrayOutputStream out) {
-    entryIndex.computeIfAbsent(
-        value,
-        v -> {
-          indexEntry.add(v);
-          mapSize += v.getLength();
-          return entryIndex.size();
-        });
-    valuesEncoder.encode(entryIndex.get(value), out);
+    int i =
+        entryIndex.computeIfAbsent(
+            value,
+            v -> {
+              indexEntry.add(v);
+              mapSize += v.getLength();
+              return entryIndex.size();
+            });
+    valuesEncoder.encode(i, out);
   }
 
   @Override

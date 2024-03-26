@@ -47,7 +47,7 @@ public class IoTDBNullValueFillIT {
    * 3, 3, null, 3.0, null, false, null<br>
    * 4, null, 4, null, 4.0, null, t4<br>
    * 5, 5, 5, 5.0, 5.0, false, t5<br>
-   * 6, null, 6, null, null, false, null<br>
+   * 6, null, 6, null, 6.0, false, null<br>
    * 7, null, null, null, null, null, null<br>
    * 8, 8, 8, 8.0, 8.0, true, t8<br>
    * 9, 9, null, 9.0, null, true, null
@@ -217,7 +217,7 @@ public class IoTDBNullValueFillIT {
           "3,3,3,3.0,3.0,false,null,",
           "4,4,4,4.0,4.0,null,t4,",
           "5,5,5,5.0,5.0,false,t5,",
-          "6,6,6,6.5,6.0,null,t6,",
+          "6,6,6,6.0,6.0,null,t6,",
           "8,8,8,8.0,8.0,true,t8,",
           "9,9,null,9.0,null,true,null,"
         };
@@ -234,15 +234,15 @@ public class IoTDBNullValueFillIT {
           "3,root.sg1.d1,3,3,3.0,3.0,false,null,",
           "4,root.sg1.d1,4,4,4.0,4.0,null,t4,",
           "5,root.sg1.d1,5,5,5.0,5.0,false,t5,",
-          "6,root.sg1.d1,6,6,6.5,6.0,null,t6,",
+          "6,root.sg1.d1,6,6,6.0,6.0,null,t6,",
           "8,root.sg1.d1,8,8,8.0,8.0,true,t8,",
-          "9,root.sg1.d1,9,5,9.0,5.0,true,null,",
-          "1,root.sg1.d2,1,5,1.0,5.0,true,null,",
+          "9,root.sg1.d1,9,9,9.0,9.0,true,null,",
+          "1,root.sg1.d2,1,1,1.0,1.0,true,null,",
           "2,root.sg1.d2,2,2,2.0,2.0,true,t2,",
           "3,root.sg1.d2,3,3,3.0,3.0,null,t3,",
           "4,root.sg1.d2,4,4,4.0,4.0,false,null,",
           "5,root.sg1.d2,5,5,5.0,5.0,false,t5,",
-          "6,root.sg1.d2,6,6,6.0,6.5,false,null,",
+          "6,root.sg1.d2,6,6,6.0,6.0,false,null,",
           "8,root.sg1.d2,8,8,8.0,8.0,true,t8,",
           "9,root.sg1.d2,null,9,null,9.0,null,t9,"
         };

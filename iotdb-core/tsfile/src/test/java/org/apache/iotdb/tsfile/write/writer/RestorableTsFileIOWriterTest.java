@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -131,7 +132,7 @@ public class RestorableTsFileIOWriterTest {
   @Test
   public void testOnlyOneChunkHeader() throws Exception {
     TsFileWriter writer = new TsFileWriter(file);
-    writer.getIOWriter().startChunkGroup("root.sg1.d1");
+    writer.getIOWriter().startChunkGroup(new PlainDeviceID("root.sg1.d1"));
     writer
         .getIOWriter()
         .startFlushChunk(

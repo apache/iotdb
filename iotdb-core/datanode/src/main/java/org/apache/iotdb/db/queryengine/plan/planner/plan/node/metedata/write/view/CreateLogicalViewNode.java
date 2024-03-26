@@ -138,6 +138,11 @@ public class CreateLogicalViewNode extends WritePlanNode implements ICreateLogic
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.CREATE_LOGICAL_VIEW;
+  }
+
+  @Override
   public PlanNode clone() {
     // TODO: CRTODO, complete this method
     throw new NotImplementedException("Clone of CreateMultiTimeSeriesNode is not implemented");

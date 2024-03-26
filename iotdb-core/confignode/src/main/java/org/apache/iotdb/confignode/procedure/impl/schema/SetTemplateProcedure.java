@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
@@ -40,7 +41,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -82,12 +83,13 @@ public class SetTemplateProcedure
   private static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
 
-  public SetTemplateProcedure() {
-    super();
+  public SetTemplateProcedure(boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
-  public SetTemplateProcedure(String queryId, String templateName, String templateSetPath) {
-    super();
+  public SetTemplateProcedure(
+      String queryId, String templateName, String templateSetPath, boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.queryId = queryId;
     this.templateName = templateName;
     this.templateSetPath = templateSetPath;
@@ -340,9 +342,15 @@ public class SetTemplateProcedure
   private void commitSetTemplate(ConfigNodeProcedureEnv env) {
     CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan =
         new CommitSetSchemaTemplatePlan(templateName, templateSetPath);
-    TSStatus status = null;
+    TSStatus status;
     try {
-      status = env.getConfigManager().getConsensusManager().write(commitSetSchemaTemplatePlan);
+      status =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlan(commitSetSchemaTemplatePlan)
+                      : commitSetSchemaTemplatePlan);
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -443,7 +451,7 @@ public class SetTemplateProcedure
   private void rollbackPreSet(ConfigNodeProcedureEnv env) {
     PreSetSchemaTemplatePlan preSetSchemaTemplatePlan =
         new PreSetSchemaTemplatePlan(templateName, templateSetPath, true);
-    TSStatus status = null;
+    TSStatus status;
     try {
       status = env.getConfigManager().getConsensusManager().write(preSetSchemaTemplatePlan);
     } catch (ConsensusException e) {
@@ -500,7 +508,7 @@ public class SetTemplateProcedure
   private void rollbackCommitSet(ConfigNodeProcedureEnv env) {
     CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan =
         new CommitSetSchemaTemplatePlan(templateName, templateSetPath, true);
-    TSStatus status = null;
+    TSStatus status;
     try {
       status = env.getConfigManager().getConsensusManager().write(commitSetSchemaTemplatePlan);
     } catch (ConsensusException e) {
@@ -547,7 +555,10 @@ public class SetTemplateProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.SET_TEMPLATE_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_SET_TEMPLATE_PROCEDURE.getTypeCode()
+            : ProcedureType.SET_TEMPLATE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(queryId, stream);
     ReadWriteIOUtils.write(templateName, stream);
@@ -567,12 +578,22 @@ public class SetTemplateProcedure
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     SetTemplateProcedure that = (SetTemplateProcedure) o;
-    return Objects.equals(templateName, that.templateName)
+    return Objects.equals(getProcId(), that.getProcId())
+        && Objects.equals(getCurrentState(), that.getCurrentState())
+        && Objects.equals(getCycles(), that.getCycles())
+        && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe)
+        && Objects.equals(templateName, that.templateName)
         && Objects.equals(templateSetPath, that.templateSetPath);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(templateName, templateSetPath);
+    return Objects.hash(
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        templateName,
+        templateSetPath);
   }
 }

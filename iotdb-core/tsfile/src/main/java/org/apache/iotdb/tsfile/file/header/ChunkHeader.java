@@ -28,10 +28,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import org.openjdk.jol.info.ClassLayout;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,11 +39,11 @@ import java.nio.ByteBuffer;
 
 public class ChunkHeader {
 
-  public static final int INSTANCE_SIZE =
-      ClassLayout.parseClass(ChunkHeader.class).instanceSize()
-          + ClassLayout.parseClass(TSDataType.class).instanceSize()
-          + ClassLayout.parseClass(CompressionType.class).instanceSize()
-          + ClassLayout.parseClass(TSEncoding.class).instanceSize();
+  public static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ChunkHeader.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TSDataType.class)
+          + RamUsageEstimator.shallowSizeOfInstance(CompressionType.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TSEncoding.class);
 
   /**
    * 1 means this chunk has more than one page, so each page has its own page statistic. 5 means

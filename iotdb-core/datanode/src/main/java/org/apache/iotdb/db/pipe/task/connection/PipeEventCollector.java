@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.pipe.task.connection;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.progress.committer.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.progress.committer.PipeEventCommitManager;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -46,15 +46,15 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   private final EnrichedDeque<Event> bufferQueue;
 
-  private final int dataRegionId;
+  private final int regionId;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
 
-  public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue, int dataRegionId) {
+  public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue, int regionId) {
     this.pendingQueue = pendingQueue;
-    this.dataRegionId = dataRegionId;
+    this.regionId = regionId;
     bufferQueue = new EnrichedDeque<>(new LinkedList<>());
   }
 
@@ -129,7 +129,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
       // Assign a commit id for this event in order to report progress in order.
       PipeEventCommitManager.getInstance()
-          .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, dataRegionId);
+          .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, regionId);
     }
     if (event instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) event).recordBufferQueueSize(bufferQueue);
@@ -172,9 +172,10 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
   }
 
   /**
-   * Try to collect buffered events into pending queue.
+   * Try to collect buffered events into {@link PipeEventCollector#pendingQueue}.
    *
-   * @return true if there are still buffered events after this operation, false otherwise.
+   * @return {@code true} if there are still buffered events after this operation, {@code false}
+   *     otherwise.
    */
   public synchronized boolean tryCollectBufferedEvents() {
     while (!isClosed.get() && !bufferQueue.isEmpty()) {

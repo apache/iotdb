@@ -59,6 +59,11 @@ public class DeviceMergeNode extends MultiChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.DEVICE_MERGE;
+  }
+
+  @Override
   public PlanNode clone() {
     return new DeviceMergeNode(getPlanNodeId(), getMergeOrderParameter(), getDevices());
   }

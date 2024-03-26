@@ -64,6 +64,11 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.DEVICES_SCHEMA_SCAN;
+  }
+
+  @Override
   public PlanNode clone() {
     return new DevicesSchemaScanNode(
         getPlanNodeId(), path, limit, offset, isPrefixPath, hasSgCol, schemaFilter, scope);

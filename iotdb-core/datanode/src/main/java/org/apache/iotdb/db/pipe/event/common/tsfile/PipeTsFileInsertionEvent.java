@@ -21,8 +21,9 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileInsertionEvent {
@@ -63,7 +65,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       boolean isGeneratedByPipe,
       String pipeName,
       PipeTaskMeta pipeTaskMeta,
-      String pattern,
+      PipePattern pattern,
       long startTime,
       long endTime) {
     super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
@@ -94,8 +96,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   /**
-   * @return {@code false} if this file can't be sent by pipe due to format violations. {@code true}
-   *     otherwise.
+   * @return {@code false} if this file can't be sent by pipe due to format violations or is empty.
+   *     {@code true} otherwise.
    */
   public boolean waitForTsFileClose() throws InterruptedException {
     if (!isClosed.get()) {
@@ -155,7 +157,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public ProgressIndex getProgressIndex() {
     try {
-      waitForTsFileClose();
+      if (!waitForTsFileClose()) {
+        LOGGER.warn(
+            "Skipping temporary TsFile {}'s progressIndex, will report MinimumProgressIndex",
+            tsFile);
+        return MinimumProgressIndex.INSTANCE;
+      }
       return resource.getMaxProgressIndexAfterClose();
     } catch (InterruptedException e) {
       LOGGER.warn(
@@ -168,7 +175,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName, PipeTaskMeta pipeTaskMeta, String pattern, long startTime, long endTime) {
+      String pipeName,
+      PipeTaskMeta pipeTaskMeta,
+      PipePattern pattern,
+      long startTime,
+      long endTime) {
     return new PipeTsFileInsertionEvent(
         resource, isLoaded, isGeneratedByPipe, pipeName, pipeTaskMeta, pattern, startTime, endTime);
   }
@@ -179,8 +190,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   @Override
-  public boolean isEventTimeOverlappedWithTimeRange() {
-    return startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime;
+  public boolean mayEventTimeOverlappedWithTimeRange() {
+    // If the tsFile is not closed the resource.getFileEndTime() will be Long.MIN_VALUE
+    // In that case we only judge the resource.getFileStartTime() to avoid losing data
+    return isClosed.get()
+        ? startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime
+        : resource.getFileStartTime() <= endTime;
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
@@ -208,18 +223,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
-    return initDataContainer().toTabletInsertionEvents();
-  }
-
-  private TsFileInsertionDataContainer initDataContainer() {
     try {
-      if (dataContainer == null) {
-        waitForTsFileClose();
-        dataContainer =
-            new TsFileInsertionDataContainer(
-                tsFile, getPattern(), startTime, endTime, pipeTaskMeta, this);
+      if (!waitForTsFileClose()) {
+        LOGGER.warn(
+            "Pipe skipping temporary TsFile's parsing which shouldn't be transferred: {}", tsFile);
+        return Collections.emptyList();
       }
-      return dataContainer;
+      return initDataContainer().toTabletInsertionEvents();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       close();
@@ -229,6 +239,17 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
+    }
+  }
+
+  private TsFileInsertionDataContainer initDataContainer() {
+    try {
+      if (dataContainer == null) {
+        dataContainer =
+            new TsFileInsertionDataContainer(
+                tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this);
+      }
+      return dataContainer;
     } catch (IOException e) {
       close();
 

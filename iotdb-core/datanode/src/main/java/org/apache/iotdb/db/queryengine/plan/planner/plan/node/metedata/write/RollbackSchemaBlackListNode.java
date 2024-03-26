@@ -53,6 +53,11 @@ public class RollbackSchemaBlackListNode extends PlanNode {
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.ROLLBACK_SCHEMA_BLACK_LIST_NODE;
+  }
+
+  @Override
   public PlanNode clone() {
     return new RollbackSchemaBlackListNode(getPlanNodeId(), patternTree);
   }

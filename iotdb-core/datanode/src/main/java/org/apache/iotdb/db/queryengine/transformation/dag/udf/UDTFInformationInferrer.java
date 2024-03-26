@@ -84,12 +84,9 @@ public class UDTFInformationInferrer {
       Map<String, String> attributes)
       throws Exception {
     UDTF udtf = (UDTF) UDFManagementService.getInstance().reflect(functionName);
-
     UDFParameters parameters =
-        new UDFParameters(
-            childExpressions,
-            UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
-            attributes);
+        UDFParametersFactory.buildUdfParameters(
+            childExpressions, childExpressionDataTypes, attributes);
     udtf.validate(new UDFParameterValidator(parameters));
 
     // use ZoneId.systemDefault() because UDF's data type is ZoneId independent

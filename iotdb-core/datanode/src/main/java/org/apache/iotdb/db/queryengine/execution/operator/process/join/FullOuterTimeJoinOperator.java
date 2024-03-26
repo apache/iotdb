@@ -245,7 +245,8 @@ public class FullOuterTimeJoinOperator extends AbstractConsumeAllOperator {
     long childrenMaxPeekMemory = 0;
     for (Operator child : children) {
       childrenMaxPeekMemory =
-          Math.max(childrenMaxPeekMemory, maxPeekMemory + child.calculateMaxPeekMemory());
+          Math.max(
+              childrenMaxPeekMemory, maxPeekMemory + child.calculateMaxPeekMemoryWithCounter());
       maxPeekMemory +=
           (child.calculateMaxReturnSize() + child.calculateRetainedSizeAfterCallingNext());
     }

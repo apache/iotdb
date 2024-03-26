@@ -81,5 +81,11 @@ public class FakedSeriesReader implements IPointReader {
   }
 
   @Override
+  public long getUsedMemorySize() {
+    // not used
+    return 0;
+  }
+
+  @Override
   public void close() {}
 }

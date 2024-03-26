@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.pipe.event.common.row;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
@@ -39,8 +39,8 @@ public class PipeRowCollector implements RowCollector {
   private final List<TabletInsertionEvent> tabletInsertionEventList = new ArrayList<>();
   private Tablet tablet = null;
   private boolean isAligned = false;
-  private final PipeTaskMeta pipeTaskMeta; // used to report progress
-  private final EnrichedEvent sourceEvent; // used to report progress
+  private final PipeTaskMeta pipeTaskMeta; // Used to report progress
+  private final EnrichedEvent sourceEvent; // Used to report progress
 
   public PipeRowCollector(PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent) {
     this.pipeTaskMeta = pipeTaskMeta;
@@ -55,6 +55,11 @@ public class PipeRowCollector implements RowCollector {
 
     final PipeRow pipeRow = (PipeRow) row;
     final MeasurementSchema[] measurementSchemaArray = pipeRow.getMeasurementSchemaList();
+
+    // Trigger collection when a PipeResetTabletRow is encountered
+    if (row instanceof PipeResetTabletRow) {
+      collectTabletInsertionEvent();
+    }
 
     if (tablet == null) {
       final String deviceId = pipeRow.getDeviceId();

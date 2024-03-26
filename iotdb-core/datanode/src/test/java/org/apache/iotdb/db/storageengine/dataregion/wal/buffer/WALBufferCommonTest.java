@@ -54,7 +54,6 @@ import static org.junit.Assert.fail;
 public abstract class WALBufferCommonTest {
   protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected static final String identifier = String.valueOf(Integer.MAX_VALUE);
-  protected static final boolean preIsClusterMode = config.isClusterMode();
   protected static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   protected static final String devicePath = "root.test_sg.test_d";
   protected IWALBuffer walBuffer;
@@ -62,13 +61,11 @@ public abstract class WALBufferCommonTest {
   @Before
   public void setUp() throws Exception {
     walBuffer = new WALBuffer(identifier, logDirectory);
-    config.setClusterMode(true);
   }
 
   @After
   public void tearDown() throws Exception {
     walBuffer.close();
-    config.setClusterMode(preIsClusterMode);
   }
 
   @Test

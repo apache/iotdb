@@ -73,6 +73,11 @@ public class AlterLogicalViewNode extends PlanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.ALTER_LOGICAL_VIEW;
+  }
+
+  @Override
   public PlanNode clone() {
     // TODO: CRTODO, complete this method
     throw new NotImplementedException("Clone of AlterLogicalNode is not implemented");

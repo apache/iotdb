@@ -59,13 +59,13 @@ public class BetweenExpression extends TernaryExpression {
 
   @Override
   protected String operator() {
-    return "between";
+    return isNotBetween ? " not between " : " between ";
   }
 
   @Override
   protected String getExpressionStringInternal() {
     return firstExpression.getExpressionString()
-        + " BETWEEN "
+        + (isNotBetween ? " NOT BETWEEN " : " BETWEEN ")
         + secondExpression.getExpressionString()
         + " AND "
         + thirdExpression.getExpressionString();
@@ -91,7 +91,7 @@ public class BetweenExpression extends TernaryExpression {
   @Override
   public String getOutputSymbolInternal() {
     return firstExpression.getOutputSymbol()
-        + " BETWEEN "
+        + (isNotBetween ? " NOT BETWEEN " : " BETWEEN ")
         + secondExpression.getOutputSymbol()
         + " AND "
         + thirdExpression.getOutputSymbol();

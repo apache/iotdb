@@ -20,11 +20,14 @@
 package org.apache.iotdb.db.pipe.execution.executor;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
 
-public abstract class PipeProcessorSubtaskExecutor extends PipeSubtaskExecutor {
+public class PipeProcessorSubtaskExecutor extends PipeSubtaskExecutor {
 
-  public PipeProcessorSubtaskExecutor(int corePoolSize, ThreadName threadName) {
-    super(corePoolSize, threadName);
+  public PipeProcessorSubtaskExecutor() {
+    super(
+        PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
+        ThreadName.PIPE_PROCESSOR_EXECUTOR_POOL);
   }
 }

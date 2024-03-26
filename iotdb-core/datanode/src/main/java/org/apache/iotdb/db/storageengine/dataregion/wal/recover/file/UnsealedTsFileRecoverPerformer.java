@@ -24,7 +24,6 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.IDeviceID;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
@@ -36,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -103,11 +103,11 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   }
 
   private void constructResourceFromTsFile() {
-    Map<String, Map<String, List<Deletion>>> modificationsForResource =
+    Map<IDeviceID, Map<String, List<Deletion>>> modificationsForResource =
         loadModificationsForResource();
-    Map<String, List<ChunkMetadata>> deviceChunkMetaDataMap = writer.getDeviceChunkMetadataMap();
-    for (Map.Entry<String, List<ChunkMetadata>> entry : deviceChunkMetaDataMap.entrySet()) {
-      String deviceId = entry.getKey();
+    Map<IDeviceID, List<ChunkMetadata>> deviceChunkMetaDataMap = writer.getDeviceChunkMetadataMap();
+    for (Map.Entry<IDeviceID, List<ChunkMetadata>> entry : deviceChunkMetaDataMap.entrySet()) {
+      IDeviceID deviceId = entry.getKey();
       List<ChunkMetadata> chunkMetadataList = entry.getValue();
 
       // measurement -> ChunkMetadataList
@@ -155,14 +155,14 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   }
 
   // load modifications for recovering tsFileResource
-  private Map<String, Map<String, List<Deletion>>> loadModificationsForResource() {
-    Map<String, Map<String, List<Deletion>>> modificationsForResource = new HashMap<>();
+  private Map<IDeviceID, Map<String, List<Deletion>>> loadModificationsForResource() {
+    Map<IDeviceID, Map<String, List<Deletion>>> modificationsForResource = new HashMap<>();
     ModificationFile modificationFile = tsFileResource.getModFile();
     if (modificationFile.exists()) {
       List<Modification> modifications = (List<Modification>) modificationFile.getModifications();
       for (Modification modification : modifications) {
         if (modification.getType().equals(Modification.Type.DELETION)) {
-          String deviceId = modification.getPath().getDevice();
+          IDeviceID deviceId = modification.getPath().getIDeviceID();
           String measurementId = modification.getPath().getMeasurement();
           Map<String, List<Deletion>> measurementModsMap =
               modificationsForResource.computeIfAbsent(deviceId, n -> new HashMap<>());
@@ -220,7 +220,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
       // update time map
       Map<IDeviceID, IWritableMemChunkGroup> memTableMap = recoveryMemTable.getMemTableMap();
       for (Map.Entry<IDeviceID, IWritableMemChunkGroup> deviceEntry : memTableMap.entrySet()) {
-        String deviceId = deviceEntry.getKey().toStringID();
+        IDeviceID deviceId = deviceEntry.getKey();
         for (Map.Entry<String, IWritableMemChunk> measurementEntry :
             deviceEntry.getValue().getMemChunkMap().entrySet()) {
           IWritableMemChunk memChunk = measurementEntry.getValue();

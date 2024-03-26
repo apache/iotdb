@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -49,6 +48,8 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -76,7 +77,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
+  public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "AlterPipeProcedureV2: executeFromValidateTask({})", alterPipeRequest.getPipeName());
 
@@ -97,7 +98,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "AlterPipeProcedureV2: executeFromCalculateInfoForTask({})",
         alterPipeRequest.getPipeName());
@@ -107,7 +108,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     currentPipeStaticMeta = currentPipeMeta.getStaticMeta();
     currentPipeRuntimeMeta = currentPipeMeta.getRuntimeMeta();
 
-    final Map<TConsensusGroupId, PipeTaskMeta> currentConsensusGroupId2PipeTaskMeta =
+    final Map<Integer, PipeTaskMeta> currentConsensusGroupId2PipeTaskMeta =
         currentPipeRuntimeMeta.getConsensusGroupId2TaskMetaMap();
 
     // deep copy reused attributes
@@ -122,8 +123,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             new HashMap<>(alterPipeRequest.getProcessorAttributes()),
             new HashMap<>(alterPipeRequest.getConnectorAttributes()));
 
-    final Map<TConsensusGroupId, PipeTaskMeta> updatedConsensusGroupIdToTaskMetaMap =
-        new HashMap<>();
+    final ConcurrentMap<Integer, PipeTaskMeta> updatedConsensusGroupIdToTaskMetaMap =
+        new ConcurrentHashMap<>();
     env.getConfigManager()
         .getLoadManager()
         .getRegionLeaderMap()
@@ -135,13 +136,13 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                         .getPartitionManager()
                         .getRegionStorageGroup(regionGroupId);
                 final PipeTaskMeta currentPipeTaskMeta =
-                    currentConsensusGroupId2PipeTaskMeta.get(regionGroupId);
+                    currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
                 if (databaseName != null
                     && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
-                    && currentPipeTaskMeta.getLeaderDataNodeId() == regionLeaderNodeId) {
+                    && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
                   // Pipe only collect user's data, filter metric database here.
                   updatedConsensusGroupIdToTaskMetaMap.put(
-                      regionGroupId,
+                      regionGroupId.getId(),
                       new PipeTaskMeta(currentPipeTaskMeta.getProgressIndex(), regionLeaderNodeId));
                 }
               }
@@ -155,8 +156,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
-      throws PipeException {
+  public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "AlterPipeProcedureV2: executeFromWriteConfigNodeConsensus({})",
         alterPipeRequest.getPipeName());
@@ -178,7 +178,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     final String pipeName = alterPipeRequest.getPipeName();
     LOGGER.info("AlterPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
@@ -193,14 +193,14 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "AlterPipeProcedureV2: rollbackFromValidateTask({})", alterPipeRequest.getPipeName());
     // Do nothing
   }
 
   @Override
-  protected void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "AlterPipeProcedureV2: rollbackFromCalculateInfoForTask({})",
         alterPipeRequest.getPipeName());
@@ -208,7 +208,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
+  public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "AlterPipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})",
         alterPipeRequest.getPipeName());
@@ -229,7 +229,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info(
         "AlterPipeProcedureV2: rollbackFromOperateOnDataNodes({})", alterPipeRequest.getPipeName());
 

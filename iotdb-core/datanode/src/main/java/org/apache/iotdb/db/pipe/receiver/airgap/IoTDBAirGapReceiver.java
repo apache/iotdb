@@ -21,15 +21,11 @@ package org.apache.iotdb.db.pipe.receiver.airgap;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
+import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteResponse;
+import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapELanguageConstant;
-import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
-import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
-import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverAgent;
-import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
+import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBDataNodeReceiverAgent;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -57,9 +53,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   private final Socket socket;
   private final long receiverId;
 
-  private final IoTDBThriftReceiverAgent agent;
-  private final IPartitionFetcher partitionFetcher;
-  private final ISchemaFetcher schemaFetcher;
+  private final IoTDBDataNodeReceiverAgent agent;
 
   private boolean isELanguagePayload;
 
@@ -68,8 +62,6 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     this.receiverId = receiverId;
 
     agent = PipeAgent.receiver().thrift();
-    partitionFetcher = ClusterPartitionFetcher.getInstance();
-    schemaFetcher = ClusterSchemaFetcher.getInstance();
   }
 
   @Override
@@ -123,7 +115,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
                   .setVersion(ReadWriteIOUtils.readByte(byteBuffer))
                   .setType(ReadWriteIOUtils.readShort(byteBuffer))
                   .setBody(byteBuffer.slice());
-      final TPipeTransferResp resp = agent.receive(req, partitionFetcher, schemaFetcher);
+      final TPipeTransferResp resp = agent.receive(req);
 
       if (resp.getStatus().code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         ok();
@@ -218,7 +210,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   private void skipTillEnough(InputStream inputStream, long length) throws IOException {
     int currentSkippedBytes = 0;
     while (currentSkippedBytes < length) {
-      currentSkippedBytes += inputStream.skip(length - currentSkippedBytes);
+      currentSkippedBytes += (int) inputStream.skip(length - currentSkippedBytes);
     }
   }
 }

@@ -80,7 +80,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void addBatch() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    super.addBatch(createCompleteSql(sql, parameters));
   }
 
   @Override
@@ -105,7 +105,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public ResultSetMetaData getMetaData() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return getResultSet().getMetaData();
   }
 
   @Override

@@ -136,12 +136,20 @@ public class ValueFilterApi {
     return regexp(measurementIndex, RegexUtils.parseLikePatternToRegex(likePattern));
   }
 
+  public static ValueRegexp like(int measurementIndex, Pattern pattern) {
+    return regexp(measurementIndex, pattern);
+  }
+
   public static ValueNotRegexp notLike(String likePattern) {
     return notRegexp(DEFAULT_MEASUREMENT_INDEX, RegexUtils.parseLikePatternToRegex(likePattern));
   }
 
   public static ValueNotRegexp notLike(int measurementIndex, String likePattern) {
     return notRegexp(measurementIndex, RegexUtils.parseLikePatternToRegex(likePattern));
+  }
+
+  public static ValueNotRegexp notLike(int measurementIndex, Pattern pattern) {
+    return notRegexp(measurementIndex, pattern);
   }
 
   public static ValueRegexp regexp(String regex) {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.write.writer;
 
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -31,7 +32,7 @@ public class TsFileIOWriterEndFileTest {
   public static void main(String[] args) throws Exception {
     try (TsFileIOWriter writer = new TsFileIOWriter(new File("test.tsfile"))) {
       for (int deviceIndex = 0; deviceIndex < 1000; deviceIndex++) {
-        writer.startChunkGroup("root.sg.d" + deviceIndex);
+        writer.startChunkGroup(new PlainDeviceID("root.sg.d" + deviceIndex));
         for (int seriesIndex = 0; seriesIndex < 1000; seriesIndex++) {
           ChunkWriterImpl chunkWriter =
               new ChunkWriterImpl(

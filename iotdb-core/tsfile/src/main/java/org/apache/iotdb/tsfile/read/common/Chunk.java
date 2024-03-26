@@ -23,23 +23,22 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-
-import org.openjdk.jol.info.ClassLayout;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import static io.airlift.slice.SizeOf.sizeOfByteArray;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOfByteArray;
 
 /** used in query. */
 public class Chunk {
 
-  private static final int INSTANCE_SIZE =
-      ClassLayout.parseClass(Chunk.class).instanceSize()
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(Chunk.class)
           + ChunkHeader.INSTANCE_SIZE
-          + ClassLayout.parseClass(ByteBuffer.class).instanceSize();
+          + RamUsageEstimator.shallowSizeOfInstance(ByteBuffer.class);
 
   private final ChunkHeader chunkHeader;
   private ByteBuffer chunkData;

@@ -957,7 +957,7 @@ public class IoTDBAlignByDeviceWithTemplateIT {
         retArray);
   }
 
-  private static void insertData() {
+  protected static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 

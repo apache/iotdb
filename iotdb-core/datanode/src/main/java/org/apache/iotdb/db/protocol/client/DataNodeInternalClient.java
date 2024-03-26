@@ -84,7 +84,7 @@ public class DataNodeInternalClient {
       // call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result =
-          COORDINATOR.execute(
+          COORDINATOR.executeForTreeModel(
               statement,
               queryId,
               SESSION_MANAGER.getSessionInfo(session),

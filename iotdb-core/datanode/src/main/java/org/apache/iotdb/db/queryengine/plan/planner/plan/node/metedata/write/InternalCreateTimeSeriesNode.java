@@ -86,6 +86,11 @@ public class InternalCreateTimeSeriesNode extends WritePlanNode {
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.INTERNAL_CREATE_TIMESERIES;
+  }
+
+  @Override
   public PlanNode clone() {
     throw new NotImplementedException("Clone of InternalCreateTimeSeriesNode is not implemented");
   }

@@ -21,8 +21,7 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import org.openjdk.jol.info.ClassLayout;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,8 +30,8 @@ import java.nio.ByteBuffer;
 
 public class TimeStatistics extends Statistics<Long> {
 
-  public static final int INSTANCE_SIZE =
-      ClassLayout.parseClass(TimeStatistics.class).instanceSize();
+  public static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TimeStatistics.class);
 
   private static final String TIME = "Time";
   private static final String UPDATE_STATS = "update stats";

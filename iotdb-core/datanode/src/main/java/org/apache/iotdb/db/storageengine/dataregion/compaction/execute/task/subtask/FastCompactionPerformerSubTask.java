@@ -27,6 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.PageException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -60,7 +61,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
 
   private final boolean isAligned;
 
-  private String deviceId;
+  private IDeviceID deviceId;
 
   private List<String> measurements;
 
@@ -75,7 +76,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       Map<TsFileResource, List<Modification>> modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
       List<String> measurements,
-      String deviceId,
+      IDeviceID deviceId,
       FastCompactionTaskSummary summary,
       int subTaskId) {
     this.compactionWriter = compactionWriter;
@@ -98,7 +99,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       Map<TsFileResource, List<Modification>> modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
       List<IMeasurementSchema> measurementSchemas,
-      String deviceId,
+      IDeviceID deviceId,
       FastCompactionTaskSummary summary) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = 0;

@@ -61,6 +61,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
     this.comparator = comparator;
     this.noMoreTsBlocks = new boolean[inputOperatorsCount];
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
+    operatorContext.recordSpecifiedInfo("Merge sort branches", String.valueOf(inputOperatorsCount));
   }
 
   @Override
@@ -191,7 +192,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
       maxPeekMemory += operator.calculateRetainedSizeAfterCallingNext();
     }
     for (Operator operator : children) {
-      maxPeekMemory = Math.max(maxPeekMemory, operator.calculateMaxPeekMemory());
+      maxPeekMemory = Math.max(maxPeekMemory, operator.calculateMaxPeekMemoryWithCounter());
     }
     return Math.max(maxPeekMemory, calculateMaxReturnSize());
   }

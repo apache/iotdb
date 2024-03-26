@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -47,7 +48,7 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
-  private final String device;
+  private final IDeviceID device;
   private final List<String> measurementList;
   private final FragmentInstanceContext fragmentInstanceContext;
   private final QueryDataSource queryDataSource;
@@ -56,7 +57,7 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
   private final int taskId;
 
   public ReadPointPerformerSubTask(
-      String device,
+      IDeviceID device,
       List<String> measurementList,
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource,

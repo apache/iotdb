@@ -93,31 +93,34 @@ public abstract class ProgressIndex {
    * Define the isEqualOrAfter relation, A.isEqualOrAfter(B) if and only if each tuple member in A
    * is greater than or equal to B in the corresponding total order relation.
    *
-   * <p>C = A.updateToMinimumIsAfterProgressIndex(B) should be satisfied:
+   * <p>C = A.updateToMinimumEqualOrIsAfterProgressIndex(B) should satisfy:
    *
-   * <p>C.isEqualOrAfter(A) is true,
+   * <p>C.isEqualOrAfter(A) is {@code true},
    *
-   * <p>C.isEqualOrAfter(B) is true
+   * <p>C.isEqualOrAfter(B) is {@code true},
    *
-   * <p>there is no D such that C.isEqualOrAfter(D) is true.
+   * <p>there is no D such that C.isAfter(D) is {@code true} and D.isEqualOrAfter(A) is {@code true}
+   * and D.isEqualOrAfter(B) is {@code true}.
    *
    * <p>The implementation of this function should be reflexive, that is
    * A.updateToMinimumIsAfterProgressIndex(B).equals(B.updateToMinimumIsAfterProgressIndex(A)) is
-   * true
+   * {@code true}
    *
    * <p>Note: this function may modify the caller.
    *
-   * @param progressIndex the progress index to be compared
-   * @return the minimum progress index after the given progress index and this progress index
+   * @param progressIndex the {@link ProgressIndex} to be compared
+   * @return the minimum {@link ProgressIndex} after the given {@link ProgressIndex} and this {@link
+   *     ProgressIndex}
    */
-  public abstract ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex);
+  public abstract ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(
+      ProgressIndex progressIndex);
 
-  /** @return the type of this progress index */
+  /** @return the type of this {@link ProgressIndex} */
   public abstract ProgressIndexType getType();
 
   /**
-   * Get the sum of the tuples of each total order relation of the progress index, which is used for
-   * topological sorting of the progress index.
+   * Get the sum of the tuples of each total order relation of the {@link ProgressIndex}, which is
+   * used for topological sorting of the {@link ProgressIndex}.
    *
    * @return The sum of the tuples corresponding to all the total order relations contained in the
    *     progress index.
@@ -129,7 +132,7 @@ public abstract class ProgressIndex {
   }
 
   /**
-   * Blend two progress index together, the result progress index should satisfy:
+   * Blend two {@link ProgressIndex}es together, the result progress index should satisfy:
    *
    * <p>(result.equals(progressIndex1) || result.isAfter(progressIndex1)) is true
    *
@@ -137,19 +140,22 @@ public abstract class ProgressIndex {
    *
    * <p>There is no R, such that R satisfies the above conditions and result.isAfter(R) is true
    *
-   * @param progressIndex1 the first progress index. if it is null, the result progress index should
-   *     be the second progress index. if it is a minimum progress index, the result progress index
-   *     should be the second progress index. (if the second progress index is null, the result
-   *     should be a minimum progress index). if it is a hybrid progress index, the result progress
-   *     index should be the minimum progress index after the second progress index and the first
-   *     progress index
-   * @param progressIndex2 the second progress index. if it is null, the result progress index
-   *     should be the first progress index. if it is a minimum progress index, the result progress
-   *     index should be the first progress index. (if the first progress index is null, the result
-   *     should be a minimum progress index). if it is a hybrid progress index, the result progress
-   *     index should be the minimum progress index after the first progress index and the second
-   *     progress index
-   * @return the minimum progress index after the first progress index and the second progress index
+   * @param progressIndex1 the first {@link ProgressIndex}. if it is {@code null}, the result {@link
+   *     ProgressIndex} should be the second {@link ProgressIndex}. if it is a {@link
+   *     MinimumProgressIndex}, the result {@link ProgressIndex} should be the second {@link
+   *     ProgressIndex}. (if the second {@link ProgressIndex} is {@code null}, the result should be
+   *     a {@link MinimumProgressIndex}). if it is a {@link HybridProgressIndex}, the result
+   *     progress index should be the minimum {@link ProgressIndex} after the second {@link
+   *     ProgressIndex} and the first {@link ProgressIndex}
+   * @param progressIndex2 the second {@link ProgressIndex}. if it is {@code null}, the result
+   *     {@link ProgressIndex} should be the first {@link ProgressIndex}. if it is a {@link
+   *     MinimumProgressIndex}, the result {@link ProgressIndex} should be the first {@link
+   *     ProgressIndex}. (if the first {@link ProgressIndex} is null, the result should be a minimum
+   *     progress index). if it is a {@link HybridProgressIndex}, the result {@link ProgressIndex}
+   *     should be the minimum {@link ProgressIndex} equal or after the first {@link ProgressIndex}
+   *     and the second {@link ProgressIndex}
+   * @return the minimum {@link ProgressIndex} after the first {@link ProgressIndex} and the second
+   *     {@link ProgressIndex}
    */
   protected static ProgressIndex blendProgressIndex(
       ProgressIndex progressIndex1, ProgressIndex progressIndex2) {
@@ -164,7 +170,7 @@ public abstract class ProgressIndex {
     }
 
     return new HybridProgressIndex(progressIndex1)
-        .updateToMinimumIsAfterProgressIndex(progressIndex2);
+        .updateToMinimumEqualOrIsAfterProgressIndex(progressIndex2);
   }
 
   /**

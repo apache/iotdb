@@ -25,7 +25,9 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
@@ -39,6 +41,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.slf4j.Logger;
@@ -76,6 +79,9 @@ public abstract class AbstractCompactionTask {
 
   protected boolean recoverMemoryStatus;
   protected CompactionTaskPriorityType compactionTaskPriorityType;
+
+  private boolean memoryAcquired = false;
+  private boolean fileHandleAcquired = false;
 
   protected AbstractCompactionTask(
       String storageGroupName,
@@ -144,9 +150,22 @@ public abstract class AbstractCompactionTask {
           storageGroupName,
           dataRegionId,
           e.getMessage());
+      List<TsFileResource> unsortedTsFileResources = new ArrayList<>();
+      if (e instanceof CompactionLastTimeCheckFailedException) {
+        unsortedTsFileResources.addAll(getAllSourceTsFiles());
+      } else {
+        CompactionValidationFailedException validationException =
+            (CompactionValidationFailedException) e;
+        TsFileResource overlappedTsFileResource = validationException.getOverlappedTsFileResource();
+        if (overlappedTsFileResource != null) {
+          unsortedTsFileResources.add(overlappedTsFileResource);
+        }
+      }
       // these exceptions generally caused by unsorted data, mark all source files as NEED_TO_REPAIR
-      for (TsFileResource resource : getAllSourceTsFiles()) {
-        resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
+      for (TsFileResource resource : unsortedTsFileResources) {
+        if (resource.getTsFileRepairStatus() != TsFileRepairStatus.CAN_NOT_REPAIR) {
+          resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
+        }
       }
     } else if (e instanceof InterruptedException) {
       logger.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
@@ -161,12 +180,51 @@ public abstract class AbstractCompactionTask {
     }
   }
 
+  public boolean tryOccupyResourcesForRunning() {
+    if (!isDiskSpaceCheckPassed()) {
+      return false;
+    }
+    boolean blockUntilCanExecute = false;
+    long estimatedMemoryCost = getEstimatedMemoryCost();
+    try {
+      SystemInfo.getInstance()
+          .addCompactionMemoryCost(
+              getCompactionTaskType(), estimatedMemoryCost, blockUntilCanExecute);
+      memoryAcquired = true;
+      SystemInfo.getInstance().addCompactionFileNum(getProcessedFileNum(), blockUntilCanExecute);
+      fileHandleAcquired = true;
+    } catch (CompactionMemoryNotEnoughException | CompactionFileCountExceededException ignored) {
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    } finally {
+      if (!memoryAcquired || !fileHandleAcquired) {
+        releaseOccupiedResources();
+      }
+    }
+    return memoryAcquired && fileHandleAcquired;
+  }
+
+  public void releaseOccupiedResources() {
+    if (memoryAcquired) {
+      SystemInfo.getInstance()
+          .resetCompactionMemoryCost(getCompactionTaskType(), getEstimatedMemoryCost());
+      memoryAcquired = false;
+    }
+    if (fileHandleAcquired) {
+      SystemInfo.getInstance().decreaseCompactionFileNumCost(getProcessedFileNum());
+      fileHandleAcquired = false;
+    }
+  }
+
   public boolean start() {
     boolean isSuccess = false;
     summary.start();
     try {
       isSuccess = doCompaction();
     } finally {
+      resetCompactionCandidateStatusForAllSourceFiles();
+      handleTaskCleanup();
+      releaseOccupiedResources();
       summary.finish(isSuccess);
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
       CompactionMetrics.getInstance()

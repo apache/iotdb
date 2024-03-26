@@ -73,7 +73,6 @@ public class WALEntryHandlerTest {
   private static final String devicePath = databasePath + ".test_d";
   private static final String dataRegionId = "1";
   private WALMode prevMode;
-  private boolean prevIsClusterMode;
   private WALNode walNode1;
   private WALNode walNode2;
 
@@ -82,9 +81,7 @@ public class WALEntryHandlerTest {
     EnvironmentUtils.cleanDir(logDirectory1);
     EnvironmentUtils.cleanDir(logDirectory2);
     prevMode = config.getWalMode();
-    prevIsClusterMode = config.isClusterMode();
     config.setWalMode(WALMode.SYNC);
-    config.setClusterMode(true);
     walNode1 = new WALNode(identifier1, logDirectory1);
     walNode2 = new WALNode(identifier2, logDirectory2);
   }
@@ -94,7 +91,6 @@ public class WALEntryHandlerTest {
     walNode1.close();
     walNode2.close();
     config.setWalMode(prevMode);
-    config.setClusterMode(prevIsClusterMode);
     EnvironmentUtils.cleanDir(logDirectory1);
     EnvironmentUtils.cleanDir(logDirectory2);
     WALInsertNodeCache.getInstance(1).clear();

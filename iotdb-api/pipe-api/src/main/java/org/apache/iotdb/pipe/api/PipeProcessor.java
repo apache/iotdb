@@ -28,28 +28,31 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 /**
- * PipeProcessor
+ * {@link PipeProcessor}
  *
- * <p>PipeProcessor is used to filter and transform the Event formed by the PipeExtractor.
+ * <p>{@link PipeProcessor} is used to filter and transform the {@link Event} formed by the {@link
+ * PipeExtractor}.
  *
- * <p>The lifecycle of a PipeProcessor is as follows:
+ * <p>The lifecycle of a {@link PipeProcessor} is as follows:
  *
  * <ul>
  *   <li>When a collaboration task is created, the KV pairs of `WITH PROCESSOR` clause in SQL are
  *       parsed and the validation method {@link PipeProcessor#validate(PipeParameterValidator)}
- *       will be called to validate the parameters.
+ *       will be called to validate the {@link PipeParameters}.
  *   <li>Before the collaboration task starts, the method {@link
  *       PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)} will be called
- *       to config the runtime behavior of the PipeProcessor.
+ *       to config the runtime behavior of the {@link PipeProcessor}.
  *   <li>While the collaboration task is in progress:
  *       <ul>
- *         <li>PipeExtractor captures the events and wraps them into three types of Event instances.
- *         <li>PipeProcessor processes the event and then passes them to the PipeConnector. The
- *             following 3 methods will be called: {@link
+ *         <li>{@link PipeExtractor} captures the {@link Event}s and wraps them into three types of
+ *             {@link Event} instances.
+ *         <li>{@link PipeProcessor} processes the {@link Event} and then passes them to the {@link
+ *             PipeConnector}. The following 3 methods will be called: {@link
  *             PipeProcessor#process(TabletInsertionEvent, EventCollector)}, {@link
  *             PipeProcessor#process(TsFileInsertionEvent, EventCollector)} and {@link
  *             PipeProcessor#process(Event, EventCollector)}.
- *         <li>PipeConnector serializes the events into binaries and send them to sinks.
+ *         <li>{@link PipeConnector} serializes the {@link Event}s into binaries and send them to
+ *             sinks.
  *       </ul>
  *   <li>When the collaboration task is cancelled (the `DROP PIPE` command is executed), the {@link
  *       PipeProcessor#close() } method will be called.
@@ -67,29 +70,29 @@ public interface PipeProcessor extends PipePlugin {
   void validate(PipeParameterValidator validator) throws Exception;
 
   /**
-   * This method is mainly used to customize PipeProcessor. In this method, the user can do the
-   * following things:
+   * This method is mainly used to customize {@link PipeProcessor}. In this method, the user can do
+   * the following things:
    *
    * <ul>
-   *   <li>Use PipeParameters to parse key-value pair attributes entered by the user.
-   *   <li>Set the running configurations in PipeProcessorRuntimeConfiguration.
+   *   <li>Use {@link PipeParameters} to parse key-value pair attributes entered by the user.
+   *   <li>Set the running configurations in {@link PipeProcessorRuntimeConfiguration}.
    * </ul>
    *
    * <p>This method is called after the method {@link
    * PipeProcessor#validate(PipeParameterValidator)} is called and before the beginning of the
    * events processing.
    *
-   * @param parameters used to parse the input parameters entered by the user
-   * @param configuration used to set the required properties of the running PipeProcessor
+   * @param parameters used to parse the input {@link PipeParameters} entered by the user
+   * @param configuration used to set the required properties of the running {@link PipeProcessor}
    * @throws Exception the user can throw errors if necessary
    */
   void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
       throws Exception;
 
   /**
-   * This method is called to process the TabletInsertionEvent.
+   * This method is called to process the {@link TabletInsertionEvent}.
    *
-   * @param tabletInsertionEvent TabletInsertionEvent to be processed
+   * @param tabletInsertionEvent {@link TabletInsertionEvent} to be processed
    * @param eventCollector used to collect result events after processing
    * @throws Exception the user can throw errors if necessary
    */
@@ -97,9 +100,9 @@ public interface PipeProcessor extends PipePlugin {
       throws Exception;
 
   /**
-   * This method is called to process the TsFileInsertionEvent.
+   * This method is called to process the {@link TsFileInsertionEvent}.
    *
-   * @param tsFileInsertionEvent TsFileInsertionEvent to be processed
+   * @param tsFileInsertionEvent {@link TsFileInsertionEvent} to be processed
    * @param eventCollector used to collect result events after processing
    * @throws Exception the user can throw errors if necessary
    */
@@ -116,9 +119,9 @@ public interface PipeProcessor extends PipePlugin {
   }
 
   /**
-   * This method is called to process the Event.
+   * This method is called to process the generic {@link Event}.
    *
-   * @param event Event to be processed
+   * @param event {@link Event} to be processed
    * @param eventCollector used to collect result events after processing
    * @throws Exception the user can throw errors if necessary
    */

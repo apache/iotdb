@@ -106,7 +106,7 @@ public class ReadWriteIOUtils {
     return null;
   }
 
-  /** read a Boolean from byteBuffer. */
+  /** Read a Boolean from byteBuffer. */
   public static Boolean readBoolObject(InputStream inputStream) throws IOException {
     int flag = inputStream.read();
     if (flag == 1) {
@@ -117,13 +117,13 @@ public class ReadWriteIOUtils {
     return null;
   }
 
-  /** read a byte from byteBuffer. */
+  /** Read a byte from byteBuffer. */
   public static byte readByte(ByteBuffer buffer) {
     return buffer.get();
   }
 
   /**
-   * read bytes array in given size
+   * Read bytes array in given size
    *
    * @param buffer buffer
    * @param size size
@@ -316,7 +316,7 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * write a float n to outputStream.
+   * Write a float n to outputStream.
    *
    * @return The number of bytes used to represent n.
    */
@@ -327,7 +327,7 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * write a double n to outputStream.
+   * Write a double n to outputStream.
    *
    * @return The number of bytes used to represent n.
    */
@@ -367,7 +367,7 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * write string to outputStream.
+   * Write string to outputStream.
    *
    * @return the length of string represented by byte[].
    */
@@ -386,7 +386,7 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * write string to outputStream.
+   * Write string to outputStream.
    *
    * @return the length of string represented by byte[].
    */
@@ -520,12 +520,12 @@ public class ReadWriteIOUtils {
     return BytesUtils.bytesToShort(bytes);
   }
 
-  /** read a short var from byteBuffer. */
+  /** Read a short var from byteBuffer. */
   public static short readShort(ByteBuffer buffer) {
     return buffer.getShort();
   }
 
-  /** read a float var from inputStream. */
+  /** Read a float var from inputStream. */
   public static float readFloat(InputStream inputStream) throws IOException {
     byte[] bytes = new byte[FLOAT_LEN];
     int readLen = inputStream.read(bytes);
@@ -535,14 +535,14 @@ public class ReadWriteIOUtils {
     return BytesUtils.bytesToFloat(bytes);
   }
 
-  /** read a float var from byteBuffer. */
+  /** Read a float var from byteBuffer. */
   public static float readFloat(ByteBuffer byteBuffer) {
     byte[] bytes = new byte[FLOAT_LEN];
     byteBuffer.get(bytes);
     return BytesUtils.bytesToFloat(bytes);
   }
 
-  /** read a double var from inputStream. */
+  /** Read a double var from inputStream. */
   public static double readDouble(InputStream inputStream) throws IOException {
     byte[] bytes = new byte[DOUBLE_LEN];
     int readLen = inputStream.read(bytes);
@@ -552,14 +552,14 @@ public class ReadWriteIOUtils {
     return BytesUtils.bytesToDouble(bytes);
   }
 
-  /** read a double var from byteBuffer. */
+  /** Read a double var from byteBuffer. */
   public static double readDouble(ByteBuffer byteBuffer) {
     byte[] bytes = new byte[DOUBLE_LEN];
     byteBuffer.get(bytes);
     return BytesUtils.bytesToDouble(bytes);
   }
 
-  /** read a int var from inputStream. */
+  /** Read an int var from inputStream. */
   public static int readInt(InputStream inputStream) throws IOException {
     byte[] bytes = new byte[INT_LEN];
     int readLen = inputStream.read(bytes);
@@ -569,13 +569,13 @@ public class ReadWriteIOUtils {
     return BytesUtils.bytesToInt(bytes);
   }
 
-  /** read a int var from byteBuffer. */
+  /** Read a int var from byteBuffer. */
   public static int readInt(ByteBuffer buffer) {
     return buffer.getInt();
   }
 
   /**
-   * read an unsigned byte(0 ~ 255) as InputStream does.
+   * Read an unsigned byte(0 ~ 255) as InputStream does.
    *
    * @return the byte or -1(means there is no byte to read)
    */
@@ -586,7 +586,7 @@ public class ReadWriteIOUtils {
     return buffer.get() & 0xFF;
   }
 
-  /** read a long var from inputStream. */
+  /** Read a long var from inputStream. */
   public static long readLong(InputStream inputStream) throws IOException {
     byte[] bytes = new byte[LONG_LEN];
     int readLen = inputStream.read(bytes);
@@ -596,12 +596,12 @@ public class ReadWriteIOUtils {
     return BytesUtils.bytesToLong(bytes);
   }
 
-  /** read a long var from byteBuffer. */
+  /** Read a long var from byteBuffer. */
   public static long readLong(ByteBuffer buffer) {
     return buffer.getLong();
   }
 
-  /** read string from inputStream. */
+  /** Read string from inputStream. */
   public static String readString(InputStream inputStream) throws IOException {
     int strLength = readInt(inputStream);
     if (strLength <= 0) {
@@ -615,7 +615,7 @@ public class ReadWriteIOUtils {
     return new String(bytes, 0, strLength);
   }
 
-  /** string length's type is varInt */
+  /** String length's type is varInt */
   public static String readVarIntString(InputStream inputStream) throws IOException {
     int strLength = ReadWriteForEncodingUtils.readVarInt(inputStream);
     if (strLength < 0) {
@@ -631,7 +631,7 @@ public class ReadWriteIOUtils {
     return new String(bytes, 0, strLength);
   }
 
-  /** read string from byteBuffer. */
+  /** Read string from byteBuffer. */
   public static String readString(ByteBuffer buffer) {
     int strLength = readInt(buffer);
     if (strLength < 0) {
@@ -644,7 +644,7 @@ public class ReadWriteIOUtils {
     return new String(bytes, 0, strLength);
   }
 
-  /** string length's type is varInt */
+  /** String length's type is varInt */
   public static String readVarIntString(ByteBuffer buffer) {
     int strLength = ReadWriteForEncodingUtils.readVarInt(buffer);
     if (strLength < 0) {
@@ -657,7 +657,7 @@ public class ReadWriteIOUtils {
     return new String(bytes, 0, strLength);
   }
 
-  /** read string from byteBuffer with user define length. */
+  /** Read string from byteBuffer with user define length. */
   public static String readStringWithLength(ByteBuffer buffer, int length) {
     if (length < 0) {
       return null;
@@ -929,7 +929,7 @@ public class ReadWriteIOUtils {
     }
   }
 
-  // read long set with self define length
+  // Read long set with self define length
   public static Set<Long> readLongSet(ByteBuffer buffer) {
     int size = readInt(buffer);
     if (size <= 0) {
@@ -1009,7 +1009,7 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * to check whether the byte buffer is reach the magic string this method doesn't change the
+   * To check whether the byte buffer is reach the magic string this method doesn't change the
    * position of the byte buffer
    *
    * @param byteBuffer byte buffer

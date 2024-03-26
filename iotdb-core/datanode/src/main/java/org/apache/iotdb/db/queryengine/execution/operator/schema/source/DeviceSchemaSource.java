@@ -135,7 +135,9 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
 
   @Override
   public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
-    return pathPattern.equals(ALL_MATCH_PATTERN)
+    return (pathPattern.equals(ALL_MATCH_PATTERN)
+            || pathPattern.include(
+                new PartialPath((schemaRegion.getDatabaseFullPath() + ".**").split("\\."))))
         && (schemaFilter == null)
         && scope.equals(SchemaConstant.ALL_MATCH_SCOPE);
   }

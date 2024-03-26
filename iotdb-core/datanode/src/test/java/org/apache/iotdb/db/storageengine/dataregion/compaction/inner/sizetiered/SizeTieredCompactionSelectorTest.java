@@ -20,20 +20,15 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.inner.sizetiered;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.FakedTsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.mockito.Mockito;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,8 +43,8 @@ public class SizeTieredCompactionSelectorTest {
     for (int i = 0; i < 100; ++i) {
       FakedTsFileResource resource =
           new FakedTsFileResource(1024, String.format("%d-%d-0-0.tsfile", i + 1, i + 1));
-      resource.timeIndex.updateStartTime("root.test.d", i * 100);
-      resource.timeIndex.updateEndTime("root.test.d", (i + 1) * 100);
+      resource.timeIndex.updateStartTime(new PlainDeviceID("root.test.d"), i * 100);
+      resource.timeIndex.updateEndTime(new PlainDeviceID("root.test.d"), (i + 1) * 100);
       resource.timePartition = i / 10;
       resources.add(resource);
     }
@@ -70,37 +65,5 @@ public class SizeTieredCompactionSelectorTest {
         new SizeTieredCompactionSelector("root.test", "0", 9, true, manager)
             .selectInnerSpaceTask(manager.getOrCreateSequenceListByTimePartition(9))
             .size());
-  }
-
-  @Test
-  public void testSubmitWhenSequenceFileIsEmpty() throws Exception {
-    DataRegion region = new DataRegion("root.test", "1");
-    TsFileManager manager = region.getTsFileManager();
-    int originCandidate = IoTDBDescriptor.getInstance().getConfig().getFileLimitPerInnerTask();
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(30);
-    boolean enableUnseqCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
-    CompactionTaskManager.getInstance().start();
-    try {
-      for (int i = 1; i < 91; ++i) {
-        TsFileResource resource = Mockito.mock(TsFileResource.class);
-        Mockito.when(resource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE))
-            .thenReturn(true);
-        Mockito.when(resource.getTimePartition()).thenReturn(0L);
-        Mockito.when(resource.getTsFileSize()).thenReturn(100L);
-        Mockito.when(resource.getTsFile())
-            .thenReturn(new File(String.format("%d-%d-0-0.tsfile", i, i)));
-        Mockito.when(resource.getStatus()).thenReturn(TsFileResourceStatus.NORMAL);
-        manager.add(resource, false);
-      }
-      Assert.assertEquals(3, region.compact());
-    } finally {
-      IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(originCandidate);
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setEnableUnseqSpaceCompaction(enableUnseqCompaction);
-      CompactionTaskManager.getInstance().shutdown(60_000L);
-    }
   }
 }

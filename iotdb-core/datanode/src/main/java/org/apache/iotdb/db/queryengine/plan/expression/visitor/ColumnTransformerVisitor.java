@@ -70,6 +70,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.type.LongType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
@@ -235,9 +236,22 @@ public class ColumnTransformerVisitor
               functionExpression, getBuiltInScalarFunctionTransformer(functionExpression, context));
         } else {
           ColumnTransformer[] inputColumnTransformers =
-              expressions.stream()
-                  .map(expression -> this.process(expression, context))
-                  .toArray(ColumnTransformer[]::new);
+              new ColumnTransformer[expressions.size() + 1];
+          for (int i = 0; i < expressions.size(); i++) {
+            inputColumnTransformers[i] = this.process(expressions.get(i), context);
+          }
+          // Append time column at the end of input columns for mappable UDTF
+          ColumnTransformer columnTransformer =
+              context.cache.computeIfAbsent(
+                  new TimestampOperand(),
+                  e -> {
+                    TimeColumnTransformer timeColumnTransformer =
+                        new TimeColumnTransformer(LongType.getInstance());
+                    context.leafList.add(timeColumnTransformer);
+                    return timeColumnTransformer;
+                  });
+          columnTransformer.addReferenceCount();
+          inputColumnTransformers[expressions.size()] = columnTransformer;
 
           UDTFExecutor executor =
               context.udtfContext.getExecutorByFunctionExpression(functionExpression);

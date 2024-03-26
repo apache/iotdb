@@ -18,11 +18,15 @@
  */
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.IMPPDataExchangeManager;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.MultilevelPriorityQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
@@ -43,11 +47,16 @@ import java.util.Map;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 
 public class DefaultDriverSchedulerTest {
 
   private final DriverScheduler manager = DriverScheduler.getInstance();
+  private ExecutorService instanceNotificationExecutor =
+      IoTDBThreadPoolFactory.newFixedThreadPool(1, "test");;
 
   @After
   public void tearDown() throws IOException {
@@ -97,6 +106,13 @@ public class DefaultDriverSchedulerTest {
     }
     DriverTask testTask =
         new DriverTask(mockDriver, 100L, DriverTaskStatus.BLOCKED, driverTaskHandle, 0, false);
+
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+    Mockito.when(testTask.getDriver().getDriverContext()).thenReturn(driverContext);
     manager.getBlockedTasks().add(testTask);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
@@ -163,6 +179,13 @@ public class DefaultDriverSchedulerTest {
     fragmentRelatedTask.put(instanceId, taskSet);
     manager.getQueryMap().put(queryId, fragmentRelatedTask);
     manager.getTimeoutQueue().push(testTask);
+
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+    Mockito.when(testTask.getDriver().getDriverContext()).thenReturn(driverContext);
     defaultScheduler.readyToRunning(testTask);
     Assert.assertEquals(DriverTaskStatus.RUNNING, testTask.getStatus());
     Assert.assertFalse(manager.getBlockedTasks().contains(testTask));

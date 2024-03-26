@@ -112,6 +112,11 @@ public class ActivateTemplateNode extends WritePlanNode implements IActivateTemp
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.ACTIVATE_TEMPLATE;
+  }
+
+  @Override
   public PlanNode clone() {
     return new ActivateTemplateNode(getPlanNodeId(), activatePath, templateSetLevel, templateId);
   }

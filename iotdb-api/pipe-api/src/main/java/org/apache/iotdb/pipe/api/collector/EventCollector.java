@@ -27,9 +27,9 @@ import java.io.IOException;
 public interface EventCollector {
 
   /**
-   * Collects a Event in pipe engine.
+   * Collects a {@link Event} in pipe engine.
    *
-   * @param event Event to be collected
+   * @param event {@link Event} to be collected
    * @throws IOException if any I/O errors occur
    * @see Event
    * @see org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPCServiceMBean {
@@ -69,7 +70,8 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
               configConf.getCnRpcMaxConcurrentClientNum(),
               configConf.getThriftServerAwaitTimeForStopService(),
               new ConfigNodeRPCServiceHandler(),
-              commonConfig.isRpcThriftCompressionEnabled());
+              commonConfig.isRpcThriftCompressionEnabled(),
+              DeepCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

@@ -144,11 +144,9 @@ public class AnalyzeTest {
                   new ConstantOperand(TSDataType.INT64, "5"))));
       expectedAnalysis.setWhereExpression(
           new LogicAndExpression(
-              new LogicAndExpression(
-                  new ConstantOperand(TSDataType.BOOLEAN, "true"),
-                  new GreaterEqualExpression(
-                      new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
-                      new ConstantOperand(TSDataType.INT64, "10"))),
+              new GreaterEqualExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+                  new ConstantOperand(TSDataType.INT64, "10")),
               new NonEqualExpression(
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
                   new ConstantOperand(TSDataType.INT64, "6"))));
@@ -1061,7 +1059,7 @@ public class AnalyzeTest {
           new MPPQueryContext(
               "",
               new QueryId("test_query"),
-              new SessionInfo(0, "test", ZoneId.systemDefault().getId()),
+              new SessionInfo(0, "test", ZoneId.systemDefault()),
               new TEndPoint(),
               new TEndPoint());
       Analyzer analyzer =

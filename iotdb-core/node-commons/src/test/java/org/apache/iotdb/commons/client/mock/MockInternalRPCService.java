@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 
 import org.apache.thrift.server.TServerEventHandler;
 
@@ -69,7 +70,8 @@ public class MockInternalRPCService extends ThriftService implements MockInterna
               65535,
               60,
               mock(TServerEventHandler.class),
-              false);
+              false,
+              DeepCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -41,7 +42,7 @@ public class TsFileResourceCandidate {
   @SuppressWarnings("squid:S1104")
   public boolean isValidCandidate;
 
-  private Map<String, DeviceInfo> deviceInfoMap;
+  private Map<IDeviceID, DeviceInfo> deviceInfoMap;
 
   private boolean hasDetailedDeviceInfo;
 
@@ -78,7 +79,7 @@ public class TsFileResourceCandidate {
           return;
         }
         DeviceTimeIndex timeIndex = resource.buildDeviceTimeIndex();
-        for (String deviceId : timeIndex.getDevices()) {
+        for (IDeviceID deviceId : timeIndex.getDevices()) {
           deviceInfoMap.put(
               deviceId,
               new DeviceInfo(
@@ -88,7 +89,7 @@ public class TsFileResourceCandidate {
         resource.readUnlock();
       }
     } else {
-      for (String deviceId : resource.getDevices()) {
+      for (IDeviceID deviceId : resource.getDevices()) {
         deviceInfoMap.put(
             deviceId,
             new DeviceInfo(
@@ -107,12 +108,12 @@ public class TsFileResourceCandidate {
     return new ArrayList<>(deviceInfoMap.values());
   }
 
-  public DeviceInfo getDeviceInfoById(String deviceId) throws IOException {
+  public DeviceInfo getDeviceInfoById(IDeviceID deviceId) throws IOException {
     prepareDeviceInfos();
     return deviceInfoMap.get(deviceId);
   }
 
-  public boolean containsDevice(String deviceId) throws IOException {
+  public boolean containsDevice(IDeviceID deviceId) throws IOException {
     prepareDeviceInfos();
     return deviceInfoMap.containsKey(deviceId);
   }

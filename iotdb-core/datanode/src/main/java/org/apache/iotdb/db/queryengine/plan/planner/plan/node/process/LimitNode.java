@@ -50,6 +50,11 @@ public class LimitNode extends SingleChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.LIMIT;
+  }
+
+  @Override
   public PlanNode clone() {
     return new LimitNode(getPlanNodeId(), this.limit);
   }

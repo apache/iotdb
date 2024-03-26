@@ -113,6 +113,11 @@ public class TimeDurationAccumulator implements Accumulator {
     return TSDataType.INT64;
   }
 
+  @Override
+  public int getPartialResultSize() {
+    return 2;
+  }
+
   protected void updateMaxTime(long curTime) {
     initResult = true;
     maxTime = Math.max(maxTime, curTime);

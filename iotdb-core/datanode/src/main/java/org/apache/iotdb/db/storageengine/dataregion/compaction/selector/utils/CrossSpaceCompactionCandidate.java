@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -80,7 +81,7 @@ public class CrossSpaceCompactionCandidate {
       return false;
     }
     for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
-      String deviceId = unseqDeviceInfo.deviceId;
+      IDeviceID deviceId = unseqDeviceInfo.deviceId;
       boolean atLeastOneSeqFileSelected = false;
       // The `previousSeqFile` means the seqFile which contains the device and its endTime is just
       // be smaller than startTime of the device in unseqFile

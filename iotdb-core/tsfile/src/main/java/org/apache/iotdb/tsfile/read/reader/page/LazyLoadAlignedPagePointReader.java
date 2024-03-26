@@ -32,8 +32,8 @@ import java.util.List;
  */
 public class LazyLoadAlignedPagePointReader implements IPointReader {
 
-  private TimePageReader timeReader;
-  private List<ValuePageReader> valueReaders;
+  private final TimePageReader timeReader;
+  private final List<ValuePageReader> valueReaders;
 
   private boolean hasNextRow = false;
 
@@ -93,5 +93,13 @@ public class LazyLoadAlignedPagePointReader implements IPointReader {
   }
 
   @Override
-  public void close() throws IOException {}
+  public long getUsedMemorySize() {
+    // not used
+    return 0;
+  }
+
+  @Override
+  public void close() throws IOException {
+    // do nothing
+  }
 }

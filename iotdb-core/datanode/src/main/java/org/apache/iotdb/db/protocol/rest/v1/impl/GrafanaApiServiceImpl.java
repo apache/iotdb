@@ -110,7 +110,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult result =
-          COORDINATOR.execute(
+          COORDINATOR.executeForTreeModel(
               statement,
               queryId,
               SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
@@ -177,7 +177,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult result =
-          COORDINATOR.execute(
+          COORDINATOR.executeForTreeModel(
               statement,
               queryId,
               SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
@@ -239,7 +239,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         queryId = SESSION_MANAGER.requestQueryId();
         // create and cache dataset
         ExecutionResult result =
-            COORDINATOR.execute(
+            COORDINATOR.executeForTreeModel(
                 statement,
                 queryId,
                 SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),

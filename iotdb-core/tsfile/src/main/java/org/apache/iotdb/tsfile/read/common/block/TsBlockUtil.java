@@ -49,19 +49,19 @@ public class TsBlockUtil {
 
     while (left < right) {
       mid = (left + right) >> 1;
-      if (timeColumn.getLongWithoutCheck(mid) < targetTime) {
+      if (timeColumn.getLong(mid) < targetTime) {
         if (ascending) {
           left = mid + 1;
         } else {
           right = mid;
         }
-      } else if (timeColumn.getLongWithoutCheck(mid) > targetTime) {
+      } else if (timeColumn.getLong(mid) > targetTime) {
         if (ascending) {
           right = mid;
         } else {
           left = mid + 1;
         }
-      } else if (timeColumn.getLongWithoutCheck(mid) == targetTime) {
+      } else if (timeColumn.getLong(mid) == targetTime) {
         return mid;
       }
     }

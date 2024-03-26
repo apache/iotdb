@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.websocket;
 
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;

@@ -29,6 +29,8 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.read.TsFileAlignedSeriesReaderIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -49,7 +51,7 @@ import java.util.List;
 import java.util.Set;
 
 public class AlignedSeriesCompactionExecutor {
-  private final String device;
+  private final IDeviceID device;
   private final LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
       readerAndChunkMetadataList;
   private final TsFileResource targetResource;
@@ -68,7 +70,7 @@ public class AlignedSeriesCompactionExecutor {
 
   @SuppressWarnings("squid:S1319")
   public AlignedSeriesCompactionExecutor(
-      String device,
+      IDeviceID device,
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
       CompactionTsFileWriter writer,
@@ -210,7 +212,7 @@ public class AlignedSeriesCompactionExecutor {
   private void checkAndUpdatePreviousTimestamp(long currentWritingTimestamp) {
     if (currentWritingTimestamp <= lastWriteTimestamp) {
       throw new CompactionLastTimeCheckFailedException(
-          device, currentWritingTimestamp, lastWriteTimestamp);
+          ((PlainDeviceID) device).toStringID(), currentWritingTimestamp, lastWriteTimestamp);
     } else {
       lastWriteTimestamp = currentWritingTimestamp;
     }

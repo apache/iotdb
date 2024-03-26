@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
 import org.apache.iotdb.consensus.iot.thrift.IoTConsensusIService;
-import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
 
 import org.apache.commons.pool2.PooledObject;
@@ -50,7 +50,7 @@ public class SyncIoTConsensusServiceClient extends IoTConsensusIService.Client
         property
             .getProtocolFactory()
             .getProtocol(
-                RpcTransportFactory.INSTANCE.getTransport(
+                DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                     new TSocket(
                         TConfigurationConst.defaultTConfiguration,
                         endpoint.getIp(),

@@ -42,6 +42,13 @@ public abstract class LinearFill implements ILinearFill {
   // next row index in current column which is not null
   private long nextRowIndexInCurrentColumn = -1;
 
+  // previous time coresponding to previous not null value
+  protected long previousTime = -1;
+
+  private long nextTime = -1;
+
+  protected long nextTimeInCurrentColumn = -1;
+
   @Override
   public Column fill(TimeColumn timeColumn, Column valueColumn, long startRowIndex) {
     int size = valueColumn.getPositionCount();
@@ -53,6 +60,7 @@ public abstract class LinearFill implements ILinearFill {
     if (!valueColumn.mayHaveNull()) {
       previousIsNull = false;
       // update the value using last non-null value
+      previousTime = timeColumn.getEndTime();
       updatePreviousValue(valueColumn, valueColumn.getPositionCount() - 1);
       return valueColumn;
     }
@@ -69,11 +77,13 @@ public abstract class LinearFill implements ILinearFill {
       for (int i = 0; i < size; i++) {
         // current value is null, we need to fill it
         if (valueColumn.isNull(i)) {
-          hasNullValue = fill(startRowIndex, i, isNull, valueColumn, array) || hasNullValue;
+          hasNullValue =
+              fill(startRowIndex, i, isNull, timeColumn, valueColumn, array) || hasNullValue;
         } else { // current is not null
           // fill value using its own value
           fillValue(valueColumn, i, array);
           // update previous value
+          previousTime = timeColumn.getLong(i);
           updatePreviousValue(valueColumn, i);
           previousIsNull = false;
         }
@@ -83,7 +93,7 @@ public abstract class LinearFill implements ILinearFill {
   }
 
   private Column doWithAllNulls(
-      long startRowIndex, int size, Column timeColumn, Column valueColumn) {
+      long startRowIndex, int size, TimeColumn timeColumn, Column valueColumn) {
     // previous value is null or next value is null, we just return NULL_VALUE_BLOCK
     if (previousIsNull || nextRowIndex < startRowIndex) {
       return new RunLengthEncodedColumn(createNullValueColumn(), size);
@@ -91,24 +101,42 @@ public abstract class LinearFill implements ILinearFill {
       prepareForNextValueInCurrentColumn(
           startRowIndex + timeColumn.getPositionCount() - 1,
           timeColumn.getPositionCount(),
+          timeColumn,
           valueColumn);
-      return new RunLengthEncodedColumn(createFilledValueColumn(), size);
+      double[] factors = new double[size];
+      for (int i = 0; i < size; i++) {
+        factors[i] = getFactor(timeColumn.getLong(i));
+      }
+      return createFilledValueColumn(factors);
     }
   }
 
   private boolean fill(
-      long startRowIndex, int i, boolean[] isNull, Column valueColumn, Object array) {
+      long startRowIndex,
+      int i,
+      boolean[] isNull,
+      TimeColumn timeColumn,
+      Column valueColumn,
+      Object array) {
     long currentRowIndex = startRowIndex + i;
-    prepareForNextValueInCurrentColumn(currentRowIndex, i + 1, valueColumn);
+    prepareForNextValueInCurrentColumn(currentRowIndex, i + 1, timeColumn, valueColumn);
     // we don't fill it, if either previous value or next value is null
     if (previousIsNull || nextIsNull(currentRowIndex)) {
       isNull[i] = true;
       return true;
     } else {
       // fill value using previous and next value
-      fillValue(array, i);
+      // factor is (x - x0) / (x1 - x0)
+      double factor = getFactor(timeColumn.getLong(i));
+      fillValue(array, i, factor);
       return false;
     }
+  }
+
+  private double getFactor(long currentTime) {
+    return nextTimeInCurrentColumn - previousTime == 0
+        ? 0.0
+        : ((double) (currentTime - previousTime)) / (nextTimeInCurrentColumn - previousTime);
   }
 
   /**
@@ -138,6 +166,7 @@ public abstract class LinearFill implements ILinearFill {
     for (int i = 0; i < nextValueColumn.getPositionCount(); i++) {
       if (!nextValueColumn.isNull(i)) {
         updateNextValue(nextValueColumn, i);
+        this.nextTime = nextTimeColumn.getLong(i);
         this.nextRowIndex = startRowIndex + i;
         return true;
       }
@@ -150,13 +179,14 @@ public abstract class LinearFill implements ILinearFill {
   }
 
   private void prepareForNextValueInCurrentColumn(
-      long currentRowIndex, int startIndex, Column valueColumn) {
+      long currentRowIndex, int startIndex, TimeColumn timeColumn, Column valueColumn) {
     if (currentRowIndex <= nextRowIndexInCurrentColumn) {
       return;
     }
     for (int i = startIndex; i < valueColumn.getPositionCount(); i++) {
       if (!valueColumn.isNull(i)) {
         this.nextRowIndexInCurrentColumn = currentRowIndex + (i - startIndex + 1);
+        this.nextTimeInCurrentColumn = timeColumn.getLong(i);
         updateNextValueInCurrentColumn(valueColumn, i);
         return;
       }
@@ -164,18 +194,19 @@ public abstract class LinearFill implements ILinearFill {
 
     // current column's value is not enough for filling, we should use value of next Column
     this.nextRowIndexInCurrentColumn = this.nextRowIndex;
+    this.nextTimeInCurrentColumn = this.nextTime;
     updateNextValueInCurrentColumn();
   }
 
   abstract void fillValue(Column column, int index, Object array);
 
-  abstract void fillValue(Object array, int index);
+  abstract void fillValue(Object array, int index, double factor);
 
   abstract Object createValueArray(int size);
 
   abstract Column createNullValueColumn();
 
-  abstract Column createFilledValueColumn();
+  abstract Column createFilledValueColumn(double[] factors1);
 
   abstract Column createFilledValueColumn(
       Object array, boolean[] isNull, boolean hasNullValue, int size);

@@ -168,7 +168,7 @@ public class DeviceViewOperator implements ProcessOperator {
   public long calculateMaxPeekMemory() {
     long maxPeekMemory = calculateMaxReturnSize() + calculateRetainedSizeAfterCallingNext();
     for (Operator child : deviceOperators) {
-      maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemory());
+      maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemoryWithCounter());
     }
     return maxPeekMemory;
   }

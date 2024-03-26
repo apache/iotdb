@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
@@ -49,6 +51,7 @@ import java.util.Map;
 
 public class MLogParserTest {
 
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private String[] storageGroups = new String[] {"root.sg0", "root.sg1", "root.sg"};
   private int[] schemaRegionIds = new int[] {0, 1, 2};
 
@@ -63,8 +66,12 @@ public class MLogParserTest {
    * */
   private int[] mlogLineNum = new int[] {50, 54, 0};
 
+  private String schemaRegionConsensusProtocolClass;
+
   @Before
   public void setUp() {
+    schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
+    config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.SIMPLE_CONSENSUS);
     EnvironmentUtils.envSetUp();
   }
 
@@ -75,6 +82,7 @@ public class MLogParserTest {
     file = new File("target" + File.separator + "tmp" + File.separator + "text.snapshot");
     file.delete();
     EnvironmentUtils.cleanEnv();
+    config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
   }
 
   private void prepareData() throws Exception {

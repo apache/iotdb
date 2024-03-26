@@ -25,25 +25,26 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 /**
- * PipeExtractor (Deprecated since v1.3.0, renamed to PipeSource)
+ * {@link PipeExtractor} (Deprecated since v1.3.0, renamed to {@link PipeSource})
  *
- * <p>PipeExtractor is responsible for capturing events from sources.
+ * <p>{@link PipeExtractor} is responsible for capturing {@link Event}s from sources.
  *
- * <p>Various data sources can be supported by implementing different PipeExtractor classes.
+ * <p>Various data sources can be supported by implementing different {@link PipeExtractor} classes.
  *
- * <p>The lifecycle of a PipeExtractor is as follows:
+ * <p>The lifecycle of a {@link PipeExtractor} is as follows:
  *
  * <ul>
  *   <li>When a collaboration task is created, the KV pairs of `WITH EXTRACTOR` clause in SQL are
  *       parsed and the validation method {@link PipeExtractor#validate(PipeParameterValidator)}
- *       will be called to validate the parameters.
+ *       will be called to validate the {@link PipeParameters}.
  *   <li>Before the collaboration task starts, the method {@link
  *       PipeExtractor#customize(PipeParameters, PipeExtractorRuntimeConfiguration)} will be called
- *       to config the runtime behavior of the PipeExtractor.
- *   <li>Then the method {@link PipeExtractor#start()} will be called to start the PipeExtractor.
+ *       to config the runtime behavior of the {@link PipeExtractor}.
+ *   <li>Then the method {@link PipeExtractor#start()} will be called to start the {@link
+ *       PipeExtractor}.
  *   <li>While the collaboration task is in progress, the method {@link PipeExtractor#supply()} will
- *       be called to capture events from sources and then the events will be passed to the
- *       PipeProcessor.
+ *       be called to capture {@link Event}s from sources and then the {@link Event}s will be passed
+ *       to the {@link PipeProcessor}.
  *   <li>The method {@link PipeExtractor#close()} will be called when the collaboration task is
  *       cancelled (the `DROP PIPE` command is executed).
  * </ul>
@@ -61,27 +62,27 @@ public interface PipeExtractor extends PipePlugin {
   void validate(PipeParameterValidator validator) throws Exception;
 
   /**
-   * This method is mainly used to customize PipeExtractor. In this method, the user can do the
-   * following things:
+   * This method is mainly used to customize {@link PipeExtractor}. In this method, the user can do
+   * the following things:
    *
    * <ul>
-   *   <li>Use PipeParameters to parse key-value pair attributes entered by the user.
-   *   <li>Set the running configurations in PipeExtractorRuntimeConfiguration.
+   *   <li>Use {@link PipeParameters} to parse key-value pair attributes entered by the user.
+   *   <li>Set the running configurations in {@link PipeExtractorRuntimeConfiguration}.
    * </ul>
    *
    * <p>This method is called after the method {@link
    * PipeExtractor#validate(PipeParameterValidator)} is called.
    *
-   * @param parameters used to parse the input parameters entered by the user
-   * @param configuration used to set the required properties of the running PipeExtractor
+   * @param parameters used to parse the input {@link PipeParameters} entered by the user
+   * @param configuration used to set the required properties of the running {@link PipeExtractor}
    * @throws Exception the user can throw errors if necessary
    */
   void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception;
 
   /**
-   * Start the extractor. After this method is called, events should be ready to be supplied by
-   * {@link PipeExtractor#supply()}. This method is called after {@link
+   * Start the {@link PipeExtractor}. After this method is called, {@link Event}s should be ready to
+   * be supplied by {@link PipeExtractor#supply()}. This method is called after {@link
    * PipeExtractor#customize(PipeParameters, PipeExtractorRuntimeConfiguration)} is called.
    *
    * @throws Exception the user can throw errors if necessary
@@ -89,11 +90,13 @@ public interface PipeExtractor extends PipePlugin {
   void start() throws Exception;
 
   /**
-   * Supply single event from the extractor and the caller will send the event to the processor.
-   * This method is called after {@link PipeExtractor#start()} is called.
+   * Supply single {@link Event} from the {@link PipeExtractor} and the caller will send the {@link
+   * Event} to the {@link PipeProcessor}. This method is called after {@link PipeExtractor#start()}
+   * is called.
    *
-   * @return the event to be supplied. the event may be null if the extractor has no more events at
-   *     the moment, but the extractor is still running for more events.
+   * @return the {@link Event} to be supplied. the {@link Event} may be {@code null} if the {@link
+   *     PipeExtractor} has no more {@link Event}s at the moment, but the {@link PipeExtractor} is
+   *     still running for more {@link Event}s.
    * @throws Exception the user can throw errors if necessary
    */
   Event supply() throws Exception;

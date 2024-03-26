@@ -36,8 +36,8 @@ public class BitMap {
         (byte) 0X7F // 01111111
       };
 
-  private byte[] bits;
-  private int size;
+  private final byte[] bits;
+  private final int size;
 
   /** Initialize a BitMap with given size. */
   public BitMap(int size) {

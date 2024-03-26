@@ -304,7 +304,8 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
     if (that instanceof CreatePipePluginProcedure) {
       CreatePipePluginProcedure thatProcedure = (CreatePipePluginProcedure) that;
       return thatProcedure.getProcId() == getProcId()
-          && thatProcedure.getState() == this.getState()
+          && thatProcedure.getCurrentState().equals(getCurrentState())
+          && thatProcedure.getCycles() == getCycles()
           && thatProcedure.pipePluginMeta.equals(pipePluginMeta);
     }
     return false;
@@ -312,7 +313,7 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
 
   @Override
   public int hashCode() {
-    return Objects.hash(this.pipePluginMeta);
+    return Objects.hash(getProcId(), getCurrentState(), getCycles(), pipePluginMeta);
   }
 
   @TestOnly

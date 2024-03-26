@@ -145,6 +145,11 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.SERIES_AGGREGATE_SCAN;
+  }
+
+  @Override
   public PlanNode clone() {
     return new SeriesAggregationScanNode(
         getPlanNodeId(),

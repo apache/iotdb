@@ -39,5 +39,7 @@ fi
 nohup bash "$CONFIGNODE_START_PATH" >/dev/null 2>&1 &
 sleep 3
 nohup bash "$DATANODE_START_PATH" >/dev/null 2>&1 &
+# if you have turned on "-XX:+SafepointTimeout" and "-XX:SafepointTimeoutDelay=1000", you can use commands below instead to see safepoint logs
+#nohup bash "$DATANODE_START_PATH" >"$IOTDB_HOME/logs/log_datanode_safepoint.log" 2>&1 &
 
 echo "Execute start-standalone.sh finished, you can see more details in the logs of confignode and datanode"

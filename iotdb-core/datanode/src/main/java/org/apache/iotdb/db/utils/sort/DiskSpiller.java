@@ -163,4 +163,8 @@ public class DiskSpiller {
     }
     return sortReaders;
   }
+
+  public int getFileSize() {
+    return fileIndex;
+  }
 }

@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -62,7 +63,7 @@ public class SystemInfo {
 
   private final AtomicInteger compactionFileNumCost = new AtomicInteger(0);
 
-  private int totalFileLimitForCrossTask = config.getTotalFileLimitForCrossTask();
+  private int totalFileLimitForCompactionTask = config.getTotalFileLimitForCompactionTask();
 
   private final ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.FLUSH_TASK_SUBMIT.getName());
@@ -193,27 +194,54 @@ public class SystemInfo {
 
   public boolean addCompactionFileNum(int fileNum, long timeOutInSecond)
       throws InterruptedException, CompactionFileCountExceededException {
-    if (fileNum > totalFileLimitForCrossTask) {
+    if (fileNum > totalFileLimitForCompactionTask) {
       // source file num is greater than the max file num for compaction
       throw new CompactionFileCountExceededException(
           String.format(
               "Required file num %d is greater than the max file num %d for compaction.",
-              fileNum, totalFileLimitForCrossTask));
+              fileNum, totalFileLimitForCompactionTask));
     }
     long startTime = System.currentTimeMillis();
     int originFileNum = this.compactionFileNumCost.get();
-    while (originFileNum + fileNum > totalFileLimitForCrossTask
+    while (originFileNum + fileNum > totalFileLimitForCompactionTask
         || !compactionFileNumCost.compareAndSet(originFileNum, originFileNum + fileNum)) {
       if (System.currentTimeMillis() - startTime >= timeOutInSecond * 1000L) {
         throw new CompactionFileCountExceededException(
             String.format(
                 "Failed to allocate %d files for compaction after %d seconds, max file num for compaction module is %d, %d files is used.",
-                fileNum, timeOutInSecond, totalFileLimitForCrossTask, originFileNum));
+                fileNum, timeOutInSecond, totalFileLimitForCompactionTask, originFileNum));
       }
       Thread.sleep(100);
       originFileNum = this.compactionFileNumCost.get();
     }
     return true;
+  }
+
+  public void addCompactionFileNum(int fileNum, boolean waitUntilAcquired)
+      throws CompactionFileCountExceededException, InterruptedException {
+    if (fileNum > totalFileLimitForCompactionTask) {
+      // source file num is greater than the max file num for compaction
+      throw new CompactionFileCountExceededException(
+          String.format(
+              "Required file num %d is greater than the max file num %d for compaction.",
+              fileNum, totalFileLimitForCompactionTask));
+    }
+    int originFileNum = this.compactionFileNumCost.get();
+    while (true) {
+      boolean canUpdate = originFileNum + fileNum <= totalFileLimitForCompactionTask;
+      if (!canUpdate && !waitUntilAcquired) {
+        throw new CompactionFileCountExceededException(
+            String.format(
+                "Failed to allocate %d files for compaction, max file num for compaction module is %d, %d files is used.",
+                fileNum, totalFileLimitForCompactionTask, originFileNum));
+      }
+      if (canUpdate
+          && compactionFileNumCost.compareAndSet(originFileNum, originFileNum + fileNum)) {
+        return;
+      }
+      Thread.sleep(TimeUnit.MILLISECONDS.toMillis(100));
+      originFileNum = this.compactionFileNumCost.get();
+    }
   }
 
   public boolean addCompactionMemoryCost(
@@ -254,6 +282,47 @@ public class SystemInfo {
       default:
     }
     return true;
+  }
+
+  public void addCompactionMemoryCost(
+      CompactionTaskType taskType, long memoryCost, boolean waitUntilAcquired)
+      throws CompactionMemoryNotEnoughException, InterruptedException {
+    if (memoryCost > memorySizeForCompaction) {
+      // required memory cost is greater than the total memory budget for compaction
+      throw new CompactionMemoryNotEnoughException(
+          String.format(
+              "Required memory cost %d bytes is greater than "
+                  + "the total memory budget for compaction %d bytes",
+              memoryCost, memorySizeForCompaction));
+    }
+    long originSize = this.compactionMemoryCost.get();
+    while (true) {
+      boolean canUpdate = originSize + memoryCost <= memorySizeForCompaction;
+      if (!canUpdate && !waitUntilAcquired) {
+        throw new CompactionMemoryNotEnoughException(
+            String.format(
+                "Failed to allocate %d bytes memory for compaction, "
+                    + "total memory budget for compaction module is %d bytes, %d bytes is used",
+                memoryCost, memorySizeForCompaction, originSize));
+      }
+      if (canUpdate && compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
+        break;
+      }
+      Thread.sleep(TimeUnit.MILLISECONDS.toMillis(100));
+      originSize = this.compactionMemoryCost.get();
+    }
+    switch (taskType) {
+      case INNER_SEQ:
+        seqInnerSpaceCompactionMemoryCost.addAndGet(memoryCost);
+        break;
+      case INNER_UNSEQ:
+        unseqInnerSpaceCompactionMemoryCost.addAndGet(memoryCost);
+        break;
+      case CROSS:
+        crossSpaceCompactionMemoryCost.addAndGet(memoryCost);
+        break;
+      default:
+    }
   }
 
   public synchronized void resetCompactionMemoryCost(
@@ -300,13 +369,12 @@ public class SystemInfo {
   }
 
   @TestOnly
-  public void setTotalFileLimitForCrossTask(int totalFileLimitForCrossTask) {
-    this.totalFileLimitForCrossTask = totalFileLimitForCrossTask;
+  public void setTotalFileLimitForCompactionTask(int totalFileLimitForCompactionTask) {
+    this.totalFileLimitForCompactionTask = totalFileLimitForCompactionTask;
   }
 
-  @TestOnly
-  public int getTotalFileLimitForCrossTask() {
-    return totalFileLimitForCrossTask;
+  public int getTotalFileLimitForCompaction() {
+    return totalFileLimitForCompactionTask;
   }
 
   public AtomicLong getCompactionMemoryCost() {

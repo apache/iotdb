@@ -59,7 +59,7 @@ public abstract class PipeSubtaskExecutor {
     runningSubtaskNumber = 0;
   }
 
-  /////////////////////// subtask management ///////////////////////
+  /////////////////////// Subtask management ///////////////////////
 
   public final synchronized void register(PipeSubtask subtask) {
     if (registeredIdSubtaskMapper.containsKey(subtask.getTaskID())) {

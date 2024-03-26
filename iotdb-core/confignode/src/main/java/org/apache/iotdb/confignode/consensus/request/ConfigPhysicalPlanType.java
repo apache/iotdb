@@ -53,6 +53,7 @@ public enum ConfigPhysicalPlanType {
   CreateRegionGroups((short) 300),
   DeleteRegionGroups((short) 301),
   GetRegionInfoList((short) 302),
+  @Deprecated
   UpdateRegionLocation((short) 303),
   OfferRegionMaintainTasks((short) 304),
   PollRegionMaintainTask((short) 305),
@@ -60,8 +61,9 @@ public enum ConfigPhysicalPlanType {
   GetSeriesSlotList((short) 307),
   GetTimeSlotList((short) 308),
   PollSpecificRegionMaintainTask((short) 309),
-
   CountTimeSlotList((short) 310),
+  AddRegionLocation((short) 311),
+  RemoveRegionLocation((short) 312),
 
   /** Partition. */
   GetSchemaPartition((short) 400),
@@ -205,6 +207,23 @@ public enum ConfigPhysicalPlanType {
 
   /** Pipe PayLoad. */
   PipeEnriched((short) 1700),
+  PipeUnsetTemplate((short) 1701),
+  PipeDeleteTimeSeries((short) 1702),
+  PipeDeleteLogicalView((short) 1703),
+  PipeDeactivateTemplate((short) 1704),
+
+  /** Subscription */
+  CreateTopic((short) 1800),
+  DropTopic((short) 1801),
+  ShowTopic((short) 1802),
+  AlterTopic((short) 1803),
+
+  AlterConsumerGroup((short) 1900),
+
+  ShowSubscription((short) 2000),
+
+  /** Test Only. */
+  TestOnly((short) 30000),
   ;
 
   private final short planType;

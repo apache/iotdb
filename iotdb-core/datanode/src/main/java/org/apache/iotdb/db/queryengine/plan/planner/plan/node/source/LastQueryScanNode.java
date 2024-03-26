@@ -126,6 +126,11 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.LAST_QUERY_SCAN;
+  }
+
+  @Override
   public PlanNode clone() {
     return new LastQueryScanNode(
         getPlanNodeId(), seriesPath, getDataNodeSeriesScanNum(), outputViewPath, regionReplicaSet);

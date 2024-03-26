@@ -52,6 +52,11 @@ public class RollbackLogicalViewBlackListNode extends PlanNode {
   public void addChild(PlanNode child) {}
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.ROLLBACK_LOGICAL_VIEW_BLACK_LIST;
+  }
+
+  @Override
   public PlanNode clone() {
     return new RollbackLogicalViewBlackListNode(getPlanNodeId(), patternTree);
   }

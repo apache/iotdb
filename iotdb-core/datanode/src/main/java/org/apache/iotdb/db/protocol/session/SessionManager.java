@@ -115,7 +115,7 @@ public class SessionManager implements SessionManagerMBean {
             .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
             .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
       } else {
-        supplySession(session, username, zoneId, clientVersion);
+        supplySession(session, username, ZoneId.of(zoneId), clientVersion);
 
         openSessionResp
             .sessionId(session.getId())
@@ -334,11 +334,11 @@ public class SessionManager implements SessionManagerMBean {
   public void supplySession(
       IClientSession session,
       String username,
-      String zoneId,
+      ZoneId zoneId,
       IoTDBConstant.ClientVersion clientVersion) {
     session.setId(sessionIdGenerator.incrementAndGet());
     session.setUsername(username);
-    session.setZoneId(ZoneId.of(zoneId));
+    session.setZoneId(zoneId);
     session.setClientVersion(clientVersion);
     session.setLogin(true);
     session.setLogInTime(System.currentTimeMillis());
@@ -356,10 +356,7 @@ public class SessionManager implements SessionManagerMBean {
 
   public SessionInfo getSessionInfo(IClientSession session) {
     return new SessionInfo(
-        session.getId(),
-        session.getUsername(),
-        session.getZoneId().getId(),
-        session.getClientVersion());
+        session.getId(), session.getUsername(), session.getZoneId(), session.getClientVersion());
   }
 
   @Override

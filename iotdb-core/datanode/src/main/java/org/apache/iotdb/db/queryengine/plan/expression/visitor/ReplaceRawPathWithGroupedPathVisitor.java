@@ -25,36 +25,13 @@ import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.UnaryOperator;
 
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperand;
 
 public class ReplaceRawPathWithGroupedPathVisitor
     extends ReconstructVisitor<ReplaceRawPathWithGroupedPathVisitor.Context> {
-  @Override
-  public Expression visitFunctionExpression(
-      FunctionExpression functionExpression, Context context) {
-    List<Expression> childrenExpressions = new ArrayList<>();
-    for (Expression childExpression : functionExpression.getExpressions()) {
-      childrenExpressions.add(process(childExpression, context));
-
-      // We just process first input Expression of Count_IF
-      if (SqlConstant.COUNT_IF.equalsIgnoreCase(functionExpression.getFunctionName())) {
-        List<Expression> children = functionExpression.getExpressions();
-        for (int i = 1; i < children.size(); i++) {
-          childrenExpressions.add(children.get(i));
-        }
-        break;
-      }
-    }
-    return reconstructFunctionExpression(functionExpression, childrenExpressions);
-  }
 
   @Override
   public Expression visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Context context) {

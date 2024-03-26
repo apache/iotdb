@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountNodesStateme
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowCurrentTimestampStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
@@ -48,7 +49,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -88,15 +88,16 @@ public class StatementMemorySourceVisitor
       return new StatementMemorySource(new TsBlock(0), header);
     }
     LogicalQueryPlan logicalPlan =
-        new LogicalPlanner(context.getQueryContext(), new ArrayList<>())
-            .plan(context.getAnalysis());
+        new LogicalPlanner(context.getQueryContext()).plan(context.getAnalysis());
     DistributionPlanner planner = new DistributionPlanner(context.getAnalysis(), logicalPlan);
     PlanNode rootWithExchange = planner.addExchangeNode(planner.rewriteSource());
     PlanNode optimizedRootWithExchange = planner.optimize(rootWithExchange);
 
     List<String> lines =
         optimizedRootWithExchange.accept(
-            new PlanGraphPrinter(), new PlanGraphPrinter.GraphContext());
+            new PlanGraphPrinter(),
+            new PlanGraphPrinter.GraphContext(
+                context.getQueryContext().getTypeProvider().getTemplatedInfo()));
 
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
     lines.forEach(
@@ -256,6 +257,21 @@ public class StatementMemorySourceVisitor
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+    return new StatementMemorySource(
+        tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
+  }
+
+  public StatementMemorySource visitShowCurrentTimestamp(
+      ShowCurrentTimestampStatement showCurrentTimestampStatement,
+      StatementMemorySourceContext context) {
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showCurrentTimestampColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+    tsBlockBuilder.getColumnBuilder(0).writeLong(System.currentTimeMillis());
+    tsBlockBuilder.declarePosition();
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
   }

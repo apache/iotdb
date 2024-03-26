@@ -33,7 +33,9 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.M
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -93,7 +95,7 @@ public class FileLoaderUtils {
                     resource.getTsFilePath(),
                     new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
                         resource.getTsFileID(),
-                        seriesPath.getDevice(),
+                        new PlainDeviceID(seriesPath.getDevice()),
                         seriesPath.getMeasurement()),
                     allSensors,
                     resource.getTimeIndexType() != 1,
@@ -246,7 +248,7 @@ public class FileLoaderUtils {
     allSensors.add("");
     boolean isDebug = context.isDebug();
     String filePath = resource.getTsFilePath();
-    String deviceId = alignedPath.getDevice();
+    IDeviceID deviceId = alignedPath.getIDeviceID();
 
     // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
     // we should not ignore the non-exist of device in TsFileMetadata

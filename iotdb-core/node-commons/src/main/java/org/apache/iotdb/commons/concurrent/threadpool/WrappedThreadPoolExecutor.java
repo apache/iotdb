@@ -118,7 +118,7 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
           future.get();
         }
       } catch (CancellationException ce) {
-        t = ce;
+        logger.info("task is cancelled in thread pool {}", mbeanName);
       } catch (ExecutionException ee) {
         t = ee.getCause();
       } catch (InterruptedException ie) {

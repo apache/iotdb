@@ -23,10 +23,10 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import java.util.List;
 
 public class DistributedQueryPlan {
-  private MPPQueryContext context;
-  private SubPlan rootSubPlan;
-  private List<PlanFragment> fragments;
-  private List<FragmentInstance> instances;
+  private final MPPQueryContext context;
+  private final SubPlan rootSubPlan;
+  private final List<PlanFragment> fragments;
+  private final List<FragmentInstance> instances;
 
   public DistributedQueryPlan(
       MPPQueryContext context,

@@ -73,7 +73,7 @@ public class TimeSeriesMetadataReadTest {
     // s4 should not be returned as result
     set.add("s4");
     List<TimeseriesMetadata> timeseriesMetadataList =
-        reader.readTimeseriesMetadata(path.getDevice(), path.getMeasurement(), set);
+        reader.readTimeseriesMetadata(path.getIDeviceID(), path.getMeasurement(), set);
     Assert.assertEquals(3, timeseriesMetadataList.size());
     for (int i = 1; i <= timeseriesMetadataList.size(); i++) {
       Assert.assertEquals("s" + i, timeseriesMetadataList.get(i - 1).getMeasurementId());
@@ -87,7 +87,7 @@ public class TimeSeriesMetadataReadTest {
     // so the result is not supposed to contain this measurement's timeseries metadata
     set.add("s8");
     timeseriesMetadataList =
-        reader.readTimeseriesMetadata(path.getDevice(), path.getMeasurement(), set);
+        reader.readTimeseriesMetadata(path.getIDeviceID(), path.getMeasurement(), set);
     Assert.assertEquals(2, timeseriesMetadataList.size());
     for (int i = 5; i < 7; i++) {
       Assert.assertEquals("s" + i, timeseriesMetadataList.get(i - 5).getMeasurementId());

@@ -22,9 +22,9 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.ratis.utils.Retriable;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 
-import org.apache.ratis.util.JavaUtils;
 import org.apache.ratis.util.TimeDuration;
 import org.junit.After;
 import org.junit.Assert;
@@ -91,7 +91,7 @@ public class DiskGuardianTest {
     miniCluster.waitUntilActiveLeaderElectedAndReady();
     miniCluster.writeManySerial(0, 10);
     Assert.assertFalse(hasSnapshot(gid));
-    JavaUtils.attemptUntilTrue(
+    Retriable.attemptUntilTrue(
         () -> hasSnapshot(gid),
         12,
         TimeDuration.valueOf(5, TimeUnit.SECONDS),

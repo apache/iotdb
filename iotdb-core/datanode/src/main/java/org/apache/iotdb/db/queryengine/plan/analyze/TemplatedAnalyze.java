@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TemplatedConcatRemoveUnExistentMeasurementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -169,10 +170,16 @@ public class TemplatedAnalyze {
     List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
 
     analyzeDeviceToWhere(analysis, queryStatement);
+    if (analysis.getWhereExpression() != null
+        && analysis.getWhereExpression().equals(ConstantOperand.FALSE)) {
+      analyzeOutput(analysis, queryStatement, outputExpressions);
+      analysis.setFinishQueryAfterAnalyze(true);
+      return true;
+    }
 
     if (deviceList.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
-      return false;
+      return true;
     }
     analysis.setDeviceList(deviceList);
 
@@ -250,11 +257,14 @@ public class TemplatedAnalyze {
             .process(
                 queryStatement.getWhereCondition().getPredicate(),
                 analysis.getDeviceTemplate().getSchemaMap());
-    analysis.setWhereExpression(wherePredicate);
+    wherePredicate = PredicateUtils.simplifyPredicate(wherePredicate);
+    if (!wherePredicate.equals(ConstantOperand.TRUE)) {
+      analysis.setWhereExpression(wherePredicate);
 
-    TSDataType outputType = analyzeExpressionForTemplatedQuery(analysis, wherePredicate);
-    if (outputType != TSDataType.BOOLEAN) {
-      throw new SemanticException(String.format(WHERE_WRONG_TYPE_ERROR_MSG, outputType));
+      TSDataType outputType = analyzeExpressionForTemplatedQuery(analysis, wherePredicate);
+      if (outputType != TSDataType.BOOLEAN) {
+        throw new SemanticException(String.format(WHERE_WRONG_TYPE_ERROR_MSG, outputType));
+      }
     }
   }
 

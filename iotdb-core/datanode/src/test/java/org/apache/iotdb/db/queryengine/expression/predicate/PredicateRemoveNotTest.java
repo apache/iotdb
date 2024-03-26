@@ -84,7 +84,7 @@ public class PredicateRemoveNotTest {
         lte(time(), longValue(1)), predicateRemoveNot(not(gt(time(), longValue(1)))));
     Assert.assertEquals(
         between(time(), longValue(1), longValue(100)),
-        predicateRemoveNot(notBetween(time(), longValue(1), longValue(100))));
+        predicateRemoveNot(not(notBetween(time(), longValue(1), longValue(100)))));
     Assert.assertEquals(
         or(gt(time(), longValue(1)), lte(time(), longValue(1))),
         predicateRemoveNot(or(not(lte(time(), longValue(1))), not(gt(time(), longValue(1))))));

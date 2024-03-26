@@ -95,6 +95,11 @@ public class LogicalViewSchemaScanNode extends SchemaQueryScanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.LOGICAL_VIEW_SCHEMA_SCAN;
+  }
+
+  @Override
   public PlanNode clone() {
     return new LogicalViewSchemaScanNode(getPlanNodeId(), path, schemaFilter, limit, offset, scope);
   }

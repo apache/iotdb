@@ -37,9 +37,9 @@ public abstract class PipeTaskStage {
   protected boolean hasBeenExternallyStopped = false;
 
   /**
-   * Create a pipe task stage.
+   * Create a {@link PipeTaskStage}.
    *
-   * @throws PipeException if failed to create a pipe task stage.
+   * @throws PipeException if failed to create a {@link PipeTaskStage}.
    */
   public synchronized void create() {
     if (status != null) {
@@ -66,9 +66,9 @@ public abstract class PipeTaskStage {
   protected abstract void createSubtask() throws PipeException;
 
   /**
-   * Start a pipe task stage.
+   * Start a {@link PipeTaskStage}.
    *
-   * @throws PipeException if failed to start a pipe task stage.
+   * @throws PipeException if failed to start a {@link PipeTaskStage}.
    */
   public synchronized void start() {
     if (status == null) {
@@ -91,9 +91,9 @@ public abstract class PipeTaskStage {
   protected abstract void startSubtask() throws PipeException;
 
   /**
-   * Stop a pipe task stage.
+   * Stop a {@link PipeTaskStage}.
    *
-   * @throws PipeException if failed to stop a pipe task stage.
+   * @throws PipeException if failed to stop a {@link PipeTaskStage}.
    */
   public synchronized void stop() {
     if (status == null) {
@@ -117,9 +117,9 @@ public abstract class PipeTaskStage {
   protected abstract void stopSubtask() throws PipeException;
 
   /**
-   * Drop a pipe task stage.
+   * Drop a {@link PipeTaskStage}.
    *
-   * @throws PipeException if failed to drop a pipe task stage.
+   * @throws PipeException if failed to drop a {@link PipeTaskStage}.
    */
   public synchronized void drop() {
     if (status == null) {

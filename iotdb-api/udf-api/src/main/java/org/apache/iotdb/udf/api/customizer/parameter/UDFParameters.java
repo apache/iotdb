@@ -23,6 +23,7 @@ import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -42,15 +43,25 @@ public class UDFParameters {
 
   private final List<String> childExpressions;
   private final List<Type> childExpressionDataTypes;
-  private final Map<String, String> attributes;
+  private final Map<String, String> userAttributes;
+  private final Map<String, String> systemAttributes;
 
   public UDFParameters(
       List<String> childExpressions,
       List<Type> childExpressionDataTypes,
-      Map<String, String> attributes) {
+      Map<String, String> userAttributes) {
+    this(childExpressions, childExpressionDataTypes, userAttributes, new HashMap<>());
+  }
+
+  public UDFParameters(
+      List<String> childExpressions,
+      List<Type> childExpressionDataTypes,
+      Map<String, String> userAttributes,
+      Map<String, String> systemAttributes) {
     this.childExpressions = childExpressions;
     this.childExpressionDataTypes = childExpressionDataTypes;
-    this.attributes = attributes;
+    this.userAttributes = userAttributes;
+    this.systemAttributes = systemAttributes;
   }
 
   public List<String> getChildExpressions() {
@@ -58,7 +69,7 @@ public class UDFParameters {
   }
 
   public Map<String, String> getAttributes() {
-    return attributes;
+    return userAttributes;
   }
 
   public List<Type> getDataTypes() {
@@ -74,65 +85,132 @@ public class UDFParameters {
   }
 
   public boolean hasAttribute(String attributeKey) {
-    return attributes.containsKey(attributeKey);
+    return userAttributes.containsKey(attributeKey);
   }
 
   public String getString(String key) {
-    return attributes.get(key);
+    return userAttributes.get(key);
   }
 
   public Boolean getBoolean(String key) {
-    String value = attributes.get(key);
+    String value = userAttributes.get(key);
     return value == null ? null : Boolean.parseBoolean(value);
   }
 
   public Integer getInt(String key) {
-    String value = attributes.get(key);
+    String value = userAttributes.get(key);
     return value == null ? null : Integer.parseInt(value);
   }
 
   public Long getLong(String key) {
-    String value = attributes.get(key);
+    String value = userAttributes.get(key);
     return value == null ? null : Long.parseLong(value);
   }
 
   public Float getFloat(String key) {
-    String value = attributes.get(key);
+    String value = userAttributes.get(key);
     return value == null ? null : Float.parseFloat(value);
   }
 
   public Double getDouble(String key) {
-    String value = attributes.get(key);
+    String value = userAttributes.get(key);
     return value == null ? null : Double.parseDouble(value);
   }
 
   public String getStringOrDefault(String key, String defaultValue) {
-    String value = attributes.get(key);
+    String value = userAttributes.get(key);
     return value == null ? defaultValue : value;
   }
 
   public boolean getBooleanOrDefault(String key, boolean defaultValue) {
-    String value = attributes.get(key);
+    String value = userAttributes.get(key);
     return value == null ? defaultValue : Boolean.parseBoolean(value);
   }
 
   public int getIntOrDefault(String key, int defaultValue) {
-    String value = attributes.get(key);
+    String value = userAttributes.get(key);
     return value == null ? defaultValue : Integer.parseInt(value);
   }
 
   public long getLongOrDefault(String key, long defaultValue) {
-    String value = attributes.get(key);
+    String value = userAttributes.get(key);
     return value == null ? defaultValue : Long.parseLong(value);
   }
 
   public float getFloatOrDefault(String key, float defaultValue) {
-    String value = attributes.get(key);
+    String value = userAttributes.get(key);
     return value == null ? defaultValue : Float.parseFloat(value);
   }
 
   public double getDoubleOrDefault(String key, double defaultValue) {
-    String value = attributes.get(key);
+    String value = userAttributes.get(key);
+    return value == null ? defaultValue : Double.parseDouble(value);
+  }
+
+  public boolean hasSystemAttribute(String attributeKey) {
+    return systemAttributes.containsKey(attributeKey);
+  }
+
+  public Map<String, String> getSystemAttributes() {
+    return systemAttributes;
+  }
+
+  public String getSystemString(String key) {
+    return systemAttributes.get(key);
+  }
+
+  public Boolean getSystemBoolean(String key) {
+    String value = systemAttributes.get(key);
+    return value == null ? null : Boolean.parseBoolean(value);
+  }
+
+  public Integer getSystemInt(String key) {
+    String value = systemAttributes.get(key);
+    return value == null ? null : Integer.parseInt(value);
+  }
+
+  public Long getSystemLong(String key) {
+    String value = systemAttributes.get(key);
+    return value == null ? null : Long.parseLong(value);
+  }
+
+  public Float getSystemFloat(String key) {
+    String value = systemAttributes.get(key);
+    return value == null ? null : Float.parseFloat(value);
+  }
+
+  public Double getSystemDouble(String key) {
+    String value = systemAttributes.get(key);
+    return value == null ? null : Double.parseDouble(value);
+  }
+
+  public String getSystemStringOrDefault(String key, String defaultValue) {
+    String value = systemAttributes.get(key);
+    return value == null ? defaultValue : value;
+  }
+
+  public boolean getSystemBooleanOrDefault(String key, boolean defaultValue) {
+    String value = systemAttributes.get(key);
+    return value == null ? defaultValue : Boolean.parseBoolean(value);
+  }
+
+  public int getSystemIntOrDefault(String key, int defaultValue) {
+    String value = systemAttributes.get(key);
+    return value == null ? defaultValue : Integer.parseInt(value);
+  }
+
+  public long getSystemLongOrDefault(String key, long defaultValue) {
+    String value = systemAttributes.get(key);
+    return value == null ? defaultValue : Long.parseLong(value);
+  }
+
+  public float getSystemFloatOrDefault(String key, float defaultValue) {
+    String value = systemAttributes.get(key);
+    return value == null ? defaultValue : Float.parseFloat(value);
+  }
+
+  public double getSystemDoubleOrDefault(String key, double defaultValue) {
+    String value = systemAttributes.get(key);
     return value == null ? defaultValue : Double.parseDouble(value);
   }
 }

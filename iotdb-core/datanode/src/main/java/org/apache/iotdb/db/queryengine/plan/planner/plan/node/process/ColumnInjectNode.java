@@ -74,6 +74,11 @@ public class ColumnInjectNode extends SingleChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.COLUMN_INJECT;
+  }
+
+  @Override
   public PlanNode clone() {
     return new ColumnInjectNode(getPlanNodeId(), this.targetIndex, this.columnGeneratorParameter);
   }

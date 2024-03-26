@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,22 +31,9 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
   private static final Logger logger = LoggerFactory.getLogger(HashLastFlushTimeMap.class);
 
-  /**
-   * String basic total, 40B
-   *
-   * <ul>
-   *   <li>Object header: Mark Word + Classic Pointer, 12B
-   *   <li>char[] reference 4B
-   *   <li>hash code, 4B
-   *   <li>padding 4B
-   *   <li>char[] header + length 16B
-   * </ul>
-   */
-  long STRING_BASE_SIZE = 40;
-
   long LONG_SIZE = 24;
 
-  long HASHMAP_NODE_BASIC_SIZE = 14 + STRING_BASE_SIZE + LONG_SIZE;
+  long HASHMAP_NODE_BASIC_SIZE = 14 + LONG_SIZE;
 
   /**
    * time partition id -> map, which contains device -> largest timestamp of the latest memtable to
@@ -65,20 +54,21 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
    *
    * <p>It is used to update last cache.
    */
-  private final Map<String, Long> globalLatestFlushedTimeForEachDevice = new ConcurrentHashMap<>();
+  private final Map<IDeviceID, Long> globalLatestFlushedTimeForEachDevice =
+      new ConcurrentHashMap<>();
 
   /** record memory cost of map for each partitionId */
   private final Map<Long, Long> memCostForEachPartition = new ConcurrentHashMap<>();
 
   // For load
   @Override
-  public void updateOneDeviceFlushedTime(long timePartitionId, String deviceId, long time) {
+  public void updateOneDeviceFlushedTime(long timePartitionId, IDeviceID deviceId, long time) {
     ILastFlushTime flushTimeMapForPartition =
         partitionLatestFlushedTime.computeIfAbsent(
             timePartitionId, id -> new DeviceLastFlushTime());
     long lastFlushTime = flushTimeMapForPartition.getLastFlushTime(deviceId);
     if (lastFlushTime == Long.MIN_VALUE) {
-      long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * deviceId.length();
+      long memCost = HASHMAP_NODE_BASIC_SIZE + deviceId.ramBytesUsed();
       memCostForEachPartition.compute(
           timePartitionId, (k1, v1) -> v1 == null ? memCost : v1 + memCost);
     }
@@ -87,15 +77,16 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
   // For recover
   @Override
-  public void updateMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap) {
+  public void updateMultiDeviceFlushedTime(
+      long timePartitionId, Map<IDeviceID, Long> flushedTimeMap) {
     ILastFlushTime flushTimeMapForPartition =
         partitionLatestFlushedTime.computeIfAbsent(
             timePartitionId, id -> new DeviceLastFlushTime());
 
     long memIncr = 0;
-    for (Map.Entry<String, Long> entry : flushedTimeMap.entrySet()) {
+    for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
       if (flushTimeMapForPartition.getLastFlushTime(entry.getKey()) == Long.MIN_VALUE) {
-        memIncr += HASHMAP_NODE_BASIC_SIZE + 2L * entry.getKey().length();
+        memIncr += HASHMAP_NODE_BASIC_SIZE + entry.getKey().ramBytesUsed();
       }
       flushTimeMapForPartition.updateLastFlushTime(entry.getKey(), entry.getValue());
     }
@@ -105,14 +96,14 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   }
 
   @Override
-  public void updateOneDeviceGlobalFlushedTime(String path, long time) {
+  public void updateOneDeviceGlobalFlushedTime(IDeviceID path, long time) {
     globalLatestFlushedTimeForEachDevice.compute(
         path, (k, v) -> v == null ? time : Math.max(v, time));
   }
 
   @Override
-  public void updateMultiDeviceGlobalFlushedTime(Map<String, Long> globalFlushedTimeMap) {
-    for (Map.Entry<String, Long> entry : globalFlushedTimeMap.entrySet()) {
+  public void updateMultiDeviceGlobalFlushedTime(Map<IDeviceID, Long> globalFlushedTimeMap) {
+    for (Map.Entry<IDeviceID, Long> entry : globalFlushedTimeMap.entrySet()) {
       globalLatestFlushedTimeForEachDevice.merge(entry.getKey(), entry.getValue(), Math::max);
     }
   }
@@ -128,8 +119,8 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
   // For insert
   @Override
-  public void updateLatestFlushTime(long partitionId, Map<String, Long> updateMap) {
-    for (Map.Entry<String, Long> entry : updateMap.entrySet()) {
+  public void updateLatestFlushTime(long partitionId, Map<IDeviceID, Long> updateMap) {
+    for (Map.Entry<IDeviceID, Long> entry : updateMap.entrySet()) {
       partitionLatestFlushedTime
           .computeIfAbsent(partitionId, id -> new DeviceLastFlushTime())
           .updateLastFlushTime(entry.getKey(), entry.getValue());
@@ -141,12 +132,12 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   }
 
   @Override
-  public long getFlushedTime(long timePartitionId, String deviceId) {
+  public long getFlushedTime(long timePartitionId, IDeviceID deviceId) {
     return partitionLatestFlushedTime.get(timePartitionId).getLastFlushTime(deviceId);
   }
 
   @Override
-  public long getGlobalFlushedTime(String path) {
+  public long getGlobalFlushedTime(IDeviceID path) {
     return globalLatestFlushedTimeForEachDevice.getOrDefault(path, Long.MIN_VALUE);
   }
 

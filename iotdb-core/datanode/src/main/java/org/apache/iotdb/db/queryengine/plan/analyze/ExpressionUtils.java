@@ -96,6 +96,17 @@ public class ExpressionUtils {
     return cloneCommonFields(rawExpression, resultExpression);
   }
 
+  public static Expression reconstructFunctionExpressionWithLowerCaseFunctionName(
+      FunctionExpression rawExpression, List<Expression> childExpressions) {
+    Expression resultExpression =
+        new FunctionExpression(
+            rawExpression.getFunctionName().toLowerCase(),
+            rawExpression.getFunctionAttributes(),
+            childExpressions,
+            rawExpression.getCountTimeExpressions());
+    return cloneCommonFields(rawExpression, resultExpression);
+  }
+
   public static List<Expression> reconstructUnaryExpressions(
       UnaryExpression expression, List<Expression> childExpressions) {
     List<Expression> resultExpressions = new ArrayList<>();

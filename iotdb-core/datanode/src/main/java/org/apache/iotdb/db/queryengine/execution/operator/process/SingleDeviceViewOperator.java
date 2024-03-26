@@ -123,7 +123,7 @@ public class SingleDeviceViewOperator implements ProcessOperator {
   @Override
   public long calculateMaxPeekMemory() {
     long maxPeekMemory = calculateMaxReturnSize() + calculateRetainedSizeAfterCallingNext();
-    maxPeekMemory = Math.max(maxPeekMemory, deviceOperator.calculateMaxPeekMemory());
+    maxPeekMemory = Math.max(maxPeekMemory, deviceOperator.calculateMaxPeekMemoryWithCounter());
     return maxPeekMemory;
   }
 

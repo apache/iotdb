@@ -49,18 +49,18 @@ class IoTDBKeyStoreLoaderClient {
   private KeyPair clientKeyPair;
 
   IoTDBKeyStoreLoaderClient load(Path baseDir) throws Exception {
-    KeyStore keyStore = KeyStore.getInstance("PKCS12");
+    final KeyStore keyStore = KeyStore.getInstance("PKCS12");
 
-    Path serverKeyStore = baseDir.resolve("example-client.pfx");
+    final Path serverKeyStore = baseDir.resolve("example-client.pfx");
 
     System.out.println("Loading KeyStore at " + serverKeyStore);
 
     if (!Files.exists(serverKeyStore)) {
       keyStore.load(null, PASSWORD);
 
-      KeyPair keyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
+      final KeyPair keyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
 
-      SelfSignedCertificateBuilder builder =
+      final SelfSignedCertificateBuilder builder =
           new SelfSignedCertificateBuilder(keyPair)
               .setCommonName("Eclipse Milo Example Client")
               .setOrganization("digitalpetri")
@@ -81,7 +81,7 @@ class IoTDBKeyStoreLoaderClient {
         }
       }
 
-      X509Certificate certificate = builder.build();
+      final X509Certificate certificate = builder.build();
 
       keyStore.setKeyEntry(
           CLIENT_ALIAS, keyPair.getPrivate(), PASSWORD, new X509Certificate[] {certificate});
@@ -94,7 +94,7 @@ class IoTDBKeyStoreLoaderClient {
       }
     }
 
-    Key clientPrivateKey = keyStore.getKey(CLIENT_ALIAS, PASSWORD);
+    final Key clientPrivateKey = keyStore.getKey(CLIENT_ALIAS, PASSWORD);
     if (clientPrivateKey instanceof PrivateKey) {
       clientCertificate = (X509Certificate) keyStore.getCertificate(CLIENT_ALIAS);
 
@@ -103,7 +103,7 @@ class IoTDBKeyStoreLoaderClient {
               .map(X509Certificate.class::cast)
               .toArray(X509Certificate[]::new);
 
-      PublicKey serverPublicKey = clientCertificate.getPublicKey();
+      final PublicKey serverPublicKey = clientCertificate.getPublicKey();
       clientKeyPair = new KeyPair(serverPublicKey, (PrivateKey) clientPrivateKey);
     }
 

@@ -38,7 +38,8 @@ public class RowImpl implements Row {
 
   @Override
   public long getTime() {
-    return (long) rowRecord[size];
+    // Time column is always the last column
+    return (long) rowRecord[size - 1];
   }
 
   @Override

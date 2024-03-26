@@ -53,6 +53,11 @@ public class IntoNode extends SingleChildProcessNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.INTO;
+  }
+
+  @Override
   public PlanNode clone() {
     return new IntoNode(getPlanNodeId(), this.intoPathDescriptor);
   }

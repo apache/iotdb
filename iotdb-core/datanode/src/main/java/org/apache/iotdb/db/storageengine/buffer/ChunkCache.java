@@ -31,11 +31,11 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
-import org.openjdk.jol.info.ClassLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -165,8 +165,8 @@ public class ChunkCache {
 
   public static class ChunkCacheKey {
 
-    private static final int INSTANCE_SIZE =
-        ClassLayout.parseClass(ChunkCacheKey.class).instanceSize();
+    private static final long INSTANCE_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(ChunkCacheKey.class);
 
     // There is no need to add this field size while calculating the size of ChunkCacheKey,
     // because filePath is get from TsFileResource, different ChunkCacheKey of the same file

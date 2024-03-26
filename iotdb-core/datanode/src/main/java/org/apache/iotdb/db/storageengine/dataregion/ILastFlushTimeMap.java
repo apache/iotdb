@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+
 import java.util.Map;
 
 /** This interface manages last time and flush time for sequence and unsequence determination */
@@ -26,17 +28,17 @@ public interface ILastFlushTimeMap {
 
   // region update
   /** Update partitionLatestFlushedTime. */
-  void updateOneDeviceFlushedTime(long timePartitionId, String deviceId, long time);
+  void updateOneDeviceFlushedTime(long timePartitionId, IDeviceID deviceId, long time);
 
-  void updateMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap);
+  void updateMultiDeviceFlushedTime(long timePartitionId, Map<IDeviceID, Long> flushedTimeMap);
 
   /** Update globalLatestFlushedTimeForEachDevice. */
-  void updateOneDeviceGlobalFlushedTime(String path, long time);
+  void updateOneDeviceGlobalFlushedTime(IDeviceID path, long time);
 
-  void updateMultiDeviceGlobalFlushedTime(Map<String, Long> globalFlushedTimeMap);
+  void updateMultiDeviceGlobalFlushedTime(Map<IDeviceID, Long> globalFlushedTimeMap);
 
   /** Update both partitionLatestFlushedTime and globalLatestFlushedTimeForEachDevice. */
-  void updateLatestFlushTime(long partitionId, Map<String, Long> updateMap);
+  void updateLatestFlushTime(long partitionId, Map<IDeviceID, Long> updateMap);
   // endregion
 
   // region ensure
@@ -45,9 +47,9 @@ public interface ILastFlushTimeMap {
   // endregion
 
   // region read
-  long getFlushedTime(long timePartitionId, String deviceId);
+  long getFlushedTime(long timePartitionId, IDeviceID deviceId);
 
-  long getGlobalFlushedTime(String path);
+  long getGlobalFlushedTime(IDeviceID path);
   // endregion
 
   // region clear

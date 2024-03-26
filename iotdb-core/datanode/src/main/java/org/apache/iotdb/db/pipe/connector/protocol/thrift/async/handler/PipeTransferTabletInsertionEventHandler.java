@@ -21,11 +21,10 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
@@ -43,10 +42,10 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
   protected final TabletInsertionEvent event;
   protected final TPipeTransferReq req;
 
-  protected final IoTDBThriftAsyncConnector connector;
+  protected final IoTDBDataRegionAsyncConnector connector;
 
   protected PipeTransferTabletInsertionEventHandler(
-      TabletInsertionEvent event, TPipeTransferReq req, IoTDBThriftAsyncConnector connector) {
+      TabletInsertionEvent event, TPipeTransferReq req, IoTDBDataRegionAsyncConnector connector) {
     this.event = event;
     this.req = req;
     this.connector = connector;
@@ -73,7 +72,10 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
     }
 
     final TSStatus status = response.getStatus();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    try {
+      connector
+          .statusHandler()
+          .handle(response.getStatus(), response.getStatus().getMessage(), event.toString());
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event)
             .decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), true);
@@ -81,8 +83,8 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
       if (status.isSetRedirectNode()) {
         updateLeaderCache(status);
       }
-    } else {
-      onError(new PipeException(status.getMessage()));
+    } catch (Exception e) {
+      onError(e);
     }
   }
 

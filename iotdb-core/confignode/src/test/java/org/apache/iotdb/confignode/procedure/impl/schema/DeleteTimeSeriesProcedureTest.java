@@ -43,7 +43,7 @@ public class DeleteTimeSeriesProcedureTest {
     patternTree.appendPathPattern(new PartialPath("root.sg2.*.s1"));
     patternTree.constructTree();
     DeleteTimeSeriesProcedure deleteTimeSeriesProcedure =
-        new DeleteTimeSeriesProcedure(queryId, patternTree);
+        new DeleteTimeSeriesProcedure(queryId, patternTree, false);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -54,7 +54,7 @@ public class DeleteTimeSeriesProcedureTest {
     Assert.assertEquals(
         ProcedureType.DELETE_TIMESERIES_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    DeleteTimeSeriesProcedure deserializedProcedure = new DeleteTimeSeriesProcedure();
+    DeleteTimeSeriesProcedure deserializedProcedure = new DeleteTimeSeriesProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(queryId, deserializedProcedure.getQueryId());

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container;
 
+import org.apache.iotdb.commons.schema.MergeSortIterator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
 import javax.annotation.Nonnull;
@@ -33,7 +34,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -198,62 +198,29 @@ public abstract class MNodeChildBuffer implements IMNodeChildBuffer {
     throw new UnsupportedOperationException();
   }
 
-  private class MNodeChildBufferIterator implements Iterator<ICachedMNode> {
+  private Iterator<ICachedMNode> getSortedReceivingBuffer() {
+    List<ICachedMNode> receivingBufferList = new ArrayList<>(getReceivingBuffer().values());
+    receivingBufferList.sort(Comparator.comparing(ICachedMNode::getName));
+    return receivingBufferList.iterator();
+  }
 
-    int flushingIndex = 0;
-    int receivingIndex = 0;
-    List<ICachedMNode> flushingBufferList;
-    List<ICachedMNode> receivingBufferList;
+  private Iterator<ICachedMNode> getSortedFlushingBuffer() {
+    List<ICachedMNode> flushingBufferList = new ArrayList<>(getFlushingBuffer().values());
+    flushingBufferList.sort(Comparator.comparing(ICachedMNode::getName));
+    return flushingBufferList.iterator();
+  }
 
+  private class MNodeChildBufferIterator extends MergeSortIterator<ICachedMNode> {
     MNodeChildBufferIterator() {
-      // use merge sort to merge them and remove duplicates.
-      List<ICachedMNode> list = new ArrayList<>();
-      receivingBufferList = new ArrayList<>(getReceivingBuffer().values());
-      flushingBufferList = new ArrayList<>(getFlushingBuffer().values());
-      receivingBufferList.sort(Comparator.comparing(ICachedMNode::getName));
-      flushingBufferList.sort(Comparator.comparing(ICachedMNode::getName));
+      super(getSortedReceivingBuffer(), getSortedFlushingBuffer());
     }
 
-    private ICachedMNode tryGetNext() {
-      // There are only three situations here, namely, both are left, and each of the two is left,
-      // and then gradually merge and remove duplicates.
-      if (receivingIndex < receivingBufferList.size()
-          && flushingIndex < flushingBufferList.size()) {
-        ICachedMNode node1 = receivingBufferList.get(receivingIndex);
-        ICachedMNode node2 = flushingBufferList.get(flushingIndex);
-        if (node1.getName().compareTo(node2.getName()) < 0) {
-          receivingIndex++;
-          return node1;
-        } else if (node1.getName().compareTo(node2.getName()) > 0) {
-          flushingIndex++;
-          return node2;
-        } else {
-          receivingIndex++;
-          flushingIndex++;
-          return node1;
-        }
-      }
-      if (receivingIndex < receivingBufferList.size()) {
-        return receivingBufferList.get(receivingIndex++);
-      }
-      if (flushingIndex < flushingBufferList.size()) {
-        return flushingBufferList.get(flushingIndex++);
-      }
-      throw new NoSuchElementException();
+    protected int decide() {
+      return -1;
     }
 
-    @Override
-    public boolean hasNext() {
-      return flushingIndex < flushingBufferList.size()
-          || receivingIndex < receivingBufferList.size();
-    }
-
-    @Override
-    public ICachedMNode next() {
-      if (!hasNext()) {
-        throw new NoSuchElementException();
-      }
-      return tryGetNext();
+    protected int compare(ICachedMNode left, ICachedMNode right) {
+      return left.getName().compareTo(right.getName());
     }
   }
 

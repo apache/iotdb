@@ -31,8 +31,8 @@ public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTranspo
   private final TSocket underlyingSocket;
 
   public TimeoutChangeableTFastFramedTransport(
-      TSocket underlying, int thriftDefaultBufferSize, int thriftMaxFrameSize) {
-    super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize);
+      TSocket underlying, int thriftDefaultBufferSize, int thriftMaxFrameSize, boolean copyBinary) {
+    super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
     this.underlyingSocket = underlying;
   }
 
@@ -56,19 +56,22 @@ public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTranspo
 
     private final int thriftDefaultBufferSize;
     protected final int thriftMaxFrameSize;
+    protected final boolean copyBinary;
 
-    public Factory(int thriftDefaultBufferSize, int thriftMaxFrameSize) {
+    public Factory(int thriftDefaultBufferSize, int thriftMaxFrameSize, boolean copyBinary) {
       this.thriftDefaultBufferSize = thriftDefaultBufferSize;
       this.thriftMaxFrameSize = thriftMaxFrameSize;
+      this.copyBinary = copyBinary;
     }
 
     @Override
     public TTransport getTransport(TTransport trans) {
       if (trans instanceof TSocket) {
         return new TimeoutChangeableTFastFramedTransport(
-            (TSocket) trans, thriftDefaultBufferSize, thriftMaxFrameSize);
+            (TSocket) trans, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
       } else {
-        return new TElasticFramedTransport(trans, thriftDefaultBufferSize, thriftMaxFrameSize);
+        return new TElasticFramedTransport(
+            trans, thriftDefaultBufferSize, thriftMaxFrameSize, copyBinary);
       }
     }
   }

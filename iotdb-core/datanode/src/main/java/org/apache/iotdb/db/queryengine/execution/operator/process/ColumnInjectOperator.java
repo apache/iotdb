@@ -100,7 +100,7 @@ public class ColumnInjectOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return child.calculateMaxPeekMemory() + maxExtraColumnSize;
+    return child.calculateMaxPeekMemoryWithCounter() + maxExtraColumnSize;
   }
 
   @Override

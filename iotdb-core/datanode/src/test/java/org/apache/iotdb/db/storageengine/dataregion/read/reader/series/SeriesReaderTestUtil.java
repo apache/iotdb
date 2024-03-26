@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -181,8 +182,8 @@ public class SeriesReaderTestUtil {
                   String.valueOf(i + valueOffset)));
         }
         fileWriter.write(record);
-        tsFileResource.updateStartTime(deviceId, i);
-        tsFileResource.updateEndTime(deviceId, i);
+        tsFileResource.updateStartTime(new PlainDeviceID(deviceId), i);
+        tsFileResource.updateEndTime(new PlainDeviceID(deviceId), i);
       }
       if ((i + 1) % flushInterval == 0) {
         fileWriter.flushAllChunkGroups();

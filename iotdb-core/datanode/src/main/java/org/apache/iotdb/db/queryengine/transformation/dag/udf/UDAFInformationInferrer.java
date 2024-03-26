@@ -68,10 +68,8 @@ public class UDAFInformationInferrer {
     UDAF udaf = (UDAF) UDFManagementService.getInstance().reflect(functionName);
 
     UDFParameters parameters =
-        new UDFParameters(
-            childExpressions,
-            UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
-            attributes);
+        UDFParametersFactory.buildUdfParameters(
+            childExpressions, childExpressionDataTypes, attributes);
     udaf.validate(new UDFParameterValidator(parameters));
 
     // currently UDAF configuration does not need Zone ID

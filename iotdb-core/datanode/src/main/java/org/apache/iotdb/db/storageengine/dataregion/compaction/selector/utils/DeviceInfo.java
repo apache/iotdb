@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+
 public class DeviceInfo {
-  public String deviceId;
+  public IDeviceID deviceId;
   public long startTime;
   public long endTime;
 
-  public DeviceInfo(String deviceId, long startTime, long endTime) {
+  public DeviceInfo(IDeviceID deviceId, long startTime, long endTime) {
     this.deviceId = deviceId;
     this.startTime = startTime;
     this.endTime = endTime;

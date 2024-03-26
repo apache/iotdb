@@ -22,6 +22,8 @@
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%
 
+title IoTDB CLI
+
 set PATH="%JAVA_HOME%\bin\";%PATH%
 set "FULL_VERSION="
 set "MAJOR_VERSION="

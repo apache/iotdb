@@ -57,7 +57,6 @@ public class WALInsertNodeCacheTest {
   private static final String dataRegionId = "1";
   private static final WALInsertNodeCache cache = WALInsertNodeCache.getInstance(1);
   private WALMode prevMode;
-  private boolean prevIsClusterMode;
   private WALNode walNode;
 
   @Before
@@ -65,9 +64,7 @@ public class WALInsertNodeCacheTest {
     EnvironmentUtils.cleanDir(logDirectory);
     cache.clear();
     prevMode = config.getWalMode();
-    prevIsClusterMode = config.isClusterMode();
     config.setWalMode(WALMode.SYNC);
-    config.setClusterMode(true);
     walNode = new WALNode(identifier, logDirectory);
   }
 
@@ -76,7 +73,6 @@ public class WALInsertNodeCacheTest {
     walNode.close();
     cache.clear();
     config.setWalMode(prevMode);
-    config.setClusterMode(prevIsClusterMode);
     EnvironmentUtils.cleanDir(logDirectory);
   }
 

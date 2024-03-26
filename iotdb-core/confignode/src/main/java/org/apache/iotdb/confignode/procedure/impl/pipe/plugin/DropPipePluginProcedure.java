@@ -245,7 +245,8 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     if (that instanceof DropPipePluginProcedure) {
       final DropPipePluginProcedure thatProcedure = (DropPipePluginProcedure) that;
       return thatProcedure.getProcId() == getProcId()
-          && thatProcedure.getState() == getState()
+          && thatProcedure.getCurrentState().equals(this.getCurrentState())
+          && thatProcedure.getCycles() == this.getCycles()
           && (thatProcedure.pluginName).equals(pluginName);
     }
     return false;
@@ -253,6 +254,6 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
 
   @Override
   public int hashCode() {
-    return Objects.hash(this.pluginName);
+    return Objects.hash(getProcId(), getCurrentState(), getCycles(), pluginName);
   }
 }
