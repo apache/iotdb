@@ -23,6 +23,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
@@ -30,16 +31,23 @@ import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
+import org.awaitility.Awaitility;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
+import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import static org.junit.Assert.fail;
@@ -50,8 +58,6 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBSubscriptionConsumerGroupIT.class);
-
-  private static final int BASE = 233;
 
   private long createTopics() {
     // create topics on sender
@@ -73,7 +79,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       throws Exception {
     // insert some history data on sender
     try (ISession session = senderEnv.getSessionConnection()) {
-      for (int i = 0; i < BASE; ++i) {
+      for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
             String.format("insert into root.topic1(time, s) values (%s, 1)", i)); // topic1
         session.executeNonQueryStatement(
@@ -149,6 +155,12 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       throw new Exception("unexpected column name list");
     }
     String columnName = columnNameList.get(1);
+    LOGGER.info(
+        "insert {}.{} {} {}",
+        columnName,
+        consumerGroupId,
+        record.getTimestamp(),
+        record.getFields().get(0).getFloatV());
     session.insertRecord(
         columnName,
         record.getTimestamp(),
@@ -183,11 +195,14 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         currentTime,
         consumers,
         () -> {
-          TestUtils.assertDataEventuallyOnEnv(
+          assertSingleDataEventuallyOnEnv(
               receiverEnv,
               "select count(*) from root.**",
-              "count(root.topic1.s.cg1),",
-              Collections.singleton("100,"));
+              new HashMap<String, String>() {
+                {
+                  put("count(root.topic1.s.cg1)", "100");
+                }
+              });
           return null;
         });
   }
@@ -203,21 +218,16 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         currentTime,
         consumers,
         () -> {
-          TestUtils.assertDataEventuallyOnEnv(
+          assertSingleDataEventuallyOnEnv(
               receiverEnv,
-              "select count(*) from root.topic1.s.cg1",
-              "count(root.topic1.s.cg1),",
-              Collections.singleton("100,"));
-          TestUtils.assertDataEventuallyOnEnv(
-              receiverEnv,
-              "select count(*) from root.topic1.s.cg2",
-              "count(root.topic1.s.cg2),",
-              Collections.singleton("100,"));
-          TestUtils.assertDataEventuallyOnEnv(
-              receiverEnv,
-              "select count(*) from root.topic1.s.cg3",
-              "count(root.topic1.s.cg3),",
-              Collections.singleton("100,"));
+              "select count(*) from root.**",
+              new HashMap<String, String>() {
+                {
+                  put("count(root.topic1.s.cg1)", "100");
+                  put("count(root.topic1.s.cg2)", "100");
+                  put("count(root.topic1.s.cg3)", "100");
+                }
+              });
           return null;
         });
   }
@@ -233,16 +243,15 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         currentTime,
         consumers,
         () -> {
-          TestUtils.assertDataEventuallyOnEnv(
+          assertSingleDataEventuallyOnEnv(
               receiverEnv,
-              "select count(*) from root.topic1.s.cg1",
-              "count(root.topic1.s.cg1),",
-              Collections.singleton("100,"));
-          TestUtils.assertDataEventuallyOnEnv(
-              receiverEnv,
-              "select count(*) from root.topic2.s.cg1",
-              "count(root.topic2.s.cg1),",
-              Collections.singleton("100,"));
+              "select count(*) from root.**",
+              new HashMap<String, String>() {
+                {
+                  put("count(root.topic1.s.cg1)", "100");
+                  put("count(root.topic2.s.cg1)", "100");
+                }
+              });
           return null;
         });
   }
@@ -258,26 +267,17 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         currentTime,
         consumers,
         () -> {
-          TestUtils.assertDataEventuallyOnEnv(
+          assertSingleDataEventuallyOnEnv(
               receiverEnv,
-              "select count(*) from root.topic1.s.cg1",
-              "count(root.topic1.s.cg1),",
-              Collections.singleton("100,"));
-          TestUtils.assertDataEventuallyOnEnv(
-              receiverEnv,
-              "select count(*) from root.topic1.s.cg2",
-              "count(root.topic1.s.cg2),",
-              Collections.singleton("100,"));
-          TestUtils.assertDataEventuallyOnEnv(
-              receiverEnv,
-              "select count(*) from root.topic2.s.cg2",
-              "count(root.topic2.s.cg2),",
-              Collections.singleton("100,"));
-          TestUtils.assertDataEventuallyOnEnv(
-              receiverEnv,
-              "select count(*) from root.topic2.s.cg3",
-              "count(root.topic2.s.cg3),",
-              Collections.singleton("100,"));
+              "select count(*) from root.**",
+              new HashMap<String, String>() {
+                {
+                  put("count(root.topic1.s.cg1)", "100");
+                  put("count(root.topic1.s.cg2)", "100");
+                  put("count(root.topic2.s.cg2)", "100");
+                  put("count(root.topic2.s.cg3)", "100");
+                }
+              });
           return null;
         });
   }
@@ -294,22 +294,40 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         currentTime,
         consumers,
         () -> {
-          TestUtils.assertDataEventuallyOnEnv(
+          assertSingleDataEventuallyOnEnv(
               receiverEnv,
-              "select count(*) from root.topic1.s.cg1",
-              "count(root.topic1.s.cg1),",
-              Collections.singleton("100,"));
-          TestUtils.assertDataEventuallyOnEnv(
-              receiverEnv,
-              "select count(*) from root.topic1.s.cg2",
-              "count(root.topic1.s.cg2),",
-              Collections.singleton("100,"));
-          TestUtils.assertDataEventuallyOnEnv(
-              receiverEnv,
-              "select count(*) from root.topic2.s.cg2",
-              "count(root.topic2.s.cg2),",
-              Collections.singleton("100,"));
+              "select count(*) from root.**",
+              new HashMap<String, String>() {
+                {
+                  put("count(root.topic1.s.cg1)", "100");
+                  put("count(root.topic1.s.cg2)", "100");
+                  put("count(root.topic2.s.cg2)", "100");
+                  put("count(root.topic2.s.cg3)", "100");
+                }
+              });
           return null;
         });
+  }
+
+  private void assertSingleDataEventuallyOnEnv(
+      BaseEnv env, String sql, Map<String, String> expectedHeaderWithResult) {
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      Awaitility.await()
+          .atMost(60, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  TestUtils.assertSingleResultSetEqual(
+                      TestUtils.executeQueryWithRetry(statement, sql), expectedHeaderWithResult);
+                } catch (Exception e) {
+                  Assert.fail();
+                }
+              });
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }

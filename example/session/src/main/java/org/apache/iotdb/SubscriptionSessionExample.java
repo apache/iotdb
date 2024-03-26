@@ -55,14 +55,10 @@ public class SubscriptionSessionExample {
     for (int i = 0; i < 100; ++i) {
       session.executeNonQueryStatement(
           String.format("insert into root.db.d1(time, s1, s2) values (%s, 1, 2)", i));
-    }
-    for (int i = 0; i < 100; ++i) {
       session.executeNonQueryStatement(
           String.format("insert into root.db.d2(time, s3, s4) values (%s, 3, 4)", currentTime + i));
-    }
-    for (int i = 0; i < 100; ++i) {
       session.executeNonQueryStatement(
-          String.format("insert into root.sg.d2(time, s) values (%s, 5)", currentTime + 2 * i));
+          String.format("insert into root.sg.d3(time, s5) values (%s, 5)", currentTime + 2 * i));
     }
     session.executeNonQueryStatement("flush");
 

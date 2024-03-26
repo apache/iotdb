@@ -52,6 +52,8 @@ import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class TestUtils {
@@ -339,6 +341,25 @@ public class TestUtils {
         actualRetSet.add(builder.toString());
       }
       assertEquals(expectedRetSet, actualRetSet);
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail(String.valueOf(e));
+    }
+  }
+
+  public static void assertSingleResultSetEqual(
+      ResultSet actualResultSet, Map<String, String> expectedHeaderWithResult) {
+    try {
+      ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+      assertEquals(resultSetMetaData.getColumnCount(), expectedHeaderWithResult.size());
+      assertTrue(actualResultSet.next());
+      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+        String header = resultSetMetaData.getColumnName(i);
+        String expectedResult = expectedHeaderWithResult.get(header);
+        assertEquals(expectedResult, actualResultSet.getString(i));
+        expectedHeaderWithResult.remove(header);
+      }
+      assertFalse(actualResultSet.next());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail(String.valueOf(e));

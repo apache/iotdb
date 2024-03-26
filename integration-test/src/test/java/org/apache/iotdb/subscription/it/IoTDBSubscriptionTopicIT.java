@@ -111,9 +111,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                     continue;
                   }
                   for (SubscriptionMessage message : messages) {
-                    SubscriptionSessionDataSets dataSets =
+                    SubscriptionSessionDataSets payload =
                         (SubscriptionSessionDataSets) message.getPayload();
-                    for (Iterator<Tablet> it = dataSets.tabletIterator(); it.hasNext(); ) {
+                    for (Iterator<Tablet> it = payload.tabletIterator(); it.hasNext(); ) {
                       Tablet tablet = it.next();
                       session.insertTablet(tablet);
                     }
@@ -199,9 +199,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                     continue;
                   }
                   for (SubscriptionMessage message : messages) {
-                    SubscriptionSessionDataSets dataSets =
+                    SubscriptionSessionDataSets payload =
                         (SubscriptionSessionDataSets) message.getPayload();
-                    for (Iterator<Tablet> it = dataSets.tabletIterator(); it.hasNext(); ) {
+                    for (Iterator<Tablet> it = payload.tabletIterator(); it.hasNext(); ) {
                       Tablet tablet = it.next();
                       session.insertTablet(tablet);
                     }
@@ -284,9 +284,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                     continue;
                   }
                   for (SubscriptionMessage message : messages) {
-                    SubscriptionSessionDataSets dataSets =
+                    SubscriptionSessionDataSets payload =
                         (SubscriptionSessionDataSets) message.getPayload();
-                    for (Iterator<Tablet> it = dataSets.tabletIterator(); it.hasNext(); ) {
+                    for (Iterator<Tablet> it = payload.tabletIterator(); it.hasNext(); ) {
                       Tablet tablet = it.next();
                       session.insertTablet(tablet);
                     }
