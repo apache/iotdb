@@ -148,6 +148,7 @@ public class SubscriptionPrefetchingQueue {
         if (Objects.isNull(tablet)) {
           continue;
         }
+        // REMOVE ME: for debug
         LOGGER.info(
             "Subscription: prefetch tablet timestamp {} (topic name {}, consumer group {})",
             EnrichedTablets.timestamps(tablet),
@@ -165,6 +166,7 @@ public class SubscriptionPrefetchingQueue {
           if (Objects.isNull(tablet)) {
             continue;
           }
+          // REMOVE ME: for debug
           LOGGER.info(
               "Subscription: prefetch tablet timestamp {} (topic name {}, consumer group {})",
               EnrichedTablets.timestamps(tablet),

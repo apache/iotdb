@@ -99,11 +99,11 @@ public class IoTDBSubscriptionBasicIT {
     long retryCount = 0;
     try (SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
-            .autoCommit(false)
             .host(host)
             .port(port)
             .consumerId("c1")
             .consumerGroupId("cg1")
+            .autoCommit(false)
             .buildPullConsumer()) {
       consumer.open();
       consumer.subscribe("topic1");
@@ -172,11 +172,11 @@ public class IoTDBSubscriptionBasicIT {
     try {
       SubscriptionPullConsumer consumer =
           new SubscriptionPullConsumer.Builder()
-              .autoCommit(false)
               .host(host)
               .port(port)
               .consumerId("c1")
               .consumerGroupId("cg1")
+              .autoCommit(false)
               .buildPullConsumer();
       consumer.open();
       consumer.subscribe("topic1");

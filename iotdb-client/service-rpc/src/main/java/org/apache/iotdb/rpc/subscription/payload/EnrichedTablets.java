@@ -102,12 +102,14 @@ public class EnrichedTablets {
     return Objects.hash(topicName, subscriptionCommitId);
   }
 
+  // REMOVE ME: for debug
   public List<Long> timestamps() {
     List<Long> res = new ArrayList<>();
     tablets.forEach((tablet -> res.addAll(timestamps(tablet))));
     return res;
   }
 
+  // REMOVE ME: for debug
   public static List<Long> timestamps(Tablet tablet) {
     List<Long> res = new ArrayList<>();
     long[] timestamps = tablet.timestamps;

@@ -75,8 +75,8 @@ public class SerializedEnrichedEvent {
     return byteBuffer;
   }
 
-  public void clearByteBuffer() {
-    byteBuffer.clear();
+  public void resetByteBuffer() {
+    // maybe friendly for gc
     byteBuffer = null;
   }
 
@@ -124,6 +124,7 @@ public class SerializedEnrichedEvent {
     return Objects.equals(this.enrichedTablets, that.enrichedTablets);
   }
 
+  // REMOVE ME: for debug
   public List<Long> timestamps() {
     return enrichedTablets.timestamps();
   }

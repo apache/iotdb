@@ -48,6 +48,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 import static org.junit.Assert.fail;
@@ -58,131 +59,6 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBSubscriptionConsumerGroupIT.class);
-
-  private long createTopics() {
-    // create topics on sender
-    long currentTime = System.currentTimeMillis();
-    try (ISession session = senderEnv.getSessionConnection()) {
-      session.executeNonQueryStatement(
-          String.format("create topic topic1 with ('end-time'='%s')", currentTime - 1));
-      session.executeNonQueryStatement(
-          String.format("create topic topic2 with ('start-time'='%s')", currentTime));
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-    return currentTime;
-  }
-
-  private void testMultiConsumersSubscribeMultiTopicsTemplate(
-      long currentTime, List<SubscriptionPullConsumer> consumers, Supplier<Void> checker)
-      throws Exception {
-    // insert some history data on sender
-    try (ISession session = senderEnv.getSessionConnection()) {
-      for (int i = 0; i < 100; ++i) {
-        session.executeNonQueryStatement(
-            String.format("insert into root.topic1(time, s) values (%s, 1)", i)); // topic1
-        session.executeNonQueryStatement(
-            String.format(
-                "insert into root.topic2(time, s) values (%s, 1)", currentTime + i)); // topic2
-      }
-      session.executeNonQueryStatement("flush");
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-
-    List<Thread> threads = new ArrayList<>();
-    for (int i = 0; i < consumers.size(); ++i) {
-      final int index = i;
-      Thread t =
-          new Thread(
-              () -> {
-                try (SubscriptionPullConsumer consumer = consumers.get(index);
-                    ISession session = receiverEnv.getSessionConnection()) {
-                  while (!Thread.currentThread().isInterrupted()) {
-                    try {
-                      Thread.sleep(1000); // wait some time
-                    } catch (InterruptedException e) {
-                      break;
-                    }
-                    List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
-                    if (messages.isEmpty()) {
-                      continue;
-                    }
-                    for (SubscriptionMessage message : messages) {
-                      SubscriptionSessionDataSets payload =
-                          (SubscriptionSessionDataSets) message.getPayload();
-                      for (SubscriptionSessionDataSet dataSet : payload) {
-                        List<String> columnNameList = dataSet.getColumnNames();
-                        while (dataSet.hasNext()) {
-                          RowRecord record = dataSet.next();
-                          insertRowRecordEnrichByConsumerGroupId(
-                              session, columnNameList, record, consumer.getConsumerGroupId());
-                        }
-                      }
-                    }
-                    consumer.commitSync(messages);
-                  }
-                  // no need to unsubscribe
-                  LOGGER.info(
-                      "consumer {} (group {}) exiting...",
-                      consumer.getConsumerId(),
-                      consumer.getConsumerGroupId());
-                } catch (Exception e) {
-                  e.printStackTrace();
-                  // avoid fail
-                }
-              });
-      t.start();
-      threads.add(t);
-    }
-
-    // check data on receiver
-    checker.get();
-
-    for (Thread thread : threads) {
-      thread.interrupt();
-      thread.join();
-    }
-  }
-
-  private void insertRowRecordEnrichByConsumerGroupId(
-      ISession session, List<String> columnNameList, RowRecord record, String consumerGroupId)
-      throws Exception {
-    if (columnNameList.size() != 2) {
-      LOGGER.warn("unexpected column name list: {}", columnNameList);
-      throw new Exception("unexpected column name list");
-    }
-    String columnName = columnNameList.get(1);
-    LOGGER.info(
-        "insert {}.{} {} {}",
-        columnName,
-        consumerGroupId,
-        record.getTimestamp(),
-        record.getFields().get(0).getFloatV());
-    session.insertRecord(
-        columnName,
-        record.getTimestamp(),
-        Collections.singletonList(consumerGroupId),
-        Collections.singletonList(TSDataType.FLOAT),
-        Collections.singletonList(record.getFields().get(0).getFloatV()));
-  }
-
-  private SubscriptionPullConsumer createConsumerAndSubscribeTopics(
-      String consumerId, String consumerGroupId, String... topicNames) throws Exception {
-    SubscriptionPullConsumer consumer =
-        new SubscriptionPullConsumer.Builder()
-            .autoCommit(false)
-            .host(senderEnv.getIP())
-            .port(Integer.parseInt(senderEnv.getPort()))
-            .consumerId(consumerId)
-            .consumerGroupId(consumerGroupId)
-            .buildPullConsumer();
-    consumer.open();
-    consumer.subscribe(topicNames);
-    return consumer;
-  }
 
   @Test
   public void test3C1CGSubscribeOneTopic() throws Exception {
@@ -328,5 +204,132 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  private long createTopics() {
+    // create topics on sender
+    long currentTime = System.currentTimeMillis();
+    try (ISession session = senderEnv.getSessionConnection()) {
+      session.executeNonQueryStatement(
+          String.format("create topic topic1 with ('end-time'='%s')", currentTime - 1));
+      session.executeNonQueryStatement(
+          String.format("create topic topic2 with ('start-time'='%s')", currentTime));
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    return currentTime;
+  }
+
+  private SubscriptionPullConsumer createConsumerAndSubscribeTopics(
+      String consumerId, String consumerGroupId, String... topicNames) throws Exception {
+    SubscriptionPullConsumer consumer =
+        new SubscriptionPullConsumer.Builder()
+            .host(senderEnv.getIP())
+            .port(Integer.parseInt(senderEnv.getPort()))
+            .consumerId(consumerId)
+            .consumerGroupId(consumerGroupId)
+            .autoCommit(false)
+            .buildPullConsumer();
+    consumer.open();
+    consumer.subscribe(topicNames);
+    return consumer;
+  }
+
+  private void testMultiConsumersSubscribeMultiTopicsTemplate(
+      long currentTime, List<SubscriptionPullConsumer> consumers, Supplier<Void> checker)
+      throws Exception {
+    // insert some history data on sender
+    try (ISession session = senderEnv.getSessionConnection()) {
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.topic1(time, s) values (%s, 1)", i)); // topic1
+        session.executeNonQueryStatement(
+            String.format(
+                "insert into root.topic2(time, s) values (%s, 1)", currentTime + i)); // topic2
+      }
+      session.executeNonQueryStatement("flush");
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    AtomicBoolean isClosed = new AtomicBoolean(false);
+    List<Thread> threads = new ArrayList<>();
+    for (int i = 0; i < consumers.size(); ++i) {
+      final int index = i;
+      Thread t =
+          new Thread(
+              () -> {
+                try (SubscriptionPullConsumer consumer = consumers.get(index);
+                    ISession session = receiverEnv.getSessionConnection()) {
+                  while (!isClosed.get()) {
+                    try {
+                      Thread.sleep(1000); // wait some time
+                    } catch (InterruptedException e) {
+                      break;
+                    }
+                    List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+                    if (messages.isEmpty()) {
+                      continue;
+                    }
+                    for (SubscriptionMessage message : messages) {
+                      SubscriptionSessionDataSets payload =
+                          (SubscriptionSessionDataSets) message.getPayload();
+                      for (SubscriptionSessionDataSet dataSet : payload) {
+                        List<String> columnNameList = dataSet.getColumnNames();
+                        while (dataSet.hasNext()) {
+                          RowRecord record = dataSet.next();
+                          insertRowRecordEnrichByConsumerGroupId(
+                              session, columnNameList, record, consumer.getConsumerGroupId());
+                        }
+                      }
+                    }
+                    consumer.commitSync(messages);
+                  }
+                  // no need to unsubscribe
+                  LOGGER.info(
+                      "consumer {} (group {}) exiting...",
+                      consumer.getConsumerId(),
+                      consumer.getConsumerGroupId());
+                } catch (Exception e) {
+                  e.printStackTrace();
+                  // avoid fail
+                }
+              });
+      t.start();
+      threads.add(t);
+    }
+
+    // check data on receiver
+    checker.get();
+
+    isClosed.set(true);
+    for (Thread thread : threads) {
+      thread.join();
+    }
+  }
+
+  private void insertRowRecordEnrichByConsumerGroupId(
+      ISession session, List<String> columnNameList, RowRecord record, String consumerGroupId)
+      throws Exception {
+    if (columnNameList.size() != 2) {
+      LOGGER.warn("unexpected column name list: {}", columnNameList);
+      throw new Exception("unexpected column name list");
+    }
+    String columnName = columnNameList.get(1);
+    // REMOVE ME: for debug
+    LOGGER.info(
+        "insert {}.{} {} {}",
+        columnName,
+        consumerGroupId,
+        record.getTimestamp(),
+        record.getFields().get(0).getFloatV());
+    session.insertRecord(
+        columnName,
+        record.getTimestamp(),
+        Collections.singletonList(consumerGroupId),
+        Collections.singletonList(TSDataType.FLOAT),
+        Collections.singletonList(record.getFields().get(0).getFloatV()));
   }
 }

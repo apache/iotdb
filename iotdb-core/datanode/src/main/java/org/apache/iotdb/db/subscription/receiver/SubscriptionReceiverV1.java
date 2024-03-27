@@ -59,7 +59,6 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribe
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -329,9 +328,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     List<SerializedEnrichedEvent> events =
         SubscriptionAgent.broker().poll(consumerConfig, topicNames, timer);
 
+    // REMOVE ME: for debug
     List<Long> timestamps = new ArrayList<>();
     events.forEach((event -> timestamps.addAll(event.timestamps())));
-    LOGGER.info("Subscription: event timestamps {}", timestamps);
+    LOGGER.info("Subscription: consumer {} poll event timestamps {}", consumerConfig, timestamps);
 
     List<ByteBuffer> byteBuffers =
         events.stream()
@@ -341,10 +341,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                   return event.getByteBuffer();
                 }))
             .filter(Objects::nonNull)
-            .map(ReadWriteIOUtils::clone) // deep copy
             .collect(Collectors.toList());
-    // TODO
-    // events.forEach(SerializedEnrichedEvent::clearByteBuffer);
     List<String> subscriptionCommitIds =
         events.stream()
             .map(SerializedEnrichedEvent::getSubscriptionCommitId)
@@ -362,6 +359,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         consumerConfig,
         topicNames,
         subscriptionCommitIds);
+
+    events.forEach(SerializedEnrichedEvent::resetByteBuffer);
     return PipeSubscribePollResp.directToTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, byteBuffers);
   }
 

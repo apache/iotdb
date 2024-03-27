@@ -252,6 +252,36 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     private boolean autoCommit = ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE;
     private int autoCommitInterval = ConsumerConstant.AUTO_COMMIT_INTERVAL_DEFAULT_VALUE;
 
+    public Builder host(String host) {
+      super.host(host);
+      return this;
+    }
+
+    public Builder port(int port) {
+      super.port(port);
+      return this;
+    }
+
+    public Builder username(String username) {
+      super.username(username);
+      return this;
+    }
+
+    public Builder password(String password) {
+      super.password(password);
+      return this;
+    }
+
+    public Builder consumerId(String consumerId) {
+      super.consumerId(consumerId);
+      return this;
+    }
+
+    public Builder consumerGroupId(String consumerGroupId) {
+      super.consumerGroupId(consumerGroupId);
+      return this;
+    }
+
     public Builder autoCommit(boolean autoCommit) {
       this.autoCommit = autoCommit;
       return this;

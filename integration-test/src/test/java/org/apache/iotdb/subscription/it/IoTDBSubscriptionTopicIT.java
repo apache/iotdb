@@ -43,6 +43,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.fail;
 
@@ -86,21 +87,22 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
 
     // subscribe on sender and insert on receiver
+    AtomicBoolean isClosed = new AtomicBoolean(false);
     Thread thread =
         new Thread(
             () -> {
               try (SubscriptionPullConsumer consumer =
                       new SubscriptionPullConsumer.Builder()
-                          .autoCommit(false)
                           .host(host)
                           .port(port)
                           .consumerId("c1")
                           .consumerGroupId("cg1")
+                          .autoCommit(false)
                           .buildPullConsumer();
                   ISession session = receiverEnv.getSessionConnection()) {
                 consumer.open();
                 consumer.subscribe("topic1");
-                while (!Thread.currentThread().isInterrupted()) {
+                while (!isClosed.get()) {
                   try {
                     Thread.sleep(1000); // wait some time
                   } catch (InterruptedException e) {
@@ -139,7 +141,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         "count(root.db.d1.s),count(root.db.d2.s),",
         Collections.singleton("100,100,"));
 
-    thread.interrupt();
+    isClosed.set(true);
     thread.join();
   }
 
@@ -174,21 +176,22 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
 
     // subscribe on sender and insert on receiver
+    AtomicBoolean isClosed = new AtomicBoolean(false);
     Thread thread =
         new Thread(
             () -> {
               try (SubscriptionPullConsumer consumer =
                       new SubscriptionPullConsumer.Builder()
-                          .autoCommit(false)
                           .host(host)
                           .port(port)
                           .consumerId("c1")
                           .consumerGroupId("cg1")
+                          .autoCommit(false)
                           .buildPullConsumer();
                   ISession session = receiverEnv.getSessionConnection()) {
                 consumer.open();
                 consumer.subscribe("topic1");
-                while (!Thread.currentThread().isInterrupted()) {
+                while (!isClosed.get()) {
                   try {
                     Thread.sleep(1000); // wait some time
                   } catch (InterruptedException e) {
@@ -227,7 +230,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         "count(root.db.d2.s),",
         Collections.singleton("100,"));
 
-    thread.interrupt();
+    isClosed.set(true);
     thread.join();
   }
 
@@ -259,21 +262,22 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
 
     // subscribe on sender and insert on receiver
+    AtomicBoolean isClosed = new AtomicBoolean(false);
     Thread thread =
         new Thread(
             () -> {
               try (SubscriptionPullConsumer consumer =
                       new SubscriptionPullConsumer.Builder()
-                          .autoCommit(false)
                           .host(host)
                           .port(port)
                           .consumerId("c1")
                           .consumerGroupId("cg1")
+                          .autoCommit(false)
                           .buildPullConsumer();
                   ISession session = receiverEnv.getSessionConnection()) {
                 consumer.open();
                 consumer.subscribe("topic1");
-                while (!Thread.currentThread().isInterrupted()) {
+                while (!isClosed.get()) {
                   try {
                     Thread.sleep(1000); // wait some time
                   } catch (InterruptedException e) {
@@ -313,7 +317,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv, "select * from root.**", "Time,root.db.d1.at1,", expectedResSet);
 
-    thread.interrupt();
+    isClosed.set(true);
     thread.join();
   }
 }

@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 
 public class SubscriptionSessionDataSet implements ISessionDataSet {
 
-  private final Tablet tablet;
+  private Tablet tablet;
 
   public Tablet getTablet() {
     return tablet;
@@ -116,7 +116,7 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
   @Override
   public void close() throws Exception {
     // maybe friendly for gc
-    tablet.reset();
+    tablet = null;
   }
 
   /////////////////////////////// utility ///////////////////////////////
