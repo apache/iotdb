@@ -149,7 +149,7 @@ public class SubscriptionPrefetchingQueue {
           continue;
         }
         LOGGER.info(
-            "Subscription: prefetch tablet timestamp {} (topic {}, consumer group {})",
+            "Subscription: prefetch tablet timestamp {} (topic name {}, consumer group {})",
             EnrichedTablets.timestamps(tablet),
             topicName,
             brokerId);
@@ -166,7 +166,7 @@ public class SubscriptionPrefetchingQueue {
             continue;
           }
           LOGGER.info(
-              "Subscription: prefetch tablet timestamp {} (topic {}, consumer group {})",
+              "Subscription: prefetch tablet timestamp {} (topic name {}, consumer group {})",
               EnrichedTablets.timestamps(tablet),
               topicName,
               brokerId);
