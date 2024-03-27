@@ -660,11 +660,15 @@ public class IoTConsensusServerImpl {
                   .getAbsolutePath());
       Path configurationPath =
           Paths.get(
-              new File(storageDir, peer.getNodeId() + "_" + CONFIGURATION_FILE_NAME)
+              new File(storageDir, generateConfigurationDatFileName(peer.getNodeId()))
                   .getAbsolutePath());
       Files.deleteIfExists(configurationPath);
       Files.move(tmpConfigurationPath, configurationPath);
     }
+  }
+
+  public static String generateConfigurationDatFileName(int nodeId) {
+    return nodeId + "_" + CONFIGURATION_FILE_NAME;
   }
 
   private List<Peer> getConfiguration(Path dirPath, String configurationFileName)

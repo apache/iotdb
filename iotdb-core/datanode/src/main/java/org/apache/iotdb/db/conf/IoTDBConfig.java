@@ -328,9 +328,11 @@ public class IoTDBConfig {
   /** Consensus directory. */
   private String consensusDir = IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + "consensus";
 
-  private String dataRegionConsensusDir = consensusDir + File.separator + "data_region";
+  private String dataRegionConsensusDir =
+      consensusDir + File.separator + IoTDBConstant.DATA_REGION_FOLDER_NAME;
 
-  private String schemaRegionConsensusDir = consensusDir + File.separator + "schema_region";
+  private String schemaRegionConsensusDir =
+      consensusDir + File.separator + IoTDBConstant.SCHEMA_REGION_FOLDER_NAME;
 
   /** temp result directory for sortOperator */
   private String sortTmpDir =
@@ -1448,8 +1450,10 @@ public class IoTDBConfig {
 
   public void setConsensusDir(String consensusDir) {
     this.consensusDir = consensusDir;
-    setDataRegionConsensusDir(consensusDir + File.separator + "data_region");
-    setSchemaRegionConsensusDir(consensusDir + File.separator + "schema_region");
+    setDataRegionConsensusDir(
+        consensusDir + File.separator + IoTDBConstant.DATA_REGION_FOLDER_NAME);
+    setSchemaRegionConsensusDir(
+        consensusDir + File.separator + IoTDBConstant.SCHEMA_REGION_FOLDER_NAME);
   }
 
   public String getDataRegionConsensusDir() {

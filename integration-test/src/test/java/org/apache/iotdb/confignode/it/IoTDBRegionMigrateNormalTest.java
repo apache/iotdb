@@ -22,13 +22,13 @@ package org.apache.iotdb.confignode.it;
 import org.junit.Test;
 
 public class IoTDBRegionMigrateNormalTest extends IoTDBRegionMigrateReliabilityTestFramework {
-    @Test
-    public void normal1C2DTest() throws Exception {
-        generalTest(1, 1, 1, 2, buildSet(), buildSet());
-    }
+  @Test
+  public void normal1C2DTest() throws Exception {
+    generalTest(1, 1, 1, 2, buildSet(), buildSet());
+  }
 
-    @Test
-    public void normal3C3DTest() throws Exception {
-        generalTest(2, 3, 3, 3, buildSet(), buildSet());
-    }
+  @Test
+  public void normal3C3DTest() throws Exception {
+    generalTest(2, 3, 3, 3, buildSet(), buildSet());
+  }
 }

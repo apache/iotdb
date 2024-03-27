@@ -20,30 +20,32 @@
 package org.apache.iotdb.confignode.it;
 
 import org.apache.iotdb.commons.utils.DataNodeKillPoints;
+
 import org.junit.Test;
 
-public class IoTDBRegionMigrateDataNodeCrashTest extends IoTDBRegionMigrateReliabilityTestFramework{
-    // region Coordinator DataNode crash tests
+public class IoTDBRegionMigrateDataNodeCrashTest
+    extends IoTDBRegionMigrateReliabilityTestFramework {
+  // region Coordinator DataNode crash tests
 
-    @Test
-    public void coordinatorCrashDuringRemovePeer() throws Exception {
-        generalTest(1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.CoordinatorRemovePeer.name()));
-    }
+  @Test
+  public void coordinatorCrashDuringRemovePeer() throws Exception {
+    generalTest(1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.CoordinatorRemovePeer.name()));
+  }
 
-    // endregion
+  // endregion
 
-    // region Original DataNode crash tests
+  // region Original DataNode crash tests
 
-    @Test
-    public void originalCrashDuringRemovePeer() throws Exception {
-        generalTest(1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.OriginalRemovePeer.name()));
-    }
+  @Test
+  public void originalCrashDuringRemovePeer() throws Exception {
+    generalTest(1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.OriginalRemovePeer.name()));
+  }
 
-    @Test
-    public void originalCrashDuringDeleteLocalPeer() throws Exception {
-        generalTest(
-                1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.OriginalDeleteOldRegionPeer.name()));
-    }
+  @Test
+  public void originalCrashDuringDeleteLocalPeer() throws Exception {
+    generalTest(
+        1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.OriginalDeleteOldRegionPeer.name()));
+  }
 
-    // endregion
+  // endregion
 }

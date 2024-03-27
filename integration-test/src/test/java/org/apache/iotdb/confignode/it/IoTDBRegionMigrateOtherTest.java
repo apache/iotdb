@@ -23,13 +23,13 @@ import org.junit.Assert;
 import org.junit.Test;
 
 public class IoTDBRegionMigrateOtherTest extends IoTDBRegionMigrateReliabilityTestFramework {
-    @Test
-    public void badKillPoint() throws Exception {
-        try {
-            generalTest(1, 1, 1, 2, buildSet("??"), buildSet());
-        } catch (AssertionError e) {
-            return;
-        }
-        Assert.fail("kill point not triggered but test pass");
+  @Test
+  public void badKillPoint() throws Exception {
+    try {
+      generalTest(1, 1, 1, 2, buildSet("??"), buildSet());
+    } catch (AssertionError e) {
+      return;
     }
+    Assert.fail("kill point not triggered but test pass");
+  }
 }
