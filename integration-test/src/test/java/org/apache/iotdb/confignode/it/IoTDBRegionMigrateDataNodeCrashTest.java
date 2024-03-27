@@ -29,7 +29,7 @@ public class IoTDBRegionMigrateDataNodeCrashTest
 
   @Test
   public void coordinatorCrashDuringRemovePeer() throws Exception {
-    generalTest(1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.CoordinatorRemovePeer.name()));
+    generalTest(1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.COORDINATOR_REMOVE_PEER.name()));
   }
 
   // endregion
@@ -38,14 +38,22 @@ public class IoTDBRegionMigrateDataNodeCrashTest
 
   @Test
   public void originalCrashDuringRemovePeer() throws Exception {
-    generalTest(1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.OriginalRemovePeer.name()));
+    generalTest(1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.ORIGINAL_REMOVE_PEER.name()));
   }
 
   @Test
   public void originalCrashDuringDeleteLocalPeer() throws Exception {
     generalTest(
-        1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.OriginalDeleteOldRegionPeer.name()));
+        1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.ORIGINAL_DELETE_OLD_REGION_PEER.name()));
   }
 
   // endregion
+
+  // region Destination DataNode crash tests
+
+  @Test
+  public void destinationCrashDuringCreateLocalPeer() throws Exception {
+    generalTest(
+        1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER.name()));
+  }
 }

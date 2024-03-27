@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.utils.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.IConsensus;
@@ -55,6 +56,7 @@ import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCService;
 import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCServiceProcessor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.commons.utils.FileUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -215,6 +217,7 @@ public class IoTConsensus implements IConsensus {
   @Override
   public void createLocalPeer(ConsensusGroupId groupId, List<Peer> peers)
       throws ConsensusException {
+    logger.info("[IoTConsensus]: DESTINATION_CREATE_LOCAL_PEER starts...");
     int consensusGroupSize = peers.size();
     if (consensusGroupSize == 0) {
       throw new IllegalPeerNumException(consensusGroupSize);
@@ -253,6 +256,8 @@ public class IoTConsensus implements IConsensus {
             () ->
                 new ConsensusException(
                     String.format("Unable to create consensus dir for group %s", groupId)));
+    FileUtils.logBreakpoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER.toString());
+
     if (exist.get()) {
       throw new ConsensusGroupAlreadyExistException(groupId);
     }
