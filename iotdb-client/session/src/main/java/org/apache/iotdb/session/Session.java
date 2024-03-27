@@ -102,7 +102,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 @SuppressWarnings({"java:S107", "java:S1135"}) // need enough parameters, ignore todos
 public class Session implements ISession {
@@ -2787,13 +2786,20 @@ public class Session implements ISession {
     if (sampleNum < MIN_SAMPLE_SIZE) {
       return false;
     }
-    IntStream indexStream = ThreadLocalRandom.current().ints(0, size).distinct().limit(sampleNum);
-    Set<String> allMeasurement =
-        measurementsList.stream().flatMap(List::stream).collect(Collectors.toSet());
-    PrimitiveIterator.OfInt iterator = indexStream.iterator();
-    while (iterator.hasNext()) {
-      int index = iterator.next();
-      if ((double) measurementsList.get(index).size() / allMeasurement.size() < CONVERT_THRESHOLD) {
+    List<Integer> indexList =
+        ThreadLocalRandom.current()
+            .ints(0, size)
+            .distinct()
+            .limit(sampleNum)
+            .boxed()
+            .collect(Collectors.toList());
+    Set<String> allMeasurement = new HashSet<>();
+    for (int i = 0; i < sampleNum; i++) {
+      allMeasurement.addAll(measurementsList.get(indexList.get(i)));
+    }
+    for (int i = 0; i < sampleNum; i++) {
+      if ((double) measurementsList.get(indexList.get(i)).size() / allMeasurement.size()
+          < CONVERT_THRESHOLD) {
         return false;
       }
     }
@@ -2954,16 +2960,22 @@ public class Session implements ISession {
       }
       return;
     }
-    List<String> allMeasurements = new ArrayList<>(allMeasurementMap.keySet());
     // tablet with null value
-    Map<String, Object> measurementValueMap = new HashMap<>(measurements.size() + 1, 1);
     for (int i = 0; i < measurements.size(); i++) {
-      measurementValueMap.put(measurements.get(i), values.get(i));
+      String measurement = measurements.get(i);
+      tablet.addValue(measurement, row, values.get(i));
+      allMeasurementMap.get(measurement).setRight(false);
     }
-    for (String measurement : allMeasurements) {
-      Object value = measurementValueMap.getOrDefault(measurement, null);
-      tablet.addValue(measurement, row, value);
-    }
+    allMeasurementMap
+        .keySet()
+        .forEach(
+            measurement -> {
+              if (allMeasurementMap.get(measurement).getRight()) {
+                tablet.addValue(measurement, row, null);
+              } else {
+                allMeasurementMap.get(measurement).setRight(true);
+              }
+            });
   }
 
   /**
