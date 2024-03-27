@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.column.*;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -97,9 +98,15 @@ public class SerializableRowRecordList implements SerializableList {
   private final SerializationRecorder serializationRecorder;
   private final TSDataType[] dataTypes;
   private final int internalRowRecordListCapacity;
-  private final int seriesNumber;
+  private final int valueColumnCount;
 
-  private List<Object[]> rowRecords;
+  private List<Column[]> blocks;
+
+  private int skipPrefixNullCount;
+
+  private int prefixNullCount;
+
+  private boolean isAllNull;
 
   private SerializableRowRecordList(
       SerializationRecorder serializationRecorder,
@@ -108,52 +115,140 @@ public class SerializableRowRecordList implements SerializableList {
     this.serializationRecorder = serializationRecorder;
     this.dataTypes = dataTypes;
     this.internalRowRecordListCapacity = internalRowRecordListCapacity;
-    seriesNumber = dataTypes.length;
+
+    valueColumnCount = dataTypes.length;
+    prefixNullCount = 0;
+    isAllNull = true;
+
     init();
   }
 
   public int size() {
-    return rowRecords.size();
+    return prefixNullCount + skipPrefixNullCount;
   }
 
-  public Object[] getRowRecord(int index) {
-    return rowRecords.get(index);
+  public Object[] getRow(int index) {
+    // Fall into prefix nulls
+    if (index < prefixNullCount) {
+      return null;
+    }
+
+    return getRowSkipPrefixNulls(index - prefixNullCount);
+  }
+
+  private Object[] getRowSkipPrefixNulls(int index) {
+    assert index < skipPrefixNullCount;
+
+    // Value columns + time column
+    Object[] row = new Object[valueColumnCount + 1];
+
+    int total = 0;
+    for (Column[] block : blocks) {
+      // Find position
+      int length = block[0].getPositionCount();
+      if (index < total + length) {
+        int offset = index - total;
+
+        // Fill value columns
+        for (int i = 0; i < block.length - 1; i++) {
+          switch (dataTypes[i]) {
+            case INT32:
+              row[i] = block[i].getInt(offset);
+              break;
+            case INT64:
+              row[i] = block[i].getLong(offset);
+              break;
+            case FLOAT:
+              row[i] = block[i].getFloat(offset);
+              break;
+            case DOUBLE:
+              row[i] = block[i].getDouble(offset);
+              break;
+            case BOOLEAN:
+              row[i] = block[i].getBoolean(offset);
+              break;
+            case TEXT:
+              row[i] = block[i].getBinary(offset);
+              break;
+            default:
+              throw new UnSupportedDataTypeException(dataTypes[i].toString());
+          }
+        }
+        // Fill time column
+        row[block.length - 1] = block[block.length - 1].getLong(offset);
+
+        break;
+      }
+      total += length;
+    }
+
+    return row;
   }
 
   public long getTime(int index) {
-    return (long) rowRecords.get(index)[seriesNumber];
+    // Would never access null row's time
+    assert index >= prefixNullCount;
+
+    return getTimeSkipPrefixNulls(index - prefixNullCount);
   }
 
-  public void put(Object[] rowRecord) {
-    rowRecords.add(rowRecord);
+  private long getTimeSkipPrefixNulls(int index) {
+    assert index < skipPrefixNullCount;
+
+    int total = 0;
+    long time = -1;
+    for (Column[] block: blocks) {
+      int length = block[0].getPositionCount();
+      if (index < total + length) {
+        int offset = index - total;
+
+        // Last column is always time column
+        time = block[valueColumnCount].getLong(offset);
+        break;
+      }
+    }
+
+    return time;
+  }
+
+  @Deprecated
+  public void putRow(Object[] rowRecord) {
+  }
+
+  public void putNulls(int nullCount) {
+    assert isAllNull;
+    prefixNullCount += nullCount;
+  }
+
+  public void putColumns(Column[] columns) {
+    isAllNull = false;
+
+    blocks.add(columns);
+    skipPrefixNullCount = columns[0].getPositionCount();
   }
 
   @Override
   public void release() {
-    rowRecords = null;
+    blocks = null;
   }
 
   @Override
   public void init() {
-    rowRecords = new ArrayList<>(internalRowRecordListCapacity);
+    blocks = new ArrayList<>();
   }
 
   @Override
   public void serialize(PublicBAOS outputStream) throws IOException {
-    int size = rowRecords.size();
-    serializationRecorder.setSerializedElementSize(size);
+    // Write size field
+    int total = size();
+    serializationRecorder.setSerializedElementSize(total);
+    // Write prefix null count field
     int serializedByteLength = 0;
-    int nullCount = 0;
-    for (Object[] record : rowRecords) {
-      if (record != null) {
-        break;
-      }
-      ++nullCount;
-    }
-    serializedByteLength += ReadWriteIOUtils.write(nullCount, outputStream);
-    for (int i = nullCount; i < size; ++i) {
-      Object[] rowRecord = rowRecords.get(i);
-      serializedByteLength += ReadWriteIOUtils.write((long) rowRecord[seriesNumber], outputStream);
+    serializedByteLength += ReadWriteIOUtils.write(prefixNullCount, outputStream);
+    // Write subsequent rows
+    for (int i = 0; i < skipPrefixNullCount; ++i) {
+      Object[] rowRecord = getRowSkipPrefixNulls(i);
+      serializedByteLength += ReadWriteIOUtils.write((long) rowRecord[valueColumnCount], outputStream);
       serializedByteLength += writeFields(rowRecord, outputStream);
     }
     serializationRecorder.setSerializedByteLength(serializedByteLength);
@@ -161,22 +256,102 @@ public class SerializableRowRecordList implements SerializableList {
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
+    // Read total size
     int serializedElementSize = serializationRecorder.getSerializedElementSize();
-    int nullCount = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < nullCount; ++i) {
-      put(null);
-    }
-    for (int i = nullCount; i < serializedElementSize; ++i) {
-      Object[] rowRecord = new Object[seriesNumber + 1];
-      rowRecord[seriesNumber] = ReadWriteIOUtils.readLong(byteBuffer); // timestamp
+    // Read prefix null count size and set relevant field
+    isAllNull = true;
+    prefixNullCount = ReadWriteIOUtils.readInt(byteBuffer);
+    skipPrefixNullCount = serializedElementSize - prefixNullCount;
+    putNulls(prefixNullCount);
+    // Read subsequent rows
+    ColumnBuilder[] builders = constructColumnBuilders(skipPrefixNullCount);
+    for (int i = 0; i < skipPrefixNullCount; ++i) {
+      Object[] rowRecord = new Object[valueColumnCount + 1];
+      rowRecord[valueColumnCount] = ReadWriteIOUtils.readLong(byteBuffer); // timestamp
       readFields(byteBuffer, rowRecord);
-      put(rowRecord);
+      appendRowInColumnBuilders(rowRecord, builders);
     }
+    // Discard old columns and build a new one
+    blocks = new ArrayList<>();
+    blocks.add(buildColumnsByBuilders(builders));
+  }
+
+  private ColumnBuilder[] constructColumnBuilders(int expectedEntries) {
+    ColumnBuilder[] builders = new ColumnBuilder[valueColumnCount + 1];
+    // Value column builders
+    for (int i = 0; i < valueColumnCount; i++) {
+      switch (dataTypes[i]) {
+        case INT32:
+          builders[i] = new IntColumnBuilder(null, expectedEntries);
+          break;
+        case INT64:
+          builders[i] = new LongColumnBuilder(null, expectedEntries);
+          break;
+        case FLOAT:
+          builders[i] = new FloatColumnBuilder(null, expectedEntries);
+          break;
+        case DOUBLE:
+          builders[i] = new DoubleColumnBuilder(null, expectedEntries);
+          break;
+        case BOOLEAN:
+          builders[i] = new BooleanColumnBuilder(null, expectedEntries);
+          break;
+        case TEXT:
+          builders[i] = new BinaryColumnBuilder(null, expectedEntries);
+          break;
+        default:
+          throw new UnSupportedDataTypeException(dataTypes[i].toString());
+      }
+    }
+    // Time column builder
+    builders[valueColumnCount] = new TimeColumnBuilder(null, expectedEntries);
+
+    return builders;
+  }
+
+  private void appendRowInColumnBuilders(Object[] row, ColumnBuilder[] builders) {
+    // Write value field
+    for (int i = 0; i < valueColumnCount; i++) {
+      Object field = row[i];
+      switch (dataTypes[i]) {
+        case INT32:
+          builders[i].writeInt((int) field);
+          break;
+        case INT64:
+          builders[i].writeLong((long) field);
+          break;
+        case FLOAT:
+          builders[i].writeFloat((float) field);
+          break;
+        case DOUBLE:
+          builders[i].writeDouble((double) field);
+          break;
+        case BOOLEAN:
+          builders[i].writeBoolean((boolean) field);
+          break;
+        case TEXT:
+          builders[i].writeBinary((Binary) field);
+          break;
+        default:
+          throw new UnSupportedDataTypeException(dataTypes[i].toString());
+      }
+    }
+    // Write time field
+    builders[valueColumnCount].writeLong((long)row[valueColumnCount]);
+  }
+
+  private Column[] buildColumnsByBuilders(ColumnBuilder[] builders) {
+    Column[] columns = new Column[valueColumnCount + 1];
+    for (int i = 0; i < valueColumnCount + 1; i++) {
+      columns[i] = builders[i].build();
+    }
+
+    return columns;
   }
 
   private int writeFields(Object[] rowRecord, PublicBAOS outputStream) throws IOException {
     int serializedByteLength = 0;
-    for (int i = 0; i < seriesNumber; ++i) {
+    for (int i = 0; i < valueColumnCount; ++i) {
       Object field = rowRecord[i];
       boolean isNull = field == null;
       serializedByteLength += ReadWriteIOUtils.write(isNull, outputStream);
@@ -211,7 +386,7 @@ public class SerializableRowRecordList implements SerializableList {
   }
 
   private void readFields(ByteBuffer byteBuffer, Object[] rowRecord) {
-    for (int i = 0; i < seriesNumber; ++i) {
+    for (int i = 0; i < valueColumnCount; ++i) {
       boolean isNull = ReadWriteIOUtils.readBool(byteBuffer);
       if (isNull) {
         continue;
