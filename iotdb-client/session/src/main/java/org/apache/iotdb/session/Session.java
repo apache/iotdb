@@ -2793,7 +2793,7 @@ public class Session implements ISession {
             .limit(sampleNum)
             .boxed()
             .collect(Collectors.toList());
-    Set<String> allMeasurement = new HashSet<>(measurementsList.get(0).size() + 1, 1);
+    Set<String> allMeasurement = new HashSet<>(measurementsList.get(indexList.get(0)).size() + 1, 1);
     for (int i = 0; i < sampleNum; i++) {
       allMeasurement.addAll(measurementsList.get(indexList.get(i)));
     }
