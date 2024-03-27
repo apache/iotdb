@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
+import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.*;
 
 public class SerializableRowRecordList implements SerializableList {
 
@@ -264,90 +265,19 @@ public class SerializableRowRecordList implements SerializableList {
     skipPrefixNullCount = serializedElementSize - prefixNullCount;
     putNulls(prefixNullCount);
     // Read subsequent rows
-    ColumnBuilder[] builders = constructColumnBuilders(skipPrefixNullCount);
+    ColumnBuilder[] builders = constructColumnBuilders(dataTypes, skipPrefixNullCount);
     for (int i = 0; i < skipPrefixNullCount; ++i) {
       Object[] rowRecord = new Object[valueColumnCount + 1];
       rowRecord[valueColumnCount] = ReadWriteIOUtils.readLong(byteBuffer); // timestamp
       readFields(byteBuffer, rowRecord);
-      appendRowInColumnBuilders(rowRecord, builders);
+      appendRowInColumnBuilders(dataTypes, rowRecord, builders);
     }
     // Discard old columns and build a new one
     blocks = new ArrayList<>();
-    blocks.add(buildColumnsByBuilders(builders));
+    blocks.add(buildColumnsByBuilders(dataTypes, builders));
   }
 
-  private ColumnBuilder[] constructColumnBuilders(int expectedEntries) {
-    ColumnBuilder[] builders = new ColumnBuilder[valueColumnCount + 1];
-    // Value column builders
-    for (int i = 0; i < valueColumnCount; i++) {
-      switch (dataTypes[i]) {
-        case INT32:
-          builders[i] = new IntColumnBuilder(null, expectedEntries);
-          break;
-        case INT64:
-          builders[i] = new LongColumnBuilder(null, expectedEntries);
-          break;
-        case FLOAT:
-          builders[i] = new FloatColumnBuilder(null, expectedEntries);
-          break;
-        case DOUBLE:
-          builders[i] = new DoubleColumnBuilder(null, expectedEntries);
-          break;
-        case BOOLEAN:
-          builders[i] = new BooleanColumnBuilder(null, expectedEntries);
-          break;
-        case TEXT:
-          builders[i] = new BinaryColumnBuilder(null, expectedEntries);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(dataTypes[i].toString());
-      }
-    }
-    // Time column builder
-    builders[valueColumnCount] = new TimeColumnBuilder(null, expectedEntries);
 
-    return builders;
-  }
-
-  private void appendRowInColumnBuilders(Object[] row, ColumnBuilder[] builders) {
-    // Write value field
-    for (int i = 0; i < valueColumnCount; i++) {
-      Object field = row[i];
-      switch (dataTypes[i]) {
-        case INT32:
-          builders[i].writeInt((int) field);
-          break;
-        case INT64:
-          builders[i].writeLong((long) field);
-          break;
-        case FLOAT:
-          builders[i].writeFloat((float) field);
-          break;
-        case DOUBLE:
-          builders[i].writeDouble((double) field);
-          break;
-        case BOOLEAN:
-          builders[i].writeBoolean((boolean) field);
-          break;
-        case TEXT:
-          builders[i].writeBinary((Binary) field);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(dataTypes[i].toString());
-      }
-    }
-    // Write time field
-    builders[valueColumnCount].writeLong((long)row[valueColumnCount]);
-  }
-
-  private Column[] buildColumnsByBuilders(ColumnBuilder[] builders) {
-    Column[] columns = new Column[valueColumnCount + 1];
-    for (int i = 0; i < valueColumnCount + 1; i++) {
-      columns[i] = builders[i].build();
-    }
-
-    return columns;
-  }
 
   private int writeFields(Object[] rowRecord, PublicBAOS outputStream) throws IOException {
     int serializedByteLength = 0;

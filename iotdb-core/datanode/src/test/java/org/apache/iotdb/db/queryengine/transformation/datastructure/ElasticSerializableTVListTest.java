@@ -25,18 +25,16 @@ import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSe
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.udf.api.type.Binary;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Random;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class ElasticSerializableTVListTest extends SerializableListTest {
 
@@ -77,6 +75,34 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
   @Test
   public void testESTextTVList() {
     testESTVList(TSDataType.TEXT);
+  }
+
+  @Test
+  public void testESIntTVListWithBatchInsert() {
+    initESTVList(TSDataType.INT32);
+
+    long[] timeColumn = LongStream.range(0, ITERATION_TIMES).toArray();
+    int[] valueColumn = IntStream.range(0, ITERATION_TIMES).toArray();
+    boolean[] isNulls = new boolean[ITERATION_TIMES];
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      isNulls[i] = i % 7 == 0;
+    }
+
+    try {
+      tvList.putInts(timeColumn, valueColumn, isNulls);
+
+      for (int i = 0; i < ITERATION_TIMES; ++i) {
+        assertEquals(i, tvList.getTime(i));
+        if (i % 7 == 0) {
+          assertTrue(tvList.isNull(i));
+        } else {
+          assertFalse(tvList.isNull(i));
+          assertEquals(i, tvList.getInt(i));
+        }
+      }
+    } catch (IOException e) {
+      fail(e.toString());
+    }
   }
 
   @Test

@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.transformation.datastructure;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.column.*;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import org.junit.After;
@@ -29,6 +31,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
@@ -67,6 +70,15 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
     initESRowRecordList();
 
     testPut();
+
+    testOrderedAccessByIndex();
+  }
+
+  @Test
+  public void testInsertColumns() {
+    initESRowRecordList();
+
+    testPuts();
 
     testOrderedAccessByIndex();
   }
@@ -118,6 +130,78 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
       fail(e.toString());
     }
     assertEquals(ITERATION_TIMES, rowRecordList.size());
+  }
+
+  private void testPuts() {
+    try {
+      Column[] columns = generateColumns();
+      rowRecordList.put(columns);
+    } catch (IOException e) {
+      fail(e.toString());
+    }
+    assertEquals(ITERATION_TIMES, rowRecordList.size());
+  }
+
+  private Column[] generateColumns() {
+    Column[] columns = new Column[DATA_TYPES.length + 1];
+
+    boolean[] isNulls = new boolean[ITERATION_TIMES];
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      isNulls[i] = i % 7 == 0;
+    }
+    // Int columns
+    int[] ints = new int[ITERATION_TIMES];
+    for (int i = 0; i < ITERATION_TIMES; ++i) {
+      ints[i] = i;
+    }
+    columns[0] = new IntColumn(ITERATION_TIMES, Optional.of(isNulls), ints);
+
+    // Long columns
+    long[] longs = new long[ITERATION_TIMES];
+    for (int i = 0; i < ITERATION_TIMES; ++i) {
+      longs[i] = i;
+    }
+    columns[1] = new LongColumn(ITERATION_TIMES, Optional.of(isNulls), longs);
+
+    // Float columns
+    float[] floats = new float[ITERATION_TIMES];
+    for (int i = 0; i < ITERATION_TIMES; ++i) {
+      floats[i] = i;
+    }
+    columns[2] = new FloatColumn(ITERATION_TIMES, Optional.of(isNulls), floats);
+
+    // Double columns
+    double[] doubles = new double[ITERATION_TIMES];
+    for (int i = 0; i < ITERATION_TIMES; ++i) {
+      doubles[i] = i;
+    }
+    columns[3] = new DoubleColumn(ITERATION_TIMES, Optional.of(isNulls), doubles);
+
+    // Boolean columns
+    boolean[] booleans = new boolean[ITERATION_TIMES];
+    for (int i = 0; i < ITERATION_TIMES; ++i) {
+      booleans[i] = i % 2 == 0;
+    }
+    columns[4] = new BooleanColumn(ITERATION_TIMES, Optional.of(isNulls), booleans);
+
+    // Binary columns
+    Binary[] binaries = new Binary[ITERATION_TIMES];
+    for (int i = 0; i < ITERATION_TIMES; ++i) {
+      binaries[i] = BytesUtils.valueOf(String.valueOf(i));
+    }
+    columns[5] = new BinaryColumn(ITERATION_TIMES, Optional.of(isNulls), binaries);
+
+    // Another binary columns
+    columns[6] = new BinaryColumn(ITERATION_TIMES, Optional.of(isNulls), binaries.clone());
+
+    // The last time columns
+    long[] times = new long[ITERATION_TIMES];
+    for (int i = 0; i < ITERATION_TIMES; ++i) {
+      times[i] = i;
+    }
+    columns[7] = new TimeColumn(ITERATION_TIMES, times);
+
+    return columns;
   }
 
   private void testRowRecord(Object[] rowRecord, int expected) {

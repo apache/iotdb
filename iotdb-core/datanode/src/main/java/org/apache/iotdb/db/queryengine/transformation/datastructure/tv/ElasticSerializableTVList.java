@@ -27,6 +27,8 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -192,6 +194,34 @@ public class ElasticSerializableTVList implements PointCollector {
     ++size;
   }
 
+  public void putInts(TimeColumn timeColumn, IntColumn column) throws IOException {
+    assert timeColumn.getPositionCount() == column.getPositionCount();
+    putInts(timeColumn.getTimes(), column.getInts(), column.isNull());
+  }
+
+  public void putInts(long[] times, int[] values, boolean[] isNulls) throws IOException {
+    assert times.length == values.length && values.length == isNulls.length;
+    checkExpansion();
+
+    int begin = 0, end = 0;
+    int total = times.length;
+    while (total > 0) {
+      int consumed = Math.min(total, internalTVListCapacity) - size % internalTVListCapacity;
+      end += consumed;
+
+      cache.get(size / internalTVListCapacity).putInts(times, values, begin, end);
+      markBitMapByNullArray(isNulls, begin, end);
+
+      total -= consumed;
+      size += consumed;
+      begin = end;
+
+      if (total > 0) {
+        doExpansion();
+      }
+    }
+  }
+
   @Override
   public void putLong(long timestamp, long value) throws IOException {
     checkExpansion();
@@ -268,8 +298,23 @@ public class ElasticSerializableTVList implements PointCollector {
 
   private void checkExpansion() {
     if (size % internalTVListCapacity == 0) {
-      tvLists.add(SerializableTVList.newSerializableTVList(dataType, queryId));
-      bitMaps.add(new BitMap(internalTVListCapacity));
+      doExpansion();
+    }
+  }
+
+  private void doExpansion() {
+    tvLists.add(SerializableTVList.newSerializableTVList(dataType, queryId));
+    bitMaps.add(new BitMap(internalTVListCapacity));
+  }
+
+  private void markBitMapByNullArray(boolean[] isNulls, int from, int to) {
+    BitMap bitmap = bitMaps.get(size / internalTVListCapacity);
+
+    int offset = size % internalTVListCapacity;
+    for (int i = from; i < to; i++) {
+      if (isNulls[i]) {
+        bitmap.mark(offset + i - from);
+      }
     }
   }
 

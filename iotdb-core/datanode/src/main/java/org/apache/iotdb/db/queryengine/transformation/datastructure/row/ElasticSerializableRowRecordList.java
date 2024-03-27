@@ -24,12 +24,16 @@ import org.apache.iotdb.db.queryengine.transformation.dag.util.InputRowUtils;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.Cache;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.*;
 
 /** An elastic list of records that implements memory control using LRU strategy. */
 public class ElasticSerializableRowRecordList {
@@ -147,7 +151,7 @@ public class ElasticSerializableRowRecordList {
   public Object[] getRowRecord(int index) throws IOException {
     return cache
         .get(index / internalRowRecordListCapacity)
-        .getRowRecord(index % internalRowRecordListCapacity);
+        .getRow(index % internalRowRecordListCapacity);
   }
 
   /** true if any field except the timestamp in the current row is null. */
@@ -171,7 +175,7 @@ public class ElasticSerializableRowRecordList {
   private void put(Object[] rowRecord, boolean hasNullField)
       throws IOException, QueryProcessException {
     checkExpansion();
-    cache.get(size / internalRowRecordListCapacity).put(rowRecord);
+    cache.get(size / internalRowRecordListCapacity).putRow(rowRecord);
     if (hasNullField) {
       bitMaps.get(size / internalRowRecordListCapacity).mark(size % internalRowRecordListCapacity);
     }
@@ -194,12 +198,87 @@ public class ElasticSerializableRowRecordList {
     }
   }
 
+  public void put(Column[] columns) throws IOException {
+    checkExpansion();
+
+    int begin = 0, end = 0;
+    int total = columns[0].getPositionCount();
+    while (total > 0) {
+      int consumed = Math.min(total, internalRowRecordListCapacity) - size % internalRowRecordListCapacity;
+      end += consumed;
+
+      // Construct sub-regions
+      Column[] subRegions = new Column[columns.length];
+      for (int i = 0; i < columns.length; i++) {
+        subRegions[i] = columns[i].getRegion(begin, consumed);
+      }
+
+      // Fill row record list and bitmap
+      cache.get(size / internalRowRecordListCapacity).putColumns(subRegions);
+      markBitMapByColumns(subRegions, begin, end);
+
+      total -= consumed;
+      size += consumed;
+      begin = end;
+
+      if (total > 0) {
+        doExpansion();
+      }
+    }
+    // TODO: memory control for binary column
+  }
+
+  private void putNulls(int nullCount) throws IOException {
+    checkExpansion();
+
+    while (nullCount > 0) {
+      int consumed = Math.min(nullCount, internalRowRecordListCapacity) - size % internalRowRecordListCapacity;
+
+      cache.get(size / internalRowRecordListCapacity).putNulls(consumed);
+      markBitMapByGivenNullCount(consumed);
+
+      nullCount -= consumed;
+      size += consumed;
+
+      if (nullCount > 0) {
+        doExpansion();
+      }
+    }
+  }
+
   private void checkExpansion() {
     if (size % internalRowRecordListCapacity == 0) {
-      rowRecordLists.add(
-          SerializableRowRecordList.newSerializableRowRecordList(
-              queryId, dataTypes, internalRowRecordListCapacity));
-      bitMaps.add(new BitMap(internalRowRecordListCapacity));
+      doExpansion();
+    }
+  }
+
+  private void doExpansion() {
+    rowRecordLists.add(
+        SerializableRowRecordList.newSerializableRowRecordList(
+            queryId, dataTypes, internalRowRecordListCapacity));
+    bitMaps.add(new BitMap(internalRowRecordListCapacity));
+  }
+
+  private void markBitMapByColumns(Column[] columns, int from, int to) {
+    BitMap bitmap = bitMaps.get(size / internalRowRecordListCapacity);
+
+    int offset = size % internalRowRecordListCapacity;
+    for (int i = from; i < to; i++) {
+      for (Column column : columns) {
+        if (column.isNull(i)) {
+          bitmap.mark(offset + i - from);
+          break;
+        }
+      }
+    }
+  }
+
+  private void markBitMapByGivenNullCount(int nullCount) {
+    BitMap bitmap = bitMaps.get(size / internalRowRecordListCapacity);
+
+    int offset = size % internalRowRecordListCapacity;
+    for (int i = 0; i < nullCount; i++) {
+      bitmap.mark(offset + i);
     }
   }
 
@@ -259,12 +338,15 @@ public class ElasticSerializableRowRecordList {
     }
     newElasticSerializableRowRecordList.size =
         internalListEvictionUpperBound * newInternalRowRecordListCapacity;
-    for (int i = newElasticSerializableRowRecordList.size; i < evictionUpperBound; ++i) {
-      newElasticSerializableRowRecordList.put(null);
-    }
+    newElasticSerializableRowRecordList.putNulls(evictionUpperBound - newElasticSerializableRowRecordList.size);
+
+    ColumnBuilder[] builders = constructColumnBuilders(dataTypes, size - evictionUpperBound);
     for (int i = evictionUpperBound; i < size; ++i) {
-      newElasticSerializableRowRecordList.put(getRowRecord(i), fieldsHasAnyNull(i));
+      Object[] row = getRowRecord(i);
+      appendRowInColumnBuilders(dataTypes, row, builders);
     }
+    Column[] columns = buildColumnsByBuilders(dataTypes, builders);
+    newElasticSerializableRowRecordList.put(columns);
 
     internalRowRecordListCapacity = newInternalRowRecordListCapacity;
     cache = newElasticSerializableRowRecordList.cache;
