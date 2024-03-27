@@ -2793,7 +2793,7 @@ public class Session implements ISession {
             .limit(sampleNum)
             .boxed()
             .collect(Collectors.toList());
-    Set<String> allMeasurement = new HashSet<>();
+    Set<String> allMeasurement = new HashSet<>(measurementsList.get(0).size() + 1, 1);
     for (int i = 0; i < sampleNum; i++) {
       allMeasurement.addAll(measurementsList.get(indexList.get(i)));
     }
@@ -2816,7 +2816,8 @@ public class Session implements ISession {
       boolean isAligned)
       throws IoTDBConnectionException, StatementExecutionException {
     // measurement -> <type,if null>
-    Map<String, Pair<TSDataType, Boolean>> measuremenMap = new HashMap<>();
+    Map<String, Pair<TSDataType, Boolean>> measuremenMap =
+        new HashMap<>(measurementsList.get(0).size() + 1, 1);
     // build measurementType
     for (int rowIndex = 0; rowIndex < measurementsList.size(); rowIndex++) {
       List<String> measurements = measurementsList.get(rowIndex);
@@ -2828,10 +2829,11 @@ public class Session implements ISession {
         }
       }
     }
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<MeasurementSchema> schemaList = new ArrayList<>(measuremenMap.size());
     // use measurementType to build schemaList
+    int index = 0;
     for (Entry<String, Pair<TSDataType, Boolean>> entry : measuremenMap.entrySet()) {
-      schemaList.add(new MeasurementSchema(entry.getKey(), entry.getValue().getLeft()));
+      schemaList.set(index++, new MeasurementSchema(entry.getKey(), entry.getValue().getLeft()));
     }
     // build tablet and insert
     Tablet tablet = new Tablet(deviceId, schemaList, times.size());
@@ -2868,10 +2870,11 @@ public class Session implements ISession {
             .collect(Collectors.toList());
     for (int i = 0; i < sampleNum; i++) {
       int index = indexList.get(i);
+      List<String> measurements = measurementsList.get(index);
       Set<String> allMeasurement =
           measurementMap.computeIfAbsent(
-              deviceIds.get(index), k -> new HashSet<>(measurementsList.get(index).size() + 1, 1));
-      allMeasurement.addAll(measurementsList.get(index));
+              deviceIds.get(index), k -> new HashSet<>(measurements.size() + 1, 1));
+      allMeasurement.addAll(measurements);
     }
     for (int i = 0; i < sampleNum; i++) {
       int index = indexList.get(i);
@@ -2901,10 +2904,11 @@ public class Session implements ISession {
     // first build measurementTypeMap and rowMap
     for (int rowIndex = 0; rowIndex < deviceIds.size(); rowIndex++) {
       String device = deviceIds.get(rowIndex);
-      Map<String, Pair<TSDataType, Boolean>> measurementMap =
-          deviceMeasuremenMap.computeIfAbsent(device, k -> new HashMap<>());
       List<String> measurements = measurementsList.get(rowIndex);
       List<TSDataType> types = typesList.get(rowIndex);
+      Map<String, Pair<TSDataType, Boolean>> measurementMap =
+          deviceMeasuremenMap.computeIfAbsent(
+              device, k -> new HashMap<>(measurements.size() + 1, 1));
       for (int colIndex = 0; colIndex < measurements.size(); colIndex++) {
         String measurement = measurements.get(colIndex);
         if (!measurementMap.containsKey(measurement)) {
@@ -2918,10 +2922,11 @@ public class Session implements ISession {
     // use measurementTypeMap to build schemaMap
     for (Map.Entry<String, Map<String, Pair<TSDataType, Boolean>>> entry :
         deviceMeasuremenMap.entrySet()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<MeasurementSchema> schemaList = new ArrayList<>(entry.getValue().size() + 1);
+      int index = 0;
       for (Map.Entry<String, Pair<TSDataType, Boolean>> schemaEntry : entry.getValue().entrySet()) {
-        schemaList.add(
-            new MeasurementSchema(schemaEntry.getKey(), schemaEntry.getValue().getLeft()));
+        schemaList.set(
+            index++, new MeasurementSchema(schemaEntry.getKey(), schemaEntry.getValue().getLeft()));
       }
       schemaMap.put(entry.getKey(), schemaList);
     }
