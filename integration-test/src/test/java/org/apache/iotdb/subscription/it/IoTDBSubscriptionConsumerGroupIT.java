@@ -222,7 +222,28 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         });
   }
 
-  private long createTopics(long currentTime) {
+  @Test
+  public void test3C3CGSubscribeNaiveTopicRealTime() throws Exception {
+    createNaiveTopic();
+    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic1"));
+    createNaivePipe();
+    prepareNaiveData();
+    pollMessagesAndCheck(
+        consumers,
+        new HashMap<String, String>() {
+          {
+            put("count(root.cg1.topic3.s)", "100");
+            put("count(root.cg2.topic3.s)", "100");
+            put("count(root.cg3.topic3.s)", "100");
+            put("count(root.topic3.s)", "100");
+          }
+        });
+  }
+
+  private void createTopics(long currentTime) {
     // create topics on sender
     try (ISession session = senderEnv.getSessionConnection()) {
       session.executeNonQueryStatement(
@@ -233,7 +254,16 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       e.printStackTrace();
       fail(e.getMessage());
     }
-    return currentTime;
+  }
+
+  private void createNaiveTopic() {
+    // create topics on sender
+    try (ISession session = senderEnv.getSessionConnection()) {
+      session.executeNonQueryStatement("create topic topic3");
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 
   private void prepareData(long currentTime) {
@@ -245,6 +275,20 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         session.executeNonQueryStatement(
             String.format(
                 "insert into root.topic2(time, s) values (%s, 1)", currentTime + i)); // topic2
+      }
+      session.executeNonQueryStatement("flush");
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private void prepareNaiveData() {
+    // insert some history data on sender
+    try (ISession session = senderEnv.getSessionConnection()) {
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.topic3(time, s) values (%s, 1)", i)); // topic3
       }
       session.executeNonQueryStatement("flush");
     } catch (Exception e) {
@@ -293,6 +337,30 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       TSStatus status =
           client.createPipe(
               new TCreatePipeReq("sync_topic1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private void createNaivePipe() {
+    // for sync reference
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverEnv.getIP());
+      connectorAttributes.put("connector.port", receiverEnv.getPort());
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("sync_topic3", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -379,7 +447,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         Awaitility.await()
             .pollDelay(1, TimeUnit.SECONDS)
             .pollInterval(1, TimeUnit.SECONDS)
-            .atMost(180, TimeUnit.SECONDS)
+            .atMost(100, TimeUnit.SECONDS)
             .untilAsserted(
                 () -> {
                   if (receiverCrashed.get()) {
@@ -422,6 +490,14 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       String sql =
           String.format(
               "insert into root.%s.topic2(time, s) values (%s, 1)",
+              consumerGroupId, record.getTimestamp());
+      // REMOVE ME: for debug
+      LOGGER.info(sql);
+      return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
+    } else if ("root.topic3.s".equals(columnName)) {
+      String sql =
+          String.format(
+              "insert into root.%s.topic3(time, s) values (%s, 1)",
               consumerGroupId, record.getTimestamp());
       // REMOVE ME: for debug
       LOGGER.info(sql);

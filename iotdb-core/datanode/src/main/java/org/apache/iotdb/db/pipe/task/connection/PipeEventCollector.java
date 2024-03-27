@@ -62,10 +62,29 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
   public synchronized void collect(Event event) {
     try {
       if (event instanceof PipeInsertNodeTabletInsertionEvent) {
+        // REMOVE ME: for debug
+        LOGGER.info(
+            "[DEBUG][processor][DR {}][Pipe {}] extract PipeInsertNodeTabletInsertionEvent timestamps {}",
+            regionId,
+            ((PipeInsertNodeTabletInsertionEvent) event).getPipeName(),
+            ((PipeInsertNodeTabletInsertionEvent) event).getInsertNode());
         parseAndCollectEvent((PipeInsertNodeTabletInsertionEvent) event);
       } else if (event instanceof PipeRawTabletInsertionEvent) {
+        // REMOVE ME: for debug
+        LOGGER.info(
+            "[DEBUG][processor][DR {}][Pipe {}] extract PipeRawTabletInsertionEvent time range [{}, {}]",
+            regionId,
+            ((PipeRawTabletInsertionEvent) event).getPipeName(),
+            ((PipeRawTabletInsertionEvent) event).getStartTime(),
+            ((PipeRawTabletInsertionEvent) event).getEndTime());
         parseAndCollectEvent((PipeRawTabletInsertionEvent) event);
       } else if (event instanceof PipeTsFileInsertionEvent) {
+        // REMOVE ME: for debug
+        LOGGER.info(
+            "[DEBUG][processor][DR {}][Pipe {}] extract PipeTsFileInsertionEvent start time {}",
+            regionId,
+            ((PipeTsFileInsertionEvent) event).getPipeName(),
+            ((PipeTsFileInsertionEvent) event).getFileStartTime());
         parseAndCollectEvent((PipeTsFileInsertionEvent) event);
       } else {
         collectEvent(event);

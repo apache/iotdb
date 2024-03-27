@@ -26,11 +26,9 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRe
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeDataRegionAssigner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -120,9 +118,9 @@ public class PipeInsertionDataNodeListener {
 
     // REMOVE ME: for debug
     LOGGER.info(
-        "listenToTsFile timestamp range [{}, {}]",
-        tsFileResource.getFileStartTime(),
-        tsFileResource.getFileEndTime());
+        "[DEBUG][listener][DR {}] listen to TsFile timestamp start time {}",
+        dataRegionId,
+        tsFileResource.getFileStartTime());
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(tsFileResource, isLoaded, isGeneratedByPipe));
@@ -145,16 +143,10 @@ public class PipeInsertionDataNodeListener {
     }
 
     // REMOVE ME: for debug
-    if (insertNode instanceof InsertRowNode) {
-      long timestamp = ((InsertRowNode) insertNode).getTime();
-      LOGGER.info("listenToInsertNode timestamp {}", timestamp);
-    } else if (insertNode instanceof InsertTabletNode) {
-      long[] timestamps = ((InsertTabletNode) insertNode).getTimes();
-      LOGGER.info("listenToInsertNode {}", timestamps);
-    } else {
-      throw new UnSupportedDataTypeException(
-          String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
-    }
+    LOGGER.info(
+        "[DEBUG][listener][DR {}] listen to InsertNode timestamp {}",
+        dataRegionId,
+        SubscriptionPrefetchingQueue.getInsertNodeTimestamps(insertNode));
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(walEntryHandler, insertNode, tsFileResource));

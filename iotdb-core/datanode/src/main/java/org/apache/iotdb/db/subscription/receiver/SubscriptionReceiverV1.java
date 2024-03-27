@@ -342,7 +342,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // REMOVE ME: for debug
     List<Long> timestamps = new ArrayList<>();
     events.forEach((event -> timestamps.addAll(event.timestamps())));
-    LOGGER.info("Subscription: consumer {} poll event timestamps {}", consumerConfig, timestamps);
+    LOGGER.info(
+        "[DEBUG][subscription] consumer {} poll event timestamps {}", consumerConfig, timestamps);
 
     if (timer.isExpired()) {
       LOGGER.warn(

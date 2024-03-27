@@ -28,10 +28,14 @@ import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.slf4j.Logger;
@@ -150,8 +154,8 @@ public class SubscriptionPrefetchingQueue {
         }
         // REMOVE ME: for debug
         LOGGER.info(
-            "Subscription: prefetch tablet timestamp {} (topic name {}, consumer group {})",
-            EnrichedTablets.timestamps(tablet),
+            "[DEBUG][subscription] prefetch tablet timestamp {} (topic name {}, consumer group {})",
+            getTabletTimestamps(tablet),
             topicName,
             brokerId);
         tablets.add(tablet);
@@ -168,8 +172,8 @@ public class SubscriptionPrefetchingQueue {
           }
           // REMOVE ME: for debug
           LOGGER.info(
-              "Subscription: prefetch tablet timestamp {} (topic name {}, consumer group {})",
-              EnrichedTablets.timestamps(tablet),
+              "[DEBUG][subscription] prefetch tablet timestamp {} (topic name {}, consumer group {})",
+              getTabletTimestamps(tablet),
               topicName,
               brokerId);
           tablets.add(tablet);
@@ -258,5 +262,27 @@ public class SubscriptionPrefetchingQueue {
         + brokerId
         + "#"
         + subscriptionCommitIdGenerator.getAndIncrement();
+  }
+
+  // REMOVE ME: for debug
+  public static long[] getInsertNodeTimestamps(InsertNode insertNode) {
+    if (insertNode instanceof InsertRowNode) {
+      return new long[] {((InsertRowNode) insertNode).getTime()};
+    } else if (insertNode instanceof InsertTabletNode) {
+      return ((InsertTabletNode) insertNode).getTimes();
+    } else {
+      throw new UnSupportedDataTypeException(
+          String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
+    }
+  }
+
+  // REMOVE ME: for debug
+  public static List<Long> getTabletTimestamps(Tablet tablet) {
+    List<Long> res = new ArrayList<>();
+    long[] timestamps = tablet.timestamps;
+    for (int i = 0; i < tablet.rowSize; ++i) {
+      res.add(timestamps[i]);
+    }
+    return res;
   }
 }
