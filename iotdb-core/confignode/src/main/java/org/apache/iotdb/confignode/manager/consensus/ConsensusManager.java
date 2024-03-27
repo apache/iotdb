@@ -436,6 +436,6 @@ public class ConsensusManager {
   }
 
   public void manuallyTakeSnapshot() throws ConsensusException {
-    consensusImpl.triggerSnapshot(ConfigNodeInfo.CONFIG_REGION_ID);
+    consensusImpl.triggerSnapshot(ConfigNodeInfo.CONFIG_REGION_ID, false);
   }
 }
