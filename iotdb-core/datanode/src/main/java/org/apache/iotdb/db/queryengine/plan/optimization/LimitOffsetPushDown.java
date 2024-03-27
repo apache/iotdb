@@ -94,7 +94,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     public PlanNode visitLimit(LimitNode node, RewriterContext context) {
       context.setParent(node);
       context.setLimit(node.getLimit());
-      node.getChild().accept(this, context);
+      node.setChild(node.getChild().accept(this, context));
 
       if (context.isEnablePushDown()) {
         return node.getChild();
@@ -106,7 +106,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     public PlanNode visitOffset(OffsetNode node, RewriterContext context) {
       context.setParent(node);
       context.setOffset(node.getOffset());
-      node.getChild().accept(this, context);
+      node.setChild(node.getChild().accept(this, context));
 
       if (context.isEnablePushDown()) {
         return node.getChild();
