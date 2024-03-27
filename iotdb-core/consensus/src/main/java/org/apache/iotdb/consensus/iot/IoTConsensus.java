@@ -358,7 +358,7 @@ public class IoTConsensus implements IConsensus {
   }
 
   @Override
-  public void triggerSnapshot(ConsensusGroupId groupId) throws ConsensusException {
+  public void triggerSnapshot(ConsensusGroupId groupId, boolean force) throws ConsensusException {
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));

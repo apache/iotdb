@@ -1298,10 +1298,6 @@ public class IoTDBDescriptor {
         TSDataType.valueOf(
             properties.getProperty(
                 "integer_string_infer_type", conf.getIntegerStringInferType().toString())));
-    conf.setLongStringInferType(
-        TSDataType.valueOf(
-            properties.getProperty(
-                "long_string_infer_type", conf.getLongStringInferType().toString())));
     conf.setFloatingStringInferType(
         TSDataType.valueOf(
             properties.getProperty(
@@ -1563,7 +1559,7 @@ public class IoTDBDescriptor {
       // update timed flush & close conf
       loadTimedService(properties);
       StorageEngine.getInstance().rebootTimedService();
-      // update params of creating schemaengine automatically
+      // update params of creating schema automatically
       loadAutoCreateSchemaProps(properties);
 
       // update tsfile-format config

@@ -199,13 +199,13 @@ public class IoTDBFilterIT {
   public void testMismatchedDataTypes() {
     assertTestFail(
         "select s1 from root.sg1.d1 where s1;",
-        "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: FLOAT.");
+        "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: DOUBLE.");
     assertTestFail(
         "select count(s1) from root.sg1.d1 group by ([0, 40), 5ms) having count(s1) + 1;",
         "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: DOUBLE.");
     assertTestFail(
         "select s1 from root.sg1.d1 where s1 align by device;",
-        "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: FLOAT.");
+        "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: DOUBLE.");
     assertTestFail(
         "select count(s1) from root.sg1.d1 group by ([0, 40), 5ms) having count(s1) + 1 align by device;",
         "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: DOUBLE.");

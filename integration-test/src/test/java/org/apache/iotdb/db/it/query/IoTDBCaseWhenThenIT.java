@@ -194,7 +194,7 @@ public class IoTDBCaseWhenThenIT {
     expectedHeader = new String[] {TIMESTAMP_STR, "result"};
     retArray =
         new String[] {
-          "0,99.0,", "1000000,99.9000015258789,", "20000000,8.589934588E9,", "210000000,1000.0,"
+          "0,99.0,", "1000000,99.9,", "20000000,8.589934588E9,", "210000000,999.9999999999,"
         };
     resultSetEqualTest(
         "select case when s1=0 then 99 when s1=11 then 99.9 when s1=22 then 8589934588 when s1=33 then 999.9999999999 else 10086 end as `result` from root.sg.d1",
@@ -245,7 +245,7 @@ public class IoTDBCaseWhenThenIT {
     expectedHeader = new String[] {TIMESTAMP_STR, "result"};
     retArray =
         new String[] {
-          "0,99.0,", "1000000,99.9000015258789,", "20000000,8.589934588E9,", "210000000,1000.0,"
+          "0,99.0,", "1000000,99.9,", "20000000,8.589934588E9,", "210000000,999.9999999999,"
         };
     resultSetEqualTest(
         "select case s1 when 0 then 99 when 11 then 99.9 when 22 then 8589934588 when 33 then 999.9999999999 else 10086 end as `result` from root.sg.d1",
