@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.subscription.it;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
@@ -31,6 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.awaitility.Awaitility;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -59,101 +64,120 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   @Test
   public void test3C1CGSubscribeOneTopic() throws Exception {
-    long currentTime = createTopics();
+    long currentTime = System.currentTimeMillis();
+    prepareData(currentTime);
+    createTopics(currentTime);
+    createPipes(currentTime);
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
-    testMultiConsumersSubscribeMultiTopicsTemplate(
-        currentTime,
+    pollMessagesAndCheck(
         consumers,
         new HashMap<String, String>() {
           {
-            put("count(root.topic1.s.cg1)", "100");
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
           }
         });
   }
 
   @Test
   public void test3C3CGSubscribeOneTopic() throws Exception {
-    long currentTime = createTopics();
+    long currentTime = System.currentTimeMillis();
+    prepareData(currentTime);
+    createTopics(currentTime);
+    createPipes(currentTime);
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic1"));
-    testMultiConsumersSubscribeMultiTopicsTemplate(
-        currentTime,
+    pollMessagesAndCheck(
         consumers,
         new HashMap<String, String>() {
           {
-            put("count(root.topic1.s.cg1)", "100");
-            put("count(root.topic1.s.cg2)", "100");
-            put("count(root.topic1.s.cg3)", "100");
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.cg2.topic1.s)", "100");
+            put("count(root.cg3.topic1.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
           }
         });
   }
 
   @Test
   public void test3C1CGSubscribeTwoTopic() throws Exception {
-    long currentTime = createTopics();
+    long currentTime = System.currentTimeMillis();
+    prepareData(currentTime);
+    createTopics(currentTime);
+    createPipes(currentTime);
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic2"));
-    testMultiConsumersSubscribeMultiTopicsTemplate(
-        currentTime,
+    pollMessagesAndCheck(
         consumers,
         new HashMap<String, String>() {
           {
-            put("count(root.topic1.s.cg1)", "100");
-            put("count(root.topic2.s.cg1)", "100");
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.cg1.topic2.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
           }
         });
   }
 
   @Test
   public void test3C3CGSubscribeTwoTopic() throws Exception {
-    long currentTime = createTopics();
+    long currentTime = System.currentTimeMillis();
+    prepareData(currentTime);
+    createTopics(currentTime);
+    createPipes(currentTime);
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic2"));
-    testMultiConsumersSubscribeMultiTopicsTemplate(
-        currentTime,
+    pollMessagesAndCheck(
         consumers,
         new HashMap<String, String>() {
           {
-            put("count(root.topic1.s.cg1)", "100");
-            put("count(root.topic1.s.cg2)", "100");
-            put("count(root.topic2.s.cg2)", "100");
-            put("count(root.topic2.s.cg3)", "100");
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.cg2.topic1.s)", "100");
+            put("count(root.cg2.topic2.s)", "100");
+            put("count(root.cg3.topic2.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
           }
         });
   }
 
   @Test
   public void test4C2CGSubscribeTwoTopic() throws Exception {
-    long currentTime = createTopics();
+    long currentTime = System.currentTimeMillis();
+    prepareData(currentTime);
+    createTopics(currentTime);
+    createPipes(currentTime);
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c4", "cg2", "topic2"));
-    testMultiConsumersSubscribeMultiTopicsTemplate(
-        currentTime,
+    pollMessagesAndCheck(
         consumers,
         new HashMap<String, String>() {
           {
-            put("count(root.topic1.s.cg1)", "100");
-            put("count(root.topic1.s.cg2)", "100");
-            put("count(root.topic2.s.cg2)", "100");
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.cg2.topic1.s)", "100");
+            put("count(root.cg2.topic2.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
           }
         });
   }
 
-  private long createTopics() {
+  private long createTopics(long currentTime) {
     // create topics on sender
-    long currentTime = System.currentTimeMillis();
     try (ISession session = senderEnv.getSessionConnection()) {
       session.executeNonQueryStatement(
           String.format("create topic topic1 with ('end-time'='%s')", currentTime - 1));
@@ -164,6 +188,72 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       fail(e.getMessage());
     }
     return currentTime;
+  }
+
+  private void prepareData(long currentTime) {
+    // insert some history data on sender
+    try (ISession session = senderEnv.getSessionConnection()) {
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.topic1(time, s) values (%s, 1)", i)); // topic1
+        session.executeNonQueryStatement(
+            String.format(
+                "insert into root.topic2(time, s) values (%s, 1)", currentTime + i)); // topic2
+      }
+      session.executeNonQueryStatement("flush");
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private void createPipes(long currentTime) {
+    // for sync reference
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverEnv.getIP());
+      connectorAttributes.put("connector.port", receiverEnv.getPort());
+
+      extractorAttributes.put("end-time", String.valueOf(currentTime));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("sync_topic2", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverEnv.getIP());
+      connectorAttributes.put("connector.port", receiverEnv.getPort());
+
+      extractorAttributes.put("start-time", String.valueOf(currentTime - 1));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("sync_topic1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 
   private SubscriptionPullConsumer createConsumerAndSubscribeTopics(
@@ -181,26 +271,9 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     return consumer;
   }
 
-  private void testMultiConsumersSubscribeMultiTopicsTemplate(
-      long currentTime,
-      List<SubscriptionPullConsumer> consumers,
-      Map<String, String> expectedHeaderWithResult)
+  private void pollMessagesAndCheck(
+      List<SubscriptionPullConsumer> consumers, Map<String, String> expectedHeaderWithResult)
       throws Exception {
-    // insert some history data on sender
-    try (ISession session = senderEnv.getSessionConnection()) {
-      for (int i = 0; i < 100; ++i) {
-        session.executeNonQueryStatement(
-            String.format("insert into root.topic1(time, s) values (%s, 1)", i)); // topic1
-        session.executeNonQueryStatement(
-            String.format(
-                "insert into root.topic2(time, s) values (%s, 1)", currentTime + i)); // topic2
-      }
-      session.executeNonQueryStatement("flush");
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-
     AtomicBoolean isClosed = new AtomicBoolean(false);
     List<Thread> threads = new ArrayList<>();
     for (int i = 0; i < consumers.size(); ++i) {
@@ -280,18 +353,29 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       throw new Exception("unexpected column name list");
     }
     String columnName = columnNameList.get(1);
-    // REMOVE ME: for debug
-    LOGGER.info(
-        "insert {}.{} {} {}",
-        columnName,
-        consumerGroupId,
-        record.getTimestamp(),
-        record.getFields().get(0).getFloatV());
-    session.insertRecord(
-        columnName,
-        record.getTimestamp(),
-        Collections.singletonList(consumerGroupId),
-        Collections.singletonList(TSDataType.FLOAT),
-        Collections.singletonList(record.getFields().get(0).getFloatV()));
+    if ("root.topic1.s".equals(columnName)) {
+      String deviceId = String.format("root.%s.topic1", consumerGroupId);
+      // REMOVE ME: for debug
+      LOGGER.info("insert {}.s {}", deviceId, record.getTimestamp());
+      session.insertRecord(
+          deviceId,
+          record.getTimestamp(),
+          Collections.singletonList("s"),
+          Collections.singletonList(TSDataType.FLOAT),
+          Collections.singletonList(record.getFields().get(0).getFloatV()));
+    } else if ("root.topic2.s".equals(columnName)) {
+      String deviceId = String.format("root.%s.topic2", consumerGroupId);
+      // REMOVE ME: for debug
+      LOGGER.info("insert {}.s {}", deviceId, record.getTimestamp());
+      session.insertRecord(
+          deviceId,
+          record.getTimestamp(),
+          Collections.singletonList("s"),
+          Collections.singletonList(TSDataType.FLOAT),
+          Collections.singletonList(record.getFields().get(0).getFloatV()));
+    } else {
+      LOGGER.warn("unexpected column name: {}", columnName);
+      throw new Exception("unexpected column name list");
+    }
   }
 }
