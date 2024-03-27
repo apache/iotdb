@@ -92,7 +92,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     final long nextIndex =
         Objects.nonNull(queueTailIndex2Snapshots.getLeft())
                 && queueTailIndex2Snapshots.getLeft() != Long.MIN_VALUE
-            ? queueTailIndex2Snapshots.getLeft() + 1
+            ? queueTailIndex2Snapshots.getLeft()
             : Long.MIN_VALUE;
     historicalEvents = new LinkedList<>(queueTailIndex2Snapshots.getRight());
     return nextIndex;
