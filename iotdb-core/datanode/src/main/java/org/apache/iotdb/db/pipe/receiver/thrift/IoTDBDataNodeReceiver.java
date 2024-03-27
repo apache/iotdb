@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.receiver.thrift;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
@@ -82,8 +83,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -218,7 +219,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final Pair<InsertRowsStatement, InsertMultiTabletsStatement> statementPair =
         req.constructStatements();
     return new TPipeTransferResp(
-        getPriorStatus(
+        PipeReceiverStatusHandler.getPriorStatus(
             Stream.of(
                     statementPair.getLeft().isEmpty()
                         ? RpcUtils.SUCCESS_STATUS
@@ -227,49 +228,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                         ? RpcUtils.SUCCESS_STATUS
                         : executeStatementAndClassifyExceptions(statementPair.getRight()))
                 .collect(Collectors.toList())));
-  }
-
-  private static final List<Integer> STATUS_PRIORITY =
-      Collections.unmodifiableList(
-          Arrays.asList(
-              TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-              TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode(),
-              TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode(),
-              TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode()));
-
-  /**
-   * This method is used to get the highest priority {@link TSStatus} from a list of {@link
-   * TSStatus}. The priority of each status is determined by its {@link TSStatusCode}, and the
-   * priority sequence is defined in the {@link IoTDBDataNodeReceiver#STATUS_PRIORITY} list.
-   *
-   * <p>Specifically, it iterates through the input {@link TSStatus} list. For each {@link
-   * TSStatus}, if its {@link TSStatusCode} is not in the {@link
-   * IoTDBDataNodeReceiver#STATUS_PRIORITY} list, it directly returns this {@link TSStatus}.
-   * Otherwise, it compares the current {@link TSStatus} with the highest priority {@link TSStatus}
-   * found so far (initially set to the {@link TSStatusCode#SUCCESS_STATUS}). If the current {@link
-   * TSStatus} has a higher priority, it updates the highest priority {@link TSStatus} to the
-   * current {@link TSStatus}.
-   *
-   * <p>Finally, the method returns the highest priority {@link TSStatus}.
-   *
-   * @param givenStatusList a list of {@link TSStatus} from which the highest priority {@link
-   *     TSStatus} is to be found
-   * @return the highest priority {@link TSStatus} from the input list
-   */
-  public TSStatus getPriorStatus(List<TSStatus> givenStatusList) {
-    final TSStatus resultStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    for (final TSStatus givenStatus : givenStatusList) {
-      if (!STATUS_PRIORITY.contains(givenStatus.getCode())) {
-        return givenStatus;
-      }
-
-      if (STATUS_PRIORITY.indexOf(givenStatus.getCode())
-          > STATUS_PRIORITY.indexOf(resultStatus.getCode())) {
-        resultStatus.setCode(givenStatus.getCode());
-        resultStatus.setMessage(givenStatus.getMessage());
-      }
-    }
-    return resultStatus;
   }
 
   @Override
@@ -319,17 +277,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final Set<StatementType> executionTypes =
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
+    final List<TSStatus> results = new ArrayList<>();
     while (generator.hasNext()) {
       final Statement statement = generator.next();
       if (executionTypes.contains(statement.getType())) {
         // The statements do not contain AlterLogicalViewStatements
-        TSStatus status = executeStatementAndClassifyExceptions(statement);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return status;
-        }
+        // Here we apply the statements as many as possible
+        results.add(executeStatementAndClassifyExceptions(statement));
       }
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return PipeReceiverStatusHandler.getPriorStatus(results);
   }
 
   private TPipeTransferResp handleTransferSchemaPlan(PipeTransferPlanNodeReq req) {
