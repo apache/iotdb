@@ -238,9 +238,9 @@ public class PipeReceiverStatusHandler {
       if (STATUS_PRIORITY.indexOf(givenStatus.getCode())
           > STATUS_PRIORITY.indexOf(resultStatus.getCode())) {
         resultStatus.setCode(givenStatus.getCode());
-        resultStatus.setMessage(givenStatus.getMessage());
       }
     }
+    resultStatus.setSubStatus(givenStatusList);
     return resultStatus;
   }
 }
