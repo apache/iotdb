@@ -65,13 +65,11 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
         // of the tested idempotent sql.
         .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
-        .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
