@@ -117,7 +117,7 @@ public class ReadPointCompactionPerformer
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
         IDeviceID device = deviceInfo.left;
         boolean isAligned = deviceInfo.right;
-        queryDataSource.fillOrderIndexes(((PlainDeviceID) device).toStringID(), true);
+        queryDataSource.fillOrderIndexes(device, true);
 
         if (isAligned) {
           compactAlignedSeries(
@@ -220,7 +220,7 @@ public class ReadPointCompactionPerformer
                         device,
                         measurementListArray[i],
                         fragmentInstanceContext,
-                        queryDataSource,
+                        new QueryDataSource(queryDataSource),
                         compactionWriter,
                         schemaMap,
                         i)));

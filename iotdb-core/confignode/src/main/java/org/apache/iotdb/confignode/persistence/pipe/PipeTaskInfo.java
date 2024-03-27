@@ -30,11 +30,13 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
@@ -54,6 +56,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -345,6 +348,52 @@ public class PipeTaskInfo implements SnapshotProcessor {
           plan.getPipeStaticMeta().getPipeName(),
           new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  public TSStatus operateMultiplePipes(OperateMultiplePipesPlanV2 plan) {
+    acquireWriteLock();
+    try {
+      if (plan.getSubPlans() == null || plan.getSubPlans().isEmpty()) {
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      }
+
+      TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      // We use sub-status to record the status of each subPlan
+      status.setSubStatus(new ArrayList<>());
+
+      for (ConfigPhysicalPlan subPlan : plan.getSubPlans()) {
+        try {
+          if (subPlan instanceof CreatePipePlanV2) {
+            createPipe((CreatePipePlanV2) subPlan);
+          } else if (subPlan instanceof AlterPipePlanV2) {
+            alterPipe((AlterPipePlanV2) subPlan);
+          } else if (subPlan instanceof SetPipeStatusPlanV2) {
+            setPipeStatus((SetPipeStatusPlanV2) subPlan);
+          } else if (subPlan instanceof DropPipePlanV2) {
+            dropPipe((DropPipePlanV2) subPlan);
+          } else {
+            throw new PipeException(
+                String.format("Unsupported subPlan type: %s", subPlan.getClass().getName()));
+          }
+          status.getSubStatus().add(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+        } catch (Exception e) {
+          // If one of the subPlan fails, we stop operating the rest of the pipes
+          LOGGER.error("Failed to operate pipe", e);
+          status.setCode(TSStatusCode.PIPE_ERROR.getStatusCode());
+          status.getSubStatus().add(new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()));
+          break;
+        }
+      }
+
+      // If all the subPlans are successful, we return the success status and clear sub-status.
+      // Otherwise, we return the error status with sub-status to record the failing index.
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        status.setSubStatus(null);
+      }
+      return status;
     } finally {
       releaseWriteLock();
     }

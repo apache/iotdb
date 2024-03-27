@@ -28,9 +28,12 @@ import org.apache.iotdb.commons.subscription.meta.subscription.SubscriptionMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.response.subscription.SubscriptionTableResp;
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
@@ -52,6 +55,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -62,10 +66,19 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   private static final String SNAPSHOT_FILE_NAME = "subscription_info.bin";
 
-  private final TopicMetaKeeper topicMetaKeeper = new TopicMetaKeeper();
-  private final ConsumerGroupMetaKeeper consumerGroupMetaKeeper = new ConsumerGroupMetaKeeper();
+  private final TopicMetaKeeper topicMetaKeeper;
+  private final ConsumerGroupMetaKeeper consumerGroupMetaKeeper;
 
   private final ReentrantReadWriteLock subscriptionInfoLock = new ReentrantReadWriteLock(true);
+
+  // Pure in-memory object, not involved in snapshot serialization and deserialization.
+  private final SubscriptionInfoVersion subscriptionInfoVersion;
+
+  public SubscriptionInfo() {
+    this.topicMetaKeeper = new TopicMetaKeeper();
+    this.consumerGroupMetaKeeper = new ConsumerGroupMetaKeeper();
+    this.subscriptionInfoVersion = new SubscriptionInfoVersion();
+  }
 
   /////////////////////////////// Lock ///////////////////////////////
 
@@ -79,10 +92,52 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   public void acquireWriteLock() {
     subscriptionInfoLock.writeLock().lock();
+    subscriptionInfoVersion.increaseLatestVersion();
   }
 
   public void releaseWriteLock() {
     subscriptionInfoLock.writeLock().unlock();
+  }
+
+  /////////////////////////////// Version ///////////////////////////////
+
+  private class SubscriptionInfoVersion {
+
+    private final AtomicLong latestVersion;
+    private long lastSyncedVersion;
+    private boolean isLastSyncedPipeTaskInfoEmpty;
+
+    public SubscriptionInfoVersion() {
+      this.latestVersion = new AtomicLong(0);
+      this.lastSyncedVersion = 0;
+      this.isLastSyncedPipeTaskInfoEmpty = false;
+    }
+
+    public void increaseLatestVersion() {
+      latestVersion.incrementAndGet();
+    }
+
+    public void updateLastSyncedVersion() {
+      lastSyncedVersion = latestVersion.get();
+      isLastSyncedPipeTaskInfoEmpty =
+          topicMetaKeeper.isEmpty() && consumerGroupMetaKeeper.isEmpty();
+    }
+
+    public boolean canSkipNextSync() {
+      return isLastSyncedPipeTaskInfoEmpty
+          && topicMetaKeeper.isEmpty()
+          && consumerGroupMetaKeeper.isEmpty()
+          && lastSyncedVersion == latestVersion.get();
+    }
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock}. */
+  public void updateLastSyncedVersion() {
+    subscriptionInfoVersion.updateLastSyncedVersion();
+  }
+
+  public boolean canSkipNextSync() {
+    return subscriptionInfoVersion.canSkipNextSync();
   }
 
   /////////////////////////////// Topic ///////////////////////////////
@@ -187,6 +242,26 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
+  public Iterable<TopicMeta> getAllTopicMeta() {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper.getAllTopicMeta();
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public TopicMeta deepCopyTopicMeta(String topicName) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper.containsTopicMeta(topicName)
+          ? topicMetaKeeper.getTopicMeta(topicName).deepCopy()
+          : null;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   public DataSet showTopics() {
     acquireReadLock();
     try {
@@ -220,6 +295,31 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
+  public TSStatus alterMultipleTopics(AlterMultipleTopicsPlan plan) {
+    acquireWriteLock();
+    try {
+      TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      status.setSubStatus(new ArrayList<>());
+      for (AlterTopicPlan subPlan : plan.getSubPlans()) {
+        TSStatus innerStatus = alterTopic(subPlan);
+        status.getSubStatus().add(innerStatus);
+        if (innerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          status.setCode(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode());
+          break;
+        }
+      }
+
+      // If all sub-plans are successful, set the sub-status to null
+      // Otherwise, keep the sub-status to indicate the failing plan's index
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        status.setSubStatus(null);
+      }
+      return status;
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
   public TSStatus dropTopic(DropTopicPlan plan) {
     acquireWriteLock();
     try {
@@ -230,12 +330,23 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
-  public TopicMeta getTopicMetaByTopicName(String topicName) {
-    acquireReadLock();
+  public TSStatus handleTopicMetaChanges(TopicHandleMetaChangePlan plan) {
+    acquireWriteLock();
     try {
-      return topicMetaKeeper.getTopicMeta(topicName);
+      LOGGER.info("Handling topic meta changes ...");
+
+      topicMetaKeeper.clear();
+
+      plan.getTopicMetaList()
+          .forEach(
+              topicMeta -> {
+                topicMetaKeeper.addTopicMeta(topicMeta.getTopicName(), topicMeta);
+                LOGGER.info("Recording topic meta: {}", topicMeta);
+              });
+
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
-      releaseReadLock();
+      releaseWriteLock();
     }
   }
 
@@ -349,6 +460,17 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
+  public ConsumerGroupMeta deepCopyConsumerGroupMeta(String consumerGroupName) {
+    acquireReadLock();
+    try {
+      return consumerGroupMetaKeeper.containsConsumerGroupMeta(consumerGroupName)
+          ? consumerGroupMetaKeeper.getConsumerGroupMeta(consumerGroupName).deepCopy()
+          : null;
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   public TSStatus alterConsumerGroup(AlterConsumerGroupPlan plan) {
     acquireWriteLock();
     try {
@@ -360,6 +482,27 @@ public class SubscriptionInfo implements SnapshotProcessor {
           consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, consumerGroupMeta);
         }
       }
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  public TSStatus handleConsumerGroupMetaChanges(ConsumerGroupHandleMetaChangePlan plan) {
+    acquireWriteLock();
+    try {
+      LOGGER.info("Handling consumer group meta changes ...");
+
+      consumerGroupMetaKeeper.clear();
+
+      plan.getConsumerGroupMetaList()
+          .forEach(
+              consumerGroupMeta -> {
+                consumerGroupMetaKeeper.addConsumerGroupMeta(
+                    consumerGroupMeta.getConsumerGroupId(), consumerGroupMeta);
+                LOGGER.info("Recording consumer group meta: {}", consumerGroupMeta);
+              });
+
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       releaseWriteLock();
@@ -466,7 +609,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
     return allSubscriptions;
   }
 
-  private List<ConsumerGroupMeta> getAllConsumerGroupMeta() {
+  public List<ConsumerGroupMeta> getAllConsumerGroupMeta() {
     return StreamSupport.stream(
             consumerGroupMetaKeeper.getAllConsumerGroupMeta().spliterator(), false)
         .collect(Collectors.toList());

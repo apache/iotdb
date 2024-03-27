@@ -143,6 +143,18 @@ public interface IConsensus {
    */
   void removeRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException;
 
+  /**
+   * Reset the peer list of the corresponding consensus group. Currently only used in the automatic
+   * cleanup of region migration as a rollback for {@link #addRemotePeer(ConsensusGroupId, Peer)},
+   * so it will only be less but not more.
+   *
+   * @param groupId the consensus group
+   * @param peers the new peer list
+   * @throws ConsensusException when resetPeerList doesn't success with other reasons
+   * @throws ConsensusGroupNotExistException when the specified consensus group doesn't exist
+   */
+  void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException;
+
   // management API
 
   /**
