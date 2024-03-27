@@ -1917,7 +1917,7 @@ public class Session implements ISession {
     if (enableRecordsAutoConvertTablet) {
       Set<String> deviceSet = new HashSet<>(deviceIds);
       if ((double) deviceSet.size() / deviceIds.size() <= CONVERT_THRESHOLD
-          && judgeConvert(deviceIds, measurementsList)) {
+          && judgeConvertOfMultiDevice(deviceIds, measurementsList)) {
         convertToTabletsAndInsert(
             deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), false);
         return;
@@ -1971,7 +1971,7 @@ public class Session implements ISession {
     if (enableRecordsAutoConvertTablet) {
       Set<String> deviceSet = new HashSet<>(deviceIds);
       if ((double) deviceSet.size() / deviceIds.size() <= CONVERT_THRESHOLD
-          && judgeConvert(deviceIds, measurementsList)) {
+          && judgeConvertOfMultiDevice(deviceIds, measurementsList)) {
 
         convertToTabletsAndInsert(
             deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), true);
@@ -2822,8 +2822,9 @@ public class Session implements ISession {
       List<String> measurements = measurementsList.get(rowIndex);
       List<TSDataType> types = typesList.get(rowIndex);
       for (int colIndex = 0; colIndex < measurements.size(); colIndex++) {
-        if (!measuremenMap.containsKey(measurements.get(colIndex))) {
-          measuremenMap.put(measurements.get(colIndex), new Pair<>(types.get(colIndex), true));
+        String measurement = measurements.get(colIndex);
+        if (!measuremenMap.containsKey(measurement)) {
+          measuremenMap.put(measurement, new Pair<>(types.get(colIndex), true));
         }
       }
     }
@@ -2850,7 +2851,8 @@ public class Session implements ISession {
   }
 
   // sample some records and judge weather need to add too many null values to convert to tablet.
-  public boolean judgeConvert(List<String> deviceIds, List<List<String>> measurementsList) {
+  public boolean judgeConvertOfMultiDevice(
+      List<String> deviceIds, List<List<String>> measurementsList) {
     int size = deviceIds.size();
     int sampleNum = (int) (size * SAMPLE_PROPORTION);
     if (sampleNum < MIN_SAMPLE_SIZE) {
@@ -2867,7 +2869,8 @@ public class Session implements ISession {
     for (int i = 0; i < sampleNum; i++) {
       int index = indexList.get(i);
       Set<String> allMeasurement =
-          measurementMap.computeIfAbsent(deviceIds.get(index), k -> new HashSet<>());
+          measurementMap.computeIfAbsent(
+              deviceIds.get(index), k -> new HashSet<>(measurementsList.get(index).size() + 1, 1));
       allMeasurement.addAll(measurementsList.get(index));
     }
     for (int i = 0; i < sampleNum; i++) {
@@ -2966,16 +2969,13 @@ public class Session implements ISession {
       tablet.addValue(measurement, row, values.get(i));
       allMeasurementMap.get(measurement).setRight(false);
     }
-    allMeasurementMap
-        .keySet()
-        .forEach(
-            measurement -> {
-              if (allMeasurementMap.get(measurement).getRight()) {
-                tablet.addValue(measurement, row, null);
-              } else {
-                allMeasurementMap.get(measurement).setRight(true);
-              }
-            });
+    for (Entry<String, Pair<TSDataType, Boolean>> entry : allMeasurementMap.entrySet()) {
+      if (entry.getValue().getRight()) {
+        tablet.addValue(entry.getKey(), row, null);
+      } else {
+        entry.getValue().setRight(true);
+      }
+    }
   }
 
   /**
