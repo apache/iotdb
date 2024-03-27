@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.awaitility.Awaitility;
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -184,28 +183,6 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         });
   }
 
-  private void assertSingleDataEventuallyOnEnv(
-      BaseEnv env, String sql, Map<String, String> expectedHeaderWithResult) {
-    try (Connection connection = env.getConnection();
-        Statement statement = connection.createStatement()) {
-      // Keep retrying if there are execution failures
-      Awaitility.await()
-          .atMost(60, TimeUnit.SECONDS)
-          .untilAsserted(
-              () -> {
-                try {
-                  TestUtils.assertSingleResultSetEqual(
-                      TestUtils.executeQueryWithRetry(statement, sql), expectedHeaderWithResult);
-                } catch (Exception e) {
-                  Assert.fail();
-                }
-              });
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
   private long createTopics() {
     // create topics on sender
     long currentTime = System.currentTimeMillis();
@@ -331,5 +308,28 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         Collections.singletonList(consumerGroupId),
         Collections.singletonList(TSDataType.FLOAT),
         Collections.singletonList(record.getFields().get(0).getFloatV()));
+  }
+
+  private void assertSingleDataEventuallyOnEnv(
+      BaseEnv env, String sql, Map<String, String> expectedHeaderWithResult) {
+    try (Connection connection = env.getConnection();
+        Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      Awaitility.await()
+          .atMost(100, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  TestUtils.assertSingleResultSetEqual(
+                      TestUtils.executeQueryWithRetry(statement, sql), expectedHeaderWithResult);
+                } catch (Exception e) {
+                  e.printStackTrace();
+                  fail(e.getMessage());
+                }
+              });
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }
