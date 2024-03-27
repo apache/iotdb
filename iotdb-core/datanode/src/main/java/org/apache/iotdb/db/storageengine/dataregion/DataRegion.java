@@ -2885,7 +2885,6 @@ public class DataRegion implements IDataRegionForQuery {
 
     tsFileManager.add(tsFileResource, false);
 
-    updatePartitionFileVersion(filePartitionId, tsFileResource.getVersion());
     return true;
   }
 
