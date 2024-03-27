@@ -40,7 +40,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class MinCostFlowLeaderBalancerTest {
+public class CFDLeaderBalancerTest {
 
   private static final MinCostFlowLeaderBalancer BALANCER = new MinCostFlowLeaderBalancer();
 
@@ -58,6 +58,10 @@ public class MinCostFlowLeaderBalancerTest {
     for (int i = 0; i < 4; i++) {
       dataNodeLocations.add(new TDataNodeLocation().setDataNodeId(i));
     }
+    // DataNode-0: [0, 1, 2], DataNode-1: [0, 1]
+    // DataNode-2: [0, 2]   , DataNode-3: [1, 2]
+    // The result will be unbalanced if select DataNode-2 as leader for RegionGroup-0
+    // and select DataNode-3 as leader for RegionGroup-1
     List<TRegionReplicaSet> regionReplicaSets = new ArrayList<>();
     regionReplicaSets.add(
         new TRegionReplicaSet(
@@ -94,7 +98,7 @@ public class MinCostFlowLeaderBalancerTest {
             databaseRegionGroupMap, regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     // All RegionGroup got a leader
     Assert.assertEquals(3, leaderDistribution.size());
-    // Each DataNode occurs exactly once
+    // Each DataNode has exactly one leader
     Assert.assertEquals(3, new HashSet<>(leaderDistribution.values()).size());
     // MaxFlow is 3
     Assert.assertEquals(3, BALANCER.getMaximumFlow());
