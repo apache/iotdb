@@ -56,10 +56,9 @@ public class PipePeriodicalJobExecutor {
   private Future<?> executorFuture;
 
   // <Periodical job, Interval in rounds>
-  private static final List<Pair<WrappedRunnable, Long>> periodicalJobs =
-      new CopyOnWriteArrayList<>();
+  private final List<Pair<WrappedRunnable, Long>> periodicalJobs = new CopyOnWriteArrayList<>();
 
-  public synchronized void register(String id, Runnable periodicalJob, long intervalInSeconds) {
+  public void register(String id, Runnable periodicalJob, long intervalInSeconds) {
     periodicalJobs.add(
         new Pair<>(
             new WrappedRunnable() {
@@ -94,7 +93,7 @@ public class PipePeriodicalJobExecutor {
     }
   }
 
-  private synchronized void execute() {
+  private void execute() {
     ++rounds;
 
     for (final Pair<WrappedRunnable, Long> periodicalJob : periodicalJobs) {
@@ -113,7 +112,7 @@ public class PipePeriodicalJobExecutor {
   }
 
   @TestOnly
-  public synchronized void clear() {
+  public void clear() {
     periodicalJobs.clear();
     LOGGER.info("All pipe periodical jobs are cleared successfully.");
   }
