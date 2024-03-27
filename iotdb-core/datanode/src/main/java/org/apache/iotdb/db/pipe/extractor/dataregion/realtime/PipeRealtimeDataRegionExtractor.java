@@ -192,7 +192,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     shouldTransferModFile =
         parameters.getBooleanOrDefault(
             Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
-            EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE);
+            EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE || shouldExtractDeletion);
   }
 
   @Override

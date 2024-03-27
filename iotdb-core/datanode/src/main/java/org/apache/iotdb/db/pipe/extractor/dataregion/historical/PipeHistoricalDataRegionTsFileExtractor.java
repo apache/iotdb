@@ -186,7 +186,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       shouldTransferModFile =
           parameters.getBooleanOrDefault(
               Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
-              EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE);
+              EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE
+                  || // Should extract deletion
+                  DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters)
+                      .getRight());
     } catch (Exception e) {
       // Compatible with the current validation framework
       throw new PipeParameterNotValidException(e.getMessage());
