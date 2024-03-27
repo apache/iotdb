@@ -116,6 +116,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
+      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
 
       TSStatus status =
           client.createPipe(
@@ -193,6 +195,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
+      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
 
       TSStatus status =
           client.createPipe(

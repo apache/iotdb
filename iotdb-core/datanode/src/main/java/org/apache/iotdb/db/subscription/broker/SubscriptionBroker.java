@@ -52,7 +52,7 @@ public class SubscriptionBroker {
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
 
   public List<SerializedEnrichedEvent> poll(Set<String> topicNames) {
-    List<SerializedEnrichedEvent> events = new ArrayList<>();
+    final List<SerializedEnrichedEvent> events = new ArrayList<>();
     topicNameToPrefetchingQueue.forEach(
         (topicName, prefetchingQueue) -> {
           if (topicNames.contains(topicName)) {
@@ -67,8 +67,9 @@ public class SubscriptionBroker {
 
   public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) {
     for (Map.Entry<String, List<String>> entry : topicNameToSubscriptionCommitIds.entrySet()) {
-      String topicName = entry.getKey();
-      SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
+      final String topicName = entry.getKey();
+      final SubscriptionPrefetchingQueue prefetchingQueue =
+          topicNameToPrefetchingQueue.get(topicName);
       if (Objects.isNull(prefetchingQueue)) {
         LOGGER.warn(
             "Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
@@ -82,7 +83,8 @@ public class SubscriptionBroker {
 
   public void bindPrefetchingQueue(
       String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {
-    SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
+    final SubscriptionPrefetchingQueue prefetchingQueue =
+        topicNameToPrefetchingQueue.get(topicName);
     if (Objects.nonNull(prefetchingQueue)) {
       LOGGER.warn(
           "Subscription: prefetching queue bound to topic [{}] has already existed", topicName);
@@ -93,7 +95,8 @@ public class SubscriptionBroker {
   }
 
   public void unbindPrefetchingQueue(String topicName) {
-    SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
+    final SubscriptionPrefetchingQueue prefetchingQueue =
+        topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
       LOGGER.warn("Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
       return;
@@ -103,7 +106,8 @@ public class SubscriptionBroker {
   }
 
   public void executePrefetch(String topicName) {
-    SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
+    final SubscriptionPrefetchingQueue prefetchingQueue =
+        topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
       LOGGER.warn("Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
       return;

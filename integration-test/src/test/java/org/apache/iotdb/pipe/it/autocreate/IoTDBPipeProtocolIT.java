@@ -50,19 +50,6 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
   @Before
   public void setUp() {
     MultiEnvFactory.createEnv(2);
-
-    // TODO: delete ratis configurations
-    senderEnv
-        .getConfig()
-        .getCommonConfig()
-        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
-    receiverEnv
-        .getConfig()
-        .getCommonConfig()
-        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
-
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
   }
@@ -77,12 +64,14 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
       int dataRegionReplicationFactor) {
     schemaRegionReplicationFactor = Math.min(schemaRegionReplicationFactor, dataNodesNum);
     dataRegionReplicationFactor = Math.min(dataRegionReplicationFactor, dataNodesNum);
+
+    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
-        .setConfigNodeConsensusProtocolClass(configNodeConsensus)
-        .setSchemaRegionConsensusProtocolClass(schemaRegionConsensus)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(dataRegionConsensus)
         .setSchemaReplicationFactor(schemaRegionReplicationFactor)
         .setDataReplicationFactor(dataRegionReplicationFactor);

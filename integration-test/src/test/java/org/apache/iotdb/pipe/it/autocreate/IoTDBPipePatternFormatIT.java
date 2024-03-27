@@ -116,6 +116,7 @@ public class IoTDBPipePatternFormatIT extends AbstractPipeDualAutoIT {
       extractorAttributes.put("extractor.path", "root.**.d1.s*");
       // When path is set, pattern should be ignored
       extractorAttributes.put("extractor.pattern", "root");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -168,6 +169,7 @@ public class IoTDBPipePatternFormatIT extends AbstractPipeDualAutoIT {
 
       extractorAttributes.put("extractor.pattern", "root.**.d1.s*");
       extractorAttributes.put("extractor.pattern.format", "iotdb");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
