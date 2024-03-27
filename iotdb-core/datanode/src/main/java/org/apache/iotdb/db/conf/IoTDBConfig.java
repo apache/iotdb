@@ -627,17 +627,14 @@ public class IoTDBConfig {
   /** Register time series as which type when receiving boolean string "true" or "false" */
   private TSDataType booleanStringInferType = TSDataType.BOOLEAN;
 
-  /** Register time series as which type when receiving an integer string "67" */
-  private TSDataType integerStringInferType = TSDataType.FLOAT;
-
   /**
    * register time series as which type when receiving an integer string and using float may lose
-   * precision num > 2 ^ 24
+   * precision
    */
-  private TSDataType longStringInferType = TSDataType.DOUBLE;
+  private TSDataType integerStringInferType = TSDataType.DOUBLE;
 
   /** register time series as which type when receiving a floating number string "6.7" */
-  private TSDataType floatingStringInferType = TSDataType.FLOAT;
+  private TSDataType floatingStringInferType = TSDataType.DOUBLE;
 
   /**
    * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT
@@ -2197,6 +2194,12 @@ public class IoTDBConfig {
   }
 
   public void setBooleanStringInferType(TSDataType booleanStringInferType) {
+    if (booleanStringInferType != TSDataType.BOOLEAN && booleanStringInferType != TSDataType.TEXT) {
+      logger.warn(
+          "Config Property boolean_string_infer_type can only be BOOLEAN or TEXT but is {}",
+          booleanStringInferType);
+      return;
+    }
     this.booleanStringInferType = booleanStringInferType;
   }
 
@@ -2208,19 +2211,19 @@ public class IoTDBConfig {
     this.integerStringInferType = integerStringInferType;
   }
 
-  public void setLongStringInferType(TSDataType longStringInferType) {
-    this.longStringInferType = longStringInferType;
-  }
-
-  public TSDataType getLongStringInferType() {
-    return longStringInferType;
-  }
-
   public TSDataType getFloatingStringInferType() {
     return floatingStringInferType;
   }
 
   public void setFloatingStringInferType(TSDataType floatingNumberStringInferType) {
+    if (floatingNumberStringInferType != TSDataType.DOUBLE
+        && floatingNumberStringInferType != TSDataType.FLOAT
+        && floatingNumberStringInferType != TSDataType.TEXT) {
+      logger.warn(
+          "Config Property floating_string_infer_type can only be FLOAT, DOUBLE or TEXT but is {}",
+          floatingNumberStringInferType);
+      return;
+    }
     this.floatingStringInferType = floatingNumberStringInferType;
   }
 
@@ -2232,9 +2235,10 @@ public class IoTDBConfig {
     if (nanStringInferType != TSDataType.DOUBLE
         && nanStringInferType != TSDataType.FLOAT
         && nanStringInferType != TSDataType.TEXT) {
-      throw new IllegalArgumentException(
-          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is "
-              + nanStringInferType);
+      logger.warn(
+          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is {}",
+          nanStringInferType);
+      return;
     }
     this.nanStringInferType = nanStringInferType;
   }
