@@ -30,6 +30,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.itbase.exception.InconsistentDataException;
+import org.apache.iotdb.metrics.utils.SystemType;
 
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
@@ -195,11 +196,29 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
     } else {
       logFileName = "log_datanode_all.log";
     }
-    ProcessBuilder builder =
-        new ProcessBuilder(
-            "tail",
-            "-f",
-            nodeWrapper.getNodePath() + File.separator + "logs" + File.separator + logFileName);
+    SystemType type = SystemType.getSystemType();
+    ProcessBuilder builder;
+    if (type == SystemType.LINUX || type == SystemType.MAC) {
+      builder =
+          new ProcessBuilder(
+              "tail",
+              "-f",
+              nodeWrapper.getNodePath() + File.separator + "logs" + File.separator + logFileName);
+    } else if (type == SystemType.WINDOWS) {
+      builder =
+          new ProcessBuilder(
+              "powershell",
+              "-Command",
+              "Get-Content "
+                  + nodeWrapper.getNodePath()
+                  + File.separator
+                  + "logs"
+                  + File.separator
+                  + logFileName
+                  + " -Wait");
+    } else {
+      throw new RuntimeException("Unsupported system type");
+    }
     builder.redirectErrorStream(true);
 
     try {
@@ -371,7 +390,7 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
 
   private static void checkPeerClear(int checkTargetDataNode, int originalDataNode, int regionId) {
     File expectDeletedFile =
-        new File(buildConfigurationDataFilePath(checkTargetDataNode, originalDataNode, regionId));
+        new File(buildConfigurationDataFilePath(originalDataNode, checkTargetDataNode, regionId));
     Assert.assertFalse(
         "configuration file should be deleted, but it didn't: " + expectDeletedFile.getPath(),
         expectDeletedFile.exists());

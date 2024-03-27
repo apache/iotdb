@@ -655,6 +655,10 @@ public class IoTConsensusServerImpl {
     }
   }
 
+  public static String generateConfigurationDatFileName(int nodeId) {
+    return nodeId + "_" + CONFIGURATION_FILE_NAME;
+  }
+
   private List<Peer> getConfiguration(Path dirPath, String configurationFileName)
       throws IOException {
     ByteBuffer buffer;
