@@ -98,8 +98,8 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
       // skip TApplicationException caused by follower
       if (rootCause instanceof org.apache.thrift.TApplicationException) {
         completeBatch(batch);
-        logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
         logger.warn("Skip retrying this Batch {} because of TApplicationException.", batch);
+        logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
         return;
       }
     }
