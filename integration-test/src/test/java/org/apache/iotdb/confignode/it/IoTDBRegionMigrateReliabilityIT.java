@@ -39,7 +39,6 @@ import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -432,9 +431,7 @@ public class IoTDBRegionMigrateReliabilityIT {
     Assert.assertEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
   }
 
-  private static void checkConfigurationDatFileClear() {
-
-  }
+  private static void checkConfigurationDatFileClear() {}
 
   private static KeySetView<String, Boolean> buildSet(String... keywords) {
     KeySetView<String, Boolean> result = ConcurrentHashMap.newKeySet();
