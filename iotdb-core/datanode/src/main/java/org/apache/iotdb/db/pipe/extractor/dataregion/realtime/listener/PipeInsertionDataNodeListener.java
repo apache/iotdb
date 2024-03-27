@@ -26,8 +26,14 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRe
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeDataRegionAssigner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -45,6 +51,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * will filter events and assign them to different PipeRealtimeEventDataRegionExtractors.
  */
 public class PipeInsertionDataNodeListener {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeInsertionDataNodeListener.class);
 
   private final ConcurrentMap<String, PipeDataRegionAssigner> dataRegionId2Assigner =
       new ConcurrentHashMap<>();
@@ -128,6 +136,18 @@ public class PipeInsertionDataNodeListener {
     // only events from registered data region will be extracted
     if (assigner == null) {
       return;
+    }
+
+    // REMOVE ME: for debug
+    if (insertNode instanceof InsertRowNode) {
+      long timestamp = ((InsertRowNode) insertNode).getTime();
+      LOGGER.info("listen to timestamp {}", timestamp);
+    } else if (insertNode instanceof InsertTabletNode) {
+      long[] timestamps = ((InsertTabletNode) insertNode).getTimes();
+      LOGGER.info("listen to timestamps {}", timestamps);
+    } else {
+      throw new UnSupportedDataTypeException(
+          String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
     }
 
     assigner.publishToAssign(
