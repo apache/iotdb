@@ -84,6 +84,15 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
     return queueTailIndex2SnapshotsCache;
   }
 
+  @Override
+  public synchronized long removeBefore(long newFirstIndex) {
+    final long result = super.removeBefore(newFirstIndex);
+    if (queueTailIndex2SnapshotsCache.getLeft() < result) {
+      clearSnapshots();
+    }
+    return result;
+  }
+
   private synchronized void clearSnapshots() {
     queueTailIndex2SnapshotsCache.setLeft(Long.MIN_VALUE);
     queueTailIndex2SnapshotsCache
