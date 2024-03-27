@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,7 +97,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
           retryCount,
           rootCause.toString());
       // skip TApplicationException caused by follower
-      if (rootCause instanceof org.apache.thrift.TApplicationException) {
+      if (rootCause instanceof TApplicationException) {
         completeBatch(batch);
         logger.warn("Skip retrying this Batch {} because of TApplicationException.", batch);
         logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
