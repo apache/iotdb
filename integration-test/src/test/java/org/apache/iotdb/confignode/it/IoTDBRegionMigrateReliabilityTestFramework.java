@@ -311,9 +311,7 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
     Assert.assertEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
   }
 
-  private static void checkConfigurationDatFileClear() {
-
-  }
+  private static void checkConfigurationDatFileClear() {}
 
   static KeySetView<String, Boolean> buildSet(String... keywords) {
     KeySetView<String, Boolean> result = ConcurrentHashMap.newKeySet();
