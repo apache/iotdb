@@ -171,9 +171,10 @@ public interface IConsensus {
    * Trigger the snapshot of the corresponding consensus group.
    *
    * @param groupId the consensus group which should execute this command
+   * @param force if true, force to take a snapshot
    * @throws ConsensusException when triggerSnapshot doesn't success with other reasons
    */
-  void triggerSnapshot(ConsensusGroupId groupId) throws ConsensusException;
+  void triggerSnapshot(ConsensusGroupId groupId, boolean force) throws ConsensusException;
 
   /**
    * Determine if the current peer is the leader in the corresponding consensus group.

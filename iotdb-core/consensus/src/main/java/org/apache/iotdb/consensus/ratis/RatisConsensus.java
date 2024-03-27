@@ -688,18 +688,23 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
-  public void triggerSnapshot(ConsensusGroupId groupId) throws ConsensusException {
-    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
-    RaftGroup groupInfo = getGroupInfo(raftGroupId);
+  public void triggerSnapshot(ConsensusGroupId groupId, boolean force) throws ConsensusException {
+    final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    final RaftGroup groupInfo = getGroupInfo(raftGroupId);
     if (groupInfo == null || !groupInfo.getPeers().contains(myself)) {
       throw new ConsensusGroupNotExistException(groupId);
     }
 
-    SnapshotManagementRequest request =
+    final SnapshotManagementRequest request =
         SnapshotManagementRequest.newCreate(
-            localFakeId, myself.getId(), raftGroupId, localFakeCallId.incrementAndGet(), 300000);
+            localFakeId,
+            myself.getId(),
+            raftGroupId,
+            localFakeCallId.incrementAndGet(),
+            300000,
+            force ? 1 : 0);
 
-    RaftClientReply reply;
+    final RaftClientReply reply;
     try {
       reply = server.snapshotManagement(request);
       if (!reply.isSuccess()) {
