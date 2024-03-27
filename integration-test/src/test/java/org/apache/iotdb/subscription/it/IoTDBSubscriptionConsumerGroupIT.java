@@ -25,13 +25,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.itbase.category.MultiClusterIT3;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.awaitility.Awaitility;
@@ -46,7 +45,6 @@ import java.sql.Connection;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,7 +54,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2.class})
+@Category({MultiClusterIT3.class})
 public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT {
 
   private static final Logger LOGGER =
@@ -176,6 +174,54 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         });
   }
 
+  @Test
+  public void test3C3CGSubscribeTwoTopicRealTime() throws Exception {
+    long currentTime = System.currentTimeMillis();
+    createTopics(currentTime);
+    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic2"));
+    createPipes(currentTime);
+    prepareData(currentTime);
+    pollMessagesAndCheck(
+        consumers,
+        new HashMap<String, String>() {
+          {
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.cg2.topic1.s)", "100");
+            put("count(root.cg2.topic2.s)", "100");
+            put("count(root.cg3.topic2.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
+          }
+        });
+  }
+
+  @Test
+  public void test4C2CGSubscribeTwoTopicRealTime() throws Exception {
+    long currentTime = System.currentTimeMillis();
+    createTopics(currentTime);
+    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c4", "cg2", "topic2"));
+    createPipes(currentTime);
+    prepareData(currentTime);
+    pollMessagesAndCheck(
+        consumers,
+        new HashMap<String, String>() {
+          {
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.cg2.topic1.s)", "100");
+            put("count(root.cg2.topic2.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
+          }
+        });
+  }
+
   private long createTopics(long currentTime) {
     // create topics on sender
     try (ISession session = senderEnv.getSessionConnection()) {
@@ -278,11 +324,12 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     List<Thread> threads = new ArrayList<>();
     for (int i = 0; i < consumers.size(); ++i) {
       final int index = i;
+      String consumerId = consumers.get(index).getConsumerId();
+      String consumerGroupId = consumers.get(index).getConsumerGroupId();
       Thread t =
           new Thread(
               () -> {
-                try (SubscriptionPullConsumer consumer = consumers.get(index);
-                    ISession session = receiverEnv.getSessionConnection()) {
+                try (SubscriptionPullConsumer consumer = consumers.get(index)) {
                   while (!isClosed.get()) {
                     try {
                       Thread.sleep(1000); // wait some time
@@ -301,7 +348,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                         while (dataSet.hasNext()) {
                           RowRecord record = dataSet.next();
                           insertRowRecordEnrichByConsumerGroupId(
-                              session, columnNameList, record, consumer.getConsumerGroupId());
+                              columnNameList, record, consumerGroupId);
                         }
                       }
                     }
@@ -316,7 +363,8 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                   e.printStackTrace();
                   // avoid fail
                 }
-              });
+              },
+              String.format("%s_%s", consumerGroupId, consumerId));
       t.start();
       threads.add(t);
     }
@@ -346,33 +394,32 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   private void insertRowRecordEnrichByConsumerGroupId(
-      ISession session, List<String> columnNameList, RowRecord record, String consumerGroupId)
-      throws Exception {
+      List<String> columnNameList, RowRecord record, String consumerGroupId) throws Exception {
     if (columnNameList.size() != 2) {
       LOGGER.warn("unexpected column name list: {}", columnNameList);
       throw new Exception("unexpected column name list");
     }
     String columnName = columnNameList.get(1);
     if ("root.topic1.s".equals(columnName)) {
-      String deviceId = String.format("root.%s.topic1", consumerGroupId);
+      String sql =
+          String.format(
+              "insert into root.%s.topic1(time, s) values (%s, 1)",
+              consumerGroupId, record.getTimestamp());
       // REMOVE ME: for debug
-      LOGGER.info("insert {}.s {}", deviceId, record.getTimestamp());
-      session.insertRecord(
-          deviceId,
-          record.getTimestamp(),
-          Collections.singletonList("s"),
-          Collections.singletonList(TSDataType.FLOAT),
-          Collections.singletonList(record.getFields().get(0).getFloatV()));
+      LOGGER.info(sql);
+      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql)) {
+        fail();
+      }
     } else if ("root.topic2.s".equals(columnName)) {
-      String deviceId = String.format("root.%s.topic2", consumerGroupId);
+      String sql =
+          String.format(
+              "insert into root.%s.topic2(time, s) values (%s, 1)",
+              consumerGroupId, record.getTimestamp());
       // REMOVE ME: for debug
-      LOGGER.info("insert {}.s {}", deviceId, record.getTimestamp());
-      session.insertRecord(
-          deviceId,
-          record.getTimestamp(),
-          Collections.singletonList("s"),
-          Collections.singletonList(TSDataType.FLOAT),
-          Collections.singletonList(record.getFields().get(0).getFloatV()));
+      LOGGER.info(sql);
+      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql)) {
+        fail();
+      }
     } else {
       LOGGER.warn("unexpected column name: {}", columnName);
       throw new Exception("unexpected column name list");

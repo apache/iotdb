@@ -56,7 +56,7 @@ jobs:
           -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 \
           -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
           -pl integration-test \
-          -am -PMultiClusterIT2
+          -am -PMultiClusterIT3
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4

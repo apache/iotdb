@@ -356,7 +356,6 @@ public class TestUtils {
       ResultSet actualResultSet, Map<String, String> expectedHeaderWithResult) {
     try {
       ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
-      assertEquals(resultSetMetaData.getColumnCount(), expectedHeaderWithResult.size());
       assertTrue(actualResultSet.next());
       Map<String, String> actualHeaderWithResult = new HashMap<>();
       for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -366,6 +365,7 @@ public class TestUtils {
       String expected = new TreeMap<>(expectedHeaderWithResult).toString();
       String actual = new TreeMap<>(actualHeaderWithResult).toString();
       LOGGER.info("compare expected {} with actual {}...", expected, actual);
+      assertEquals(resultSetMetaData.getColumnCount(), expectedHeaderWithResult.size());
       assertEquals(expected, actual);
       assertFalse(actualResultSet.next());
     } catch (Exception e) {
