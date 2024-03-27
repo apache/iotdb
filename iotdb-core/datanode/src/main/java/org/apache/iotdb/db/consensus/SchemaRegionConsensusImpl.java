@@ -80,9 +80,6 @@ public class SchemaRegionConsensusImpl {
                           RatisConfig.newBuilder()
                               .setSnapshot(
                                   RatisConfig.Snapshot.newBuilder()
-                                      // This must be set to 1 so that pipe meta can transfer
-                                      // historical data
-                                      .setCreationGap(1)
                                       .setAutoTriggerThreshold(
                                           CONF.getSchemaRatisConsensusSnapshotTriggerThreshold())
                                       .build())
