@@ -97,7 +97,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   @Override
   protected void triggerSnapshot() {
     try {
-      SchemaRegionConsensusImpl.getInstance().triggerSnapshot(schemaRegionId);
+      SchemaRegionConsensusImpl.getInstance().triggerSnapshot(schemaRegionId, true);
     } catch (ConsensusException e) {
       throw new PipeException("Exception encountered when triggering schema region snapshot.", e);
     }

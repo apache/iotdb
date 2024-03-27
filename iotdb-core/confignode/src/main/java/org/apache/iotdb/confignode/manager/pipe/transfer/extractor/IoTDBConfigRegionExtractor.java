@@ -82,7 +82,8 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
           .getConsensusManager()
           .getConsensusImpl()
           .triggerSnapshot(
-              new ConfigRegionId(ConfigNodeDescriptor.getInstance().getConf().getConfigRegionId()));
+              new ConfigRegionId(ConfigNodeDescriptor.getInstance().getConf().getConfigRegionId()),
+              true);
     } catch (ConsensusException e) {
       throw new PipeException("Exception encountered when triggering schema region snapshot.", e);
     }
