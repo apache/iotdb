@@ -51,25 +51,25 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
   // The number of 2-Region combinations in current cluster
   private int[][] combinationCounter;
 
-  // First Key: the sum of Regions at the DataNodes within the same Database in the allocation
-  // result is minimal
-  int optimalDatabaseRegionSum;
-  // Second Key: the sum of Regions at the DataNodes in the allocation result is minimal
+  // First Key: the sum of Regions at the DataNodes in the allocation result is minimal
   int optimalRegionSum;
-  // Third Key: the sum of overlapped 2-Region combination Regions with other allocated
-  // RegionGroups is minimal
+  // Second Key: the sum of Regions at the DataNodes within the same Database
+  // in the allocation result is minimal
+  int optimalDatabaseRegionSum;
+  // Third Key: the sum of overlapped 2-Region combination Regions with
+  // other allocated RegionGroups is minimal
   int optimalCombinationSum;
   List<int[]> optimalReplicaSets;
 
   private static class DataNodeEntry {
 
-    // First key: the number of Regions in the DataNode within the same Database
-    private final int databaseRegionCount;
-    // Second key: the number of Regions in the DataNode
+    // First key: the number of Regions in the DataNode, ascending order
     private final int regionCount;
-    // Third key: the scatter width of the DataNode
+    // Second key: the number of Regions in the DataNode within the same Database, ascending order
+    private final int databaseRegionCount;
+    // Third key: the scatter width of the DataNode, ascending order
     private final int scatterWidth;
-    // Forth key: a random weight
+    // Forth key: a random weight, ascending order
     private final int randomWeight;
 
     public DataNodeEntry(int databaseRegionCount, int regionCount, int scatterWidth) {
