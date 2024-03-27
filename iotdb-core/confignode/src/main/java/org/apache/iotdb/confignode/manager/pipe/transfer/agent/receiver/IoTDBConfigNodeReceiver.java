@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeReques
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -161,6 +162,13 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   private TSStatus executePlan(ConfigPhysicalPlan plan) throws ConsensusException {
     switch (plan.getType()) {
       case CreateDatabase:
+        if (((DatabaseSchemaPlan) plan)
+            .getSchema()
+            .getName()
+            .equals(SchemaConstant.SYSTEM_DATABASE)) {
+          // System database doesn't need transferring
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
         // Here we only reserve database name and substitute the sender's local information
         // with the receiver's default configurations
         TDatabaseSchema schema = ((DatabaseSchemaPlan) plan).getSchema();

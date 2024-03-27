@@ -393,6 +393,10 @@ public class CNPhysicalPlanGenerator
       databaseMNode.getAsMNode().getDatabaseSchema().unsetTTL();
     }
 
+    if (databaseMNode.getAsMNode().getSchemaTemplateId() >= 0 && !templateTable.isEmpty()) {
+      templateNodeList.add((IConfigMNode) databaseMNode);
+    }
+
     final DatabaseSchemaPlan createDBPlan =
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.CreateDatabase, databaseMNode.getAsMNode().getDatabaseSchema());

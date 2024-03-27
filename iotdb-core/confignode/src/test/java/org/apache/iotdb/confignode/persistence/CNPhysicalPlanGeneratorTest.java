@@ -96,7 +96,7 @@ public class CNPhysicalPlanGeneratorTest {
 
   @Test
   public void roleGeneratorTest() throws Exception {
-    HashSet<Integer> answerSet = new HashSet<>();
+    final HashSet<Integer> answerSet = new HashSet<>();
     String roleName = "test1";
     setupAuthorInfo();
     AuthorPlan plan = new AuthorPlan(ConfigPhysicalPlanType.CreateRole);
@@ -112,7 +112,7 @@ public class CNPhysicalPlanGeneratorTest {
     plan.setRoleName(roleName);
     plan.setUserName("");
     plan.setNodeNameList(Collections.singletonList(new PartialPath("root.db.t1")));
-    Set<Integer> pathPris = new HashSet<>();
+    final Set<Integer> pathPris = new HashSet<>();
     pathPris.add(PrivilegeType.WRITE_DATA.ordinal());
     pathPris.add(PrivilegeType.WRITE_SCHEMA.ordinal());
     plan.setPermissions(pathPris);
@@ -131,7 +131,7 @@ public class CNPhysicalPlanGeneratorTest {
     plan.setRoleName(roleName);
     plan.setUserName("");
     plan.setNodeNameList(Collections.emptyList());
-    Set<Integer> sysPris = new HashSet<>();
+    final Set<Integer> sysPris = new HashSet<>();
     sysPris.add(PrivilegeType.MANAGE_DATABASE.ordinal());
     sysPris.add(PrivilegeType.MANAGE_ROLE.ordinal());
     plan.setPermissions(sysPris);
@@ -152,7 +152,7 @@ public class CNPhysicalPlanGeneratorTest {
     // 3. grant system privileges plan * 2
     Assert.assertTrue(authorInfo.processTakeSnapshot(snapshotDir));
 
-    File roleProfile =
+    final File roleProfile =
         SystemFileFactory.INSTANCE.getFile(
             snapshotDir
                 + File.separator
@@ -161,7 +161,7 @@ public class CNPhysicalPlanGeneratorTest {
                 + roleName
                 + ".profile");
 
-    CNPhysicalPlanGenerator planGenerator =
+    final CNPhysicalPlanGenerator planGenerator =
         new CNPhysicalPlanGenerator(roleProfile.toPath(), CNSnapshotFileType.ROLE);
     int count = 0;
     for (ConfigPhysicalPlan authPlan : planGenerator) {
@@ -173,8 +173,8 @@ public class CNPhysicalPlanGeneratorTest {
 
   @Test
   public void userGeneratorTest() throws Exception {
-    String userName = "test1";
-    Set<Integer> answerSet = new HashSet<>();
+    final String userName = "test1";
+    final Set<Integer> answerSet = new HashSet<>();
     setupAuthorInfo();
     AuthorPlan plan = new AuthorPlan(ConfigPhysicalPlanType.CreateUser);
     plan.setPassword("password");
@@ -196,7 +196,7 @@ public class CNPhysicalPlanGeneratorTest {
     plan.setUserName(userName);
     plan.setRoleName("");
     plan.setNodeNameList(Collections.singletonList(new PartialPath("root.db1.t2")));
-    Set<Integer> priSet = new HashSet<>();
+    final Set<Integer> priSet = new HashSet<>();
     priSet.add(PrivilegeType.WRITE_SCHEMA.ordinal());
     priSet.add(PrivilegeType.READ_DATA.ordinal());
     plan.setPermissions(priSet);
@@ -233,7 +233,7 @@ public class CNPhysicalPlanGeneratorTest {
 
     Assert.assertTrue(authorInfo.processTakeSnapshot(snapshotDir));
 
-    File userProfile =
+    final File userProfile =
         SystemFileFactory.INSTANCE.getFile(
             snapshotDir
                 + File.separator
@@ -251,7 +251,7 @@ public class CNPhysicalPlanGeneratorTest {
       count++;
     }
     Assert.assertEquals(4, count);
-    File roleListProfile =
+    final File roleListProfile =
         SystemFileFactory.INSTANCE.getFile(
             snapshotDir
                 + File.separator
@@ -273,8 +273,8 @@ public class CNPhysicalPlanGeneratorTest {
   @Test
   public void databaseWithoutTemplateGeneratorTest() throws Exception {
     setupClusterSchemaInfo();
-    Set<Integer> answerSet = new HashSet<>();
-    Set<String> storageGroupPathList = new TreeSet<>();
+    final Set<Integer> answerSet = new HashSet<>();
+    final Set<String> storageGroupPathList = new TreeSet<>();
     storageGroupPathList.add("root.sg");
     storageGroupPathList.add("root.ln");
     storageGroupPathList.add("root.a.sg");
@@ -283,7 +283,7 @@ public class CNPhysicalPlanGeneratorTest {
 
     int i = 0;
     for (String path : storageGroupPathList) {
-      TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
+      final TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
       tDatabaseSchema.setName(path);
       tDatabaseSchema.setTTL(i);
       tDatabaseSchema.setDataReplicationFactor(i);
@@ -291,7 +291,8 @@ public class CNPhysicalPlanGeneratorTest {
       tDatabaseSchema.setTimePartitionInterval(i);
       clusterSchemaInfo.createDatabase(
           new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, tDatabaseSchema));
-      SetTTLPlan plan = new SetTTLPlan(Arrays.asList(path.split("\\.")), tDatabaseSchema.getTTL());
+      final SetTTLPlan plan =
+          new SetTTLPlan(Arrays.asList(path.split("\\.")), tDatabaseSchema.getTTL());
       answerSet.add(plan.hashCode());
       TDatabaseSchema tDatabaseSchemaBak = new TDatabaseSchema(tDatabaseSchema);
       tDatabaseSchemaBak.unsetTTL();
@@ -301,23 +302,23 @@ public class CNPhysicalPlanGeneratorTest {
       i++;
     }
 
-    boolean success = clusterSchemaInfo.processTakeSnapshot(snapshotDir);
+    final boolean success = clusterSchemaInfo.processTakeSnapshot(snapshotDir);
     Assert.assertTrue(success);
-    File schemaInfo =
+    final File schemaInfo =
         SystemFileFactory.INSTANCE.getFile(snapshotDir + File.separator + SCHEMA_INFO_FILE_NAME);
-    File templateInfo =
+    final File templateInfo =
         SystemFileFactory.INSTANCE.getFile(snapshotDir + File.separator + TEMPLATE_INFO_FILE_NAME);
 
-    CNPhysicalPlanGenerator planGenerator =
+    final CNPhysicalPlanGenerator planGenerator =
         new CNPhysicalPlanGenerator(schemaInfo.toPath(), templateInfo.toPath());
     int count = 0;
     for (ConfigPhysicalPlan plan : planGenerator) {
       if (plan.getType() == ConfigPhysicalPlanType.CreateDatabase) {
-        Assert.assertTrue(answerSet.contains(((DatabaseSchemaPlan) plan).hashCode()));
+        Assert.assertTrue(answerSet.contains(plan.hashCode()));
       } else if (plan.getType() == ConfigPhysicalPlanType.SetTTL) {
-        String[] database = ((SetTTLPlan) plan).getDatabasePathPattern();
-        PartialPath databasePath = new PartialPath(database);
-        Assert.assertTrue(answerSet.contains(((SetTTLPlan) plan).hashCode()));
+        final String[] database = ((SetTTLPlan) plan).getDatabasePathPattern();
+        final PartialPath databasePath = new PartialPath(database);
+        Assert.assertTrue(answerSet.contains(plan.hashCode()));
         clusterSchemaInfo.setTTL((SetTTLPlan) plan);
       }
       count++;
@@ -329,42 +330,42 @@ public class CNPhysicalPlanGeneratorTest {
   @Test
   public void templateGeneratorTest() throws Exception {
     setupClusterSchemaInfo();
-    Template t1 =
+    final Template t1 =
         new Template(
             "t1",
             Arrays.asList("s1", "s2"),
             Arrays.asList(TSDataType.INT32, TSDataType.BOOLEAN),
             Arrays.asList(TSEncoding.GORILLA, TSEncoding.PLAIN),
             Arrays.asList(CompressionType.GZIP, CompressionType.SNAPPY));
-    Template t2 =
+    final Template t2 =
         new Template(
             "t2",
             Arrays.asList("s1", "s2", "s3"),
             Arrays.asList(TSDataType.INT32, TSDataType.BOOLEAN, TSDataType.TEXT),
             Arrays.asList(TSEncoding.GORILLA, TSEncoding.PLAIN, TSEncoding.DIFF),
             Arrays.asList(CompressionType.GZIP, CompressionType.SNAPPY, CompressionType.LZ4));
-    Map<String, CreateSchemaTemplatePlan> answerPlan = new HashMap<>();
+    final Map<String, CreateSchemaTemplatePlan> answerPlan = new HashMap<>();
 
-    CreateSchemaTemplatePlan plan1 = new CreateSchemaTemplatePlan(t1.serialize().array());
+    final CreateSchemaTemplatePlan plan1 = new CreateSchemaTemplatePlan(t1.serialize().array());
     clusterSchemaInfo.createSchemaTemplate(plan1);
     answerPlan.put(t1.getName(), plan1);
 
-    CreateSchemaTemplatePlan plan2 = new CreateSchemaTemplatePlan(t2.serialize().array());
+    final CreateSchemaTemplatePlan plan2 = new CreateSchemaTemplatePlan(t2.serialize().array());
     clusterSchemaInfo.createSchemaTemplate(plan2);
     answerPlan.put(t2.getName(), plan2);
 
-    boolean success = clusterSchemaInfo.processTakeSnapshot(snapshotDir);
+    final boolean success = clusterSchemaInfo.processTakeSnapshot(snapshotDir);
     Assert.assertTrue(success);
-    File schemaInfo =
+    final File schemaInfo =
         SystemFileFactory.INSTANCE.getFile(snapshotDir + File.separator + SCHEMA_INFO_FILE_NAME);
-    File templateInfo =
+    final File templateInfo =
         SystemFileFactory.INSTANCE.getFile(snapshotDir + File.separator + TEMPLATE_INFO_FILE_NAME);
-    CNPhysicalPlanGenerator planGenerator =
+    final CNPhysicalPlanGenerator planGenerator =
         new CNPhysicalPlanGenerator(schemaInfo.toPath(), templateInfo.toPath());
     int count = 0;
     for (ConfigPhysicalPlan plan : planGenerator) {
-      CreateSchemaTemplatePlan templatePlan = (CreateSchemaTemplatePlan) plan;
-      Assert.assertTrue(answerPlan.get(templatePlan.getTemplate().getName()).equals(templatePlan));
+      final CreateSchemaTemplatePlan templatePlan = (CreateSchemaTemplatePlan) plan;
+      Assert.assertEquals(answerPlan.get(templatePlan.getTemplate().getName()), templatePlan);
       count++;
     }
     Assert.assertEquals(2, count);
@@ -373,8 +374,8 @@ public class CNPhysicalPlanGeneratorTest {
   @Test
   public void templateAndDatabaseCompletedTest() throws Exception {
     setupClusterSchemaInfo();
-    Set<Integer> answerSet = new HashSet<>();
-    Set<String> storageGroupPathList = new TreeSet<>();
+    final Set<Integer> answerSet = new HashSet<>();
+    final Set<String> storageGroupPathList = new TreeSet<>();
     storageGroupPathList.add("root.sg");
     storageGroupPathList.add("root.a.sg");
     storageGroupPathList.add("root.a.b.sg");
@@ -382,7 +383,7 @@ public class CNPhysicalPlanGeneratorTest {
 
     int i = 0;
     for (String path : storageGroupPathList) {
-      TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
+      final TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
       tDatabaseSchema.setName(path);
       tDatabaseSchema.setTTL(i);
       tDatabaseSchema.setDataReplicationFactor(i);
@@ -390,44 +391,45 @@ public class CNPhysicalPlanGeneratorTest {
       tDatabaseSchema.setTimePartitionInterval(i);
       clusterSchemaInfo.createDatabase(
           new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, tDatabaseSchema));
-      SetTTLPlan plan = new SetTTLPlan(Arrays.asList(path.split("\\.")), tDatabaseSchema.getTTL());
+      final SetTTLPlan plan =
+          new SetTTLPlan(Arrays.asList(path.split("\\.")), tDatabaseSchema.getTTL());
       answerSet.add(plan.hashCode());
-      TDatabaseSchema tDatabaseSchemaBak = new TDatabaseSchema(tDatabaseSchema);
+      final TDatabaseSchema tDatabaseSchemaBak = new TDatabaseSchema(tDatabaseSchema);
       tDatabaseSchemaBak.unsetTTL();
-      DatabaseSchemaPlan databaseSchemaPlan =
+      final DatabaseSchemaPlan databaseSchemaPlan =
           new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, tDatabaseSchemaBak);
       answerSet.add(databaseSchemaPlan.hashCode());
       i++;
     }
-    Template t1 =
+    final Template t1 =
         new Template(
             "t1",
             Arrays.asList("s1", "s2"),
             Arrays.asList(TSDataType.INT32, TSDataType.BOOLEAN),
             Arrays.asList(TSEncoding.GORILLA, TSEncoding.PLAIN),
             Arrays.asList(CompressionType.GZIP, CompressionType.SNAPPY));
-    Template t2 =
+    final Template t2 =
         new Template(
             "t2",
             Arrays.asList("s1", "s2", "s3"),
             Arrays.asList(TSDataType.INT32, TSDataType.BOOLEAN, TSDataType.TEXT),
             Arrays.asList(TSEncoding.GORILLA, TSEncoding.PLAIN, TSEncoding.DIFF),
             Arrays.asList(CompressionType.GZIP, CompressionType.SNAPPY, CompressionType.LZ4));
-    CreateSchemaTemplatePlan plan1 = new CreateSchemaTemplatePlan(t1.serialize().array());
+    final CreateSchemaTemplatePlan plan1 = new CreateSchemaTemplatePlan(t1.serialize().array());
     clusterSchemaInfo.createSchemaTemplate(plan1);
     answerSet.add(plan1.hashCode());
 
-    CreateSchemaTemplatePlan plan2 = new CreateSchemaTemplatePlan(t2.serialize().array());
+    final CreateSchemaTemplatePlan plan2 = new CreateSchemaTemplatePlan(t2.serialize().array());
     clusterSchemaInfo.createSchemaTemplate(plan2);
     answerSet.add(plan2.hashCode());
 
-    PreSetSchemaTemplatePlan preSetSchemaTemplatePlan1 =
-        new PreSetSchemaTemplatePlan("t1", "root.sg.t1");
-    PreSetSchemaTemplatePlan preSetSchemaTemplatePlan2 =
+    final PreSetSchemaTemplatePlan preSetSchemaTemplatePlan1 =
+        new PreSetSchemaTemplatePlan("t1", "root.sg");
+    final PreSetSchemaTemplatePlan preSetSchemaTemplatePlan2 =
         new PreSetSchemaTemplatePlan("t2", "root.a.sg.t1");
-    CommitSetSchemaTemplatePlan setSchemaTemplatePlan1 =
-        new CommitSetSchemaTemplatePlan("t1", "root.sg.t1");
-    CommitSetSchemaTemplatePlan setSchemaTemplatePlan2 =
+    final CommitSetSchemaTemplatePlan setSchemaTemplatePlan1 =
+        new CommitSetSchemaTemplatePlan("t1", "root.sg");
+    final CommitSetSchemaTemplatePlan setSchemaTemplatePlan2 =
         new CommitSetSchemaTemplatePlan("t2", "root.a.sg.t1");
     clusterSchemaInfo.preSetSchemaTemplate(preSetSchemaTemplatePlan1);
     clusterSchemaInfo.preSetSchemaTemplate(preSetSchemaTemplatePlan2);
@@ -436,31 +438,31 @@ public class CNPhysicalPlanGeneratorTest {
     answerSet.add(setSchemaTemplatePlan1.hashCode());
     answerSet.add(setSchemaTemplatePlan1.hashCode());
 
-    boolean success = clusterSchemaInfo.processTakeSnapshot(snapshotDir);
+    final boolean success = clusterSchemaInfo.processTakeSnapshot(snapshotDir);
     Assert.assertTrue(success);
-    File schemaInfo =
+    final File schemaInfo =
         SystemFileFactory.INSTANCE.getFile(snapshotDir + File.separator + SCHEMA_INFO_FILE_NAME);
-    File templateInfo =
+    final File templateInfo =
         SystemFileFactory.INSTANCE.getFile(snapshotDir + File.separator + TEMPLATE_INFO_FILE_NAME);
-    CNPhysicalPlanGenerator planGenerator =
+    final CNPhysicalPlanGenerator planGenerator =
         new CNPhysicalPlanGenerator(schemaInfo.toPath(), templateInfo.toPath());
     int count = 0;
     for (ConfigPhysicalPlan plan : planGenerator) {
       if (plan.getType() == ConfigPhysicalPlanType.CreateDatabase) {
-        Assert.assertTrue(answerSet.contains(((DatabaseSchemaPlan) plan).hashCode()));
+        Assert.assertTrue(answerSet.contains(plan.hashCode()));
       } else if (plan.getType() == ConfigPhysicalPlanType.SetTTL) {
-        Assert.assertTrue(answerSet.contains(((SetTTLPlan) plan).hashCode()));
+        Assert.assertTrue(answerSet.contains(plan.hashCode()));
       } else if (plan.getType() == ConfigPhysicalPlanType.CreateSchemaTemplate) {
-        Assert.assertTrue(answerSet.contains(((CreateSchemaTemplatePlan) plan).hashCode()));
+        Assert.assertTrue(answerSet.contains(plan.hashCode()));
       } else if (plan.getType() == ConfigPhysicalPlanType.PreSetSchemaTemplate) {
-        Assert.assertTrue(answerSet.contains(((PreSetSchemaTemplatePlan) plan).hashCode()));
+        Assert.assertTrue(answerSet.contains(plan.hashCode()));
       } else if (plan.getType() == ConfigPhysicalPlanType.CommitSetSchemaTemplate) {
-        CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan =
+        final CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan =
             (CommitSetSchemaTemplatePlan) plan;
         if (commitSetSchemaTemplatePlan.getName().equals("t1")) {
-          Assert.assertTrue(commitSetSchemaTemplatePlan.equals(setSchemaTemplatePlan1));
+          Assert.assertEquals(commitSetSchemaTemplatePlan, setSchemaTemplatePlan1);
         } else {
-          Assert.assertTrue(commitSetSchemaTemplatePlan.equals(setSchemaTemplatePlan1));
+          Assert.assertEquals(commitSetSchemaTemplatePlan, setSchemaTemplatePlan1);
         }
       }
       count++;

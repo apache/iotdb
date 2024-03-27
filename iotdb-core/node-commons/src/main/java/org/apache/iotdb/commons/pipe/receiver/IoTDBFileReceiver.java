@@ -474,9 +474,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             "Seal file {} successfully. Receiver id is {}.", fileAbsolutePaths, receiverId.get());
       } else {
         LOGGER.warn(
-            "Failed to seal file {}, because {}. Receiver id is {}.",
+            "Failed to seal file {}, status is {}. Receiver id is {}.",
             fileAbsolutePaths,
-            status.getMessage(),
+            status,
             receiverId.get());
       }
       return new TPipeTransferResp(status);
