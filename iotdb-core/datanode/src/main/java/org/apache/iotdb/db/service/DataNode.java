@@ -90,6 +90,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.service.TriggerInformationUpdater;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
@@ -237,8 +238,6 @@ public class DataNode implements DataNodeMBean {
   /** Prepare cluster IoTDB-DataNode */
   private boolean prepareDataNode() throws StartupException, IOException {
     long startTime = System.currentTimeMillis();
-    // Set cluster mode
-    config.setClusterMode(true);
 
     // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
     IoTDBStartCheck.getInstance().checkOldSystemConfig();
@@ -572,8 +571,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(CacheHitRatioMonitor.getInstance());
 
     // Close wal when using ratis consensus
-    if (config.isClusterMode()
-        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       config.setWalMode(WALMode.DISABLE);
     }
     registerManager.register(WALManager.getInstance());
@@ -610,6 +608,8 @@ public class DataNode implements DataNodeMBean {
 
     registerManager.register(CompactionTaskManager.getInstance());
 
+    // Register subscription agent before pipe agent
+    registerManager.register(SubscriptionAgent.runtime());
     registerManager.register(PipeAgent.runtime());
   }
 

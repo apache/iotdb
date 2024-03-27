@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+
 public class PartitionLastFlushTime implements ILastFlushTime {
 
   private long partitionLastFlushTime;
@@ -28,12 +30,12 @@ public class PartitionLastFlushTime implements ILastFlushTime {
   }
 
   @Override
-  public long getLastFlushTime(String device) {
+  public long getLastFlushTime(IDeviceID device) {
     return partitionLastFlushTime;
   }
 
   @Override
-  public void updateLastFlushTime(String device, long time) {
+  public void updateLastFlushTime(IDeviceID device, long time) {
     partitionLastFlushTime = Math.max(partitionLastFlushTime, time);
   }
 

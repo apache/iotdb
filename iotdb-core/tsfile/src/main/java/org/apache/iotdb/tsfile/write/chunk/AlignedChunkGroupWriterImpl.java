@@ -24,6 +24,8 @@ import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -47,7 +49,7 @@ import java.util.stream.Collectors;
 public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   private static final Logger LOG = LoggerFactory.getLogger(AlignedChunkGroupWriterImpl.class);
 
-  private final String deviceId;
+  private final IDeviceID deviceId;
 
   // measurementID -> ValueChunkWriter
   private final Map<String, ValueChunkWriter> valueChunkWriterMap = new LinkedHashMap<>();
@@ -56,7 +58,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
 
   private long lastTime = -1;
 
-  public AlignedChunkGroupWriterImpl(String deviceId) {
+  public AlignedChunkGroupWriterImpl(IDeviceID deviceId) {
     this.deviceId = deviceId;
     String timeMeasurementId = "";
     CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
@@ -319,7 +321,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
     if (time <= lastTime) {
       throw new WriteProcessException(
           "Not allowed to write out-of-order data in timeseries "
-              + deviceId
+              + ((PlainDeviceID) deviceId).toStringID()
               + TsFileConstant.PATH_SEPARATOR
               + ""
               + ", time should later than "

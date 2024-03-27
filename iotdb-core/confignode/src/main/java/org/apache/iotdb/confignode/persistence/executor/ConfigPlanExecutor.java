@@ -68,8 +68,10 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
@@ -79,6 +81,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHand
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
@@ -87,6 +90,13 @@ import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuot
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -115,6 +125,7 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -164,6 +175,8 @@ public class ConfigPlanExecutor {
 
   private final PipeInfo pipeInfo;
 
+  private final SubscriptionInfo subscriptionInfo;
+
   private final QuotaInfo quotaInfo;
 
   public ConfigPlanExecutor(
@@ -177,6 +190,7 @@ public class ConfigPlanExecutor {
       TriggerInfo triggerInfo,
       CQInfo cqInfo,
       PipeInfo pipeInfo,
+      SubscriptionInfo subscriptionInfo,
       QuotaInfo quotaInfo) {
 
     this.snapshotProcessorList = new ArrayList<>();
@@ -208,7 +222,11 @@ public class ConfigPlanExecutor {
     this.pipeInfo = pipeInfo;
     this.snapshotProcessorList.add(pipeInfo);
 
+    this.subscriptionInfo = subscriptionInfo;
+    this.snapshotProcessorList.add(subscriptionInfo);
+
     this.procedureInfo = procedureInfo;
+    this.snapshotProcessorList.add(procedureInfo);
 
     this.quotaInfo = quotaInfo;
     this.snapshotProcessorList.add(quotaInfo);
@@ -283,6 +301,10 @@ public class ConfigPlanExecutor {
         return pipeInfo.getPipePluginInfo().getPipePluginJar((GetPipePluginJarPlan) req);
       case ShowPipeV2:
         return pipeInfo.getPipeTaskInfo().showPipes();
+      case ShowTopic:
+        return subscriptionInfo.showTopics();
+      case ShowSubscription:
+        return subscriptionInfo.showSubscriptions();
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -399,6 +421,10 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.createSchemaTemplate((CreateSchemaTemplatePlan) physicalPlan);
       case UpdateRegionLocation:
         return partitionInfo.updateRegionLocation((UpdateRegionLocationPlan) physicalPlan);
+      case AddRegionLocation:
+        return partitionInfo.addRegionLocation((AddRegionLocationPlan) physicalPlan);
+      case RemoveRegionLocation:
+        return partitionInfo.removeRegionLocation((RemoveRegionLocationPlan) physicalPlan);
       case SetSchemaTemplate:
         return clusterSchemaInfo.setSchemaTemplate((SetSchemaTemplatePlan) physicalPlan);
       case PreSetSchemaTemplate:
@@ -425,10 +451,27 @@ public class ConfigPlanExecutor {
         return pipeInfo.dropPipe((DropPipePlanV2) physicalPlan);
       case AlterPipeV2:
         return pipeInfo.alterPipe((AlterPipePlanV2) physicalPlan);
+      case OperateMultiplePipesV2:
+        return pipeInfo.operateMultiplePipes((OperateMultiplePipesPlanV2) physicalPlan);
       case PipeHandleLeaderChange:
         return pipeInfo.handleLeaderChange((PipeHandleLeaderChangePlan) physicalPlan);
       case PipeHandleMetaChange:
         return pipeInfo.handleMetaChanges((PipeHandleMetaChangePlan) physicalPlan);
+      case CreateTopic:
+        return subscriptionInfo.createTopic((CreateTopicPlan) physicalPlan);
+      case DropTopic:
+        return subscriptionInfo.dropTopic((DropTopicPlan) physicalPlan);
+      case AlterTopic:
+        return subscriptionInfo.alterTopic((AlterTopicPlan) physicalPlan);
+      case AlterMultipleTopics:
+        return subscriptionInfo.alterMultipleTopics((AlterMultipleTopicsPlan) physicalPlan);
+      case ConsumerGroupHandleMetaChange:
+        return subscriptionInfo.handleConsumerGroupMetaChanges(
+            (ConsumerGroupHandleMetaChangePlan) physicalPlan);
+      case AlterConsumerGroup:
+        return subscriptionInfo.alterConsumerGroup((AlterConsumerGroupPlan) physicalPlan);
+      case TopicHandleMetaChange:
+        return subscriptionInfo.handleTopicMetaChanges((TopicHandleMetaChangePlan) physicalPlan);
       case ADD_CQ:
         return cqInfo.addCQ((AddCQPlan) physicalPlan);
       case DROP_CQ:
@@ -466,6 +509,8 @@ public class ConfigPlanExecutor {
         // PipeUnsetTemplate plan will not be written here, and exists only after pipe sender
         // collects UnsetTemplatePlan and before receiver calls ConfigManager.
         throw new UnsupportedOperationException("PipeUnsetTemplate is not supported.");
+      case TestOnly:
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       default:
         throw new UnknownPhysicalPlanTypeException(physicalPlan.getType());
     }

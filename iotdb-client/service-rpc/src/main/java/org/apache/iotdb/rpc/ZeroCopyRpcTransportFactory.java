@@ -40,7 +40,7 @@ public class ZeroCopyRpcTransportFactory extends BaseRpcTransportFactory {
                 new TimeoutChangeableTSnappyFramedTransport.Factory(
                     thriftDefaultBufferSize, thriftMaxFrameSize, false))
             : new ZeroCopyRpcTransportFactory(
-                new TElasticFramedTransport.Factory(
+                new TimeoutChangeableTFastFramedTransport.Factory(
                     thriftDefaultBufferSize, thriftMaxFrameSize, false));
   }
 }

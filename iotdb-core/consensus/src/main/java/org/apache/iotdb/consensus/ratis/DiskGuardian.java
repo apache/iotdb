@@ -177,7 +177,7 @@ class DiskGuardian {
     for (RaftGroupId groupId : serverRef.get().getServer().getGroupIds()) {
       if (getSnapshotFlag(groupId).get()) {
         try {
-          serverRef.get().triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(groupId));
+          serverRef.get().triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(groupId), false);
           final boolean flagCleared = snapshotFlag.get(groupId).compareAndSet(true, false);
           if (!flagCleared) {
             logger.warn(

@@ -81,8 +81,17 @@ public class Retriable {
   public static void attemptUntilTrue(
       BooleanSupplier condition, TimeDuration sleepTime, String name, Logger log)
       throws InterruptedException {
+    attemptUntilTrue(condition, -1, sleepTime, name, log);
+  }
+
+  /**
+   * Attempt indefinitely until the given {@param condition} holds or reaches {@param maxAttempts}
+   */
+  public static void attemptUntilTrue(
+      BooleanSupplier condition, int maxAttempts, TimeDuration sleepTime, String name, Logger log)
+      throws InterruptedException {
     Objects.requireNonNull(condition, "condition == null");
-    attempt(() -> null, ret -> !condition.getAsBoolean(), -1, sleepTime, () -> name, log);
+    attempt(() -> null, ret -> !condition.getAsBoolean(), maxAttempts, sleepTime, () -> name, log);
   }
 
   /**

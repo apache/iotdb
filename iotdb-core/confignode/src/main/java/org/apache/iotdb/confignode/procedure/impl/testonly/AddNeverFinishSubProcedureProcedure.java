@@ -27,12 +27,17 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 
 @TestOnly
 public class AddNeverFinishSubProcedureProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, Integer> {
+  public static final Logger LOGGER =
+      LoggerFactory.getLogger(AddNeverFinishSubProcedureProcedure.class);
   public static final String FAIL_DATABASE_NAME = "root.fail";
 
   @Override
@@ -46,6 +51,7 @@ public class AddNeverFinishSubProcedureProcedure
     }
     if (state == 1) {
       // test fail
+      LOGGER.error("AddNeverFinishSubProcedureProcedure run again, which should never happen");
       ProcedureTestUtils.createDatabase(env.getConfigManager(), FAIL_DATABASE_NAME);
     }
     return Flow.NO_MORE_STATE;

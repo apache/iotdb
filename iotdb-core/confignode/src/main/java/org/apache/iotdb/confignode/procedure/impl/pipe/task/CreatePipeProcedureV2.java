@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -51,6 +52,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -70,13 +72,38 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     this.createPipeRequest = createPipeRequest;
   }
 
+  /** This is only used when the pipe task info lock is held by another procedure. */
+  public CreatePipeProcedureV2(
+      TCreatePipeReq createPipeRequest, AtomicReference<PipeTaskInfo> pipeTaskInfo)
+      throws PipeException {
+    super();
+    this.pipeTaskInfo = pipeTaskInfo;
+    this.createPipeRequest = createPipeRequest;
+  }
+
+  /**
+   * This should be called after {@link #executeFromValidateTask} and {@link
+   * #executeFromCalculateInfoForTask}.
+   */
+  public String getPipeName() {
+    return createPipeRequest.getPipeName();
+  }
+
+  /**
+   * This should be called after {@link #executeFromValidateTask} and {@link
+   * #executeFromCalculateInfoForTask}.
+   */
+  public CreatePipePlanV2 constructPlan() {
+    return new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
+  }
+
   @Override
   protected PipeTaskOperation getOperation() {
     return PipeTaskOperation.CREATE_PIPE;
   }
 
   @Override
-  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
+  public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromValidateTask({})", createPipeRequest.getPipeName());
 
@@ -94,7 +121,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromCalculateInfoForTask({})",
         createPipeRequest.getPipeName());
@@ -141,8 +168,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
-      throws PipeException {
+  public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromWriteConfigNodeConsensus({})",
         createPipeRequest.getPipeName());
@@ -164,11 +190,11 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     final String pipeName = createPipeRequest.getPipeName();
     LOGGER.info("CreatePipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    String exceptionMessage =
+    final String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
@@ -179,14 +205,14 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "CreatePipeProcedureV2: rollbackFromValidateTask({})", createPipeRequest.getPipeName());
     // Do nothing
   }
 
   @Override
-  protected void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
+  public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "CreatePipeProcedureV2: rollbackFromCalculateInfoForTask({})",
         createPipeRequest.getPipeName());
@@ -194,7 +220,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
+  public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "CreatePipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})",
         createPipeRequest.getPipeName());
@@ -215,13 +241,13 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info(
         "CreatePipeProcedureV2: rollbackFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
     // Push all pipe metas to datanode, may be time-consuming
-    String exceptionMessage =
+    final String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(
             createPipeRequest.getPipeName(), pushPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {

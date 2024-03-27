@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.write.record;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -52,45 +53,46 @@ public class Tablet {
   private static final int DEFAULT_SIZE = 1024;
   private static final String NOT_SUPPORT_DATATYPE = "Data type %s is not supported.";
 
-  /** deviceId of this tablet */
+  /** DeviceId of this {@link Tablet} */
   public String deviceId;
 
-  /** the list of measurement schemas for creating the tablet */
+  /** The list of {@link MeasurementSchema}s for creating the {@link Tablet} */
   private List<MeasurementSchema> schemas;
 
-  /** measurementId->indexOf(measurementSchema) */
+  /** MeasurementId->indexOf({@link MeasurementSchema}) */
   private final Map<String, Integer> measurementIndex;
 
-  /** timestamps in this tablet */
+  /** Timestamps in this {@link Tablet} */
   public long[] timestamps;
-  /** each object is a primitive type array, which represents values of one measurement */
+  /** Each object is a primitive type array, which represents values of one measurement */
   public Object[] values;
-  /** each bitmap represents the existence of each value in the current column. */
+  /** Each {@link BitMap} represents the existence of each value in the current column. */
   public BitMap[] bitMaps;
-  /** the number of rows to include in this tablet */
+  /** The number of rows to include in this {@link Tablet} */
   public int rowSize;
-  /** the maximum number of rows for this tablet */
+  /** The maximum number of rows for this {@link Tablet} */
   private final int maxRowNumber;
 
   /**
-   * Return a tablet with default specified row number. This is the standard constructor (all Tablet
-   * should be the same size).
+   * Return a {@link Tablet} with default specified row number. This is the standard constructor
+   * (all Tablet should be the same size).
    *
    * @param deviceId the name of the device specified to be written in
-   * @param schemas the list of measurement schemas for creating the tablet, only measurementId and
-   *     type take effects
+   * @param schemas the list of {@link MeasurementSchema}s for creating the tablet, only
+   *     measurementId and type take effects
    */
   public Tablet(String deviceId, List<MeasurementSchema> schemas) {
     this(deviceId, schemas, DEFAULT_SIZE);
   }
 
   /**
-   * Return a tablet with the specified number of rows (maxBatchSize). Only call this constructor
-   * directly for testing purposes. Tablet should normally always be default size.
+   * Return a {@link Tablet} with the specified number of rows (maxBatchSize). Only call this
+   * constructor directly for testing purposes. {@link Tablet} should normally always be default
+   * size.
    *
    * @param deviceId the name of the device specified to be written in
-   * @param schemas the list of measurement schemas for creating the row batch, only measurementId
-   *     and type take effects
+   * @param schemas the list of {@link MeasurementSchema}s for creating the row batch, only
+   *     measurementId and type take effects
    * @param maxRowNumber the maximum number of rows for this tablet
    */
   public Tablet(String deviceId, List<MeasurementSchema> schemas, int maxRowNumber) {
@@ -106,16 +108,16 @@ public class Tablet {
   }
 
   /**
-   * Return a tablet with specified timestamps and values. Only call this constructor directly for
-   * Trigger.
+   * Return a {@link Tablet} with specified timestamps and values. Only call this constructor
+   * directly for Trigger.
    *
    * @param deviceId the name of the device specified to be written in
-   * @param schemas the list of measurement schemas for creating the row batch, only measurementId
-   *     and type take effects
+   * @param schemas the list of {@link MeasurementSchema}s for creating the row batch, only
+   *     measurementId and type take effects
    * @param timestamps given timestamps
    * @param values given values
-   * @param bitMaps given bitmaps
-   * @param maxRowNumber the maximum number of rows for this tablet
+   * @param bitMaps given {@link BitMap}s
+   * @param maxRowNumber the maximum number of rows for this {@link Tablet}
    */
   public Tablet(
       String deviceId,
@@ -173,14 +175,14 @@ public class Tablet {
       TSDataType dataType, int rowIndex, int indexOfSchema, Object value) {
 
     if (value == null) {
-      // init the bitMap to mark null value
+      // Init the bitMap to mark null value
       if (bitMaps == null) {
         bitMaps = new BitMap[values.length];
       }
       if (bitMaps[indexOfSchema] == null) {
         bitMaps[indexOfSchema] = new BitMap(maxRowNumber);
       }
-      // mark the null value position
+      // Mark the null value position
       bitMaps[indexOfSchema].mark(rowIndex);
     }
     switch (dataType) {
@@ -302,7 +304,7 @@ public class Tablet {
     return rowSize * 8;
   }
 
-  /** @return total bytes of values */
+  /** @return Total bytes of values */
   public int getTotalValueOccupation() {
     int valueOccupation = 0;
     int columnIndex = 0;
@@ -310,10 +312,10 @@ public class Tablet {
       valueOccupation += calOccupationOfOneColumn(schema.getType(), columnIndex);
       columnIndex++;
     }
-    // add bitmap size if the tablet has bitMaps
+    // Add bitmap size if the tablet has bitMaps
     if (bitMaps != null) {
       for (BitMap bitMap : bitMaps) {
-        // marker byte
+        // Marker byte
         valueOccupation++;
         if (bitMap != null && !bitMap.isAllUnmarked()) {
           valueOccupation += rowSize / Byte.SIZE + 1;
@@ -350,7 +352,7 @@ public class Tablet {
     return valueOccupation;
   }
 
-  /** serialize Tablet */
+  /** Serialize {@link Tablet} */
   public ByteBuffer serialize() throws IOException {
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -368,7 +370,7 @@ public class Tablet {
     writeValues(stream);
   }
 
-  /** Serialize measurement schemas */
+  /** Serialize {@link MeasurementSchema}s */
   private void writeMeasurementSchemas(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(BytesUtils.boolToByte(schemas != null), stream);
     if (schemas != null) {
@@ -393,7 +395,7 @@ public class Tablet {
     }
   }
 
-  /** Serialize bitmaps */
+  /** Serialize {@link BitMap}s */
   private void writeBitMaps(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(BytesUtils.boolToByte(bitMaps != null), stream);
     if (bitMaps != null) {
@@ -607,13 +609,13 @@ public class Tablet {
   }
 
   /**
-   * Note that the function will judge 2 tablets to be equal when their contents are logically the
-   * same. Namely, a tablet with bitmap "null" may be equal to another tablet with 3 columns and
-   * bitmap "[null, null, null]", and a tablet with rowSize 2 is judged identical to other tablets
+   * Note that the function will judge 2 {@link Tablet}s to be equal when their contents are logically the
+   * same. Namely, a {@link Tablet} with {@link BitMap} "null" may be equal to another {@link Tablet} with 3 columns and
+   * {@link BitMap "[null, null, null]", and a {@link Tablet} with rowSize 2 is judged identical to other {@link Tablet}s
    * regardless of any timeStamps with indexes larger than or equal to 2.
    *
    * @param o the tablet to compare
-   * @return true if the tablets are logically equal
+   * @return {@code true} if the tablets are logically equal
    */
   @Override
   public boolean equals(Object o) {

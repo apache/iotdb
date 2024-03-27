@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
@@ -33,6 +34,7 @@ public class ExplainAnalyzeStatement extends Statement {
   private boolean verbose = false;
 
   public ExplainAnalyzeStatement(QueryStatement queryStatement) {
+    statementType = StatementType.QUERY;
     this.queryStatement = queryStatement;
   }
 
@@ -46,6 +48,11 @@ public class ExplainAnalyzeStatement extends Statement {
 
   public boolean isVerbose() {
     return verbose;
+  }
+
+  @Override
+  public boolean isQuery() {
+    return true;
   }
 
   @Override
