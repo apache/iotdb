@@ -73,10 +73,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
           messages);
       sleepCorrespondingTimeAndRetryAsynchronous();
     } else {
-      thread.getSyncStatus().removeBatch(batch);
-      // update safely deleted search index after last flushed sync index may be updated by
-      // removeBatch
-      thread.updateSafelyDeletedSearchIndex();
+      completeBatch(batch);
     }
     logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
   }
@@ -91,12 +88,20 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   public void onError(Exception exception) {
     ++retryCount;
     if (logger.isWarnEnabled()) {
+      Throwable rootCause = ExceptionUtils.getRootCause(exception);
       logger.warn(
           "Can not send {} to peer for {} times {} because {}",
           batch,
           thread.getPeer(),
           retryCount,
-          ExceptionUtils.getRootCause(exception).toString());
+          rootCause.toString());
+      // skip TApplicationException caused by follower
+      if (rootCause instanceof org.apache.thrift.TApplicationException) {
+        completeBatch(batch);
+        logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
+        logger.warn("Skip retrying this Batch {} because of TApplicationException.", batch);
+        return;
+      }
     }
     sleepCorrespondingTimeAndRetryAsynchronous();
   }
@@ -126,5 +131,12 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
             },
             sleepTime,
             TimeUnit.MILLISECONDS);
+  }
+
+  private void completeBatch(Batch batch) {
+    thread.getSyncStatus().removeBatch(batch);
+    // update safely deleted search index after last flushed sync index may be updated by
+    // removeBatch
+    thread.updateSafelyDeletedSearchIndex();
   }
 }
