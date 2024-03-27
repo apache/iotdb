@@ -126,6 +126,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   private int nodePort;
   private int metricPort;
   private long startTime;
+  private List<String> killPoints = new ArrayList<>();
 
   /**
    * Mutable properties are always hardcoded default values to make the cluster be set up
@@ -454,6 +455,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               "-Xmx" + jvmConfig.getMaxHeapSize() + "m",
               "-XX:MaxDirectMemorySize=" + jvmConfig.getMaxDirectMemorySize() + "m",
               "-Djdk.nio.maxCachedBufferSize=262144",
+              "-D" + IoTDBConstant.KILL_POINTS + "=" + killPoints.toString(),
               "-D" + IoTDBConstant.IS_INTEGRATION_TEST_PARAM,
               "-cp",
               server_node_lib_path));
@@ -640,6 +642,14 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       return testClassName;
     }
     return testClassName + "_" + testMethodName;
+  }
+
+  public void setKillPoints(List<String> killPoints) {
+    this.killPoints = killPoints;
+  }
+
+  private String getKillPoints() {
+    return killPoints.toString();
   }
 
   /* Abstract methods, which must be implemented in ConfigNode and DataNode. */

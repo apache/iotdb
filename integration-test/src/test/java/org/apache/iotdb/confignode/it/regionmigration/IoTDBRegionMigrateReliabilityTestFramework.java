@@ -20,9 +20,9 @@
 package org.apache.iotdb.confignode.it.regionmigration;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -48,6 +48,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -70,6 +71,7 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
   private static final String SHOW_REGIONS = "show regions";
   private static final String SHOW_DATANODES = "show datanodes";
   private static final String REGION_MIGRATE_COMMAND_FORMAT = "migrate region %d from %d to %d";
+  ExecutorService executorService = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
 
   @Before
   public void setUp() throws Exception {
@@ -137,8 +139,8 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
       KeySetView<String, Boolean> killDataNodeKeywords,
       final boolean checkOriginalRegionDirDeleted,
       final boolean checkConfigurationFileDeleted,
-      int restartTime,
-      boolean isMigrateSuccess)
+      final int restartTime,
+      final boolean isMigrateSuccess)
       throws Exception {
     // prepare env
     EnvFactory.getEnv()
@@ -146,32 +148,14 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
         .getCommonConfig()
         .setDataReplicationFactor(dataReplicateFactor)
         .setSchemaReplicationFactor(schemaReplicationFactor);
+    EnvFactory.getEnv().registerConfigNodeKillPoints(new ArrayList<>(killConfigNodeKeywords));
+    EnvFactory.getEnv().registerDataNodeKillPoints(new ArrayList<>(killDataNodeKeywords));
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement();
-        final SyncConfigNodeIServiceClient configClient =
-            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+        final Statement statement = connection.createStatement()) {
 
       statement.execute(INSERTION);
-
-      // trigger kill points after the insertion
-      ExecutorService service = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
-
-      EnvFactory.getEnv()
-          .getConfigNodeWrapperList()
-          .forEach(
-              configNodeWrapper ->
-                  service.submit(
-                      () ->
-                          nodeLogKillPoint(
-                              configNodeWrapper, killConfigNodeKeywords, restartTime)));
-      EnvFactory.getEnv()
-          .getDataNodeWrapperList()
-          .forEach(
-              dataNodeWrapper ->
-                  service.submit(
-                      () -> nodeLogKillPoint(dataNodeWrapper, killDataNodeKeywords, restartTime)));
 
       ResultSet result = statement.executeQuery(SHOW_REGIONS);
       Map<Integer, Set<Integer>> regionMap = getRegionMap(result);
@@ -189,6 +173,11 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
       checkRegionFileExist(originalDataNode);
       checkPeersExist(regionMap.get(selectedRegion), originalDataNode, selectedRegion);
 
+      // set kill points
+      setConfigNodeKillPoints(killConfigNodeKeywords, restartTime);
+      setDataNodeKillPoints(killDataNodeKeywords, restartTime);
+
+      // region migration start
       statement.execute(regionMigrateCommand(selectedRegion, originalDataNode, destDataNode));
 
       boolean success = false;
@@ -226,6 +215,29 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
 
     }
     LOGGER.info("test pass");
+  }
+
+  private void setConfigNodeKillPoints(
+      KeySetView<String, Boolean> killConfigNodeKeywords, int nodeRestartTime) {
+    EnvFactory.getEnv()
+        .getConfigNodeWrapperList()
+        .forEach(
+            configNodeWrapper ->
+                executorService.submit(
+                    () ->
+                        nodeLogKillPoint(
+                            configNodeWrapper, killConfigNodeKeywords, nodeRestartTime)));
+  }
+
+  private void setDataNodeKillPoints(
+      KeySetView<String, Boolean> killDataNodeKeywords, int nodeRestartTime) {
+    EnvFactory.getEnv()
+        .getDataNodeWrapperList()
+        .forEach(
+            dataNodeWrapper ->
+                executorService.submit(
+                    () ->
+                        nodeLogKillPoint(dataNodeWrapper, killDataNodeKeywords, nodeRestartTime)));
   }
 
   /**
@@ -283,17 +295,20 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
           String finalLine = line;
           Optional<String> detectedKeyword =
               killNodeKeywords.stream()
-                  .filter(keyword -> finalLine.contains("breakpoint:" + keyword))
+                  .filter(keyword -> finalLine.contains("Kill point: " + keyword))
                   .findAny();
           if (detectedKeyword.isPresent()) {
             // each keyword only trigger once
             killNodeKeywords.remove(detectedKeyword.get());
+            LOGGER.info("Kill point {} triggered", detectedKeyword);
             // reboot the node
             nodeWrapper.stopForcibly();
-            try {
-              TimeUnit.SECONDS.sleep(restartTime);
-            } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
+            if (restartTime > 0) {
+              try {
+                TimeUnit.SECONDS.sleep(restartTime);
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
             }
             nodeWrapper.start();
           }
@@ -488,9 +503,7 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
   protected static <T extends Enum<T>> KeySetView<String, Boolean> buildSet(T... keywords) {
     KeySetView<String, Boolean> result = ConcurrentHashMap.newKeySet();
     result.addAll(
-        Arrays.stream(keywords)
-            .map(keyword -> keyword.getClass() + "." + keyword.name())
-            .collect(Collectors.toList()));
+        Arrays.stream(keywords).map(FileUtils::enumToString).collect(Collectors.toList()));
     return result;
   }
 }

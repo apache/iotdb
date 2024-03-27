@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class CommonConfig {
@@ -258,6 +259,9 @@ public class CommonConfig {
 
   private final boolean isIntegrationTest =
       System.getProperties().containsKey(IoTDBConstant.IS_INTEGRATION_TEST_PARAM);
+
+  private final Set<String> enabledKillPoints =
+      FileUtils.parseKillPoints(System.getProperty(IoTDBConstant.KILL_POINTS));
 
   CommonConfig() {
     // Empty constructor
@@ -1081,5 +1085,9 @@ public class CommonConfig {
 
   public boolean isIntegrationTest() {
     return isIntegrationTest;
+  }
+
+  public Set<String> getEnabledKillPoints() {
+    return enabledKillPoints;
   }
 }
