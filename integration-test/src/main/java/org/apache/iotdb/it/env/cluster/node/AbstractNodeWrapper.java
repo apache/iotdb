@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.it.env.cluster.node;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
 import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
@@ -453,6 +454,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               "-Xmx" + jvmConfig.getMaxHeapSize() + "m",
               "-XX:MaxDirectMemorySize=" + jvmConfig.getMaxDirectMemorySize() + "m",
               "-Djdk.nio.maxCachedBufferSize=262144",
+              "-D" + IoTDBConstant.IS_INTEGRATION_TEST_PARAM,
               "-cp",
               server_node_lib_path));
       addStartCmdParams(startCmd);

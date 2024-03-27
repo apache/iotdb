@@ -340,4 +340,6 @@ public class IoTDBConstant {
   public static final String TIER_SEPARATOR = ";";
 
   public static final String OBJECT_STORAGE_DIR = "object_storage";
+
+  public static final String IS_INTEGRATION_TEST_PARAM = "isIntegrationTest";
 }

@@ -176,15 +176,19 @@ public class IoTDBRegionMigrateReliabilityIT {
     generalTest(1, 1, 1, 2, killConfigNodeKeywords, buildSet());
   }
 
-  @Ignore
   @Test
   public void badKillPoint() throws Exception {
-    generalTest(1, 1, 1, 2, buildSet("??"), buildSet());
+    try {
+      generalTest(1, 1, 1, 2, buildSet("??"), buildSet());
+    } catch (AssertionError e) {
+      return;
+    }
+    Assert.fail("kill point not triggered but test pass");
   }
 
   // endregion
 
-  // region coordinator DataNode crash tests
+  // region Coordinator DataNode crash tests
 
   @Test
   public void coordinatorCrashDuringRemovePeer() throws Exception {
@@ -193,7 +197,7 @@ public class IoTDBRegionMigrateReliabilityIT {
 
   // endregion
 
-  // region original DataNode crash tests
+  // region Original DataNode crash tests
 
   @Test
   public void originalCrashDuringRemovePeer() throws Exception {
@@ -205,6 +209,8 @@ public class IoTDBRegionMigrateReliabilityIT {
     generalTest(
         1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.OriginalDeleteOldRegionPeer.name()));
   }
+
+  // endregion
 
   // region Helpers
 
@@ -261,10 +267,11 @@ public class IoTDBRegionMigrateReliabilityIT {
       awaitUntilSuccess(statement, selectedRegion, originalDataNode, destDataNode);
 
       // make sure all kill points have been triggered
-      Assert.assertTrue(killConfigNodeKeywords.isEmpty());
-      Assert.assertTrue(killDataNodeKeywords.isEmpty());
+      checkKillPointsAllTriggered(killConfigNodeKeywords);
+      checkKillPointsAllTriggered(killDataNodeKeywords);
 
       checkRegionFileClear(originalDataNode);
+
     } catch (InconsistentDataException ignore) {
 
     }
@@ -322,6 +329,13 @@ public class IoTDBRegionMigrateReliabilityIT {
       }
     } catch (IOException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  void checkKillPointsAllTriggered(KeySetView<String, Boolean> killPoints) {
+    if (!killPoints.isEmpty()) {
+      killPoints.forEach(killPoint -> LOGGER.error("Kill point {} not triggered", killPoint));
+      Assert.fail("Some kill points was not triggered");
     }
   }
 
@@ -416,6 +430,10 @@ public class IoTDBRegionMigrateReliabilityIT {
                 + "data_region");
     Assert.assertTrue(originalRegionDir.isDirectory());
     Assert.assertEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
+  }
+
+  private static void checkConfigurationDatFileClear() {
+
   }
 
   private static KeySetView<String, Boolean> buildSet(String... keywords) {

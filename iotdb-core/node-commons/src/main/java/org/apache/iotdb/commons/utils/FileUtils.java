@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 
 import org.slf4j.Logger;
@@ -260,11 +261,13 @@ public class FileUtils {
   }
 
   public static void logBreakpoint(String logContent) {
-    LOGGER.info("breakpoint:{}", logContent);
-    try {
-      TimeUnit.SECONDS.sleep(1);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+    if (CommonDescriptor.getInstance().getConfig().isIntegrationTest()) {
+      LOGGER.info("breakpoint:{}", logContent);
+      try {
+        TimeUnit.SECONDS.sleep(1);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
     }
   }
 }

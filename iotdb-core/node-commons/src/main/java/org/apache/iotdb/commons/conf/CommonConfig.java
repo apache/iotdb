@@ -256,6 +256,9 @@ public class CommonConfig {
   // time in nanosecond precision when starting up
   private final long startUpNanosecond = System.nanoTime();
 
+  private final boolean isIntegrationTest =
+      System.getProperties().containsKey(IoTDBConstant.IS_INTEGRATION_TEST_PARAM);
+
   CommonConfig() {
     // Empty constructor
   }
@@ -1074,5 +1077,9 @@ public class CommonConfig {
 
   public long getStartUpNanosecond() {
     return startUpNanosecond;
+  }
+
+  public boolean isIntegrationTest() {
+    return isIntegrationTest;
   }
 }
