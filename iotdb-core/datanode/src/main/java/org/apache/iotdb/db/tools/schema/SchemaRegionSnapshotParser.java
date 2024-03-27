@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.tools.schema;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -45,7 +46,7 @@ public class SchemaRegionSnapshotParser {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private SchemaRegionSnapshotParser() {
-    // empty constructor
+    // Empty constructor
   }
 
   private static Path getLatestSnapshotPath(List<Path> snapshotPathList) {
@@ -63,19 +64,19 @@ public class SchemaRegionSnapshotParser {
     return pathArray[0];
   }
 
-  // return all schema region's latest snapshot units in this datanode.
+  // Return all schema region's latest snapshot units in this datanode.
   public static List<Pair<Path, Path>> getSnapshotPaths() {
     String snapshotPath = CONFIG.getSchemaRegionConsensusDir();
     File snapshotDir = new File(snapshotPath);
     ArrayList<Pair<Path, Path>> snapshotUnits = new ArrayList<>();
 
-    // get schema regin path
+    // Get schema regin path
     try (DirectoryStream<Path> stream =
         Files.newDirectoryStream(snapshotDir.toPath(), "[0-9]*-[0-9]*-[0-9]*-[0-9]*-[0-9]*")) {
       for (Path path : stream) {
         try (DirectoryStream<Path> filestream =
             Files.newDirectoryStream(Paths.get(path.toString() + File.separator + "sm"))) {
-          // find the latest snapshots
+          // Find the latest snapshots
           ArrayList<Path> snapshotList = new ArrayList<>();
           for (Path snapshotFolder : filestream) {
             if (snapshotFolder.toFile().isDirectory()) {
@@ -105,7 +106,7 @@ public class SchemaRegionSnapshotParser {
     return snapshotUnits;
   }
 
-  // in schema snapshot path: datanode/consensus/schema_region/47474747-4747-4747-4747-000200000000
+  // In schema snapshot path: datanode/consensus/schema_region/47474747-4747-4747-4747-000200000000
   // this func will get schema region id = 47474747-4747-4747-4747-000200000000's latest snapshot.
   // In one schema region, there is only one snapshot unit.
   public static Pair<Path, Path> getSnapshotPaths(String schemaRegionId) {

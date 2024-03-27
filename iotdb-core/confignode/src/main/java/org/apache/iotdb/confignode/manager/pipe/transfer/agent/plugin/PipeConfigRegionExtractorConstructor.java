@@ -41,7 +41,7 @@ class PipeConfigRegionExtractorConstructor extends PipeExtractorConstructor {
   }
 
   @Override
-  protected PipeExtractor reflectPluginByKey(String pluginKey) {
+  public PipeExtractor reflectPluginByKey(String pluginKey) {
     // TODO: support constructing plugin by reflection
     return (PipeExtractor)
         pluginConstructors.getOrDefault(pluginKey, DoNothingExtractor::new).get();

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFi
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -87,7 +88,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   }
 
   @Override
-  public void startChunkGroup(String deviceId, boolean isAlign) throws IOException {
+  public void startChunkGroup(IDeviceID deviceId, boolean isAlign) throws IOException {
     this.deviceId = deviceId;
     this.isAlign = isAlign;
     this.seqFileIndexArray = new int[subTaskNum];

@@ -163,7 +163,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
@@ -284,7 +283,7 @@ public class ConfigManager implements IManager {
     ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
     PartitionInfo partitionInfo = new PartitionInfo();
     AuthorInfo authorInfo = new AuthorInfo();
-    ProcedureInfo procedureInfo = new ProcedureInfo();
+    ProcedureInfo procedureInfo = new ProcedureInfo(this);
     UDFInfo udfInfo = new UDFInfo();
     TriggerInfo triggerInfo = new TriggerInfo();
     CQInfo cqInfo = new CQInfo();
@@ -350,7 +349,7 @@ public class ConfigManager implements IManager {
       partitionManager.getRegionMaintainer().shutdown();
     }
     if (procedureManager != null) {
-      procedureManager.shiftExecutor(false);
+      procedureManager.stopExecutor();
     }
   }
 
@@ -436,15 +435,6 @@ public class ConfigManager implements IManager {
       LOGGER.info(
           "[ShutdownHook] The DataNode-{} will be shutdown soon, mark it as Unknown",
           dataNodeLocation.getDataNodeId());
-    }
-    return status;
-  }
-
-  @Override
-  public TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
-    TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      procedureManager.reportRegionMigrateResult(req);
     }
     return status;
   }

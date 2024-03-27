@@ -90,24 +90,24 @@ public class OpcUaConnector implements PipeConnector {
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    int tcpBindPort =
+    final int tcpBindPort =
         parameters.getIntOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY, SINK_OPC_UA_TCP_BIND_PORT_KEY),
             CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE);
-    int httpsBindPort =
+    final int httpsBindPort =
         parameters.getIntOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY, SINK_OPC_UA_HTTPS_BIND_PORT_KEY),
             CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE);
 
-    String user =
+    final String user =
         parameters.getStringOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_USER_KEY, SINK_IOTDB_USER_KEY),
             CONNECTOR_IOTDB_USER_DEFAULT_VALUE);
-    String password =
+    final String password =
         parameters.getStringOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY),
             CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
-    String securityDir =
+    final String securityDir =
         parameters.getStringOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_SECURITY_DIR_KEY, SINK_OPC_UA_SECURITY_DIR_KEY),
             CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE);
@@ -187,8 +187,8 @@ public class OpcUaConnector implements PipeConnector {
    */
   private void transferTablet(OpcUaServer server, Tablet tablet) throws UaException {
     // There is no nameSpace, so that nameSpaceIndex is always 0
-    int pseudoNameSpaceIndex = 0;
-    BaseEventTypeNode eventNode =
+    final int pseudoNameSpaceIndex = 0;
+    final BaseEventTypeNode eventNode =
         server
             .getEventFactory()
             .createEvent(
@@ -196,7 +196,7 @@ public class OpcUaConnector implements PipeConnector {
     // Use eventNode here because other nodes doesn't support values and times simultaneously
     for (int columnIndex = 0; columnIndex < tablet.getSchemas().size(); ++columnIndex) {
 
-      TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
+      final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
 
       // Source name --> Sensor path, like root.test.d_0.s_0
       eventNode.setSourceName(

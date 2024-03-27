@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -34,7 +36,7 @@ import java.util.Collections;
 
 public class MemTableTestUtils {
 
-  public static String deviceId0 = "d0";
+  public static IDeviceID deviceId0 = new PlainDeviceID("d0");
 
   public static String measurementId0 = "s0";
 
@@ -50,7 +52,7 @@ public class MemTableTestUtils {
       IMemTable iMemTable,
       long startTime,
       long endTime,
-      String deviceId,
+      IDeviceID deviceId,
       String measurementId,
       TSDataType dataType)
       throws IllegalPathException {

@@ -136,7 +136,7 @@ public class WriteBackConnector implements PipeConnector {
 
   private void doTransfer(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
-    InsertBaseStatement statement =
+    final InsertBaseStatement statement =
         PipeTransferTabletRawReq.toTPipeTransferRawReq(
                 pipeRawTabletInsertionEvent.convertToTablet(),
                 pipeRawTabletInsertionEvent.isAligned())

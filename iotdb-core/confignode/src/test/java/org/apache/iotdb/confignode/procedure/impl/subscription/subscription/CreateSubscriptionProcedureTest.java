@@ -22,9 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
-import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
-import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
@@ -81,8 +79,12 @@ public class CreateSubscriptionProcedureTest {
     newTopicMeta.addSubscribedConsumerGroup("cg1");
     topicProcedures.add(new AlterTopicProcedure(newTopicMeta));
 
-    List<AbstractOperatePipeProcedureV2> pipeProcedures = new ArrayList<>();
-    pipeProcedures.add(new StartPipeProcedureV2("pipe_topic1"));
+    List<CreatePipeProcedureV2> pipeProcedures = new ArrayList<>();
+    pipeProcedures.add(
+        new CreatePipeProcedureV2(
+            new TCreatePipeReq("pipe_topic1", Collections.singletonMap("connector", "conn"))
+                .setExtractorAttributes(Collections.singletonMap("extractor", "ex"))
+                .setProcessorAttributes(Collections.singletonMap("processor", "pro"))));
     pipeProcedures.add(
         new CreatePipeProcedureV2(
             new TCreatePipeReq("pipe_topic2", Collections.singletonMap("connector", "conn"))

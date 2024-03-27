@@ -40,6 +40,9 @@ IF EXIST "%IOTDB_HOME%\sbin\start-datanode.bat" (
 start cmd /c %CONFIGNODE_START_PATH%
 TIMEOUT /T 5 /NOBREAK
 start cmd /c %DATANODE_START_PATH%
+@REM if you have turned on "-XX:+SafepointTimeout" and "-XX:SafepointTimeoutDelay=1000", you can use commands below instead to see safepoint logs
+@REM SET LOG_SAFEPOINT_PATH=%IOTDB_HOME%\logs\log_datanode_safepoint.log
+@REM start cmd /c %DATANODE_START_PATH% > %LOG_SAFEPOINT_PATH%
 
 echo "Execute start-standalone.sh finished, you can see more details in the logs of confignode and datanode"
 exit 0

@@ -33,7 +33,7 @@ class PipeConfigRegionProcessorConstructor extends PipeProcessorConstructor {
   }
 
   @Override
-  protected PipeProcessor reflectPluginByKey(String pluginKey) {
+  public PipeProcessor reflectPluginByKey(String pluginKey) {
     // TODO: support constructing plugin by reflection
     return (PipeProcessor)
         pluginConstructors.getOrDefault(pluginKey, DoNothingProcessor::new).get();

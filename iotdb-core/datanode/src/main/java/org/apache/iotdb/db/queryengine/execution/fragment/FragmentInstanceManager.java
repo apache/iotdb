@@ -317,8 +317,8 @@ public class FragmentInstanceManager {
       FragmentInstanceId instanceId) {
     requireNonNull(instanceId, "instanceId is null");
     // If the instance is still running, we directly get the statistics from instanceExecution
-    if (instanceExecution.containsKey(instanceId)) {
-      FragmentInstanceExecution fragmentInstanceExecution = instanceExecution.get(instanceId);
+    FragmentInstanceExecution fragmentInstanceExecution = instanceExecution.get(instanceId);
+    if (fragmentInstanceExecution != null) {
       try {
         fragmentInstanceExecution.lockStatistics();
         if (!fragmentInstanceExecution.isStaticsRemoved()) {
@@ -331,11 +331,11 @@ public class FragmentInstanceManager {
     // If the instance has finished, we get the statistics which was cached in the instanceContext
     // when instanceExecution was removed.
     FragmentInstanceContext context = instanceContext.get(instanceId);
-    TFetchFragmentInstanceStatisticsResp statistics = context.getFragmentInstanceStatistics();
-    if (statistics == null) {
-      return null;
+    if (context == null) {
+      return new TFetchFragmentInstanceStatisticsResp();
     }
-    return statistics;
+    TFetchFragmentInstanceStatisticsResp statisticsResp = context.getFragmentInstanceStatistics();
+    return statisticsResp == null ? new TFetchFragmentInstanceStatisticsResp() : statisticsResp;
   }
 
   private FragmentInstanceInfo createFailedInstanceInfo(FragmentInstanceId instanceId) {

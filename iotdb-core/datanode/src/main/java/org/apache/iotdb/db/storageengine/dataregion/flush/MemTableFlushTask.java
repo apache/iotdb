@@ -27,12 +27,12 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.pool.FlushSubTaskPoolManager;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.IDeviceID;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -134,16 +134,16 @@ public class MemTableFlushTask {
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
     List<IDeviceID> deviceIDList = new ArrayList<>(memTableMap.keySet());
     // sort the IDeviceID in lexicographical order
-    deviceIDList.sort(Comparator.comparing(IDeviceID::toStringID));
+    Collections.sort(deviceIDList);
     for (IDeviceID deviceID : deviceIDList) {
       final Map<String, IWritableMemChunk> value = memTableMap.get(deviceID).getMemChunkMap();
       // skip the empty device/chunk group
       if (memTableMap.get(deviceID).count() == 0 || value.isEmpty()) {
         continue;
       }
-      encodingTaskQueue.put(new StartFlushGroupIOTask(deviceID.toStringID()));
+      encodingTaskQueue.put(new StartFlushGroupIOTask(deviceID));
       List<String> seriesInOrder = new ArrayList<>(value.keySet());
-      seriesInOrder.sort((String::compareTo));
+      Collections.sort(seriesInOrder);
       for (String seriesId : seriesInOrder) {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = value.get(seriesId);
@@ -367,9 +367,9 @@ public class MemTableFlushTask {
 
   static class StartFlushGroupIOTask {
 
-    private final String deviceId;
+    private final IDeviceID deviceId;
 
-    StartFlushGroupIOTask(String deviceId) {
+    StartFlushGroupIOTask(IDeviceID deviceId) {
       this.deviceId = deviceId;
     }
   }

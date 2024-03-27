@@ -24,6 +24,8 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -487,22 +489,25 @@ public class TsFileReaderTest {
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath)) {
       // query for non-exist device
+      IDeviceID d3 = new PlainDeviceID("d3");
       try {
-        reader.getAlignedChunkMetadata("d3");
+        reader.getAlignedChunkMetadata(d3);
       } catch (IOException e) {
-        Assert.assertEquals("Device {d3} is not in tsFileMetaData", e.getMessage());
+        Assert.assertEquals("Device {" + d3 + "} is not in tsFileMetaData", e.getMessage());
       }
 
       // query for non-aligned device
+      IDeviceID d2 = new PlainDeviceID("d2");
       try {
-        reader.getAlignedChunkMetadata("d2");
+        reader.getAlignedChunkMetadata(d2);
       } catch (IOException e) {
-        Assert.assertEquals("Timeseries of device {d2} are not aligned", e.getMessage());
+        Assert.assertEquals("Timeseries of device {" + d2 + "} are not aligned", e.getMessage());
       }
 
       String[] expected = new String[] {"s1", "s2", "s3", "s4"};
 
-      List<AlignedChunkMetadata> chunkMetadataList = reader.getAlignedChunkMetadata("d1");
+      List<AlignedChunkMetadata> chunkMetadataList =
+          reader.getAlignedChunkMetadata(new PlainDeviceID("d1"));
       AlignedChunkMetadata alignedChunkMetadata = chunkMetadataList.get(0);
       Assert.assertEquals("", alignedChunkMetadata.getTimeChunkMetadata().getMeasurementUid());
       int i = 0;

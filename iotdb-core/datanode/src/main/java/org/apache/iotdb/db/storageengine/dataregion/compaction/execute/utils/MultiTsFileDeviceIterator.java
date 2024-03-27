@@ -31,7 +31,9 @@ import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -60,7 +62,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private Map<TsFileResource, TsFileSequenceReader> readerMap = new HashMap<>();
   private final Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
   private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
-  private Pair<String, Boolean> currentDevice = null;
+  private Pair<IDeviceID, Boolean> currentDevice = null;
 
   /**
    * Used for compaction with read chunk performer.
@@ -165,9 +167,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @return Pair of device full path and whether this device is aligned
    */
   @SuppressWarnings("squid:S135")
-  public Pair<String, Boolean> nextDevice() {
+  public Pair<IDeviceID, Boolean> nextDevice() {
     List<TsFileResource> toBeRemovedResources = new LinkedList<>();
-    Pair<String, Boolean> minDevice = null;
+    Pair<IDeviceID, Boolean> minDevice = null;
     // get the device from source files sorted from the newest to the oldest by version
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
       if (!deviceIteratorMap.containsKey(resource)) {
@@ -246,6 +248,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       getTimeseriesMetadataOffsetOfCurrentDevice() throws IOException {
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
         new HashMap<>();
+    Map<String, TSDataType> measurementDataTypeMap = new HashMap<>();
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
       if (!deviceIteratorMap.containsKey(resource)
           || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
@@ -254,14 +257,22 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         continue;
       }
       TsFileSequenceReader reader = readerMap.get(resource);
-      for (Map.Entry<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> entrySet :
-          reader
-              .getTimeseriesMetadataOffsetByDevice(
+      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entrySet :
+          ((CompactionTsFileReader) reader)
+              .getTimeseriesMetadataAndOffsetByDevice(
                   deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
                   Collections.emptySet(),
                   false)
               .entrySet()) {
         String measurementId = entrySet.getKey();
+        // skip the TimeseriesMetadata whose data type is not consistent
+        TSDataType dataTypeOfCurrentTimeseriesMetadata = entrySet.getValue().left.getTsDataType();
+        TSDataType correctDataTypeOfCurrentMeasurement =
+            measurementDataTypeMap.putIfAbsent(measurementId, dataTypeOfCurrentTimeseriesMetadata);
+        if (correctDataTypeOfCurrentMeasurement != null
+            && correctDataTypeOfCurrentMeasurement != dataTypeOfCurrentTimeseriesMetadata) {
+          continue;
+        }
         timeseriesMetadataOffsetMap.putIfAbsent(measurementId, new HashMap<>());
         timeseriesMetadataOffsetMap.get(measurementId).put(resource, entrySet.getValue().right);
       }
@@ -321,7 +332,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @throws IOException if io errors occurred
    */
   public MeasurementIterator iterateNotAlignedSeries(
-      String device, boolean derserializeTimeseriesMetadata) throws IOException {
+      IDeviceID device, boolean derserializeTimeseriesMetadata) throws IOException {
     return new MeasurementIterator(readerMap, device, derserializeTimeseriesMetadata);
   }
 
@@ -425,7 +436,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    */
   public class MeasurementIterator {
     private Map<TsFileResource, TsFileSequenceReader> readerMap;
-    private String device;
+    private IDeviceID device;
     private String currentCompactingSeries = null;
     private LinkedList<String> seriesInThisIteration = new LinkedList<>();
     // tsfile sequence reader -> series -> list<ChunkMetadata>
@@ -438,7 +449,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
     private MeasurementIterator(
         Map<TsFileResource, TsFileSequenceReader> readerMap,
-        String device,
+        IDeviceID device,
         boolean needDeserializeTimeseries)
         throws IOException {
       this.readerMap = readerMap;

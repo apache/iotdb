@@ -291,6 +291,8 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       for (File file : files) {
         FileUtils.deleteFileIfExist(file);
       }
+    } else {
+      LOGGER.warn("Role folder not exists");
     }
   }
 

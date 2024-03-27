@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
  */
 public class PipeParameters {
 
-  private final Map<String, String> attributes;
+  protected final Map<String, String> attributes;
 
   public PipeParameters(Map<String, String> attributes) {
     this.attributes = attributes == null ? new HashMap<>() : attributes;
@@ -300,6 +300,25 @@ public class PipeParameters {
           this.attributes.put(entry.getKey(), entry.getValue());
         });
     return this;
+  }
+
+  /**
+   * This method clones a new {@link PipeParameters} with equivalent attributes in this {@link
+   * PipeParameters} added by (non-existed) or replaces with (existed) those from another {@link
+   * PipeParameters}.
+   *
+   * @param that provide the key that needs to be updated along with the value
+   * @return this {@link PipeParameters}
+   */
+  public PipeParameters addOrReplaceEquivalentAttributesWithClone(PipeParameters that) {
+    Map<String, String> thisMap =
+        this.attributes.entrySet().stream()
+            .collect(Collectors.toMap(entry -> KeyReducer.reduce(entry.getKey()), Entry::getValue));
+    Map<String, String> thatMap =
+        that.attributes.entrySet().stream()
+            .collect(Collectors.toMap(entry -> KeyReducer.reduce(entry.getKey()), Entry::getValue));
+    thisMap.putAll(thatMap);
+    return new PipeParameters(thisMap);
   }
 
   private static class KeyReducer {

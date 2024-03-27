@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -56,6 +57,19 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
   private static final String FRAGMENT_INSTANCE_CONTEXT_SIZE = "fragment_instance_context_size";
   private static final String FRAGMENT_INSTANCE_EXECUTION_SIZE = "fragment_instance_execution_size";
   private static final String FRAGMENT_INSTANCE_DRIVER_SIZE = "fragment_instance_driver_size";
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // FragmentInstanceManager
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  private static final TsFileResourceManager TS_FILE_RESOURCE_MANAGER =
+      TsFileResourceManager.getInstance();
+  private static final String RESOURCE_INDEX = "resource_index";
+  private static final String RESOURCE_INDEX_NUM_TYPE = "number";
+  private static final String TOTAL_RESOURCE_NUM = "total_resource_num";
+  private static final String DEGRADED_RESOURCE_NUM = "degraded_resource_num";
+  private static final String RESOURCE_MEMORY_TYPE = "memory";
+  private static final String RESOURCE_INDEX_MAX_MEMORY = "max_memory";
+  private static final String RESOURCE_INDEX_USED_MEMORY = "used_memory";
 
   private Timer fragmentInstanceExecutionTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Histogram fragmentInstanceContextSizeHistogram =
@@ -191,6 +205,47 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             ESTIMATED_MEMORY_SIZE);
+
+    // resource index
+    metricService.createAutoGauge(
+        RESOURCE_INDEX,
+        MetricLevel.IMPORTANT,
+        TS_FILE_RESOURCE_MANAGER,
+        TsFileResourceManager::getDegradedTimeIndexNum,
+        Tag.TYPE.toString(),
+        RESOURCE_INDEX_NUM_TYPE,
+        Tag.NAME.toString(),
+        DEGRADED_RESOURCE_NUM);
+
+    metricService.createAutoGauge(
+        RESOURCE_INDEX,
+        MetricLevel.IMPORTANT,
+        TS_FILE_RESOURCE_MANAGER,
+        TsFileResourceManager::getPriorityQueueSize,
+        Tag.TYPE.toString(),
+        RESOURCE_INDEX_NUM_TYPE,
+        Tag.NAME.toString(),
+        TOTAL_RESOURCE_NUM);
+
+    metricService.createAutoGauge(
+        RESOURCE_INDEX,
+        MetricLevel.IMPORTANT,
+        TS_FILE_RESOURCE_MANAGER,
+        TsFileResourceManager::getTotalTimeIndexMemCost,
+        Tag.TYPE.toString(),
+        RESOURCE_MEMORY_TYPE,
+        Tag.NAME.toString(),
+        RESOURCE_INDEX_USED_MEMORY);
+
+    metricService.createAutoGauge(
+        RESOURCE_INDEX,
+        MetricLevel.IMPORTANT,
+        TS_FILE_RESOURCE_MANAGER,
+        TsFileResourceManager::getTimeIndexMemoryThreshold,
+        Tag.TYPE.toString(),
+        RESOURCE_MEMORY_TYPE,
+        Tag.NAME.toString(),
+        RESOURCE_INDEX_MAX_MEMORY);
   }
 
   @Override
@@ -245,6 +300,39 @@ public class QueryRelatedResourceMetricSet implements IMetricSet {
         FREE_MEMORY_FOR_OPERATORS);
     metricService.remove(
         MetricType.HISTOGRAM, LOCAL_EXECUTION_PLANNER, Tag.NAME.toString(), ESTIMATED_MEMORY_SIZE);
+
+    // resource index
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        RESOURCE_INDEX,
+        Tag.TYPE.toString(),
+        RESOURCE_INDEX_NUM_TYPE,
+        Tag.NAME.toString(),
+        DEGRADED_RESOURCE_NUM);
+
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        RESOURCE_INDEX,
+        Tag.TYPE.toString(),
+        RESOURCE_INDEX_NUM_TYPE,
+        Tag.NAME.toString(),
+        TOTAL_RESOURCE_NUM);
+
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        RESOURCE_INDEX,
+        Tag.TYPE.toString(),
+        RESOURCE_MEMORY_TYPE,
+        Tag.NAME.toString(),
+        RESOURCE_INDEX_USED_MEMORY);
+
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        RESOURCE_INDEX,
+        Tag.TYPE.toString(),
+        RESOURCE_MEMORY_TYPE,
+        Tag.NAME.toString(),
+        RESOURCE_INDEX_MAX_MEMORY);
   }
 
   private QueryRelatedResourceMetricSet() {
