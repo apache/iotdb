@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.procedure.impl.region;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
-import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
@@ -34,6 +33,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

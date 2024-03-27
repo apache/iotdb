@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
 import org.apache.iotdb.common.rpc.thrift.TRegionMigrateFailedType;
-import org.apache.iotdb.common.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -43,6 +42,7 @@ import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.rescon.memory.AbstractPoolManager;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
