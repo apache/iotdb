@@ -21,7 +21,9 @@ package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 
-public class SubscriptionMessage {
+import java.util.Objects;
+
+public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   // TODO: support more data format
   private final SubscriptionMessagePayload payload;
@@ -30,7 +32,7 @@ public class SubscriptionMessage {
   private final String subscriptionCommitId;
 
   public SubscriptionMessage(EnrichedTablets tablets) {
-    this.payload = new SubscriptionSessionDataSets(tablets);
+    this.payload = new SubscriptionSessionDataSets(tablets.getTablets());
     this.topicName = tablets.getTopicName();
     this.subscriptionCommitId = tablets.getSubscriptionCommitId();
   }
@@ -51,5 +53,33 @@ public class SubscriptionMessage {
   int parseDataNodeIdFromSubscriptionCommitId() {
     // make it package-private
     return Integer.parseInt(subscriptionCommitId.split("#")[0]);
+  }
+
+  /////////////////////////////// override ///////////////////////////////
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    SubscriptionMessage that = (SubscriptionMessage) obj;
+    return Objects.equals(this.topicName, that.topicName)
+        && Objects.equals(this.subscriptionCommitId, that.subscriptionCommitId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(topicName, subscriptionCommitId);
+  }
+
+  @Override
+  public int compareTo(SubscriptionMessage that) {
+    if (this.topicName.compareTo(that.topicName) == 0) {
+      return this.subscriptionCommitId.compareTo(that.subscriptionCommitId);
+    }
+    return this.topicName.compareTo(that.topicName);
   }
 }

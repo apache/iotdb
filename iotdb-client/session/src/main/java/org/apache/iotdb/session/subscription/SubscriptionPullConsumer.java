@@ -40,6 +40,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -53,7 +54,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   private final int autoCommitInterval;
 
   private ScheduledExecutorService autoCommitWorkerExecutor;
-  private SortedMap<Long, List<SubscriptionMessage>> uncommittedMessages;
+  private SortedMap<Long, Set<SubscriptionMessage>> uncommittedMessages;
 
   private boolean isClosed = true;
 
@@ -155,8 +156,9 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       if (currentTimestamp % autoCommitInterval == 0) {
         index -= 1;
       }
-      // TODO: use thread-safe list
-      uncommittedMessages.computeIfAbsent(index, o -> new ArrayList<>()).addAll(messages);
+      uncommittedMessages
+          .computeIfAbsent(index, o -> new ConcurrentSkipListSet<>())
+          .addAll(messages);
     }
     return messages;
   }
@@ -166,7 +168,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     commitSync(Collections.singletonList(message));
   }
 
-  public void commitSync(List<SubscriptionMessage> messages)
+  public void commitSync(Iterable<SubscriptionMessage> messages)
       throws TException, IOException, StatementExecutionException {
     Map<Integer, Map<String, List<String>>> dataNodeIdToTopicNameToSubscriptionCommitIds =
         new HashMap<>();
@@ -223,7 +225,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   }
 
   private void commitAllUncommittedMessages() {
-    for (Map.Entry<Long, List<SubscriptionMessage>> entry : uncommittedMessages.entrySet()) {
+    for (Map.Entry<Long, Set<SubscriptionMessage>> entry : uncommittedMessages.entrySet()) {
       try {
         commitSync(entry.getValue());
         uncommittedMessages.remove(entry.getKey());
@@ -241,7 +243,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     return autoCommitInterval;
   }
 
-  SortedMap<Long, List<SubscriptionMessage>> getUncommittedMessages() {
+  SortedMap<Long, Set<SubscriptionMessage>> getUncommittedMessages() {
     return uncommittedMessages;
   }
 

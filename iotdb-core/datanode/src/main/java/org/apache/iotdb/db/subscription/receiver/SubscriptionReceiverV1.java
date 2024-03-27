@@ -316,7 +316,6 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
               .getTopicsSubscribedByConsumer(
                   consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
     }
-
     SubscriptionPollTimer timer =
         new SubscriptionPollTimer(
             System.currentTimeMillis(),
@@ -328,24 +327,22 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     List<SerializedEnrichedEvent> events =
         SubscriptionAgent.broker().poll(consumerConfig, topicNames, timer);
 
-    // REMOVE ME: for debug
-    List<Long> timestamps = new ArrayList<>();
-    events.forEach((event -> timestamps.addAll(event.timestamps())));
-    LOGGER.info("Subscription: consumer {} poll event timestamps {}", consumerConfig, timestamps);
-
-    List<ByteBuffer> byteBuffers =
+    // serialize events and filter
+    events =
         events.stream()
-            .map(
-                (event -> {
-                  event.serialize();
-                  return event.getByteBuffer();
-                }))
-            .filter(Objects::nonNull)
+            .peek((SerializedEnrichedEvent::serialize))
+            .filter((event -> Objects.nonNull(event.getByteBuffer())))
             .collect(Collectors.toList());
+
     List<String> subscriptionCommitIds =
         events.stream()
             .map(SerializedEnrichedEvent::getSubscriptionCommitId)
             .collect(Collectors.toList());
+
+    // REMOVE ME: for debug
+    List<Long> timestamps = new ArrayList<>();
+    events.forEach((event -> timestamps.addAll(event.timestamps())));
+    LOGGER.info("Subscription: consumer {} poll event timestamps {}", consumerConfig, timestamps);
 
     if (timer.isExpired()) {
       LOGGER.warn(
@@ -360,6 +357,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         topicNames,
         subscriptionCommitIds);
 
+    // fetch and reset byte buffer
+    List<ByteBuffer> byteBuffers =
+        events.stream().map(SerializedEnrichedEvent::getByteBuffer).collect(Collectors.toList());
     events.forEach(SerializedEnrichedEvent::resetByteBuffer);
     return PipeSubscribePollResp.directToTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, byteBuffers);
   }

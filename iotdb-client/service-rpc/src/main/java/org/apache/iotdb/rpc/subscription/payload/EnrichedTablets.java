@@ -91,7 +91,7 @@ public class EnrichedTablets {
     }
     EnrichedTablets that = (EnrichedTablets) obj;
     return Objects.equals(this.topicName, that.topicName)
-        && Objects.equals(this.tablets, that.tablets)
+        // Consistent with the hashCode method, tablets members are not compared.
         && Objects.equals(this.subscriptionCommitId, that.subscriptionCommitId);
   }
 

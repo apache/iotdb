@@ -37,7 +37,7 @@ public class SubscriptionMeta {
   private String consumerGroupId;
   private Set<String> consumerIds;
 
-  public SubscriptionMeta() {
+  private SubscriptionMeta() {
     // Empty constructor
   }
 

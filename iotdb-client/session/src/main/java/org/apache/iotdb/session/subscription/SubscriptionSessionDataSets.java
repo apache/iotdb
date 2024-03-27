@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import java.util.ArrayList;
@@ -29,15 +28,11 @@ import java.util.List;
 public class SubscriptionSessionDataSets
     implements Iterable<SubscriptionSessionDataSet>, SubscriptionMessagePayload {
 
-  private final EnrichedTablets tablets;
   private final List<SubscriptionSessionDataSet> dataSetList;
 
-  public SubscriptionSessionDataSets(EnrichedTablets tablets) {
-    this.tablets = tablets;
+  public SubscriptionSessionDataSets(List<Tablet> tablets) {
     this.dataSetList = new ArrayList<>();
-    tablets
-        .getTablets()
-        .forEach((tablet -> this.dataSetList.add(new SubscriptionSessionDataSet(tablet))));
+    tablets.forEach((tablet -> this.dataSetList.add(new SubscriptionSessionDataSet(tablet))));
   }
 
   @Override

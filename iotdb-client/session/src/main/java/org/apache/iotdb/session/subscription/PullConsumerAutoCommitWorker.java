@@ -26,8 +26,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class PullConsumerAutoCommitWorker implements Runnable {
 
@@ -51,7 +51,7 @@ public class PullConsumerAutoCommitWorker implements Runnable {
       index -= 1;
     }
 
-    for (Map.Entry<Long, List<SubscriptionMessage>> entry :
+    for (Map.Entry<Long, Set<SubscriptionMessage>> entry :
         consumer.getUncommittedMessages().headMap(index).entrySet()) {
       try {
         consumer.commitSync(entry.getValue());
