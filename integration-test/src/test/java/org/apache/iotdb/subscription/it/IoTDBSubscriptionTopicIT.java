@@ -30,19 +30,23 @@ import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
+import org.awaitility.Awaitility;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
+import java.sql.Statement;
 import java.time.Duration;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.fail;
@@ -135,14 +139,30 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     thread.start();
 
     // check data on receiver
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "select count(*) from root.**",
-        "count(root.db.d1.s),count(root.db.d2.s),",
-        Collections.singleton("100,100,"));
-
-    isClosed.set(true);
-    thread.join();
+    try {
+      try (Connection connection = receiverEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        // Keep retrying if there are execution failures
+        Awaitility.await()
+            .atMost(100, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    TestUtils.assertSingleResultSetEqual(
+                        TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                        new HashMap<String, String>() {
+                          {
+                            put("count(root.db.d1.s)", "100");
+                            put("count(root.db.d2.s)", "100");
+                          }
+                        }));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      isClosed.set(true);
+      thread.join();
+    }
   }
 
   @Test
@@ -224,14 +244,29 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     thread.start();
 
     // check data on receiver
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "select count(*) from root.**",
-        "count(root.db.d2.s),",
-        Collections.singleton("100,"));
-
-    isClosed.set(true);
-    thread.join();
+    try {
+      try (Connection connection = receiverEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        // Keep retrying if there are execution failures
+        Awaitility.await()
+            .atMost(100, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    TestUtils.assertSingleResultSetEqual(
+                        TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                        new HashMap<String, String>() {
+                          {
+                            put("count(root.db.d2.s)", "100");
+                          }
+                        }));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      isClosed.set(true);
+      thread.join();
+    }
   }
 
   @Test
@@ -314,10 +349,25 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     expectedResSet.add("1000,1.0,");
     expectedResSet.add("2000,3.0,");
     expectedResSet.add("3000,5.0,");
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "select * from root.**", "Time,root.db.d1.at1,", expectedResSet);
-
-    isClosed.set(true);
-    thread.join();
+    try {
+      try (Connection connection = receiverEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        // Keep retrying if there are execution failures
+        Awaitility.await()
+            .atMost(100, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    TestUtils.assertResultSetEqual(
+                        TestUtils.executeQueryWithRetry(statement, "select * from root.**"),
+                        "Time,root.db.d1.at1,",
+                        expectedResSet));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      isClosed.set(true);
+      thread.join();
+    }
   }
 }

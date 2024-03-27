@@ -23,7 +23,6 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2;
-import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
@@ -48,7 +47,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
 
 import static org.junit.Assert.fail;
 
@@ -69,16 +67,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     testMultiConsumersSubscribeMultiTopicsTemplate(
         currentTime,
         consumers,
-        () -> {
-          assertSingleDataEventuallyOnEnv(
-              receiverEnv,
-              "select count(*) from root.**",
-              new HashMap<String, String>() {
-                {
-                  put("count(root.topic1.s.cg1)", "100");
-                }
-              });
-          return null;
+        new HashMap<String, String>() {
+          {
+            put("count(root.topic1.s.cg1)", "100");
+          }
         });
   }
 
@@ -92,18 +84,12 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     testMultiConsumersSubscribeMultiTopicsTemplate(
         currentTime,
         consumers,
-        () -> {
-          assertSingleDataEventuallyOnEnv(
-              receiverEnv,
-              "select count(*) from root.**",
-              new HashMap<String, String>() {
-                {
-                  put("count(root.topic1.s.cg1)", "100");
-                  put("count(root.topic1.s.cg2)", "100");
-                  put("count(root.topic1.s.cg3)", "100");
-                }
-              });
-          return null;
+        new HashMap<String, String>() {
+          {
+            put("count(root.topic1.s.cg1)", "100");
+            put("count(root.topic1.s.cg2)", "100");
+            put("count(root.topic1.s.cg3)", "100");
+          }
         });
   }
 
@@ -117,17 +103,11 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     testMultiConsumersSubscribeMultiTopicsTemplate(
         currentTime,
         consumers,
-        () -> {
-          assertSingleDataEventuallyOnEnv(
-              receiverEnv,
-              "select count(*) from root.**",
-              new HashMap<String, String>() {
-                {
-                  put("count(root.topic1.s.cg1)", "100");
-                  put("count(root.topic2.s.cg1)", "100");
-                }
-              });
-          return null;
+        new HashMap<String, String>() {
+          {
+            put("count(root.topic1.s.cg1)", "100");
+            put("count(root.topic2.s.cg1)", "100");
+          }
         });
   }
 
@@ -141,19 +121,13 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     testMultiConsumersSubscribeMultiTopicsTemplate(
         currentTime,
         consumers,
-        () -> {
-          assertSingleDataEventuallyOnEnv(
-              receiverEnv,
-              "select count(*) from root.**",
-              new HashMap<String, String>() {
-                {
-                  put("count(root.topic1.s.cg1)", "100");
-                  put("count(root.topic1.s.cg2)", "100");
-                  put("count(root.topic2.s.cg2)", "100");
-                  put("count(root.topic2.s.cg3)", "100");
-                }
-              });
-          return null;
+        new HashMap<String, String>() {
+          {
+            put("count(root.topic1.s.cg1)", "100");
+            put("count(root.topic1.s.cg2)", "100");
+            put("count(root.topic2.s.cg2)", "100");
+            put("count(root.topic2.s.cg3)", "100");
+          }
         });
   }
 
@@ -168,18 +142,12 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     testMultiConsumersSubscribeMultiTopicsTemplate(
         currentTime,
         consumers,
-        () -> {
-          assertSingleDataEventuallyOnEnv(
-              receiverEnv,
-              "select count(*) from root.**",
-              new HashMap<String, String>() {
-                {
-                  put("count(root.topic1.s.cg1)", "100");
-                  put("count(root.topic1.s.cg2)", "100");
-                  put("count(root.topic2.s.cg2)", "100");
-                }
-              });
-          return null;
+        new HashMap<String, String>() {
+          {
+            put("count(root.topic1.s.cg1)", "100");
+            put("count(root.topic1.s.cg2)", "100");
+            put("count(root.topic2.s.cg2)", "100");
+          }
         });
   }
 
@@ -214,7 +182,9 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   private void testMultiConsumersSubscribeMultiTopicsTemplate(
-      long currentTime, List<SubscriptionPullConsumer> consumers, Supplier<Void> checker)
+      long currentTime,
+      List<SubscriptionPullConsumer> consumers,
+      Map<String, String> expectedHeaderWithResult)
       throws Exception {
     // insert some history data on sender
     try (ISession session = senderEnv.getSessionConnection()) {
@@ -279,11 +249,26 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
 
     // check data on receiver
-    checker.get();
-
-    isClosed.set(true);
-    for (Thread thread : threads) {
-      thread.join();
+    try {
+      try (Connection connection = receiverEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        // Keep retrying if there are execution failures
+        Awaitility.await()
+            .atMost(100, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    TestUtils.assertSingleResultSetEqual(
+                        TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                        expectedHeaderWithResult));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      isClosed.set(true);
+      for (Thread thread : threads) {
+        thread.join();
+      }
     }
   }
 
@@ -308,28 +293,5 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         Collections.singletonList(consumerGroupId),
         Collections.singletonList(TSDataType.FLOAT),
         Collections.singletonList(record.getFields().get(0).getFloatV()));
-  }
-
-  private void assertSingleDataEventuallyOnEnv(
-      BaseEnv env, String sql, Map<String, String> expectedHeaderWithResult) {
-    try (Connection connection = env.getConnection();
-        Statement statement = connection.createStatement()) {
-      // Keep retrying if there are execution failures
-      Awaitility.await()
-          .atMost(100, TimeUnit.SECONDS)
-          .untilAsserted(
-              () -> {
-                try {
-                  TestUtils.assertSingleResultSetEqual(
-                      TestUtils.executeQueryWithRetry(statement, sql), expectedHeaderWithResult);
-                } catch (Exception e) {
-                  e.printStackTrace();
-                  fail(e.getMessage());
-                }
-              });
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
   }
 }
