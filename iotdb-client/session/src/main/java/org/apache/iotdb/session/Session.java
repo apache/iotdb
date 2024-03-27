@@ -2793,7 +2793,8 @@ public class Session implements ISession {
             .limit(sampleNum)
             .boxed()
             .collect(Collectors.toList());
-    Set<String> allMeasurement = new HashSet<>(measurementsList.get(indexList.get(0)).size() + 1, 1);
+    Set<String> allMeasurement =
+        new HashSet<>(measurementsList.get(indexList.get(0)).size() + 1, 1);
     for (int i = 0; i < sampleNum; i++) {
       allMeasurement.addAll(measurementsList.get(indexList.get(i)));
     }
@@ -2831,9 +2832,8 @@ public class Session implements ISession {
     }
     List<MeasurementSchema> schemaList = new ArrayList<>(measuremenMap.size());
     // use measurementType to build schemaList
-    int index = 0;
     for (Entry<String, Pair<TSDataType, Boolean>> entry : measuremenMap.entrySet()) {
-      schemaList.set(index++, new MeasurementSchema(entry.getKey(), entry.getValue().getLeft()));
+      schemaList.add(new MeasurementSchema(entry.getKey(), entry.getValue().getLeft()));
     }
     // build tablet and insert
     Tablet tablet = new Tablet(deviceId, schemaList, times.size());
@@ -2923,10 +2923,9 @@ public class Session implements ISession {
     for (Map.Entry<String, Map<String, Pair<TSDataType, Boolean>>> entry :
         deviceMeasuremenMap.entrySet()) {
       List<MeasurementSchema> schemaList = new ArrayList<>(entry.getValue().size() + 1);
-      int index = 0;
       for (Map.Entry<String, Pair<TSDataType, Boolean>> schemaEntry : entry.getValue().entrySet()) {
-        schemaList.set(
-            index++, new MeasurementSchema(schemaEntry.getKey(), schemaEntry.getValue().getLeft()));
+        schemaList.add(
+            new MeasurementSchema(schemaEntry.getKey(), schemaEntry.getValue().getLeft()));
       }
       schemaMap.put(entry.getKey(), schemaList);
     }
