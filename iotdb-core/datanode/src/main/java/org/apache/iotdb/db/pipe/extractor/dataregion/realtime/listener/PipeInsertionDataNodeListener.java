@@ -118,6 +118,12 @@ public class PipeInsertionDataNodeListener {
       return;
     }
 
+    // REMOVE ME: for debug
+    LOGGER.info(
+        "listenToTsFile timestamp range [{}, {}]",
+        tsFileResource.getFileStartTime(),
+        tsFileResource.getFileEndTime());
+
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(tsFileResource, isLoaded, isGeneratedByPipe));
   }
@@ -141,10 +147,10 @@ public class PipeInsertionDataNodeListener {
     // REMOVE ME: for debug
     if (insertNode instanceof InsertRowNode) {
       long timestamp = ((InsertRowNode) insertNode).getTime();
-      LOGGER.info("listen to timestamp {}", timestamp);
+      LOGGER.info("listenToInsertNode timestamp {}", timestamp);
     } else if (insertNode instanceof InsertTabletNode) {
       long[] timestamps = ((InsertTabletNode) insertNode).getTimes();
-      LOGGER.info("listen to timestamps {}", timestamps);
+      LOGGER.info("listenToInsertNode {}", timestamps);
     } else {
       throw new UnSupportedDataTypeException(
           String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));

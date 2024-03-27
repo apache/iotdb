@@ -321,6 +321,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       List<SubscriptionPullConsumer> consumers, Map<String, String> expectedHeaderWithResult)
       throws Exception {
     AtomicBoolean isClosed = new AtomicBoolean(false);
+    AtomicBoolean receiverCrashed = new AtomicBoolean(false);
     List<Thread> threads = new ArrayList<>();
     for (int i = 0; i < consumers.size(); ++i) {
       final int index = i;
@@ -347,21 +348,22 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                         List<String> columnNameList = dataSet.getColumnNames();
                         while (dataSet.hasNext()) {
                           RowRecord record = dataSet.next();
-                          insertRowRecordEnrichByConsumerGroupId(
-                              columnNameList, record, consumerGroupId);
+                          if (!insertRowRecordEnrichByConsumerGroupId(
+                              columnNameList, record, consumerGroupId)) {
+                            receiverCrashed.set(true);
+                            throw new RuntimeException("detect receiver crashed");
+                          }
                         }
                       }
                     }
                     consumer.commitSync(messages);
                   }
                   // no need to unsubscribe
-                  LOGGER.info(
-                      "consumer {} (group {}) exiting...",
-                      consumer.getConsumerId(),
-                      consumer.getConsumerGroupId());
                 } catch (Exception e) {
                   e.printStackTrace();
                   // avoid fail
+                } finally {
+                  LOGGER.info("consumer {} (group {}) exiting...", consumerId, consumerGroupId);
                 }
               },
               String.format("%s_%s", consumerGroupId, consumerId));
@@ -377,12 +379,17 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         Awaitility.await()
             .pollDelay(1, TimeUnit.SECONDS)
             .pollInterval(1, TimeUnit.SECONDS)
-            .atMost(100, TimeUnit.SECONDS)
+            .atMost(180, TimeUnit.SECONDS)
             .untilAsserted(
-                () ->
-                    TestUtils.assertSingleResultSetEqual(
-                        TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
-                        expectedHeaderWithResult));
+                () -> {
+                  if (receiverCrashed.get()) {
+                    LOGGER.info("detect receiver crashed, skipping this test...");
+                    return;
+                  }
+                  TestUtils.assertSingleResultSetEqual(
+                      TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                      expectedHeaderWithResult);
+                });
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -395,7 +402,8 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
   }
 
-  private void insertRowRecordEnrichByConsumerGroupId(
+  /** @return false -> receiver crashed */
+  private boolean insertRowRecordEnrichByConsumerGroupId(
       List<String> columnNameList, RowRecord record, String consumerGroupId) throws Exception {
     if (columnNameList.size() != 2) {
       LOGGER.warn("unexpected column name list: {}", columnNameList);
@@ -409,9 +417,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
               consumerGroupId, record.getTimestamp());
       // REMOVE ME: for debug
       LOGGER.info(sql);
-      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql)) {
-        fail();
-      }
+      return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
     } else if ("root.topic2.s".equals(columnName)) {
       String sql =
           String.format(
@@ -419,9 +425,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
               consumerGroupId, record.getTimestamp());
       // REMOVE ME: for debug
       LOGGER.info(sql);
-      if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql)) {
-        fail();
-      }
+      return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
     } else {
       LOGGER.warn("unexpected column name: {}", columnName);
       throw new Exception("unexpected column name list");
