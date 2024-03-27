@@ -81,6 +81,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHand
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
@@ -90,9 +91,12 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -447,6 +451,8 @@ public class ConfigPlanExecutor {
         return pipeInfo.dropPipe((DropPipePlanV2) physicalPlan);
       case AlterPipeV2:
         return pipeInfo.alterPipe((AlterPipePlanV2) physicalPlan);
+      case OperateMultiplePipesV2:
+        return pipeInfo.operateMultiplePipes((OperateMultiplePipesPlanV2) physicalPlan);
       case PipeHandleLeaderChange:
         return pipeInfo.handleLeaderChange((PipeHandleLeaderChangePlan) physicalPlan);
       case PipeHandleMetaChange:
@@ -457,8 +463,15 @@ public class ConfigPlanExecutor {
         return subscriptionInfo.dropTopic((DropTopicPlan) physicalPlan);
       case AlterTopic:
         return subscriptionInfo.alterTopic((AlterTopicPlan) physicalPlan);
+      case AlterMultipleTopics:
+        return subscriptionInfo.alterMultipleTopics((AlterMultipleTopicsPlan) physicalPlan);
+      case ConsumerGroupHandleMetaChange:
+        return subscriptionInfo.handleConsumerGroupMetaChanges(
+            (ConsumerGroupHandleMetaChangePlan) physicalPlan);
       case AlterConsumerGroup:
         return subscriptionInfo.alterConsumerGroup((AlterConsumerGroupPlan) physicalPlan);
+      case TopicHandleMetaChange:
+        return subscriptionInfo.handleTopicMetaChanges((TopicHandleMetaChangePlan) physicalPlan);
       case ADD_CQ:
         return cqInfo.addCQ((AddCQPlan) physicalPlan);
       case DROP_CQ:

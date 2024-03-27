@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.pipe.runtime;
+package org.apache.iotdb.confignode.consensus.request.write.subscription.topic;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -30,39 +30,50 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class PipeHandleMetaChangePlan extends ConfigPhysicalPlan {
+public class AlterMultipleTopicsPlan extends ConfigPhysicalPlan {
 
-  private List<PipeMeta> pipeMetaList = new ArrayList<>();
+  private List<AlterTopicPlan> subPlans;
 
-  public PipeHandleMetaChangePlan() {
-    super(ConfigPhysicalPlanType.PipeHandleMetaChange);
+  public AlterMultipleTopicsPlan() {
+    super(ConfigPhysicalPlanType.AlterMultipleTopics);
   }
 
-  public PipeHandleMetaChangePlan(List<PipeMeta> pipeMetaList) {
-    super(ConfigPhysicalPlanType.PipeHandleMetaChange);
-    this.pipeMetaList = pipeMetaList;
+  public AlterMultipleTopicsPlan(List<AlterTopicPlan> subPlans) {
+    super(ConfigPhysicalPlanType.AlterMultipleTopics);
+    this.subPlans = subPlans;
   }
 
-  public List<PipeMeta> getPipeMetaList() {
-    return pipeMetaList;
+  public List<AlterTopicPlan> getSubPlans() {
+    return subPlans;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-
-    stream.writeInt(pipeMetaList.size());
-    for (PipeMeta pipeMeta : pipeMetaList) {
-      pipeMeta.serialize(stream);
+    if (subPlans != null) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(subPlans.size(), stream);
+      for (AlterTopicPlan subPlan : subPlans) {
+        subPlan.serializeImpl(stream);
+      }
+    } else {
+      ReadWriteIOUtils.write(false, stream);
     }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    int size = buffer.getInt();
-    for (int i = 0; i < size; i++) {
-      PipeMeta pipeMeta = PipeMeta.deserialize(buffer);
-      pipeMetaList.add(pipeMeta);
+    if (ReadWriteIOUtils.readBool(buffer)) {
+      subPlans = new ArrayList<>();
+      int size = ReadWriteIOUtils.readInt(buffer);
+      for (int i = 0; i < size; i++) {
+        // This will read the type of the plan (AlterTopicPlan), which will be ignored
+        ReadWriteIOUtils.readShort(buffer);
+
+        AlterTopicPlan subPlan = new AlterTopicPlan();
+        subPlan.deserializeImpl(buffer);
+        subPlans.add(subPlan);
+      }
     }
   }
 
@@ -74,12 +85,17 @@ public class PipeHandleMetaChangePlan extends ConfigPhysicalPlan {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeHandleMetaChangePlan that = (PipeHandleMetaChangePlan) obj;
-    return Objects.equals(this.pipeMetaList, that.pipeMetaList);
+    AlterMultipleTopicsPlan that = (AlterMultipleTopicsPlan) obj;
+    return Objects.equals(this.subPlans, that.subPlans);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeMetaList);
+    return Objects.hash(subPlans);
+  }
+
+  @Override
+  public String toString() {
+    return "AlterMultipleTopicPlan{" + "subPlans='" + subPlans + "'}";
   }
 }

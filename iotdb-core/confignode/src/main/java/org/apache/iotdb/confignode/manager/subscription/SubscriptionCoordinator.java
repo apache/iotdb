@@ -25,8 +25,7 @@ import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopic
 import org.apache.iotdb.confignode.consensus.response.subscription.SubscriptionTableResp;
 import org.apache.iotdb.confignode.consensus.response.subscription.TopicTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinator;
-import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinatorLock;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
@@ -40,13 +39,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionCoordinator {
@@ -56,16 +53,16 @@ public class SubscriptionCoordinator {
   private final ConfigManager configManager;
   private final SubscriptionInfo subscriptionInfo;
 
-  private final PipeTaskCoordinator pipeTaskCoordinator;
+  private final PipeTaskCoordinatorLock coordinatorLock;
   private AtomicReference<SubscriptionInfo> subscriptionInfoHolder;
+
+  private final SubscriptionMetaSyncer subscriptionMetaSyncer;
 
   public SubscriptionCoordinator(ConfigManager configManager, SubscriptionInfo subscriptionInfo) {
     this.configManager = configManager;
     this.subscriptionInfo = subscriptionInfo;
-
-    // TODO: check if
-    // Subscription related procedures also manage pipe tasks, so we use the same lock.
-    this.pipeTaskCoordinator = configManager.getPipeManager().getPipeTaskCoordinator();
+    this.coordinatorLock = new PipeTaskCoordinatorLock();
+    this.subscriptionMetaSyncer = new SubscriptionMetaSyncer(configManager);
   }
 
   public SubscriptionInfo getSubscriptionInfo() {
@@ -74,12 +71,10 @@ public class SubscriptionCoordinator {
 
   /////////////////////////////// Lock ///////////////////////////////
 
-  public Pair<AtomicReference<SubscriptionInfo>, AtomicReference<PipeTaskInfo>> tryLock() {
-    AtomicReference<PipeTaskInfo> pipeTaskInfoHolder = pipeTaskCoordinator.tryLock();
-
-    if (Objects.nonNull(pipeTaskInfoHolder)) {
+  public AtomicReference<SubscriptionInfo> tryLock() {
+    if (coordinatorLock.tryLock()) {
       subscriptionInfoHolder = new AtomicReference<>(subscriptionInfo);
-      return new Pair<>(subscriptionInfoHolder, pipeTaskInfoHolder);
+      return subscriptionInfoHolder;
     }
 
     return null;
@@ -92,13 +87,31 @@ public class SubscriptionCoordinator {
     }
 
     try {
-      pipeTaskCoordinator.unlock();
+      coordinatorLock.unlock();
       return true;
     } catch (IllegalMonitorStateException ignored) {
       // This is thrown if unlock() is called without lock() called first.
       LOGGER.warn("This thread is not holding the lock.");
       return false;
     }
+  }
+
+  public boolean isLocked() {
+    return coordinatorLock.isLocked();
+  }
+
+  /////////////////////////////// Meta sync ///////////////////////////////
+
+  public void startSubscriptionMetaSync() {
+    subscriptionMetaSyncer.start();
+  }
+
+  public void stopSubscriptionMetaSync() {
+    subscriptionMetaSyncer.stop();
+  }
+
+  public boolean canSkipNextSync() {
+    return subscriptionInfo.canSkipNextSync();
   }
 
   /////////////////////////////// Operate ///////////////////////////////

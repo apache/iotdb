@@ -189,16 +189,20 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
-import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushMultiPipeMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushMultiTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
-import org.apache.iotdb.mpp.rpc.thrift.TPushTopicRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
@@ -1035,9 +1039,79 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TPushPipeMetaResp pushMultiPipeMeta(TPushMultiPipeMetaReq req) {
+    boolean hasException = false;
+    // If there is any exception, we use the size of exceptionMessages to record the fail index
+    List<TPushPipeMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
+    try {
+      if (req.isSetPipeNamesToDrop()) {
+        for (String pipeNameToDrop : req.getPipeNamesToDrop()) {
+          TPushPipeMetaRespExceptionMessage message =
+              PipeAgent.task().handleDropPipe(pipeNameToDrop);
+          exceptionMessages.add(message);
+          if (message != null) {
+            // If there is any exception, skip the remaining pipes
+            hasException = true;
+            break;
+          }
+        }
+      } else if (req.isSetPipeMetas()) {
+        for (ByteBuffer byteBuffer : req.getPipeMetas()) {
+          final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
+          TPushPipeMetaRespExceptionMessage message =
+              PipeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
+          exceptionMessages.add(message);
+          if (message != null) {
+            // If there is any exception, skip the remaining pipes
+            hasException = true;
+            break;
+          }
+        }
+      } else {
+        throw new Exception("Invalid TPushMultiPipeMetaReq");
+      }
+
+      return hasException
+          ? new TPushPipeMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
+              .setExceptionMessages(exceptionMessages)
+          : new TPushPipeMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    } catch (Exception e) {
+      LOGGER.warn("Error occurred when pushing multi pipe meta", e);
+      return new TPushPipeMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
+          .setExceptionMessages(exceptionMessages);
+    }
+  }
+
+  @Override
+  public TPushTopicMetaResp pushTopicMeta(TPushTopicMetaReq req) {
+    final List<TopicMeta> topicMetas = new ArrayList<>();
+    for (ByteBuffer byteBuffer : req.getTopicMetas()) {
+      topicMetas.add(TopicMeta.deserialize(byteBuffer));
+    }
+    try {
+      TPushTopicMetaRespExceptionMessage exceptionMessage =
+          SubscriptionAgent.topic().handleTopicMetaChanges(topicMetas);
+
+      return exceptionMessage == null
+          ? new TPushTopicMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+          : new TPushTopicMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()))
+              .setExceptionMessages(Collections.singletonList(exceptionMessage));
+    } catch (Exception e) {
+      LOGGER.warn("Error occurred when pushing topic meta", e);
+      return new TPushTopicMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()));
+    }
+  }
+
+  @Override
   public TPushTopicMetaResp pushSingleTopicMeta(TPushSingleTopicMetaReq req) {
     try {
-      final TPushTopicRespExceptionMessage exceptionMessage;
+      final TPushTopicMetaRespExceptionMessage exceptionMessage;
       if (req.isSetTopicNameToDrop()) {
         exceptionMessage = SubscriptionAgent.topic().handleDropTopic(req.getTopicNameToDrop());
       } else if (req.isSetTopicMeta()) {
@@ -1063,10 +1137,80 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TPushTopicMetaResp pushMultiTopicMeta(TPushMultiTopicMetaReq req) {
+    boolean hasException = false;
+    // If there is any exception, we use the size of exceptionMessages to record the fail index
+    List<TPushTopicMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
+    try {
+      if (req.isSetTopicNamesToDrop()) {
+        for (String topicNameToDrop : req.getTopicNamesToDrop()) {
+          TPushTopicMetaRespExceptionMessage message =
+              SubscriptionAgent.topic().handleDropTopic(topicNameToDrop);
+          exceptionMessages.add(message);
+          if (message != null) {
+            // If there is any exception, skip the remaining topics
+            hasException = true;
+            break;
+          }
+        }
+      } else if (req.isSetTopicMetas()) {
+        for (ByteBuffer byteBuffer : req.getTopicMetas()) {
+          final TopicMeta topicMeta = TopicMeta.deserialize(byteBuffer);
+          TPushTopicMetaRespExceptionMessage message =
+              SubscriptionAgent.topic().handleSingleTopicMetaChanges(topicMeta);
+          exceptionMessages.add(message);
+          if (message != null) {
+            // If there is any exception, skip the remaining pipes
+            hasException = true;
+            break;
+          }
+        }
+      } else {
+        throw new Exception("Invalid TPushMultiTopicMetaReq");
+      }
+
+      return hasException
+          ? new TPushTopicMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()))
+              .setExceptionMessages(exceptionMessages)
+          : new TPushTopicMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    } catch (Exception e) {
+      LOGGER.warn("Error occurred when pushing multi topic meta", e);
+      return new TPushTopicMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()))
+          .setExceptionMessages(exceptionMessages);
+    }
+  }
+
+  @Override
+  public TPushConsumerGroupMetaResp pushConsumerGroupMeta(TPushConsumerGroupMetaReq req) {
+    final List<ConsumerGroupMeta> consumerGroupMetas = new ArrayList<>();
+    for (ByteBuffer byteBuffer : req.getConsumerGroupMetas()) {
+      consumerGroupMetas.add(ConsumerGroupMeta.deserialize(byteBuffer));
+    }
+    try {
+      TPushConsumerGroupMetaRespExceptionMessage exceptionMessage =
+          SubscriptionAgent.consumer().handleConsumerGroupMetaChanges(consumerGroupMetas);
+
+      return exceptionMessage == null
+          ? new TPushConsumerGroupMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+          : new TPushConsumerGroupMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode()))
+              .setExceptionMessages(Collections.singletonList(exceptionMessage));
+    } catch (Exception e) {
+      LOGGER.warn("Error occurred when pushing consumer group meta", e);
+      return new TPushConsumerGroupMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode()));
+    }
+  }
+
+  @Override
   public TPushConsumerGroupMetaResp pushSingleConsumerGroupMeta(
       TPushSingleConsumerGroupMetaReq req) {
     try {
-      final TPushConsumerGroupRespExceptionMessage exceptionMessage;
+      final TPushConsumerGroupMetaRespExceptionMessage exceptionMessage;
       if (req.isSetConsumerGroupNameToDrop()) {
         exceptionMessage =
             SubscriptionAgent.consumer().handleDropConsumerGroup(req.getConsumerGroupNameToDrop());

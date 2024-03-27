@@ -78,10 +78,12 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.CreateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.DropSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.CreateTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.DropTopicProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.runtime.TopicMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.testonly.AddNeverFinishSubProcedureProcedure;
 import org.apache.iotdb.confignode.procedure.impl.testonly.CreateManyDatabasesProcedure;
@@ -994,6 +996,24 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus topicMetaSync() {
+    try {
+      final long procedureId = executor.submitProcedure(new TopicMetaSyncProcedure());
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return RpcUtils.SUCCESS_STATUS;
+      } else {
+        return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode())
+            .setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
   public TSStatus createConsumer(TCreateConsumerReq req) {
     try {
       final long procedureId = executor.submitProcedure(new CreateConsumerProcedure(req));
@@ -1026,6 +1046,24 @@ public class ProcedureManager {
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.DROP_CONSUMER_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus consumerGroupMetaSync() {
+    try {
+      final long procedureId = executor.submitProcedure(new ConsumerGroupMetaSyncProcedure());
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return RpcUtils.SUCCESS_STATUS;
+      } else {
+        return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
+            .setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
   }

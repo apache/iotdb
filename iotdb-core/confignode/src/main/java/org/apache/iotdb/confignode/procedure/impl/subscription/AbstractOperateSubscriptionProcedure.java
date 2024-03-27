@@ -20,7 +20,8 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription;
 
 import org.apache.iotdb.commons.exception.SubscriptionException;
-import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -29,12 +30,18 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.subscription.OperateSubscriptionState;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -47,19 +54,16 @@ public abstract class AbstractOperateSubscriptionProcedure
   private static final int RETRY_THRESHOLD = 1;
 
   protected AtomicReference<SubscriptionInfo> subscriptionInfo;
-  protected AtomicReference<PipeTaskInfo> pipeTaskInfo;
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     LOGGER.info("ProcedureId {} try to acquire subscription lock.", getProcId());
-    Pair<AtomicReference<SubscriptionInfo>, AtomicReference<PipeTaskInfo>> infoHolderPair =
+    subscriptionInfo =
         configNodeProcedureEnv
             .getConfigManager()
             .getSubscriptionManager()
             .getSubscriptionCoordinator()
             .tryLock();
-    subscriptionInfo = infoHolderPair.left;
-    pipeTaskInfo = infoHolderPair.right;
     if (subscriptionInfo == null) {
       LOGGER.warn("ProcedureId {} failed to acquire subscription lock.", getProcId());
     } else {
@@ -120,7 +124,6 @@ public abstract class AbstractOperateSubscriptionProcedure
   @Override
   protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     super.releaseLock(configNodeProcedureEnv);
-    unlockPipeProcedure();
 
     if (subscriptionInfo == null) {
       LOGGER.warn(
@@ -133,7 +136,6 @@ public abstract class AbstractOperateSubscriptionProcedure
           .getSubscriptionCoordinator()
           .unlock();
       subscriptionInfo = null;
-      pipeTaskInfo = null;
     }
   }
 
@@ -146,12 +148,7 @@ public abstract class AbstractOperateSubscriptionProcedure
       throws SubscriptionException;
 
   protected abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws SubscriptionException;
-
-  // TODO: temporary fix
-  protected void unlockPipeProcedure() {
-    // do nothing...
-  }
+      throws SubscriptionException, IOException;
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperateSubscriptionState state)
@@ -272,7 +269,61 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   protected abstract void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env);
 
-  protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env);
+  protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws IOException;
+
+  /**
+   * Pushing all the topicMeta's to all the dataNodes.
+   *
+   * @param env ConfigNodeProcedureEnv
+   * @return The responseMap after pushing topic meta
+   * @throws IOException Exception when Serializing to byte buffer
+   */
+  protected Map<Integer, TPushTopicMetaResp> pushTopicMetaToDataNodes(ConfigNodeProcedureEnv env)
+      throws IOException {
+    final List<ByteBuffer> topicMetaBinaryList = new ArrayList<>();
+    for (TopicMeta topicMeta : subscriptionInfo.get().getAllTopicMeta()) {
+      topicMetaBinaryList.add(topicMeta.serialize());
+    }
+
+    return env.pushAllTopicMetaToDataNodes(topicMetaBinaryList);
+  }
+
+  public static boolean pushTopicMetaHasException(Map<Integer, TPushTopicMetaResp> respMap) {
+    for (TPushTopicMetaResp resp : respMap.values()) {
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Pushing all the topicMeta's to all the dataNodes.
+   *
+   * @param env ConfigNodeProcedureEnv
+   * @return The responseMap after pushing topic meta
+   * @throws IOException Exception when Serializing to byte buffer
+   */
+  protected Map<Integer, TPushConsumerGroupMetaResp> pushConsumerGroupMetaToDataNodes(
+      ConfigNodeProcedureEnv env) throws IOException {
+    final List<ByteBuffer> consumerGroupMetaBinaryList = new ArrayList<>();
+    for (ConsumerGroupMeta consumerGroupMeta : subscriptionInfo.get().getAllConsumerGroupMeta()) {
+      consumerGroupMetaBinaryList.add(consumerGroupMeta.serialize());
+    }
+
+    return env.pushAllConsumerGroupMetaToDataNodes(consumerGroupMetaBinaryList);
+  }
+
+  public static boolean pushConsumerGroupMetaHasException(
+      Map<Integer, TPushConsumerGroupMetaResp> respMap) {
+    for (TPushConsumerGroupMetaResp resp : respMap.values()) {
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   @Override
   protected OperateSubscriptionState getState(int stateId) {

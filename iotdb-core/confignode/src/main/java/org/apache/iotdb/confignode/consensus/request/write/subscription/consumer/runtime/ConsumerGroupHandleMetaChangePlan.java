@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.pipe.runtime;
+package org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
@@ -30,30 +30,30 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class PipeHandleMetaChangePlan extends ConfigPhysicalPlan {
+public class ConsumerGroupHandleMetaChangePlan extends ConfigPhysicalPlan {
 
-  private List<PipeMeta> pipeMetaList = new ArrayList<>();
+  private List<ConsumerGroupMeta> consumerGroupMetaList = new ArrayList<>();
 
-  public PipeHandleMetaChangePlan() {
-    super(ConfigPhysicalPlanType.PipeHandleMetaChange);
+  public ConsumerGroupHandleMetaChangePlan() {
+    super(ConfigPhysicalPlanType.ConsumerGroupHandleMetaChange);
   }
 
-  public PipeHandleMetaChangePlan(List<PipeMeta> pipeMetaList) {
-    super(ConfigPhysicalPlanType.PipeHandleMetaChange);
-    this.pipeMetaList = pipeMetaList;
+  public ConsumerGroupHandleMetaChangePlan(List<ConsumerGroupMeta> consumerGroupMetaList) {
+    super(ConfigPhysicalPlanType.ConsumerGroupHandleMetaChange);
+    this.consumerGroupMetaList = consumerGroupMetaList;
   }
 
-  public List<PipeMeta> getPipeMetaList() {
-    return pipeMetaList;
+  public List<ConsumerGroupMeta> getConsumerGroupMetaList() {
+    return consumerGroupMetaList;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
-    stream.writeInt(pipeMetaList.size());
-    for (PipeMeta pipeMeta : pipeMetaList) {
-      pipeMeta.serialize(stream);
+    stream.writeInt(consumerGroupMetaList.size());
+    for (ConsumerGroupMeta consumerGroupMeta : consumerGroupMetaList) {
+      consumerGroupMeta.serialize(stream);
     }
   }
 
@@ -61,8 +61,8 @@ public class PipeHandleMetaChangePlan extends ConfigPhysicalPlan {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     int size = buffer.getInt();
     for (int i = 0; i < size; i++) {
-      PipeMeta pipeMeta = PipeMeta.deserialize(buffer);
-      pipeMetaList.add(pipeMeta);
+      ConsumerGroupMeta consumerGroupMeta = ConsumerGroupMeta.deserialize(buffer);
+      consumerGroupMetaList.add(consumerGroupMeta);
     }
   }
 
@@ -74,12 +74,12 @@ public class PipeHandleMetaChangePlan extends ConfigPhysicalPlan {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeHandleMetaChangePlan that = (PipeHandleMetaChangePlan) obj;
-    return Objects.equals(this.pipeMetaList, that.pipeMetaList);
+    ConsumerGroupHandleMetaChangePlan that = (ConsumerGroupHandleMetaChangePlan) obj;
+    return Objects.equals(this.consumerGroupMetaList, that.consumerGroupMetaList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeMetaList);
+    return Objects.hash(consumerGroupMetaList);
   }
 }

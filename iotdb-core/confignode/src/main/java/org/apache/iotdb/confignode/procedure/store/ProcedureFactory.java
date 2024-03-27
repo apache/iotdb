@@ -48,11 +48,13 @@ import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.CreateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.DropSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.CreateTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.DropTopicProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.runtime.TopicMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
@@ -223,6 +225,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case ALTER_TOPIC_PROCEDURE:
         procedure = new AlterTopicProcedure();
         break;
+      case TOPIC_META_SYNC_PROCEDURE:
+        procedure = new TopicMetaSyncProcedure();
+        break;
       case CREATE_SUBSCRIPTION_PROCEDURE:
         procedure = new CreateSubscriptionProcedure();
         break;
@@ -237,6 +242,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case ALTER_CONSUMER_GROUP_PROCEDURE:
         procedure = new AlterConsumerGroupProcedure();
+        break;
+      case CONSUMER_GROUP_META_SYNC_PROCEDURE:
+        procedure = new ConsumerGroupMetaSyncProcedure();
         break;
       case CREATE_MANY_DATABASES_PROCEDURE:
         procedure = new CreateManyDatabasesProcedure();
@@ -320,6 +328,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_TOPIC_PROCEDURE;
     } else if (procedure instanceof AlterTopicProcedure) {
       return ProcedureType.ALTER_TOPIC_PROCEDURE;
+    } else if (procedure instanceof TopicMetaSyncProcedure) {
+      return ProcedureType.TOPIC_META_SYNC_PROCEDURE;
     } else if (procedure instanceof CreateSubscriptionProcedure) {
       return ProcedureType.CREATE_SUBSCRIPTION_PROCEDURE;
     } else if (procedure instanceof DropSubscriptionProcedure) {
@@ -330,6 +340,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_CONSUMER_PROCEDURE;
     } else if (procedure instanceof AlterConsumerGroupProcedure) {
       return ProcedureType.ALTER_CONSUMER_GROUP_PROCEDURE;
+    } else if (procedure instanceof ConsumerGroupMetaSyncProcedure) {
+      return ProcedureType.CONSUMER_GROUP_META_SYNC_PROCEDURE;
     } else if (procedure instanceof DeleteLogicalViewProcedure) {
       return ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE;
     } else if (procedure instanceof AlterLogicalViewProcedure) {

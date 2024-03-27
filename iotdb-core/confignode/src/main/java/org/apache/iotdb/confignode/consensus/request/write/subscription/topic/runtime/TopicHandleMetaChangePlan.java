@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.pipe.runtime;
+package org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
@@ -30,30 +30,30 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class PipeHandleMetaChangePlan extends ConfigPhysicalPlan {
+public class TopicHandleMetaChangePlan extends ConfigPhysicalPlan {
 
-  private List<PipeMeta> pipeMetaList = new ArrayList<>();
+  private List<TopicMeta> topicMetaList = new ArrayList<>();
 
-  public PipeHandleMetaChangePlan() {
-    super(ConfigPhysicalPlanType.PipeHandleMetaChange);
+  public TopicHandleMetaChangePlan() {
+    super(ConfigPhysicalPlanType.TopicHandleMetaChange);
   }
 
-  public PipeHandleMetaChangePlan(List<PipeMeta> pipeMetaList) {
-    super(ConfigPhysicalPlanType.PipeHandleMetaChange);
-    this.pipeMetaList = pipeMetaList;
+  public TopicHandleMetaChangePlan(List<TopicMeta> topicMetaList) {
+    super(ConfigPhysicalPlanType.TopicHandleMetaChange);
+    this.topicMetaList = topicMetaList;
   }
 
-  public List<PipeMeta> getPipeMetaList() {
-    return pipeMetaList;
+  public List<TopicMeta> getTopicMetaList() {
+    return topicMetaList;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
-    stream.writeInt(pipeMetaList.size());
-    for (PipeMeta pipeMeta : pipeMetaList) {
-      pipeMeta.serialize(stream);
+    stream.writeInt(topicMetaList.size());
+    for (TopicMeta topicMeta : topicMetaList) {
+      topicMeta.serialize(stream);
     }
   }
 
@@ -61,8 +61,8 @@ public class PipeHandleMetaChangePlan extends ConfigPhysicalPlan {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     int size = buffer.getInt();
     for (int i = 0; i < size; i++) {
-      PipeMeta pipeMeta = PipeMeta.deserialize(buffer);
-      pipeMetaList.add(pipeMeta);
+      TopicMeta topicMeta = TopicMeta.deserialize(buffer);
+      topicMetaList.add(topicMeta);
     }
   }
 
@@ -74,12 +74,12 @@ public class PipeHandleMetaChangePlan extends ConfigPhysicalPlan {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeHandleMetaChangePlan that = (PipeHandleMetaChangePlan) obj;
-    return Objects.equals(this.pipeMetaList, that.pipeMetaList);
+    TopicHandleMetaChangePlan that = (TopicHandleMetaChangePlan) obj;
+    return Objects.equals(this.topicMetaList, that.topicMetaList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeMetaList);
+    return Objects.hash(topicMetaList);
   }
 }

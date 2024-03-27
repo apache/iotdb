@@ -17,20 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
+package org.apache.iotdb.confignode.procedure.impl.subscription.topic.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
-import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
+import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
-import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -43,16 +43,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
+public class TopicMetaSyncProcedure extends AbstractOperateSubscriptionProcedure {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeMetaSyncProcedure.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TopicMetaSyncProcedure.class);
 
   private static final long MIN_EXECUTION_INTERVAL_MS =
       PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 / 2;
   // No need to serialize this field
   private static final AtomicLong LAST_EXECUTION_TIME = new AtomicLong(0);
 
-  public PipeMetaSyncProcedure() {
+  public TopicMetaSyncProcedure() {
     super();
   }
 
@@ -61,10 +61,10 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
     // Skip the procedure if the last execution time is within the minimum execution interval.
     // Often used to prevent the procedure from being executed too frequently when system reboot.
     if (System.currentTimeMillis() - LAST_EXECUTION_TIME.get() < MIN_EXECUTION_INTERVAL_MS) {
-      // Skip by setting the pipeTaskInfo to null
-      pipeTaskInfo = null;
+      // Skip by setting the subscriptionInfo to null
+      subscriptionInfo = null;
       LOGGER.info(
-          "PipeMetaSyncProcedure: acquireLock, skip the procedure due to the last execution time {}",
+          "TopicMetaSyncProcedure: acquireLock, skip the procedure due to the last execution time {}",
           LAST_EXECUTION_TIME.get());
       return ProcedureLockState.LOCK_ACQUIRED;
     }
@@ -73,103 +73,81 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected PipeTaskOperation getOperation() {
-    return PipeTaskOperation.SYNC_PIPE_META;
+  protected SubscriptionOperation getOperation() {
+    return SubscriptionOperation.SYNC_TOPIC_META;
   }
 
   @Override
-  public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromValidateTask");
+  public void executeFromValidate(ConfigNodeProcedureEnv env) {
+    LOGGER.info("TopicMetaSyncProcedure: executeFromValidate");
 
     LAST_EXECUTION_TIME.set(System.currentTimeMillis());
-    return false;
   }
 
   @Override
-  public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromCalculateInfoForTask");
+  public void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
+    LOGGER.info("TopicMetaSyncProcedure: executeFromOperateOnConfigNodes");
 
-    // Do nothing
-  }
-
-  @Override
-  public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromWriteConfigNodeConsensus");
-
-    final List<PipeMeta> pipeMetaList = new ArrayList<>();
-    for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
-      pipeMetaList.add(pipeMeta);
-    }
+    final List<TopicMeta> topicMetaList = new ArrayList<>();
+    subscriptionInfo.get().getAllTopicMeta().forEach(topicMetaList::add);
 
     TSStatus response;
     try {
       response =
           env.getConfigManager()
               .getConsensusManager()
-              .write(new PipeHandleMetaChangePlan(pipeMetaList));
+              .write(new TopicHandleMetaChangePlan(topicMetaList));
     } catch (ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(response.getMessage());
+      throw new SubscriptionException(response.getMessage());
     }
   }
 
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
+    LOGGER.info("TopicMetaSyncProcedure: executeFromOperateOnDataNodes");
 
-    Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodes(env);
-    if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap)) {
-      throw new PipeException(
-          String.format(
-              "Failed to push pipe meta to dataNodes, details: %s",
-              parsePushPipeMetaExceptionForPipe(null, respMap)));
+    Map<Integer, TPushTopicMetaResp> respMap = pushTopicMetaToDataNodes(env);
+    if (pushTopicMetaHasException(respMap)) {
+      throw new SubscriptionException(
+          String.format("Failed to push topic meta to dataNodes, details: %s", respMap));
     }
   }
 
   @Override
-  public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromValidateTask");
+  public void rollbackFromValidate(ConfigNodeProcedureEnv env) {
+    LOGGER.info("TopicMetaSyncProcedure: rollbackFromValidate");
 
     // Do nothing
   }
 
   @Override
-  public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromCalculateInfoForTask");
-
-    // Do nothing
-  }
-
-  @Override
-  public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromWriteConfigNodeConsensus");
+  public void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
+    LOGGER.info("TopicMetaSyncProcedure: rollbackFromOperateOnConfigNodes");
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromOperateOnDataNodes");
+    LOGGER.info("TopicMetaSyncProcedure: rollbackFromOperateOnDataNodes");
 
     // Do nothing
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.PIPE_META_SYNC_PROCEDURE.getTypeCode());
+    stream.writeShort(ProcedureType.TOPIC_META_SYNC_PROCEDURE.getTypeCode());
     super.serialize(stream);
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    return o instanceof PipeMetaSyncProcedure;
+    return o instanceof TopicMetaSyncProcedure;
   }
 
   @Override

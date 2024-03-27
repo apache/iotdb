@@ -200,6 +200,7 @@ public enum ConfigPhysicalPlanType {
   DropPipeV2((short) 1502),
   ShowPipeV2((short) 1503),
   AlterPipeV2((short) 1504),
+  OperateMultiplePipesV2((short) 1505),
 
   /** Pipe Runtime. */
   PipeHandleLeaderChange((short) 1600),
@@ -217,8 +218,11 @@ public enum ConfigPhysicalPlanType {
   DropTopic((short) 1801),
   ShowTopic((short) 1802),
   AlterTopic((short) 1803),
+  AlterMultipleTopics((short) 1804),
+  TopicHandleMetaChange((short) 1805),
 
   AlterConsumerGroup((short) 1900),
+  ConsumerGroupHandleMetaChange((short) 1901),
 
   ShowSubscription((short) 2000),
 
