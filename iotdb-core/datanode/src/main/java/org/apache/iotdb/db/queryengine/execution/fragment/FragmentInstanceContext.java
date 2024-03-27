@@ -372,6 +372,7 @@ public class FragmentInstanceContext extends QueryContext {
         closedFilePaths = new HashSet<>();
         unClosedFilePaths = new HashSet<>();
         addUsedFilesForQuery(sharedQueryDataSource);
+        sharedQueryDataSource.setSingleDevice(selectedDeviceIdSet.size() == 1);
       }
     } finally {
       setInitQueryDataSourceCost(System.nanoTime() - startTime);

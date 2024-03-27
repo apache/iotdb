@@ -261,7 +261,7 @@ public class TimeSeriesMetadataCache {
 
     private static final long INSTANCE_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(TimeSeriesMetadataCacheKey.class)
-            + 2 * RamUsageEstimator.shallowSizeOfInstance(String.class);
+            + RamUsageEstimator.shallowSizeOfInstance(String.class);
 
     private final int regionId;
     private final long timePartitionId;
@@ -296,9 +296,7 @@ public class TimeSeriesMetadataCache {
     }
 
     public long getRetainedSizeInBytes() {
-      return INSTANCE_SIZE
-          + sizeOfCharArray(((PlainDeviceID) device).toStringID().length())
-          + sizeOfCharArray(measurement.length());
+      return INSTANCE_SIZE + device.ramBytesUsed() + sizeOfCharArray(measurement.length());
     }
 
     @Override

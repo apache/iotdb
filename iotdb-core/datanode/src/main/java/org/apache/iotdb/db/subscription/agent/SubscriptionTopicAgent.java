@@ -21,7 +21,7 @@ package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
-import org.apache.iotdb.mpp.rpc.thrift.TPushTopicRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +58,7 @@ public class SubscriptionTopicAgent {
 
   ////////////////////////// Topic Management Entry //////////////////////////
 
-  public TPushTopicRespExceptionMessage handleSingleTopicMetaChanges(
+  public TPushTopicMetaRespExceptionMessage handleSingleTopicMetaChanges(
       TopicMeta topicMetaFromCoordinator) {
     acquireWriteLock();
     try {
@@ -71,7 +71,7 @@ public class SubscriptionTopicAgent {
               "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
               topicName, e.getMessage());
       LOGGER.warn(exceptionMessage);
-      return new TPushTopicRespExceptionMessage(
+      return new TPushTopicMetaRespExceptionMessage(
           topicName, exceptionMessage, System.currentTimeMillis());
     } finally {
       releaseWriteLock();
@@ -84,7 +84,7 @@ public class SubscriptionTopicAgent {
     topicMetaKeeper.addTopicMeta(topicName, metaFromCoordinator);
   }
 
-  public TPushTopicRespExceptionMessage handleTopicMetaChanges(
+  public TPushTopicMetaRespExceptionMessage handleTopicMetaChanges(
       List<TopicMeta> topicMetasFromCoordinator) {
     acquireWriteLock();
     try {
@@ -98,7 +98,7 @@ public class SubscriptionTopicAgent {
                   "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
                   topicName, e.getMessage());
           LOGGER.warn(exceptionMessage);
-          return new TPushTopicRespExceptionMessage(
+          return new TPushTopicMetaRespExceptionMessage(
               topicName, exceptionMessage, System.currentTimeMillis());
         }
       }
@@ -108,7 +108,7 @@ public class SubscriptionTopicAgent {
     }
   }
 
-  public TPushTopicRespExceptionMessage handleDropTopic(String topicName) {
+  public TPushTopicMetaRespExceptionMessage handleDropTopic(String topicName) {
     acquireWriteLock();
     try {
       handleDropTopicInternal(topicName);
@@ -118,7 +118,7 @@ public class SubscriptionTopicAgent {
           String.format(
               "Subscription: Failed to drop topic %s, because %s", topicName, e.getMessage());
       LOGGER.warn(exceptionMessage);
-      return new TPushTopicRespExceptionMessage(
+      return new TPushTopicMetaRespExceptionMessage(
           topicName, exceptionMessage, System.currentTimeMillis());
     } finally {
       releaseWriteLock();

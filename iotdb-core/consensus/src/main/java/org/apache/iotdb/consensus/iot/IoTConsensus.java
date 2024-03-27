@@ -392,6 +392,30 @@ public class IoTConsensus implements IConsensus {
     return new ArrayList<>(stateMachineMap.keySet());
   }
 
+  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
+    IoTConsensusServerImpl impl =
+        Optional.ofNullable(stateMachineMap.get(groupId))
+            .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
+    if (impl.isReadOnly()) {
+      throw new ConsensusException("system is in read-only status now");
+    } else if (!impl.isActive()) {
+      throw new ConsensusException(
+          "peer is inactive and not ready to receive reset configuration request.");
+    } else {
+      for (Peer peer : impl.getConfiguration()) {
+        if (!peers.contains(peer)) {
+          try {
+            removeRemotePeer(groupId, peer);
+          } catch (ConsensusException e) {
+            logger.error("Failed to remove peer {} from group {}", peer, groupId, e);
+            throw e;
+          }
+        }
+      }
+      impl.resetConfiguration(peers);
+    }
+  }
+
   public IoTConsensusServerImpl getImpl(ConsensusGroupId groupId) {
     return stateMachineMap.get(groupId);
   }

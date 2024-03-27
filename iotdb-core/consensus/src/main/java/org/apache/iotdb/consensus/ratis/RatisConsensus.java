@@ -537,6 +537,23 @@ class RatisConsensus implements IConsensus {
     sendReconfiguration(RaftGroup.valueOf(raftGroupId, newConfig));
   }
 
+  @Override
+  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
+    final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    final RaftGroup group = getGroupInfo(raftGroupId);
+
+    // pre-conditions: group exists and myself in this group
+    if (group == null || !group.getPeers().contains(myself)) {
+      throw new ConsensusGroupNotExistException(groupId);
+    }
+
+    final List<RaftPeer> newGroupPeers =
+        Utils.fromPeersAndPriorityToRaftPeers(peers, DEFAULT_PRIORITY);
+    final RaftGroup newGroup = RaftGroup.valueOf(raftGroupId, newGroupPeers);
+
+    sendReconfiguration(newGroup);
+  }
+
   /** NOTICE: transferLeader *does not guarantee* the leader be transferred to newLeader. */
   @Override
   public void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException {

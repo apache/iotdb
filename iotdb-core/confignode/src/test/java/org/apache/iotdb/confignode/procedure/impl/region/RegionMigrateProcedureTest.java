@@ -52,7 +52,21 @@ public class RegionMigrateProcedureTest {
                 new TEndPoint("127.0.0.1", 6),
                 new TEndPoint("127.0.0.1", 7),
                 new TEndPoint("127.0.0.1", 8),
-                new TEndPoint("127.0.0.1", 9)));
+                new TEndPoint("127.0.0.1", 9)),
+            new TDataNodeLocation(
+                11,
+                new TEndPoint("127.0.0.1", 10),
+                new TEndPoint("127.0.0.1", 11),
+                new TEndPoint("127.0.0.1", 12),
+                new TEndPoint("127.0.0.1", 13),
+                new TEndPoint("127.0.0.1", 14)),
+            new TDataNodeLocation(
+                15,
+                new TEndPoint("127.0.0.1", 15),
+                new TEndPoint("127.0.0.1", 16),
+                new TEndPoint("127.0.0.1", 17),
+                new TEndPoint("127.0.0.1", 18),
+                new TEndPoint("127.0.0.1", 19)));
 
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {

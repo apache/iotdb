@@ -19,22 +19,28 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
-import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
-import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
+import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -47,10 +53,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
-// TODO: check if lock is properly acquired
 // TODO: check if it also needs meta sync to keep CN and DN in sync
-public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProcedure {
+public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndPipeProcedure {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateSubscriptionProcedure.class);
 
@@ -58,7 +64,13 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
 
   private AlterConsumerGroupProcedure alterConsumerGroupProcedure;
   private List<AlterTopicProcedure> alterTopicProcedures = new ArrayList<>();
-  private List<AbstractOperatePipeProcedureV2> createPipeProcedures = new ArrayList<>();
+  private List<CreatePipeProcedureV2> createPipeProcedures = new ArrayList<>();
+
+  // Record failed index of procedures to rollback properly.
+  // We only record fail index when executing on config nodes, because when executing on data nodes
+  // fails, we just push all meta to data nodes.
+  private int alterTopicProcedureFailIndexOnCN = -1;
+  private int createPipeProcedureFailIndexOnCN = -1;
 
   public CreateSubscriptionProcedure() {
     super();
@@ -74,13 +86,6 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
   }
 
   @Override
-  protected void unlockPipeProcedure() {
-    for (AbstractOperatePipeProcedureV2 createPipeProcedure : createPipeProcedures) {
-      createPipeProcedure.unsetPipeTaskInfo();
-    }
-  }
-
-  @Override
   protected void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
     LOGGER.info("CreateSubscriptionProcedure: executeFromValidate");
 
@@ -88,16 +93,15 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
 
     // alterConsumerGroupProcedure
     final ConsumerGroupMeta updatedConsumerGroupMeta =
-        // TODO: fixme deepCopy() is not locked by the subscription procedure lock
-        subscriptionInfo.get().getConsumerGroupMeta(subscribeReq.getConsumerGroupId()).deepCopy();
+        subscriptionInfo.get().deepCopyConsumerGroupMeta(subscribeReq.getConsumerGroupId());
     updatedConsumerGroupMeta.addSubscription(
         subscribeReq.getConsumerId(), subscribeReq.getTopicNames());
-    alterConsumerGroupProcedure = new AlterConsumerGroupProcedure(updatedConsumerGroupMeta);
+    alterConsumerGroupProcedure =
+        new AlterConsumerGroupProcedure(updatedConsumerGroupMeta, subscriptionInfo);
 
     // alterTopicProcedures & createPipeProcedures
     for (String topic : subscribeReq.getTopicNames()) {
-      // TODO: fixme deepCopy() is not locked by the subscription procedure lock
-      TopicMeta updatedTopicMeta = subscriptionInfo.get().getTopicMeta(topic).deepCopy();
+      TopicMeta updatedTopicMeta = subscriptionInfo.get().deepCopyTopicMeta(topic);
 
       if (updatedTopicMeta.addSubscribedConsumerGroup(subscribeReq.getConsumerGroupId())) {
         createPipeProcedures.add(
@@ -110,21 +114,25 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
                     .setProcessorAttributes(updatedTopicMeta.generateProcessorAttributes())
                     .setConnectorAttributes(
                         updatedTopicMeta.generateConnectorAttributes(
-                            subscribeReq.getConsumerGroupId()))));
+                            subscribeReq.getConsumerGroupId())),
+                pipeTaskInfo));
 
-        alterTopicProcedures.add(new AlterTopicProcedure(updatedTopicMeta));
+        alterTopicProcedures.add(new AlterTopicProcedure(updatedTopicMeta, subscriptionInfo));
       }
     }
 
-    for (int i = 0, topicCount = alterTopicProcedures.size(); i < topicCount; ++i) {
-      // TODO: temporary fix
-      createPipeProcedures.get(i).setPipeTaskInfo(pipeTaskInfo);
-      createPipeProcedures.get(i).executeFromValidateTask(env);
-      createPipeProcedures.get(i).executeFromCalculateInfoForTask(env);
+    alterConsumerGroupProcedure.executeFromValidate(env);
+
+    for (AlterTopicProcedure alterTopicProcedure : alterTopicProcedures) {
+      alterTopicProcedure.executeFromValidate(env);
+    }
+
+    for (CreatePipeProcedureV2 createPipeProcedure : createPipeProcedures) {
+      createPipeProcedure.executeFromValidateTask(env);
+      createPipeProcedure.executeFromCalculateInfoForTask(env);
     }
   }
 
-  // TODO: record execution result for each procedure and only rollback the executed ones
   // TODO: check periodically if the subscription is still valid but no working pipe?
   @Override
   protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
@@ -133,38 +141,82 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
 
     alterConsumerGroupProcedure.executeFromOperateOnConfigNodes(env);
 
-    for (AlterTopicProcedure alterTopicProcedure : alterTopicProcedures) {
-      alterTopicProcedure.executeFromOperateOnConfigNodes(env);
+    TSStatus response;
+
+    List<AlterTopicPlan> alterTopicPlans =
+        alterTopicProcedures.stream()
+            .map(AlterTopicProcedure::getUpdatedTopicMeta)
+            .map(AlterTopicPlan::new)
+            .collect(Collectors.toList());
+    try {
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new AlterMultipleTopicsPlan(alterTopicPlans));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      response.setMessage(e.getMessage());
+    }
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && response.getSubStatusSize() > 0) {
+      // Record the failed index for rollback
+      alterTopicProcedureFailIndexOnCN = response.getSubStatusSize() - 1;
     }
 
-    for (AbstractOperatePipeProcedureV2 createPipeProcedure : createPipeProcedures) {
-      createPipeProcedure.executeFromWriteConfigNodeConsensus(env);
+    List<ConfigPhysicalPlan> createPipePlans =
+        createPipeProcedures.stream()
+            .map(CreatePipeProcedureV2::constructPlan)
+            .collect(Collectors.toList());
+    try {
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new OperateMultiplePipesPlanV2(createPipePlans));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      response.setMessage(e.getMessage());
+    }
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && response.getSubStatusSize() > 0) {
+      // Record the failed index for rollback
+      createPipeProcedureFailIndexOnCN = response.getSubStatusSize() - 1;
     }
   }
 
-  // TODO: record execution result for each procedure and only rollback the executed ones
   @Override
   protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws SubscriptionException {
+      throws SubscriptionException, IOException {
     LOGGER.info("CreateSubscriptionProcedure: executeFromOperateOnDataNodes");
 
     alterConsumerGroupProcedure.executeFromOperateOnDataNodes(env);
 
+    // push topic meta to data nodes
+    List<ByteBuffer> topicMetaBinaryList = new ArrayList<>();
     for (AlterTopicProcedure alterTopicProcedure : alterTopicProcedures) {
-      alterTopicProcedure.executeFromOperateOnDataNodes(env);
+      topicMetaBinaryList.add(alterTopicProcedure.getUpdatedTopicMeta().serialize());
+    }
+    if (pushTopicMetaHasException(env.pushMultiTopicMetaToDataNodes(topicMetaBinaryList))) {
+      // If not all topic meta are pushed successfully, the meta can be pushed during meta sync.
+      LOGGER.warn(
+          "Failed to alter topics when creating subscription, metadata will be synchronized later.");
     }
 
-    try {
-      for (AbstractOperatePipeProcedureV2 createPipeProcedure : createPipeProcedures) {
-        createPipeProcedure.executeFromOperateOnDataNodes(env);
-      }
-    } catch (Exception e) {
+    // push pipe meta to data nodes
+    List<String> pipeNames =
+        createPipeProcedures.stream()
+            .map(CreatePipeProcedureV2::getPipeName)
+            .collect(Collectors.toList());
+    String exceptionMessage =
+        AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
+            null, pushMultiPipeMetaToDataNodes(pipeNames, env));
+    if (!exceptionMessage.isEmpty()) {
+      // If not all pipe meta are pushed successfully, the meta can be pushed during meta sync.
       LOGGER.warn(
-          "Failed to create or start pipe task for subscription on datanode, because {}",
-          e.getMessage());
-      throw new SubscriptionException(
-          "Failed to create or start pipe task for subscription on datanode, because "
-              + e.getMessage());
+          "Failed to create pipes {} when creating subscription, details: {}, metadata will be synchronized later.",
+          pipeNames,
+          exceptionMessage);
     }
   }
 
@@ -179,36 +231,74 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
 
     alterConsumerGroupProcedure.rollbackFromOperateOnConfigNodes(env);
 
-    for (AlterTopicProcedure alterTopicProcedure : alterTopicProcedures) {
-      alterTopicProcedure.rollbackFromOperateOnConfigNodes(env);
+    TSStatus response;
+
+    // rollback alterTopicProcedures
+    List<AlterTopicPlan> alterTopicRollbackPlans = new ArrayList<>();
+    for (int i = 0;
+        i <= Math.min(alterTopicProcedureFailIndexOnCN, alterTopicProcedures.size());
+        i++) {
+      alterTopicRollbackPlans.add(
+          new AlterTopicPlan(alterTopicProcedures.get(i).getExistedTopicMeta()));
+    }
+    try {
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new AlterMultipleTopicsPlan(alterTopicRollbackPlans));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      response.setMessage(e.getMessage());
+    }
+    // if failed to rollback, throw exception
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new SubscriptionException(response.getMessage());
     }
 
-    for (AbstractOperatePipeProcedureV2 createPipeProcedure : createPipeProcedures) {
-      createPipeProcedure.rollbackFromWriteConfigNodeConsensus(env);
+    // rollback createPipeProcedures
+    List<ConfigPhysicalPlan> dropPipePlans = new ArrayList<>();
+    for (int i = 0;
+        i <= Math.min(createPipeProcedureFailIndexOnCN, createPipeProcedures.size());
+        i++) {
+      dropPipePlans.add(new DropPipePlanV2(createPipeProcedures.get(i).getPipeName()));
+    }
+    try {
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new OperateMultiplePipesPlanV2(dropPipePlans));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      response.setMessage(e.getMessage());
+    }
+    // if failed to rollback, throw exception
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new SubscriptionException(response.getMessage());
     }
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info("CreateSubscriptionProcedure: rollbackFromOperateOnDataNodes");
 
     alterConsumerGroupProcedure.rollbackFromOperateOnDataNodes(env);
 
-    for (AlterTopicProcedure alterTopicProcedure : alterTopicProcedures) {
-      alterTopicProcedure.rollbackFromOperateOnDataNodes(env);
+    // Push all topic metas to datanode, may be time-consuming
+    if (pushTopicMetaHasException(pushTopicMetaToDataNodes(env))) {
+      LOGGER.warn(
+          "Failed to rollback alter topics when creating subscription, metadata will be synchronized later.");
     }
 
-    try {
-      for (AbstractOperatePipeProcedureV2 createPipeProcedure : createPipeProcedures) {
-        createPipeProcedure.rollbackFromOperateOnDataNodes(env);
-      }
-    } catch (Exception e) {
+    // Push all pipe metas to datanode, may be time-consuming
+    String exceptionMessage =
+        AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
+            null, AbstractOperatePipeProcedureV2.pushPipeMetaToDataNodes(env, pipeTaskInfo));
+    if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
-          "Failed to rollback create or start pipe task for subscription on datanode, because {}",
-          e.getMessage());
-      throw new SubscriptionException(
-          "Failed to rollback create or start pipe task for subscription on datanode, because "
-              + e.getMessage());
+          "Failed to rollback create pipes when creating subscription, details: {}, metadata will be synchronized later.",
+          exceptionMessage);
     }
   }
 
@@ -253,7 +343,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
     if (createPipeProcedures != null) {
       ReadWriteIOUtils.write(true, stream);
       ReadWriteIOUtils.write(createPipeProcedures.size(), stream);
-      for (AbstractOperatePipeProcedureV2 pipeProcedure : createPipeProcedures) {
+      for (CreatePipeProcedureV2 pipeProcedure : createPipeProcedures) {
         pipeProcedure.serialize(stream);
       }
     } else {
@@ -307,11 +397,6 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
           CreatePipeProcedureV2 createPipeProcedureV2 = new CreatePipeProcedureV2();
           createPipeProcedureV2.deserialize(byteBuffer);
           createPipeProcedures.add(createPipeProcedureV2);
-          // TODO: check if we actually need it?
-        } else if (typeCode == ProcedureType.START_PIPE_PROCEDURE_V2.getTypeCode()) {
-          StartPipeProcedureV2 startPipeProcedureV2 = new StartPipeProcedureV2();
-          startPipeProcedureV2.deserialize(byteBuffer);
-          createPipeProcedures.add(startPipeProcedureV2);
         }
       }
     }
@@ -369,12 +454,12 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionProc
   }
 
   @TestOnly
-  public void setCreatePipeProcedures(List<AbstractOperatePipeProcedureV2> createPipeProcedures) {
+  public void setCreatePipeProcedures(List<CreatePipeProcedureV2> createPipeProcedures) {
     this.createPipeProcedures = createPipeProcedures;
   }
 
   @TestOnly
-  public List<AbstractOperatePipeProcedureV2> getCreatePipeProcedures() {
+  public List<CreatePipeProcedureV2> getCreatePipeProcedures() {
     return this.createPipeProcedures;
   }
 }

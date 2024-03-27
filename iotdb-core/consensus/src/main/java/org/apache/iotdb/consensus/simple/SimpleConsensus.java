@@ -243,6 +243,11 @@ class SimpleConsensus implements IConsensus {
     return new ArrayList<>(stateMachineMap.keySet());
   }
 
+  @Override
+  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
+    throw new ConsensusException("SimpleConsensus does not support reset peer list");
+  }
+
   private String buildPeerDir(ConsensusGroupId groupId) {
     return storageDir + File.separator + groupId.getType().getValue() + "_" + groupId.getId();
   }

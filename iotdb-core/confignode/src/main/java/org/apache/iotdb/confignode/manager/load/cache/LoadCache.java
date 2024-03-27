@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
@@ -51,6 +52,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -74,11 +76,14 @@ public class LoadCache {
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
   // Map<RegionGroupId, RegionRouteCache>
   private final Map<TConsensusGroupId, RegionRouteCache> regionRouteCacheMap;
+  // Map<DataNodeId, confirmedConfigNodes>
+  private final Map<Integer, Set<TEndPoint>> confirmedConfigNodeMap;
 
   public LoadCache() {
     this.nodeCacheMap = new ConcurrentHashMap<>();
     this.regionGroupCacheMap = new ConcurrentHashMap<>();
     this.regionRouteCacheMap = new ConcurrentHashMap<>();
+    this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
   }
 
   public void initHeartbeatCache(IManager configManager) {
@@ -603,5 +608,14 @@ public class LoadCache {
 
   public boolean existUnreadyRegionGroup() {
     return regionRouteCacheMap.values().stream().anyMatch(RegionRouteCache::isRegionGroupUnready);
+  }
+
+  public void updateConfirmedConfigNodeEndPoints(
+      int dataNodeId, Set<TEndPoint> configNodeEndPoints) {
+    confirmedConfigNodeMap.put(dataNodeId, configNodeEndPoints);
+  }
+
+  public Set<TEndPoint> getConfirmedConfigNodeEndPoints(int dataNodeId) {
+    return confirmedConfigNodeMap.get(dataNodeId);
   }
 }
