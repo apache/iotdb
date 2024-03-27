@@ -26,6 +26,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -67,7 +68,8 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
             "[DEBUG][processor][DR {}][Pipe {}] extract PipeInsertNodeTabletInsertionEvent timestamps {}",
             regionId,
             ((PipeInsertNodeTabletInsertionEvent) event).getPipeName(),
-            ((PipeInsertNodeTabletInsertionEvent) event).getInsertNode());
+            SubscriptionPrefetchingQueue.getInsertNodeTimestamps(
+                ((PipeInsertNodeTabletInsertionEvent) event).getInsertNode()));
         parseAndCollectEvent((PipeInsertNodeTabletInsertionEvent) event);
       } else if (event instanceof PipeRawTabletInsertionEvent) {
         // REMOVE ME: for debug

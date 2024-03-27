@@ -226,9 +226,9 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   public void test3C3CGSubscribeNaiveTopicRealTime() throws Exception {
     createNaiveTopic();
     List<SubscriptionPullConsumer> consumers = new ArrayList<>();
-    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
-    consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1"));
-    consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic3"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic3"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic3"));
     createNaivePipe();
     prepareNaiveData();
     pollMessagesAndCheck(
@@ -309,11 +309,11 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       connectorAttributes.put("connector.ip", receiverEnv.getIP());
       connectorAttributes.put("connector.port", receiverEnv.getPort());
 
-      extractorAttributes.put("end-time", String.valueOf(currentTime));
+      extractorAttributes.put("end-time", String.valueOf(currentTime - 1));
 
       TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("sync_topic2", connectorAttributes)
+              new TCreatePipeReq("sync_topic1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -332,11 +332,11 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       connectorAttributes.put("connector.ip", receiverEnv.getIP());
       connectorAttributes.put("connector.port", receiverEnv.getPort());
 
-      extractorAttributes.put("start-time", String.valueOf(currentTime - 1));
+      extractorAttributes.put("start-time", String.valueOf(currentTime));
 
       TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("sync_topic1", connectorAttributes)
+              new TCreatePipeReq("sync_topic2", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
