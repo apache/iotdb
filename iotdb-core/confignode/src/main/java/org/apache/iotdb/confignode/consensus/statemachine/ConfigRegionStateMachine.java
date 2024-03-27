@@ -206,7 +206,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         return true;
       } catch (IOException e) {
         LOGGER.error(
-            "Config Region Listening Queue Listen to snapshot failed, the historical data may not be transferred.");
+            "Config Region Listening Queue Listen to snapshot failed, the historical data may not be transferred.",
+            e);
       }
     }
     return false;

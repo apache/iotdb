@@ -156,10 +156,10 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     } else {
       if (templateMap != null
           && !skipTemplateChildren
-          && !templateMap.isEmpty() // Rhis task will cover some timeseries represented by template
+          && !templateMap.isEmpty() // This task will cover some timeseries represented by template
           && (parent.isDevice()
               && parent.getAsDeviceMNode().getSchemaTemplateId()
-                  != NON_TEMPLATE) // Rhe device is using template
+                  != NON_TEMPLATE) // The device is using template
           && !(skipPreDeletedSchema
               && parent
                   .getAsDeviceMNode()
