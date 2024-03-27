@@ -106,13 +106,6 @@ enum TRegionMaintainTaskStatus {
   FAIL,
 }
 
-struct TRegionMigrateResult {
-  1: optional TConsensusGroupId regionId
-  2: optional TSStatus migrateResult
-  3: optional map<TDataNodeLocation, TRegionMigrateFailedType> failedNodeAndReason
-  4: required TRegionMaintainTaskStatus taskStatus
-}
-
 struct TFlushReq {
    1: optional string isSeq
    2: optional list<string> storageGroups

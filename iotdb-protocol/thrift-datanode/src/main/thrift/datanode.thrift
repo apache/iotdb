@@ -41,6 +41,13 @@ struct TRegionLeaderChangeReq {
   2: required common.TDataNodeLocation newLeaderNode
 }
 
+struct TRegionMigrateResult {
+  1: optional common.TConsensusGroupId regionId
+  2: optional common.TSStatus migrateResult
+  3: optional map<common.TDataNodeLocation, common.TRegionMigrateFailedType> failedNodeAndReason
+  4: required common.TRegionMaintainTaskStatus taskStatus
+}
+
 struct TCreatePeerReq {
   1: required common.TConsensusGroupId regionId
   2: required list<common.TDataNodeLocation> regionLocations
@@ -705,7 +712,7 @@ service IDataNodeRPCService {
   /**
    * Get the result of a region maintainance task
    */
-  common.TRegionMigrateResult getRegionMaintainResult(i64 taskId)
+  TRegionMigrateResult getRegionMaintainResult(i64 taskId)
 
   /**
    * Config node will disable the Data node, the Data node will not accept read/write request when disabled
