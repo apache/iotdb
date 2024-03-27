@@ -216,7 +216,7 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
-  public void triggerSnapshot(ConsensusGroupId groupId) throws ConsensusException {
+  public void triggerSnapshot(ConsensusGroupId groupId, boolean force) throws ConsensusException {
     throw new ConsensusException("SimpleConsensus does not support snapshot trigger currently");
   }
 

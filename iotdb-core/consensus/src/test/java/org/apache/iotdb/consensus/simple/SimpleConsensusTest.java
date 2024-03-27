@@ -265,7 +265,7 @@ public class SimpleConsensusTest {
   @Test
   public void triggerSnapshot() {
     try {
-      consensusImpl.triggerSnapshot(dataRegionId);
+      consensusImpl.triggerSnapshot(dataRegionId, false);
       Assert.fail("Can't trigger snapshot in SimpleConsensus.");
     } catch (ConsensusException e) {
       // not handle
