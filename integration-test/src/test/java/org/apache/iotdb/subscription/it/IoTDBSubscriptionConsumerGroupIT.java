@@ -375,6 +375,8 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
           Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
         Awaitility.await()
+            .pollDelay(1, TimeUnit.SECONDS)
+            .pollInterval(1, TimeUnit.SECONDS)
             .atMost(100, TimeUnit.SECONDS)
             .untilAsserted(
                 () ->
