@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it;
+package org.apache.iotdb.confignode.it.regionmigration;
 
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
@@ -30,7 +30,7 @@ import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-public class IoTDBRegionMigrateConfigNodeCrashTest
+public class IoTDBRegionMigrateConfigNodeCrashIT
     extends IoTDBRegionMigrateReliabilityTestFramework {
   // region ConfigNode crash tests
   @Test

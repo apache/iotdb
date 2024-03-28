@@ -17,19 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it;
+package org.apache.iotdb.confignode.it.regionmigration;
 
 import org.apache.iotdb.commons.utils.DataNodeKillPoints;
 
 import org.junit.Test;
 
-public class IoTDBRegionMigrateDataNodeCrashTest
-    extends IoTDBRegionMigrateReliabilityTestFramework {
+public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionMigrateReliabilityTestFramework {
   // region Coordinator DataNode crash tests
 
   @Test
   public void coordinatorCrashDuringRemovePeer() throws Exception {
-    generalTest(1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.COORDINATOR_REMOVE_PEER.name()));
+    generalTest(
+        1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.COORDINATOR_REMOVE_PEER.name()));
   }
 
   // endregion
@@ -44,7 +44,12 @@ public class IoTDBRegionMigrateDataNodeCrashTest
   @Test
   public void originalCrashDuringDeleteLocalPeer() throws Exception {
     generalTest(
-        1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.ORIGINAL_DELETE_OLD_REGION_PEER.name()));
+        1,
+        1,
+        1,
+        2,
+        buildSet(),
+        buildSet(DataNodeKillPoints.ORIGINAL_DELETE_OLD_REGION_PEER.name()));
   }
 
   // endregion
