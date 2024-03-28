@@ -1215,8 +1215,8 @@ public class RaftMember {
   }
 
   public void setNewNodes(List<Peer> newNodes) {
-    logDispatcher.setNewNodes(this.newNodes);
     this.newNodes = newNodes;
+    logDispatcher.setNewNodes(this.newNodes);
   }
 
   public AsyncRaftServiceClient getHeartbeatClient(TEndPoint node) {
@@ -1239,7 +1239,7 @@ public class RaftMember {
 
   public TSStatus changeConfig(List<Peer> newNodes) {
     TSStatus tsStatus = ensureLeader(null);
-    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (tsStatus != null) {
       return tsStatus;
     }
 
@@ -1276,8 +1276,9 @@ public class RaftMember {
     }
     logDispatcher.wakeUp();
 
-    List<Peer> addedNodes = NodeUtils.computeAddedNodes(oldNodes, this.newNodes);
+    List<Peer> addedNodes = NodeUtils.computeAddedNodes(oldNodes, newNodes);
     for (Peer addedNode : addedNodes) {
+      getStatus().getPeerMap().computeIfAbsent(addedNode, node -> new PeerInfo());
       catchUp(addedNode, 0);
     }
 

@@ -362,6 +362,11 @@ public class CatchUpTask implements Runnable {
                   ? logs.get(logs.size() - 1).getCurrLogIndex()
                   : snapshot.getLastLogIndex();
           peerInfo.setMatchIndex(lastIndex);
+          if (!logs.isEmpty() && logs.get(logs.size() - 1).getVotingEntry() != null) {
+            raftMember
+                .getVotingLogList()
+                .onStronglyAccept(logs.get(logs.size() - 1).getVotingEntry(), node);
+          }
         }
         if (logger.isInfoEnabled()) {
           logger.info(
