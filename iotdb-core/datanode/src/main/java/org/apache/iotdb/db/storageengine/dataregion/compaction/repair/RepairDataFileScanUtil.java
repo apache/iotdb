@@ -201,7 +201,7 @@ public class RepairDataFileScanUtil {
         0,
         pageHeader.getCompressedSize(),
         uncompressedData,
-        pageHeader.getUncompressedSize());
+        0);
     return ByteBuffer.wrap(uncompressedData);
   }
 
