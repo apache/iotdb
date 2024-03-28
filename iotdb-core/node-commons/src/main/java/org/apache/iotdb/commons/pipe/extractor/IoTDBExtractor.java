@@ -66,7 +66,7 @@ public abstract class IoTDBExtractor implements PipeExtractor {
                     EXTRACTOR_INCLUSION_DEFAULT_VALUE))
         .validate(
             args -> optionsAreAllLegal((String) args),
-            "The 'exclusion' string contains illegal path.",
+            "The 'inclusion.exclusion' string contains illegal path.",
             validator
                 .getParameters()
                 .getStringOrDefault(
