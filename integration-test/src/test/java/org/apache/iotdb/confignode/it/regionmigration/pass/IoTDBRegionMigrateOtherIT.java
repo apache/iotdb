@@ -17,14 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils;
+package org.apache.iotdb.confignode.it.regionmigration.pass;
 
-@TestOnly
-public enum DataNodeKillPoints {
-  ORIGINAL_ADD_PEER_DONE,
-  DESTINATION_CREATE_LOCAL_PEER,
-  DESTINATION_ADD_PEER_TRANSITION,
-  DESTINATION_ADD_PEER_DONE,
-  COORDINATOR_ADD_PEER_TRANSITION,
-  COORDINATOR_ADD_PEER_DONE,
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityTestFramework;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+public class IoTDBRegionMigrateOtherIT extends IoTDBRegionMigrateReliabilityTestFramework {
+  @Test
+  public void badKillPoint() throws Exception {
+    try {
+      generalTest(1, 1, 1, 2, buildSet("??"), noKillPoints());
+    } catch (AssertionError e) {
+      return;
+    }
+    Assert.fail("kill point not triggered but test pass");
+  }
 }

@@ -17,30 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it;
+package org.apache.iotdb.confignode.it.regionmigration;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.utils.DataNodeKillPoints;
-import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
-import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
-import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.itbase.exception.InconsistentDataException;
+import org.apache.iotdb.metrics.utils.SystemType;
 
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,6 +48,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -66,14 +63,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-public class IoTDBRegionMigrateReliabilityIT {
+public class IoTDBRegionMigrateReliabilityTestFramework {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBRegionMigrateReliabilityIT.class);
+      LoggerFactory.getLogger(IoTDBRegionMigrateReliabilityTestFramework.class);
   private static final String INSERTION =
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(100, 10.1, 20.7)";
   private static final String SHOW_REGIONS = "show regions";
   private static final String SHOW_DATANODES = "show datanodes";
   private static final String REGION_MIGRATE_COMMAND_FORMAT = "migrate region %d from %d to %d";
+  ExecutorService executorService = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
 
   @Before
   public void setUp() throws Exception {
@@ -90,124 +88,6 @@ public class IoTDBRegionMigrateReliabilityIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  // region Normal tests
-
-  @Test
-  public void normal1C2DTest() throws Exception {
-    generalTest(1, 1, 1, 2, buildSet(), buildSet());
-  }
-
-  @Test
-  public void normal3C3DTest() throws Exception {
-    generalTest(2, 3, 3, 3, buildSet(), buildSet());
-  }
-
-  // endregion
-
-  // region ConfigNode crash tests
-  @Test
-  public void cnCrashDuringPreCheck() throws Exception {
-    generalTest(
-        1, 1, 1, 2, buildSet(RegionTransitionState.REGION_MIGRATE_PREPARE.toString()), buildSet());
-  }
-
-  @Test
-  public void cnCrashDuringCreatePeer() throws Exception {
-    generalTest(
-        1, 1, 1, 2, buildSet(AddRegionPeerState.CREATE_NEW_REGION_PEER.toString()), buildSet());
-  }
-
-  @Test
-  public void cnCrashDuringDoAddPeer() throws Exception {
-    generalTest(1, 1, 1, 2, buildSet(AddRegionPeerState.DO_ADD_REGION_PEER.toString()), buildSet());
-  }
-
-  @Test
-  public void cnCrashDuringUpdateCache() throws Exception {
-    generalTest(
-        1,
-        1,
-        1,
-        2,
-        buildSet(AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE.toString()),
-        buildSet());
-  }
-
-  @Test
-  public void cnCrashDuringChangeRegionLeader() throws Exception {
-    generalTest(
-        1, 1, 1, 2, buildSet(RegionTransitionState.CHANGE_REGION_LEADER.toString()), buildSet());
-  }
-
-  @Test
-  public void cnCrashDuringRemoveRegionPeer() throws Exception {
-    generalTest(
-        1, 1, 1, 2, buildSet(RemoveRegionPeerState.REMOVE_REGION_PEER.toString()), buildSet());
-  }
-
-  @Test
-  public void cnCrashDuringDeleteOldRegionPeer() throws Exception {
-    generalTest(
-        1, 1, 1, 2, buildSet(RemoveRegionPeerState.DELETE_OLD_REGION_PEER.toString()), buildSet());
-  }
-
-  @Test
-  public void cnCrashDuringRemoveRegionLocationCache() throws Exception {
-    generalTest(
-        1,
-        1,
-        1,
-        2,
-        buildSet(RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE.toString()),
-        buildSet());
-  }
-
-  @Test
-  public void cnCrashTest() throws Exception {
-    KeySetView<String, Boolean> killConfigNodeKeywords = buildSet();
-    killConfigNodeKeywords.addAll(
-        Arrays.stream(AddRegionPeerState.values())
-            .map(Enum::toString)
-            .collect(Collectors.toList()));
-    killConfigNodeKeywords.addAll(
-        Arrays.stream(RemoveRegionPeerState.values())
-            .map(Enum::toString)
-            .collect(Collectors.toList()));
-    generalTest(1, 1, 1, 2, killConfigNodeKeywords, buildSet());
-  }
-
-  @Ignore
-  @Test
-  public void badKillPoint() throws Exception {
-    generalTest(1, 1, 1, 2, buildSet("??"), buildSet());
-  }
-
-  // endregion
-
-  // region coordinator DataNode crash tests
-
-  @Test
-  public void coordinatorCrashDuringRemovePeer() throws Exception {
-    generalTest(1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.CoordinatorRemovePeer.name()));
-  }
-
-  // endregion
-
-  // region original DataNode crash tests
-
-  @Test
-  public void originalCrashDuringRemovePeer() throws Exception {
-    generalTest(1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.OriginalRemovePeer.name()));
-  }
-
-  @Test
-  public void originalCrashDuringDeleteLocalPeer() throws Exception {
-    generalTest(
-        1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.OriginalDeleteOldRegionPeer.name()));
-  }
-
-  // region Helpers
-
   public void generalTest(
       final int dataReplicateFactor,
       final int schemaReplicationFactor,
@@ -216,30 +96,64 @@ public class IoTDBRegionMigrateReliabilityIT {
       KeySetView<String, Boolean> killConfigNodeKeywords,
       KeySetView<String, Boolean> killDataNodeKeywords)
       throws Exception {
+    generalTestWithAllOptions(
+        dataReplicateFactor,
+        schemaReplicationFactor,
+        configNodeNum,
+        dataNodeNum,
+        killConfigNodeKeywords,
+        killDataNodeKeywords,
+        true,
+        true,
+        0,
+        true);
+  }
+
+  public void failTest(
+      final int dataReplicateFactor,
+      final int schemaReplicationFactor,
+      final int configNodeNum,
+      final int dataNodeNum,
+      KeySetView<String, Boolean> killConfigNodeKeywords,
+      KeySetView<String, Boolean> killDataNodeKeywords)
+      throws Exception {
+    generalTestWithAllOptions(
+        dataReplicateFactor,
+        schemaReplicationFactor,
+        configNodeNum,
+        dataNodeNum,
+        killConfigNodeKeywords,
+        killDataNodeKeywords,
+        true,
+        true,
+        30,
+        false);
+  }
+
+  public void generalTestWithAllOptions(
+      final int dataReplicateFactor,
+      final int schemaReplicationFactor,
+      final int configNodeNum,
+      final int dataNodeNum,
+      KeySetView<String, Boolean> killConfigNodeKeywords,
+      KeySetView<String, Boolean> killDataNodeKeywords,
+      final boolean checkOriginalRegionDirDeleted,
+      final boolean checkConfigurationFileDeleted,
+      final int restartTime,
+      final boolean isMigrateSuccess)
+      throws Exception {
     // prepare env
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
         .setDataReplicationFactor(dataReplicateFactor)
         .setSchemaReplicationFactor(schemaReplicationFactor);
+    EnvFactory.getEnv().registerConfigNodeKillPoints(new ArrayList<>(killConfigNodeKeywords));
+    EnvFactory.getEnv().registerDataNodeKillPoints(new ArrayList<>(killDataNodeKeywords));
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
-    ExecutorService service = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
-    EnvFactory.getEnv()
-        .getConfigNodeWrapperList()
-        .forEach(
-            configNodeWrapper ->
-                service.submit(() -> nodeLogKillPoint(configNodeWrapper, killConfigNodeKeywords)));
-    EnvFactory.getEnv()
-        .getDataNodeWrapperList()
-        .forEach(
-            dataNodeWrapper ->
-                service.submit(() -> nodeLogKillPoint(dataNodeWrapper, killDataNodeKeywords)));
-
     try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement();
-        final SyncConfigNodeIServiceClient configClient =
-            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+        final Statement statement = connection.createStatement()) {
 
       statement.execute(INSERTION);
 
@@ -247,28 +161,97 @@ public class IoTDBRegionMigrateReliabilityIT {
       Map<Integer, Set<Integer>> regionMap = getRegionMap(result);
 
       result = statement.executeQuery(SHOW_DATANODES);
-      Set<Integer> dataNodeSet = new HashSet<>();
+      Set<Integer> allDataNode = new HashSet<>();
       while (result.next()) {
-        dataNodeSet.add(result.getInt(ColumnHeaderConstant.NODE_ID));
+        allDataNode.add(result.getInt(ColumnHeaderConstant.NODE_ID));
       }
 
       final int selectedRegion = selectRegion(regionMap);
       final int originalDataNode = selectOriginalDataNode(regionMap, selectedRegion);
-      final int destDataNode = selectDestDataNode(dataNodeSet, regionMap, selectedRegion);
+      final int destDataNode = selectDestDataNode(allDataNode, regionMap, selectedRegion);
 
+      checkRegionFileExist(originalDataNode);
+      checkPeersExist(regionMap.get(selectedRegion), originalDataNode, selectedRegion);
+
+      // set kill points
+      setConfigNodeKillPoints(killConfigNodeKeywords, restartTime);
+      setDataNodeKillPoints(killDataNodeKeywords, restartTime);
+
+      // region migration start
       statement.execute(regionMigrateCommand(selectedRegion, originalDataNode, destDataNode));
 
-      awaitUntilSuccess(statement, selectedRegion, originalDataNode, destDataNode);
+      boolean success = false;
+      try {
+        awaitUntilSuccess(statement, selectedRegion, originalDataNode, destDataNode);
+        success = true;
+      } catch (ConditionTimeoutException e) {
+        LOGGER.error("Region migrate failed", e);
+      }
+      Assert.assertTrue(isMigrateSuccess == success);
 
       // make sure all kill points have been triggered
-      Assert.assertTrue(killConfigNodeKeywords.isEmpty());
-      Assert.assertTrue(killDataNodeKeywords.isEmpty());
+      checkKillPointsAllTriggered(killConfigNodeKeywords);
+      checkKillPointsAllTriggered(killDataNodeKeywords);
 
-      checkRegionFileClear(originalDataNode);
+      if (!isMigrateSuccess) {
+        restartAllDataNodes();
+      }
+
+      // check if there is anything remain
+      if (checkOriginalRegionDirDeleted) {
+        if (isMigrateSuccess) {
+          checkRegionFileClear(originalDataNode);
+          checkRegionFileExist(destDataNode);
+        } else {
+          checkRegionFileClear(destDataNode);
+          checkRegionFileExist(originalDataNode);
+        }
+      }
+      if (checkConfigurationFileDeleted) {
+        if (isMigrateSuccess) {
+          checkPeersClear(allDataNode, originalDataNode, selectedRegion);
+        } else {
+          checkPeersClear(allDataNode, destDataNode, selectedRegion);
+        }
+      }
+
     } catch (InconsistentDataException ignore) {
 
     }
     LOGGER.info("test pass");
+  }
+
+  private void restartAllDataNodes() {
+    EnvFactory.getEnv()
+        .getDataNodeWrapperList()
+        .forEach(
+            nodeWrapper -> {
+              nodeWrapper.stopForcibly();
+              nodeWrapper.start();
+            });
+  }
+
+  private void setConfigNodeKillPoints(
+      KeySetView<String, Boolean> killConfigNodeKeywords, int nodeRestartTime) {
+    EnvFactory.getEnv()
+        .getConfigNodeWrapperList()
+        .forEach(
+            configNodeWrapper ->
+                executorService.submit(
+                    () ->
+                        nodeLogKillPoint(
+                            configNodeWrapper, killConfigNodeKeywords, nodeRestartTime)));
+  }
+
+  private void setDataNodeKillPoints(
+      KeySetView<String, Boolean> killDataNodeKeywords, int nodeRestartTime) {
+    EnvFactory.getEnv()
+        .getDataNodeWrapperList()
+        .forEach(
+            dataNodeWrapper ->
+                executorService.submit(
+                    () ->
+                        nodeLogKillPoint(dataNodeWrapper, killDataNodeKeywords, nodeRestartTime)));
   }
 
   /**
@@ -278,7 +261,9 @@ public class IoTDBRegionMigrateReliabilityIT {
    * @param killNodeKeywords When detect these keywords in node's log, stop the node forcibly
    */
   private static void nodeLogKillPoint(
-      AbstractNodeWrapper nodeWrapper, KeySetView<String, Boolean> killNodeKeywords) {
+      AbstractNodeWrapper nodeWrapper,
+      KeySetView<String, Boolean> killNodeKeywords,
+      int restartTime) {
     if (killNodeKeywords.isEmpty()) {
       return;
     }
@@ -288,11 +273,29 @@ public class IoTDBRegionMigrateReliabilityIT {
     } else {
       logFileName = "log_datanode_all.log";
     }
-    ProcessBuilder builder =
-        new ProcessBuilder(
-            "tail",
-            "-f",
-            nodeWrapper.getNodePath() + File.separator + "logs" + File.separator + logFileName);
+    SystemType type = SystemType.getSystemType();
+    ProcessBuilder builder;
+    if (type == SystemType.LINUX || type == SystemType.MAC) {
+      builder =
+          new ProcessBuilder(
+              "tail",
+              "-f",
+              nodeWrapper.getNodePath() + File.separator + "logs" + File.separator + logFileName);
+    } else if (type == SystemType.WINDOWS) {
+      builder =
+          new ProcessBuilder(
+              "powershell",
+              "-Command",
+              "Get-Content "
+                  + nodeWrapper.getNodePath()
+                  + File.separator
+                  + "logs"
+                  + File.separator
+                  + logFileName
+                  + " -Wait");
+    } else {
+      throw new RuntimeException("Unsupported system type");
+    }
     builder.redirectErrorStream(true);
 
     try {
@@ -306,13 +309,21 @@ public class IoTDBRegionMigrateReliabilityIT {
           String finalLine = line;
           Optional<String> detectedKeyword =
               killNodeKeywords.stream()
-                  .filter(keyword -> finalLine.contains("breakpoint:" + keyword))
+                  .filter(keyword -> finalLine.contains("Kill point: " + keyword))
                   .findAny();
           if (detectedKeyword.isPresent()) {
             // each keyword only trigger once
             killNodeKeywords.remove(detectedKeyword.get());
+            LOGGER.info("Kill point {} triggered", detectedKeyword);
             // reboot the node
             nodeWrapper.stopForcibly();
+            if (restartTime > 0) {
+              try {
+                TimeUnit.SECONDS.sleep(restartTime);
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+            }
             nodeWrapper.start();
           }
           if (killNodeKeywords.isEmpty()) {
@@ -322,6 +333,13 @@ public class IoTDBRegionMigrateReliabilityIT {
       }
     } catch (IOException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  void checkKillPointsAllTriggered(KeySetView<String, Boolean> killPoints) {
+    if (!killPoints.isEmpty()) {
+      killPoints.forEach(killPoint -> LOGGER.error("Kill point {} not triggered", killPoint));
+      Assert.fail("Some kill points was not triggered");
     }
   }
 
@@ -400,6 +418,23 @@ public class IoTDBRegionMigrateReliabilityIT {
     }
   }
 
+  private static void checkRegionFileExist(int dataNode) {
+    String nodePath = EnvFactory.getEnv().dataNodeIdToWrapper(dataNode).get().getNodePath();
+    File originalRegionDir =
+        new File(
+            nodePath
+                + File.separator
+                + IoTDBConstant.DATA_FOLDER_NAME
+                + File.separator
+                + "datanode"
+                + File.separator
+                + IoTDBConstant.CONSENSUS_FOLDER_NAME
+                + File.separator
+                + IoTDBConstant.DATA_REGION_FOLDER_NAME);
+    Assert.assertTrue(originalRegionDir.isDirectory());
+    Assert.assertNotEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
+  }
+
   /** Check whether the original DataNode's region file has been deleted. */
   private static void checkRegionFileClear(int dataNode) {
     String nodePath = EnvFactory.getEnv().dataNodeIdToWrapper(dataNode).get().getNodePath();
@@ -413,16 +448,76 @@ public class IoTDBRegionMigrateReliabilityIT {
                 + File.separator
                 + IoTDBConstant.CONSENSUS_FOLDER_NAME
                 + File.separator
-                + "data_region");
+                + IoTDBConstant.DATA_REGION_FOLDER_NAME);
     Assert.assertTrue(originalRegionDir.isDirectory());
     Assert.assertEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
+    LOGGER.info("Original region clear");
   }
 
-  private static KeySetView<String, Boolean> buildSet(String... keywords) {
+  private static void checkPeersExist(Set<Integer> dataNodes, int originalDataNode, int regionId) {
+    dataNodes.forEach(targetDataNode -> checkPeerExist(targetDataNode, originalDataNode, regionId));
+  }
+
+  private static void checkPeerExist(int checkTargetDataNode, int originalDataNode, int regionId) {
+    File expectExistedFile =
+        new File(buildConfigurationDataFilePath(checkTargetDataNode, originalDataNode, regionId));
+    Assert.assertTrue(
+        "configuration file should exist, but it didn't: " + expectExistedFile.getPath(),
+        expectExistedFile.exists());
+  }
+
+  private static void checkPeersClear(Set<Integer> dataNodes, int originalDataNode, int regionId) {
+    dataNodes.stream()
+        .filter(dataNode -> dataNode != originalDataNode)
+        .forEach(targetDataNode -> checkPeerClear(targetDataNode, originalDataNode, regionId));
+    LOGGER.info("Peer clear");
+  }
+
+  private static void checkPeerClear(int checkTargetDataNode, int originalDataNode, int regionId) {
+    File expectDeletedFile =
+        new File(buildConfigurationDataFilePath(checkTargetDataNode, originalDataNode, regionId));
+    Assert.assertFalse(
+        "configuration file should be deleted, but it didn't: " + expectDeletedFile.getPath(),
+        expectDeletedFile.exists());
+  }
+
+  private static String buildConfigurationDataFilePath(
+      int localDataNodeId, int remoteDataNodeId, int regionId) {
+    String nodePath = EnvFactory.getEnv().dataNodeIdToWrapper(localDataNodeId).get().getNodePath();
+    String configurationDatDirName =
+        IoTDBConstant.DATA_FOLDER_NAME
+            + File.separator
+            + "datanode"
+            + File.separator
+            + IoTDBConstant.CONSENSUS_FOLDER_NAME
+            + File.separator
+            + IoTDBConstant.DATA_REGION_FOLDER_NAME
+            + File.separator
+            + "1_"
+            + regionId;
+    String expectDeletedFileName =
+        IoTConsensusServerImpl.generateConfigurationDatFileName(remoteDataNodeId);
+    return nodePath
+        + File.separator
+        + configurationDatDirName
+        + File.separator
+        + expectDeletedFileName;
+  }
+
+  protected static KeySetView<String, Boolean> noKillPoints() {
+    return ConcurrentHashMap.newKeySet();
+  }
+
+  protected static KeySetView<String, Boolean> buildSet(String... keywords) {
     KeySetView<String, Boolean> result = ConcurrentHashMap.newKeySet();
     result.addAll(Arrays.asList(keywords));
     return result;
   }
 
-  // endregion
+  protected static <T extends Enum<T>> KeySetView<String, Boolean> buildSet(T... keywords) {
+    KeySetView<String, Boolean> result = ConcurrentHashMap.newKeySet();
+    result.addAll(
+        Arrays.stream(keywords).map(FileUtils::enumToString).collect(Collectors.toList()));
+    return result;
+  }
 }

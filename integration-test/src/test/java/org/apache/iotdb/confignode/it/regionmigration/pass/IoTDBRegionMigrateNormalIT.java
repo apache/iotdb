@@ -17,14 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils;
+package org.apache.iotdb.confignode.it.regionmigration.pass;
 
-@TestOnly
-public enum DataNodeKillPoints {
-  ORIGINAL_ADD_PEER_DONE,
-  DESTINATION_CREATE_LOCAL_PEER,
-  DESTINATION_ADD_PEER_TRANSITION,
-  DESTINATION_ADD_PEER_DONE,
-  COORDINATOR_ADD_PEER_TRANSITION,
-  COORDINATOR_ADD_PEER_DONE,
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityTestFramework;
+
+import org.junit.Test;
+
+public class IoTDBRegionMigrateNormalIT extends IoTDBRegionMigrateReliabilityTestFramework {
+  @Test
+  public void normal1C2DTest() throws Exception {
+    generalTest(1, 1, 1, 2, noKillPoints(), noKillPoints());
+  }
+
+  @Test
+  public void normal3C3DTest() throws Exception {
+    generalTest(2, 3, 3, 3, noKillPoints(), noKillPoints());
+  }
 }
