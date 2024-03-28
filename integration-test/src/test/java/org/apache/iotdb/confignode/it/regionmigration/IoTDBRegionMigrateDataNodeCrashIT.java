@@ -17,15 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it;
+package org.apache.iotdb.confignode.it.regionmigration;
 
 import org.apache.iotdb.commons.utils.DataNodeKillPoints;
 
 import org.junit.Ignore;
 import org.junit.Test;
 
-public class IoTDBRegionMigrateDataNodeCrashTest
-    extends IoTDBRegionMigrateReliabilityTestFramework {
+public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionMigrateReliabilityTestFramework {
   // region Coordinator DataNode crash tests
 
   @Ignore

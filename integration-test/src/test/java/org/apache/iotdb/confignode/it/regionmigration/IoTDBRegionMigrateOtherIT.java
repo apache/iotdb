@@ -17,18 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it;
+package org.apache.iotdb.confignode.it.regionmigration;
 
+import org.junit.Assert;
 import org.junit.Test;
 
-public class IoTDBRegionMigrateNormalTest extends IoTDBRegionMigrateReliabilityTestFramework {
+public class IoTDBRegionMigrateOtherIT extends IoTDBRegionMigrateReliabilityTestFramework {
   @Test
-  public void normal1C2DTest() throws Exception {
-    generalTest(1, 1, 1, 2, buildSet(), buildSet());
-  }
-
-  @Test
-  public void normal3C3DTest() throws Exception {
-    generalTest(2, 3, 3, 3, buildSet(), buildSet());
+  public void badKillPoint() throws Exception {
+    try {
+      generalTest(1, 1, 1, 2, buildSet("??"), buildSet());
+    } catch (AssertionError e) {
+      return;
+    }
+    Assert.fail("kill point not triggered but test pass");
   }
 }
