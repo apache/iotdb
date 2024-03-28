@@ -28,6 +28,8 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.runtime.TopicMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.subscription.OperateSubscriptionState;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
@@ -130,6 +132,15 @@ public abstract class AbstractOperateSubscriptionProcedure
           "ProcedureId {} release lock. No need to release subscription lock.", getProcId());
     } else {
       LOGGER.info("ProcedureId {} release lock. Subscription lock will be released.", getProcId());
+      if (this instanceof TopicMetaSyncProcedure
+          || this instanceof ConsumerGroupMetaSyncProcedure) {
+        LOGGER.info("Subscription meta sync procedure finished, updating last sync version.");
+        configNodeProcedureEnv
+            .getConfigManager()
+            .getSubscriptionManager()
+            .getSubscriptionCoordinator()
+            .updateLastSyncedVersion();
+      }
       configNodeProcedureEnv
           .getConfigManager()
           .getSubscriptionManager()

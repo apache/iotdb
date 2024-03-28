@@ -110,6 +110,11 @@ public class SubscriptionCoordinator {
     subscriptionMetaSyncer.stop();
   }
 
+  /** Caller should ensure that the method is called in the lock {@link #tryLock}. */
+  public void updateLastSyncedVersion() {
+    subscriptionInfo.updateLastSyncedVersion();
+  }
+
   public boolean canSkipNextSync() {
     return subscriptionInfo.canSkipNextSync();
   }
