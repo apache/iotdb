@@ -606,7 +606,7 @@ public class IoTConsensusServerImpl {
                   }
                 });
       }
-      serializeConfigurationAndFsyncToDisk(CONFIGURATION_FILE_NAME);
+      serializeConfigurationAndFsyncToDisk();
     } catch (IOException e) {
       // TODO: (xingtanzjr) need to handle the IOException because the IoTConsensus won't
       // work expectedly
@@ -873,10 +873,9 @@ public class IoTConsensusServerImpl {
     return consensusGroupId;
   }
 
-  private void serializeConfigurationAndFsyncToDisk(String configurationFileName)
-      throws IOException {
+  private void serializeConfigurationAndFsyncToDisk() throws IOException {
     for (Peer peer : configuration) {
-      String peerConfigurationFileName = peer.getNodeId() + "_" + configurationFileName;
+      String peerConfigurationFileName = generateConfigurationDatFileName(peer.getNodeId());
       FileOutputStream fileOutputStream =
           new FileOutputStream(new File(storageDir, peerConfigurationFileName));
       try (DataOutputStream outputStream = new DataOutputStream(fileOutputStream)) {

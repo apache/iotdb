@@ -17,18 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration;
+package org.apache.iotdb.confignode.it.regionmigration.pass;
+
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityTestFramework;
 
 import org.junit.Test;
 
 public class IoTDBRegionMigrateNormalIT extends IoTDBRegionMigrateReliabilityTestFramework {
   @Test
   public void normal1C2DTest() throws Exception {
-    generalTest(1, 1, 1, 2, buildSet(), buildSet());
+    generalTest(1, 1, 1, 2, noKillPoints(), noKillPoints());
   }
 
   @Test
   public void normal3C3DTest() throws Exception {
-    generalTest(2, 3, 3, 3, buildSet(), buildSet());
+    generalTest(2, 3, 3, 3, noKillPoints(), noKillPoints());
   }
 }
