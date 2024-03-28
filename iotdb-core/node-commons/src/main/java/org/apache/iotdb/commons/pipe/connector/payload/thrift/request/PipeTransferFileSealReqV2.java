@@ -150,12 +150,12 @@ public abstract class PipeTransferFileSealReqV2 extends TPipeTransferReq {
       return false;
     }
     PipeTransferFileSealReqV2 that = (PipeTransferFileSealReqV2) obj;
-    return fileNames.equals(that.fileNames)
-        && fileLengths.equals(that.fileLengths)
-        && parameters.equals(that.parameters)
-        && version == that.version
-        && type == that.type
-        && body.equals(that.body);
+    return Objects.equals(fileNames, that.fileNames)
+        && Objects.equals(fileLengths, that.fileLengths)
+        && Objects.equals(parameters, that.parameters)
+        && Objects.equals(version, that.version)
+        && Objects.equals(type, that.type)
+        && Objects.equals(body, that.body);
   }
 
   @Override
