@@ -17,15 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.config;
+package org.apache.iotdb.commons.exception.subscription;
 
-public class ConsumerConstant {
+public class SubscriptionPollTimeOutException extends SubscriptionException {
 
-  public static final String CONSUMER_ID_KEY = "consumer-id";
+  public SubscriptionPollTimeOutException(String message) {
+    super(message);
+  }
 
-  public static final String CONSUMER_GROUP_ID_KEY = "group-id";
-
-  private ConsumerConstant() {
-    throw new IllegalStateException("Utility class");
+  protected SubscriptionPollTimeOutException(String message, long timeStamp) {
+    super(message, timeStamp);
   }
 }

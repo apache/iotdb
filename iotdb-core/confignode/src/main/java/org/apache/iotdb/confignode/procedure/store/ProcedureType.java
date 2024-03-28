@@ -38,6 +38,8 @@ public enum ProcedureType {
   CREATE_REGION_GROUPS((short) 202),
   @TestOnly
   CREATE_MANY_DATABASES_PROCEDURE((short) 203),
+  ADD_REGION_PEER_PROCEDURE((short) 204),
+  REMOVE_REGION_PEER_PROCEDURE((short) 205),
 
   /** Timeseries */
   DELETE_TIMESERIES_PROCEDURE((short) 300),
@@ -106,6 +108,8 @@ public enum ProcedureType {
   CREATE_CONSUMER_PROCEDURE((short) 1505),
   DROP_CONSUMER_PROCEDURE((short) 1506),
   ALTER_CONSUMER_GROUP_PROCEDURE((short) 1507),
+  TOPIC_META_SYNC_PROCEDURE((short) 1508),
+  CONSUMER_GROUP_META_SYNC_PROCEDURE((short) 1509),
 
   /** Other */
   @TestOnly

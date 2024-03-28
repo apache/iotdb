@@ -345,10 +345,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                     resource ->
                         // Some resource may not be closed due to the control of
                         // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                        resource.isClosed()
-                            && mayTsFileContainUnprocessedData(resource)
-                            && isTsFileResourceOverlappedWithTimeRange(resource)
-                            && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
+                        !resource.isClosed()
+                            || mayTsFileContainUnprocessedData(resource)
+                                && isTsFileResourceOverlappedWithTimeRange(resource)
+                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
         resourceList.addAll(sequenceTsFileResources);
 
@@ -358,10 +358,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                     resource ->
                         // Some resource may not be closed due to the control of
                         // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                        resource.isClosed()
-                            && mayTsFileContainUnprocessedData(resource)
-                            && isTsFileResourceOverlappedWithTimeRange(resource)
-                            && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
+                        !resource.isClosed()
+                            || mayTsFileContainUnprocessedData(resource)
+                                && isTsFileResourceOverlappedWithTimeRange(resource)
+                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
         resourceList.addAll(unsequenceTsFileResources);
 

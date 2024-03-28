@@ -221,6 +221,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       // Stop leader scheduling services
       configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeMetaSync();
       configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeHeartbeat();
+      configManager
+          .getSubscriptionManager()
+          .getSubscriptionCoordinator()
+          .stopSubscriptionMetaSync();
       configManager.getLoadManager().stopLoadServices();
       configManager.getProcedureManager().stopExecutor();
       configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
@@ -232,13 +236,19 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
       // Shutdown leader related service for config pipe
       PipeConfigNodeAgent.runtime().notifyLeaderUnavailable();
+
+      LOGGER.info(
+          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, "
+              + "all services on old leader are unavailable now.",
+          currentNodeId,
+          currentNodeTEndPoint);
     }
   }
 
   @Override
   public void notifyLeaderReady() {
     LOGGER.info(
-        "Current node [nodeId: {}, ip:port: {}] becomes Leader and is ready to work",
+        "Current node [nodeId: {}, ip:port: {}] becomes config region leader",
         ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
         currentNodeTEndPoint);
 
@@ -274,9 +284,21 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
                 .getPipeRuntimeCoordinator()
                 .onConfigRegionGroupLeaderChanged());
 
+    threadPool.submit(
+        () ->
+            configManager
+                .getSubscriptionManager()
+                .getSubscriptionCoordinator()
+                .startSubscriptionMetaSync());
+
     // To adapt old version, we check cluster ID after state machine has been fully recovered.
     // Do check async because sync will be slow and block every other things.
     threadPool.submit(() -> configManager.getClusterManager().checkClusterId());
+
+    LOGGER.info(
+        "Current node [nodeId: {}, ip:port: {}] as config region leader is ready to work",
+        ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
+        currentNodeTEndPoint);
   }
 
   @Override

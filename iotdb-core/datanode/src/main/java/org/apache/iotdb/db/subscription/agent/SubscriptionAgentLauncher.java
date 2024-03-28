@@ -21,7 +21,7 @@ package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.exception.SubscriptionException;
+import org.apache.iotdb.commons.exception.subscription.SubscriptionException;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
@@ -30,8 +30,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
-import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupRespExceptionMessage;
-import org.apache.iotdb.mpp.rpc.thrift.TPushTopicRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -68,7 +68,7 @@ class SubscriptionAgentLauncher {
           throw new SubscriptionException(exceptionMessage);
         }
 
-        final TPushTopicRespExceptionMessage exceptionMessage =
+        final TPushTopicMetaRespExceptionMessage exceptionMessage =
             SubscriptionAgent.topic()
                 .handleTopicMetaChanges(
                     getAllTopicInfoResp.getAllTopicInfo().stream()
@@ -126,7 +126,7 @@ class SubscriptionAgentLauncher {
           throw new SubscriptionException(exceptionMessage);
         }
 
-        final TPushConsumerGroupRespExceptionMessage exceptionMessage =
+        final TPushConsumerGroupMetaRespExceptionMessage exceptionMessage =
             SubscriptionAgent.consumer()
                 .handleConsumerGroupMetaChanges(
                     getAllSubscriptionInfoResp.getAllSubscriptionInfo().stream()

@@ -64,7 +64,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
       // Skip by setting the pipeTaskInfo to null
       pipeTaskInfo = null;
       LOGGER.info(
-          "PipeMetaSyncProcedure: executeFromValidateTask, skip the procedure due to the last execution time {}",
+          "PipeMetaSyncProcedure: acquireLock, skip the procedure due to the last execution time {}",
           LAST_EXECUTION_TIME.get());
       return ProcedureLockState.LOCK_ACQUIRED;
     }

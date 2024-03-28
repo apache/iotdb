@@ -17,18 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription;
+package org.apache.iotdb.confignode.procedure.state;
 
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-
-import java.util.List;
-
-public class EnrichedRowRecord {
-
-  private String topicName;
-  private RowRecord record;
-  private List<String> columnNameList;
-  private List<String> columnTypeList;
-
-  // TODO: translate EnrichedTablets to EnrichedRowRecord
+public enum AddRegionPeerState {
+  CREATE_NEW_REGION_PEER,
+  DO_ADD_REGION_PEER,
+  UPDATE_REGION_LOCATION_CACHE,
 }

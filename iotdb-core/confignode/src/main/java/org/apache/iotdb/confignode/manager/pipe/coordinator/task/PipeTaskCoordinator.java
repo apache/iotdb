@@ -58,10 +58,6 @@ public class PipeTaskCoordinator {
     this.pipeTaskCoordinatorLock = new PipeTaskCoordinatorLock();
   }
 
-  public PipeTaskCoordinatorLock getPipeTaskCoordinatorLock() {
-    return pipeTaskCoordinatorLock;
-  }
-
   /**
    * Lock the pipe task coordinator.
    *
