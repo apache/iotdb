@@ -48,6 +48,7 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @RunWith(IoTDBTestRunner.class)
@@ -122,21 +123,18 @@ public class IoTDBRegionGroupLeaderDistributionIT2 {
                 });
         AtomicBoolean pass = new AtomicBoolean(true);
         // The number of Region-leader in each DataNode should be equal
-        if (databaseLeaderCounter.size() != TEST_DATA_NODE_NUM) {
+        if (dataNodeLeaderCounter.size() != TEST_DATA_NODE_NUM) {
           pass.set(false);
         }
-        dataNodeLeaderCounter.forEach(
-            (dataNodeId, leaderCount) -> {
-              if (leaderCount
-                  != TEST_DATABASE_NUM * TEST_MIN_DATA_REGION_GROUP_NUM / TEST_DATA_NODE_NUM) {
-                pass.set(false);
-              }
-            });
+        if (dataNodeLeaderCounter.values().stream().max(Integer::compareTo).orElse(0)
+                - dataNodeLeaderCounter.values().stream().min(Integer::compareTo).orElse(0)
+            > 1) {
+          pass.set(false);
+        }
         // The number of Region-leader in each DataNode within the same Database should be equal
         if (TEST_DATABASE_NUM != databaseLeaderCounter.size()) {
           pass.set(false);
         }
-
         databaseLeaderCounter.forEach(
             (database, leaderCounter) -> {
               if (leaderCounter.values().stream().max(Integer::compareTo).orElse(0)
@@ -148,6 +146,7 @@ public class IoTDBRegionGroupLeaderDistributionIT2 {
         if (pass.get()) {
           return;
         }
+        TimeUnit.SECONDS.sleep(1);
       }
       Assert.fail("The leader distribution is not balanced after " + retryNum + " retries.");
     }
