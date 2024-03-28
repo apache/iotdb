@@ -287,22 +287,22 @@ public class IoTConsensus implements IConsensus {
       logger.info("[IoTConsensus] inactivate new peer: {}", peer);
       impl.inactivePeer(peer);
 
-      // step 2: notify all the other Peers to build the sync connection to newPeer
-      logger.info("[IoTConsensus] notify current peers to build sync log...");
-      impl.checkAndLockSafeDeletedSearchIndex();
-      impl.notifyPeersToBuildSyncLogChannel(peer);
-
-      // step 3: take snapshot
+      // step 2: take snapshot
       logger.info("[IoTConsensus] start to take snapshot...");
+      impl.checkAndLockSafeDeletedSearchIndex();
       impl.takeSnapshot();
 
-      // step 4: transit snapshot
+      // step 3: transit snapshot
       logger.info("[IoTConsensus] start to transit snapshot...");
       impl.transitSnapshot(peer);
 
-      // step 5: let the new peer load snapshot
+      // step 4: let the new peer load snapshot
       logger.info("[IoTConsensus] trigger new peer to load snapshot...");
       impl.triggerSnapshotLoad(peer);
+
+      // step 5: notify all the other Peers to build the sync connection to newPeer
+      logger.info("[IoTConsensus] notify current peers to build sync log...");
+      impl.notifyPeersToBuildSyncLogChannel(peer);
 
       // step 6: active new Peer
       logger.info("[IoTConsensus] activate new peer...");
@@ -313,6 +313,16 @@ public class IoTConsensus implements IConsensus {
       doSpotClean(peer, impl);
 
     } catch (ConsensusGroupModifyPeerException e) {
+      try {
+        logger.info("[IoTConsensus] add remote peer failed, automatic cleanup side effects...");
+
+        // clean up the sync log channel
+        impl.notifyPeersToRemoveSyncLogChannel(peer);
+
+      } catch (ConsensusGroupModifyPeerException mpe) {
+        logger.error(
+            "[IoTConsensus] failed to cleanup side effects after failed to add remote peer", mpe);
+      }
       throw new ConsensusException(e.getMessage());
     }
   }
@@ -401,19 +411,19 @@ public class IoTConsensus implements IConsensus {
     } else if (!impl.isActive()) {
       throw new ConsensusException(
           "peer is inactive and not ready to receive reset configuration request.");
-    } else {
-      for (Peer peer : impl.getConfiguration()) {
-        if (!peers.contains(peer)) {
-          try {
-            removeRemotePeer(groupId, peer);
-          } catch (ConsensusException e) {
-            logger.error("Failed to remove peer {} from group {}", peer, groupId, e);
-            throw e;
-          }
+    }
+
+    for (Peer peer : impl.getConfiguration()) {
+      if (!peers.contains(peer)) {
+        try {
+          removeRemotePeer(groupId, peer);
+        } catch (ConsensusException e) {
+          logger.error("Failed to remove peer {} from group {}", peer, groupId, e);
+          throw e;
         }
       }
-      impl.resetConfiguration(peers);
     }
+    impl.resetConfiguration(peers);
   }
 
   public IoTConsensusServerImpl getImpl(ConsensusGroupId groupId) {
