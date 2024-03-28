@@ -49,6 +49,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final TsFileResource resource;
   private File tsFile;
 
+  // This is true iff the modFile exists and should be transferred
   private boolean isWithMod;
   private File modFile;
 
@@ -141,8 +142,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return isWithMod;
   }
 
-  public void setWithMod(boolean isWithMod) {
-    this.isWithMod = isWithMod;
+  // If the previous "isWithMod" is false, the modFile has been set to "null", then the isWithMod
+  // can't be set to true
+  public void setWithModIfFalse(boolean isWithMod) {
+    this.isWithMod = isWithMod && this.isWithMod;
   }
 
   public boolean isLoaded() {

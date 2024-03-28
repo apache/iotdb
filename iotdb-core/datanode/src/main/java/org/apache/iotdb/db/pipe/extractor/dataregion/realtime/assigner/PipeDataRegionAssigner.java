@@ -83,7 +83,7 @@ public class PipeDataRegionAssigner implements Closeable {
               final EnrichedEvent innerEvent = copiedEvent.getEvent();
               if (innerEvent instanceof PipeTsFileInsertionEvent) {
                 ((PipeTsFileInsertionEvent) innerEvent)
-                    .setWithMod(extractor.isShouldTransferModFile());
+                    .setWithModIfFalse(extractor.isShouldTransferModFile());
               }
 
               copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
