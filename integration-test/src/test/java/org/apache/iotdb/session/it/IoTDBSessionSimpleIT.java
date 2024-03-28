@@ -1639,7 +1639,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void testConvertRecordsToTablets() {
+  public void convertRecordsToTabletsTest() {
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     List<Object> value = new ArrayList<>();
