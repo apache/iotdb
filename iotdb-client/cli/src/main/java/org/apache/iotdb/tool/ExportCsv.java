@@ -369,7 +369,6 @@ public class ExportCsv extends AbstractCsvTool {
    */
   private static void dumpResult(String sql, int index) {
     if (EXPORT_SQL_TYPE_NAME.equalsIgnoreCase(exportType)) {
-      // 此处check路径是否sql导出合法路径
       legalCheck(sql);
     }
     final String path = targetDirectory + targetFile + index;
