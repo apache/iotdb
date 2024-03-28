@@ -57,7 +57,7 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
   }
 
   @Override
-  public synchronized void onRegionGroupLeaderChanged(RouteChangeEvent event) {
+  public void onRegionGroupLeaderChanged(RouteChangeEvent event) {
     // If no pipe tasks, return
     if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()) {
       return;
