@@ -537,11 +537,11 @@ public class DataNode implements DataNodeMBean {
           (endTime - startTime));
 
       List<TConsensusGroupId> consensusGroupIds = dataNodeRestartResp.getConsensusGroupIds();
-      List<ConsensusGroupId> dataNodeConsensusGroupIds = new ArrayList<>();
-      for (TConsensusGroupId consensusGroupId : consensusGroupIds) {
-        dataNodeConsensusGroupIds.add(
-            ConsensusGroupId.Factory.createFromTConsensusGroupId(consensusGroupId));
-      }
+      List<ConsensusGroupId> dataNodeConsensusGroupIds =
+          consensusGroupIds.stream()
+              .map(ConsensusGroupId.Factory::createFromTConsensusGroupId)
+              .collect(Collectors.toList());
+
       clearInvalidConsensusGroup(dataNodeConsensusGroupIds);
     } else {
       /* Throw exception when restart is rejected */

@@ -126,7 +126,7 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
         killDataNodeKeywords,
         true,
         true,
-        60,
+        30,
         false);
   }
 
@@ -193,6 +193,10 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
       checkKillPointsAllTriggered(killConfigNodeKeywords);
       checkKillPointsAllTriggered(killDataNodeKeywords);
 
+      if (!isMigrateSuccess) {
+        restartAllDataNodes();
+      }
+
       // check if there is anything remain
       if (checkOriginalRegionDirDeleted) {
         if (isMigrateSuccess) {
@@ -215,6 +219,16 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
 
     }
     LOGGER.info("test pass");
+  }
+
+  private void restartAllDataNodes() {
+    EnvFactory.getEnv()
+        .getDataNodeWrapperList()
+        .forEach(
+            nodeWrapper -> {
+              nodeWrapper.stopForcibly();
+              nodeWrapper.start();
+            });
   }
 
   private void setConfigNodeKillPoints(
@@ -373,7 +387,7 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
     AtomicReference<Exception> lastException = new AtomicReference<>();
     try {
       Awaitility.await()
-          .atMost(2, TimeUnit.MINUTES)
+          .atMost(1, TimeUnit.MINUTES)
           .until(
               () -> {
                 try {
