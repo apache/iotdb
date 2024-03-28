@@ -128,6 +128,10 @@ public class SerializableRowRecordList implements SerializableList {
     return prefixNullCount + skipPrefixNullCount;
   }
 
+  public int getBlockCount() {
+    return blocks.size();
+  }
+
   public Object[] getRow(int index) {
     // Fall into prefix nulls
     if (index < prefixNullCount) {
@@ -184,6 +188,10 @@ public class SerializableRowRecordList implements SerializableList {
     }
 
     return row;
+  }
+
+  public Column[] getColumns(int index) {
+    return blocks.get(index);
   }
 
   public long getTime(int index) {
@@ -276,8 +284,6 @@ public class SerializableRowRecordList implements SerializableList {
     blocks = new ArrayList<>();
     blocks.add(buildColumnsByBuilders(dataTypes, builders));
   }
-
-
 
   private int writeFields(Object[] rowRecord, PublicBAOS outputStream) throws IOException {
     int serializedByteLength = 0;

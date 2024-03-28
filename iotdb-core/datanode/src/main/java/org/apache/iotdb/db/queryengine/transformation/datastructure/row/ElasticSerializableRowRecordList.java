@@ -50,6 +50,7 @@ public class ElasticSerializableRowRecordList {
   protected List<SerializableRowRecordList> rowRecordLists;
   /** Mark bitMaps of correct index when one row has at least one null field. */
   protected List<BitMap> bitMaps;
+  protected List<Integer> blockCount;
 
   protected int size;
   protected int evictionUpperBound;
@@ -90,6 +91,8 @@ public class ElasticSerializableRowRecordList {
     cache = new ElasticSerializableRowRecordList.LRUCache(numCacheBlock);
     rowRecordLists = new ArrayList<>();
     bitMaps = new ArrayList<>();
+    blockCount = new ArrayList<>();
+
     size = 0;
     evictionUpperBound = 0;
 
@@ -128,6 +131,8 @@ public class ElasticSerializableRowRecordList {
     cache = new ElasticSerializableRowRecordList.LRUCache(numCacheBlock);
     rowRecordLists = new ArrayList<>();
     bitMaps = new ArrayList<>();
+    blockCount = new ArrayList<>();
+
     size = 0;
     evictionUpperBound = 0;
 
@@ -142,6 +147,16 @@ public class ElasticSerializableRowRecordList {
     return dataTypes;
   }
 
+  public int getTotalBlockCount() {
+    int previous = blockCount.stream().mapToInt(Integer::intValue).sum();
+    int current = 0;
+    if (rowRecordLists.size() != 0) {
+      current = rowRecordLists.get(rowRecordLists.size() - 1).getBlockCount();
+    }
+
+    return previous + current;
+  }
+
   public long getTime(int index) throws IOException {
     return cache
         .get(index / internalRowRecordListCapacity)
@@ -152,6 +167,17 @@ public class ElasticSerializableRowRecordList {
     return cache
         .get(index / internalRowRecordListCapacity)
         .getRow(index % internalRowRecordListCapacity);
+  }
+
+  public Column[] getColumns(int index) throws IOException {
+    int externalIndex = 0;
+    int internalIndex = index;
+    while (externalIndex < blockCount.size() && internalIndex >= blockCount.get(externalIndex)) {
+      internalIndex -= blockCount.get(externalIndex);
+      externalIndex++;
+    }
+
+    return cache.get(externalIndex).getColumns(internalIndex);
   }
 
   /** true if any field except the timestamp in the current row is null. */
@@ -253,6 +279,11 @@ public class ElasticSerializableRowRecordList {
   }
 
   private void doExpansion() {
+    if (rowRecordLists.size() > 1) {
+      // Add last row record list's block count
+      blockCount.add(rowRecordLists.get(rowRecordLists.size() - 1).getBlockCount());
+    }
+
     rowRecordLists.add(
         SerializableRowRecordList.newSerializableRowRecordList(
             queryId, dataTypes, internalRowRecordListCapacity));

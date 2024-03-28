@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockRowIterator;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 import java.util.List;
 
@@ -81,5 +82,33 @@ public class TsBlockInputDataSet implements IUDFInputDataSet {
   @Override
   public Object[] nextRowInObjects() {
     return tsBlockRowIterator.next();
+  }
+
+  /////////////////////////////NEW/////////////////////////////
+  private TsBlock tsBlock;
+
+  public YieldableState canYield() throws Exception {
+    // Request from child operator if there is no TsBlock
+    if (tsBlock == null) {
+      if (operator.isBlocked() != Operator.NOT_BLOCKED) {
+        return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+      }
+      if (!operator.hasNextWithTimer()) {
+        return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+      }
+      tsBlock = operator.nextWithTimer();
+      if (tsBlock == null) {
+        return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+      }
+    }
+
+    return YieldableState.YIELDABLE;
+  }
+
+  public Column[] nextColumns() {
+    Column[] rows = tsBlock.getAllColumns();
+    // Prepare for next TsBlock
+    tsBlock = null;
+    return rows;
   }
 }
