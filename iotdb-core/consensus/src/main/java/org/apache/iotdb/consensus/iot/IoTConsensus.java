@@ -56,7 +56,6 @@ import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCService;
 import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCServiceProcessor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.commons.utils.FileUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -217,7 +216,6 @@ public class IoTConsensus implements IConsensus {
   @Override
   public void createLocalPeer(ConsensusGroupId groupId, List<Peer> peers)
       throws ConsensusException {
-    logger.info("[IoTConsensus]: DESTINATION_CREATE_LOCAL_PEER starts...");
     int consensusGroupSize = peers.size();
     if (consensusGroupSize == 0) {
       throw new IllegalPeerNumException(consensusGroupSize);
@@ -257,7 +255,6 @@ public class IoTConsensus implements IConsensus {
                 new ConsensusException(
                     String.format("Unable to create consensus dir for group %s", groupId)));
     FileUtils.logBreakpoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER.toString());
-
     if (exist.get()) {
       throw new ConsensusGroupAlreadyExistException(groupId);
     }
@@ -304,6 +301,7 @@ public class IoTConsensus implements IConsensus {
       // step 4: let the new peer load snapshot
       logger.info("[IoTConsensus] trigger new peer to load snapshot...");
       impl.triggerSnapshotLoad(peer);
+      FileUtils.logBreakpoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION.toString());
 
       // step 5: notify all the other Peers to build the sync connection to newPeer
       logger.info("[IoTConsensus] notify current peers to build sync log...");
@@ -316,6 +314,7 @@ public class IoTConsensus implements IConsensus {
       // step 7: spot clean
       logger.info("[IoTConsensus] do spot clean...");
       doSpotClean(peer, impl);
+      FileUtils.logBreakpoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE.toString());
 
     } catch (ConsensusGroupModifyPeerException e) {
       try {

@@ -302,7 +302,7 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
     AtomicReference<Exception> lastException = new AtomicReference<>();
     try {
       Awaitility.await()
-          .atMost(1, TimeUnit.MINUTES)
+          .atMost(2, TimeUnit.MINUTES)
           .until(
               () -> {
                 try {

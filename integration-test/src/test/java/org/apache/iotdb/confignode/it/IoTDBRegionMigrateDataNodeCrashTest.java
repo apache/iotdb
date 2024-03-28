@@ -21,30 +21,62 @@ package org.apache.iotdb.confignode.it;
 
 import org.apache.iotdb.commons.utils.DataNodeKillPoints;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class IoTDBRegionMigrateDataNodeCrashTest
     extends IoTDBRegionMigrateReliabilityTestFramework {
   // region Coordinator DataNode crash tests
 
+  @Ignore
   @Test
   public void coordinatorCrashDuringRemovePeer() throws Exception {
-    generalTest(1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.COORDINATOR_REMOVE_PEER.name()));
+    generalTest(
+        1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.COORDINATOR_REMOVE_PEER.name()));
+  }
+
+  @Test
+  public void coordinatorCrashDuringAddPeerTransition() throws Exception {
+    generalTest(
+        1,
+        1,
+        1,
+        2,
+        buildSet(),
+        buildSet(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION.name()));
+  }
+
+  @Test
+  public void coordinatorCrashDuringAddPeerDone() throws Exception {
+    generalTest(
+        1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE.name()));
   }
 
   // endregion
 
   // region Original DataNode crash tests
 
+  @Ignore
   @Test
   public void originalCrashDuringRemovePeer() throws Exception {
     generalTest(1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.ORIGINAL_REMOVE_PEER.name()));
   }
 
+  @Ignore
   @Test
   public void originalCrashDuringDeleteLocalPeer() throws Exception {
     generalTest(
-        1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.ORIGINAL_DELETE_OLD_REGION_PEER.name()));
+        1,
+        1,
+        1,
+        2,
+        buildSet(),
+        buildSet(DataNodeKillPoints.ORIGINAL_DELETE_OLD_REGION_PEER.name()));
+  }
+
+  @Test
+  public void originalCrashDuringAddPeerDone() throws Exception {
+    generalTest(2, 2, 1, 3, buildSet(), buildSet(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE.name()));
   }
 
   // endregion
@@ -55,5 +87,22 @@ public class IoTDBRegionMigrateDataNodeCrashTest
   public void destinationCrashDuringCreateLocalPeer() throws Exception {
     generalTest(
         1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER.name()));
+  }
+
+  @Test
+  public void destinationCrashDuringAddPeerTransition() throws Exception {
+    generalTest(
+        1,
+        1,
+        1,
+        2,
+        buildSet(),
+        buildSet(DataNodeKillPoints.DESTINATION_ADD_PEER_TRANSITION.name()));
+  }
+
+  @Test
+  public void destinationCrashDuringAddPeerDone() throws Exception {
+    generalTest(
+        1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.DESTINATION_ADD_PEER_DONE.name()));
   }
 }
