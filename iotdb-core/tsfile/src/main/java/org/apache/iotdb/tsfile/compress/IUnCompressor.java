@@ -238,7 +238,7 @@ public interface IUnCompressor {
     public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
         throws IOException {
       try {
-        return decompressor.decompress(byteArray, offset, length, output, offset);
+        return decompressor.decompress(byteArray, offset, length, output, outOffset);
       } catch (RuntimeException e) {
         logger.error(UNCOMPRESS_INPUT_ERROR, e);
         throw new IOException(e);
