@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.session.it;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.isession.ISession;
@@ -1633,6 +1634,42 @@ public class IoTDBSessionSimpleIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void convertRecordsToTabletsTest() {
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
+    List<Object> value = new ArrayList<>();
+    for (int measurement = 0; measurement < 100; measurement++) {
+      types.add(TSDataType.INT64);
+      measurements.add("s" + measurement);
+      value.add((long) measurement);
+    }
+    List<String> devices = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<TSDataType>> typeList = new ArrayList<>();
+    List<List<Object>> values = new ArrayList<>();
+    List<Long> timestamps = new ArrayList<>();
+    for (long row = 0; row < 1000; row++) {
+      devices.add("root.sg1.d1");
+      measurementsList.add(measurements);
+      typeList.add(types);
+      values.add(value);
+      timestamps.add(row);
+    }
+    List<String> queryMeasurement = new ArrayList<>();
+    queryMeasurement.add("root.sg1.d1.s1");
+    List<TAggregationType> queryType = new ArrayList<>();
+    queryType.add(TAggregationType.COUNT);
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.insertRecords(devices, timestamps, measurementsList, typeList, values);
+      SessionDataSet dataSet = session.executeAggregationQuery(queryMeasurement, queryType);
+      assertEquals(1000, dataSet.next().getFields().get(0).getLongV());
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
     }
   }
 }
