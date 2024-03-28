@@ -156,7 +156,6 @@ public class MemTableFlushTask {
         series.sortTvListForFlush();
         long subTaskTime = System.currentTimeMillis() - startTime;
         sortTime += subTaskTime;
-        WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.SORT_TASK, subTaskTime);
         encodingTaskQueue.put(series);
       }
 
@@ -258,7 +257,6 @@ public class MemTableFlushTask {
                 Thread.currentThread().interrupt();
               }
               long subTaskTime = System.currentTimeMillis() - starTime;
-              WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.ENCODING_TASK, subTaskTime);
               memSerializeTime += subTaskTime;
             }
           }
@@ -344,7 +342,6 @@ public class MemTableFlushTask {
           }
           long subTaskTime = System.currentTimeMillis() - starTime;
           ioTime += subTaskTime;
-          WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.IO_TASK, subTaskTime);
         }
         LOGGER.debug(
             "flushing a memtable to file {} in database {}, io cost {}ms",

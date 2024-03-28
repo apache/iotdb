@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
@@ -62,6 +63,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.DISPATCH_READ;
@@ -433,6 +435,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         break;
       case WRITE:
         PlanNode planNode = instance.getFragment().getPlanNodeTree();
+        if (planNode instanceof InsertRowsNode) {
+          InsertRowsNode insertRowsNode = (InsertRowsNode) planNode;
+          insertRowsNode.metrics = new AtomicLong[4];
+          for (int i = 0; i < 4; i++) {
+            insertRowsNode.metrics[i] = new AtomicLong(0);
+          }
+        }
         RegionWriteExecutor writeExecutor = new RegionWriteExecutor();
         RegionExecutionResult writeResult = writeExecutor.execute(groupId, planNode);
         if (!writeResult.isAccepted()) {
@@ -452,6 +461,16 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         } else {
           // some expected and accepted status except SUCCESS_STATUS need to be returned
           TSStatus status = writeResult.getStatus();
+          if (planNode instanceof InsertRowsNode) {
+            InsertRowsNode insertRowsNode = (InsertRowsNode) planNode;
+            PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(
+                insertRowsNode.metrics[0].get());
+            PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(
+                insertRowsNode.metrics[1].get());
+            PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(insertRowsNode.metrics[2].get());
+            PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(
+                insertRowsNode.metrics[3].get());
+          }
           if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             throw new FragmentInstanceDispatchException(status);
           }

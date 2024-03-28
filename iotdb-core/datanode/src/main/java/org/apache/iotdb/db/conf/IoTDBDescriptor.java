@@ -417,6 +417,11 @@ public class IoTDBDescriptor {
                 "io_task_queue_size_for_flushing",
                 Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
 
+    conf.setEnableWALCompression(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_wal_compression", Boolean.toString(conf.isEnableWALCompression()))));
+
     conf.setCompactionScheduleIntervalInMs(
         Long.parseLong(
             properties.getProperty(

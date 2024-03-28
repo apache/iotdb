@@ -58,6 +58,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   private static final PartialPath ALL_MATCH_PATTERN = new PartialPath(new String[] {"root", "**"});
 
   protected String[] nodes;
+  protected int hashCache;
+  protected boolean cacheHashCache = false;
 
   public PartialPath() {}
 
@@ -717,11 +719,17 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   @Override
   public int hashCode() {
-    int h = 0;
-    for (String node : nodes) {
-      h += 31 * h + node.hashCode();
+    if (cacheHashCache) {
+      return hashCache;
+    } else {
+      int h = 0;
+      for (String node : nodes) {
+        h += 31 * h + node.hashCode();
+      }
+      hashCache = h;
+      cacheHashCache = true;
+      return h;
     }
-    return h;
   }
 
   @Override
