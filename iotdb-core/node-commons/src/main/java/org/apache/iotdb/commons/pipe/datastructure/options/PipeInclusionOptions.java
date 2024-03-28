@@ -90,12 +90,15 @@ public class PipeInclusionOptions {
             new HashSet<>(
                 Arrays.asList(
                     "schema.database.drop",
-                    "schema.timeseries.ordinary.delete",
+                    "schema.timeseries.ordinary.drop",
                     "schema.timeseries.view.drop",
                     "schema.timeseries.template.drop",
+                    "schema.timeseries.template.unset",
                     "schema.timeseries.template.deactivate",
                     "auth.role.drop",
-                    "auth.user.drop"))));
+                    "auth.role.revoke",
+                    "auth.user.drop",
+                    "auth.user.revoke"))));
     ALIAS_OPTIONS_MAP.put(
         "schema.deletion",
         Collections.unmodifiableSet(
@@ -105,11 +108,14 @@ public class PipeInclusionOptions {
                     "schema.timeseries.ordinary.delete",
                     "schema.timeseries.view.drop",
                     "schema.timeseries.template.drop",
+                    "schema.timeseries.template.unset",
                     "schema.timeseries.template.deactivate"))));
     ALIAS_OPTIONS_MAP.put(
         "auth.deletion",
         Collections.unmodifiableSet(
-            new HashSet<>(Arrays.asList("auth.role.drop", "auth.user.drop"))));
+            new HashSet<>(
+                Arrays.asList(
+                    "auth.role.drop", "auth.role.revoke", "auth.user.drop", "auth.user.revoke"))));
   }
 
   public static boolean hasAtLeastOneOption(String inclusionString, String exclusionString) {
