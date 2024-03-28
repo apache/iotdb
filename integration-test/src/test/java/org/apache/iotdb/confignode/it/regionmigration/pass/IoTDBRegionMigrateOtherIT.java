@@ -17,7 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration;
+package org.apache.iotdb.confignode.it.regionmigration.pass;
+
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityTestFramework;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -26,7 +28,7 @@ public class IoTDBRegionMigrateOtherIT extends IoTDBRegionMigrateReliabilityTest
   @Test
   public void badKillPoint() throws Exception {
     try {
-      generalTest(1, 1, 1, 2, buildSet("??"), buildSet());
+      generalTest(1, 1, 1, 2, buildSet("??"), noKillPoints());
     } catch (AssertionError e) {
       return;
     }

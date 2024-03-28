@@ -262,12 +262,22 @@ public class FileUtils {
 
   public static void logBreakpoint(String logContent) {
     if (CommonDescriptor.getInstance().getConfig().isIntegrationTest()) {
-      LOGGER.info("breakpoint:{}", logContent);
-      try {
-        TimeUnit.SECONDS.sleep(1);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
+      logBreakpointImpl(logContent);
+    }
+  }
+
+  public static <T extends Enum<T>> void logBreakpoint(T x) {
+    if (CommonDescriptor.getInstance().getConfig().isIntegrationTest()) {
+      logBreakpointImpl(x.getClass().getName() + "." + x.name());
+    }
+  }
+
+  private static void logBreakpointImpl(String breakPointName) {
+    LOGGER.info("breakpoint:{}", breakPointName);
+    try {
+      TimeUnit.SECONDS.sleep(1);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     }
   }
 }

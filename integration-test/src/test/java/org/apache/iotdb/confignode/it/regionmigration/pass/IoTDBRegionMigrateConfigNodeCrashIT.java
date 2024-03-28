@@ -17,8 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration;
+package org.apache.iotdb.confignode.it.regionmigration.pass;
 
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityTestFramework;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
@@ -37,18 +38,24 @@ public class IoTDBRegionMigrateConfigNodeCrashIT
   @Ignore
   public void cnCrashDuringPreCheck() throws Exception {
     generalTest(
-        1, 1, 1, 2, buildSet(RegionTransitionState.REGION_MIGRATE_PREPARE.toString()), buildSet());
+        1,
+        1,
+        1,
+        2,
+        buildSet(RegionTransitionState.REGION_MIGRATE_PREPARE.toString()),
+        noKillPoints());
   }
 
   @Test
   public void cnCrashDuringCreatePeer() throws Exception {
     generalTest(
-        1, 1, 1, 2, buildSet(AddRegionPeerState.CREATE_NEW_REGION_PEER.toString()), buildSet());
+        1, 1, 1, 2, buildSet(AddRegionPeerState.CREATE_NEW_REGION_PEER.toString()), noKillPoints());
   }
 
   @Test
   public void cnCrashDuringDoAddPeer() throws Exception {
-    generalTest(1, 1, 1, 2, buildSet(AddRegionPeerState.DO_ADD_REGION_PEER.toString()), buildSet());
+    generalTest(
+        1, 1, 1, 2, buildSet(AddRegionPeerState.DO_ADD_REGION_PEER.toString()), noKillPoints());
   }
 
   @Test
@@ -59,25 +66,35 @@ public class IoTDBRegionMigrateConfigNodeCrashIT
         1,
         2,
         buildSet(AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE.toString()),
-        buildSet());
+        noKillPoints());
   }
 
   @Test
   public void cnCrashDuringChangeRegionLeader() throws Exception {
     generalTest(
-        1, 1, 1, 2, buildSet(RegionTransitionState.CHANGE_REGION_LEADER.toString()), buildSet());
+        1,
+        1,
+        1,
+        2,
+        buildSet(RegionTransitionState.CHANGE_REGION_LEADER.toString()),
+        noKillPoints());
   }
 
   @Test
   public void cnCrashDuringRemoveRegionPeer() throws Exception {
     generalTest(
-        1, 1, 1, 2, buildSet(RemoveRegionPeerState.REMOVE_REGION_PEER.toString()), buildSet());
+        1, 1, 1, 2, buildSet(RemoveRegionPeerState.REMOVE_REGION_PEER.toString()), noKillPoints());
   }
 
   @Test
   public void cnCrashDuringDeleteOldRegionPeer() throws Exception {
     generalTest(
-        1, 1, 1, 2, buildSet(RemoveRegionPeerState.DELETE_OLD_REGION_PEER.toString()), buildSet());
+        1,
+        1,
+        1,
+        2,
+        buildSet(RemoveRegionPeerState.DELETE_OLD_REGION_PEER.toString()),
+        noKillPoints());
   }
 
   @Test
@@ -88,12 +105,12 @@ public class IoTDBRegionMigrateConfigNodeCrashIT
         1,
         2,
         buildSet(RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE.toString()),
-        buildSet());
+        noKillPoints());
   }
 
   @Test
   public void cnCrashTest() throws Exception {
-    ConcurrentHashMap.KeySetView<String, Boolean> killConfigNodeKeywords = buildSet();
+    ConcurrentHashMap.KeySetView<String, Boolean> killConfigNodeKeywords = noKillPoints();
     killConfigNodeKeywords.addAll(
         Arrays.stream(AddRegionPeerState.values())
             .map(Enum::toString)
@@ -102,6 +119,6 @@ public class IoTDBRegionMigrateConfigNodeCrashIT
         Arrays.stream(RemoveRegionPeerState.values())
             .map(Enum::toString)
             .collect(Collectors.toList()));
-    generalTest(1, 1, 1, 2, killConfigNodeKeywords, buildSet());
+    generalTest(1, 1, 1, 2, killConfigNodeKeywords, noKillPoints());
   }
 }

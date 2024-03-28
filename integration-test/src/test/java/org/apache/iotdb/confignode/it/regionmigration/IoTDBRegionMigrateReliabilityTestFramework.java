@@ -60,6 +60,7 @@ import java.util.concurrent.ConcurrentHashMap.KeySetView;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public class IoTDBRegionMigrateReliabilityTestFramework {
   private static final Logger LOGGER =
@@ -419,9 +420,22 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
         + expectDeletedFileName;
   }
 
-  static KeySetView<String, Boolean> buildSet(String... keywords) {
+  protected static KeySetView<String, Boolean> noKillPoints() {
+    return ConcurrentHashMap.newKeySet();
+  }
+
+  protected static KeySetView<String, Boolean> buildSet(String... keywords) {
     KeySetView<String, Boolean> result = ConcurrentHashMap.newKeySet();
     result.addAll(Arrays.asList(keywords));
+    return result;
+  }
+
+  protected static <T extends Enum<T>> KeySetView<String, Boolean> buildSet(T... keywords) {
+    KeySetView<String, Boolean> result = ConcurrentHashMap.newKeySet();
+    result.addAll(
+        Arrays.stream(keywords)
+            .map(keyword -> keyword.getClass() + "." + keyword.name())
+            .collect(Collectors.toList()));
     return result;
   }
 }
