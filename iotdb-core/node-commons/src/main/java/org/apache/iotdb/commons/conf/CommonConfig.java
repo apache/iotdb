@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.conf;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.commons.utils.Compatibility130;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
@@ -55,6 +56,7 @@ public class CommonConfig {
 
   private String adminPassword = "root";
 
+  @Compatibility130
   private String oldUserFolder =
       IoTDBConstant.DN_DEFAULT_DATA_DIR
           + File.separator
@@ -62,6 +64,7 @@ public class CommonConfig {
           + File.separator
           + "users";
 
+  @Compatibility130
   private String oldRoleFolder =
       IoTDBConstant.DN_DEFAULT_DATA_DIR
           + File.separator
@@ -69,6 +72,7 @@ public class CommonConfig {
           + File.separator
           + "roles";
 
+  @Compatibility130
   private String oldProcedureWalFolder =
       IoTDBConstant.DN_DEFAULT_DATA_DIR
           + File.separator
