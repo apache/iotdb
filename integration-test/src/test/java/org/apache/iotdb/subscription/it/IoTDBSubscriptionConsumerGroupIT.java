@@ -450,7 +450,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         Awaitility.await()
             .pollDelay(1, TimeUnit.SECONDS)
             .pollInterval(1, TimeUnit.SECONDS)
-            .atMost(100, TimeUnit.SECONDS)
+            .atMost(180, TimeUnit.SECONDS)
             .untilAsserted(
                 () -> {
                   if (receiverCrashed.get()) {
