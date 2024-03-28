@@ -30,13 +30,14 @@ import org.apache.thrift.TException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 final class SubscriptionProvider extends SubscriptionSession {
 
   private final String consumerId;
   private final String consumerGroupId;
 
-  private boolean isClosed = true;
+  private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
   SubscriptionProvider(
       TEndPoint endPoint,
@@ -52,7 +53,7 @@ final class SubscriptionProvider extends SubscriptionSession {
 
   synchronized int handshake()
       throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
-    if (!isClosed) {
+    if (!isClosed.get()) {
       return -1;
     }
 
@@ -63,13 +64,13 @@ final class SubscriptionProvider extends SubscriptionSession {
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
     int dataNodeId = getSessionConnection().handshake(new ConsumerConfig(consumerAttributes));
 
-    isClosed = false;
+    isClosed.set(false);
     return dataNodeId;
   }
 
   @Override
   public synchronized void close() throws IoTDBConnectionException {
-    if (isClosed) {
+    if (isClosed.get()) {
       return;
     }
 
@@ -80,7 +81,7 @@ final class SubscriptionProvider extends SubscriptionSession {
       throw new IoTDBConnectionException(e);
     } finally {
       super.close();
-      isClosed = true;
+      isClosed.set(true);
     }
   }
 

@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public abstract class SubscriptionConsumer implements AutoCloseable {
@@ -57,7 +58,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private static final long HEARTBEAT_INTERVAL = 5000; // unit: ms
   private ScheduledExecutorService heartbeatWorkerExecutor;
 
-  private boolean isClosed = true;
+  private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
   public String getConsumerId() {
     return consumerId;
@@ -101,7 +102,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   public synchronized void open()
       throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
-    if (!isClosed) {
+    if (!isClosed.get()) {
       return;
     }
 
@@ -125,12 +126,12 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
     launchHeartbeatWorker();
 
-    isClosed = false;
+    isClosed.set(false);
   }
 
   @Override
   public synchronized void close() throws IoTDBConnectionException {
-    if (isClosed) {
+    if (isClosed.get()) {
       return;
     }
 
@@ -143,7 +144,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         provider.close();
       }
     } finally {
-      isClosed = true;
+      isClosed.set(true);
     }
   }
 
@@ -207,7 +208,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   boolean isClosed() {
-    return isClosed;
+    return isClosed.get();
   }
 
   /////////////////////////////// utility ///////////////////////////////

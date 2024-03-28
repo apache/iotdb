@@ -44,6 +44,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class SubscriptionPullConsumer extends SubscriptionConsumer {
@@ -56,7 +57,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   private ScheduledExecutorService autoCommitWorkerExecutor;
   private SortedMap<Long, Set<SubscriptionMessage>> uncommittedMessages;
 
-  private boolean isClosed = true;
+  private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
   /////////////////////////////// ctor ///////////////////////////////
 
@@ -90,7 +91,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   public synchronized void open()
       throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
-    if (!isClosed) {
+    if (!isClosed.get()) {
       return;
     }
 
@@ -100,12 +101,12 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       launchAutoCommitWorker();
     }
 
-    isClosed = false;
+    isClosed.set(false);
   }
 
   @Override
   public synchronized void close() throws IoTDBConnectionException {
-    if (isClosed) {
+    if (isClosed.get()) {
       return;
     }
 
@@ -119,7 +120,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       }
       super.close();
     } finally {
-      isClosed = true;
+      isClosed.set(true);
     }
   }
 
@@ -236,7 +237,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   }
 
   boolean isClosed() {
-    return isClosed;
+    return isClosed.get();
   }
 
   int getAutoCommitInterval() {
