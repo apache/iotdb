@@ -42,7 +42,7 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
 
   @Override
   public void onClusterStatisticsChanged(StatisticsChangeEvent event) {
-    // do nothing, because pipe task is not related to statistics
+    // Do nothing, because pipe task is not related to statistics
   }
 
   public void onConfigRegionGroupLeaderChanged() {
@@ -58,12 +58,11 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
 
   @Override
   public void onRegionGroupLeaderChanged(RouteChangeEvent event) {
-    // if no pipe task, return
+    // If no pipe tasks, return
     if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()) {
       return;
     }
 
-    // we only care about data region leader change
     final Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap =
         new HashMap<>();
     event
@@ -72,8 +71,8 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
             (regionGroupId, pair) -> {
               final String databaseName =
                   configManager.getPartitionManager().getRegionStorageGroup(regionGroupId);
-              // pipe only collect user's data, filter metric database here.
-              // databaseName may be null for config region group
+              // Pipe only collect user's data, filter metric database here.
+              // DatabaseName may be null for config region group
               if (!SchemaConstant.SYSTEM_DATABASE.equals(databaseName)) {
                 // null or -1 means empty origin leader
                 final int oldLeaderNodeId = (pair.left == null ? -1 : pair.left);
@@ -86,20 +85,12 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
               }
             });
 
-    // if no region leader change, return
+    // If no region leaders change, return
     if (regionGroupToOldAndNewLeaderPairMap.isEmpty()) {
       return;
     }
 
-    // submit procedure in an async way to avoid blocking the caller
-    configManager
-        .getPipeManager()
-        .getPipeRuntimeCoordinator()
-        .getProcedureSubmitter()
-        .submit(
-            () ->
-                configManager
-                    .getProcedureManager()
-                    .pipeHandleLeaderChange(regionGroupToOldAndNewLeaderPairMap));
+    // Synchronized to ensure that the newest leader is put into the procedure at last
+    configManager.getProcedureManager().pipeHandleLeaderChange(regionGroupToOldAndNewLeaderPairMap);
   }
 }
