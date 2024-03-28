@@ -53,6 +53,11 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-raft-consensus</artifactId>
+            <version>1.3.2-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-commons</artifactId>
             <version>1.3.2-SNAPSHOT</version>
         </dependency>
@@ -121,12 +126,15 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>tsfile</artifactId>
             <version>1.3.2-SNAPSHOT</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
         </dependency>
     </dependencies>
     <build>

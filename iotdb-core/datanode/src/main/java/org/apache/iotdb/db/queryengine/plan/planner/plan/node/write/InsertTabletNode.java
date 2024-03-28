@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.commons.utils.Timer.Statistic;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -36,13 +37,17 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -80,6 +85,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   // this is usually used to back-propagate exceptions to the parent plan without losing their
   // proper positions.
   private List<Integer> range;
+  private boolean isEncodedInSerialization = false;
+  private TSEncoding serializationEncoding = TSEncoding.TS_2DIFF;
+  private PublicBAOS encodingTempBaos;
 
   public InsertTabletNode(PlanNodeId id) {
     super(id);
@@ -229,12 +237,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
             .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlots);
 
     // collect redirectInfo
+    TRegionReplicaSet tRegionReplicaSet =
+        dataRegionReplicaSets.get(dataRegionReplicaSets.size() - 1);
+    int preferredLocation =
+        tRegionReplicaSet.isSetPreferredLocation() ? tRegionReplicaSet.preferredLocation : 0;
     analysis.addEndPointToRedirectNodeList(
-        dataRegionReplicaSets
-            .get(dataRegionReplicaSets.size() - 1)
-            .getDataNodeLocations()
-            .get(0)
-            .getClientRpcEndPoint());
+        tRegionReplicaSet.getDataNodeLocations().get(preferredLocation).getClientRpcEndPoint());
 
     Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
     for (int i = 0; i < dataRegionReplicaSets.size(); i++) {
@@ -375,23 +383,33 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   void subSerialize(ByteBuffer buffer) {
+    buffer.put((byte) (isEncodedInSerialization ? 1 : 0));
     ReadWriteIOUtils.write(devicePath.getFullPath(), buffer);
     writeMeasurementsOrSchemas(buffer);
     writeDataTypes(buffer);
+    if (isEncodedInSerialization) {
+      encodingTempBaos = new PublicBAOS(4096);
+    }
     writeTimes(buffer);
     writeBitMaps(buffer);
     writeValues(buffer);
     ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), buffer);
+    encodingTempBaos = null;
   }
 
   void subSerialize(DataOutputStream stream) throws IOException {
+    stream.write((byte) (isEncodedInSerialization ? 1 : 0));
     ReadWriteIOUtils.write(devicePath.getFullPath(), stream);
     writeMeasurementsOrSchemas(stream);
     writeDataTypes(stream);
+    if (isEncodedInSerialization) {
+      encodingTempBaos = new PublicBAOS(4096);
+    }
     writeTimes(stream);
     writeBitMaps(stream);
     writeValues(stream);
     ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), stream);
+    encodingTempBaos = null;
   }
 
   /** Serialize measurements or measurement schemas, ignoring failed time series */
@@ -415,8 +433,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   /** Serialize measurements or measurement schemas, ignoring failed time series */
   private void writeMeasurementsOrSchemas(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(measurements.length - getFailedMeasurementNumber(), stream);
-    ReadWriteIOUtils.write((byte) (measurementSchemas != null ? 1 : 0), stream);
+    stream.writeInt(measurements.length - getFailedMeasurementNumber());
+    stream.write((byte) (measurementSchemas != null ? 1 : 0));
 
     for (int i = 0; i < measurements.length; i++) {
       // ignore failed partial insert
@@ -456,15 +474,59 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   private void writeTimes(ByteBuffer buffer) {
     ReadWriteIOUtils.write(rowCount, buffer);
-    for (long time : times) {
-      ReadWriteIOUtils.write(time, buffer);
+    if (!isEncodedInSerialization) {
+      for (long time : times) {
+        ReadWriteIOUtils.write(time, buffer);
+      }
+    } else {
+      Encoder encoder =
+          TSEncodingBuilder.getEncodingBuilder(serializationEncoding).getEncoder(TSDataType.INT64);
+      for (long time : times) {
+        encoder.encode(time, encodingTempBaos);
+      }
+
+      try {
+        encoder.flush(encodingTempBaos);
+        byte[] encodingBuffer = encodingTempBaos.getBuf();
+        int encodedSize = encodingTempBaos.size();
+        buffer.putInt(encodedSize);
+        buffer.put(encodingBuffer, 0, encodedSize);
+      } catch (IOException e) {
+        for (long time : times) {
+          ReadWriteIOUtils.write(time, buffer);
+        }
+      }
     }
   }
 
   private void writeTimes(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(rowCount, stream);
-    for (long time : times) {
-      ReadWriteIOUtils.write(time, stream);
+    if (!isEncodedInSerialization) {
+      for (long time : times) {
+        ReadWriteIOUtils.write(time, stream);
+      }
+    } else {
+      long startTime = Statistic.SERIALIZE_ENCODE_TIME.getOperationStartTime();
+      Encoder encoder =
+          TSEncodingBuilder.getEncodingBuilder(serializationEncoding).getEncoder(TSDataType.INT64);
+      for (long time : times) {
+        encoder.encode(time, encodingTempBaos);
+      }
+
+      try {
+        encoder.flush(encodingTempBaos);
+        byte[] encodingBuffer = encodingTempBaos.getBuf();
+        int encodedSize = encodingTempBaos.size();
+        stream.writeInt(encodedSize);
+        stream.write(encodingBuffer, 0, encodedSize);
+        Statistic.SERIALIZE_ENCODE_TIME.calOperationCostTimeFromStart(startTime);
+        Statistic.ENCODE_RAW_SIZE.add((long) rowCount * Double.BYTES);
+        Statistic.ENCODE_AFTER_SIZE.add(encodedSize);
+      } catch (IOException e) {
+        for (long time : times) {
+          ReadWriteIOUtils.write(time, stream);
+        }
+      }
     }
   }
 
@@ -552,8 +614,34 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(doubleValues[j], buffer);
+        if (!isEncodedInSerialization) {
+          for (int j = 0; j < rowCount; j++) {
+            ReadWriteIOUtils.write(doubleValues[j], buffer);
+          }
+        } else {
+          long startTime = Statistic.SERIALIZE_ENCODE_TIME.getOperationStartTime();
+          Encoder encoder =
+              TSEncodingBuilder.getEncodingBuilder(serializationEncoding)
+                  .getEncoder(TSDataType.DOUBLE);
+          encodingTempBaos.reset();
+          for (double val : doubleValues) {
+            encoder.encode(val, encodingTempBaos);
+          }
+
+          try {
+            encoder.flush(encodingTempBaos);
+            byte[] encodingBuffer = encodingTempBaos.getBuf();
+            int encodedSize = encodingTempBaos.size();
+            buffer.putInt(encodedSize);
+            buffer.put(encodingBuffer, 0, encodedSize);
+            Statistic.SERIALIZE_ENCODE_TIME.calOperationCostTimeFromStart(startTime);
+            Statistic.ENCODE_RAW_SIZE.add((long) rowCount * Double.BYTES);
+            Statistic.ENCODE_AFTER_SIZE.add(encodedSize);
+          } catch (IOException e) {
+            for (int j = 0; j < rowCount; j++) {
+              ReadWriteIOUtils.write(doubleValues[j], buffer);
+            }
+          }
         }
         break;
       case BOOLEAN:
@@ -579,31 +667,57 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       case INT32:
         int[] intValues = (int[]) column;
         for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(intValues[j], stream);
+          stream.writeInt(intValues[j]);
         }
         break;
       case INT64:
         long[] longValues = (long[]) column;
         for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(longValues[j], stream);
+          stream.writeLong(longValues[j]);
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) column;
         for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(floatValues[j], stream);
+          stream.writeFloat(floatValues[j]);
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) column;
-        for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(doubleValues[j], stream);
+        if (!isEncodedInSerialization) {
+          for (int j = 0; j < rowCount; j++) {
+            ReadWriteIOUtils.write(doubleValues[j], stream);
+          }
+        } else {
+          long startTime = Statistic.SERIALIZE_ENCODE_TIME.getOperationStartTime();
+          Encoder encoder =
+              TSEncodingBuilder.getEncodingBuilder(serializationEncoding)
+                  .getEncoder(TSDataType.DOUBLE);
+          encodingTempBaos.reset();
+          for (double val : doubleValues) {
+            encoder.encode(val, encodingTempBaos);
+          }
+
+          try {
+            encoder.flush(encodingTempBaos);
+            byte[] encodingBuffer = encodingTempBaos.getBuf();
+            int encodedSize = encodingTempBaos.size();
+            stream.writeInt(encodedSize);
+            stream.write(encodingBuffer, 0, encodedSize);
+            Statistic.SERIALIZE_ENCODE_TIME.calOperationCostTimeFromStart(startTime);
+            Statistic.ENCODE_RAW_SIZE.add((long) rowCount * Double.BYTES);
+            Statistic.ENCODE_AFTER_SIZE.add(encodedSize);
+          } catch (IOException e) {
+            for (int j = 0; j < rowCount; j++) {
+              ReadWriteIOUtils.write(doubleValues[j], stream);
+            }
+          }
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) column;
         for (int j = 0; j < rowCount; j++) {
-          ReadWriteIOUtils.write(BytesUtils.boolToByte(boolValues[j]), stream);
+          stream.write(BytesUtils.boolToByte(boolValues[j]));
         }
         break;
       case TEXT:
@@ -625,6 +739,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   public void subDeserialize(ByteBuffer buffer) {
+    isEncodedInSerialization = buffer.get() == 1;
+
     try {
       devicePath = new PartialPath(ReadWriteIOUtils.readString(buffer));
     } catch (IllegalPathException e) {
@@ -654,19 +770,32 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     rowCount = buffer.getInt();
     times = new long[rowCount];
-    times = QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount);
+    if (!isEncodedInSerialization) {
+      times = QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount, (String) null);
+    } else {
+      times = QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount, serializationEncoding);
+    }
 
     boolean hasBitMaps = BytesUtils.byteToBool(buffer.get());
     if (hasBitMaps) {
       bitMaps =
           QueryDataSetUtils.readBitMapsFromBuffer(buffer, measurementSize, rowCount).orElse(null);
     }
-    columns =
-        QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, measurementSize, rowCount);
+    if (!isEncodedInSerialization) {
+      columns =
+          QueryDataSetUtils.readTabletValuesFromBuffer(
+              buffer, dataTypes, measurementSize, rowCount);
+    } else {
+      columns =
+          QueryDataSetUtils.readTabletValuesFromBuffer(
+              buffer, dataTypes, measurementSize, rowCount, serializationEncoding);
+    }
+
     isAligned = buffer.get() == 1;
   }
 
   // region serialize & deserialize methods for WAL
+
   /** Serialized size for wal */
   @Override
   public int serializedSize() {
@@ -927,7 +1056,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     rowCount = buffer.getInt();
     times = new long[rowCount];
-    times = QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount);
+    times = QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount, (String) null);
 
     boolean hasBitMaps = BytesUtils.byteToBool(buffer.get());
     if (hasBitMaps) {
@@ -951,9 +1080,15 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     InsertTabletNode that = (InsertTabletNode) o;
     return rowCount == that.rowCount
         && Arrays.equals(times, that.times)
@@ -1072,5 +1207,52 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
             String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
     }
     return new TimeValuePair(times[lastIdx], value);
+  }
+
+  @Override
+  public long estimateSize() {
+    long size = super.estimateSize();
+
+    size += times.length * 8L;
+
+    for (int measurementIndex = 0; measurementIndex < columns.length; measurementIndex++) {
+      switch (dataTypes[measurementIndex]) {
+        case INT32:
+          int[] intValues = (int[]) columns[measurementIndex];
+          size += intValues.length * 4L;
+          break;
+        case INT64:
+          long[] longValues = (long[]) columns[measurementIndex];
+          size += longValues.length * 8L;
+          break;
+        case FLOAT:
+          float[] floatValues = (float[]) columns[measurementIndex];
+          size += floatValues.length * 4L;
+          break;
+        case DOUBLE:
+          double[] doubleValues = (double[]) columns[measurementIndex];
+          size += doubleValues.length * 8L;
+          break;
+        case BOOLEAN:
+          boolean[] boolValues = (boolean[]) columns[measurementIndex];
+          size += boolValues.length;
+          break;
+        case TEXT:
+          Binary[] binaryValues = (Binary[]) columns[measurementIndex];
+          for (Binary binaryValue : binaryValues) {
+            size += binaryValue.getLength();
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
+      }
+    }
+
+    return size;
+  }
+
+  public void setEncodedInSerialization(boolean encodedInSerialization) {
+    isEncodedInSerialization = encodedInSerialization;
   }
 }

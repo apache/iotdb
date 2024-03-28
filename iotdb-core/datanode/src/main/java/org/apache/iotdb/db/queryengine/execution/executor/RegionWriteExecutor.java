@@ -174,7 +174,9 @@ public class RegionWriteExecutor {
 
       try {
         TSStatus status = executePlanNodeInConsensusLayer(context.getRegionId(), node);
-        response.setAccepted(TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode());
+        response.setAccepted(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode()
+                || TSStatusCode.WEAKLY_ACCEPTED.getStatusCode() == status.getCode());
         response.setMessage(status.getMessage());
         response.setStatus(status);
       } catch (ConsensusException e) {
@@ -238,7 +240,9 @@ public class RegionWriteExecutor {
       context.getRegionWriteValidationRWLock().readLock().lock();
       try {
         TSStatus status = fireTriggerAndInsert(context.getRegionId(), insertNode);
-        response.setAccepted(TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode());
+        response.setAccepted(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode()
+                || TSStatusCode.WEAKLY_ACCEPTED.getStatusCode() == status.getCode());
         response.setMessage(status.message);
         if (!response.isAccepted()) {
           response.setStatus(status);

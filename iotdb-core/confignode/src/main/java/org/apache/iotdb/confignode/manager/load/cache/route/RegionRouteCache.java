@@ -78,6 +78,7 @@ public class RegionRouteCache {
     switch (consensusProtocolClass) {
       case ConsensusFactory.SIMPLE_CONSENSUS:
       case ConsensusFactory.RATIS_CONSENSUS:
+      case ConsensusFactory.RAFT_CONSENSUS:
         // The leader of simple and ratis consensus is self-elected
         if (leaderSample.getLeft() > this.leaderSample.get().getLeft()) {
           this.leaderSample.set(leaderSample);
@@ -99,6 +100,7 @@ public class RegionRouteCache {
     switch (consensusProtocolClass) {
       case ConsensusFactory.SIMPLE_CONSENSUS:
       case ConsensusFactory.RATIS_CONSENSUS:
+      case ConsensusFactory.RAFT_CONSENSUS:
         // The leader of simple and ratis consensus is self-elected
         if (leaderSample.get().getRight() != leaderId.get()) {
           leaderId.set(leaderSample.get().getRight());

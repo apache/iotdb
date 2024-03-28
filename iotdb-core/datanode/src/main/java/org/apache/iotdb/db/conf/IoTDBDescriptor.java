@@ -100,7 +100,7 @@ public class IoTDBDescriptor {
             e);
         System.exit(-1);
       }
-      conf.setCustomizedProperties(loader.getCustomizedProperties());
+      conf.getCustomizedProperties().putAll(loader.getCustomizedProperties());
       TSFileDescriptor.getInstance().overwriteConfigByCustomSettings(properties);
       TSFileDescriptor.getInstance()
           .getConfig()
@@ -965,6 +965,36 @@ public class IoTDBDescriptor {
                 "coordinator_write_executor_size",
                 Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
 
+    conf.setFlushMemTableMinSubThread(
+        Integer.parseInt(
+            properties.getProperty(
+                "flush_min_sub_thread_num",
+                Integer.toString(conf.getFlushMemTableMinSubThread()))));
+    conf.setFlushMemTableMaxSubThread(
+        Integer.parseInt(
+            properties.getProperty(
+                "flush_max_sub_thread_num",
+                Integer.toString(conf.getFlushMemTableMaxSubThread()))));
+
+    conf.setDynamicThreadMinIdleRatio(
+        Double.parseDouble(
+            properties.getProperty(
+                "dynamic_min_idle_ratio", Double.toString(conf.getDynamicThreadMinIdleRatio()))));
+    conf.setDynamicThreadMaxIdleRatio(
+        Double.parseDouble(
+            properties.getProperty(
+                "dynamic_max_idle_ratio", Double.toString(conf.getDynamicThreadMaxIdleRatio()))));
+    conf.setDynamicThreadMinRunningTimeNS(
+        Long.parseLong(
+            properties.getProperty(
+                "dynamic_min_running_time_ns",
+                Long.toString(conf.getDynamicThreadMinRunningTimeNS()))));
+
+    conf.setIgnoreStateMachine(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "ignore_state_machine", String.valueOf(conf.isIgnoreStateMachine()))));
+
     // commons
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());
@@ -1003,6 +1033,8 @@ public class IoTDBDescriptor {
     // author cache
     loadAuthorCache(properties);
 
+    conf.getCustomizedProperties().putAll(properties);
+
     conf.setQuotaEnable(
         Boolean.parseBoolean(
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
@@ -1024,6 +1056,7 @@ public class IoTDBDescriptor {
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
     loadIoTConsensusProps(properties);
+    conf.setCustomizedProperties(properties);
   }
 
   private void loadIoTConsensusProps(Properties properties) {

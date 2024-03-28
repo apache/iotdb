@@ -38,6 +38,10 @@ public class PublicBAOS extends ByteArrayOutputStream {
     super(size);
   }
 
+  public PublicBAOS(byte[] buffer) {
+    this.buf = buffer;
+  }
+
   /**
    * get current all bytes data
    *

@@ -312,7 +312,8 @@ public class StatementGenerator {
         DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getPrefixPath()));
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
     long[] timestamps =
-        QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size);
+        QueryDataSetUtils.readTimesFromBuffer(
+            insertTabletReq.timestamps, insertTabletReq.size, insertTabletReq.compression);
     if (timestamps.length != 0) {
       TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
     }
@@ -322,7 +323,8 @@ public class StatementGenerator {
             insertTabletReq.values,
             insertTabletReq.types,
             insertTabletReq.types.size(),
-            insertTabletReq.size));
+            insertTabletReq.size,
+            insertTabletReq.compression));
     insertStatement.setBitMaps(
         QueryDataSetUtils.readBitMapsFromBuffer(
                 insertTabletReq.values, insertTabletReq.types.size(), insertTabletReq.size)
@@ -349,7 +351,8 @@ public class StatementGenerator {
       insertTabletStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPaths.get(i)));
       insertTabletStatement.setMeasurements(req.measurementsList.get(i).toArray(new String[0]));
       long[] timestamps =
-          QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i));
+          QueryDataSetUtils.readTimesFromBuffer(
+              req.timestampsList.get(i), req.sizeList.get(i), req.compression);
       if (timestamps.length != 0) {
         TimestampPrecisionUtils.checkTimestampPrecision(timestamps[timestamps.length - 1]);
       }
@@ -359,7 +362,8 @@ public class StatementGenerator {
               req.valuesList.get(i),
               req.typesList.get(i),
               req.measurementsList.get(i).size(),
-              req.sizeList.get(i)));
+              req.sizeList.get(i),
+              req.compression));
       insertTabletStatement.setBitMaps(
           QueryDataSetUtils.readBitMapsFromBuffer(
                   req.valuesList.get(i), req.measurementsList.get(i).size(), req.sizeList.get(i))

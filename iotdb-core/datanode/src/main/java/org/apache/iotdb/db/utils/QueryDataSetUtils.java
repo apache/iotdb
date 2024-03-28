@@ -22,8 +22,12 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -621,10 +625,25 @@ public class QueryDataSetUtils {
     return new Pair<>(res, !queryExecution.hasNextResult());
   }
 
-  public static long[] readTimesFromBuffer(ByteBuffer buffer, int size) {
+  public static long[] readTimesFromBuffer(ByteBuffer buffer, int size, String compression) {
+    buffer = uncompressBuffer(buffer, compression);
     long[] times = new long[size];
     for (int i = 0; i < size; i++) {
       times[i] = buffer.getLong();
+    }
+    return times;
+  }
+
+  public static long[] readTimesFromBuffer(ByteBuffer buffer, int size, TSEncoding encoding) {
+    Decoder decoder = Decoder.getDecoderByType(encoding, TSDataType.INT64);
+    int encodedSize = buffer.getInt();
+    ByteBuffer encodedBuffer = buffer.slice();
+    encodedBuffer.limit(encodedBuffer.position() + encodedSize);
+    buffer.position(buffer.position() + encodedSize);
+
+    long[] times = new long[size];
+    for (int i = 0; i < size; i++) {
+      times[i] = decoder.readLong(encodedBuffer);
     }
     return times;
   }
@@ -674,8 +693,32 @@ public class QueryDataSetUtils {
     return Optional.of(bitMaps);
   }
 
+  public static ByteBuffer uncompressBuffer(ByteBuffer buffer, String compression) {
+    if (compression != null) {
+      IUnCompressor unCompressor =
+          IUnCompressor.getUnCompressor(CompressionType.valueOf(compression));
+      try {
+        int uncompressedLength =
+            unCompressor.getUncompressedLength(
+                buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
+        byte[] uncompressedBuffer = new byte[uncompressedLength];
+        unCompressor.uncompress(
+            buffer.array(),
+            buffer.arrayOffset() + buffer.position(),
+            buffer.remaining(),
+            uncompressedBuffer,
+            0);
+        return ByteBuffer.wrap(uncompressedBuffer);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    return buffer;
+  }
+
   public static Object[] readTabletValuesFromBuffer(
-      ByteBuffer buffer, List<Integer> types, int columns, int size) {
+      ByteBuffer buffer, List<Integer> types, int columns, int size, String compression) {
+    buffer = uncompressBuffer(buffer, compression);
     TSDataType[] dataTypes = new TSDataType[types.size()];
     for (int i = 0; i < dataTypes.length; i++) {
       dataTypes[i] = TSDataType.values()[types.get(i)];
@@ -683,6 +726,10 @@ public class QueryDataSetUtils {
     return readTabletValuesFromBuffer(buffer, dataTypes, columns, size);
   }
 
+  public static Object[] readTabletValuesFromBuffer(
+      ByteBuffer buffer, TSDataType[] types, int columns, int size) {
+    return readTabletValuesFromBuffer(buffer, types, columns, size, null);
+  }
   /**
    * Deserialize Tablet Values From Buffer
    *
@@ -694,7 +741,7 @@ public class QueryDataSetUtils {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static Object[] readTabletValuesFromBuffer(
-      ByteBuffer buffer, TSDataType[] types, int columns, int size) {
+      ByteBuffer buffer, TSDataType[] types, int columns, int size, TSEncoding encoding) {
     Object[] values = new Object[columns];
     for (int i = 0; i < columns; i++) {
       switch (types[i]) {
@@ -728,10 +775,23 @@ public class QueryDataSetUtils {
           break;
         case DOUBLE:
           double[] doubleValues = new double[size];
-          for (int index = 0; index < size; index++) {
-            doubleValues[index] = buffer.getDouble();
+          if (encoding == null) {
+            for (int index = 0; index < size; index++) {
+              doubleValues[index] = buffer.getDouble();
+            }
+            values[i] = doubleValues;
+          } else {
+            Decoder decoder = Decoder.getDecoderByType(encoding, TSDataType.DOUBLE);
+            int encodedSize = buffer.getInt();
+            ByteBuffer encodedBuffer = buffer.slice();
+            encodedBuffer.limit(encodedBuffer.position() + encodedSize);
+            buffer.position(buffer.position() + encodedSize);
+
+            for (int index = 0; index < size; index++) {
+              doubleValues[index] = decoder.readDouble(encodedBuffer);
+            }
+            values[i] = doubleValues;
           }
-          values[i] = doubleValues;
           break;
         case TEXT:
           Binary[] binaryValues = new Binary[size];

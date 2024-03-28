@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 /** The interface is used to indicate where to execute a FragmentInstance */
@@ -33,4 +34,12 @@ public interface ExecutorType {
   default TRegionReplicaSet getRegionReplicaSet() {
     throw new UnsupportedOperationException(getClass().getName());
   }
+
+  /**
+   * Try to update the preferred location to the given EndPoint in the ReplicaSet. Do nothing if the
+   * operation is not supported or the EndPoint is not found within this ReplicaSet.
+   *
+   * @param endPoint associated with the preferred location.
+   */
+  default void updatePreferredLocation(TEndPoint endPoint) {}
 }
