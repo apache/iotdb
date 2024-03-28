@@ -42,4 +42,15 @@ public class Subscription {
   public String getConsumerIds() {
     return consumerIds;
   }
+
+  @Override
+  public String toString() {
+    return "Subscription{topicName="
+        + topicName
+        + ", consumerGroupId="
+        + consumerGroupId
+        + ", consumerIds="
+        + consumerIds
+        + "}";
+  }
 }

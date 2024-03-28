@@ -36,4 +36,9 @@ public class Topic {
   public String getTopicAttributes() {
     return topicAttributes;
   }
+
+  @Override
+  public String toString() {
+    return "Topic{topicName=" + topicName + ", topicAttributes=" + topicAttributes + "}";
+  }
 }
