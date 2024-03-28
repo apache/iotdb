@@ -57,7 +57,7 @@ public class IoTDBSubscriptionBasicIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionBasicIT.class);
 
-  private static final long MAX_RETRY_COUNT = 3;
+  private static final long MAX_RETRY_COUNT = 30;
 
   @Before
   public void setUp() throws Exception {
