@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -69,14 +70,15 @@ public class CompactionFileGeneratorUtils {
   }
 
   public static List<TsFileResource> getInnerCompactionTargetTsFileResources(
-      List<TsFileResource> fileResources, boolean seq) throws IOException {
+      List<TsFileResource> fileResources, boolean seq)
+      throws IOException, DiskSpaceInsufficientException {
     List<TsFileResource> resources = new ArrayList<>();
     resources.add(TsFileNameGenerator.getInnerCompactionTargetFileResource(fileResources, seq));
     return resources;
   }
 
   public static List<TsFileResource> getCrossCompactionTargetTsFileResources(
-      List<TsFileResource> seqFileResources) throws IOException {
+      List<TsFileResource> seqFileResources) throws IOException, DiskSpaceInsufficientException {
     return TsFileNameGenerator.getCrossCompactionTargetFileResources(seqFileResources);
   }
 
@@ -90,6 +92,8 @@ public class CompactionFileGeneratorUtils {
       return new TsFileResource(
           new File(
               TestConstant.BASE_OUTPUT_PATH
+                  .concat(File.separator)
+                  .concat("data")
                   .concat(File.separator)
                   .concat("sequence")
                   .concat(File.separator)
@@ -112,6 +116,8 @@ public class CompactionFileGeneratorUtils {
       return new TsFileResource(
           new File(
               TestConstant.BASE_OUTPUT_PATH
+                  .concat(File.separator)
+                  .concat("data")
                   .concat(File.separator)
                   .concat("unsequence")
                   .concat(File.separator)

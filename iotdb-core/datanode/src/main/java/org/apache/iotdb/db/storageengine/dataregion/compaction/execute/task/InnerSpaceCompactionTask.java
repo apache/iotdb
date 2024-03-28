@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
@@ -148,7 +149,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     createSummary();
   }
 
-  protected void prepare() throws IOException {
+  protected void prepare() throws IOException, DiskSpaceInsufficientException {
     targetTsFileResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(
             selectedTsFileResourceList, sequence);
