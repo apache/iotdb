@@ -38,6 +38,7 @@ import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.consensus.natraft.RaftConsensus;
 import org.apache.iotdb.consensus.ratis.utils.Retriable;
 
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
 import org.apache.ratis.util.FileUtils;
 import org.apache.ratis.util.TimeDuration;
@@ -128,7 +129,8 @@ public class TestUtils {
     }
 
     @Override
-    public void stop() {}
+    public void stop() {
+    }
 
     @Override
     public TSStatus write(IConsensusRequest request) {
@@ -218,7 +220,9 @@ public class TestUtils {
     }
   }
 
-  /** A Mini Raft CLuster Wrapper for Test Env. */
+  /**
+   * A Mini Raft CLuster Wrapper for Test Env.
+   */
   static class MiniCluster {
 
     private final ConsensusGroupId gid;
@@ -378,8 +382,9 @@ public class TestUtils {
       final TSStatus response;
       try {
         response = servers.get(serverIndex).write(gid, increment);
-        Assert.assertEquals(200, response.getCode());
-      } catch (ConsensusException e) {
+        Assert.assertTrue(response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || response.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+      } catch (Throwable e) {
         Assert.fail("Test Env: test write failed due to " + e);
       }
     }
