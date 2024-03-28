@@ -72,7 +72,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     if (schemaRegion.getSchemaRegionId().equals(groupId)
         && newLeaderId != IoTDBDescriptor.getInstance().getConfig().getDataNodeId()) {
       logger.info(
-          "Current node [nodeId: {}] is not longer the schema region leader [regionId: {}], "
+          "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
               + "the new leader is [nodeId:{}]",
           IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
           schemaRegion.getSchemaRegionId(),
@@ -82,7 +82,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
       PipeAgent.runtime().notifySchemaLeaderUnavailable(schemaRegion.getSchemaRegionId());
 
       logger.info(
-          "Current node [nodeId: {}] is not longer the schema region leader [regionId: {}], "
+          "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
               + "all services on old leader are unavailable now.",
           IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
           schemaRegion.getSchemaRegionId());
