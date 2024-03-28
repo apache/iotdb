@@ -84,7 +84,7 @@ public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionMigrateReliabi
 
   @Test
   public void destinationCrashDuringCreateLocalPeer() throws Exception {
-    generalTest(
+    failTest(
         1, 1, 1, 2, buildSet(), buildSet(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER.name()));
   }
 

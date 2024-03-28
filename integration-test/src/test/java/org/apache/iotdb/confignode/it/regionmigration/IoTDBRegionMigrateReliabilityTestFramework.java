@@ -101,7 +101,30 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
         killConfigNodeKeywords,
         killDataNodeKeywords,
         true,
+        true,
+        0,
         true);
+  }
+
+  public void failTest(
+      final int dataReplicateFactor,
+      final int schemaReplicationFactor,
+      final int configNodeNum,
+      final int dataNodeNum,
+      KeySetView<String, Boolean> killConfigNodeKeywords,
+      KeySetView<String, Boolean> killDataNodeKeywords)
+      throws Exception {
+    generalTestWithAllOptions(
+        dataReplicateFactor,
+        schemaReplicationFactor,
+        configNodeNum,
+        dataNodeNum,
+        killConfigNodeKeywords,
+        killDataNodeKeywords,
+        true,
+        true,
+        60,
+        false);
   }
 
   public void generalTestWithAllOptions(
@@ -112,7 +135,9 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
       KeySetView<String, Boolean> killConfigNodeKeywords,
       KeySetView<String, Boolean> killDataNodeKeywords,
       final boolean checkOriginalRegionDirDeleted,
-      final boolean checkConfigurationFileDeleted)
+      final boolean checkConfigurationFileDeleted,
+      int restartTime,
+      boolean isMigrateSuccess)
       throws Exception {
     // prepare env
     EnvFactory.getEnv()
@@ -122,24 +147,30 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
         .setSchemaReplicationFactor(schemaReplicationFactor);
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
-    ExecutorService service = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
-    EnvFactory.getEnv()
-        .getConfigNodeWrapperList()
-        .forEach(
-            configNodeWrapper ->
-                service.submit(() -> nodeLogKillPoint(configNodeWrapper, killConfigNodeKeywords)));
-    EnvFactory.getEnv()
-        .getDataNodeWrapperList()
-        .forEach(
-            dataNodeWrapper ->
-                service.submit(() -> nodeLogKillPoint(dataNodeWrapper, killDataNodeKeywords)));
-
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement();
         final SyncConfigNodeIServiceClient configClient =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
       statement.execute(INSERTION);
+
+      // trigger kill points after the insertion
+      ExecutorService service = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
+
+      EnvFactory.getEnv()
+          .getConfigNodeWrapperList()
+          .forEach(
+              configNodeWrapper ->
+                  service.submit(
+                      () ->
+                          nodeLogKillPoint(
+                              configNodeWrapper, killConfigNodeKeywords, restartTime)));
+      EnvFactory.getEnv()
+          .getDataNodeWrapperList()
+          .forEach(
+              dataNodeWrapper ->
+                  service.submit(
+                      () -> nodeLogKillPoint(dataNodeWrapper, killDataNodeKeywords, restartTime)));
 
       ResultSet result = statement.executeQuery(SHOW_REGIONS);
       Map<Integer, Set<Integer>> regionMap = getRegionMap(result);
@@ -159,7 +190,14 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
 
       statement.execute(regionMigrateCommand(selectedRegion, originalDataNode, destDataNode));
 
-      awaitUntilSuccess(statement, selectedRegion, originalDataNode, destDataNode);
+      boolean success = false;
+      try {
+        awaitUntilSuccess(statement, selectedRegion, originalDataNode, destDataNode);
+        success = true;
+      } catch (ConditionTimeoutException e) {
+        LOGGER.error("Region migrate failed", e);
+      }
+      Assert.assertTrue(isMigrateSuccess == success);
 
       // make sure all kill points have been triggered
       checkKillPointsAllTriggered(killConfigNodeKeywords);
@@ -186,7 +224,9 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
    * @param killNodeKeywords When detect these keywords in node's log, stop the node forcibly
    */
   private static void nodeLogKillPoint(
-      AbstractNodeWrapper nodeWrapper, KeySetView<String, Boolean> killNodeKeywords) {
+      AbstractNodeWrapper nodeWrapper,
+      KeySetView<String, Boolean> killNodeKeywords,
+      int restartTime) {
     if (killNodeKeywords.isEmpty()) {
       return;
     }
@@ -239,6 +279,11 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
             killNodeKeywords.remove(detectedKeyword.get());
             // reboot the node
             nodeWrapper.stopForcibly();
+            try {
+              TimeUnit.SECONDS.sleep(restartTime);
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
             nodeWrapper.start();
           }
           if (killNodeKeywords.isEmpty()) {
@@ -390,7 +435,7 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
 
   private static void checkPeerClear(int checkTargetDataNode, int originalDataNode, int regionId) {
     File expectDeletedFile =
-        new File(buildConfigurationDataFilePath(originalDataNode, checkTargetDataNode, regionId));
+        new File(buildConfigurationDataFilePath(checkTargetDataNode, originalDataNode, regionId));
     Assert.assertFalse(
         "configuration file should be deleted, but it didn't: " + expectDeletedFile.getPath(),
         expectDeletedFile.exists());
