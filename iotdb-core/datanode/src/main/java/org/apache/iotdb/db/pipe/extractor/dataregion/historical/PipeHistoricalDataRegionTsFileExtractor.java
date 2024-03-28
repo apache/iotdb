@@ -343,12 +343,21 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             tsFileManager.getTsFileList(true).stream()
                 .filter(
                     resource ->
-                        // Some resource may not be closed due to the control of
-                        // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                        resource.isClosed()
-                            && mayTsFileContainUnprocessedData(resource)
-                            && isTsFileResourceOverlappedWithTimeRange(resource)
-                            && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
+                    // Some resource may not be closed due to the control of
+                    // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
+                    {
+                      LOGGER.info(
+                          "[DEBUG][tsfile] tsfile start time {}, resource.isClosed(): {}, mayTsFileContainUnprocessedData(resource): {}, isTsFileResourceOverlappedWithTimeRange(resource): {}, isTsFileGeneratedAfterExtractionTimeLowerBound(resource): {}",
+                          resource.getFileStartTime(),
+                          resource.isClosed(),
+                          mayTsFileContainUnprocessedData(resource),
+                          isTsFileResourceOverlappedWithTimeRange(resource),
+                          isTsFileGeneratedAfterExtractionTimeLowerBound(resource));
+                      return resource.isClosed()
+                          && mayTsFileContainUnprocessedData(resource)
+                          && isTsFileResourceOverlappedWithTimeRange(resource)
+                          && isTsFileGeneratedAfterExtractionTimeLowerBound(resource);
+                    })
                 .collect(Collectors.toList());
         resourceList.addAll(sequenceTsFileResources);
 

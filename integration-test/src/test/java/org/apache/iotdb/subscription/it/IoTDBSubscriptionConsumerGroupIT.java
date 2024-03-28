@@ -183,6 +183,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic2"));
     createPipes(currentTime);
+    Thread.sleep(5000);
     prepareData(currentTime);
     pollMessagesAndCheck(
         consumers,
@@ -208,6 +209,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c4", "cg2", "topic2"));
     createPipes(currentTime);
+    Thread.sleep(5000);
     prepareData(currentTime);
     pollMessagesAndCheck(
         consumers,
@@ -230,6 +232,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic3"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic3"));
     createNaivePipe();
+    Thread.sleep(5000);
     prepareNaiveData();
     pollMessagesAndCheck(
         consumers,
@@ -447,7 +450,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         Awaitility.await()
             .pollDelay(1, TimeUnit.SECONDS)
             .pollInterval(1, TimeUnit.SECONDS)
-            .atMost(180, TimeUnit.SECONDS)
+            .atMost(100, TimeUnit.SECONDS)
             .untilAsserted(
                 () -> {
                   if (receiverCrashed.get()) {

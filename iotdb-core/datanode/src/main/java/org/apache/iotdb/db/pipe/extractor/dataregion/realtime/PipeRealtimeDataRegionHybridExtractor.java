@@ -368,6 +368,9 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     switch (state) {
       case USING_TABLET:
         // if the state is USING_TABLET, discard the event and poll the next one.
+        LOGGER.info(
+            "[DEBUG][tsfile] PipeTsFileInsertionEvent start time {} USING_TABLET",
+            ((PipeTsFileInsertionEvent) event.getEvent()).getFileStartTime());
         return null;
       case EMPTY:
       case USING_TSFILE:

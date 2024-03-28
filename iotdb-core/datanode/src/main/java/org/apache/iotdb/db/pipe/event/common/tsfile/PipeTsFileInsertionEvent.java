@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.progress.committer.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
@@ -152,6 +153,29 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
           e);
       return false;
     }
+  }
+
+  @Override
+  public boolean decreaseReferenceCount(String holderMessage, boolean shouldReport) {
+    boolean isSuccessful = true;
+    synchronized (this) {
+      if (referenceCount.get() == 1) {
+        isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
+        if (!shouldReport) {
+          shouldReportOnCommit = false;
+        }
+        PipeEventCommitManager.getInstance().commit(this, committerKey);
+        LOGGER.info(
+            "[DEBUG][tsfile] PipeTsFileInsertionEvent start time {} decrease reference count to zero",
+            getFileStartTime());
+        Thread.dumpStack();
+      }
+      final int newReferenceCount = referenceCount.decrementAndGet();
+      if (newReferenceCount < 0) {
+        LOGGER.warn("reference count is decreased to {}.", newReferenceCount);
+      }
+    }
+    return isSuccessful;
   }
 
   @Override
