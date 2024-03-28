@@ -1365,6 +1365,10 @@ public class RaftMember {
     return changeConfig(newPeers);
   }
 
+  public TSStatus resetPeers(List<Peer> peers) {
+    return changeConfig(peers);
+  }
+
   public void triggerSnapshot() {
     logManager.takeSnapshot(this);
   }
