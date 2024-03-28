@@ -107,7 +107,7 @@ public class RouteBalancer {
       case ILeaderBalancer.GREEDY_POLICY:
         this.leaderBalancer = new GreedyLeaderBalancer();
         break;
-      case ILeaderBalancer.MIN_COST_FLOW_POLICY:
+      case ILeaderBalancer.CFD_POLICY:
       default:
         this.leaderBalancer = new MinCostFlowLeaderBalancer();
         break;
@@ -158,6 +158,7 @@ public class RouteBalancer {
     Map<TConsensusGroupId, Integer> currentLeaderMap = getLoadManager().getRegionLeaderMap();
     Map<TConsensusGroupId, Integer> optimalLeaderMap =
         leaderBalancer.generateOptimalLeaderDistribution(
+            getPartitionManager().getAllRegionGroupIdMap(regionGroupType),
             getPartitionManager().getAllReplicaSetsMap(regionGroupType),
             currentLeaderMap,
             getNodeManager()

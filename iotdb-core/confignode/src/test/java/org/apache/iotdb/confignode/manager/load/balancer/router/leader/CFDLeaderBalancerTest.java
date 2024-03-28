@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.load.balancer.router.leader;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -28,19 +29,22 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class MinCostFlowLeaderBalancerTest {
+public class CFDLeaderBalancerTest {
 
   private static final MinCostFlowLeaderBalancer BALANCER = new MinCostFlowLeaderBalancer();
+
+  private static final String DATABASE = "root.database";
 
   /** This test shows a simple case that greedy algorithm might fail */
   @Test
@@ -50,12 +54,14 @@ public class MinCostFlowLeaderBalancerTest {
     for (int i = 0; i < 3; i++) {
       regionGroupIds.add(new TConsensusGroupId(TConsensusGroupType.DataRegion, i));
     }
-
     List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
     for (int i = 0; i < 4; i++) {
       dataNodeLocations.add(new TDataNodeLocation().setDataNodeId(i));
     }
-
+    // DataNode-0: [0, 1, 2], DataNode-1: [0, 1]
+    // DataNode-2: [0, 2]   , DataNode-3: [1, 2]
+    // The result will be unbalanced if select DataNode-2 as leader for RegionGroup-0
+    // and select DataNode-3 as leader for RegionGroup-1
     List<TRegionReplicaSet> regionReplicaSets = new ArrayList<>();
     regionReplicaSets.add(
         new TRegionReplicaSet(
@@ -74,11 +80,13 @@ public class MinCostFlowLeaderBalancerTest {
                 dataNodeLocations.get(0), dataNodeLocations.get(2), dataNodeLocations.get(3))));
 
     // Prepare input parameters
-    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new HashMap<>();
+    Map<String, List<TConsensusGroupId>> databaseRegionGroupMap = new TreeMap<>();
+    databaseRegionGroupMap.put(DATABASE, regionGroupIds);
+    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new TreeMap<>();
     regionReplicaSets.forEach(
         regionReplicaSet ->
             regionReplicaSetMap.put(regionReplicaSet.getRegionId(), regionReplicaSet));
-    Map<TConsensusGroupId, Integer> regionLeaderMap = new HashMap<>();
+    Map<TConsensusGroupId, Integer> regionLeaderMap = new TreeMap<>();
     regionReplicaSets.forEach(
         regionReplicaSet -> regionLeaderMap.put(regionReplicaSet.getRegionId(), 0));
     Set<Integer> disabledDataNodeSet = new HashSet<>();
@@ -87,15 +95,16 @@ public class MinCostFlowLeaderBalancerTest {
     // Do balancing
     Map<TConsensusGroupId, Integer> leaderDistribution =
         BALANCER.generateOptimalLeaderDistribution(
-            regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
+            databaseRegionGroupMap, regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     // All RegionGroup got a leader
     Assert.assertEquals(3, leaderDistribution.size());
-    // Each DataNode occurs exactly once
+    // Each DataNode has exactly one leader
     Assert.assertEquals(3, new HashSet<>(leaderDistribution.values()).size());
     // MaxFlow is 3
     Assert.assertEquals(3, BALANCER.getMaximumFlow());
-    // MinimumCost is 3(switch leader cost) + 3(load cost, 1 for each DataNode)
-    Assert.assertEquals(3 + 3, BALANCER.getMinimumCost());
+    // MinimumCost is 3(switch leader cost) + 3(load cost, rNode -> sDNode)
+    // + 3(load cost, sDNode -> tDNode)
+    Assert.assertEquals(3 + 3 + 3, BALANCER.getMinimumCost());
   }
 
   /** The leader will remain the same if all DataNodes are disabled */
@@ -110,9 +119,11 @@ public class MinCostFlowLeaderBalancerTest {
                 new TDataNodeLocation().setDataNodeId(2)));
 
     // Prepare input parameters
-    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new HashMap<>();
+    Map<String, List<TConsensusGroupId>> databaseRegionGroupMap = new TreeMap<>();
+    databaseRegionGroupMap.put(DATABASE, Collections.singletonList(regionReplicaSet.getRegionId()));
+    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new TreeMap<>();
     regionReplicaSetMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
-    Map<TConsensusGroupId, Integer> regionLeaderMap = new HashMap<>();
+    Map<TConsensusGroupId, Integer> regionLeaderMap = new TreeMap<>();
     regionLeaderMap.put(regionReplicaSet.getRegionId(), 1);
     Set<Integer> disabledDataNodeSet = new HashSet<>();
     disabledDataNodeSet.add(0);
@@ -122,7 +133,7 @@ public class MinCostFlowLeaderBalancerTest {
     // Do balancing
     Map<TConsensusGroupId, Integer> leaderDistribution =
         BALANCER.generateOptimalLeaderDistribution(
-            regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
+            databaseRegionGroupMap, regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     Assert.assertEquals(1, leaderDistribution.size());
     Assert.assertEquals(1, new HashSet<>(leaderDistribution.values()).size());
     // Leader remains the same
@@ -148,13 +159,15 @@ public class MinCostFlowLeaderBalancerTest {
 
     // The loadCost for each DataNode are the same
     int x = regionGroupNum / dataNodeNum;
-    // i.e. formula of 1^2 + 2^2 + 3^2 + ...
-    int loadCost = x * (x + 1) * (2 * x + 1) / 6;
+    // i.e. formula of (1^2 + 2^2 + 3^2 + ...) * 2
+    int loadCost = x * (x + 1) * (2 * x + 1) / 3;
 
     int dataNodeId = 0;
     Random random = new Random();
-    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new HashMap<>();
-    Map<TConsensusGroupId, Integer> regionLeaderMap = new HashMap<>();
+    Map<String, List<TConsensusGroupId>> databaseRegionGroupMap = new TreeMap<>();
+    databaseRegionGroupMap.put(DATABASE, new ArrayList<>());
+    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new TreeMap<>();
+    Map<TConsensusGroupId, Integer> regionLeaderMap = new TreeMap<>();
     for (int i = 0; i < regionGroupNum; i++) {
       TConsensusGroupId regionGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, i);
       int leaderId = (dataNodeId + random.nextInt(replicationFactor)) % dataNodeNum;
@@ -166,6 +179,7 @@ public class MinCostFlowLeaderBalancerTest {
         dataNodeId = (dataNodeId + 1) % dataNodeNum;
       }
 
+      databaseRegionGroupMap.get(DATABASE).add(regionGroupId);
       regionReplicaSetMap.put(regionGroupId, regionReplicaSet);
       regionLeaderMap.put(regionGroupId, leaderId);
     }
@@ -173,24 +187,18 @@ public class MinCostFlowLeaderBalancerTest {
     // Do balancing
     Map<TConsensusGroupId, Integer> leaderDistribution =
         BALANCER.generateOptimalLeaderDistribution(
-            regionReplicaSetMap, regionLeaderMap, new HashSet<>());
+            databaseRegionGroupMap, regionReplicaSetMap, regionLeaderMap, new HashSet<>());
     // All RegionGroup got a leader
     Assert.assertEquals(regionGroupNum, leaderDistribution.size());
 
-    Map<Integer, AtomicInteger> leaderCounter = new ConcurrentHashMap<>();
-    leaderDistribution
-        .values()
-        .forEach(
-            leaderId ->
-                leaderCounter
-                    .computeIfAbsent(leaderId, empty -> new AtomicInteger(0))
-                    .getAndIncrement());
+    Map<Integer, Integer> leaderCounter = new ConcurrentHashMap<>();
+    leaderDistribution.values().forEach(leaderId -> leaderCounter.merge(leaderId, 1, Integer::sum));
     // Every DataNode has leader
     Assert.assertEquals(dataNodeNum, leaderCounter.size());
     // Every DataNode has exactly regionGroupNum / dataNodeNum leaders
-    leaderCounter
-        .values()
-        .forEach(leaderNum -> Assert.assertEquals(regionGroupNum / dataNodeNum, leaderNum.get()));
+    for (int i = 0; i < dataNodeNum; i++) {
+      Assert.assertEquals(regionGroupNum / dataNodeNum, leaderCounter.get(i).intValue());
+    }
 
     // MaxFlow is regionGroupNum
     Assert.assertEquals(regionGroupNum, BALANCER.getMaximumFlow());

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.load.balancer.router.leader;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -38,6 +39,7 @@ import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -264,7 +266,7 @@ public class LeaderBalancerComparisonTest {
     for (int rounds = 0; rounds < 1000; rounds++) {
       Map<TConsensusGroupId, Integer> currentDistribution =
           leaderBalancer.generateOptimalLeaderDistribution(
-              regionReplicaSetMap, lastDistribution, disabledDataNodeSet);
+              new TreeMap<>(), regionReplicaSetMap, lastDistribution, disabledDataNodeSet);
       if (currentDistribution.equals(lastDistribution)) {
         // The leader distribution is stable
         result.rounds = rounds;

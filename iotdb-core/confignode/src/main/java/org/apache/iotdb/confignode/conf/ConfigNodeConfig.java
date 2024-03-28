@@ -187,7 +187,7 @@ public class ConfigNodeConfig {
   private long unknownDataNodeDetectInterval = heartbeatIntervalInMs;
 
   /** The policy of cluster RegionGroups' leader distribution. */
-  private String leaderDistributionPolicy = ILeaderBalancer.MIN_COST_FLOW_POLICY;
+  private String leaderDistributionPolicy = ILeaderBalancer.CFD_POLICY;
 
   /** Whether to enable auto leader balance for Ratis consensus protocol. */
   private boolean enableAutoLeaderBalanceForRatisConsensus = true;

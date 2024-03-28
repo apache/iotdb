@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.it.load;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -48,21 +49,22 @@ import java.sql.Statement;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBClusterRegionLeaderBalancingIT {
-  private static final String testSchemaRegionConsensusProtocolClass =
+public class IoTDBRegionGroupLeaderDistributionIT {
+  private static final String TEST_SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS =
       ConsensusFactory.RATIS_CONSENSUS;
-  private static final String testDataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
-  private static final int testReplicationFactor = 3;
+  private static final String TEST_DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
+      ConsensusFactory.IOT_CONSENSUS;
+  private static final int TEST_REPLICATION_FACTOR = 3;
 
-  private static final String sg = "root.sg";
-  private final int testDataNodeNum = 3;
+  private static final String DATABASE = "root.db";
+  private static final int TEST_DATA_NODE_NUM = 3;
 
   @Before
   public void setUp() {
@@ -71,11 +73,11 @@ public class IoTDBClusterRegionLeaderBalancingIT {
         .getCommonConfig()
         .setEnableAutoLeaderBalanceForRatisConsensus(true)
         .setEnableAutoLeaderBalanceForIoTConsensus(true)
-        .setSchemaRegionConsensusProtocolClass(testSchemaRegionConsensusProtocolClass)
-        .setDataRegionConsensusProtocolClass(testDataRegionConsensusProtocolClass)
-        .setSchemaReplicationFactor(testReplicationFactor)
-        .setDataReplicationFactor(testReplicationFactor);
-    EnvFactory.getEnv().initClusterEnvironment(1, 3);
+        .setSchemaRegionConsensusProtocolClass(TEST_SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS)
+        .setDataRegionConsensusProtocolClass(TEST_DATA_REGION_CONSENSUS_PROTOCOL_CLASS)
+        .setSchemaReplicationFactor(TEST_REPLICATION_FACTOR)
+        .setDataReplicationFactor(TEST_REPLICATION_FACTOR);
+    EnvFactory.getEnv().initClusterEnvironment(1, TEST_DATA_NODE_NUM);
   }
 
   @After
@@ -84,28 +86,26 @@ public class IoTDBClusterRegionLeaderBalancingIT {
   }
 
   @Test
-  public void testGreedyLeaderDistribution() throws Exception {
-
+  public void testBasicLeaderDistribution() throws Exception {
     TSStatus status;
-    final int storageGroupNum = 3;
+    final int databaseNum = 3;
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-
-      // Set StorageGroups
-      for (int i = 0; i < storageGroupNum; i++) {
-        status = client.setDatabase(new TDatabaseSchema(sg + i));
+      // Set Databases
+      for (int i = 0; i < databaseNum; i++) {
+        status = client.setDatabase(new TDatabaseSchema(DATABASE + i));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
 
-      // Create a DataRegionGroup for each StorageGroup through getOrCreateDataPartition
-      for (int i = 0; i < storageGroupNum; i++) {
+      // Create a DataRegionGroup for each Database through getOrCreateDataPartition
+      for (int i = 0; i < databaseNum; i++) {
         Map<TSeriesPartitionSlot, TTimeSlotList> seriesSlotMap = new HashMap<>();
         seriesSlotMap.put(
             new TSeriesPartitionSlot(1),
             new TTimeSlotList()
                 .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
         Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
-        sgSlotsMap.put(sg + i, seriesSlotMap);
+        sgSlotsMap.put(DATABASE + i, seriesSlotMap);
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
         Assert.assertEquals(
@@ -113,47 +113,43 @@ public class IoTDBClusterRegionLeaderBalancingIT {
             dataPartitionTableResp.getStatus().getCode());
       }
 
-      // Check the number of Region-leader in each DataNode.
-      Map<Integer, AtomicInteger> leaderCounter = new ConcurrentHashMap<>();
+      // Check the number of RegionGroup-leader in each DataNode.
+      Map<Integer, Integer> leaderCounter = new TreeMap<>();
       TShowRegionResp showRegionResp = client.showRegion(new TShowRegionReq());
       showRegionResp
           .getRegionInfoList()
           .forEach(
               regionInfo -> {
                 if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
-                  leaderCounter
-                      .computeIfAbsent(regionInfo.getDataNodeId(), empty -> new AtomicInteger(0))
-                      .getAndIncrement();
+                  leaderCounter.merge(regionInfo.getDataNodeId(), 1, Integer::sum);
                 }
               });
       // The number of Region-leader in each DataNode should be exactly 1
-      Assert.assertEquals(testDataNodeNum, leaderCounter.size());
-      leaderCounter.values().forEach(leaderCount -> Assert.assertEquals(1, leaderCount.get()));
+      Assert.assertEquals(TEST_DATA_NODE_NUM, leaderCounter.size());
+      leaderCounter.forEach((dataNodeId, leaderCount) -> Assert.assertEquals(1, (int) leaderCount));
     }
   }
 
   @Test
-  public void testMCFLeaderDistributionWithUnknownStatus() throws Exception {
+  public void testCFDWithUnknownStatus() throws Exception {
     final int retryNum = 50;
-
     TSStatus status;
-    final int storageGroupNum = 6;
+    final int databaseNum = 6;
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-
-      for (int i = 0; i < storageGroupNum; i++) {
-        // Set StorageGroups
-        status = client.setDatabase(new TDatabaseSchema(sg + i));
+      for (int i = 0; i < databaseNum; i++) {
+        // Set Databases
+        status = client.setDatabase(new TDatabaseSchema(DATABASE + i));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-        // Create a DataRegionGroup for each StorageGroup
+        // Create a DataRegionGroup for each Database
         Map<TSeriesPartitionSlot, TTimeSlotList> seriesSlotMap = new HashMap<>();
         seriesSlotMap.put(
             new TSeriesPartitionSlot(1),
             new TTimeSlotList()
                 .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
         Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
-        sgSlotsMap.put(sg + i, seriesSlotMap);
+        sgSlotsMap.put(DATABASE + i, seriesSlotMap);
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
         Assert.assertEquals(
@@ -162,7 +158,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
       }
 
       // Check leader distribution
-      Map<Integer, AtomicInteger> leaderCounter = new ConcurrentHashMap<>();
+      Map<Integer, Integer> leaderCounter = new TreeMap<>();
       TShowRegionResp showRegionResp;
       boolean isDistributionBalanced = false;
       for (int retry = 0; retry < retryNum; retry++) {
@@ -173,18 +169,17 @@ public class IoTDBClusterRegionLeaderBalancingIT {
             .forEach(
                 regionInfo -> {
                   if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
-                    leaderCounter
-                        .computeIfAbsent(regionInfo.getDataNodeId(), empty -> new AtomicInteger(0))
-                        .getAndIncrement();
+                    leaderCounter.merge(regionInfo.getDataNodeId(), 1, Integer::sum);
                   }
                 });
 
         // All DataNodes have Region-leader
-        isDistributionBalanced = leaderCounter.size() == testDataNodeNum;
+        isDistributionBalanced = leaderCounter.size() == TEST_DATA_NODE_NUM;
         // Each DataNode has exactly 2 Region-leader
-        for (AtomicInteger leaderCount : leaderCounter.values()) {
-          if (leaderCount.get() != 2) {
+        for (Integer leaderCount : leaderCounter.values()) {
+          if (leaderCount != databaseNum / TEST_DATA_NODE_NUM) {
             isDistributionBalanced = false;
+            break;
           }
         }
 
@@ -213,18 +208,17 @@ public class IoTDBClusterRegionLeaderBalancingIT {
             .forEach(
                 regionInfo -> {
                   if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
-                    leaderCounter
-                        .computeIfAbsent(regionInfo.getDataNodeId(), empty -> new AtomicInteger(0))
-                        .getAndIncrement();
+                    leaderCounter.merge(regionInfo.getDataNodeId(), 1, Integer::sum);
                   }
                 });
 
         // Only Running DataNodes have Region-leader
-        isDistributionBalanced = leaderCounter.size() == testDataNodeNum - 1;
+        isDistributionBalanced = leaderCounter.size() == TEST_DATA_NODE_NUM - 1;
         // Each Running DataNode has exactly 3 Region-leader
-        for (AtomicInteger leaderCount : leaderCounter.values()) {
-          if (leaderCount.get() != 3) {
+        for (Integer leaderCount : leaderCounter.values()) {
+          if (leaderCount != databaseNum / (TEST_DATA_NODE_NUM - 1)) {
             isDistributionBalanced = false;
+            break;
           }
         }
 
@@ -239,27 +233,27 @@ public class IoTDBClusterRegionLeaderBalancingIT {
   }
 
   @Test
-  public void testMCFLeaderDistributionWithReadOnlyStatus() throws Exception {
+  public void testCFDWithReadOnlyStatus() throws Exception {
     final int retryNum = 50;
 
     TSStatus status;
-    final int storageGroupNum = 3;
+    final int databaseNum = 3;
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
-      for (int i = 0; i < storageGroupNum; i++) {
-        // Set StorageGroups
-        status = client.setDatabase(new TDatabaseSchema(sg + i));
+      for (int i = 0; i < databaseNum; i++) {
+        // Set Databases
+        status = client.setDatabase(new TDatabaseSchema(DATABASE + i));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-        // Create a DataRegionGroup for each StorageGroup
+        // Create a DataRegionGroup for each Database
         Map<TSeriesPartitionSlot, TTimeSlotList> seriesSlotMap = new HashMap<>();
         seriesSlotMap.put(
             new TSeriesPartitionSlot(1),
             new TTimeSlotList()
                 .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
         Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
-        sgSlotsMap.put(sg + i, seriesSlotMap);
+        sgSlotsMap.put(DATABASE + i, seriesSlotMap);
         TDataPartitionTableResp dataPartitionTableResp =
             client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
         Assert.assertEquals(
@@ -268,7 +262,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
       }
 
       // Check leader distribution
-      Map<Integer, AtomicInteger> leaderCounter = new ConcurrentHashMap<>();
+      Map<Integer, Integer> leaderCounter = new ConcurrentHashMap<>();
       TShowRegionResp showRegionResp;
       boolean isDistributionBalanced = false;
       for (int retry = 0; retry < retryNum; retry++) {
@@ -279,18 +273,17 @@ public class IoTDBClusterRegionLeaderBalancingIT {
             .forEach(
                 regionInfo -> {
                   if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
-                    leaderCounter
-                        .computeIfAbsent(regionInfo.getDataNodeId(), empty -> new AtomicInteger(0))
-                        .getAndIncrement();
+                    leaderCounter.merge(regionInfo.getDataNodeId(), 1, Integer::sum);
                   }
                 });
 
         // All DataNodes have Region-leader
-        isDistributionBalanced = leaderCounter.size() == testDataNodeNum;
+        isDistributionBalanced = leaderCounter.size() == TEST_DATA_NODE_NUM;
         // Each DataNode has exactly 1 Region-leader
-        for (AtomicInteger leaderCount : leaderCounter.values()) {
-          if (leaderCount.get() != 1) {
+        for (Integer leaderCount : leaderCounter.values()) {
+          if (leaderCount != databaseNum / TEST_DATA_NODE_NUM) {
             isDistributionBalanced = false;
+            break;
           }
         }
 
