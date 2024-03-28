@@ -85,10 +85,11 @@ public class PipeInclusionOptions {
     ALIAS_OPTIONS_MAP.put(
         "all", Collections.unmodifiableSet(new HashSet<>(Arrays.asList("data", "schema", "auth"))));
     ALIAS_OPTIONS_MAP.put(
-        "deletion",
+        "delete",
         Collections.unmodifiableSet(
             new HashSet<>(
                 Arrays.asList(
+                    "data.delete",
                     "schema.database.drop",
                     "schema.timeseries.ordinary.drop",
                     "schema.timeseries.view.drop",
@@ -100,7 +101,7 @@ public class PipeInclusionOptions {
                     "auth.user.drop",
                     "auth.user.revoke"))));
     ALIAS_OPTIONS_MAP.put(
-        "schema.deletion",
+        "schema.delete",
         Collections.unmodifiableSet(
             new HashSet<>(
                 Arrays.asList(
@@ -111,7 +112,7 @@ public class PipeInclusionOptions {
                     "schema.timeseries.template.unset",
                     "schema.timeseries.template.deactivate"))));
     ALIAS_OPTIONS_MAP.put(
-        "auth.deletion",
+        "auth.delete",
         Collections.unmodifiableSet(
             new HashSet<>(
                 Arrays.asList(
