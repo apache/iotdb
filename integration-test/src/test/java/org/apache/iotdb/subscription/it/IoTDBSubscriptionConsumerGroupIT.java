@@ -19,324 +19,528 @@
 
 package org.apache.iotdb.subscription.it;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConstant;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.session.subscription.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-import org.junit.After;
+import org.awaitility.Awaitility;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
+import java.sql.Statement;
+import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class})
-public class IoTDBSubscriptionConsumerGroupIT {
+@Category({MultiClusterIT2.class})
+public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBSubscriptionConsumerGroupIT.class);
 
-  private static final int BASE = 233;
+  // --------------------------- //
+  // Scenario 1: Historical Data //
+  // --------------------------- //
 
-  @Before
-  public void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
-
-  private void testMultiConsumersSubscribeMultiTopicsTemplate(
-      List<Pair<ConsumerConfig, Set<String>>> consumerConfigs, int factor) throws Exception {
-    ConcurrentHashMap<String, ConcurrentHashMap<Long, Long>> consumerGroupIdToTimestamps =
-        new ConcurrentHashMap<>();
-
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.executeNonQueryStatement("create topic topic1 with ('start-time'='now')");
-      session.executeNonQueryStatement("create topic topic2 with ('end-time'='now')");
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
-
+  @Test
+  public void test3C1CGSubscribeOneTopicHistoricalData() throws Exception {
     long currentTime = System.currentTimeMillis();
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      for (int i = 0; i < BASE; ++i) {
-        session.executeNonQueryStatement(
-            String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
-      }
-      for (int i = 0; i < BASE; ++i) {
-        session.executeNonQueryStatement(
-            String.format("insert into root.db.d2(time, s) values (%s, 1)", currentTime + i));
-      }
-      session.executeNonQueryStatement("flush");
-      session.executeNonQueryStatement("flush");
+
+    // history data
+    insertData(currentTime);
+
+    createTopics(currentTime);
+    createPipes(currentTime);
+    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
+
+    pollMessagesAndCheck(
+        consumers,
+        new HashMap<String, String>() {
+          {
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
+          }
+        });
+  }
+
+  @Test
+  public void test3C3CGSubscribeOneTopicHistoricalData() throws Exception {
+    long currentTime = System.currentTimeMillis();
+
+    // history data
+    insertData(currentTime);
+
+    createTopics(currentTime);
+    createPipes(currentTime);
+    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic1"));
+
+    pollMessagesAndCheck(
+        consumers,
+        new HashMap<String, String>() {
+          {
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.cg2.topic1.s)", "100");
+            put("count(root.cg3.topic1.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
+          }
+        });
+  }
+
+  @Test
+  public void test3C1CGSubscribeTwoTopicHistoricalData() throws Exception {
+    long currentTime = System.currentTimeMillis();
+
+    // history data
+    insertData(currentTime);
+
+    createTopics(currentTime);
+    createPipes(currentTime);
+    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1", "topic2"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic2"));
+
+    pollMessagesAndCheck(
+        consumers,
+        new HashMap<String, String>() {
+          {
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.cg1.topic2.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
+          }
+        });
+  }
+
+  @Test
+  public void test3C3CGSubscribeTwoTopicHistoricalData() throws Exception {
+    long currentTime = System.currentTimeMillis();
+
+    // history data
+    insertData(currentTime);
+
+    createTopics(currentTime);
+    createPipes(currentTime);
+    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic2"));
+
+    pollMessagesAndCheck(
+        consumers,
+        new HashMap<String, String>() {
+          {
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.cg2.topic1.s)", "100");
+            put("count(root.cg2.topic2.s)", "100");
+            put("count(root.cg3.topic2.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
+          }
+        });
+  }
+
+  @Test
+  public void test4C2CGSubscribeTwoTopicHistoricalData() throws Exception {
+    long currentTime = System.currentTimeMillis();
+
+    // history data
+    insertData(currentTime);
+
+    createTopics(currentTime);
+    createPipes(currentTime);
+    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c4", "cg2", "topic2"));
+
+    pollMessagesAndCheck(
+        consumers,
+        new HashMap<String, String>() {
+          {
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.cg2.topic1.s)", "100");
+            put("count(root.cg2.topic2.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
+          }
+        });
+  }
+
+  // --------------------------- //
+  // Scenario 2: Realtime Data //
+  // --------------------------- //
+
+  @Test
+  public void test3C1CGSubscribeOneTopicRealtimeData() throws Exception {
+    long currentTime = System.currentTimeMillis();
+
+    createTopics(currentTime);
+    createPipes(currentTime);
+    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
+
+    // realtime data
+    insertData(currentTime);
+
+    pollMessagesAndCheck(
+        consumers,
+        new HashMap<String, String>() {
+          {
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
+          }
+        });
+  }
+
+  @Test
+  public void test3C3CGSubscribeOneTopicRealtimeData() throws Exception {
+    long currentTime = System.currentTimeMillis();
+
+    createTopics(currentTime);
+    createPipes(currentTime);
+    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic1"));
+
+    // realtime data
+    insertData(currentTime);
+
+    pollMessagesAndCheck(
+        consumers,
+        new HashMap<String, String>() {
+          {
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.cg2.topic1.s)", "100");
+            put("count(root.cg3.topic1.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
+          }
+        });
+  }
+
+  @Test
+  public void test3C1CGSubscribeTwoTopicRealtimeData() throws Exception {
+    long currentTime = System.currentTimeMillis();
+
+    createTopics(currentTime);
+    createPipes(currentTime);
+    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1", "topic2"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic2"));
+
+    // realtime data
+    insertData(currentTime);
+
+    pollMessagesAndCheck(
+        consumers,
+        new HashMap<String, String>() {
+          {
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.cg1.topic2.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
+          }
+        });
+  }
+
+  @Test
+  public void test3C3CGSubscribeTwoTopicRealtimeData() throws Exception {
+    long currentTime = System.currentTimeMillis();
+
+    createTopics(currentTime);
+    createPipes(currentTime);
+    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic2"));
+
+    // realtime data
+    insertData(currentTime);
+
+    pollMessagesAndCheck(
+        consumers,
+        new HashMap<String, String>() {
+          {
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.cg2.topic1.s)", "100");
+            put("count(root.cg2.topic2.s)", "100");
+            put("count(root.cg3.topic2.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
+          }
+        });
+  }
+
+  @Test
+  public void test4C2CGSubscribeTwoTopicRealtimeData() throws Exception {
+    long currentTime = System.currentTimeMillis();
+
+    createTopics(currentTime);
+    createPipes(currentTime);
+    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
+    consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
+    consumers.add(createConsumerAndSubscribeTopics("c4", "cg2", "topic2"));
+
+    // realtime data
+    insertData(currentTime);
+
+    pollMessagesAndCheck(
+        consumers,
+        new HashMap<String, String>() {
+          {
+            put("count(root.cg1.topic1.s)", "100");
+            put("count(root.cg2.topic1.s)", "100");
+            put("count(root.cg2.topic2.s)", "100");
+            put("count(root.topic1.s)", "100");
+            put("count(root.topic2.s)", "100");
+          }
+        });
+  }
+
+  /////////////////////////////// utility ///////////////////////////////
+
+  private void createTopics(long currentTime) {
+    // create topics on sender
+    try (ISession session = senderEnv.getSessionConnection()) {
+      session.executeNonQueryStatement(
+          String.format("create topic topic1 with ('end-time'='%s')", currentTime - 1));
+      session.executeNonQueryStatement(
+          String.format("create topic topic2 with ('start-time'='%s')", currentTime));
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  private void insertData(long currentTime) {
+    // insert some data on sender
+    try (ISession session = senderEnv.getSessionConnection()) {
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.topic1(time, s) values (%s, 1)", i)); // topic1
+        session.executeNonQueryStatement(
+            String.format(
+                "insert into root.topic2(time, s) values (%s, 1)", currentTime + i)); // topic2
+      }
+      session.executeNonQueryStatement("flush");
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private void createPipes(long currentTime) {
+    // for sync reference
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverEnv.getIP());
+      connectorAttributes.put("connector.port", receiverEnv.getPort());
+
+      extractorAttributes.put("end-time", String.valueOf(currentTime - 1));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("sync_topic1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      Map<String, String> extractorAttributes = new HashMap<>();
+      Map<String, String> processorAttributes = new HashMap<>();
+      Map<String, String> connectorAttributes = new HashMap<>();
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverEnv.getIP());
+      connectorAttributes.put("connector.port", receiverEnv.getPort());
+
+      extractorAttributes.put("start-time", String.valueOf(currentTime));
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("sync_topic2", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private SubscriptionPullConsumer createConsumerAndSubscribeTopics(
+      String consumerId, String consumerGroupId, String... topicNames) throws Exception {
+    SubscriptionPullConsumer consumer =
+        new SubscriptionPullConsumer.Builder()
+            .host(senderEnv.getIP())
+            .port(Integer.parseInt(senderEnv.getPort()))
+            .consumerId(consumerId)
+            .consumerGroupId(consumerGroupId)
+            .autoCommit(false)
+            .buildPullConsumer();
+    consumer.open();
+    consumer.subscribe(topicNames);
+    return consumer;
+  }
+
+  private void pollMessagesAndCheck(
+      List<SubscriptionPullConsumer> consumers, Map<String, String> expectedHeaderWithResult)
+      throws Exception {
+    AtomicBoolean isClosed = new AtomicBoolean(false);
+    AtomicBoolean receiverCrashed = new AtomicBoolean(false);
 
     List<Thread> threads = new ArrayList<>();
-    for (Pair<ConsumerConfig, Set<String>> consumerConfig : consumerConfigs) {
+    for (int i = 0; i < consumers.size(); ++i) {
+      final int index = i;
+      String consumerId = consumers.get(index).getConsumerId();
+      String consumerGroupId = consumers.get(index).getConsumerGroupId();
       Thread t =
           new Thread(
               () -> {
-                try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-                  session.createConsumer(consumerConfig.left);
-                  session.subscribe(consumerConfig.right);
-
-                  List<EnrichedTablets> enrichedTabletsList;
-                  while (true) {
-                    Thread.sleep(1000); // wait some time
-                    enrichedTabletsList = session.poll(consumerConfig.right);
-                    if (enrichedTabletsList.isEmpty()) {
+                try (SubscriptionPullConsumer consumer = consumers.get(index)) {
+                  while (!isClosed.get()) {
+                    try {
+                      Thread.sleep(1000); // wait some time
+                    } catch (InterruptedException e) {
                       break;
                     }
-                    Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
-                    for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
-                      for (Tablet tablet : enrichedTablets.getTablets()) {
-                        for (Long time : tablet.timestamps) {
-                          consumerGroupIdToTimestamps
-                              .computeIfAbsent(
-                                  consumerConfig.left.getConsumerGroupId(),
-                                  (consumerGroupId) -> new ConcurrentHashMap<>())
-                              .put(time, time);
+                    List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+                    if (messages.isEmpty()) {
+                      continue;
+                    }
+                    for (SubscriptionMessage message : messages) {
+                      SubscriptionSessionDataSets payload =
+                          (SubscriptionSessionDataSets) message.getPayload();
+                      for (SubscriptionSessionDataSet dataSet : payload) {
+                        List<String> columnNameList = dataSet.getColumnNames();
+                        while (dataSet.hasNext()) {
+                          RowRecord record = dataSet.next();
+                          if (!insertRowRecordEnrichedByConsumerGroupId(
+                              columnNameList, record, consumerGroupId)) {
+                            receiverCrashed.set(true);
+                            throw new RuntimeException("detect receiver crashed");
+                          }
                         }
                       }
-                      topicNameToSubscriptionCommitIds
-                          .computeIfAbsent(
-                              enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
-                          .add(enrichedTablets.getSubscriptionCommitId());
                     }
-                    session.commit(topicNameToSubscriptionCommitIds);
+                    consumer.commitSync(messages);
                   }
-                  session.unsubscribe(consumerConfig.right);
-                  session.dropConsumer();
+                  // no need to unsubscribe
                 } catch (Exception e) {
-                  fail(e.getMessage());
+                  e.printStackTrace();
+                  // avoid fail
+                } finally {
+                  LOGGER.info("consumer {} (group {}) exiting...", consumerId, consumerGroupId);
                 }
-              });
+              },
+              String.format("%s_%s", consumerGroupId, consumerId));
       t.start();
       threads.add(t);
     }
 
-    for (Thread thread : threads) {
-      thread.join();
+    // check data on receiver
+    try {
+      try (Connection connection = receiverEnv.getConnection();
+          Statement statement = connection.createStatement()) {
+        // Keep retrying if there are execution failures
+        Awaitility.await()
+            .pollDelay(1, TimeUnit.SECONDS)
+            .pollInterval(1, TimeUnit.SECONDS)
+            .atMost(180, TimeUnit.SECONDS)
+            .untilAsserted(
+                () -> {
+                  if (receiverCrashed.get()) {
+                    LOGGER.info("detect receiver crashed, skipping this test...");
+                    return;
+                  }
+                  TestUtils.assertSingleResultSetEqual(
+                      TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                      expectedHeaderWithResult);
+                });
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      isClosed.set(true);
+      for (Thread thread : threads) {
+        thread.join();
+      }
     }
-
-    Assert.assertEquals(
-        BASE * factor,
-        consumerGroupIdToTimestamps.values().stream().mapToInt(Map::size).reduce(0, Integer::sum));
   }
 
-  @Test
-  public void test3C1CGSubscribeOneTopic() throws Exception {
-    List<Pair<ConsumerConfig, Set<String>>> consumerConfigs = new ArrayList<>();
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
-                  }
-                }),
-            new HashSet<>(Collections.singletonList("topic1"))));
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c2");
-                  }
-                }),
-            new HashSet<>(Collections.singletonList("topic1"))));
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c3");
-                  }
-                }),
-            new HashSet<>(Collections.singletonList("topic1"))));
-    testMultiConsumersSubscribeMultiTopicsTemplate(consumerConfigs, 1);
-  }
-
-  @Test
-  public void test3C3CGSubscribeOneTopic() throws Exception {
-    List<Pair<ConsumerConfig, Set<String>>> consumerConfigs = new ArrayList<>();
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
-                  }
-                }),
-            new HashSet<>(Collections.singletonList("topic1"))));
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg2");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c2");
-                  }
-                }),
-            new HashSet<>(Collections.singletonList("topic1"))));
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg3");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c3");
-                  }
-                }),
-            new HashSet<>(Collections.singletonList("topic1"))));
-    testMultiConsumersSubscribeMultiTopicsTemplate(consumerConfigs, 3);
-  }
-
-  @Test
-  public void test3C1CGSubscribeTwoTopic() throws Exception {
-    List<Pair<ConsumerConfig, Set<String>>> consumerConfigs = new ArrayList<>();
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
-                  }
-                }),
-            new HashSet<>(Collections.singletonList("topic1"))));
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c2");
-                  }
-                }),
-            new HashSet<>(Arrays.asList("topic1", "topic2"))));
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c3");
-                  }
-                }),
-            new HashSet<>(Collections.singletonList("topic2"))));
-    testMultiConsumersSubscribeMultiTopicsTemplate(consumerConfigs, 2);
-  }
-
-  @Test
-  public void test3C3CGSubscribeTwoTopic() throws Exception {
-    List<Pair<ConsumerConfig, Set<String>>> consumerConfigs = new ArrayList<>();
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
-                  }
-                }),
-            new HashSet<>(Collections.singletonList("topic1"))));
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg2");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c2");
-                  }
-                }),
-            new HashSet<>(Arrays.asList("topic1", "topic2"))));
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg3");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c3");
-                  }
-                }),
-            new HashSet<>(Collections.singletonList("topic2"))));
-    testMultiConsumersSubscribeMultiTopicsTemplate(consumerConfigs, 4);
-  }
-
-  @Test
-  public void test4C2CGSubscribeTwoTopic() throws Exception {
-    List<Pair<ConsumerConfig, Set<String>>> consumerConfigs = new ArrayList<>();
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
-                  }
-                }),
-            new HashSet<>(Collections.singletonList("topic1"))));
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg2");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c2");
-                  }
-                }),
-            new HashSet<>(Arrays.asList("topic1", "topic2"))));
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c3");
-                  }
-                }),
-            new HashSet<>(Collections.singletonList("topic1"))));
-    consumerConfigs.add(
-        new Pair<>(
-            new ConsumerConfig(
-                new HashMap<String, String>() {
-                  {
-                    put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg2");
-                    put(ConsumerConstant.CONSUMER_ID_KEY, "c4");
-                  }
-                }),
-            new HashSet<>(Collections.singletonList("topic2"))));
-    testMultiConsumersSubscribeMultiTopicsTemplate(consumerConfigs, 3);
+  /** @return false -> receiver crashed */
+  private boolean insertRowRecordEnrichedByConsumerGroupId(
+      List<String> columnNameList, RowRecord record, String consumerGroupId) throws Exception {
+    if (columnNameList.size() != 2) {
+      LOGGER.warn("unexpected column name list: {}", columnNameList);
+      throw new Exception("unexpected column name list");
+    }
+    String columnName = columnNameList.get(1);
+    if ("root.topic1.s".equals(columnName)) {
+      String sql =
+          String.format(
+              "insert into root.%s.topic1(time, s) values (%s, 1)",
+              consumerGroupId, record.getTimestamp());
+      return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
+    } else if ("root.topic2.s".equals(columnName)) {
+      String sql =
+          String.format(
+              "insert into root.%s.topic2(time, s) values (%s, 1)",
+              consumerGroupId, record.getTimestamp());
+      return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
+    } else {
+      LOGGER.warn("unexpected column name: {}", columnName);
+      throw new Exception("unexpected column name list");
+    }
   }
 }

@@ -17,22 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.config;
+package org.apache.iotdb.commons.exception.subscription;
 
-public class TopicConstant {
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
-  public static final String PATH_KEY = "path";
-  public static final String PATH_DEFAULT_VALUE = "root.**";
-  public static final String PATTERN_KEY = "pattern";
+import java.util.Objects;
 
-  public static final String START_TIME_KEY = "start-time";
-  public static final String END_TIME_KEY = "end-time";
-  public static final String NOW_TIME_VALUE = "now";
+public class SubscriptionException extends PipeException {
 
-  public static final String FORMAT_KEY = "format";
-  public static final String FORMAT_DEFAULT_VALUE = "log";
+  public SubscriptionException(String message) {
+    super(message);
+  }
 
-  private TopicConstant() {
-    throw new IllegalStateException("Utility class");
+  protected SubscriptionException(String message, long timeStamp) {
+    super(message, timeStamp);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    return obj instanceof SubscriptionException
+        && Objects.equals(getMessage(), ((SubscriptionException) obj).getMessage())
+        && Objects.equals(getTimeStamp(), ((SubscriptionException) obj).getTimeStamp());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getMessage(), getTimeStamp());
   }
 }

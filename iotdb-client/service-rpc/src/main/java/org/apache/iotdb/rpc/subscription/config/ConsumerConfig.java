@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.config;
+package org.apache.iotdb.rpc.subscription.config;
 
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
