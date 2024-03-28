@@ -31,6 +31,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -103,12 +104,16 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
           e);
     }
 
-    receiverStatusHandler.handle(
-        resp.getStatus(),
-        String.format(
-            "Seal file %s and %s error, result status %s.",
-            mTreeSnapshotFile, tagLogSnapshotFile, resp.getStatus()),
-        snapshotEvent.toString());
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && resp.getStatus().getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          resp.getStatus(),
+          String.format(
+              "Seal file %s and %s error, result status %s.",
+              mTreeSnapshotFile, tagLogSnapshotFile, resp.getStatus()),
+          snapshotEvent.toString());
+    }
 
     LOGGER.info("Successfully transferred file {} and {}.", mTreeSnapshotFile, tagLogSnapshotFile);
   }

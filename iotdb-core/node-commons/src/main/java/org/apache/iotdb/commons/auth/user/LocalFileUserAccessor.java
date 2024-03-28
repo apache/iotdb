@@ -83,7 +83,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
   private static final String STRING_ENCODING = "utf-8";
   private static final String USER_SNAPSHOT_FILE_NAME = "system" + File.separator + "users";
 
-  private static final String ROLE_SUFFIX = "_role";
+  public static final String ROLE_SUFFIX = "_role";
 
   private final String userDirPath;
   /**

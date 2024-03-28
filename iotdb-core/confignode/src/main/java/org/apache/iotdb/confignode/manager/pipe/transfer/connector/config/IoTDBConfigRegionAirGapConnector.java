@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.connector.config;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapConnector;
@@ -35,6 +36,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,10 +118,15 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
         socket,
         PipeTransferConfigPlanReq.toTPipeTransferBytes(
             pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()))) {
-      throw new PipeException(
+      final String errorMessage =
           String.format(
               "Transfer config region write plan %s error. Socket: %s.",
-              pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), socket));
+              pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), socket);
+      receiverStatusHandler.handle(
+          new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+              .setMessage(errorMessage),
+          errorMessage,
+          pipeConfigRegionWritePlanEvent.toString());
     }
   }
 
@@ -144,8 +151,13 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
             Objects.nonNull(templateFile) ? templateFile.length() : 0,
             pipeConfigRegionSnapshotEvent.getFileType(),
             pipeConfigRegionSnapshotEvent.toSealTypeString()))) {
-      throw new PipeException(
-          String.format("Seal config region snapshot %s error. Socket %s.", snapshot, socket));
+      final String errorMessage =
+          String.format("Seal config region snapshot %s error. Socket %s.", snapshot, socket);
+      receiverStatusHandler.handle(
+          new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+              .setMessage(errorMessage),
+          errorMessage,
+          pipeConfigRegionSnapshotEvent.toString());
     } else {
       LOGGER.info("Successfully transferred config region snapshot {}.", snapshot);
     }

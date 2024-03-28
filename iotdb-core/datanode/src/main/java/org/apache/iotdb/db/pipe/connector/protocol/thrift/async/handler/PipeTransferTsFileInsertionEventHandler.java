@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
@@ -136,13 +137,18 @@ public class PipeTransferTsFileInsertionEventHandler
   public void onComplete(TPipeTransferResp response) {
     if (isSealSignalSent.get()) {
       try {
-        connector
-            .statusHandler()
-            .handle(
-                response.getStatus(),
-                String.format(
-                    "Seal file %s error, result status %s.", tsFile, response.getStatus()),
-                tsFile.getName());
+        final TSStatus status = response.getStatus();
+        // Only handle the failed statuses to avoid string format performance overhead
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          connector
+              .statusHandler()
+              .handle(
+                  status,
+                  String.format(
+                      "Seal file %s error, result status %s.", tsFile, response.getStatus()),
+                  tsFile.getName());
+        }
       } catch (Exception e) {
         onError(e);
         return;
@@ -185,9 +191,14 @@ public class PipeTransferTsFileInsertionEventHandler
         reader.seek(position);
         LOGGER.info("Redirect file position to {}.", position);
       } else {
-        connector
-            .statusHandler()
-            .handle(response.getStatus(), response.getStatus().getMessage(), tsFile.getName());
+        final TSStatus status = response.getStatus();
+        // Only handle the failed statuses to avoid string format performance overhead
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          connector
+              .statusHandler()
+              .handle(status, response.getStatus().getMessage(), tsFile.getName());
+        }
       }
 
       transfer(client);

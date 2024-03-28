@@ -43,6 +43,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -171,10 +172,15 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           e);
     }
 
-    receiverStatusHandler.handle(
-        resp.getStatus(),
-        String.format("Transfer PipeTransferTabletBatchReq error, result status %s", resp.status),
-        tabletBatchBuilder.deepCopyEvents().toString());
+    final TSStatus status = resp.getStatus();
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          resp.getStatus(),
+          String.format("Transfer PipeTransferTabletBatchReq error, result status %s", resp.status),
+          tabletBatchBuilder.deepCopyEvents().toString());
+    }
 
     tabletBatchBuilder.onSuccess();
   }
@@ -215,12 +221,16 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     }
 
     final TSStatus status = resp.getStatus();
-    receiverStatusHandler.handle(
-        status,
-        String.format(
-            "Transfer PipeInsertNodeTabletInsertionEvent %s error, result status %s",
-            pipeInsertNodeTabletInsertionEvent, status),
-        pipeInsertNodeTabletInsertionEvent.toString());
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          status,
+          String.format(
+              "Transfer PipeInsertNodeTabletInsertionEvent %s error, result status %s",
+              pipeInsertNodeTabletInsertionEvent, status),
+          pipeInsertNodeTabletInsertionEvent.toString());
+    }
     if (insertNode != null && status.isSetRedirectNode()) {
       clientManager.updateLeaderCache(
           insertNode.getDevicePath().getFullPath(), status.getRedirectNode());
@@ -251,12 +261,16 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     }
 
     final TSStatus status = resp.getStatus();
-    receiverStatusHandler.handle(
-        status,
-        String.format(
-            "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
-            pipeRawTabletInsertionEvent, status),
-        pipeRawTabletInsertionEvent.toString());
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          status,
+          String.format(
+              "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
+              pipeRawTabletInsertionEvent, status),
+          pipeRawTabletInsertionEvent.toString());
+    }
     if (status.isSetRedirectNode()) {
       clientManager.updateLeaderCache(
           pipeRawTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
@@ -306,10 +320,15 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       }
     }
 
-    receiverStatusHandler.handle(
-        resp.getStatus(),
-        String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()),
-        tsFile.getName());
+    final TSStatus status = resp.getStatus();
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          resp.getStatus(),
+          String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()),
+          tsFile.getName());
+    }
 
     LOGGER.info("Successfully transferred file {}.", tsFile);
   }

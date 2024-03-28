@@ -41,12 +41,12 @@ public enum PipeRequestType {
   TRANSFER_TS_FILE_PIECE_WITH_MOD((short) 8),
   TRANSFER_TS_FILE_SEAL_WITH_MOD((short) 9),
 
-  // schema region
+  // Schema region
   TRANSFER_SCHEMA_PLAN((short) 100),
   TRANSFER_SCHEMA_SNAPSHOT_PIECE((short) 101),
   TRANSFER_SCHEMA_SNAPSHOT_SEAL((short) 102),
 
-  // config region
+  // Config region
   TRANSFER_CONFIG_PLAN((short) 200),
   TRANSFER_CONFIG_SNAPSHOT_PIECE((short) 201),
   TRANSFER_CONFIG_SNAPSHOT_SEAL((short) 202),

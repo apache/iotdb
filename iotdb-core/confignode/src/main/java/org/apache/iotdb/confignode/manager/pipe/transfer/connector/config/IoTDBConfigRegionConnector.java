@@ -37,6 +37,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -120,12 +121,16 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     }
 
     final TSStatus status = resp.getStatus();
-    receiverStatusHandler.handle(
-        status,
-        String.format(
-            "Transfer config region write plan %s error, result status %s.",
-            writePlanEvent.getConfigPhysicalPlan().getType(), status),
-        writePlanEvent.getConfigPhysicalPlan().toString());
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          status,
+          String.format(
+              "Transfer config region write plan %s error, result status %s.",
+              writePlanEvent.getConfigPhysicalPlan().getType(), status),
+          writePlanEvent.getConfigPhysicalPlan().toString());
+    }
   }
 
   private void doTransfer(PipeConfigRegionSnapshotEvent snapshotEvent)
@@ -162,12 +167,16 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
           e);
     }
 
-    receiverStatusHandler.handle(
-        resp.getStatus(),
-        String.format(
-            "Seal config region snapshot file %s error, result status %s.",
-            snapshotFile, resp.getStatus()),
-        snapshotFile.toString());
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && resp.getStatus().getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          resp.getStatus(),
+          String.format(
+              "Seal config region snapshot file %s error, result status %s.",
+              snapshotFile, resp.getStatus()),
+          snapshotFile.toString());
+    }
     LOGGER.info("Successfully transferred config region snapshot {}.", snapshotFile);
   }
 }

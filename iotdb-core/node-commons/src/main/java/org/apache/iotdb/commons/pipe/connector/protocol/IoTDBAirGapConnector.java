@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.connector.protocol;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteResponse;
@@ -26,6 +27,7 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import org.slf4j.Logger;
@@ -202,8 +204,13 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
             isMultiFile
                 ? getTransferMultiFilePieceBytes(file.getName(), position, payload)
                 : getTransferSingleFilePieceBytes(file.getName(), position, payload))) {
-          throw new PipeException(
-              String.format("Transfer file %s error. Socket %s.", file, socket));
+          final String errorMessage =
+              String.format("Transfer file %s error. Socket %s.", file, socket);
+          receiverStatusHandler.handle(
+              new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+                  .setMessage(errorMessage),
+              errorMessage,
+              file.toString());
         } else {
           position += readLength;
         }

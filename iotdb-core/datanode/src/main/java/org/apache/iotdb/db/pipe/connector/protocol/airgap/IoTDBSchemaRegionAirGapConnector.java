@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -28,6 +29,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,10 +93,15 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
             Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
             pipeSchemaRegionSnapshotEvent.getDatabaseName(),
             pipeSchemaRegionSnapshotEvent.toSealTypeString()))) {
-      throw new PipeException(
+      final String errorMessage =
           String.format(
               "Seal schema region snapshot file %s and %s error. Socket %s.",
-              mtreeSnapshotFile, tagLogSnapshotFile, socket));
+              mtreeSnapshotFile, tagLogSnapshotFile, socket);
+      receiverStatusHandler.handle(
+          new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+              .setMessage(errorMessage),
+          errorMessage,
+          pipeSchemaRegionSnapshotEvent.toString());
     } else {
       LOGGER.info(
           "Successfully transferred schema region snapshot {} and {}.",

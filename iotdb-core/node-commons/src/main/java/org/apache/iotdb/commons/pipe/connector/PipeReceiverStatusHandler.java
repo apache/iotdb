@@ -91,6 +91,7 @@ public class PipeReceiverStatusHandler {
   public void handle(TSStatus status, String exceptionMessage, String recordMessage) {
     switch (status.getCode()) {
       case 200: // SUCCESS_STATUS
+      case 400: // REDIRECTION_RECOMMEND
         {
           return;
         }
@@ -207,6 +208,7 @@ public class PipeReceiverStatusHandler {
           Arrays.asList(
               TSStatusCode.SUCCESS_STATUS.getStatusCode(),
               TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode(),
+              TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode(),
               TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode(),
               TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()));
 

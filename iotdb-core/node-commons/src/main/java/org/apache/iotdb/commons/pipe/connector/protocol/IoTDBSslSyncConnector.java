@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClientManager;
@@ -176,20 +177,24 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
 
         position += readLength;
 
+        final TSStatus status = resp.getStatus();
         // This case only happens when the connection is broken, and the connector is reconnected
         // to the receiver, then the receiver will redirect the file position to the last position
-        if (resp.getStatus().getCode()
-            == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
+        if (status.getCode() == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
           position = resp.getEndWritingOffset();
           reader.seek(position);
           LOGGER.info("Redirect file position to {}.", position);
           continue;
         }
 
-        receiverStatusHandler.handle(
-            resp.getStatus(),
-            String.format("Transfer file %s error, result status %s.", file, resp.getStatus()),
-            file.getName());
+        // Only handle the failed statuses to avoid string format performance overhead
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          receiverStatusHandler.handle(
+              resp.getStatus(),
+              String.format("Transfer file %s error, result status %s.", file, resp.getStatus()),
+              file.getName());
+        }
       }
     }
   }

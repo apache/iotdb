@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
+import org.apache.iotdb.commons.auth.user.LocalFileUserAccessor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -34,6 +36,7 @@ import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanE
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigSerializableEventType;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.service.ConfigNode;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -96,12 +99,26 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
       List<Pair<Pair<Path, Path>, CNSnapshotFileType>> snapshotPathInfoList) {
     List<PipeSnapshotEvent> events = new ArrayList<>();
     for (Pair<Pair<Path, Path>, CNSnapshotFileType> snapshotPathInfo : snapshotPathInfoList) {
-      Path snapshotPath = snapshotPathInfo.getLeft().getLeft();
-      if (snapshotPath.toFile().length() == 0) {
-        // Filter empty snapshots
+      final Path snapshotPath = snapshotPathInfo.getLeft().getLeft();
+      final CNSnapshotFileType type = snapshotPathInfo.getRight();
+      // Filter empty and superuser snapshots
+      if (snapshotPath.toFile().length() == 0
+          || type == CNSnapshotFileType.USER
+              && snapshotPath
+                  .toFile()
+                  .getName()
+                  .equals(AuthorityChecker.SUPER_USER + IoTDBConstant.PROFILE_SUFFIX)
+          || type == CNSnapshotFileType.USER_ROLE
+              && snapshotPath
+                  .toFile()
+                  .getName()
+                  .equals(
+                      AuthorityChecker.SUPER_USER
+                          + LocalFileUserAccessor.ROLE_SUFFIX
+                          + IoTDBConstant.PROFILE_SUFFIX)) {
         continue;
       }
-      Path templateFilePath = snapshotPathInfo.getLeft().getRight();
+      final Path templateFilePath = snapshotPathInfo.getLeft().getRight();
       events.add(
           new PipeConfigRegionSnapshotEvent(
               snapshotPath.toString(),

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
@@ -38,6 +39,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -143,10 +145,15 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
             : PipeTransferTabletInsertNodeReq.toTPipeTransferBytes(insertNode);
 
     if (!send(socket, bytes)) {
-      throw new PipeException(
+      final String errorMessage =
           String.format(
               "Transfer PipeInsertNodeTabletInsertionEvent %s error. Socket: %s",
-              pipeInsertNodeTabletInsertionEvent, socket));
+              pipeInsertNodeTabletInsertionEvent, socket);
+      receiverStatusHandler.handle(
+          new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+              .setMessage(errorMessage),
+          errorMessage,
+          pipeInsertNodeTabletInsertionEvent.toString());
     }
   }
 
@@ -157,20 +164,26 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
         PipeTransferTabletRawReq.toTPipeTransferBytes(
             pipeRawTabletInsertionEvent.convertToTablet(),
             pipeRawTabletInsertionEvent.isAligned()))) {
-      throw new PipeException(
+      final String errorMessage =
           String.format(
               "Transfer PipeRawTabletInsertionEvent %s error. Socket: %s.",
-              pipeRawTabletInsertionEvent, socket));
+              pipeRawTabletInsertionEvent, socket);
+      receiverStatusHandler.handle(
+          new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+              .setMessage(errorMessage),
+          errorMessage,
+          pipeRawTabletInsertionEvent.toString());
     }
   }
 
   private void doTransfer(Socket socket, PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
+    final String errorMessage = String.format("Seal file %s error. Socket %s.", tsFile, socket);
 
     // 1. Transfer file piece by piece, and mod if needed
     if (pipeTsFileInsertionEvent.isWithMod() && supportModsIfIsDataNodeReceiver) {
-      File modFile = pipeTsFileInsertionEvent.getModFile();
+      final File modFile = pipeTsFileInsertionEvent.getModFile();
       transferFilePieces(modFile, socket, true);
       transferFilePieces(tsFile, socket, true);
       // 2. Transfer file seal signal with mod, which means the file is transferred completely
@@ -178,7 +191,11 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
           socket,
           PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
               modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length()))) {
-        throw new PipeException(String.format("Seal file %s error. Socket %s.", tsFile, socket));
+        receiverStatusHandler.handle(
+            new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+                .setMessage(errorMessage),
+            errorMessage,
+            pipeTsFileInsertionEvent.toString());
       } else {
         LOGGER.info("Successfully transferred file {}.", tsFile);
       }
@@ -188,7 +205,11 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
       if (!send(
           socket,
           PipeTransferTsFileSealReq.toTPipeTransferBytes(tsFile.getName(), tsFile.length()))) {
-        throw new PipeException(String.format("Seal file %s error. Socket %s.", tsFile, socket));
+        receiverStatusHandler.handle(
+            new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+                .setMessage(errorMessage),
+            errorMessage,
+            pipeTsFileInsertionEvent.toString());
       } else {
         LOGGER.info("Successfully transferred file {}.", tsFile);
       }

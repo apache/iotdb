@@ -192,7 +192,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     }
 
     final byte[] dataLengthBytes = BytesUtils.subBytes(doubleIntLengthBytes, 0, INT_LEN);
-    // for double check
+    // For double check
     return Arrays.equals(
             dataLengthBytes, BytesUtils.subBytes(doubleIntLengthBytes, INT_LEN, INT_LEN))
         ? BytesUtils.bytesToInt(dataLengthBytes)

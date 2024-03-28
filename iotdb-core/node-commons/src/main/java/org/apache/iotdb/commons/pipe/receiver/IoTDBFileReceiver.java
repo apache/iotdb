@@ -279,8 +279,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       deleteCurrentWritingFile();
     }
 
-    // make sure receiver file dir exists
-    // this may be useless, because receiver file dir is created when handshake. just in case.
+    // Make sure receiver file dir exists
+    // This may be useless, because receiver file dir is created when handshake. just in case.
     if (!receiverFileDirWithIdSuffix.get().exists()) {
       if (receiverFileDirWithIdSuffix.get().mkdirs()) {
         LOGGER.info(

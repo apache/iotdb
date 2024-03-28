@@ -370,7 +370,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
     StringBuilder nodeUrlsBuilder = new StringBuilder();
     for (DataNodeWrapper wrapper : receiverEnv.getDataNodeWrapperList()) {
       if (connectorName.equals(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
-        // use default port for convenience
+        // Use default port for convenience
         nodeUrlsBuilder
             .append(wrapper.getIp())
             .append(":")
@@ -460,7 +460,6 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
 
-      System.out.println(status.getMessage());
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
