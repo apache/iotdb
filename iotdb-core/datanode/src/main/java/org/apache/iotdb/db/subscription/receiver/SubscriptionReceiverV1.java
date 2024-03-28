@@ -65,7 +65,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -338,12 +337,6 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         events.stream()
             .map(SerializedEnrichedEvent::getSubscriptionCommitId)
             .collect(Collectors.toList());
-
-    // REMOVE ME: for debug
-    List<Long> timestamps = new ArrayList<>();
-    events.forEach((event -> timestamps.addAll(event.timestamps())));
-    LOGGER.info(
-        "[DEBUG][subscription] consumer {} poll event timestamps {}", consumerConfig, timestamps);
 
     if (timer.isExpired()) {
       LOGGER.warn(

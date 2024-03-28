@@ -1,10 +1,11 @@
-name: Multi-Cluster IT
+name: Cluster IT - 1C1D
 
 on:
   push:
     branches:
       - master
       - 'rel/1.*'
+      - pipe-meta-sync
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -12,6 +13,7 @@ on:
     branches:
       - master
       - 'rel/1.*'
+      - pipe-meta-sync
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -27,17 +29,15 @@ env:
   GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
 jobs:
-  two-clusters:
+  Simple:
     strategy:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [17]
-        # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster1: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
-        cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
-        os: [ ubuntu-latest ]
+        java: [11]
+        os: [ ubuntu-latest, windows-latest ]
     runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK ${{ matrix.java }}
@@ -45,6 +45,28 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Adjust network dynamic TCP ports range
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          netsh int ipv4 set dynamicport tcp start=32768 num=32768
+          netsh int ipv4 set dynamicport udp start=32768 num=32768
+          netsh int ipv6 set dynamicport tcp start=32768 num=32768
+          netsh int ipv6 set dynamicport udp start=32768 num=32768
+      - name: Adjust Linux kernel somaxconn
+        if: ${{ runner.os == 'Linux' }}
+        shell: bash
+        run: sudo sysctl -w net.core.somaxconn=65535
+#      - name: Adjust Mac kernel somaxconn
+#        if: ${{ runner.os == 'macOS' }}
+#        shell: bash
+#        run: sudo sysctl -w kern.ipc.somaxconn=65535
       - name: IT/UT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -53,14 +75,14 @@ jobs:
           mvn clean verify \
           -P with-integration-tests \
           -DskipUTs \
-          -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 \
-          -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+          -DintegrationTest.forkCount=2 \
           -pl integration-test \
-          -am -PMultiClusterIT2
+          -am
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: cluster-log-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
+          name: standalone-log-java${{ matrix.java }}-${{ runner.os }}
           path: integration-test/target/cluster-logs
-          retention-days: 30
+          retention-days: 1
+

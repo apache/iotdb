@@ -1,0 +1,58 @@
+# This workflow is just for checking whether modifications works for the Python client.
+
+name: Python Client
+
+on:
+  push:
+    branches:
+      - master
+      - 'rel/*'
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  pull_request:
+    branches:
+      - master
+      - 'rel/*'
+      - "new_*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+
+jobs:
+  unix:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Build IoTDB server distribution zip and python client
+        run: mvn -B clean install -pl distribution,iotdb-client/client-py -am -DskipTests
+      - name: Build IoTDB server docker image
+        run: |
+          docker build . -f docker/src/main/Dockerfile-1c1d -t "iotdb:dev"
+          docker images
+      - name: Install IoTDB python client requirements
+        run: pip3 install -r iotdb-client/client-py/requirements_dev.txt
+      - name: Check code style
+        shell: bash
+        run: black iotdb-client/client-py/ --check --diff
+      - name: Integration test
+        shell: bash
+        run: |
+          cd iotdb-client/client-py/ && pytest .

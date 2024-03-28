@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT3;
+import org.apache.iotdb.itbase.category.MultiClusterIT2;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
@@ -54,7 +54,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT3.class})
+@Category({MultiClusterIT2.class})
 public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT {
 
   private static final Logger LOGGER =
@@ -486,24 +486,18 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
           String.format(
               "insert into root.%s.topic1(time, s) values (%s, 1)",
               consumerGroupId, record.getTimestamp());
-      // REMOVE ME: for debug
-      LOGGER.info(sql);
       return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
     } else if ("root.topic2.s".equals(columnName)) {
       String sql =
           String.format(
               "insert into root.%s.topic2(time, s) values (%s, 1)",
               consumerGroupId, record.getTimestamp());
-      // REMOVE ME: for debug
-      LOGGER.info(sql);
       return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
     } else if ("root.topic3.s".equals(columnName)) {
       String sql =
           String.format(
               "insert into root.%s.topic3(time, s) values (%s, 1)",
               consumerGroupId, record.getTimestamp());
-      // REMOVE ME: for debug
-      LOGGER.info(sql);
       return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
     } else {
       LOGGER.warn("unexpected column name: {}", columnName);

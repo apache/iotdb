@@ -123,9 +123,4 @@ public class SerializedEnrichedEvent {
     SerializedEnrichedEvent that = (SerializedEnrichedEvent) obj;
     return Objects.equals(this.enrichedTablets, that.enrichedTablets);
   }
-
-  // REMOVE ME: for debug
-  public List<Long> timestamps() {
-    return enrichedTablets.timestamps();
-  }
 }

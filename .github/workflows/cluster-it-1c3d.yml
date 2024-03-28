@@ -1,10 +1,11 @@
-name: Multi-Cluster IT
+name: Cluster IT - 1C3D
 
 on:
   push:
     branches:
       - master
       - 'rel/1.*'
+      - pipe-meta-sync
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -12,6 +13,7 @@ on:
     branches:
       - master
       - 'rel/1.*'
+      - pipe-meta-sync
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -27,17 +29,15 @@ env:
   GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
 jobs:
-  two-clusters:
+  Simple:
     strategy:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [17]
-        # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster1: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
-        cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
-        os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os }}
+        java: [ 8, 11, 17 ]
+    runs-on: [self-hosted, iotdb]
+#      group: self-hosted
+#      labels: iotdb
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK ${{ matrix.java }}
@@ -53,14 +53,13 @@ jobs:
           mvn clean verify \
           -P with-integration-tests \
           -DskipUTs \
-          -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=768 \
-          -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+          -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 \
           -pl integration-test \
-          -am -PMultiClusterIT2
+          -am -PClusterIT
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: cluster-log-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
+          name: cluster-log-java${{ matrix.java }}-${{ runner.os }}
           path: integration-test/target/cluster-logs
-          retention-days: 30
+          retention-days: 1

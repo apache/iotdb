@@ -28,7 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
-import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,12 +115,6 @@ public class PipeInsertionDataNodeListener {
       return;
     }
 
-    // REMOVE ME: for debug
-    LOGGER.info(
-        "[DEBUG][listener][DR {}] listen to TsFile timestamp start time {}",
-        dataRegionId,
-        tsFileResource.getFileStartTime());
-
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(tsFileResource, isLoaded, isGeneratedByPipe));
   }
@@ -141,12 +134,6 @@ public class PipeInsertionDataNodeListener {
     if (assigner == null) {
       return;
     }
-
-    // REMOVE ME: for debug
-    LOGGER.info(
-        "[DEBUG][listener][DR {}] listen to InsertNode timestamp {}",
-        dataRegionId,
-        SubscriptionPrefetchingQueue.getInsertNodeTimestamps(insertNode));
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(walEntryHandler, insertNode, tsFileResource));

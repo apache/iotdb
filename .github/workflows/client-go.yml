@@ -1,0 +1,56 @@
+# This workflow is just for checking whether modifications works for the Go client.
+
+name: Go Client
+
+on:
+  push:
+    branches:
+      - master
+      - 'rel/*'
+      - "new_*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  pull_request:
+    branches:
+      - master
+      - 'rel/*'
+      - "new_*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+
+jobs:
+  unix:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{secrets.GITHUB_TOKEN}}
+          submodules: recursive
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Compile IoTDB Server
+        run: mvn clean package -pl distribution -am -DskipTests
+      - name: Integration test
+        shell: bash
+        run: |
+          cd iotdb-client/client-go/ && make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo

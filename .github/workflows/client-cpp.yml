@@ -1,0 +1,106 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+# CPP compiling is too slow, so let's do it in parallel with testing other modules.
+# As there is no Java client, we just use one JDK.
+name: C++ Client
+
+on:
+  push:
+    branches:
+      - master
+      - "rel/*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  pull_request:
+    branches:
+      - master
+      - "rel/*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+
+jobs:
+  build-unix:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os}}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install CPP Dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: sudo apt-get update && sudo apt-get install libboost-all-dev
+      - name: Install CPP Dependencies (Mac)`
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          brew install boost
+          brew install bison
+          echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.bash_profile
+          source ~/.bash_profile && export LDFLAGS="-L/usr/local/opt/bison/lib"
+          brew install openssl
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Build IoTDB server
+        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
+        # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
+        # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
+        run: ./mvnw clean install -P with-cpp -pl distribution,example/client-cpp-example -am -DskipTests
+      - name: Test with Maven
+        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
+        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am
+      - name: Show test result
+        if: failure()
+        run: cat iotdb-client/client-cpp/target/build/test/Testing/Temporary/LastTest_*.log
+
+  build-win:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Install Win_Flex_Bison
+        run: choco install winflexbison3
+      - name: Download Boost
+        run: choco install boost-msvc-14.3 --version=1.84.0.1
+      - name: Build IoTDB server
+        shell: bash
+        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
+        # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
+        # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
+        run: ./mvnw clean install -P with-cpp -pl distribution,example/client-cpp-example -am -DskipTests -D"boost.include.dir"="C:\local\boost_1_84_0" -D"boost.library.dir"="C:\local\boost_1_84_0\stage\lib"
+      - name: Test with Maven
+        shell: bash
+        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
+        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am -D"boost.include.dir"="C:\local\boost_1_84_0" -D"boost.library.dir"="C:\local\boost_1_84_0\stage\lib"
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpp-IT-${{ runner.os }}
+          path: iotdb-client/client-cpp/target/build/test/Testing
+          retention-days: 1

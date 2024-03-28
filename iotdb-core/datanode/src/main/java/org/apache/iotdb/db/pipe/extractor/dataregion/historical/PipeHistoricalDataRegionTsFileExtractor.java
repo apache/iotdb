@@ -343,46 +343,12 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             tsFileManager.getTsFileList(true).stream()
                 .filter(
                     resource ->
-                    // Some resource may not be closed due to the control of
-                    // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                    {
-                      boolean isClosed = resource.isClosed();
-                      if (!isClosed) {
-                        LOGGER.info(
-                            "[DEBUG][tsfile] tsfile start time {}, isClosed: {}",
-                            resource.getFileStartTime(),
-                            false);
-                        return true;
-                      }
-                      boolean mayTsFileContainUnprocessedData =
-                          mayTsFileContainUnprocessedData(resource);
-                      if (!mayTsFileContainUnprocessedData) {
-                        LOGGER.info(
-                            "[DEBUG][tsfile] tsfile start time {}, mayTsFileContainUnprocessedData: {}",
-                            resource.getFileStartTime(),
-                            false);
-                        return false;
-                      }
-                      boolean isTsFileResourceOverlappedWithTimeRange =
-                          isTsFileResourceOverlappedWithTimeRange(resource);
-                      if (!isTsFileResourceOverlappedWithTimeRange) {
-                        LOGGER.info(
-                            "[DEBUG][tsfile] tsfile start time {}, isTsFileResourceOverlappedWithTimeRange: {}",
-                            resource.getFileStartTime(),
-                            false);
-                        return false;
-                      }
-                      boolean isTsFileGeneratedAfterExtractionTimeLowerBound =
-                          isTsFileGeneratedAfterExtractionTimeLowerBound(resource);
-                      if (!isTsFileGeneratedAfterExtractionTimeLowerBound) {
-                        LOGGER.info(
-                            "[DEBUG][tsfile] tsfile start time {}, isTsFileGeneratedAfterExtractionTimeLowerBound: {}",
-                            resource.getFileStartTime(),
-                            false);
-                        return false;
-                      }
-                      return true;
-                    })
+                        // Some resource may not be closed due to the control of
+                        // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
+                        !resource.isClosed()
+                            || mayTsFileContainUnprocessedData(resource)
+                                && isTsFileResourceOverlappedWithTimeRange(resource)
+                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
         resourceList.addAll(sequenceTsFileResources);
 

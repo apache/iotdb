@@ -25,17 +25,14 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
-import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,25 +53,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     final Event eventToExtract = event.getEvent();
 
     if (eventToExtract instanceof TabletInsertionEvent) {
-      /// REMOVE ME: for debug
-      try {
-        LOGGER.info(
-            "[DEBUG][extractor][DR {}][Pipe {}] extract PipeInsertNodeTabletInsertionEvent timestamps {}",
-            dataRegionId,
-            pipeName,
-            SubscriptionPrefetchingQueue.getInsertNodeTimestamps(
-                ((PipeInsertNodeTabletInsertionEvent) eventToExtract).getInsertNode()));
-      } catch (Exception e) {
-        throw new PipeException(e.getMessage());
-      }
       extractTabletInsertion(event);
     } else if (eventToExtract instanceof TsFileInsertionEvent) {
-      // REMOVE ME: for debug
-      LOGGER.info(
-          "[DEBUG][extractor][DR {}][Pipe {}] extract PipeTsFileInsertionEvent start time {}",
-          dataRegionId,
-          pipeName,
-          ((PipeTsFileInsertionEvent) eventToExtract).getFileStartTime());
       extractTsFileInsertion(event);
     } else if (eventToExtract instanceof PipeHeartbeatEvent) {
       extractHeartbeat(event);
@@ -368,9 +348,6 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     switch (state) {
       case USING_TABLET:
         // if the state is USING_TABLET, discard the event and poll the next one.
-        LOGGER.info(
-            "[DEBUG][tsfile] PipeTsFileInsertionEvent start time {} USING_TABLET",
-            ((PipeTsFileInsertionEvent) event.getEvent()).getFileStartTime());
         return null;
       case EMPTY:
       case USING_TSFILE:
