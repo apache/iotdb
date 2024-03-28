@@ -326,7 +326,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       logDataBuffer.put(logData);
     }
     // followers only use the cache in persistence, and it is of no use beyond this point
-    if (!member.isLeader()) {
+    if (member != null && !member.isLeader()) {
       entry.setSerializationCache(null);
     }
     lastLogIndex = entry.getCurrLogIndex();
@@ -453,8 +453,15 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       compressedLength =
           compressor.compress(
               compressingBuffer.array(), 0, compressingBuffer.position(), compressedBuffer.array());
+      logger.debug("Compressed a log block from {} to {} bytes", compressingBuffer.position(), compressedLength);
       compressedBuffer.position(0);
       compressedBuffer.limit(compressedLength);
+
+      ByteBuffer tempBuffer = ByteBuffer.allocate(compressingBuffer.position());
+      unCompressor.uncompress(compressedBuffer, tempBuffer);
+      compressedBuffer.position(0);
+
+
       Statistic.PERSISTENCE_COMPRESSED_SIZE.add(compressedLength);
       Statistic.PERSISTENCE_COMPRESS_TIME.calOperationCostTimeFromStart(startTime);
     } catch (IOException e) {
@@ -496,8 +503,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       logIndexBuffer.putLong(lastLogIndex);
       logIndexBuffer.putLong(offsetOfTheCurrentLogDataOutputStream);
       offsetOfTheCurrentLogDataOutputStream += Integer.BYTES + compressedLength;
-
-      currentLogDataOutputStream.write(compressingBuffer.array(), 0, compressedLength);
+      logger.debug("Flushed a log chunk of {} bytes", compressedLength);
+      currentLogDataOutputStream.write(flushingLogDataBuffer.array(), 0, compressedLength);
       ReadWriteIOUtils.writeWithoutSize(
           logIndexBuffer, 0, logIndexBuffer.position(), currentLogIndexOutputStream);
       if (config.getFlushRaftLogThreshold() == 0) {
@@ -1454,6 +1461,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
             startAndEndOffset.right);
         int logBlockSize = ReadWriteIOUtils.readInt(bufferedInputStream);
         byte[] bytes = ReadWriteIOUtils.readBytes(bufferedInputStream, logBlockSize);
+        logger.debug("Read a log block of {} bytes", logBlockSize);
         ByteBuffer uncompressed = ByteBuffer.wrap(unCompressor.uncompress(bytes));
         while (uncompressed.remaining() > 0) {
           Entry e = parser.parse(uncompressed, null);

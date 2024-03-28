@@ -47,12 +47,15 @@ public class RecoverReadTest {
   private static class SlowRecoverStateMachine extends TestUtils.IntegerCounter {
     private final TimeDuration stallDuration;
     private final AtomicBoolean stallApply = new AtomicBoolean(false);
+    private int id;
 
-    private SlowRecoverStateMachine(TimeDuration stallDuration) {
+    private SlowRecoverStateMachine(TimeDuration stallDuration, int id) {
+      super(id);
       this.stallDuration = stallDuration;
     }
 
-    private SlowRecoverStateMachine(TimeDuration stallDuration, boolean isStall) {
+    private SlowRecoverStateMachine(TimeDuration stallDuration, boolean isStall, int id) {
+      super(id);
       this.stallDuration = stallDuration;
       this.stallApply.set(isStall);
     }
@@ -87,7 +90,7 @@ public class RecoverReadTest {
     Properties properties = new Properties();
     miniCluster =
         factory
-            .setSMProvider(() -> new SlowRecoverStateMachine(stallDuration))
+            .setSMProvider((i) -> new SlowRecoverStateMachine(stallDuration, i))
             .setConfig(properties)
             .create();
     miniCluster.start();
@@ -120,7 +123,7 @@ public class RecoverReadTest {
 
     // set stall when restart
     miniCluster.resetSMProviderBeforeRestart(
-        () -> new SlowRecoverStateMachine(stallDuration, true));
+        (i) -> new SlowRecoverStateMachine(stallDuration, true, i));
 
     // restart the cluster
     miniCluster.restart();
@@ -146,7 +149,7 @@ public class RecoverReadTest {
 
     // set stall when restart
     miniCluster.resetSMProviderBeforeRestart(
-        () -> new SlowRecoverStateMachine(stallDuration, true));
+        (i) -> new SlowRecoverStateMachine(stallDuration, true, i));
 
     // restart the cluster
     miniCluster.restart();
@@ -175,7 +178,7 @@ public class RecoverReadTest {
 
     // set stall when restart
     miniCluster.resetSMProviderBeforeRestart(
-        () -> new SlowRecoverStateMachine(stallDuration, true));
+        (i) -> new SlowRecoverStateMachine(stallDuration, true, i));
 
     // restart the cluster
     miniCluster.restart();
@@ -202,7 +205,7 @@ public class RecoverReadTest {
 
     // set stall when restart
     miniCluster.resetSMProviderBeforeRestart(
-        () -> new SlowRecoverStateMachine(stallDuration, true));
+        (i) -> new SlowRecoverStateMachine(stallDuration, true, i));
 
     // restart the cluster
     miniCluster.restart();

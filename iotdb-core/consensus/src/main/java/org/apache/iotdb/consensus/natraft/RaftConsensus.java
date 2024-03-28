@@ -296,11 +296,12 @@ public class RaftConsensus implements IConsensus {
 
   @Override
   public void transferLeader(ConsensusGroupId groupId, Peer newLeader)
-      throws ConsensusGroupNotExistException {
+      throws ConsensusException {
     RaftMember impl = stateMachineMap.get(groupId);
     if (impl == null) {
       throw new ConsensusGroupNotExistException(groupId);
     }
+    impl.transferLeader(newLeader);
   }
 
   @Override

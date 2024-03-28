@@ -175,7 +175,6 @@ public class RaftConsensusTest {
     servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
     miniCluster.waitUntilActiveLeaderElectedAndReady();
-    // 200 operation will trigger snapshot & purge
     doConsensus(0, 200, 200);
 
     miniCluster.stop();

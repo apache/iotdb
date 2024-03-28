@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.consensus.nbraft;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -119,17 +121,24 @@ public class TestUtils {
 
   public static class IntegerCounter implements IStateMachine, IStateMachine.EventApi {
 
-    protected AtomicInteger integer;
+    private static final Map<Integer, Integer> storage = new ConcurrentHashMap<>();
+    protected AtomicInteger integer = new AtomicInteger(0);
     private final Logger logger = LoggerFactory.getLogger(IntegerCounter.class);
     private List<Peer> configuration;
+    private int id;
+
+    public IntegerCounter(int id) {
+      this.id = id;
+    }
 
     @Override
     public void start() {
-      integer = new AtomicInteger(0);
+      integer.set(storage.getOrDefault(id, 0));
     }
 
     @Override
     public void stop() {
+      storage.put(id, integer.get());
     }
 
     @Override
@@ -233,14 +242,14 @@ public class TestUtils {
     private final Properties config;
     private final List<RaftConsensus> servers;
     private final ConsensusGroup group;
-    private Supplier<IStateMachine> smProvider;
+    private Function<Integer, IStateMachine> smProvider;
     private final AtomicBoolean isStopped = new AtomicBoolean(false);
 
     private MiniCluster(
         ConsensusGroupId gid,
         int replicas,
         Function<Integer, File> storageProvider,
-        Supplier<IStateMachine> smProvider,
+        Function<Integer, IStateMachine> smProvider,
         Properties config) {
       this.gid = gid;
       this.replicas = replicas;
@@ -262,7 +271,7 @@ public class TestUtils {
         storage.mkdirs();
         peerStorage.add(storage);
 
-        stateMachines.add(smProvider.get());
+        stateMachines.add(smProvider.apply(i));
       }
       group = new ConsensusGroup(gid, peers);
       makeServers();
@@ -321,7 +330,7 @@ public class TestUtils {
       servers.clear();
       stateMachines.clear();
       for (int i = 0; i < replicas; i++) {
-        stateMachines.add(smProvider.get());
+        stateMachines.add(smProvider.apply(i));
       }
       makeServers();
       start();
@@ -370,7 +379,7 @@ public class TestUtils {
           null);
     }
 
-    void resetSMProviderBeforeRestart(Supplier<IStateMachine> smProvider) {
+    void resetSMProviderBeforeRestart(Function<Integer, IStateMachine> smProvider) {
       Preconditions.checkArgument(
           isStopped.get(), "call resetSMProviderBeforeRestart() before restart");
       this.smProvider = smProvider;
@@ -457,7 +466,7 @@ public class TestUtils {
     private final Function<Integer, File> peerStorageProvider =
         peerId -> new File("target" + File.separator + peerId);
 
-    private Supplier<IStateMachine> smProvider = IntegerCounter::new;
+    private Function<Integer, IStateMachine> smProvider = IntegerCounter::new;
     private Properties config;
 
     MiniClusterFactory setConfig(Properties config) {
@@ -465,7 +474,7 @@ public class TestUtils {
       return this;
     }
 
-    MiniClusterFactory setSMProvider(Supplier<IStateMachine> smProvider) {
+    MiniClusterFactory setSMProvider(Function<Integer, IStateMachine> smProvider) {
       this.smProvider = smProvider;
       return this;
     }

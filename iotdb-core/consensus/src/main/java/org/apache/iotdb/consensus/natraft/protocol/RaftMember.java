@@ -34,6 +34,7 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.client.GenericHandler;
 import org.apache.iotdb.consensus.natraft.client.SyncClientAdaptor;
@@ -418,6 +419,7 @@ public class RaftMember {
     if (flowBalancer != null) {
       flowBalancer.stop();
     }
+    stateMachine.stop();
     logger.info("Member {} stopped", name);
   }
 
@@ -1374,7 +1376,7 @@ public class RaftMember {
     logManager.takeSnapshot(this);
   }
 
-  public TSStatus transferLeader(Peer peer) {
+  public TSStatus transferLeader(Peer peer) throws ConsensusException {
     if (thisNode.equals(peer)) {
       return StatusUtils.OK;
     }
@@ -1389,7 +1391,7 @@ public class RaftMember {
     try {
       return SyncClientAdaptor.forceElection(client, groupId);
     } catch (TException | InterruptedException e) {
-      throw new RuntimeException(e);
+      throw new ConsensusException(e.getMessage(), e);
     }
   }
 
