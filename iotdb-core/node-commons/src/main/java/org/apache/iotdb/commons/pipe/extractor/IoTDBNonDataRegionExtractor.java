@@ -130,6 +130,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
       }
 
       historicalEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
+      // We allow to send the events with empty transferred types to make the last
+      // event commit and report its progress
       confineHistoricalEventTransferTypes(historicalEvent);
       return historicalEvent;
     }
