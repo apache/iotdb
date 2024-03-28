@@ -405,6 +405,8 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       connectorAttributes.put("connector.ip", receiverEnv.getIP());
       connectorAttributes.put("connector.port", receiverEnv.getPort());
 
+      extractorAttributes.put("inclusion", "data.insert");
+      extractorAttributes.put("inclusion.exclusion", "data.delete");
       extractorAttributes.put("start-time", String.valueOf(currentTime));
 
       final TSStatus status =
