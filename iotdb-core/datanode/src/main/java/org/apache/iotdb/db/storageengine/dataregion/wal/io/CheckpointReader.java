@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +47,7 @@ public class CheckpointReader {
   private void init() {
     checkpoints = new ArrayList<>();
     try (DataInputStream logStream =
-        new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)))) {
+        new DataInputStream(new BufferedInputStream(new WALInputStream(logFile)))) {
       maxMemTableId = logStream.readLong();
       while (logStream.available() > 0) {
         Checkpoint checkpoint = Checkpoint.deserialize(logStream);
