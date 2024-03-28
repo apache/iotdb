@@ -346,17 +346,42 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                     // Some resource may not be closed due to the control of
                     // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
                     {
-                      LOGGER.info(
-                          "[DEBUG][tsfile] tsfile start time {}, resource.isClosed(): {}, mayTsFileContainUnprocessedData(resource): {}, isTsFileResourceOverlappedWithTimeRange(resource): {}, isTsFileGeneratedAfterExtractionTimeLowerBound(resource): {}",
-                          resource.getFileStartTime(),
-                          resource.isClosed(),
-                          mayTsFileContainUnprocessedData(resource),
-                          isTsFileResourceOverlappedWithTimeRange(resource),
-                          isTsFileGeneratedAfterExtractionTimeLowerBound(resource));
-                      return resource.isClosed()
-                          && mayTsFileContainUnprocessedData(resource)
-                          && isTsFileResourceOverlappedWithTimeRange(resource)
-                          && isTsFileGeneratedAfterExtractionTimeLowerBound(resource);
+                      boolean isClosed = resource.isClosed();
+                      if (!isClosed) {
+                        LOGGER.info(
+                            "[DEBUG][tsfile] tsfile start time {}, isClosed: {}",
+                            resource.getFileStartTime(),
+                            false);
+                        return false;
+                      }
+                      boolean mayTsFileContainUnprocessedData =
+                          mayTsFileContainUnprocessedData(resource);
+                      if (!mayTsFileContainUnprocessedData) {
+                        LOGGER.info(
+                            "[DEBUG][tsfile] tsfile start time {}, mayTsFileContainUnprocessedData: {}",
+                            resource.getFileStartTime(),
+                            false);
+                        return false;
+                      }
+                      boolean isTsFileResourceOverlappedWithTimeRange =
+                          isTsFileResourceOverlappedWithTimeRange(resource);
+                      if (!isTsFileResourceOverlappedWithTimeRange) {
+                        LOGGER.info(
+                            "[DEBUG][tsfile] tsfile start time {}, isTsFileResourceOverlappedWithTimeRange: {}",
+                            resource.getFileStartTime(),
+                            false);
+                        return false;
+                      }
+                      boolean isTsFileGeneratedAfterExtractionTimeLowerBound =
+                          isTsFileGeneratedAfterExtractionTimeLowerBound(resource);
+                      if (!isTsFileGeneratedAfterExtractionTimeLowerBound) {
+                        LOGGER.info(
+                            "[DEBUG][tsfile] tsfile start time {}, isTsFileGeneratedAfterExtractionTimeLowerBound: {}",
+                            resource.getFileStartTime(),
+                            false);
+                        return false;
+                      }
+                      return true;
                     })
                 .collect(Collectors.toList());
         resourceList.addAll(sequenceTsFileResources);
