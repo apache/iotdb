@@ -94,6 +94,7 @@ public class IoTDBConfig {
       "([" + PATH_SEPARATOR + "])?" + NODE_NAME_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
+  boolean enableWALCompression = true;
 
   /** Whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
@@ -3828,5 +3829,13 @@ public class IoTDBConfig {
   public void setInnerCompactionTaskSelectionDiskRedundancy(
       double innerCompactionTaskSelectionDiskRedundancy) {
     this.innerCompactionTaskSelectionDiskRedundancy = innerCompactionTaskSelectionDiskRedundancy;
+  }
+
+  public boolean isEnableWALCompression() {
+    return enableWALCompression;
+  }
+
+  public void setEnableWALCompression(boolean enableWALCompression) {
+    this.enableWALCompression = enableWALCompression;
   }
 }

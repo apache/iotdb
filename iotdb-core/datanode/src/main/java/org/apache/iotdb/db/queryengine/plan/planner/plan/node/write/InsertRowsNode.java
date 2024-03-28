@@ -42,6 +42,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class InsertRowsNode extends InsertNode {
 
@@ -59,6 +61,9 @@ public class InsertRowsNode extends InsertNode {
 
   /** the InsertRowsNode list */
   private List<InsertRowNode> insertRowNodeList;
+
+  public AtomicInteger insertCount = new AtomicInteger(0);
+  public AtomicLong[] metrics;
 
   public InsertRowsNode(PlanNodeId id) {
     super(id);

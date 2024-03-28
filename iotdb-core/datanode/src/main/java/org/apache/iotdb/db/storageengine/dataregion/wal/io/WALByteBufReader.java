@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 
 import java.io.Closeable;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -37,6 +38,7 @@ public class WALByteBufReader implements Closeable {
   private final File logFile;
   private final FileChannel channel;
   private final WALMetaData metaData;
+  private final DataInputStream logStream;
   private final Iterator<Integer> sizeIterator;
 
   public WALByteBufReader(File logFile) throws IOException {
@@ -46,6 +48,7 @@ public class WALByteBufReader implements Closeable {
   public WALByteBufReader(File logFile, FileChannel channel) throws IOException {
     this.logFile = logFile;
     this.channel = channel;
+    this.logStream = new DataInputStream(new WALInputStream(logFile));
     this.metaData = WALMetaData.readFromWALFile(logFile, channel);
     this.sizeIterator = metaData.getBuffersSize().iterator();
     channel.position(0);
@@ -64,8 +67,8 @@ public class WALByteBufReader implements Closeable {
   public ByteBuffer next() throws IOException {
     int size = sizeIterator.next();
     ByteBuffer buffer = ByteBuffer.allocate(size);
-    channel.read(buffer);
-    buffer.clear();
+    logStream.readFully(buffer.array(), 0, size);
+    buffer.flip();
     return buffer;
   }
 

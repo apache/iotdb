@@ -204,18 +204,7 @@ public abstract class AbstractMemTable implements IMemTable {
             - nullPointsNumber;
 
     totalPointsNum += pointsInserted;
-
-    MetricService.getInstance()
-        .count(
-            pointsInserted,
-            Metric.QUANTITY.toString(),
-            MetricLevel.CORE,
-            Tag.NAME.toString(),
-            METRIC_POINT_IN,
-            Tag.DATABASE.toString(),
-            database,
-            Tag.REGION.toString(),
-            dataRegionId);
+    insertRowNode.insertCount.addAndGet(pointsInserted);
   }
 
   @Override
