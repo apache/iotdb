@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.load.balancer.region;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -62,6 +63,7 @@ public class GreedyRegionGroupAllocatorTest {
               availableDataNodeMap,
               freeSpaceMap,
               allocatedRegionGroups,
+              allocatedRegionGroups,
               TEST_REPLICATION_FACTOR,
               new TConsensusGroupId(TConsensusGroupType.DataRegion, index));
       allocatedRegionGroups.add(newRegionGroup);
@@ -107,6 +109,7 @@ public class GreedyRegionGroupAllocatorTest {
             availableDataNodeMap,
             freeSpaceMap,
             allocatedRegionGroups,
+            allocatedRegionGroups,
             TEST_REPLICATION_FACTOR,
             new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
     allocatedRegionGroups.add(newRegionGroup);
@@ -125,6 +128,7 @@ public class GreedyRegionGroupAllocatorTest {
         ALLOCATOR.generateOptimalRegionReplicasDistribution(
             availableDataNodeMap,
             freeSpaceMap,
+            allocatedRegionGroups,
             allocatedRegionGroups,
             TEST_REPLICATION_FACTOR,
             new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));

@@ -57,7 +57,7 @@ public class RegionBalancer {
       case GREEDY:
         this.regionGroupAllocator = new GreedyRegionGroupAllocator();
         break;
-      case GREEDY_COPY_SET:
+      case GCR:
       default:
         this.regionGroupAllocator = new GreedyCopySetRegionGroupAllocator();
     }
@@ -100,6 +100,9 @@ public class RegionBalancer {
       int allotment = entry.getValue();
       int replicationFactor =
           getClusterSchemaManager().getReplicationFactor(database, consensusGroupType);
+      // Only considering the specified Database when doing allocation
+      List<TRegionReplicaSet> databaseAllocatedRegionGroups =
+          getPartitionManager().getAllReplicaSets(database, consensusGroupType);
 
       for (int i = 0; i < allotment; i++) {
         // Prepare input data
@@ -119,6 +122,7 @@ public class RegionBalancer {
                 availableDataNodeMap,
                 freeDiskSpaceMap,
                 allocatedRegionGroups,
+                databaseAllocatedRegionGroups,
                 replicationFactor,
                 new TConsensusGroupId(
                     consensusGroupType, getPartitionManager().generateNextRegionGroupId()));
@@ -126,6 +130,7 @@ public class RegionBalancer {
 
         // Mark the new RegionGroup as allocated
         allocatedRegionGroups.add(newRegionGroup);
+        databaseAllocatedRegionGroups.add(newRegionGroup);
       }
     }
 
@@ -150,6 +155,6 @@ public class RegionBalancer {
 
   public enum RegionGroupAllocatePolicy {
     GREEDY,
-    GREEDY_COPY_SET
+    GCR
   }
 }
