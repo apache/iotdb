@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -51,17 +52,23 @@ public class SubscriptionBroker {
 
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
 
-  public List<SerializedEnrichedEvent> poll(Set<String> topicNames) {
+  public List<SerializedEnrichedEvent> poll(Set<String> topicNames, SubscriptionPollTimer timer) {
     List<SerializedEnrichedEvent> events = new ArrayList<>();
-    topicNameToPrefetchingQueue.forEach(
-        (topicName, prefetchingQueue) -> {
-          if (topicNames.contains(topicName)) {
-            SerializedEnrichedEvent event = prefetchingQueue.poll();
-            if (Objects.nonNull(event)) {
-              events.add(event);
-            }
-          }
-        });
+    for (Map.Entry<String, SubscriptionPrefetchingQueue> entry :
+        topicNameToPrefetchingQueue.entrySet()) {
+      String topicName = entry.getKey();
+      SubscriptionPrefetchingQueue prefetchingQueue = entry.getValue();
+      if (topicNames.contains(topicName)) {
+        SerializedEnrichedEvent event = prefetchingQueue.poll(timer);
+        if (Objects.nonNull(event)) {
+          events.add(event);
+        }
+        timer.update();
+        if (timer.isExpired()) {
+          break;
+        }
+      }
+    }
     return events;
   }
 
@@ -109,11 +116,5 @@ public class SubscriptionBroker {
       return;
     }
     prefetchingQueue.executePrefetch();
-  }
-
-  public void clearCommittedEvents() {
-    topicNameToPrefetchingQueue
-        .values()
-        .forEach(SubscriptionPrefetchingQueue::clearCommittedEvents);
   }
 }

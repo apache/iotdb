@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
-import org.apache.iotdb.commons.exception.SubscriptionException;
+import org.apache.iotdb.commons.exception.subscription.SubscriptionException;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaRespExceptionMessage;
@@ -181,7 +181,7 @@ public class SubscriptionConsumerAgent {
     consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
   }
 
-  public boolean isConsumerExisted(String consumerId, String consumerGroupId) {
+  public boolean isConsumerExisted(String consumerGroupId, String consumerId) {
     acquireReadLock();
     try {
       final ConsumerGroupMeta consumerGroupMeta =

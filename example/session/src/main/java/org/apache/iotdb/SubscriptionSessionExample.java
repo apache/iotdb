@@ -19,18 +19,19 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.util.Version;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConstant;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.session.subscription.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
+import java.time.Duration;
 import java.util.List;
-import java.util.Map;
+import java.util.Properties;
 
 public class SubscriptionSessionExample {
 
@@ -49,51 +50,96 @@ public class SubscriptionSessionExample {
             .build();
     session.open(false);
 
-    int count = 0;
-    session.executeNonQueryStatement("create topic topic1 with ('start-time'='now')");
-
-    // insert some history data
+    // insert some historical data
     long currentTime = System.currentTimeMillis();
     for (int i = 0; i < 100; ++i) {
       session.executeNonQueryStatement(
-          String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
-    }
-    for (int i = 0; i < 100; ++i) {
+          String.format("insert into root.db.d1(time, s1, s2) values (%s, 1, 2)", i));
       session.executeNonQueryStatement(
-          String.format("insert into root.db.d2(time, s) values (%s, 1)", currentTime + i));
+          String.format("insert into root.db.d2(time, s3, s4) values (%s, 3, 4)", currentTime + i));
+      session.executeNonQueryStatement(
+          String.format("insert into root.sg.d3(time, s5) values (%s, 5)", currentTime + 2 * i));
     }
     session.executeNonQueryStatement("flush");
 
-    // subscription
-    Map<String, String> consumerAttributes = new HashMap<>();
-    consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-    consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
+    // create topic
+    try (SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
+      subscriptionSession.open();
+      subscriptionSession.createTopic("topic1");
+      subscriptionSession.createTopic("topic2");
+    }
 
-    session.createConsumer(new ConsumerConfig(consumerAttributes));
-    session.subscribe(Collections.singleton("topic1"));
-
-    List<EnrichedTablets> enrichedTabletsList;
+    // subscription: property-style ctor
+    Properties config = new Properties();
+    config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
+    config.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+    SubscriptionPullConsumer consumer1 = new SubscriptionPullConsumer(config);
+    consumer1.open();
+    consumer1.subscribe("topic1");
     while (true) {
       Thread.sleep(1000); // wait some time
-      enrichedTabletsList = session.poll(Collections.singleton("topic1"));
-      if (enrichedTabletsList.isEmpty()) {
+      List<SubscriptionMessage> messages = consumer1.poll(Duration.ofMillis(10000));
+      if (messages.isEmpty()) {
         break;
       }
-      Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
-      for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
-        for (Tablet tablet : enrichedTablets.getTablets()) {
-          count += tablet.rowSize;
+      for (SubscriptionMessage message : messages) {
+        SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
+        for (SubscriptionSessionDataSet dataSet : payload) {
+          System.out.println(dataSet.getColumnNames());
+          System.out.println(dataSet.getColumnTypes());
+          while (dataSet.hasNext()) {
+            System.out.println(dataSet.next());
+          }
         }
-        topicNameToSubscriptionCommitIds
-            .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
-            .add(enrichedTablets.getSubscriptionCommitId());
       }
-      session.commit(topicNameToSubscriptionCommitIds);
+      // auto commit
     }
-    session.unsubscribe(Collections.singleton("topic1"));
-    session.dropConsumer();
-    session.close();
 
-    System.out.println(count);
+    // show topics and subscriptions
+    try (SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
+      subscriptionSession.open();
+      subscriptionSession.getTopics().forEach((System.out::println));
+      subscriptionSession.getSubscriptions().forEach((System.out::println));
+    }
+
+    consumer1.unsubscribe("topic1");
+    consumer1.close();
+
+    // subscription: builder-style ctor
+    try (SubscriptionPullConsumer consumer2 =
+        new SubscriptionPullConsumer.Builder()
+            .consumerId("c2")
+            .consumerGroupId("cg2")
+            .autoCommit(false)
+            .buildPullConsumer()) {
+      consumer2.open();
+      consumer2.subscribe("topic2");
+      while (true) {
+        Thread.sleep(1000); // wait some time
+        List<SubscriptionMessage> messages = consumer2.poll(Duration.ofMillis(10000));
+        if (messages.isEmpty()) {
+          break;
+        }
+        for (SubscriptionMessage message : messages) {
+          SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
+          for (SubscriptionSessionDataSet dataSet : payload) {
+            System.out.println(dataSet.getColumnNames());
+            System.out.println(dataSet.getColumnTypes());
+            while (dataSet.hasNext()) {
+              System.out.println(dataSet.next());
+            }
+          }
+        }
+        consumer2.commitSync(messages);
+      }
+      consumer2.unsubscribe("topic2");
+    }
+
+    // query
+    SessionDataSet dataSet = session.executeQueryStatement("select ** from root.**");
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+    session.close();
   }
 }

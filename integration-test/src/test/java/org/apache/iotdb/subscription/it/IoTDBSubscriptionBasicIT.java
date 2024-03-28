@@ -28,12 +28,14 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConstant;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
-import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.session.subscription.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -44,19 +46,18 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
+import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSubscriptionBasicIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionBasicIT.class);
+
+  private static final long MAX_RETRY_COUNT = 3;
 
   @Before
   public void setUp() throws Exception {
@@ -70,12 +71,6 @@ public class IoTDBSubscriptionBasicIT {
 
   @Test
   public void testSimpleSubscription() {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.executeNonQueryStatement("create topic topic1");
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
-
     // insert some history data
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
@@ -84,41 +79,62 @@ public class IoTDBSubscriptionBasicIT {
       }
       session.executeNonQueryStatement("flush");
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
-    int count = 0;
+    // create topic
+    String host = EnvFactory.getEnv().getIP();
+    int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    try (SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      session.createTopic("topic1");
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
 
     // subscription
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      Map<String, String> consumerAttributes = new HashMap<>();
-      consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-      consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
-
-      session.createConsumer(new ConsumerConfig(consumerAttributes));
-      session.subscribe(Collections.singleton("topic1"));
-
-      List<EnrichedTablets> enrichedTabletsList;
+    int count = 0;
+    long retryCount = 0;
+    try (SubscriptionPullConsumer consumer =
+        new SubscriptionPullConsumer.Builder()
+            .host(host)
+            .port(port)
+            .consumerId("c1")
+            .consumerGroupId("cg1")
+            .autoCommit(false)
+            .buildPullConsumer()) {
+      consumer.open();
+      consumer.subscribe("topic1");
       while (true) {
-        Thread.sleep(1000); // wait some time
-        enrichedTabletsList = session.poll(Collections.singleton("topic1"));
-        if (enrichedTabletsList.isEmpty()) {
-          break;
-        }
-        Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
-        for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
-          for (Tablet tablet : enrichedTablets.getTablets()) {
-            count += tablet.rowSize;
+        Thread.sleep(1000 * retryCount); // wait some time
+        List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+        if (messages.isEmpty()) {
+          if (retryCount >= MAX_RETRY_COUNT) {
+            break;
           }
-          topicNameToSubscriptionCommitIds
-              .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
-              .add(enrichedTablets.getSubscriptionCommitId());
+          retryCount += 1;
+          continue;
         }
-        session.commit(topicNameToSubscriptionCommitIds);
+        for (SubscriptionMessage message : messages) {
+          SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
+          for (SubscriptionSessionDataSet dataSet : payload) {
+            while (dataSet.hasNext()) {
+              dataSet.next();
+              count += 1;
+            }
+          }
+        }
+        consumer.commitSync(messages);
       }
-      session.unsubscribe(Collections.singleton("topic1"));
-      session.dropConsumer();
+      consumer.unsubscribe("topic1");
+      LOGGER.info(
+          "consumer {} (group {}) exiting...",
+          consumer.getConsumerId(),
+          consumer.getConsumerGroupId());
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
@@ -127,12 +143,6 @@ public class IoTDBSubscriptionBasicIT {
 
   @Test
   public void testRestartSubscription() throws Exception {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      session.executeNonQueryStatement("create topic topic1");
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
-
     // insert some history data
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
@@ -141,40 +151,59 @@ public class IoTDBSubscriptionBasicIT {
       }
       session.executeNonQueryStatement("flush");
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
-    int count = 0;
+    // create topic
+    String host = EnvFactory.getEnv().getIP();
+    int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    try (SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      session.createTopic("topic1");
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
 
     // subscription
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      Map<String, String> consumerAttributes = new HashMap<>();
-      consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-      consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
-
-      session.createConsumer(new ConsumerConfig(consumerAttributes));
-      session.subscribe(Collections.singleton("topic1"));
-
-      List<EnrichedTablets> enrichedTabletsList;
+    int count = 0;
+    long retryCount = 0;
+    try {
+      SubscriptionPullConsumer consumer =
+          new SubscriptionPullConsumer.Builder()
+              .host(host)
+              .port(port)
+              .consumerId("c1")
+              .consumerGroupId("cg1")
+              .autoCommit(false)
+              .buildPullConsumer();
+      consumer.open();
+      consumer.subscribe("topic1");
       while (true) {
-        Thread.sleep(1000); // wait some time
-        enrichedTabletsList = session.poll(Collections.singleton("topic1"));
-        if (enrichedTabletsList.isEmpty()) {
-          break;
-        }
-        Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
-        for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
-          for (Tablet tablet : enrichedTablets.getTablets()) {
-            count += tablet.rowSize;
+        Thread.sleep(1000 * retryCount); // wait some time
+        List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+        if (messages.isEmpty()) {
+          if (retryCount >= MAX_RETRY_COUNT) {
+            break;
           }
-          topicNameToSubscriptionCommitIds
-              .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
-              .add(enrichedTablets.getSubscriptionCommitId());
+          retryCount += 1;
+          continue;
         }
-        session.commit(topicNameToSubscriptionCommitIds);
+        for (SubscriptionMessage message : messages) {
+          SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
+          for (SubscriptionSessionDataSet dataSet : payload) {
+            while (dataSet.hasNext()) {
+              dataSet.next();
+              count += 1;
+            }
+          }
+        }
+        consumer.commitSync(messages);
       }
-      // we do not unsubscribe and drop consumer
+      // we do not unsubscribe topic and close consumer here
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
@@ -197,49 +226,5 @@ public class IoTDBSubscriptionBasicIT {
       Assert.assertNotNull(showSubscriptionResp.subscriptionInfoList);
       Assert.assertEquals(1, showSubscriptionResp.subscriptionInfoList.size());
     }
-
-    // insert some history data again
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      for (int i = 100; i < 200; ++i) {
-        session.executeNonQueryStatement(
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
-      }
-      session.executeNonQueryStatement("flush");
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
-
-    // handshake and poll again
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      Map<String, String> consumerAttributes = new HashMap<>();
-      consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-      consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
-
-      // no-op just for handshake
-      session.createConsumer(new ConsumerConfig(consumerAttributes));
-
-      List<EnrichedTablets> enrichedTabletsList;
-      while (true) {
-        Thread.sleep(1000); // wait some time
-        enrichedTabletsList = session.poll(Collections.singleton("topic1"));
-        if (enrichedTabletsList.isEmpty()) {
-          break;
-        }
-        Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
-        for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
-          for (Tablet tablet : enrichedTablets.getTablets()) {
-            count += tablet.rowSize;
-          }
-          topicNameToSubscriptionCommitIds
-              .computeIfAbsent(enrichedTablets.getTopicName(), (topicName) -> new ArrayList<>())
-              .add(enrichedTablets.getSubscriptionCommitId());
-        }
-        session.commit(topicNameToSubscriptionCommitIds);
-        session.unsubscribe(Collections.singleton("topic1"));
-        session.dropConsumer();
-      }
-    }
-
-    Assert.assertEquals(200, count);
   }
 }

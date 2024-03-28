@@ -17,19 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription;
+package org.apache.iotdb.commons.exception.subscription;
 
-import java.util.Iterator;
+public class SubscriptionPollTimeOutException extends SubscriptionException {
 
-public class IoTDBSubscriptionDataSet implements Iterator<EnrichedRowRecord> {
-
-  @Override
-  public boolean hasNext() {
-    return false;
+  public SubscriptionPollTimeOutException(String message) {
+    super(message);
   }
 
-  @Override
-  public EnrichedRowRecord next() {
-    return null;
+  protected SubscriptionPollTimeOutException(String message, long timeStamp) {
+    super(message, timeStamp);
   }
 }

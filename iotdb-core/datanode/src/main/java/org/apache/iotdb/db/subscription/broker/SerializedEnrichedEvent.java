@@ -21,7 +21,7 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 
 import org.slf4j.Logger;
@@ -75,8 +75,8 @@ public class SerializedEnrichedEvent {
     return byteBuffer;
   }
 
-  public void clearByteBuffer() {
-    byteBuffer.clear();
+  public void resetByteBuffer() {
+    // maybe friendly for gc
     byteBuffer = null;
   }
 

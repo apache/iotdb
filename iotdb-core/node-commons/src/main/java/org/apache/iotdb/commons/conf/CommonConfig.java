@@ -230,10 +230,10 @@ public class CommonConfig {
   private int subscriptionMaxTabletsPerPrefetching = 16;
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
-  private int subscriptionClearMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
-  private int subscriptionClearCommittedEventIntervalSeconds = 30;
   private int subscriptionRecycleUncommittedEventIntervalSeconds = 240;
+  private long subscriptionDefaultPollTimeoutMs = 30000;
+  private long subscriptionMinPollTimeoutMs = 500;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -980,30 +980,12 @@ public class CommonConfig {
     this.subscriptionSerializeMaxBlockingTimeMs = subscriptionSerializeMaxBlockingTimeMs;
   }
 
-  public int getSubscriptionClearMaxBlockingTimeMs() {
-    return subscriptionClearMaxBlockingTimeMs;
-  }
-
-  public void setSubscriptionClearMaxBlockingTimeMs(int subscriptionClearMaxBlockingTimeMs) {
-    this.subscriptionClearMaxBlockingTimeMs = subscriptionClearMaxBlockingTimeMs;
-  }
-
   public long getSubscriptionLaunchRetryIntervalMs() {
     return subscriptionLaunchRetryIntervalMs;
   }
 
   public void setSubscriptionLaunchRetryIntervalMs(long subscriptionLaunchRetryIntervalMs) {
     this.subscriptionLaunchRetryIntervalMs = subscriptionLaunchRetryIntervalMs;
-  }
-
-  public int getSubscriptionClearCommittedEventIntervalSeconds() {
-    return subscriptionClearCommittedEventIntervalSeconds;
-  }
-
-  public void setSubscriptionClearCommittedEventIntervalSeconds(
-      int subscriptionClearCommittedEventIntervalSeconds) {
-    this.subscriptionClearCommittedEventIntervalSeconds =
-        subscriptionClearCommittedEventIntervalSeconds;
   }
 
   public int getSubscriptionRecycleUncommittedEventIntervalSeconds() {
@@ -1014,6 +996,22 @@ public class CommonConfig {
       int subscriptionRecycleUncommittedEventIntervalSeconds) {
     this.subscriptionRecycleUncommittedEventIntervalSeconds =
         subscriptionRecycleUncommittedEventIntervalSeconds;
+  }
+
+  public long getSubscriptionDefaultPollTimeoutMs() {
+    return subscriptionDefaultPollTimeoutMs;
+  }
+
+  public void setSubscriptionDefaultPollTimeoutMs(long subscriptionDefaultPollTimeoutMs) {
+    this.subscriptionDefaultPollTimeoutMs = subscriptionDefaultPollTimeoutMs;
+  }
+
+  public long getSubscriptionMinPollTimeoutMs() {
+    return subscriptionMinPollTimeoutMs;
+  }
+
+  public void setSubscriptionMinPollTimeoutMs(long subscriptionMinPollTimeoutMs) {
+    this.subscriptionMinPollTimeoutMs = subscriptionMinPollTimeoutMs;
   }
 
   public String getSchemaEngineMode() {

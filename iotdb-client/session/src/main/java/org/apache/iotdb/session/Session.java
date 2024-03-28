@@ -32,8 +32,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
@@ -90,7 +88,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -3670,39 +3667,5 @@ public class Session implements ISession {
       Session newSession = new Session(this);
       return newSession;
     }
-  }
-
-  // -------------------------------------------------------------- //
-  // provided for IoTDBSubscriptionSimpleIT (will be removed later) //
-  // -------------------------------------------------------------- //
-
-  @Override
-  public void createConsumer(ConsumerConfig consumerConfig) throws Exception {
-    defaultSessionConnection.createConsumer(consumerConfig);
-  }
-
-  @Override
-  public void dropConsumer() throws Exception {
-    defaultSessionConnection.dropConsumer();
-  }
-
-  @Override
-  public void subscribe(Set<String> topicNames) throws Exception {
-    defaultSessionConnection.subscribe(topicNames);
-  }
-
-  @Override
-  public void unsubscribe(Set<String> topicNames) throws Exception {
-    defaultSessionConnection.unsubscribe(topicNames);
-  }
-
-  @Override
-  public List<EnrichedTablets> poll(Set<String> topicNames) throws Exception {
-    return defaultSessionConnection.poll(topicNames);
-  }
-
-  @Override
-  public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) throws Exception {
-    defaultSessionConnection.commit(topicNameToSubscriptionCommitIds);
   }
 }

@@ -261,6 +261,14 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
       return;
     }
 
+    final long startTime = System.currentTimeMillis();
+    LOGGER.info(
+        "Pipe {}@{}: Starting historical extractor {} and realtime extractor {}.",
+        pipeName,
+        regionId,
+        historicalExtractor.getClass().getSimpleName(),
+        realtimeExtractor.getClass().getSimpleName());
+
     super.start();
 
     final AtomicReference<Exception> exceptionHolder = new AtomicReference<>(null);
@@ -288,6 +296,14 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
                   dataRegionIdObject,
                   () -> startHistoricalExtractorAndRealtimeExtractor(exceptionHolder))) {
         rethrowExceptionIfAny(exceptionHolder);
+
+        LOGGER.info(
+            "Pipe {}@{}: Started historical extractor {} and realtime extractor {} successfully within {} ms.",
+            pipeName,
+            regionId,
+            historicalExtractor.getClass().getSimpleName(),
+            realtimeExtractor.getClass().getSimpleName(),
+            System.currentTimeMillis() - startTime);
         return;
       }
       rethrowExceptionIfAny(exceptionHolder);
@@ -310,8 +326,8 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
           "Pipe {}@{}: Start historical extractor {} and realtime extractor {} error.",
           pipeName,
           regionId,
-          historicalExtractor,
-          realtimeExtractor,
+          historicalExtractor.getClass().getSimpleName(),
+          realtimeExtractor.getClass().getSimpleName(),
           e);
     }
   }
