@@ -88,7 +88,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// open & close ///////////////////////////////
 
-  public void open()
+  public synchronized void open()
       throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
     if (!isClosed) {
       return;
@@ -104,7 +104,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   }
 
   @Override
-  public void close() throws IoTDBConnectionException {
+  public synchronized void close() throws IoTDBConnectionException {
     if (isClosed) {
       return;
     }

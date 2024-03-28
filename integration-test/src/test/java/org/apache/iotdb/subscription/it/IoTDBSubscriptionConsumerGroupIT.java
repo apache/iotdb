@@ -464,7 +464,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                         List<String> columnNameList = dataSet.getColumnNames();
                         while (dataSet.hasNext()) {
                           RowRecord record = dataSet.next();
-                          if (!insertRowRecordEnrichByConsumerGroupId(
+                          if (!insertRowRecordEnrichedByConsumerGroupId(
                               columnNameList, record, consumerGroupId)) {
                             receiverCrashed.set(true);
                             throw new RuntimeException("detect receiver crashed");
@@ -519,7 +519,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   /** @return false -> receiver crashed */
-  private boolean insertRowRecordEnrichByConsumerGroupId(
+  private boolean insertRowRecordEnrichedByConsumerGroupId(
       List<String> columnNameList, RowRecord record, String consumerGroupId) throws Exception {
     if (columnNameList.size() != 2) {
       LOGGER.warn("unexpected column name list: {}", columnNameList);

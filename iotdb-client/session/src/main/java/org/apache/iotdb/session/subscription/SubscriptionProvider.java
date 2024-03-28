@@ -50,7 +50,7 @@ final class SubscriptionProvider extends SubscriptionSession {
     this.consumerGroupId = consumerGroupId;
   }
 
-  int handshake()
+  synchronized int handshake()
       throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
     if (!isClosed) {
       return -1;
@@ -68,7 +68,7 @@ final class SubscriptionProvider extends SubscriptionSession {
   }
 
   @Override
-  public void close() throws IoTDBConnectionException {
+  public synchronized void close() throws IoTDBConnectionException {
     if (isClosed) {
       return;
     }

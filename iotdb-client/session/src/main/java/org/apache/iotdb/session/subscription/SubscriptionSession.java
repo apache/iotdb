@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SubscriptionSession extends Session {
 
@@ -150,7 +151,10 @@ public class SubscriptionSession extends Session {
       RowRecord record = dataSet.next();
       List<Field> fields = record.getFields();
       if (fields.size() != 2) {
-        throw new SubscriptionException("something unexpected happened when get topics...");
+        throw new SubscriptionException(
+            String.format(
+                "Unexpected fields %s was obtained during SHOW TOPIC...",
+                fields.stream().map(Object::toString).collect(Collectors.joining(", "))));
       }
       topics.add(new Topic(fields.get(0).getStringValue(), fields.get(1).getStringValue()));
     }
@@ -164,7 +168,10 @@ public class SubscriptionSession extends Session {
       RowRecord record = dataSet.next();
       List<Field> fields = record.getFields();
       if (fields.size() != 3) {
-        throw new SubscriptionException("something unexpected happened when get subscriptions...");
+        throw new SubscriptionException(
+            String.format(
+                "Unexpected fields %s was obtained during SHOW SUBSCRIPTION...",
+                fields.stream().map(Object::toString).collect(Collectors.joining(", "))));
       }
       subscriptions.add(
           new Subscription(
