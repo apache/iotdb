@@ -23,16 +23,9 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConne
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
-import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
-import java.io.IOException;
 
 public class IoTDBConfigNodeReceiverAgent extends IoTDBReceiverAgent {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigNodeReceiverAgent.class);
 
   @Override
   protected void initConstructors() {
@@ -43,21 +36,5 @@ public class IoTDBConfigNodeReceiverAgent extends IoTDBReceiverAgent {
   public void cleanPipeReceiverDir() {
     cleanPipeReceiverDir(
         new File(ConfigNodeDescriptor.getInstance().getConf().getPipeReceiverFileDir()));
-  }
-
-  private static void cleanPipeReceiverDir(File receiverFileDir) {
-    try {
-      FileUtils.deleteDirectory(receiverFileDir);
-      LOGGER.info("Clean pipe receiver dir {} successfully.", receiverFileDir);
-    } catch (Exception e) {
-      LOGGER.warn("Clean pipe receiver dir {} failed.", receiverFileDir, e);
-    }
-
-    try {
-      FileUtils.forceMkdir(receiverFileDir);
-      LOGGER.info("Create pipe receiver dir {} successfully.", receiverFileDir);
-    } catch (IOException e) {
-      LOGGER.warn("Create pipe receiver dir {} failed.", receiverFileDir, e);
-    }
   }
 }

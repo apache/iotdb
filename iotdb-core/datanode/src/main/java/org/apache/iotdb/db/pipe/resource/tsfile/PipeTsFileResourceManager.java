@@ -21,9 +21,11 @@ package org.apache.iotdb.db.pipe.resource.tsfile;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -33,9 +35,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -110,34 +109,34 @@ public class PipeTsFileResourceManager {
   }
 
   /**
-   * given a file, create a hardlink or copy it to pipe dir, maintain a reference count for the
+   * Given a file, create a hardlink or copy it to pipe dir, maintain a reference count for the
    * hardlink or copied file, and return the hardlink or copied file.
    *
-   * <p>if the given file is already a hardlink or copied file, increase its reference count and
+   * <p>If the given file is already a hardlink or copied file, increase its reference count and
    * return it.
    *
-   * <p>if the given file is a tsfile, create a hardlink in pipe dir, increase the reference count
+   * <p>If the given file is a tsfile, create a hardlink in pipe dir, increase the reference count
    * of the hardlink and return it.
    *
-   * <p>otherwise, copy the file (.mod or .resource) to pipe dir, increase the reference count of
+   * <p>Otherwise, copy the file (.mod or .resource) to pipe dir, increase the reference count of
    * the copied file and return it.
    *
    * @param file tsfile, resource file or mod file. can be original file or hardlink/copy of
    *     original file
-   * @param isTsFile true to create hardlink, false to copy file
+   * @param isTsFile {@code true} to create hardlink, {@code false} to copy file
    * @return the hardlink or copied file
    * @throws IOException when create hardlink or copy file failed
    */
   public File increaseFileReference(File file, boolean isTsFile) throws IOException {
     lock.lock();
     try {
-      // if the file is already a hardlink or copied file,
+      // If the file is already a hardlink or copied file,
       // just increase reference count and return it
       if (increaseReferenceIfExists(file.getPath())) {
         return file;
       }
 
-      // if the file is not a hardlink or copied file, check if there is a related hardlink or
+      // If the file is not a hardlink or copied file, check if there is a related hardlink or
       // copied file in pipe dir. if so, increase reference count and return it
       final File hardlinkOrCopiedFile = getHardlinkOrCopiedFileInPipeDir(file);
       if (increaseReferenceIfExists(hardlinkOrCopiedFile.getPath())) {
@@ -146,13 +145,13 @@ public class PipeTsFileResourceManager {
             .getFile();
       }
 
-      // if the file is a tsfile, create a hardlink in pipe dir and will return it.
+      // If the file is a tsfile, create a hardlink in pipe dir and will return it.
       // otherwise, copy the file (.mod or .resource) to pipe dir and will return it.
       final File resultFile =
           isTsFile
-              ? createHardLink(file, hardlinkOrCopiedFile)
-              : copyFile(file, hardlinkOrCopiedFile);
-      // if the file is not a hardlink or copied file, and there is no related hardlink or copied
+              ? FileUtils.createHardLink(file, hardlinkOrCopiedFile)
+              : FileUtils.copyFile(file, hardlinkOrCopiedFile);
+      // If the file is not a hardlink or copied file, and there is no related hardlink or copied
       // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
       // the hardlink or copied file, and return the hardlink or copied file.
       hardlinkOrCopiedFileToPipeTsFileResourceMap.put(
@@ -210,34 +209,8 @@ public class PipeTsFileResourceManager {
     return builder.toString();
   }
 
-  private static File createHardLink(File sourceFile, File hardlink) throws IOException {
-    if (!hardlink.getParentFile().exists() && !hardlink.getParentFile().mkdirs()) {
-      throw new IOException(
-          String.format(
-              "failed to create hardlink %s for file %s: failed to create parent dir %s",
-              hardlink.getPath(), sourceFile.getPath(), hardlink.getParentFile().getPath()));
-    }
-
-    final Path sourcePath = FileSystems.getDefault().getPath(sourceFile.getAbsolutePath());
-    final Path linkPath = FileSystems.getDefault().getPath(hardlink.getAbsolutePath());
-    Files.createLink(linkPath, sourcePath);
-    return hardlink;
-  }
-
-  private static File copyFile(File sourceFile, File targetFile) throws IOException {
-    if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
-      throw new IOException(
-          String.format(
-              "failed to copy file %s to %s: failed to create parent dir %s",
-              sourceFile.getPath(), targetFile.getPath(), targetFile.getParentFile().getPath()));
-    }
-
-    Files.copy(sourceFile.toPath(), targetFile.toPath());
-    return targetFile;
-  }
-
   /**
-   * given a hardlink or copied file, decrease its reference count, if the reference count is 0,
+   * Given a hardlink or copied file, decrease its reference count, if the reference count is 0,
    * delete the file. if the given file is not a hardlink or copied file, do nothing.
    *
    * @param hardlinkOrCopiedFile the copied or hardlinked file
@@ -257,7 +230,7 @@ public class PipeTsFileResourceManager {
   }
 
   /**
-   * get the reference count of the file.
+   * Get the reference count of the file.
    *
    * @param hardlinkOrCopiedFile the copied or hardlinked file
    * @return the reference count of the file
@@ -326,10 +299,13 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public void pinTsFileResource(TsFileResource resource) throws IOException {
+  public void pinTsFileResource(TsFileResource resource, boolean withMods) throws IOException {
     lock.lock();
     try {
       increaseFileReference(resource.getTsFile(), true);
+      if (withMods && resource.getModFile().exists()) {
+        increaseFileReference(new File(resource.getModFile().getFilePath()), false);
+      }
     } finally {
       lock.unlock();
     }
@@ -338,7 +314,13 @@ public class PipeTsFileResourceManager {
   public void unpinTsFileResource(TsFileResource resource) throws IOException {
     lock.lock();
     try {
-      decreaseFileReference(getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()));
+      File pinnedFile = getHardlinkOrCopiedFileInPipeDir(resource.getTsFile());
+      decreaseFileReference(pinnedFile);
+
+      File modFile = new File(pinnedFile + ModificationFile.FILE_SUFFIX);
+      if (modFile.exists()) {
+        decreaseFileReference(modFile);
+      }
     } finally {
       lock.unlock();
     }

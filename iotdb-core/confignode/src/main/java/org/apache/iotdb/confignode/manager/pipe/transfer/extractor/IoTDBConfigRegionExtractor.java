@@ -19,14 +19,23 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.extractor;
 
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
+import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
+import org.apache.iotdb.confignode.service.ConfigNode;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -34,6 +43,19 @@ import java.util.Set;
 public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   private Set<ConfigPhysicalPlanType> listenedTypeSet = new HashSet<>();
+
+  // TODO: Delete this
+  @Override
+  public void validate(PipeParameterValidator validator) throws Exception {
+    if (ConfigNodeDescriptor.getInstance()
+        .getConf()
+        .getConfigNodeConsensusProtocolClass()
+        .equals(ConsensusFactory.SIMPLE_CONSENSUS)) {
+      throw new PipeException(
+          "IoTDBConfigRegionExtractor does not transferring events under simple consensus");
+    }
+    super.validate(validator);
+  }
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
@@ -48,8 +70,33 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
+  protected boolean needTransferSnapshot() {
+    return PipeConfigRegionSnapshotEvent.needTransferSnapshot(listenedTypeSet);
+  }
+
+  @Override
+  protected void triggerSnapshot() {
+    try {
+      ConfigNode.getInstance()
+          .getConfigManager()
+          .getConsensusManager()
+          .getConsensusImpl()
+          .triggerSnapshot(
+              new ConfigRegionId(ConfigNodeDescriptor.getInstance().getConf().getConfigRegionId()),
+              true);
+    } catch (ConsensusException e) {
+      throw new PipeException("Exception encountered when triggering schema region snapshot.", e);
+    }
+  }
+
+  @Override
   protected boolean isTypeListened(Event event) {
     return listenedTypeSet.contains(
         ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan().getType());
+  }
+
+  @Override
+  protected void confineHistoricalEventTransferTypes(PipeSnapshotEvent event) {
+    ((PipeConfigRegionSnapshotEvent) event).confineTransferredTypes(listenedTypeSet);
   }
 }

@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -41,8 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.Arrays;
+import java.util.Objects;
 
 public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
 
@@ -74,87 +72,62 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(PipeSchemaRegionSnapshotEvent snapshotEvent)
       throws PipeException, IOException {
-    final File snapshot = snapshotEvent.getSnapshot();
+    final File mTreeSnapshotFile = snapshotEvent.getMTreeSnapshotFile();
+    final File tagLogSnapshotFile = snapshotEvent.getTagLogSnapshotFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
-
-    // 1. Transfer file piece by piece
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
-    final byte[] readBuffer = new byte[readFileBufferSize];
-    long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(snapshot, "r")) {
-      while (true) {
-        final int readLength = reader.read(readBuffer);
-        if (readLength == -1) {
-          break;
-        }
-
-        final PipeTransferFilePieceResp resp;
-        try {
-          resp =
-              PipeTransferFilePieceResp.fromTPipeTransferResp(
-                  clientAndStatus
-                      .getLeft()
-                      .pipeTransfer(
-                          PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq(
-                              snapshot.getName(),
-                              position,
-                              readLength == readFileBufferSize
-                                  ? readBuffer
-                                  : Arrays.copyOfRange(readBuffer, 0, readLength))));
-        } catch (Exception e) {
-          clientAndStatus.setRight(false);
-          throw new PipeConnectionException(
-              String.format(
-                  "Network error when transfer schema region snapshot %s, because %s.",
-                  snapshot, e.getMessage()),
-              e);
-        }
-
-        position += readLength;
-
-        // This case only happens when the connection is broken, and the connector is reconnected
-        // to the receiver, then the receiver will redirect the file position to the last position
-        if (resp.getStatus().getCode()
-            == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
-          position = resp.getEndWritingOffset();
-          reader.seek(position);
-          LOGGER.info("Redirect schema region file position to {}.", position);
-          continue;
-        }
-
-        receiverStatusHandler.handle(
-            resp.getStatus(),
-            String.format(
-                "Transfer schema region snapshot %s error, result status %s.",
-                snapshot, resp.getStatus()),
-            snapshot.toString());
-      }
-    }
-
-    // 2. Transfer file seal signal, which means the file is transferred completely
     final TPipeTransferResp resp;
+
+    // 1. Transfer mTreeSnapshotFile, and tLog file if exists
+    transferFilePieces(mTreeSnapshotFile, clientAndStatus, true);
+    if (Objects.nonNull(tagLogSnapshotFile)) {
+      transferFilePieces(tagLogSnapshotFile, clientAndStatus, true);
+    }
+    // 2. Transfer file seal signal, which means the snapshots are transferred completely
     try {
       resp =
           clientAndStatus
               .getLeft()
               .pipeTransfer(
                   PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
-                      snapshot.getName(), snapshot.length()));
+                      mTreeSnapshotFile.getName(),
+                      mTreeSnapshotFile.length(),
+                      Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
+                      Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
+                      snapshotEvent.getDatabaseName(),
+                      snapshotEvent.toSealTypeString()));
     } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
-              "Network error when seal schema region snapshot file %s, because %s.",
-              snapshot, e.getMessage()),
+              "Network error when seal snapshot file %s and %s, because %s.",
+              mTreeSnapshotFile, tagLogSnapshotFile, e.getMessage()),
           e);
     }
 
-    receiverStatusHandler.handle(
-        resp.getStatus(),
-        String.format(
-            "Seal schema region snapshot snapshot %s file error, result status %s.",
-            snapshot, resp.getStatus()),
-        snapshot.toString());
-    LOGGER.info("Successfully transferred schema region snapshot {}.", snapshot);
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && resp.getStatus().getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          resp.getStatus(),
+          String.format(
+              "Seal file %s and %s error, result status %s.",
+              mTreeSnapshotFile, tagLogSnapshotFile, resp.getStatus()),
+          snapshotEvent.toString());
+    }
+
+    LOGGER.info("Successfully transferred file {} and {}.", mTreeSnapshotFile, tagLogSnapshotFile);
+  }
+
+  @Override
+  protected PipeTransferFilePieceReq getTransferSingleFilePieceReq(
+      String fileName, long position, byte[] payLoad) {
+    throw new UnsupportedOperationException(
+        "The schema region connector does not support transferring single file piece req.");
+  }
+
+  @Override
+  protected PipeTransferFilePieceReq getTransferMultiFilePieceReq(
+      String fileName, long position, byte[] payLoad) throws IOException {
+    return PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq(fileName, position, payLoad);
   }
 }

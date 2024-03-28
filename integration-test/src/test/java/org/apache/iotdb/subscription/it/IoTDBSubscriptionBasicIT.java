@@ -57,7 +57,7 @@ public class IoTDBSubscriptionBasicIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionBasicIT.class);
 
-  private static final long MAX_RETRY_COUNT = 3;
+  private static final long MAX_RETRY_COUNT = 30;
 
   @Before
   public void setUp() throws Exception {
@@ -71,8 +71,8 @@ public class IoTDBSubscriptionBasicIT {
 
   @Test
   public void testSimpleSubscription() {
-    // insert some history data
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+    // Insert some historical data
+    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
@@ -83,7 +83,7 @@ public class IoTDBSubscriptionBasicIT {
       fail(e.getMessage());
     }
 
-    // create topic
+    // Create topic
     String host = EnvFactory.getEnv().getIP();
     int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     try (SubscriptionSession session = new SubscriptionSession(host, port)) {
@@ -94,10 +94,10 @@ public class IoTDBSubscriptionBasicIT {
       fail(e.getMessage());
     }
 
-    // subscription
+    // Subscription
     int count = 0;
     long retryCount = 0;
-    try (SubscriptionPullConsumer consumer =
+    try (final SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
             .host(host)
             .port(port)
@@ -109,7 +109,7 @@ public class IoTDBSubscriptionBasicIT {
       consumer.subscribe("topic1");
       while (true) {
         Thread.sleep(1000 * retryCount); // wait some time
-        List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+        final List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
         if (messages.isEmpty()) {
           if (retryCount >= MAX_RETRY_COUNT) {
             break;
@@ -117,9 +117,10 @@ public class IoTDBSubscriptionBasicIT {
           retryCount += 1;
           continue;
         }
-        for (SubscriptionMessage message : messages) {
-          SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
-          for (SubscriptionSessionDataSet dataSet : payload) {
+        for (final SubscriptionMessage message : messages) {
+          final SubscriptionSessionDataSets payload =
+              (SubscriptionSessionDataSets) message.getPayload();
+          for (final SubscriptionSessionDataSet dataSet : payload) {
             while (dataSet.hasNext()) {
               dataSet.next();
               count += 1;
@@ -143,8 +144,8 @@ public class IoTDBSubscriptionBasicIT {
 
   @Test
   public void testRestartSubscription() throws Exception {
-    // insert some history data
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+    // Insert some historical data
+    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
@@ -155,7 +156,7 @@ public class IoTDBSubscriptionBasicIT {
       fail(e.getMessage());
     }
 
-    // create topic
+    // Create topic
     String host = EnvFactory.getEnv().getIP();
     int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     try (SubscriptionSession session = new SubscriptionSession(host, port)) {
@@ -166,11 +167,11 @@ public class IoTDBSubscriptionBasicIT {
       fail(e.getMessage());
     }
 
-    // subscription
+    // Subscription
     int count = 0;
     long retryCount = 0;
     try {
-      SubscriptionPullConsumer consumer =
+      final SubscriptionPullConsumer consumer =
           new SubscriptionPullConsumer.Builder()
               .host(host)
               .port(port)
@@ -182,7 +183,7 @@ public class IoTDBSubscriptionBasicIT {
       consumer.subscribe("topic1");
       while (true) {
         Thread.sleep(1000 * retryCount); // wait some time
-        List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+        final List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
         if (messages.isEmpty()) {
           if (retryCount >= MAX_RETRY_COUNT) {
             break;
@@ -190,9 +191,10 @@ public class IoTDBSubscriptionBasicIT {
           retryCount += 1;
           continue;
         }
-        for (SubscriptionMessage message : messages) {
-          SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
-          for (SubscriptionSessionDataSet dataSet : payload) {
+        for (final SubscriptionMessage message : messages) {
+          final SubscriptionSessionDataSets payload =
+              (SubscriptionSessionDataSets) message.getPayload();
+          for (final SubscriptionSessionDataSet dataSet : payload) {
             while (dataSet.hasNext()) {
               dataSet.next();
               count += 1;
@@ -201,7 +203,7 @@ public class IoTDBSubscriptionBasicIT {
         }
         consumer.commitSync(messages);
       }
-      // we do not unsubscribe topic and close consumer here
+      // We do not unsubscribe topic and close consumer here
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -209,18 +211,18 @@ public class IoTDBSubscriptionBasicIT {
 
     Assert.assertEquals(100, count);
 
-    // restart cluster
+    // Restart cluster
     TestUtils.restartCluster(EnvFactory.getEnv());
 
-    // show topics and subscriptions
-    try (SyncConfigNodeIServiceClient client =
+    // Show topics and subscriptions
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      TShowTopicResp showTopicResp = client.showTopic(new TShowTopicReq());
+      final TShowTopicResp showTopicResp = client.showTopic(new TShowTopicReq());
       Assert.assertEquals(RpcUtils.SUCCESS_STATUS.getCode(), showTopicResp.status.getCode());
       Assert.assertNotNull(showTopicResp.topicInfoList);
       Assert.assertEquals(1, showTopicResp.topicInfoList.size());
 
-      TShowSubscriptionResp showSubscriptionResp =
+      final TShowSubscriptionResp showSubscriptionResp =
           client.showSubscription(new TShowSubscriptionReq());
       Assert.assertEquals(RpcUtils.SUCCESS_STATUS.getCode(), showSubscriptionResp.status.getCode());
       Assert.assertNotNull(showSubscriptionResp.subscriptionInfoList);

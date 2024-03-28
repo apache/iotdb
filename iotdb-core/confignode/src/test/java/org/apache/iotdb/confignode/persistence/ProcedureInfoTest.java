@@ -47,7 +47,7 @@ public class ProcedureInfoTest {
   @AfterClass
   public static void cleanup() {
     if (snapshotDir.exists()) {
-      FileUtils.deleteDirectory(snapshotDir);
+      FileUtils.deleteFileOrDirectory(snapshotDir);
     }
   }
 

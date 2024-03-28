@@ -20,15 +20,27 @@
 package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClientManager;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.List;
 
@@ -127,6 +139,71 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
           e);
     }
   }
+
+  protected void transferFilePieces(
+      File file, Pair<IoTDBSyncClient, Boolean> clientAndStatus, boolean isMultiFile)
+      throws PipeException, IOException {
+    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    final byte[] readBuffer = new byte[readFileBufferSize];
+    long position = 0;
+    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+      while (true) {
+        final int readLength = reader.read(readBuffer);
+        if (readLength == -1) {
+          break;
+        }
+
+        final byte[] payLoad =
+            readLength == readFileBufferSize
+                ? readBuffer
+                : Arrays.copyOfRange(readBuffer, 0, readLength);
+        final PipeTransferFilePieceResp resp;
+        try {
+          resp =
+              PipeTransferFilePieceResp.fromTPipeTransferResp(
+                  clientAndStatus
+                      .getLeft()
+                      .pipeTransfer(
+                          isMultiFile
+                              ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
+                              : getTransferSingleFilePieceReq(file.getName(), position, payLoad)));
+        } catch (Exception e) {
+          clientAndStatus.setRight(false);
+          throw new PipeConnectionException(
+              String.format(
+                  "Network error when transfer file %s, because %s.", file, e.getMessage()),
+              e);
+        }
+
+        position += readLength;
+
+        final TSStatus status = resp.getStatus();
+        // This case only happens when the connection is broken, and the connector is reconnected
+        // to the receiver, then the receiver will redirect the file position to the last position
+        if (status.getCode() == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
+          position = resp.getEndWritingOffset();
+          reader.seek(position);
+          LOGGER.info("Redirect file position to {}.", position);
+          continue;
+        }
+
+        // Only handle the failed statuses to avoid string format performance overhead
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          receiverStatusHandler.handle(
+              resp.getStatus(),
+              String.format("Transfer file %s error, result status %s.", file, resp.getStatus()),
+              file.getName());
+        }
+      }
+    }
+  }
+
+  protected abstract PipeTransferFilePieceReq getTransferSingleFilePieceReq(
+      String fileName, long position, byte[] payLoad) throws IOException;
+
+  protected abstract PipeTransferFilePieceReq getTransferMultiFilePieceReq(
+      String fileName, long position, byte[] payLoad) throws IOException;
 
   @Override
   public void close() {

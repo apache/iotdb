@@ -173,7 +173,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       File schemaRegionDir = new File(schemaRegionDirPath);
       if (schemaRegionDir.exists()) {
-        FileUtils.deleteDirectory(schemaRegionDir);
+        FileUtils.deleteFileOrDirectory(schemaRegionDir);
       }
     }
     this.regionStatistics =

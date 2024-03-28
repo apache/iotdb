@@ -57,7 +57,12 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
@@ -90,6 +95,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   protected boolean isForwardingPipeRequests;
 
+  private boolean shouldTransferModFile; // Whether to transfer mods
+
   // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
   protected final UnboundedBlockingPendingQueue<Event> pendingQueue =
@@ -109,20 +116,23 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
     try {
       realtimeDataExtractionStartTime =
-          parameters.hasAnyAttributes(SOURCE_START_TIME_KEY)
+          parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY)
               ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
-                  parameters.getStringByKeys(SOURCE_START_TIME_KEY))
+                  parameters.getStringByKeys(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY))
               : Long.MIN_VALUE;
       realtimeDataExtractionEndTime =
-          parameters.hasAnyAttributes(SOURCE_END_TIME_KEY)
+          parameters.hasAnyAttributes(SOURCE_END_TIME_KEY, EXTRACTOR_END_TIME_KEY)
               ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
-                  parameters.getStringByKeys(SOURCE_END_TIME_KEY))
+                  parameters.getStringByKeys(SOURCE_END_TIME_KEY, EXTRACTOR_END_TIME_KEY))
               : Long.MAX_VALUE;
       if (realtimeDataExtractionStartTime > realtimeDataExtractionEndTime) {
         throw new PipeParameterNotValidException(
             String.format(
-                "%s should be less than or equal to %s.",
-                SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY));
+                "%s or %s should be less than or equal to %s or %s.",
+                SOURCE_START_TIME_KEY,
+                EXTRACTOR_START_TIME_KEY,
+                SOURCE_END_TIME_KEY,
+                EXTRACTOR_END_TIME_KEY));
       }
     } catch (Exception e) {
       // compatible with the current validation framework
@@ -178,6 +188,11 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
                 PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
                 PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
             PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+
+    shouldTransferModFile =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
+            EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE || shouldExtractDeletion);
   }
 
   @Override
@@ -398,6 +413,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   public abstract boolean isNeedListenToTsFile();
 
   public abstract boolean isNeedListenToInsertNode();
+
+  public final boolean isShouldTransferModFile() {
+    return shouldTransferModFile;
+  }
 
   @Override
   public String toString() {

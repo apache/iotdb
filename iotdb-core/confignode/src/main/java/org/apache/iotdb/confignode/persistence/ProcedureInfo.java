@@ -120,7 +120,7 @@ public class ProcedureInfo implements SnapshotProcessor {
         return;
       }
       try {
-        FileUtils.recursiveDeleteFolder(OLD_PROCEDURE_WAL_DIR);
+        FileUtils.recursivelyDeleteFolder(OLD_PROCEDURE_WAL_DIR);
       } catch (IOException e) {
         LOGGER.error("Delete useless procedure wal dir fail.", e);
         LOGGER.error(

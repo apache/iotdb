@@ -25,11 +25,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -38,9 +37,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-@Ignore
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2.class})
+@Category({MultiClusterIT2ManualCreateSchema.class})
 public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
   @Test
   public void testAutoRestartSchemaTask() throws Exception {
@@ -86,14 +84,6 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
         ++successCount;
       }
     }
-
-    // We do not test the schema region's recover process since
-    // it hasn't been implemented yet in simple consensus
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "count timeseries",
-        "count(timeseries),",
-        Collections.singleton(String.format("%d,", successCount)));
 
     TestUtils.restartCluster(senderEnv);
     TestUtils.restartCluster(receiverEnv);

@@ -27,11 +27,13 @@ import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeL
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
@@ -39,11 +41,16 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   private ConcurrentIterableLinkedQueue<Event>.DynamicIterator iterator;
 
+  // If close() is called, hasBeenClosed will be set to true even if the extractor is started again.
+  // If the extractor is closed, it should not be started again. This is to avoid the case that
+  // the extractor is closed and then be reused by processor.
+  protected final AtomicBoolean hasBeenClosed = new AtomicBoolean(false);
+
   protected abstract AbstractPipeListeningQueue getListeningQueue();
 
   @Override
   public void start() throws Exception {
-    if (hasBeenStarted.get()) {
+    if (hasBeenStarted.get() || hasBeenClosed.get()) {
       return;
     }
     super.start();
@@ -61,21 +68,54 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
   }
 
   private long getNextIndexAfterSnapshot() {
+    long nextIndex;
+    if (needTransferSnapshot()) {
+      nextIndex = findSnapshot();
+      if (nextIndex == Long.MIN_VALUE) {
+        triggerSnapshot();
+        nextIndex = findSnapshot();
+        if (nextIndex == Long.MIN_VALUE) {
+          throw new PipeException("Cannot get the newest snapshot after triggering one.");
+        }
+      }
+    } else {
+      // This will listen to the newest element after the iterator is created
+      // Mainly used for alter/deletion sync
+      nextIndex = Long.MAX_VALUE;
+    }
+    return nextIndex;
+  }
+
+  private long findSnapshot() {
     final Pair<Long, List<PipeSnapshotEvent>> queueTailIndex2Snapshots =
         getListeningQueue().findAvailableSnapshots();
-    // TODO: Trigger snapshot if not exists
     final long nextIndex =
         Objects.nonNull(queueTailIndex2Snapshots.getLeft())
                 && queueTailIndex2Snapshots.getLeft() != Long.MIN_VALUE
-            ? queueTailIndex2Snapshots.getLeft() + 1
-            : 0;
+            ? queueTailIndex2Snapshots.getLeft()
+            : Long.MIN_VALUE;
     historicalEvents = new LinkedList<>(queueTailIndex2Snapshots.getRight());
     return nextIndex;
   }
 
+  protected abstract boolean needTransferSnapshot();
+
+  protected abstract void triggerSnapshot();
+
   @Override
   public EnrichedEvent supply() throws Exception {
-    // historical
+    if (hasBeenClosed.get()) {
+      return null;
+    }
+
+    // Delayed start
+    // In schema region: to avoid pipe start is called when schema region is unready
+    // In config region: to avoid triggering snapshot under a consensus write causing deadlock
+    if (!hasBeenStarted.get()) {
+      start();
+    }
+
+    // Historical
     if (!historicalEvents.isEmpty()) {
       final PipeSnapshotEvent historicalEvent =
           (PipeSnapshotEvent)
@@ -90,10 +130,13 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
       }
 
       historicalEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
+      // We allow to send the events with empty transferred types to make the last
+      // event commit and report its progress
+      confineHistoricalEventTransferTypes(historicalEvent);
       return historicalEvent;
     }
 
-    // realtime
+    // Realtime
     EnrichedEvent realtimeEvent;
     do {
       realtimeEvent = (EnrichedEvent) iterator.next(0);
@@ -113,8 +156,15 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   protected abstract boolean isTypeListened(Event event);
 
+  protected abstract void confineHistoricalEventTransferTypes(PipeSnapshotEvent event);
+
   @Override
   public void close() throws Exception {
+    if (hasBeenClosed.get()) {
+      return;
+    }
+    hasBeenClosed.set(true);
+
     if (!hasBeenStarted.get()) {
       return;
     }

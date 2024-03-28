@@ -96,9 +96,6 @@ public class TimeSeriesWindow {
     this.intermediateResultName2tsTypeAndOperatorMap.values().stream()
         .map(Pair::getRight)
         .forEach(operator -> operator.configureSystemParameters(systemParameters));
-    this.aggregatedOutputName2OperatorMap
-        .values()
-        .forEach(operator -> operator.configureSystemParameters(systemParameters));
   }
 
   // Return the output and state of the window.

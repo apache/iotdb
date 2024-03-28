@@ -19,4 +19,4 @@
 
 package org.apache.iotdb.itbase.category;
 
-public interface MultiClusterIT2 {}
+public interface MultiClusterIT2AutoCreateSchema {}

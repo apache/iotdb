@@ -65,7 +65,7 @@ public class UpgradeFromWALToConsensusLayerTest {
 
   @After
   public void tearDown() throws Exception {
-    FileUtils.recursiveDeleteFolder(DATA_DIR);
+    FileUtils.recursivelyDeleteFolder(DATA_DIR);
     conf.setConsensusDir(conf.getConsensusDir().replace(DATA_DIR + File.separator, ""));
     conf.setSystemDir(conf.getSystemDir().replace(DATA_DIR + File.separator, ""));
   }

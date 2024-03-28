@@ -87,7 +87,7 @@ public class InternalCreateTimeSeriesNode extends WritePlanNode {
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.INTERNAL_CREATE_TIMESERIES;
+    return PlanNodeType.INTERNAL_CREATE_TIME_SERIES;
   }
 
   @Override
@@ -112,7 +112,7 @@ public class InternalCreateTimeSeriesNode extends WritePlanNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.INTERNAL_CREATE_TIMESERIES.serialize(byteBuffer);
+    PlanNodeType.INTERNAL_CREATE_TIME_SERIES.serialize(byteBuffer);
     devicePath.serialize(byteBuffer);
     measurementGroup.serialize(byteBuffer);
     ReadWriteIOUtils.write(isAligned, byteBuffer);
@@ -120,7 +120,7 @@ public class InternalCreateTimeSeriesNode extends WritePlanNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.INTERNAL_CREATE_TIMESERIES.serialize(stream);
+    PlanNodeType.INTERNAL_CREATE_TIME_SERIES.serialize(stream);
     devicePath.serialize(stream);
     measurementGroup.serialize(stream);
     ReadWriteIOUtils.write(isAligned, stream);

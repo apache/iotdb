@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
@@ -54,7 +54,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2.class})
+@Category({MultiClusterIT2Subscription.class})
 public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT {
 
   private static final Logger LOGGER =
@@ -66,14 +66,14 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   @Test
   public void test3C1CGSubscribeOneTopicHistoricalData() throws Exception {
-    long currentTime = System.currentTimeMillis();
+    final long currentTime = System.currentTimeMillis();
 
     // history data
     insertData(currentTime);
 
     createTopics(currentTime);
     createPipes(currentTime);
-    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    final List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
@@ -91,14 +91,14 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   @Test
   public void test3C3CGSubscribeOneTopicHistoricalData() throws Exception {
-    long currentTime = System.currentTimeMillis();
+    final long currentTime = System.currentTimeMillis();
 
     // history data
     insertData(currentTime);
 
     createTopics(currentTime);
     createPipes(currentTime);
-    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    final List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic1"));
@@ -118,14 +118,14 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   @Test
   public void test3C1CGSubscribeTwoTopicHistoricalData() throws Exception {
-    long currentTime = System.currentTimeMillis();
+    final long currentTime = System.currentTimeMillis();
 
     // history data
     insertData(currentTime);
 
     createTopics(currentTime);
     createPipes(currentTime);
-    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    final List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic2"));
@@ -144,14 +144,14 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   @Test
   public void test3C3CGSubscribeTwoTopicHistoricalData() throws Exception {
-    long currentTime = System.currentTimeMillis();
+    final long currentTime = System.currentTimeMillis();
 
     // history data
     insertData(currentTime);
 
     createTopics(currentTime);
     createPipes(currentTime);
-    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    final List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic2"));
@@ -172,14 +172,14 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   @Test
   public void test4C2CGSubscribeTwoTopicHistoricalData() throws Exception {
-    long currentTime = System.currentTimeMillis();
+    final long currentTime = System.currentTimeMillis();
 
     // history data
     insertData(currentTime);
 
     createTopics(currentTime);
     createPipes(currentTime);
-    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    final List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
@@ -204,11 +204,11 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   @Test
   public void test3C1CGSubscribeOneTopicRealtimeData() throws Exception {
-    long currentTime = System.currentTimeMillis();
+    final long currentTime = System.currentTimeMillis();
 
     createTopics(currentTime);
     createPipes(currentTime);
-    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    final List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
@@ -229,16 +229,16 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   @Test
   public void test3C3CGSubscribeOneTopicRealtimeData() throws Exception {
-    long currentTime = System.currentTimeMillis();
+    final long currentTime = System.currentTimeMillis();
 
     createTopics(currentTime);
     createPipes(currentTime);
-    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    final List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic1"));
 
-    // realtime data
+    // Realtime data
     insertData(currentTime);
 
     pollMessagesAndCheck(
@@ -256,16 +256,16 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   @Test
   public void test3C1CGSubscribeTwoTopicRealtimeData() throws Exception {
-    long currentTime = System.currentTimeMillis();
+    final long currentTime = System.currentTimeMillis();
 
     createTopics(currentTime);
     createPipes(currentTime);
-    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    final List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic2"));
 
-    // realtime data
+    // Realtime data
     insertData(currentTime);
 
     pollMessagesAndCheck(
@@ -282,16 +282,16 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   @Test
   public void test3C3CGSubscribeTwoTopicRealtimeData() throws Exception {
-    long currentTime = System.currentTimeMillis();
+    final long currentTime = System.currentTimeMillis();
 
     createTopics(currentTime);
     createPipes(currentTime);
-    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    final List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg3", "topic2"));
 
-    // realtime data
+    // Realtime data
     insertData(currentTime);
 
     pollMessagesAndCheck(
@@ -310,11 +310,11 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   @Test
   public void test4C2CGSubscribeTwoTopicRealtimeData() throws Exception {
-    long currentTime = System.currentTimeMillis();
+    final long currentTime = System.currentTimeMillis();
 
     createTopics(currentTime);
     createPipes(currentTime);
-    List<SubscriptionPullConsumer> consumers = new ArrayList<>();
+    final List<SubscriptionPullConsumer> consumers = new ArrayList<>();
     consumers.add(createConsumerAndSubscribeTopics("c1", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg2", "topic1", "topic2"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
@@ -339,8 +339,8 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   /////////////////////////////// utility ///////////////////////////////
 
   private void createTopics(long currentTime) {
-    // create topics on sender
-    try (ISession session = senderEnv.getSessionConnection()) {
+    // Create topics on sender
+    try (final ISession session = senderEnv.getSessionConnection()) {
       session.executeNonQueryStatement(
           String.format("create topic topic1 with ('end-time'='%s')", currentTime - 1));
       session.executeNonQueryStatement(
@@ -352,7 +352,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   private void insertData(long currentTime) {
-    // insert some data on sender
+    // Insert some data on sender
     try (ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
@@ -369,20 +369,22 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   private void createPipes(long currentTime) {
-    // for sync reference
-    try (SyncConfigNodeIServiceClient client =
+    // For sync reference
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverEnv.getIP());
       connectorAttributes.put("connector.port", receiverEnv.getPort());
 
+      extractorAttributes.put("inclusion", "data.insert");
+      extractorAttributes.put("inclusion.exclusion", "data.delete");
       extractorAttributes.put("end-time", String.valueOf(currentTime - 1));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("sync_topic1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -393,19 +395,21 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       fail(e.getMessage());
     }
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverEnv.getIP());
       connectorAttributes.put("connector.port", receiverEnv.getPort());
 
+      extractorAttributes.put("inclusion", "data.insert");
+      extractorAttributes.put("inclusion.exclusion", "data.delete");
       extractorAttributes.put("start-time", String.valueOf(currentTime));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("sync_topic2", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -419,7 +423,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   private SubscriptionPullConsumer createConsumerAndSubscribeTopics(
       String consumerId, String consumerGroupId, String... topicNames) throws Exception {
-    SubscriptionPullConsumer consumer =
+    final SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
             .host(senderEnv.getIP())
             .port(Integer.parseInt(senderEnv.getPort()))
@@ -435,35 +439,36 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   private void pollMessagesAndCheck(
       List<SubscriptionPullConsumer> consumers, Map<String, String> expectedHeaderWithResult)
       throws Exception {
-    AtomicBoolean isClosed = new AtomicBoolean(false);
-    AtomicBoolean receiverCrashed = new AtomicBoolean(false);
+    final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final AtomicBoolean receiverCrashed = new AtomicBoolean(false);
 
-    List<Thread> threads = new ArrayList<>();
+    final List<Thread> threads = new ArrayList<>();
     for (int i = 0; i < consumers.size(); ++i) {
       final int index = i;
-      String consumerId = consumers.get(index).getConsumerId();
-      String consumerGroupId = consumers.get(index).getConsumerGroupId();
+      final String consumerId = consumers.get(index).getConsumerId();
+      final String consumerGroupId = consumers.get(index).getConsumerGroupId();
       Thread t =
           new Thread(
               () -> {
-                try (SubscriptionPullConsumer consumer = consumers.get(index)) {
+                try (final SubscriptionPullConsumer consumer = consumers.get(index)) {
                   while (!isClosed.get()) {
                     try {
                       Thread.sleep(1000); // wait some time
                     } catch (InterruptedException e) {
                       break;
                     }
-                    List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+                    final List<SubscriptionMessage> messages =
+                        consumer.poll(Duration.ofMillis(10000));
                     if (messages.isEmpty()) {
                       continue;
                     }
-                    for (SubscriptionMessage message : messages) {
-                      SubscriptionSessionDataSets payload =
+                    for (final SubscriptionMessage message : messages) {
+                      final SubscriptionSessionDataSets payload =
                           (SubscriptionSessionDataSets) message.getPayload();
-                      for (SubscriptionSessionDataSet dataSet : payload) {
-                        List<String> columnNameList = dataSet.getColumnNames();
+                      for (final SubscriptionSessionDataSet dataSet : payload) {
+                        final List<String> columnNameList = dataSet.getColumnNames();
                         while (dataSet.hasNext()) {
-                          RowRecord record = dataSet.next();
+                          final RowRecord record = dataSet.next();
                           if (!insertRowRecordEnrichedByConsumerGroupId(
                               columnNameList, record, consumerGroupId)) {
                             receiverCrashed.set(true);
@@ -474,10 +479,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                     }
                     consumer.commitSync(messages);
                   }
-                  // no need to unsubscribe
+                  // No need to unsubscribe
                 } catch (Exception e) {
                   e.printStackTrace();
-                  // avoid fail
+                  // Avoid failure
                 } finally {
                   LOGGER.info("consumer {} (group {}) exiting...", consumerId, consumerGroupId);
                 }
@@ -487,10 +492,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       threads.add(t);
     }
 
-    // check data on receiver
+    // Check data on receiver
     try {
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = receiverEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
         Awaitility.await()
             .pollDelay(1, TimeUnit.SECONDS)
@@ -525,15 +530,15 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       LOGGER.warn("unexpected column name list: {}", columnNameList);
       throw new Exception("unexpected column name list");
     }
-    String columnName = columnNameList.get(1);
+    final String columnName = columnNameList.get(1);
     if ("root.topic1.s".equals(columnName)) {
-      String sql =
+      final String sql =
           String.format(
               "insert into root.%s.topic1(time, s) values (%s, 1)",
               consumerGroupId, record.getTimestamp());
       return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
     } else if ("root.topic2.s".equals(columnName)) {
-      String sql =
+      final String sql =
           String.format(
               "insert into root.%s.topic2(time, s) values (%s, 1)",
               consumerGroupId, record.getTimestamp());

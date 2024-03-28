@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,10 +107,15 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
         socket,
         PipeTransferPlanNodeReq.toTPipeTransferBytes(
             pipeSchemaRegionWritePlanEvent.getPlanNode()))) {
-      throw new PipeException(
+      final String errorMessage =
           String.format(
               "Transfer data node write plan %s error. Socket: %s.",
-              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), socket));
+              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), socket);
+      receiverStatusHandler.handle(
+          new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+              .setMessage(errorMessage),
+          errorMessage,
+          pipeSchemaRegionWritePlanEvent.toString());
     }
   }
 }

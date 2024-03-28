@@ -83,7 +83,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
   private static final String STRING_ENCODING = "utf-8";
   private static final String USER_SNAPSHOT_FILE_NAME = "system" + File.separator + "users";
 
-  private static final String ROLE_SUFFIX = "_role";
+  public static final String ROLE_SUFFIX = "_role";
 
   private final String userDirPath;
   /**
@@ -367,7 +367,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
       result &= userTmpSnapshotDir.renameTo(userSnapshotDir);
     } finally {
       if (userTmpSnapshotDir.exists() && !userTmpSnapshotDir.delete()) {
-        FileUtils.deleteDirectory(userTmpSnapshotDir);
+        FileUtils.deleteFileOrDirectory(userTmpSnapshotDir);
       }
     }
     return result;
@@ -386,11 +386,11 @@ public class LocalFileUserAccessor implements IUserAccessor {
       if (!FileUtils.copyDir(userSnapshotDir, userFolder)) {
         LOGGER.error("Failed to load user folder snapshot and rollback.");
         // rollback if failed to copy
-        FileUtils.deleteDirectory(userFolder);
+        FileUtils.deleteFileOrDirectory(userFolder);
         org.apache.commons.io.FileUtils.moveDirectory(userTmpFolder, userFolder);
       }
     } finally {
-      FileUtils.deleteDirectory(userTmpFolder);
+      FileUtils.deleteFileOrDirectory(userTmpFolder);
     }
   }
 

@@ -335,7 +335,7 @@ public class SchemaEngine {
     // remove the empty sg dir
     if (regionDirList == null || regionDirList.length == 0) {
       if (sgDir.exists()) {
-        FileUtils.deleteDirectory(sgDir);
+        FileUtils.deleteFileOrDirectory(sgDir);
       }
     }
   }
