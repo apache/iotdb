@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -29,6 +30,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -44,6 +46,7 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
@@ -54,6 +57,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -108,6 +112,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -450,6 +457,34 @@ public class DataNode implements DataNodeMBean {
     }
   }
 
+  private List<ConsensusGroupId> getConsensusGroupId() {
+    List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
+    String dataRegionConsensusDir = config.getDataRegionConsensusDir();
+    try (DirectoryStream<Path> stream =
+        Files.newDirectoryStream(new File(dataRegionConsensusDir).toPath())) {
+      for (Path path : stream) {
+        String[] items = path.getFileName().toString().split("_");
+        ConsensusGroupId consensusGroupId =
+            ConsensusGroupId.Factory.create(Integer.parseInt(items[0]), Integer.parseInt(items[1]));
+        consensusGroupIds.add(consensusGroupId);
+      }
+    } catch (IOException e) {
+      logger.error("Cannot get consensus group id from {}", dataRegionConsensusDir, e);
+    }
+    return consensusGroupIds;
+  }
+
+  private void clearInvalidConsensusGroup(List<ConsensusGroupId> configNodeConsensusGroupIds) {
+    List<ConsensusGroupId> dataNodeConsensusGroupIds = getConsensusGroupId();
+    String dataRegionConsensusDir = config.getDataRegionConsensusDir();
+    for (ConsensusGroupId consensusGroupId : dataNodeConsensusGroupIds) {
+      if (!configNodeConsensusGroupIds.contains(consensusGroupId)) {
+        String path = IoTConsensus.buildPeerDir(new File(dataRegionConsensusDir), consensusGroupId);
+        FileUtils.deleteDirectory(new File(path));
+      }
+    }
+  }
+
   private void sendRestartRequestToConfigNode() throws StartupException {
     logger.info("Sending restart request to ConfigNode-leader...");
     long startTime = System.currentTimeMillis();
@@ -500,6 +535,14 @@ public class DataNode implements DataNodeMBean {
           "Restart request to cluster: {} is accepted, which takes {} ms.",
           config.getClusterName(),
           (endTime - startTime));
+
+      List<TConsensusGroupId> consensusGroupIds = dataNodeRestartResp.getConsensusGroupIds();
+      List<ConsensusGroupId> dataNodeConsensusGroupIds = new ArrayList<>();
+      for (TConsensusGroupId consensusGroupId : consensusGroupIds) {
+        dataNodeConsensusGroupIds.add(
+            ConsensusGroupId.Factory.createFromTConsensusGroupId(consensusGroupId));
+      }
+      clearInvalidConsensusGroup(dataNodeConsensusGroupIds);
     } else {
       /* Throw exception when restart is rejected */
       throw new StartupException(dataNodeRestartResp.getStatus().getMessage());

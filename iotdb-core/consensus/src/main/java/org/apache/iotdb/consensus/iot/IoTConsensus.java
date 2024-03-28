@@ -94,6 +94,7 @@ public class IoTConsensus implements IConsensus {
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
   private Future<?> updateReaderFuture;
+  public static final String ACTIVE_FLAG_FILENAME = "active.flag";
 
   public IoTConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNodeEndPoint();
@@ -143,6 +144,10 @@ public class IoTConsensus implements IConsensus {
     }
   }
 
+  private static boolean isActiveRegion(String regionPath) throws IOException {
+    return new File(regionPath, ACTIVE_FLAG_FILENAME).exists();
+  }
+
   private void initAndRecover() throws IOException {
     if (!storageDir.exists()) {
       if (!storageDir.mkdirs()) {
@@ -155,6 +160,14 @@ public class IoTConsensus implements IConsensus {
           ConsensusGroupId consensusGroupId =
               ConsensusGroupId.Factory.create(
                   Integer.parseInt(items[0]), Integer.parseInt(items[1]));
+          if (isActiveRegion(path.toString())) {
+            logger.info("DataRegion {} is active. Continuing...", Integer.parseInt(items[1]));
+          } else {
+            logger.info("DataRegion {} is active. Cleaning...", Integer.parseInt(items[1]));
+            // clean up the region
+            FileUtils.deleteDirectory(path.toFile());
+            continue;
+          }
           IoTConsensusServerImpl consensus =
               new IoTConsensusServerImpl(
                   path.toString(),

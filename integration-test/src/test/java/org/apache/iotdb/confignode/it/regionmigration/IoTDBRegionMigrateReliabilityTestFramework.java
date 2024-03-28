@@ -206,10 +206,20 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
 
       // check if there is anything remain
       if (checkOriginalRegionDirDeleted) {
-        checkRegionFileClear(originalDataNode);
+        if (isMigrateSuccess) {
+          checkRegionFileClear(originalDataNode);
+          checkRegionFileExist(destDataNode);
+        } else {
+          checkRegionFileClear(destDataNode);
+          checkRegionFileExist(originalDataNode);
+        }
       }
       if (checkConfigurationFileDeleted) {
-        checkPeersClear(allDataNode, originalDataNode, selectedRegion);
+        if (isMigrateSuccess) {
+          checkPeersClear(allDataNode, originalDataNode, selectedRegion);
+        } else {
+          checkPeersClear(allDataNode, destDataNode, selectedRegion);
+        }
       }
 
     } catch (InconsistentDataException ignore) {

@@ -171,8 +171,8 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
       resultHandler.onComplete(new TActivatePeerRes(status));
       return;
     }
-    impl.setActive(true);
     FileUtils.logBreakpoint(DataNodeKillPoints.DESTINATION_ADD_PEER_DONE.toString());
+    impl.setActive(true);
     resultHandler.onComplete(
         new TActivatePeerRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
   }
@@ -285,7 +285,6 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
   public void triggerSnapshotLoad(
       TTriggerSnapshotLoadReq req, AsyncMethodCallback<TTriggerSnapshotLoadRes> resultHandler)
       throws TException {
-    FileUtils.logBreakpoint(DataNodeKillPoints.DESTINATION_ADD_PEER_TRANSITION.toString());
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
@@ -299,6 +298,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
       return;
     }
     impl.loadSnapshot(req.snapshotId);
+    FileUtils.logBreakpoint(DataNodeKillPoints.DESTINATION_ADD_PEER_TRANSITION.toString());
     resultHandler.onComplete(
         new TTriggerSnapshotLoadRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
   }

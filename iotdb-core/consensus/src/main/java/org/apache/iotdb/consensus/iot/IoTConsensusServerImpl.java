@@ -125,13 +125,13 @@ public class IoTConsensusServerImpl {
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
       IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager,
       IoTConsensusConfig config) {
-    this.active = true;
     this.storageDir = storageDir;
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
     this.cacheQueueMap = new ConcurrentHashMap<>();
     this.syncClientManager = syncClientManager;
     this.configuration = configuration;
+    setActive(true);
     if (configuration.isEmpty()) {
       recoverConfiguration();
     }
@@ -790,6 +790,29 @@ public class IoTConsensusServerImpl {
   public void setActive(boolean active) {
     logger.info("set {} active status to {}", this.thisNode, active);
     this.active = active;
+    persistActiveStatus(active);
+  }
+
+  private void persistActiveStatus(boolean active) {
+    File activeFlagFile = new File(storageDir, IoTConsensus.ACTIVE_FLAG_FILENAME);
+    if (active) {
+      try {
+        if (!activeFlagFile.exists() && !activeFlagFile.createNewFile()) {
+          throw new IOException("Failed to create the active flag file.");
+        }
+      } catch (IOException e) {
+        logger.error("Failed to create the active flag file.", e);
+      }
+    } else {
+      try {
+        if (activeFlagFile.exists()) {
+          Files.delete(activeFlagFile.toPath());
+        }
+      } catch (IOException e) {
+        logger.error("Failed to delete the active flag file.", e);
+      }
+    }
+    logger.info("set {} active status to {}", this.thisNode, active);
   }
 
   public void cleanupRemoteSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
