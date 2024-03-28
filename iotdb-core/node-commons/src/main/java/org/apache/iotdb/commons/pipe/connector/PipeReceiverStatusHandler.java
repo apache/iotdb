@@ -81,7 +81,7 @@ public class PipeReceiverStatusHandler {
    * exception if retry the {@link Event}. Upper class must ensure that the method is invoked only
    * by a single thread.
    *
-   * @throws PipeException to retry the current event
+   * @throws PipeException to retry the current {@link Event}
    * @param status the {@link TSStatus} to judge
    * @param exceptionMessage The exception message to throw
    * @param recordMessage The message to record an ignored {@link Event}, the caller should assure

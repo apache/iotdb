@@ -224,7 +224,8 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
     } catch (IOException e) {
       LOGGER.error(
-          "Config Region Listening Queue Listen to snapshot failed when startup, snapshot will be tried again when starting schema transferring pipes");
+          "Config Region Listening Queue Listen to snapshot failed when startup, snapshot will be tried again when starting schema transferring pipes",
+          e);
     }
   }
 
