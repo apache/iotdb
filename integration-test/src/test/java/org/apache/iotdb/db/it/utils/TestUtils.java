@@ -44,6 +44,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
@@ -52,6 +53,8 @@ import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class TestUtils {
@@ -339,6 +342,26 @@ public class TestUtils {
         actualRetSet.add(builder.toString());
       }
       assertEquals(expectedRetSet, actualRetSet);
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail(String.valueOf(e));
+    }
+  }
+
+  public static void assertSingleResultSetEqual(
+      ResultSet actualResultSet, Map<String, String> expectedHeaderWithResult) {
+    try {
+      ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+      assertTrue(actualResultSet.next());
+      Map<String, String> actualHeaderWithResult = new HashMap<>();
+      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+        actualHeaderWithResult.put(
+            resultSetMetaData.getColumnName(i), actualResultSet.getString(i));
+      }
+      String expected = new TreeMap<>(expectedHeaderWithResult).toString();
+      String actual = new TreeMap<>(actualHeaderWithResult).toString();
+      assertEquals(expected, actual);
+      assertFalse(actualResultSet.next());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail(String.valueOf(e));

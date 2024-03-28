@@ -27,14 +27,16 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
- * This visitor translated some exceptions to pipe related status to help sender classify them and
- * apply different error handling tactics. Please DO NOT modify the exceptions returned by the
- * processes that generate the following exceptions in the class.
+ * This visitor translated some exceptions to pipe related {@link TSStatus} to help sender classify
+ * them and apply different error handling tactics. Please DO NOT modify the exceptions returned by
+ * the processes that generate the following exceptions in the class.
  */
 public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Exception> {
   @Override
@@ -54,6 +56,25 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
           .setMessage(context.getMessage());
     }
     return super.visitLoadFile(loadTsFileStatement, context);
+  }
+
+  @Override
+  public TSStatus visitCreateTimeseries(CreateTimeSeriesStatement statement, Exception context) {
+    return visitGeneralCreateTimeSeries(statement, context);
+  }
+
+  @Override
+  public TSStatus visitCreateAlignedTimeseries(
+      CreateAlignedTimeSeriesStatement statement, Exception context) {
+    return visitGeneralCreateTimeSeries(statement, context);
+  }
+
+  private TSStatus visitGeneralCreateTimeSeries(Statement statement, Exception context) {
+    if (context instanceof SemanticException) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return visitStatement(statement, context);
   }
 
   @Override

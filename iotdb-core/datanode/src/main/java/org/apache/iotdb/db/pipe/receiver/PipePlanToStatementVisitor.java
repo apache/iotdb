@@ -49,17 +49,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipePlanToStatementVisitor.class);
 
   @Override
   public Statement visitPlan(PlanNode node, Void context) {

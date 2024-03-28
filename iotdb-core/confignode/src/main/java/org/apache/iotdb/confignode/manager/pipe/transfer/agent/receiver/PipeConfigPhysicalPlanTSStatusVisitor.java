@@ -216,6 +216,11 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
 
   @Override
   public TSStatus visitGrantUser(AuthorPlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()) {
+      // Admin user
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
     if (context.getCode() == TSStatusCode.USER_NOT_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -228,7 +233,9 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
     if (context.getCode() == TSStatusCode.NOT_HAS_PRIVILEGE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
-    } else if (context.getCode() == TSStatusCode.USER_NOT_EXIST.getStatusCode()) {
+    } else if (context.getCode() == TSStatusCode.USER_NOT_EXIST.getStatusCode()
+        // Admin user
+        || context.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }

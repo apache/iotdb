@@ -48,7 +48,7 @@ public class ClusterInfoTest {
   @AfterClass
   public static void cleanup() throws IOException {
     if (snapshotDir.exists()) {
-      FileUtils.deleteDirectory(snapshotDir);
+      FileUtils.deleteFileOrDirectory(snapshotDir);
     }
   }
 

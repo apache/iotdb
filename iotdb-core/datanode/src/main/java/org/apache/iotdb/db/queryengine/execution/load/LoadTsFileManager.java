@@ -237,7 +237,7 @@ public class LoadTsFileManager {
 
     private void clearDir(File dir) {
       if (dir.exists()) {
-        FileUtils.deleteDirectory(dir);
+        FileUtils.deleteFileOrDirectory(dir);
       }
       if (dir.mkdirs()) {
         LOGGER.info("Load TsFile dir {} is created.", dir.getPath());

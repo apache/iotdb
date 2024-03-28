@@ -34,29 +34,29 @@ import java.util.Set;
 public class SubscriptionMeta {
 
   private String topicName;
-  private String consumerGroupID;
-  private Set<String> consumerIDs;
+  private String consumerGroupId;
+  private Set<String> consumerIds;
 
-  public SubscriptionMeta() {
+  private SubscriptionMeta() {
     // Empty constructor
   }
 
-  public SubscriptionMeta(String topicName, String consumerGroupID, Set<String> consumerIDs) {
+  public SubscriptionMeta(String topicName, String consumerGroupId, Set<String> consumerIds) {
     this.topicName = topicName;
-    this.consumerGroupID = consumerGroupID;
-    this.consumerIDs = consumerIDs;
+    this.consumerGroupId = consumerGroupId;
+    this.consumerIds = consumerIds;
   }
 
   public String getTopicName() {
     return topicName;
   }
 
-  public String getConsumerGroupID() {
-    return consumerGroupID;
+  public String getConsumerGroupId() {
+    return consumerGroupId;
   }
 
-  public Set<String> getConsumerIDs() {
-    return consumerIDs;
+  public Set<String> getConsumerIds() {
+    return consumerIds;
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -68,20 +68,20 @@ public class SubscriptionMeta {
 
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(topicName, outputStream);
-    ReadWriteIOUtils.write(consumerGroupID, outputStream);
+    ReadWriteIOUtils.write(consumerGroupId, outputStream);
 
-    ReadWriteIOUtils.write(consumerIDs.size(), outputStream);
-    for (String consumerId : consumerIDs) {
+    ReadWriteIOUtils.write(consumerIds.size(), outputStream);
+    for (String consumerId : consumerIds) {
       ReadWriteIOUtils.write(consumerId, outputStream);
     }
   }
 
   public void serialize(FileOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(topicName, outputStream);
-    ReadWriteIOUtils.write(consumerGroupID, outputStream);
+    ReadWriteIOUtils.write(consumerGroupId, outputStream);
 
-    ReadWriteIOUtils.write(consumerIDs.size(), outputStream);
-    for (String consumerId : consumerIDs) {
+    ReadWriteIOUtils.write(consumerIds.size(), outputStream);
+    for (String consumerId : consumerIds) {
       ReadWriteIOUtils.write(consumerId, outputStream);
     }
   }
@@ -90,12 +90,12 @@ public class SubscriptionMeta {
     final SubscriptionMeta subscriptionMeta = new SubscriptionMeta();
 
     subscriptionMeta.topicName = ReadWriteIOUtils.readString(inputStream);
-    subscriptionMeta.consumerGroupID = ReadWriteIOUtils.readString(inputStream);
-    subscriptionMeta.consumerIDs = new HashSet<>();
+    subscriptionMeta.consumerGroupId = ReadWriteIOUtils.readString(inputStream);
+    subscriptionMeta.consumerIds = new HashSet<>();
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
-      subscriptionMeta.consumerIDs.add(ReadWriteIOUtils.readString(inputStream));
+      subscriptionMeta.consumerIds.add(ReadWriteIOUtils.readString(inputStream));
     }
 
     return subscriptionMeta;
@@ -105,12 +105,12 @@ public class SubscriptionMeta {
     final SubscriptionMeta subscriptionMeta = new SubscriptionMeta();
 
     subscriptionMeta.topicName = ReadWriteIOUtils.readString(byteBuffer);
-    subscriptionMeta.consumerGroupID = ReadWriteIOUtils.readString(byteBuffer);
-    subscriptionMeta.consumerIDs = new HashSet<>();
+    subscriptionMeta.consumerGroupId = ReadWriteIOUtils.readString(byteBuffer);
+    subscriptionMeta.consumerIds = new HashSet<>();
 
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; i++) {
-      subscriptionMeta.consumerIDs.add(ReadWriteIOUtils.readString(byteBuffer));
+      subscriptionMeta.consumerIds.add(ReadWriteIOUtils.readString(byteBuffer));
     }
 
     return subscriptionMeta;

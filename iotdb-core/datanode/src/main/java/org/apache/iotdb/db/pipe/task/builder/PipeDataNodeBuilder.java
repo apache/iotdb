@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.task.builder;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -28,8 +29,11 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.HashMap;
 import java.util.List;
@@ -45,7 +49,7 @@ public class PipeDataNodeBuilder {
     this.pipeMeta = pipeMeta;
   }
 
-  public Map<Integer, PipeTask> build() {
+  public Map<Integer, PipeTask> build() throws IllegalPathException {
     final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
 
@@ -58,12 +62,22 @@ public class PipeDataNodeBuilder {
       final int consensusGroupId = consensusGroupIdToPipeTaskMeta.getKey();
       final PipeTaskMeta pipeTaskMeta = consensusGroupIdToPipeTaskMeta.getValue();
 
-      if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()
-          && (dataRegionIds.contains(new DataRegionId(consensusGroupId))
-              || schemaRegionIds.contains(new SchemaRegionId(consensusGroupId)))) {
-        consensusGroupIdToPipeTaskMap.put(
-            consensusGroupId,
-            new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build());
+      if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
+        final PipeParameters extractorParameters = pipeStaticMeta.getExtractorParameters();
+        final boolean needConstructDataRegionTask =
+            dataRegionIds.contains(new DataRegionId(consensusGroupId))
+                && DataRegionListeningFilter.shouldDataRegionBeListened(extractorParameters);
+        final boolean needConstructSchemaRegionTask =
+            schemaRegionIds.contains(new SchemaRegionId(consensusGroupId))
+                && !SchemaRegionListeningFilter.parseListeningPlanTypeSet(extractorParameters)
+                    .isEmpty();
+
+        // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
+        if (needConstructDataRegionTask || needConstructSchemaRegionTask) {
+          consensusGroupIdToPipeTaskMap.put(
+              consensusGroupId,
+              new PipeDataNodeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build());
+        }
       }
     }
     return consensusGroupIdToPipeTaskMap;

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.response;
+package org.apache.iotdb.rpc.subscription.payload;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -39,12 +39,12 @@ public class EnrichedTablets {
     return topicName;
   }
 
-  public List<Tablet> getTablets() {
-    return tablets;
-  }
-
   public String getSubscriptionCommitId() {
     return subscriptionCommitId;
+  }
+
+  public List<Tablet> getTablets() {
+    return tablets;
   }
 
   public EnrichedTablets() {
@@ -56,6 +56,8 @@ public class EnrichedTablets {
     this.tablets = tablets;
     this.subscriptionCommitId = subscriptionCommitId;
   }
+
+  /////////////////////////////// de/ser ///////////////////////////////
 
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(topicName, stream);
@@ -89,8 +91,8 @@ public class EnrichedTablets {
     }
     EnrichedTablets that = (EnrichedTablets) obj;
     return Objects.equals(this.topicName, that.topicName)
-        && Objects.equals(this.tablets, that.tablets)
-        && Objects.equals(this.subscriptionCommitId, that.subscriptionCommitId);
+        && Objects.equals(this.subscriptionCommitId, that.subscriptionCommitId)
+        && Objects.equals(this.tablets, that.tablets);
   }
 
   @Override

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.tools.schema;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -71,12 +72,12 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
   // that the parsing process is error-free.
   private Exception lastExcept = null;
 
-  // input file stream: mtree file and tag file
+  // Input file stream: mtree file and tag file
   private final InputStream inputStream;
 
   private final FileChannel tagFileChannel;
 
-  // help to record the state of traversing
+  // Help to record the state of traversing
   private final Deque<IMemMNode> ancestors = new ArrayDeque<>();
   private final Deque<Integer> restChildrenNum = new ArrayDeque<>();
   private final PartialPath databaseFullPath;
@@ -87,7 +88,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
 
   private final Deque<Statement> statements = new ArrayDeque<>();
 
-  // utils
+  // Utils
 
   private final MNodeTranslater translater = new MNodeTranslater();
 
@@ -128,11 +129,11 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
       return false;
     }
     while (!ancestors.isEmpty()) {
-      int childNum = restChildrenNum.pop();
+      final int childNum = restChildrenNum.pop();
       if (childNum == 0) {
-        IMemMNode node = ancestors.pop();
+        final IMemMNode node = ancestors.pop();
         if (node.isDevice() && node.getAsDeviceMNode().isAligned()) {
-          Statement stmt =
+          final Statement stmt =
               genAlignedTimeseriesStatement(
                   node, databaseFullPath.getDevicePath().concatPath(node.getPartialPath()));
           statements.push(stmt);
@@ -157,7 +158,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
           }
           return false;
         }
-        Statement stmt =
+        final Statement stmt =
             curNode.accept(
                 translater, databaseFullPath.getDevicePath().concatPath(curNode.getPartialPath()));
         if (stmt != null) {
@@ -194,7 +195,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
   }
 
   private void cleanMtreeNode(IMNode node) {
-    IMNodeContainer<IMemMNode> children = node.getAsInternalMNode().getChildren();
+    final IMNodeContainer<IMemMNode> children = node.getAsInternalMNode().getChildren();
     nodeCount = nodeCount - children.size();
     node.getChildren().clear();
   }
@@ -205,9 +206,9 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
       MemMTreeSnapshotUtil.MNodeDeserializer deserializer,
       InputStream inputStream)
       throws IOException {
-    byte type = ReadWriteIOUtils.readByte(inputStream);
-    int childrenNum;
-    IMemMNode node;
+    final byte type = ReadWriteIOUtils.readByte(inputStream);
+    final int childrenNum;
+    final IMemMNode node;
     switch (type) {
       case INTERNAL_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
@@ -238,7 +239,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     }
 
     if (!ancestors.isEmpty()) {
-      IMemMNode parent = ancestors.peek();
+      final IMemMNode parent = ancestors.peek();
       node.setParent(ancestors.peek());
       parent.addChild(node);
     }
@@ -255,7 +256,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     @Override
     public Statement visitBasicMNode(IMNode<?> node, PartialPath path) {
       if (node.isDevice()) {
-        // Aligned timeserie will be created when node pop.
+        // Aligned timeseries will be created when node pop.
         return SRStatementGenerator.genActivateTemplateStatement(node, path);
       }
       return null;
@@ -276,13 +277,14 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
       if (node.getParent().getAsDeviceMNode().isAligned()) {
         return null;
       } else if (node.isLogicalView()) {
-        CreateLogicalViewStatement stmt = new CreateLogicalViewStatement();
-        LogicalViewSchema viewSchema = (LogicalViewSchema) node.getAsMeasurementMNode().getSchema();
+        final CreateLogicalViewStatement stmt = new CreateLogicalViewStatement();
+        final LogicalViewSchema viewSchema =
+            (LogicalViewSchema) node.getAsMeasurementMNode().getSchema();
         stmt.setTargetFullPaths(Collections.singletonList(path));
         stmt.setViewExpressions(Collections.singletonList(viewSchema.getExpression()));
         return stmt;
       } else {
-        CreateTimeSeriesStatement stmt = new CreateTimeSeriesStatement();
+        final CreateTimeSeriesStatement stmt = new CreateTimeSeriesStatement();
         stmt.setPath(path);
         stmt.setAlias(node.getAlias());
         stmt.setCompressor(node.getAsMeasurementMNode().getSchema().getCompressor());
@@ -291,20 +293,21 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         if (node.getOffset() >= 0) {
           if (tagFileChannel != null) {
             try {
-              ByteBuffer byteBuffer = ByteBuffer.allocate(COMMON_CONFIG.getTagAttributeTotalSize());
+              final ByteBuffer byteBuffer =
+                  ByteBuffer.allocate(COMMON_CONFIG.getTagAttributeTotalSize());
               tagFileChannel.read(byteBuffer, node.getOffset());
               byteBuffer.flip();
-              Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
+              final Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
                   new Pair<>(
                       ReadWriteIOUtils.readMap(byteBuffer), ReadWriteIOUtils.readMap(byteBuffer));
               stmt.setTags(tagsAndAttributes.left);
               stmt.setAttributes(tagsAndAttributes.right);
             } catch (IOException exception) {
               lastExcept = exception;
-              LOGGER.warn("error when parser tag and attributes files", exception);
+              LOGGER.warn("Error when parser tag and attributes files", exception);
             }
           } else {
-            LOGGER.warn("timeserie has attributes and tags but don't find tag file");
+            LOGGER.warn("Timeseries has attributes and tags but don't find tag file");
           }
         }
         return stmt;
@@ -320,9 +323,9 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
   }
 
   private Statement genAlignedTimeseriesStatement(IMNode node, PartialPath path) {
-    IMNodeContainer<IMemMNode> measurements = node.getAsInternalMNode().getChildren();
+    final IMNodeContainer<IMemMNode> measurements = node.getAsInternalMNode().getChildren();
     if (node.getAsDeviceMNode().isAligned()) {
-      CreateAlignedTimeSeriesStatement stmt = new CreateAlignedTimeSeriesStatement();
+      final CreateAlignedTimeSeriesStatement stmt = new CreateAlignedTimeSeriesStatement();
       stmt.setDevicePath(path);
       for (IMemMNode measurement : measurements.values()) {
         stmt.addMeasurement(measurement.getName());
@@ -348,12 +351,12 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
             } catch (IOException exception) {
               lastExcept = exception;
               LOGGER.warn(
-                  "error when parse tag and attributes file of node path {}",
+                  "Error when parse tag and attributes file of node path {}",
                   measurement.getPartialPath(),
                   exception);
             }
           } else {
-            LOGGER.warn("measurement has set attributes or tags, but dont find snapshot files");
+            LOGGER.warn("Measurement has set attributes or tags, but not find snapshot files");
           }
         }
       }

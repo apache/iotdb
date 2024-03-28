@@ -156,6 +156,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
             endPoint.getIp(),
             endPoint.getPort(),
             resp.getStatus());
+        supportModsIfIsDataNodeReceiver = false;
         resp = clientAndStatus.getLeft().pipeTransfer(buildHandshakeV1Req());
       }
 

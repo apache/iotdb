@@ -17,6 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.itbase.category;
+package org.apache.iotdb.rpc.subscription.config;
 
-public interface MultiClusterIT2 {}
+public class TopicConstant {
+
+  public static final String PATH_KEY = "path";
+  public static final String PATH_DEFAULT_VALUE = "root.**";
+  public static final String PATTERN_KEY = "pattern";
+
+  public static final String START_TIME_KEY = "start-time";
+  public static final String END_TIME_KEY = "end-time";
+  public static final String NOW_TIME_VALUE = "now";
+
+  public static final String FORMAT_KEY = "format";
+  public static final String FORMAT_DEFAULT_VALUE = "log";
+
+  private TopicConstant() {
+    throw new IllegalStateException("Utility class");
+  }
+}

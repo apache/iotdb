@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -40,7 +40,7 @@ import java.util.Map;
 import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2.class})
+@Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipePatternFormatIT extends AbstractPipeDualAutoIT {
   @Test
   public void testPrefixPattern() throws Exception {
@@ -66,6 +66,7 @@ public class IoTDBPipePatternFormatIT extends AbstractPipeDualAutoIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", "root.db.d1.s");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -116,6 +117,7 @@ public class IoTDBPipePatternFormatIT extends AbstractPipeDualAutoIT {
       extractorAttributes.put("extractor.path", "root.**.d1.s*");
       // When path is set, pattern should be ignored
       extractorAttributes.put("extractor.pattern", "root");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -168,6 +170,7 @@ public class IoTDBPipePatternFormatIT extends AbstractPipeDualAutoIT {
 
       extractorAttributes.put("extractor.pattern", "root.**.d1.s*");
       extractorAttributes.put("extractor.pattern.format", "iotdb");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");

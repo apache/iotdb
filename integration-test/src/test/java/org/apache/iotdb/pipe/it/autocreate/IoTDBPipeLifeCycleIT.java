@@ -26,7 +26,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -51,7 +51,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueriesWithRet
 import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueryWithRetry;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2.class})
+@Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
   @Test
   public void testLifeCycleWithHistoryEnabled() throws Exception {

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.rpc.subscription.payload.request;
 
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 

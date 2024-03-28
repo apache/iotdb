@@ -21,7 +21,7 @@ package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.exception.SubscriptionException;
+import org.apache.iotdb.commons.exception.subscription.SubscriptionException;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;

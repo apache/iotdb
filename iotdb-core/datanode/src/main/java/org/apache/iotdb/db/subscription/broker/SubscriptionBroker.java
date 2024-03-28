@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -51,24 +52,31 @@ public class SubscriptionBroker {
 
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
 
-  public List<SerializedEnrichedEvent> poll(Set<String> topicNames) {
+  public List<SerializedEnrichedEvent> poll(Set<String> topicNames, SubscriptionPollTimer timer) {
     List<SerializedEnrichedEvent> events = new ArrayList<>();
-    topicNameToPrefetchingQueue.forEach(
-        (topicName, prefetchingQueue) -> {
-          if (topicNames.contains(topicName)) {
-            SerializedEnrichedEvent event = prefetchingQueue.poll();
-            if (Objects.nonNull(event)) {
-              events.add(event);
-            }
-          }
-        });
+    for (Map.Entry<String, SubscriptionPrefetchingQueue> entry :
+        topicNameToPrefetchingQueue.entrySet()) {
+      String topicName = entry.getKey();
+      SubscriptionPrefetchingQueue prefetchingQueue = entry.getValue();
+      if (topicNames.contains(topicName)) {
+        SerializedEnrichedEvent event = prefetchingQueue.poll(timer);
+        if (Objects.nonNull(event)) {
+          events.add(event);
+        }
+        timer.update();
+        if (timer.isExpired()) {
+          break;
+        }
+      }
+    }
     return events;
   }
 
   public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) {
     for (Map.Entry<String, List<String>> entry : topicNameToSubscriptionCommitIds.entrySet()) {
-      String topicName = entry.getKey();
-      SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
+      final String topicName = entry.getKey();
+      final SubscriptionPrefetchingQueue prefetchingQueue =
+          topicNameToPrefetchingQueue.get(topicName);
       if (Objects.isNull(prefetchingQueue)) {
         LOGGER.warn(
             "Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
@@ -82,7 +90,8 @@ public class SubscriptionBroker {
 
   public void bindPrefetchingQueue(
       String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {
-    SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
+    final SubscriptionPrefetchingQueue prefetchingQueue =
+        topicNameToPrefetchingQueue.get(topicName);
     if (Objects.nonNull(prefetchingQueue)) {
       LOGGER.warn(
           "Subscription: prefetching queue bound to topic [{}] has already existed", topicName);
@@ -93,7 +102,8 @@ public class SubscriptionBroker {
   }
 
   public void unbindPrefetchingQueue(String topicName) {
-    SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
+    final SubscriptionPrefetchingQueue prefetchingQueue =
+        topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
       LOGGER.warn("Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
       return;
@@ -103,17 +113,12 @@ public class SubscriptionBroker {
   }
 
   public void executePrefetch(String topicName) {
-    SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
+    final SubscriptionPrefetchingQueue prefetchingQueue =
+        topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
       LOGGER.warn("Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
       return;
     }
     prefetchingQueue.executePrefetch();
-  }
-
-  public void clearCommittedEvents() {
-    topicNameToPrefetchingQueue
-        .values()
-        .forEach(SubscriptionPrefetchingQueue::clearCommittedEvents);
   }
 }

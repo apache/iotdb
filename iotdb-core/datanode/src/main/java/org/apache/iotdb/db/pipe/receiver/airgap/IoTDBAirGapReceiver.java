@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.receiver.airgap;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
@@ -117,7 +118,14 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
                   .setBody(byteBuffer.slice());
       final TPipeTransferResp resp = agent.receive(req);
 
-      if (resp.getStatus().code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      final TSStatus status = resp.getStatus();
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        ok();
+      } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+          || status.getCode()
+              == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
+        LOGGER.info(
+            "TSStatus:{} is encountered at the air gap receiver, will ignore.", resp.getStatus());
         ok();
       } else {
         LOGGER.warn(
@@ -192,7 +200,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     }
 
     final byte[] dataLengthBytes = BytesUtils.subBytes(doubleIntLengthBytes, 0, INT_LEN);
-    // for double check
+    // For double check
     return Arrays.equals(
             dataLengthBytes, BytesUtils.subBytes(doubleIntLengthBytes, INT_LEN, INT_LEN))
         ? BytesUtils.bytesToInt(dataLengthBytes)

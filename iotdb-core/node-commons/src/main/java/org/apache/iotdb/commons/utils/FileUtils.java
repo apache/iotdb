@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -30,8 +31,10 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -53,23 +56,23 @@ public class FileUtils {
     }
   }
 
-  public static void deleteDirectory(File folder) {
-    if (folder.isDirectory()) {
-      for (File file : folder.listFiles()) {
-        deleteDirectory(file);
+  public static void deleteFileOrDirectory(File file) {
+    if (file.isDirectory()) {
+      for (File subfile : file.listFiles()) {
+        deleteFileOrDirectory(subfile);
       }
     }
     try {
-      Files.delete(folder.toPath());
+      Files.delete(file.toPath());
     } catch (NoSuchFileException | DirectoryNotEmptyException e) {
-      LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(folder.list()), e);
+      LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
     } catch (Exception e) {
-      LOGGER.warn("{}: {}", e.getMessage(), folder.getName(), e);
+      LOGGER.warn("{}: {}", e.getMessage(), file.getName(), e);
     }
   }
 
   public static void deleteDirectoryAndEmptyParent(File folder) {
-    deleteDirectory(folder);
+    deleteFileOrDirectory(folder);
     final File parentFolder = folder.getParentFile();
     if (parentFolder.isDirectory()
         && Objects.requireNonNull(parentFolder.listFiles()).length == 0) {
@@ -117,7 +120,7 @@ public class FileUtils {
             FileOutputStream fileOutputStream = new FileOutputStream(targetFile);
             BufferedOutputStream out = new BufferedOutputStream(fileOutputStream)) {
           byte[] bytes = new byte[BUFFER_SIZE];
-          int size = 0;
+          int size;
           while ((size = in.read(bytes)) > 0) {
             out.write(bytes, 0, size);
           }
@@ -154,7 +157,7 @@ public class FileUtils {
     return sum;
   }
 
-  public static void recursiveDeleteFolder(String path) throws IOException {
+  public static void recursivelyDeleteFolder(String path) throws IOException {
     File file = new File(path);
     if (file.isDirectory()) {
       File[] files = file.listFiles();
@@ -162,7 +165,7 @@ public class FileUtils {
         org.apache.commons.io.FileUtils.deleteDirectory(file);
       } else {
         for (File f : files) {
-          recursiveDeleteFolder(f.getAbsolutePath());
+          recursivelyDeleteFolder(f.getAbsolutePath());
         }
         org.apache.commons.io.FileUtils.deleteDirectory(file);
       }
@@ -211,7 +214,7 @@ public class FileUtils {
         if (unfinishedTarget.isFile()) {
           org.apache.commons.io.FileUtils.delete(unfinishedTarget);
         } else {
-          recursiveDeleteFolder(unfinishedTarget.getAbsolutePath());
+          recursivelyDeleteFolder(unfinishedTarget.getAbsolutePath());
         }
       }
     } catch (IOException e) {
@@ -223,7 +226,7 @@ public class FileUtils {
         "unfinished target file which was created last time has been deleted: {}",
         unfinishedTarget.getAbsolutePath());
 
-    // copy
+    // Copy
     try {
       if (source.isDirectory()) {
         if (!copyDir(source, unfinishedTarget)) {
@@ -238,16 +241,16 @@ public class FileUtils {
       return false;
     }
 
-    // rename
+    // Rename
     if (!unfinishedTarget.renameTo(target)) {
       LOGGER.error("file rename fail");
       return false;
     }
 
-    // delete old file
+    // Delete old file
     try {
       if (source.isDirectory()) {
-        recursiveDeleteFolder(source.getAbsolutePath());
+        recursivelyDeleteFolder(source.getAbsolutePath());
       } else {
         org.apache.commons.io.FileUtils.delete(source);
       }
@@ -266,5 +269,31 @@ public class FileUtils {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }
+  }
+
+  public static File createHardLink(File sourceFile, File hardlink) throws IOException {
+    if (!hardlink.getParentFile().exists() && !hardlink.getParentFile().mkdirs()) {
+      throw new IOException(
+          String.format(
+              "failed to create hardlink %s for file %s: failed to create parent dir %s",
+              hardlink.getPath(), sourceFile.getPath(), hardlink.getParentFile().getPath()));
+    }
+
+    final Path sourcePath = FileSystems.getDefault().getPath(sourceFile.getAbsolutePath());
+    final Path linkPath = FileSystems.getDefault().getPath(hardlink.getAbsolutePath());
+    Files.createLink(linkPath, sourcePath);
+    return hardlink;
+  }
+
+  public static File copyFile(File sourceFile, File targetFile) throws IOException {
+    if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
+      throw new IOException(
+          String.format(
+              "failed to copy file %s to %s: failed to create parent dir %s",
+              sourceFile.getPath(), targetFile.getPath(), targetFile.getParentFile().getPath()));
+    }
+
+    Files.copy(sourceFile.toPath(), targetFile.toPath());
+    return targetFile;
   }
 }

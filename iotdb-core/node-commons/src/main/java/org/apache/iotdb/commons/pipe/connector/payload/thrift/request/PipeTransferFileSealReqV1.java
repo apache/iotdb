@@ -28,7 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public abstract class PipeTransferFileSealReq extends TPipeTransferReq {
+public abstract class PipeTransferFileSealReqV1 extends TPipeTransferReq {
 
   private transient String fileName;
   private transient long fileLength;
@@ -45,7 +45,7 @@ public abstract class PipeTransferFileSealReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  protected PipeTransferFileSealReq convertToTPipeTransferReq(String fileName, long fileLength)
+  protected PipeTransferFileSealReqV1 convertToTPipeTransferReq(String fileName, long fileLength)
       throws IOException {
 
     this.fileName = fileName;
@@ -63,7 +63,7 @@ public abstract class PipeTransferFileSealReq extends TPipeTransferReq {
     return this;
   }
 
-  public PipeTransferFileSealReq translateFromTPipeTransferReq(TPipeTransferReq req) {
+  public PipeTransferFileSealReqV1 translateFromTPipeTransferReq(TPipeTransferReq req) {
 
     fileName = ReadWriteIOUtils.readString(req.body);
     fileLength = ReadWriteIOUtils.readLong(req.body);
@@ -99,7 +99,7 @@ public abstract class PipeTransferFileSealReq extends TPipeTransferReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferFileSealReq that = (PipeTransferFileSealReq) obj;
+    PipeTransferFileSealReqV1 that = (PipeTransferFileSealReqV1) obj;
     return fileName.equals(that.fileName)
         && fileLength == that.fileLength
         && version == that.version

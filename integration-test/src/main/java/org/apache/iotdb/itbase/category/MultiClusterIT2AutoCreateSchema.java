@@ -17,19 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription;
+package org.apache.iotdb.itbase.category;
 
-import java.util.Iterator;
-
-public class IoTDBSubscriptionDataSet implements Iterator<EnrichedRowRecord> {
-
-  @Override
-  public boolean hasNext() {
-    return false;
-  }
-
-  @Override
-  public EnrichedRowRecord next() {
-    return null;
-  }
-}
+public interface MultiClusterIT2AutoCreateSchema {}

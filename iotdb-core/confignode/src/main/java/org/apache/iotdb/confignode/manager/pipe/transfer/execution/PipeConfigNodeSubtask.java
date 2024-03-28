@@ -126,14 +126,6 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     outputPipeConnector.handshake();
   }
 
-  public void start() {
-    try {
-      extractor.start();
-    } catch (Exception e) {
-      throw new PipeException(e.getMessage(), e);
-    }
-  }
-
   /**
    * Try to consume an {@link Event} by the {@link IoTDBConfigRegionExtractor}.
    *

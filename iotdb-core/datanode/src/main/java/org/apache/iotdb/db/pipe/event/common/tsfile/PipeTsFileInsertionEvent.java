@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -48,6 +49,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final TsFileResource resource;
   private File tsFile;
 
+  // This is true iff the modFile exists and should be transferred
+  private boolean isWithMod;
+  private File modFile;
+
   private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
 
@@ -56,11 +61,22 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
-    this(resource, isLoaded, isGeneratedByPipe, null, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    // The modFile must be copied before the event is assigned to the listening pipes
+    this(
+        resource,
+        true,
+        isLoaded,
+        isGeneratedByPipe,
+        null,
+        null,
+        null,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
   }
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource,
+      boolean isWithMod,
       boolean isLoaded,
       boolean isGeneratedByPipe,
       String pipeName,
@@ -72,6 +88,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
     this.resource = resource;
     tsFile = resource.getTsFile();
+
+    final ModificationFile modFile = resource.getModFile();
+    this.isWithMod = isWithMod && modFile.exists();
+    this.modFile = this.isWithMod ? new File(modFile.getFilePath()) : null;
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
@@ -114,7 +134,21 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return tsFile;
   }
 
-  public boolean getIsLoaded() {
+  public File getModFile() {
+    return modFile;
+  }
+
+  public boolean isWithMod() {
+    return isWithMod;
+  }
+
+  // If the previous "isWithMod" is false, the modFile has been set to "null", then the isWithMod
+  // can't be set to true
+  public void disableMod4NonTransferPipes(boolean isWithMod) {
+    this.isWithMod = isWithMod && this.isWithMod;
+  }
+
+  public boolean isLoaded() {
     return isLoaded;
   }
 
@@ -128,12 +162,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
       tsFile = PipeResourceManager.tsfile().increaseFileReference(tsFile, true);
+      if (isWithMod) {
+        modFile = PipeResourceManager.tsfile().increaseFileReference(modFile, false);
+      }
       return true;
     } catch (Exception e) {
       LOGGER.warn(
           String.format(
-              "Increase reference count for TsFile %s error. Holder Message: %s",
-              tsFile.getPath(), holderMessage),
+              "Increase reference count for TsFile %s or modFile %s error. Holder Message: %s",
+              tsFile, modFile, holderMessage),
           e);
       return false;
     }
@@ -143,6 +180,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
       PipeResourceManager.tsfile().decreaseFileReference(tsFile);
+      if (isWithMod) {
+        PipeResourceManager.tsfile().decreaseFileReference(modFile);
+      }
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -181,7 +221,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       long startTime,
       long endTime) {
     return new PipeTsFileInsertionEvent(
-        resource, isLoaded, isGeneratedByPipe, pipeName, pipeTaskMeta, pattern, startTime, endTime);
+        resource,
+        isWithMod,
+        isLoaded,
+        isGeneratedByPipe,
+        pipeName,
+        pipeTaskMeta,
+        pattern,
+        startTime,
+        endTime);
   }
 
   @Override
@@ -259,7 +307,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     }
   }
 
-  /** Release the resource of data container. */
+  /** Release the resource of {@link TsFileInsertionDataContainer}. */
   @Override
   public void close() {
     if (dataContainer != null) {

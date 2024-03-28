@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.subscription.meta.topic;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.rpc.subscription.payload.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -173,8 +173,8 @@ public class TopicMeta {
     Map<String, String> extractorAttributes = new HashMap<>();
     // disable meta sync
     extractorAttributes.put("source", "iotdb-source");
-    extractorAttributes.put("inclusion", "data");
-    extractorAttributes.put("inclusion.exclusion", "deletion");
+    extractorAttributes.put("inclusion", "data.insert");
+    extractorAttributes.put("inclusion.exclusion", "data.delete");
     // path
     extractorAttributes.putAll(config.getAttributesWithSourcePathOrPattern());
     // time

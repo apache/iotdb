@@ -226,12 +226,12 @@ public class PartitionCache {
     storageGroupCacheLock.writeLock().lock();
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      // try to check whether database need to be created
+      // Try to check whether database need to be created
       result.reset();
-      // try to hit database with all missed devices
+      // Try to hit database with all missed devices
       getStorageGroupMap(result, devicePaths, false);
       if (!result.isSuccess()) {
-        // try to get database needed to be created from missed device
+        // Try to get database needed to be created from missed device
         Set<String> storageGroupNamesNeedCreated = new HashSet<>();
         for (String devicePath : result.getMissedDevices()) {
           PartialPath storageGroupNameNeedCreated =
@@ -240,7 +240,7 @@ public class PartitionCache {
           storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
         }
 
-        // try to create databases one by one until done or one database fail
+        // Try to create databases one by one until done or one database fail
         Set<String> successFullyCreatedStorageGroup = new HashSet<>();
         for (String storageGroupName : storageGroupNamesNeedCreated) {
           long startTime = System.nanoTime();
@@ -265,7 +265,7 @@ public class PartitionCache {
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
             successFullyCreatedStorageGroup.add(storageGroupName);
           } else {
-            // try to update cache by databases successfully created
+            // Try to update cache by databases successfully created
             updateStorageCache(successFullyCreatedStorageGroup);
             logger.warn(
                 "[{} Cache] failed to create database {}",
@@ -274,7 +274,7 @@ public class PartitionCache {
             throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
           }
         }
-        // try to update database cache when all databases has already been created
+        // Try to update database cache when all databases has already been created
         updateStorageCache(storageGroupNamesNeedCreated);
         getStorageGroupMap(result, devicePaths, false);
       }

@@ -85,16 +85,16 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
-    return visitGeneralCreateTimeseries(statement, context);
+    return visitGeneralCreateTimeSeries(statement, context);
   }
 
   @Override
   public TSStatus visitCreateAlignedTimeseries(
       CreateAlignedTimeSeriesStatement statement, TSStatus context) {
-    return visitGeneralCreateTimeseries(statement, context);
+    return visitGeneralCreateTimeSeries(statement, context);
   }
 
-  private TSStatus visitGeneralCreateTimeseries(Statement statement, TSStatus context) {
+  private TSStatus visitGeneralCreateTimeSeries(Statement statement, TSStatus context) {
     if (context.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()
         || context.getCode() == TSStatusCode.ALIAS_ALREADY_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
@@ -79,11 +80,15 @@ public class PipeDataRegionAssigner implements Closeable {
                       extractor.getPipePattern(),
                       extractor.getRealtimeDataExtractionStartTime(),
                       extractor.getRealtimeDataExtractionEndTime());
+              final EnrichedEvent innerEvent = copiedEvent.getEvent();
+              if (innerEvent instanceof PipeTsFileInsertionEvent) {
+                ((PipeTsFileInsertionEvent) innerEvent)
+                    .disableMod4NonTransferPipes(extractor.isShouldTransferModFile());
+              }
 
               copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
               extractor.extract(copiedEvent);
 
-              final EnrichedEvent innerEvent = copiedEvent.getEvent();
               if (innerEvent instanceof PipeHeartbeatEvent) {
                 ((PipeHeartbeatEvent) innerEvent).bindPipeName(extractor.getPipeName());
                 ((PipeHeartbeatEvent) innerEvent).onAssigned();

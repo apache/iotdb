@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -39,6 +42,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeTransferTsFileInsertionEventHandler
@@ -51,11 +55,16 @@ public class PipeTransferTsFileInsertionEventHandler
   private final IoTDBDataRegionAsyncConnector connector;
 
   private final File tsFile;
+  private final File modFile;
+  private File currentFile;
+
+  private final boolean transferMod;
+
   private final int readFileBufferSize;
   private final byte[] readBuffer;
   private long position;
 
-  private final RandomAccessFile reader;
+  private RandomAccessFile reader;
 
   private final AtomicBoolean isSealSignalSent;
 
@@ -68,11 +77,18 @@ public class PipeTransferTsFileInsertionEventHandler
     this.connector = connector;
 
     tsFile = event.getTsFile();
+    modFile = event.getModFile();
+    transferMod = event.isWithMod() && connector.supportModsIfIsDataNodeReceiver();
+    currentFile = transferMod ? modFile : tsFile;
+
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     readBuffer = new byte[readFileBufferSize];
     position = 0;
 
-    reader = new RandomAccessFile(tsFile, "r");
+    reader =
+        Objects.nonNull(modFile)
+            ? new RandomAccessFile(modFile, "r")
+            : new RandomAccessFile(tsFile, "r");
 
     isSealSignalSent = new AtomicBoolean(false);
 
@@ -86,19 +102,33 @@ public class PipeTransferTsFileInsertionEventHandler
     final int readLength = reader.read(readBuffer);
 
     if (readLength == -1) {
-      isSealSignalSent.set(true);
-      client.pipeTransfer(
-          PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()), this);
+      if (currentFile == modFile) {
+        currentFile = tsFile;
+        position = 0;
+        reader = new RandomAccessFile(tsFile, "r");
+        transfer(client);
+      } else if (currentFile == tsFile) {
+        isSealSignalSent.set(true);
+        client.pipeTransfer(
+            transferMod
+                ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                    modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
+                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()),
+            this);
+      }
       return;
     }
 
+    final byte[] payload =
+        readLength == readFileBufferSize
+            ? readBuffer
+            : Arrays.copyOfRange(readBuffer, 0, readLength);
     client.pipeTransfer(
-        PipeTransferTsFilePieceReq.toTPipeTransferReq(
-            tsFile.getName(),
-            position,
-            readLength == readFileBufferSize
-                ? readBuffer
-                : Arrays.copyOfRange(readBuffer, 0, readLength)),
+        transferMod
+            ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
+                currentFile.getName(), position, payload)
+            : PipeTransferTsFilePieceReq.toTPipeTransferReq(
+                currentFile.getName(), position, payload),
         this);
     position += readLength;
   }
@@ -107,13 +137,18 @@ public class PipeTransferTsFileInsertionEventHandler
   public void onComplete(TPipeTransferResp response) {
     if (isSealSignalSent.get()) {
       try {
-        connector
-            .statusHandler()
-            .handle(
-                response.getStatus(),
-                String.format(
-                    "Seal file %s error, result status %s.", tsFile, response.getStatus()),
-                tsFile.getName());
+        final TSStatus status = response.getStatus();
+        // Only handle the failed statuses to avoid string format performance overhead
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          connector
+              .statusHandler()
+              .handle(
+                  status,
+                  String.format(
+                      "Seal file %s error, result status %s.", tsFile, response.getStatus()),
+                  tsFile.getName());
+        }
       } catch (Exception e) {
         onError(e);
         return;
@@ -156,9 +191,14 @@ public class PipeTransferTsFileInsertionEventHandler
         reader.seek(position);
         LOGGER.info("Redirect file position to {}.", position);
       } else {
-        connector
-            .statusHandler()
-            .handle(response.getStatus(), response.getStatus().getMessage(), tsFile.getName());
+        final TSStatus status = response.getStatus();
+        // Only handle the failed statuses to avoid string format performance overhead
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          connector
+              .statusHandler()
+              .handle(status, response.getStatus().getMessage(), tsFile.getName());
+        }
       }
 
       transfer(client);

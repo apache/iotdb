@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
+import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -64,7 +65,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** StateMachine for ConfigRegion. */
+/** {@link IStateMachine} for ConfigRegion. */
 public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRegionStateMachine.class);
@@ -197,12 +198,35 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
   @Override
   public boolean takeSnapshot(File snapshotDir) {
-    return executor.takeSnapshot(snapshotDir);
+    if (executor.takeSnapshot(snapshotDir)) {
+      try {
+        PipeConfigNodeAgent.runtime()
+            .listener()
+            .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
+        return true;
+      } catch (IOException e) {
+        LOGGER.error(
+            "Config Region Listening Queue Listen to snapshot failed, the historical data may not be transferred.",
+            e);
+      }
+    }
+    return false;
   }
 
   @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
-    executor.loadSnapshot(latestSnapshotRootDir);
+    try {
+      executor.loadSnapshot(latestSnapshotRootDir);
+      // We recompute the snapshot for pipe listener when loading snapshot
+      // to recover the newest snapshot in cache
+      PipeConfigNodeAgent.runtime()
+          .listener()
+          .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
+    } catch (IOException e) {
+      LOGGER.error(
+          "Config Region Listening Queue Listen to snapshot failed when startup, snapshot will be tried again when starting schema transferring pipes",
+          e);
+    }
   }
 
   @Override

@@ -20,12 +20,17 @@
 package org.apache.iotdb.confignode.manager.pipe.transfer.agent.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
@@ -39,11 +44,16 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSch
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV1Req;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigNodeHandshakeV2Req;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotSealReq;
+import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
+import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
+import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
@@ -52,6 +62,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -61,7 +72,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
@@ -94,9 +111,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
             return handleTransferFilePiece(
                 PipeTransferConfigSnapshotPieceReq.fromTPipeTransferReq(req),
-                req instanceof AirGapPseudoTPipeTransferRequest);
+                req instanceof AirGapPseudoTPipeTransferRequest,
+                false);
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
-            return handleTransferFileSeal(
+            return handleTransferFileSealV2(
                 PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req));
           default:
             break;
@@ -122,7 +140,11 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
   private TPipeTransferResp handleTransferConfigPlan(PipeTransferConfigPlanReq req)
       throws IOException {
-    final ConfigPhysicalPlan plan = ConfigPhysicalPlan.Factory.create(req.body);
+    return new TPipeTransferResp(
+        executePlanAndClassifyExceptions(ConfigPhysicalPlan.Factory.create(req.body)));
+  }
+
+  private TSStatus executePlanAndClassifyExceptions(ConfigPhysicalPlan plan) {
     TSStatus result;
     try {
       result = executePlan(plan);
@@ -134,20 +156,37 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       LOGGER.warn("Exception encountered while executing plan {}: ", plan, e);
       result = exceptionVisitor.process(plan, e);
     }
-    return new TPipeTransferResp(result);
+    return result;
   }
 
   private TSStatus executePlan(ConfigPhysicalPlan plan) throws ConsensusException {
     switch (plan.getType()) {
       case CreateDatabase:
-        ((DatabaseSchemaPlan) plan)
+        if (((DatabaseSchemaPlan) plan)
             .getSchema()
-            .setSchemaReplicationFactor(
-                ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
-        ((DatabaseSchemaPlan) plan)
-            .getSchema()
-            .setDataReplicationFactor(
-                ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
+            .getName()
+            .equals(SchemaConstant.SYSTEM_DATABASE)) {
+          // System database doesn't need transferring
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
+        // Here we only reserve database name and substitute the sender's local information
+        // with the receiver's default configurations
+        TDatabaseSchema schema = ((DatabaseSchemaPlan) plan).getSchema();
+        schema.setSchemaReplicationFactor(
+            ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
+        schema.setDataReplicationFactor(
+            ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
+        schema.setTimePartitionInterval(
+            CommonDescriptor.getInstance().getConfig().getTimePartitionInterval());
+        schema.setMinSchemaRegionGroupNum(
+            ConfigNodeDescriptor.getInstance()
+                .getConf()
+                .getDefaultSchemaRegionGroupNumPerDatabase());
+        schema.setMinDataRegionGroupNum(
+            ConfigNodeDescriptor.getInstance().getConf().getDefaultDataRegionGroupNumPerDatabase());
+        schema.setMaxSchemaRegionGroupNum(schema.getMinSchemaRegionGroupNum());
+        schema.setMaxDataRegionGroupNum(schema.getMinDataRegionGroupNum());
+        schema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
         return configManager.getClusterSchemaManager().setDatabase((DatabaseSchemaPlan) plan, true);
       case AlterDatabase:
         return configManager
@@ -238,8 +277,36 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected TSStatus loadFile(PipeTransferFileSealReq req, String fileAbsolutePath) {
-    // TODO
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  protected TSStatus loadFileV1(PipeTransferFileSealReqV1 req, String fileAbsolutePath) {
+    throw new UnsupportedOperationException(
+        "IoTDBConfigNodeReceiver does not support load file V1.");
+  }
+
+  @Override
+  protected TSStatus loadFileV2(PipeTransferFileSealReqV2 req, List<String> fileAbsolutePaths)
+      throws IOException {
+    final Map<String, String> parameters = req.getParameters();
+    final CNPhysicalPlanGenerator generator =
+        ConfignodeSnapshotParser.translate2PhysicalPlan(
+            Paths.get(fileAbsolutePaths.get(0)),
+            fileAbsolutePaths.size() > 1 ? Paths.get(fileAbsolutePaths.get(1)) : null,
+            CNSnapshotFileType.deserialize(
+                Byte.parseByte(parameters.get(PipeTransferConfigSnapshotSealReq.FILE_TYPE))));
+    if (Objects.isNull(generator)) {
+      throw new IOException(
+          String.format("The config region snapshots %s cannot be parsed.", fileAbsolutePaths));
+    }
+    final Set<ConfigPhysicalPlanType> executionTypes =
+        PipeConfigRegionSnapshotEvent.getConfigPhysicalPlanTypeSet(
+            parameters.get(ColumnHeaderConstant.TYPE));
+    final List<TSStatus> results = new ArrayList<>();
+    while (generator.hasNext()) {
+      final ConfigPhysicalPlan plan = generator.next();
+      if (executionTypes.contains(plan.getType())) {
+        // Here we apply the statements as many as possible
+        results.add(executePlanAndClassifyExceptions(plan));
+      }
+    }
+    return PipeReceiverStatusHandler.getPriorStatus(results);
   }
 }
