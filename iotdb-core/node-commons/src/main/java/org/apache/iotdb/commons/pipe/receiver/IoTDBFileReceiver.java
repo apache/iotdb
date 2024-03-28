@@ -109,7 +109,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       LOGGER.info("Current receiver file dir is null. No need to delete.");
     }
 
-    String receiverFileBaseDir;
+    final String receiverFileBaseDir;
     try {
       receiverFileBaseDir = getReceiverFileBaseDir();
       if (Objects.isNull(receiverFileBaseDir)) {

@@ -152,20 +152,16 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   /**
    * Add a child procedure to execute.
    *
-   * @param subProcedure the child procedure
+   * @param childProcedure the child procedure
    */
-  protected <T extends Procedure<Env>> void addChildProcedure(T... subProcedure) {
-    if (subProcedure == null) {
-      return;
-    }
-    final int len = subProcedure.length;
-    if (len == 0) {
+  protected void addChildProcedure(Procedure<Env> childProcedure) {
+    if (childProcedure == null) {
       return;
     }
     if (subProcList == null) {
-      subProcList = new ArrayList<>(len);
+      subProcList = new ArrayList<>();
     }
-    subProcList.addAll(Arrays.asList(subProcedure).subList(0, len));
+    subProcList.add(childProcedure);
   }
 
   @Override

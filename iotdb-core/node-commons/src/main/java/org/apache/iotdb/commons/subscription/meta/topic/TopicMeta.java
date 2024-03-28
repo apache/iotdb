@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.commons.subscription.meta.topic;
 
-import org.apache.iotdb.commons.subscription.config.TopicConfig;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.rpc.subscription.payload.config.TopicConfig;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -37,32 +38,32 @@ import java.util.Set;
 public class TopicMeta {
 
   private String topicName;
-  private long createTime;
+  private long creationTime;
   private TopicConfig config;
 
-  private Set<String> subscribedConsumerGroupIDs;
+  private Set<String> subscribedConsumerGroupIds;
 
   private TopicMeta() {
     this.config = new TopicConfig(new HashMap<>());
 
-    this.subscribedConsumerGroupIDs = new HashSet<>();
+    this.subscribedConsumerGroupIds = new HashSet<>();
   }
 
-  public TopicMeta(String topicName, long createTime, Map<String, String> topicAttributes) {
+  public TopicMeta(String topicName, long creationTime, Map<String, String> topicAttributes) {
     this.topicName = topicName;
-    this.createTime = createTime;
+    this.creationTime = creationTime;
     this.config = new TopicConfig(topicAttributes);
 
-    this.subscribedConsumerGroupIDs = new HashSet<>();
+    this.subscribedConsumerGroupIds = new HashSet<>();
   }
 
   public TopicMeta deepCopy() {
     final TopicMeta copied = new TopicMeta();
     copied.topicName = topicName;
-    copied.createTime = createTime;
+    copied.creationTime = creationTime;
     copied.config = new TopicConfig(new HashMap<>(config.getAttribute()));
 
-    copied.subscribedConsumerGroupIDs = new HashSet<>(subscribedConsumerGroupIDs);
+    copied.subscribedConsumerGroupIds = new HashSet<>(subscribedConsumerGroupIds);
     return copied;
   }
 
@@ -71,7 +72,7 @@ public class TopicMeta {
   }
 
   public long getCreationTime() {
-    return createTime;
+    return creationTime;
   }
 
   public TopicConfig getConfig() {
@@ -80,19 +81,23 @@ public class TopicMeta {
 
   /** @return true if the consumer group did not already subscribe this topic */
   public boolean addSubscribedConsumerGroup(String consumerGroupId) {
-    return subscribedConsumerGroupIDs.add(consumerGroupId);
+    return subscribedConsumerGroupIds.add(consumerGroupId);
   }
 
   public void removeSubscribedConsumerGroup(String consumerGroupId) {
-    subscribedConsumerGroupIDs.remove(consumerGroupId);
+    subscribedConsumerGroupIds.remove(consumerGroupId);
   }
 
-  public Set<String> getSubscribedConsumerGroupIDs() {
-    return subscribedConsumerGroupIDs;
+  public Set<String> getSubscribedConsumerGroupIds() {
+    return subscribedConsumerGroupIds;
   }
 
   public boolean isSubscribedByConsumerGroup(String consumerGroupId) {
-    return subscribedConsumerGroupIDs.contains(consumerGroupId);
+    return subscribedConsumerGroupIds.contains(consumerGroupId);
+  }
+
+  public boolean hasSubscribedConsumerGroup() {
+    return !subscribedConsumerGroupIds.isEmpty();
   }
 
   ////////////////////////////////////// de/ser ////////////////////////////////
@@ -106,7 +111,7 @@ public class TopicMeta {
 
   public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(topicName, outputStream);
-    ReadWriteIOUtils.write(createTime, outputStream);
+    ReadWriteIOUtils.write(creationTime, outputStream);
 
     ReadWriteIOUtils.write(config.getAttribute().size(), outputStream);
     for (Map.Entry<String, String> entry : config.getAttribute().entrySet()) {
@@ -114,8 +119,8 @@ public class TopicMeta {
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
 
-    ReadWriteIOUtils.write(subscribedConsumerGroupIDs.size(), outputStream);
-    for (String subscribedConsumerGroupID : subscribedConsumerGroupIDs) {
+    ReadWriteIOUtils.write(subscribedConsumerGroupIds.size(), outputStream);
+    for (String subscribedConsumerGroupID : subscribedConsumerGroupIds) {
       ReadWriteIOUtils.write(subscribedConsumerGroupID, outputStream);
     }
   }
@@ -124,7 +129,7 @@ public class TopicMeta {
     final TopicMeta topicMeta = new TopicMeta();
 
     topicMeta.topicName = ReadWriteIOUtils.readString(inputStream);
-    topicMeta.createTime = ReadWriteIOUtils.readLong(inputStream);
+    topicMeta.creationTime = ReadWriteIOUtils.readLong(inputStream);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
@@ -135,7 +140,7 @@ public class TopicMeta {
 
     size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
-      topicMeta.subscribedConsumerGroupIDs.add(ReadWriteIOUtils.readString(inputStream));
+      topicMeta.subscribedConsumerGroupIds.add(ReadWriteIOUtils.readString(inputStream));
     }
 
     return topicMeta;
@@ -145,7 +150,7 @@ public class TopicMeta {
     final TopicMeta topicMeta = new TopicMeta();
 
     topicMeta.topicName = ReadWriteIOUtils.readString(byteBuffer);
-    topicMeta.createTime = ReadWriteIOUtils.readLong(byteBuffer);
+    topicMeta.creationTime = ReadWriteIOUtils.readLong(byteBuffer);
 
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; i++) {
@@ -156,10 +161,37 @@ public class TopicMeta {
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; i++) {
-      topicMeta.subscribedConsumerGroupIDs.add(ReadWriteIOUtils.readString(byteBuffer));
+      topicMeta.subscribedConsumerGroupIds.add(ReadWriteIOUtils.readString(byteBuffer));
     }
 
     return topicMeta;
+  }
+
+  /////////////////////////////// utilities ///////////////////////////////
+
+  public Map<String, String> generateExtractorAttributes() {
+    Map<String, String> extractorAttributes = new HashMap<>();
+    // disable meta sync
+    extractorAttributes.put("source", "iotdb-source");
+    extractorAttributes.put("inclusion", "data");
+    extractorAttributes.put("inclusion.exclusion", "deletion");
+    // path
+    extractorAttributes.putAll(config.getAttributesWithSourcePathOrPattern());
+    // time
+    extractorAttributes.putAll(config.getAttributesWithTimeRange(creationTime));
+    return extractorAttributes;
+  }
+
+  public Map<String, String> generateProcessorAttributes() {
+    return config.getAttributesWithProcessorPrefix();
+  }
+
+  public Map<String, String> generateConnectorAttributes(String consumerGroupId) {
+    Map<String, String> connectorAttributes = new HashMap<>();
+    connectorAttributes.put("sink", "subscription-sink");
+    connectorAttributes.put(PipeConnectorConstant.SINK_TOPIC_KEY, topicName);
+    connectorAttributes.put(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY, consumerGroupId);
+    return connectorAttributes;
   }
 
   ////////////////////////////////////// Object ////////////////////////////////
@@ -173,15 +205,15 @@ public class TopicMeta {
       return false;
     }
     TopicMeta that = (TopicMeta) obj;
-    return createTime == that.createTime
+    return creationTime == that.creationTime
         && Objects.equals(topicName, that.topicName)
         && Objects.equals(config, that.config)
-        && Objects.equals(subscribedConsumerGroupIDs, that.subscribedConsumerGroupIDs);
+        && Objects.equals(subscribedConsumerGroupIds, that.subscribedConsumerGroupIds);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicName, createTime, subscribedConsumerGroupIDs, config);
+    return Objects.hash(topicName, creationTime, subscribedConsumerGroupIds, config);
   }
 
   @Override
@@ -190,12 +222,12 @@ public class TopicMeta {
         + "topicName='"
         + topicName
         + '\''
-        + ", createTime="
-        + createTime
+        + ", creationTime="
+        + creationTime
         + ", config="
         + config
-        + ", subscribedConsumerGroupIDs="
-        + subscribedConsumerGroupIDs
+        + ", subscribedConsumerGroupIds="
+        + subscribedConsumerGroupIds
         + '}';
   }
 }

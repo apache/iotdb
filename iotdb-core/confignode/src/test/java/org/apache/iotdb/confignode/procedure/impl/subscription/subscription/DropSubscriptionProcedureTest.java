@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
-import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
@@ -77,7 +76,7 @@ public class DropSubscriptionProcedureTest {
     topicProcedures.add(new AlterTopicProcedure(new TopicMeta("t1", 1, topicAttributes)));
     topicProcedures.add(new AlterTopicProcedure(new TopicMeta("t2", 2, topicAttributes)));
 
-    List<AbstractOperatePipeProcedureV2> pipeProcedures = new ArrayList<>();
+    List<DropPipeProcedureV2> pipeProcedures = new ArrayList<>();
     pipeProcedures.add(new DropPipeProcedureV2("pipe_topic1"));
     pipeProcedures.add(new DropPipeProcedureV2("pipe_topic2"));
 

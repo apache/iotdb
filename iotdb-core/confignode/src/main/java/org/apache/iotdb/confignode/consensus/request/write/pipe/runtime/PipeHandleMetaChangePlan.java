@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class PipeHandleMetaChangePlan extends ConfigPhysicalPlan {
 
@@ -63,5 +64,22 @@ public class PipeHandleMetaChangePlan extends ConfigPhysicalPlan {
       PipeMeta pipeMeta = PipeMeta.deserialize(buffer);
       pipeMetaList.add(pipeMeta);
     }
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeHandleMetaChangePlan that = (PipeHandleMetaChangePlan) obj;
+    return Objects.equals(this.pipeMetaList, that.pipeMetaList);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(pipeMetaList);
   }
 }

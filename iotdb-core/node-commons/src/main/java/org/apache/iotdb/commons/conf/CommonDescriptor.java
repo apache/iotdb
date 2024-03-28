@@ -202,6 +202,7 @@ public class CommonDescriptor {
             properties.getProperty("datanode_token_timeout", String.valueOf(3 * 60 * 1000))));
 
     loadPipeProps(properties);
+    loadSubscriptionProps(properties);
 
     config.setSchemaEngineMode(
         properties.getProperty("schema_engine_mode", String.valueOf(config.getSchemaEngineMode())));
@@ -510,6 +511,52 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_leader_cache_memory_usage_percentage",
                 String.valueOf(config.getPipeLeaderCacheMemoryUsagePercentage()))));
+  }
+
+  private void loadSubscriptionProps(Properties properties) {
+    config.setSubscriptionSubtaskExecutorMaxThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_subtask_executor_max_thread_num",
+                Integer.toString(config.getSubscriptionSubtaskExecutorMaxThreadNum()))));
+    if (config.getSubscriptionSubtaskExecutorMaxThreadNum() <= 0) {
+      config.setSubscriptionSubtaskExecutorMaxThreadNum(5);
+    }
+    config.setSubscriptionMaxTabletsPerPrefetching(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_max_tablets_per_prefetching",
+                String.valueOf(config.getSubscriptionMaxTabletsPerPrefetching()))));
+    config.setSubscriptionPollMaxBlockingTimeMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_poll_max_blocking_time_ms",
+                String.valueOf(config.getSubscriptionPollMaxBlockingTimeMs()))));
+    config.setSubscriptionSerializeMaxBlockingTimeMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_serialize_max_blocking_time_ms",
+                String.valueOf(config.getSubscriptionSerializeMaxBlockingTimeMs()))));
+    config.setSubscriptionClearMaxBlockingTimeMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_clear_max_blocking_time_ms",
+                String.valueOf(config.getSubscriptionClearMaxBlockingTimeMs()))));
+    config.setSubscriptionLaunchRetryIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_launch_retry_interval_ms",
+                String.valueOf(config.getSubscriptionLaunchRetryIntervalMs()))));
+    config.setSubscriptionClearCommittedEventIntervalSeconds(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_clear_committed_event_interval_seconds",
+                String.valueOf(config.getSubscriptionClearCommittedEventIntervalSeconds()))));
+    config.setSubscriptionRecycleUncommittedEventIntervalSeconds(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_recycle_uncommitted_event_interval_seconds",
+                String.valueOf(config.getSubscriptionRecycleUncommittedEventIntervalSeconds()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

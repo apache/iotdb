@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHand
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
@@ -157,6 +158,16 @@ public class PipeInfo implements SnapshotProcessor {
       LOGGER.error("Failed to alter pipe", e);
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
           .setMessage("Failed to alter pipe, because " + e.getMessage());
+    }
+  }
+
+  public TSStatus operateMultiplePipes(OperateMultiplePipesPlanV2 plans) {
+    try {
+      return pipeTaskInfo.operateMultiplePipes(plans);
+    } catch (Exception e) {
+      LOGGER.error("Failed to create multiple pipes", e);
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+          .setMessage("Failed to create multiple pipes, because " + e.getMessage());
     }
   }
 

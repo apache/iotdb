@@ -20,10 +20,12 @@
 package org.apache.iotdb.confignode.manager.pipe.transfer.execution;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeAbstractConnectorSubtask;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
@@ -88,20 +90,21 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     extractor.customize(extractorParameters, runtimeConfiguration);
   }
 
-  private void initProcessor(Map<String, String> processorAttributes) throws Exception {
+  private void initProcessor(Map<String, String> processorAttributes) {
     final PipeParameters processorParameters = new PipeParameters(processorAttributes);
 
-    // 1. Construct processor
-    processor = PipeConfigNodeAgent.plugin().reflectProcessor(processorParameters);
-
-    // 2. Validate processor parameters
-    processor.validate(new PipeParameterValidator(processorParameters));
-
-    // 3. Customize processor
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
             new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
-    processor.customize(processorParameters, runtimeConfiguration);
+
+    processor =
+        PipeConfigNodeAgent.plugin()
+            .getConfiguredProcessor(
+                processorParameters.getStringOrDefault(
+                    PipeProcessorConstant.PROCESSOR_KEY,
+                    BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName()),
+                processorParameters,
+                runtimeConfiguration);
   }
 
   private void initConnector(Map<String, String> connectorAttributes) throws Exception {

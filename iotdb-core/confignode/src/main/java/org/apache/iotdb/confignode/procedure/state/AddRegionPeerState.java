@@ -17,14 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.subscription.config;
+package org.apache.iotdb.confignode.procedure.state;
 
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-
-import java.util.Map;
-
-public class ConsumerConfig extends PipeParameters {
-  public ConsumerConfig(Map<String, String> attributes) {
-    super(attributes);
-  }
+public enum AddRegionPeerState {
+  CREATE_NEW_REGION_PEER,
+  DO_ADD_REGION_PEER,
+  UPDATE_REGION_LOCATION_CACHE,
 }
