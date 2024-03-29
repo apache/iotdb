@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 
 import org.slf4j.Logger;
@@ -34,11 +33,7 @@ import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class FileUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
@@ -261,52 +256,5 @@ public class FileUtils {
 
     LOGGER.info("move file success, {}", fromTo);
     return true;
-  }
-
-  public static void logBreakpoint(String logContent) {
-    if (CommonDescriptor.getInstance().getConfig().isIntegrationTest()) {
-      logBreakpointImpl(logContent);
-    }
-  }
-
-  public static <T extends Enum<T>> void logBreakpoint(T x) {
-    if (CommonDescriptor.getInstance().getConfig().isIntegrationTest()) {
-      logBreakpointImpl(enumToString(x));
-    }
-  }
-
-  public static <T extends Enum<T>> String enumToString(T x) {
-    return x.getClass().getSimpleName() + "." + x.name();
-  }
-
-  /**
-   * @param s something like "[a, b, c]"
-   * @return List[a,b,c]
-   */
-  public static Set<String> parseKillPoints(String s) {
-    LOGGER.info("raw kill point:{}", s);
-    if (s == null) {
-      LOGGER.info("No kill point");
-      return new HashSet<>();
-    }
-    Set<String> result =
-        Arrays.stream(s.replace("[", "").replace("]", "").replace(" ", "").split(","))
-            .collect(Collectors.toSet());
-    LOGGER.info("Kill point set: {}", result);
-    return result;
-  }
-
-  private static void logBreakpointImpl(String breakPointName) {
-    if (CommonDescriptor.getInstance()
-        .getConfig()
-        .getEnabledKillPoints()
-        .contains(breakPointName)) {
-      LOGGER.info("Kill point: {}", breakPointName);
-      try {
-        TimeUnit.SECONDS.sleep(1);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-    }
   }
 }

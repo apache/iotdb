@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils.KillPoints;
+package org.apache.iotdb.commons.utils.KillPoint;
 
 public enum IoTConsensusRemovePeerKillPoints {
   INIT,

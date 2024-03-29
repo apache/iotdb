@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProper
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import org.slf4j.Logger;
@@ -258,10 +259,10 @@ public class CommonConfig {
   private final long startUpNanosecond = System.nanoTime();
 
   private final boolean isIntegrationTest =
-      System.getProperties().containsKey(IoTDBConstant.IS_INTEGRATION_TEST_PARAM);
+      System.getProperties().containsKey(IoTDBConstant.INTEGRATION_TEST_KILL_POINTS);
 
   private final Set<String> enabledKillPoints =
-      FileUtils.parseKillPoints(System.getProperty(IoTDBConstant.KILL_POINTS));
+      KillPoint.parseKillPoints(System.getProperty(IoTDBConstant.INTEGRATION_TEST_KILL_POINTS));
 
   CommonConfig() {
     // Empty constructor

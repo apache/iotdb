@@ -28,9 +28,10 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.RegisterManager;
-import org.apache.iotdb.commons.utils.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.commons.utils.KillPoints.IoTConsensusRemovePeerKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -255,7 +256,7 @@ public class IoTConsensus implements IConsensus {
             () ->
                 new ConsensusException(
                     String.format("Unable to create consensus dir for group %s", groupId)));
-    FileUtils.logBreakpoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER.toString());
+    KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER);
     if (exist.get()) {
       throw new ConsensusGroupAlreadyExistException(groupId);
     }
@@ -302,7 +303,7 @@ public class IoTConsensus implements IConsensus {
       // step 4: let the new peer load snapshot
       logger.info("[IoTConsensus] trigger new peer to load snapshot...");
       impl.triggerSnapshotLoad(peer);
-      FileUtils.logBreakpoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION.toString());
+      KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
 
       // step 5: notify all the other Peers to build the sync connection to newPeer
       logger.info("[IoTConsensus] notify current peers to build sync log...");
@@ -315,7 +316,7 @@ public class IoTConsensus implements IConsensus {
       // step 7: spot clean
       logger.info("[IoTConsensus] do spot clean...");
       doSpotClean(peer, impl);
-      FileUtils.logBreakpoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE.toString());
+      KillPoint.setKillPoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
 
     } catch (ConsensusGroupModifyPeerException e) {
       try {
@@ -350,7 +351,7 @@ public class IoTConsensus implements IConsensus {
       throw new PeerNotInConsensusGroupException(groupId, peer.toString());
     }
 
-    FileUtils.logBreakpoint(IoTConsensusRemovePeerKillPoints.INIT);
+    KillPoint.setKillPoint(IoTConsensusRemovePeerKillPoints.INIT);
 
     try {
       // let other peers remove the sync channel with target peer
@@ -358,19 +359,19 @@ public class IoTConsensus implements IConsensus {
     } catch (ConsensusGroupModifyPeerException e) {
       throw new ConsensusException(e.getMessage());
     }
-    FileUtils.logBreakpoint(
+    KillPoint.setKillPoint(
         IoTConsensusRemovePeerKillPoints.AFTER_NOTIFY_PEERS_TO_REMOVE_SYNC_LOG_CHANNEL);
 
     try {
       // let target peer reject new write
       impl.inactivePeer(peer);
-      FileUtils.logBreakpoint(IoTConsensusRemovePeerKillPoints.AFTER_INACTIVE_PEER);
+      KillPoint.setKillPoint(IoTConsensusRemovePeerKillPoints.AFTER_INACTIVE_PEER);
       // wait its SyncLog to complete
       impl.waitTargetPeerUntilSyncLogCompleted(peer);
     } catch (ConsensusGroupModifyPeerException e) {
       throw new ConsensusException(e.getMessage());
     }
-    FileUtils.logBreakpoint(IoTConsensusRemovePeerKillPoints.FINISH);
+    KillPoint.setKillPoint(IoTConsensusRemovePeerKillPoints.FINISH);
   }
 
   @Override
