@@ -108,7 +108,7 @@ public class IoTDBSubscriptionBasicIT {
       consumer.open();
       consumer.subscribe("topic1");
       while (true) {
-        Thread.sleep(1000 * retryCount); // wait some time
+        Thread.sleep(1000 * retryCount); // Wait for some time
         final List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
         if (messages.isEmpty()) {
           if (retryCount >= MAX_RETRY_COUNT) {
