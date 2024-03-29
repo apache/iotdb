@@ -182,7 +182,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
               "create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
               "set schema template t1 to root.ln.wf01",
               "create timeseries using schema template on root.ln.wf01.wt01",
-              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN", // Insert large timestamp to avoid deletion by ttl
+              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+              // Insert large timestamp to avoid deletion by ttl
               "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
         return;
       }
