@@ -29,19 +29,28 @@ do_build="false"
 docker_build="docker build "
 do_publish="false"
 docker_publish=""
+image_prefix="apache/iotdb"
 
 function print_usage(){
     echo "Usage: $(basename $0) [option] "
+    echo "	-e is enterprise or not, default is iotdb, specified this option means timechodb"
     echo "	-t image to build, required. Options:$options all"
     echo "	-v iotdb version, default 1.0.0"
     echo "	-u specified the docker image maintainer, default git current user"
     echo "	-c commit id, default git current short commit id"
+    echo "  -s save image to .tar.gz file"
     echo "  -b do maven build of IoTDB from source codes, the version would be get from pom.xml"
     echo "  -p publish to docker hub using buildx"
     exit -1
 }
-while getopts 'v:u:t:c:bph' OPT; do
+while getopts 'v:u:t:c:d:besph' OPT; do
     case $OPT in
+       e) 
+          is_enterprise=true;
+          options="standalone latest";
+          image_prefix="nexus.infra.timecho.com:8343/timecho/iotdb-enterprise";
+          ;;
+       s) save_image=true;;
        t) build_what="$OPTARG";;
        v) version="$OPTARG";;
        u) maintainer="$OPTARG";;
@@ -57,12 +66,16 @@ while getopts 'v:u:t:c:bph' OPT; do
 done
 
 if [[ -z "$build_what" ]]; then echo "-t is required."; print_usage; fi
+if [[ "$is_enterprise" == "true" ]]; then
+    if [[ "$build_what" == "confignode" || "$build_what" == "datanode" ]]; then
+        echo "enterprise edition does not support confignode or datanode option";
+    fi
+fi
 
-version=${version:-"1.0.1-SNAPSHOT"}
+version=${version:-"1.2.0-SNAPSHOT"}
 maintainer=${maintainer:-"$(git config user.name)"}
 build_date="$(date +'%Y-%m-%dT%H:%M:%S+08:00')"
 commit_id=${commit_id:-"$(git rev-parse --short HEAD)"}
-image_prefix="apache/iotdb"
 
 echo "#################################"
 echo "build_what=$build_what"
@@ -84,12 +97,25 @@ function build_single(){
         local image="${image_prefix}:${version}-$1"
     fi
     cd ${current_path}/../
-    ${docker_build} -f ${dockerfile} \
+    if [[ "$is_enterprise" == "true" ]]; then
+      ${docker_build} -f ${dockerfile} \
+	    --build-arg version=${version} \
+            --build-arg target=iotdb-enterprise-${version}-bin \
+        --label build_date="${build_date}" \
+        --label maintainer="${maintainer}" \
+        --label commit_id="${commit_id}" \
+        --no-cache=${nocache} -t ${image} . ${docker_publish}
+    else
+      ${docker_build} -f ${dockerfile} \
 	    --build-arg version=${version} \
         --label build_date="${build_date}" \
         --label maintainer="${maintainer}" \
         --label commit_id="${commit_id}" \
         --no-cache=${nocache} -t ${image} . ${docker_publish}
+    fi
+    if [[ "$save_image" == "true" && "$build_what" != "latest" ]]; then
+        docker save ${image} | gzip > ${image/:/-}-docker.tar.gz 
+    fi
     echo "##### done #####"
 }
 
@@ -122,14 +148,22 @@ function build_iotdb(){
     mvn clean package -pl distribution -am -DskipTests
     if [[ ! -d ${iotdb_zip_path} ]]; then mkdir ${iotdb_zip_path}; fi
     cd ${iotdb_path}/distribution/target
-    cp apache-iotdb-${version}-all-bin.zip apache-iotdb-${version}-confignode-bin.zip apache-iotdb-${version}-datanode-bin.zip ${iotdb_zip_path}/
+    if [[ "$is_enterprise" == "true" ]]; then
+      cp iotdb-enterprise-${version}-bin.zip ${iotdb_zip_path}/
+    else
+      cp apache-iotdb-${version}-all-bin.zip apache-iotdb-${version}-confignode-bin.zip apache-iotdb-${version}-datanode-bin.zip ${iotdb_zip_path}/
+    fi
     do_build=false
     echo "##### done #####"
 }
 
 function check_build(){
     if [[ "$do_build" == "true" ]]; then return; fi
-    local zip_file=${iotdb_zip_path}/apache-iotdb-${version}-$1-bin.zip
+    if [[ "$is_enterprise" == "true" ]]; then
+      local zip_file=${iotdb_zip_path}/iotdb-enterprise-${version}-bin.zip
+    else
+      local zip_file=${iotdb_zip_path}/apache-iotdb-${version}-$1-bin.zip
+    fi
     if [[ ! -f ${zip_file} ]]; then
         echo "File is not found: $zip_file"
         exit -3
@@ -160,13 +194,16 @@ function main() {
         all)
             check_build all
             build_iotdb
+            if [[ "$is_enterprise" == "true" ]]; then
+                options="standalone latest";
+            fi
     	    for b in $options ; do
-	            build_single ${b}
-	        done
+	        build_single ${b}
+	    done
           ;;
 	   *)
-	        echo "bad value  of -t ."
-	        print_usage ;;
+	    echo "bad value of -t "
+	    print_usage ;;
    esac
    echo "clean up docker images"
    docker rmi `docker images|grep '<none>'|awk '{ print $3 }'` > /dev/null 2>&1 || true
