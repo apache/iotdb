@@ -32,6 +32,7 @@ import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
 
 import org.awaitility.Awaitility;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -128,13 +129,11 @@ public class IoTDBSubscriptionBasicIT {
                   consumer.commitSync(messages);
                 }
                 consumer.unsubscribe("topic1");
-                LOGGER.info(
-                    "consumer {} (group {}) exiting...",
-                    consumer.getConsumerId(),
-                    consumer.getConsumerGroupId());
               } catch (final Exception e) {
                 e.printStackTrace();
                 // avoid fail
+              } finally {
+                LOGGER.info("consumer exiting...");
               }
             });
     thread.start();
@@ -146,7 +145,7 @@ public class IoTDBSubscriptionBasicIT {
           .pollDelay(1, TimeUnit.SECONDS)
           .pollInterval(1, TimeUnit.SECONDS)
           .atMost(120, TimeUnit.SECONDS)
-          .untilTrue(new AtomicBoolean(rowCount.get() == 100));
+          .untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
