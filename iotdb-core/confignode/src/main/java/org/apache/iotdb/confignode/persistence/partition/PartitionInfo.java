@@ -706,7 +706,7 @@ public class PartitionInfo implements SnapshotProcessor {
     if (databasePartitionTables.containsKey(database)) {
       return databasePartitionTables.get(database).getAllReplicaSets();
     } else {
-      return new ArrayList<>();
+      return Collections.emptyList();
     }
   }
 
