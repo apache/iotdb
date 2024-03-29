@@ -42,7 +42,7 @@ import java.util.Map;
 public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
   @Test
   public void testAggregator() throws Exception {
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
       // Test the mixture of historical and realtime data
       // Do not fail if the failure has nothing to do with pipe
@@ -56,9 +56,9 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("pattern", "root.ln");
 
@@ -71,7 +71,7 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
 
       connectorAttributes.put("sink", "write-back-sink");
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)

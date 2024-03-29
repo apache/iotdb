@@ -57,6 +57,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
+        .setDefaultSchemaRegionGroupNumPerDatabase(1)
         .setTimestampPrecision("ms")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
@@ -76,13 +77,13 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
   }
 
   @Test
-  public void testPureSchemaInclusion() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+  public void testTemplateInclusion() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       // Do not fail if the failure has nothing to do with pipe
@@ -105,9 +106,9 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "data, schema");
       extractorAttributes.put(
@@ -119,7 +120,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
       connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
       connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -159,12 +160,12 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
 
   @Test
   public void testAuthInclusion() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       // Do not fail if the failure has nothing to do with pipe
@@ -181,14 +182,15 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
               "create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
               "set schema template t1 to root.ln.wf01",
               "create timeseries using schema template on root.ln.wf01.wt01",
-              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN", // Insert large timestamp to avoid deletion by ttl
+              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+              // Insert large timestamp to avoid deletion by ttl
               "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "auth");
 
@@ -198,7 +200,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
       connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
       connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)

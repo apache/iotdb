@@ -133,12 +133,12 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualAutoIT {
 
     constructTablet();
 
-    // init INSERT_NULL_VALUE_MAP
+    // Initialize INSERT_NULL_VALUE_MAP
     INSERT_NULL_VALUE_MAP.put(
         InsertType.SESSION_INSERT_RECORD,
         (isAligned) -> {
           try {
-            try (ISession session = senderEnv.getSessionConnection()) {
+            try (final ISession session = senderEnv.getSessionConnection()) {
               if (isAligned) {
                 session.insertAlignedRecord(deviceId, 3, measurements, types, partialNullValues);
                 session.insertAlignedRecord(deviceId, 4, measurements, types, allNullValues);
@@ -158,7 +158,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualAutoIT {
         InsertType.SESSION_INSERT_TABLET,
         (isAligned) -> {
           try {
-            try (ISession session = senderEnv.getSessionConnection()) {
+            try (final ISession session = senderEnv.getSessionConnection()) {
               if (isAligned) {
                 session.insertAlignedTablet(partialNullTablet);
                 session.insertAlignedTablet(allNullTablet);
@@ -177,7 +177,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualAutoIT {
     INSERT_NULL_VALUE_MAP.put(
         InsertType.SQL_INSERT,
         (isAligned) -> {
-          // partial null
+          // Partial null
           if (!TestUtils.tryExecuteNonQueriesWithRetry(
               senderEnv,
               isAligned
@@ -187,7 +187,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualAutoIT {
                       "insert into root.sg.d1(time, s0, s1) values (3, null, 25.34)"))) {
             fail();
           }
-          // all null
+          // All null
           if (!TestUtils.tryExecuteNonQueriesWithRetry(
               senderEnv,
               isAligned
@@ -201,17 +201,18 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualAutoIT {
   }
 
   private void testInsertNullValueTemplate(
-      InsertType insertType, boolean isAligned, boolean withParsing) throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+      final InsertType insertType, final boolean isAligned, final boolean withParsing)
+      throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -223,7 +224,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualAutoIT {
         extractorAttributes.put("extractor.pattern", "root.sg.d1");
       }
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("test", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
