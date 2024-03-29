@@ -457,6 +457,7 @@ public class DataNode implements DataNodeMBean {
     }
   }
 
+  // TODO: Implement in IConsensus, not in DataNode
   private List<ConsensusGroupId> getConsensusGroupId() {
     List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
     String dataRegionConsensusDir = config.getDataRegionConsensusDir();
@@ -477,6 +478,7 @@ public class DataNode implements DataNodeMBean {
     return consensusGroupIds;
   }
 
+  // TODO: remove for current version, add todo for rename
   private void renameInvalidRegionDirs(List<ConsensusGroupId> invalidConsensusGroupIds) {
     for (ConsensusGroupId consensusGroupId : invalidConsensusGroupIds) {
       File oldDir =

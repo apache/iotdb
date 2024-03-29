@@ -591,6 +591,7 @@ public class IoTConsensusServerImpl {
     }
   }
 
+  // TODO: persist first and then delete old configuration file
   public void persistConfiguration() {
     try {
       try (Stream<Path> stream = Files.walk(Paths.get(storageDir))) {
