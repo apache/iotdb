@@ -226,7 +226,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   private Consumer<IMeasurementMNode<ICachedMNode>> measurementInitProcess() {
     return measurementMNode -> {
-      regionStatistics.addTimeseries(1L);
+      regionStatistics.addMeasurement(1L);
       if (measurementMNode.getOffset() == -1) {
         return;
       }
@@ -606,7 +606,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
       try {
         // update statistics and schemaDataTypeNumMap
-        regionStatistics.addTimeseries(1L);
+        regionStatistics.addMeasurement(1L);
 
         // update tag index
         if (offset != -1 && isRecovering) {
@@ -700,7 +700,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       try {
 
         // Update statistics and schemaDataTypeNumMap
-        regionStatistics.addTimeseries(seriesCount);
+        regionStatistics.addMeasurement(seriesCount);
 
         List<Long> tagOffsets = plan.getTagOffsets();
         for (int i = 0; i < measurements.size(); i++) {
@@ -859,7 +859,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
         if (!isRecovering) {
           writeToMLog(SchemaRegionWritePlanFactory.getCreateLogicalViewPlan(path, viewExpression));
         }
-        regionStatistics.addTimeseries(1L);
+        regionStatistics.addView(1L);
       }
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -933,8 +933,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       throws MetadataException, IOException {
     IMeasurementMNode<ICachedMNode> measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
-
-    regionStatistics.deleteTimeseries(1L);
+    if (measurementMNode.isLogicalView()) {
+      regionStatistics.deleteView(1L);
+    } else {
+      regionStatistics.deleteMeasurement(1L);
+    }
   }
 
   private void recoverRollbackPreDeleteTimeseries(PartialPath path) throws MetadataException {
@@ -946,8 +949,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       throws MetadataException, IOException {
     IMeasurementMNode<ICachedMNode> measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
-
-    regionStatistics.deleteTimeseries(1L);
+    if (measurementMNode.isLogicalView()) {
+      regionStatistics.deleteView(1L);
+    } else {
+      regionStatistics.deleteMeasurement(1L);
+    }
   }
   // endregion
 

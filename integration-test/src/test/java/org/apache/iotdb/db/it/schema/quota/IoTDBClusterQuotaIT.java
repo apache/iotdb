@@ -70,6 +70,30 @@ public abstract class IoTDBClusterQuotaIT extends AbstractSchemaIT {
   }
 
   @Test
+  public void testWithView() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(
+            "create timeseries root.sg1.d3.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+        Assert.fail();
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("capacity has exceeded the cluster quota"));
+      }
+      // delete timeseries and create logical view
+      statement.execute("delete timeseries root.sg1.d0.s0;");
+      statement.execute("create view root.sg1.d1.s2 as root.sg1.d0.s1;");
+      Thread.sleep(2000); // wait heartbeat
+      // now we can create 1 new timeseries
+      statement.execute(
+          "create timeseries root.sg1.d0.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testClusterSchemaQuota() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
