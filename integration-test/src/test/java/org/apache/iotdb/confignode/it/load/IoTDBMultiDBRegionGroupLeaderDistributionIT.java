@@ -53,7 +53,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBRegionGroupLeaderDistributionIT2 {
+public class IoTDBMultiDBRegionGroupLeaderDistributionIT {
 
   private static final int TEST_DATA_NODE_NUM = 3;
   private static final int TEST_REPLICATION_FACTOR = 2;

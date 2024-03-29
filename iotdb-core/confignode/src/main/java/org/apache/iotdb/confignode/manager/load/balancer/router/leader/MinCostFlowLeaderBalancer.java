@@ -233,8 +233,8 @@ public class MinCostFlowLeaderBalancer implements ILeaderBalancer {
     }
 
     /* Construct edges: tDNodes -> tNode */
-    // Map<DataNodeId, possible max leader> Count the possible maximum number of leader in each
-    // DataNode
+    // Map<DataNodeId, possible maximum leader>
+    // Count the possible maximum number of leader in each DataNode
     Map<Integer, Integer> maxLeaderCounter = new TreeMap<>();
     for (TRegionReplicaSet regionReplicaSet : regionReplicaSetMap.values()) {
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
