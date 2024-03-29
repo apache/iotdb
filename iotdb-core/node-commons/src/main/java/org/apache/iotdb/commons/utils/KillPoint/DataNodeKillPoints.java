@@ -17,11 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils.KillPoints;
+package org.apache.iotdb.commons.utils.KillPoint;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-
-@TestOnly
 public enum DataNodeKillPoints {
   ORIGINAL_ADD_PEER_DONE,
   DESTINATION_CREATE_LOCAL_PEER,

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.it.regionmigration.notpass.datanodecrash;
 
-import org.apache.iotdb.commons.utils.KillPoints.DataNodeKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
 
 import org.junit.Test;

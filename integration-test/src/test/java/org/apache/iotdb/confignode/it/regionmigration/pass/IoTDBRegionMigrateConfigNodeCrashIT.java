@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.it.regionmigration.pass;
 
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
@@ -32,7 +33,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class IoTDBRegionMigrateConfigNodeCrashIT extends IoTDBRegionMigrateReliabilityITFramework {
-  // region ConfigNode crash tests
   @Test
   @Ignore
   public void cnCrashDuringPreCheck() throws Exception {
@@ -81,11 +81,11 @@ public class IoTDBRegionMigrateConfigNodeCrashIT extends IoTDBRegionMigrateRelia
     ConcurrentHashMap.KeySetView<String, Boolean> killConfigNodeKeywords = noKillPoints();
     killConfigNodeKeywords.addAll(
         Arrays.stream(AddRegionPeerState.values())
-            .map(Enum::toString)
+            .map(KillPoint::enumToString)
             .collect(Collectors.toList()));
     killConfigNodeKeywords.addAll(
         Arrays.stream(RemoveRegionPeerState.values())
-            .map(Enum::toString)
+            .map(KillPoint::enumToString)
             .collect(Collectors.toList()));
     successTest(1, 1, 1, 2, killConfigNodeKeywords, noKillPoints());
   }

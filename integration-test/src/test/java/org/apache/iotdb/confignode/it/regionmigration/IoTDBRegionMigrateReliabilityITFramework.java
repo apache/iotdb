@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.it.regionmigration;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -306,11 +306,17 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         String line;
         while ((line = reader.readLine()) != null) {
           // if trigger more than one keyword at a same time, test code may have mistakes
-          Assert.assertTrue(killNodeKeywords.stream().filter(line::contains).count() <= 1);
+          Assert.assertTrue(
+              line,
+              killNodeKeywords.stream()
+                      .map(KillPoint::addKillPointPrefix)
+                      .filter(line::contains)
+                      .count()
+                  <= 1);
           String finalLine = line;
           Optional<String> detectedKeyword =
               killNodeKeywords.stream()
-                  .filter(keyword -> finalLine.contains("Kill point: " + keyword))
+                  .filter(keyword -> finalLine.contains(KillPoint.addKillPointPrefix(keyword)))
                   .findAny();
           if (detectedKeyword.isPresent()) {
             // each keyword only trigger once
@@ -331,6 +337,9 @@ public class IoTDBRegionMigrateReliabilityITFramework {
             break;
           }
         }
+      } catch (AssertionError e) {
+        LOGGER.error("gg", e);
+        throw e;
       }
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -487,10 +496,10 @@ public class IoTDBRegionMigrateReliabilityITFramework {
   }
 
   @SafeVarargs
-  protected static <T extends Enum<T>> KeySetView<String, Boolean> buildSet(T... keywords) {
+  protected static <T extends Enum<?>> KeySetView<String, Boolean> buildSet(T... keywords) {
     KeySetView<String, Boolean> result = ConcurrentHashMap.newKeySet();
     result.addAll(
-        Arrays.stream(keywords).map(FileUtils::enumToString).collect(Collectors.toList()));
+        Arrays.stream(keywords).map(KillPoint::enumToString).collect(Collectors.toList()));
     return result;
   }
 }

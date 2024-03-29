@@ -17,8 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils.KillPoints;
+package org.apache.iotdb.commons.utils.KillPoint;
 
-public enum NeverTriggeredKillPoint {
-  NEVER_TRIGGERED_KILL_POINT
+public enum IoTConsensusRemovePeerKillPoints {
+  INIT,
+  AFTER_NOTIFY_PEERS_TO_REMOVE_SYNC_LOG_CHANNEL,
+  AFTER_INACTIVE_PEER,
+  FINISH,
 }
