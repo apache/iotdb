@@ -49,19 +49,21 @@ import static org.junit.Assert.fail;
 public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
   @Test
   public void testValidPipeName() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      List<String> validPipeNames = Arrays.asList("Pipe_1", "null", "`33`", "`root`", "中文", "with");
-      List<String> expectedPipeNames = Arrays.asList("Pipe_1", "null", "33", "root", "中文", "with");
-      for (String pipeName : validPipeNames) {
-        try (Connection connection = senderEnv.getConnection();
-            Statement statement = connection.createStatement()) {
+      final List<String> validPipeNames =
+          Arrays.asList("Pipe_1", "null", "`33`", "`root`", "中文", "with");
+      final List<String> expectedPipeNames =
+          Arrays.asList("Pipe_1", "null", "33", "root", "中文", "with");
+      for (final String pipeName : validPipeNames) {
+        try (final Connection connection = senderEnv.getConnection();
+            final Statement statement = connection.createStatement()) {
           statement.execute(
               String.format(
                   "create pipe %s"
@@ -78,15 +80,15 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       }
 
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
-      for (String pipeName : expectedPipeNames) {
+      for (final String pipeName : expectedPipeNames) {
         Assert.assertTrue(
             showPipeResult.stream()
                 .anyMatch((o) -> o.id.equals(pipeName) && o.state.equals("RUNNING")));
       }
 
-      for (String pipeName : validPipeNames) {
-        try (Connection connection = senderEnv.getConnection();
-            Statement statement = connection.createStatement()) {
+      for (final String pipeName : validPipeNames) {
+        try (final Connection connection = senderEnv.getConnection();
+            final Statement statement = connection.createStatement()) {
           statement.execute(String.format("drop pipe %s", pipeName));
         } catch (SQLException e) {
           e.printStackTrace();
@@ -101,13 +103,13 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testRevertParameterOrder() {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(
           String.format(
               "create pipe p1"
@@ -127,16 +129,16 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testRevertStageOrder() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe p1"
@@ -153,36 +155,36 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       } catch (SQLException ignored) {
       }
 
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(0, showPipeResult.size());
     }
   }
 
   @Test
   public void testMissingStage() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute("create pipe p1");
         fail();
       } catch (SQLException ignored) {
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute("create pipe p2 with extractor ('extractor'='iotdb-extractor')");
         fail();
       } catch (SQLException ignored) {
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             "create pipe p3"
                 + " with extractor ('extractor'='iotdb-extractor')"
@@ -191,8 +193,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       } catch (SQLException ignored) {
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe p4"
@@ -207,8 +209,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe p5"
@@ -225,22 +227,22 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         fail(e.getMessage());
       }
 
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(2, showPipeResult.size());
     }
   }
 
   @Test
   public void testInvalidParameter() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe p1"
@@ -257,8 +259,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe p2"
@@ -274,8 +276,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       } catch (SQLException ignored) {
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe p3"
@@ -291,8 +293,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       } catch (SQLException ignored) {
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe p4"
@@ -308,22 +310,22 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       } catch (SQLException ignored) {
       }
 
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
     }
   }
 
   @Test
   public void testBrackets() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe extractor1"
@@ -339,8 +341,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe extractor2"
@@ -356,8 +358,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe extractor3"
@@ -373,8 +375,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe extractor4"
@@ -389,8 +391,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       } catch (SQLException ignored) {
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe extractor5"
@@ -405,8 +407,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       } catch (SQLException ignored) {
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe processor1"
@@ -422,8 +424,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe processor2"
@@ -439,8 +441,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe processor3"
@@ -456,8 +458,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe processor4"
@@ -472,8 +474,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       } catch (SQLException ignored) {
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe processor5"
@@ -488,8 +490,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       } catch (SQLException ignored) {
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe connector1"
@@ -504,8 +506,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe connector2"
@@ -520,8 +522,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe connector3"
@@ -536,8 +538,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe connector4"
@@ -551,8 +553,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       } catch (SQLException ignored) {
       }
 
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe connector5"
@@ -566,23 +568,23 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       } catch (SQLException ignored) {
       }
 
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(9, showPipeResult.size());
     }
   }
 
   @Test
   public void testShowPipeWithWrongPipeName() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -632,16 +634,16 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testInclusionPattern() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // Empty inclusion
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe p2"
@@ -658,8 +660,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       }
 
       // Invalid inclusion
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe p3"
@@ -676,8 +678,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       }
 
       // Invalid exclusion
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe p4"
@@ -694,8 +696,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       }
 
       // Valid
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
                 "create pipe p4"
@@ -712,7 +714,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         fail(e.getMessage());
       }
 
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
     }
   }
