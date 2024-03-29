@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.it;
+package org.apache.iotdb.subscription.it.dual;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -68,7 +68,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   public void test3C1CGSubscribeOneTopicHistoricalData() throws Exception {
     final long currentTime = System.currentTimeMillis();
 
-    // history data
+    // Historical data
     insertData(currentTime);
 
     createTopics(currentTime);
@@ -93,7 +93,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   public void test3C3CGSubscribeOneTopicHistoricalData() throws Exception {
     final long currentTime = System.currentTimeMillis();
 
-    // history data
+    // Historical data
     insertData(currentTime);
 
     createTopics(currentTime);
@@ -120,7 +120,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   public void test3C1CGSubscribeTwoTopicHistoricalData() throws Exception {
     final long currentTime = System.currentTimeMillis();
 
-    // history data
+    // Historical data
     insertData(currentTime);
 
     createTopics(currentTime);
@@ -146,7 +146,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   public void test3C3CGSubscribeTwoTopicHistoricalData() throws Exception {
     final long currentTime = System.currentTimeMillis();
 
-    // history data
+    // Historical data
     insertData(currentTime);
 
     createTopics(currentTime);
@@ -174,7 +174,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   public void test4C2CGSubscribeTwoTopicHistoricalData() throws Exception {
     final long currentTime = System.currentTimeMillis();
 
-    // history data
+    // Historical data
     insertData(currentTime);
 
     createTopics(currentTime);
@@ -213,7 +213,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
 
-    // realtime data
+    // Realtime data
     insertData(currentTime);
 
     pollMessagesAndCheck(
@@ -320,7 +320,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c4", "cg2", "topic2"));
 
-    // realtime data
+    // Realtime data
     insertData(currentTime);
 
     pollMessagesAndCheck(
@@ -353,7 +353,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   private void insertData(long currentTime) {
     // Insert some data on sender
-    try (ISession session = senderEnv.getSessionConnection()) {
+    try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
             String.format("insert into root.topic1(time, s) values (%s, 1)", i)); // topic1
@@ -484,10 +484,11 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                   e.printStackTrace();
                   // Avoid failure
                 } finally {
-                  LOGGER.info("consumer {} (group {}) exiting...", consumerId, consumerGroupId);
+                  LOGGER.info(
+                      "consumer {} (consumer group {}) exiting...", consumerId, consumerGroupId);
                 }
               },
-              String.format("%s_%s", consumerGroupId, consumerId));
+              String.format("%s_%s", consumerId, consumerGroupId));
       t.start();
       threads.add(t);
     }
@@ -545,7 +546,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
     } else {
       LOGGER.warn("unexpected column name: {}", columnName);
-      throw new Exception("unexpected column name list");
+      throw new Exception("unexpected column name");
     }
   }
 }
