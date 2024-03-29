@@ -71,7 +71,6 @@ public class IoTDBSubscriptionIdempotentIT {
       consumer.subscribe("topic1");
       fail();
     } catch (final Exception ignored) {
-
     } finally {
       LOGGER.info("consumer exiting...");
     }
@@ -89,7 +88,6 @@ public class IoTDBSubscriptionIdempotentIT {
       consumer.unsubscribe("topic1");
       fail();
     } catch (final Exception ignored) {
-
     } finally {
       LOGGER.info("consumer exiting...");
     }

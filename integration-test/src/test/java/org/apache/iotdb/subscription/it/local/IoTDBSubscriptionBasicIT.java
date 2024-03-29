@@ -65,7 +65,7 @@ public class IoTDBSubscriptionBasicIT {
   }
 
   @Test
-  public void testSimpleSubscription() throws Exception {
+  public void testBasicSubscription() throws Exception {
     // Insert some historical data
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
