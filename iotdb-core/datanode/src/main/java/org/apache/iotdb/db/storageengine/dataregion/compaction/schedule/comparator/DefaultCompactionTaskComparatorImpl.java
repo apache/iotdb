@@ -118,23 +118,10 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
 
     // if the number of selected files are different
     // we prefer to execute task with more files
-    if (selectedFilesOfO1.size() != selectedFilesOfO2.size()) {
+    int fileNumDiff = Math.abs(selectedFilesOfO1.size() - selectedFilesOfO2.size());
+    if (2 * fileNumDiff >= Math.min(selectedFilesOfO1.size(), selectedFilesOfO2.size())) {
       return selectedFilesOfO2.size() - selectedFilesOfO1.size();
     }
-
-    // if the serial id of the tasks are different
-    // we prefer task with small serial id
-    if (o1.getSerialId() != o2.getSerialId()) {
-      return o1.getSerialId() > o2.getSerialId() ? 1 : -1;
-    }
-
-    // if the size of selected files are different
-    // we prefer to execute task with smaller file size
-    // because small files can be compacted quickly
-    if (o1.getSelectedFileSize() != o2.getSelectedFileSize()) {
-      return (int) (o1.getSelectedFileSize() - o2.getSelectedFileSize());
-    }
-
     return 0;
   }
 
