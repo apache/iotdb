@@ -40,7 +40,7 @@ import java.util.List;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class ExportCsvTestIT extends AbstractScript {
+public class ExportDataTestIT extends AbstractScript {
   private static String ip;
 
   private static String port;
@@ -80,7 +80,7 @@ public class ExportCsvTestIT extends AbstractScript {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-csv.bat",
+            toolsPath + File.separator + "export-data.bat",
             "-h",
             ip,
             "-p",
@@ -106,7 +106,7 @@ public class ExportCsvTestIT extends AbstractScript {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "export-csv.bat",
+            toolsPath + File.separator + "export-data.bat",
             "-h",
             ip,
             "-p",
@@ -124,6 +124,32 @@ public class ExportCsvTestIT extends AbstractScript {
             "%^errorlevel%");
     builder1.environment().put("CLASSPATH", libPath);
     testOutput(builder1, output1, 0);
+
+    prepareData();
+
+    final String[] output2 = {"Export completely!"};
+    ProcessBuilder builder2 =
+        new ProcessBuilder(
+            "cmd.exe",
+            "/c",
+            toolsPath + File.separator + "export-data.bat",
+            "-h",
+            ip,
+            "-p",
+            port,
+            "-u",
+            "root",
+            "-pw",
+            "root",
+            "-td",
+            "target",
+            "-q",
+            "select * from root.test.t2 where time > 1 and time < 1000000000000",
+            "&",
+            "exit",
+            "%^errorlevel%");
+    builder2.environment().put("CLASSPATH", libPath);
+    testOutput(builder2, output2, 0);
   }
 
   @Override
@@ -133,7 +159,7 @@ public class ExportCsvTestIT extends AbstractScript {
     ProcessBuilder builder =
         new ProcessBuilder(
             "bash",
-            toolsPath + File.separator + "export-csv.sh",
+            toolsPath + File.separator + "export-data.sh",
             "-h",
             ip,
             "-p",
@@ -156,7 +182,7 @@ public class ExportCsvTestIT extends AbstractScript {
     ProcessBuilder builder1 =
         new ProcessBuilder(
             "bash",
-            toolsPath + File.separator + "export-tsfile.sh",
+            toolsPath + File.separator + "export-data.sh",
             "-h",
             ip,
             "-p",
@@ -171,6 +197,29 @@ public class ExportCsvTestIT extends AbstractScript {
             "select * from root.**");
     builder1.environment().put("CLASSPATH", libPath);
     testOutput(builder1, output1, 0);
+
+    prepareData();
+
+    final String[] output2 = {"Export completely!"};
+    // -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
+    ProcessBuilder builder2 =
+        new ProcessBuilder(
+            "bash",
+            toolsPath + File.separator + "export-data.sh",
+            "-h",
+            ip,
+            "-p",
+            port,
+            "-u",
+            "root",
+            "-pw",
+            "root",
+            "-td",
+            "target",
+            "-q",
+            "select * from root.**");
+    builder2.environment().put("CLASSPATH", libPath);
+    testOutput(builder2, output2, 0);
   }
 
   public void prepareData() {

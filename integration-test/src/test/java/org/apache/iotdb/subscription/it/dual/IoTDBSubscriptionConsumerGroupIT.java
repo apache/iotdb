@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.it;
+package org.apache.iotdb.subscription.it.dual;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -68,7 +68,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   public void test3C1CGSubscribeOneTopicHistoricalData() throws Exception {
     final long currentTime = System.currentTimeMillis();
 
-    // history data
+    // Historical data
     insertData(currentTime);
 
     createTopics(currentTime);
@@ -93,7 +93,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   public void test3C3CGSubscribeOneTopicHistoricalData() throws Exception {
     final long currentTime = System.currentTimeMillis();
 
-    // history data
+    // Historical data
     insertData(currentTime);
 
     createTopics(currentTime);
@@ -338,20 +338,20 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   /////////////////////////////// utility ///////////////////////////////
 
-  private void createTopics(long currentTime) {
+  private void createTopics(final long currentTime) {
     // Create topics on sender
     try (final ISession session = senderEnv.getSessionConnection()) {
       session.executeNonQueryStatement(
           String.format("create topic topic1 with ('end-time'='%s')", currentTime - 1));
       session.executeNonQueryStatement(
           String.format("create topic topic2 with ('start-time'='%s')", currentTime));
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
-  private void insertData(long currentTime) {
+  private void insertData(final long currentTime) {
     // Insert some data on sender
     try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
@@ -362,13 +362,13 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                 "insert into root.topic2(time, s) values (%s, 1)", currentTime + i)); // topic2
       }
       session.executeNonQueryStatement("flush");
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
-  private void createPipes(long currentTime) {
+  private void createPipes(final long currentTime) {
     // For sync reference
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -390,7 +390,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -415,7 +415,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -456,7 +456,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                   while (!isClosed.get()) {
                     try {
                       Thread.sleep(1000); // wait some time
-                    } catch (InterruptedException e) {
+                    } catch (final InterruptedException e) {
                       break;
                     }
                     final List<SubscriptionMessage> messages =
@@ -482,14 +482,15 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                     consumer.commitSync(messages);
                   }
                   // No need to unsubscribe
-                } catch (Exception e) {
+                } catch (final Exception e) {
                   e.printStackTrace();
                   // Avoid failure
                 } finally {
-                  LOGGER.info("consumer {} (group {}) exiting...", consumerId, consumerGroupId);
+                  LOGGER.info(
+                      "consumer {} (consumer group {}) exiting...", consumerId, consumerGroupId);
                 }
               },
-              String.format("%s_%s", consumerGroupId, consumerId));
+              String.format("%s_%s", consumerId, consumerGroupId));
       t.start();
       threads.add(t);
     }
@@ -514,12 +515,12 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                       expectedHeaderWithResult);
                 });
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
       isClosed.set(true);
-      for (Thread thread : threads) {
+      for (final Thread thread : threads) {
         thread.join();
       }
     }
@@ -548,7 +549,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
     } else {
       LOGGER.warn("unexpected column name: {}", columnName);
-      throw new Exception("unexpected column name list");
+      throw new Exception("unexpected column name");
     }
   }
 }

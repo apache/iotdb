@@ -72,7 +72,7 @@ public class UpgradeFromWALToConsensusLayerTest {
 
   /**
    * This test will fully start the ConfigManager, generating some files that cannot be cleaned up,
-   * which will affect other tests. Therefore, this test is not enabled by default
+   * which will affect other tests. Therefore, this test is not enabled by default.
    */
   @Ignore
   @Test
@@ -83,7 +83,7 @@ public class UpgradeFromWALToConsensusLayerTest {
     conf.setInternalAddress("127.0.0.1");
     configManager.initConsensusManager();
 
-    // write some raft log to increase index, otherwise cannot take snapshot
+    // write some raft logs to increase index, otherwise cannot take snapshot
     configManager.getConsensusManager().write(new TestOnlyPlan());
     configManager.getConsensusManager().write(new TestOnlyPlan());
     configManager.getConsensusManager().write(new TestOnlyPlan());

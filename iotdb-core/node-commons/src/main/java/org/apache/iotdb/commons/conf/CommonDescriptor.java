@@ -542,11 +542,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_launch_retry_interval_ms",
                 String.valueOf(config.getSubscriptionLaunchRetryIntervalMs()))));
-    config.setSubscriptionRecycleUncommittedEventIntervalSeconds(
+    config.setSubscriptionRecycleUncommittedEventIntervalMs(
         Integer.parseInt(
             properties.getProperty(
-                "subscription_recycle_uncommitted_event_interval_seconds",
-                String.valueOf(config.getSubscriptionRecycleUncommittedEventIntervalSeconds()))));
+                "subscription_recycle_uncommitted_event_interval_ms",
+                String.valueOf(config.getSubscriptionRecycleUncommittedEventIntervalMs()))));
     config.setSubscriptionDefaultPollTimeoutMs(
         Integer.parseInt(
             properties.getProperty(
