@@ -148,7 +148,7 @@ public class Session implements ISession {
       SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
   private static final double CONVERT_THRESHOLD = 0.5;
   private static final double SAMPLE_PROPORTION = 0.05;
-  private static final int MIN_SAMPLE_SIZE = 40;
+  private static final int MIN_SAMPLE_SIZE = 2;
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
