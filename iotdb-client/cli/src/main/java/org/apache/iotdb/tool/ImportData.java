@@ -81,7 +81,7 @@ import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT32;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT64;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 
-public class ImportCsv extends AbstractCsvTool {
+public class ImportData extends AbstractDataTool {
 
   private static final String FILE_ARGS = "f";
   private static final String FILE_NAME = "file or folder";
@@ -401,7 +401,7 @@ public class ImportCsv extends AbstractCsvTool {
 
         for (File subFile : files) {
           if (subFile.isFile()) {
-            if (file.getName().endsWith(SQL_SUFFIXS)) {
+            if (subFile.getName().endsWith(SQL_SUFFIXS)) {
               importFromSqlFile(subFile);
             } else {
               importFromSingleFile(subFile);
@@ -474,8 +474,7 @@ public class ImportCsv extends AbstractCsvTool {
   }
 
   private static void executeSql(String sql) {
-    try {
-      Statement statement = getConnection().createStatement();
+    try (Statement statement = getConnection().createStatement()) {
       statement.setFetchSize(fetchSize);
       statement.execute(sql.trim());
     } catch (SQLException e) {
@@ -486,7 +485,7 @@ public class ImportCsv extends AbstractCsvTool {
 
   private static Connection getConnection() {
     // JDBC driver name and database URL
-    String driver = "org.apache.iotdb.jdbc.IoTDBDriver";
+    String driver = org.apache.iotdb.jdbc.IoTDBDriver.class.getName();
     String url = Config.IOTDB_URL_PREFIX + host + ":" + port + "/";
 
     Connection connection = null;

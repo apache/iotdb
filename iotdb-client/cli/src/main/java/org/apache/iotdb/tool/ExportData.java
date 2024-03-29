@@ -31,6 +31,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.commons.cli.CommandLine;
@@ -54,16 +55,17 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Export CSV file.
  *
  * @version 1.0.0 20170719
  */
-public class ExportCsv extends AbstractCsvTool {
+public class ExportData extends AbstractDataTool {
 
   private static final String TARGET_DIR_ARGS = "td";
   private static final String TARGET_DIR_NAME = "targetDirectory";
@@ -401,46 +403,13 @@ public class ExportCsv extends AbstractCsvTool {
   }
 
   private static void legalCheck(String sql) {
-    String sqlLower = sql.toLowerCase();
-    if (sqlLower.contains("count(")
-        || sqlLower.contains("sum(")
-        || sqlLower.contains("avg(")
-        || sqlLower.contains("extreme(")
-        || sqlLower.contains("max_value(")
-        || sqlLower.contains("min_value(")
-        || sqlLower.contains("first_value(")
-        || sqlLower.contains("last_value(")
-        || sqlLower.contains("max_time(")
-        || sqlLower.contains("min_time(")
-        || sqlLower.contains("stddev(")
-        || sqlLower.contains("stddev_pop(")
-        || sqlLower.contains("stddev_samp(")
-        || sqlLower.contains("variance(")
-        || sqlLower.contains("var_pop(")
-        || sqlLower.contains("var_samp(")
-        || sqlLower.contains("max_by(")
-        || sqlLower.contains("min_by(")) {
+    String aggregatePattern =
+        "\\b(count|sum|avg|extreme|max_value|min_value|first_value|last_value|max_time|min_time|stddev|stddev_pop|stddev_samp|variance|var_pop|var_samp|max_by|min_by)\\b\\s*\\(";
+    Pattern pattern = Pattern.compile(aggregatePattern, Pattern.CASE_INSENSITIVE);
+    Matcher matcher = pattern.matcher(sql.toUpperCase(Locale.ROOT));
+    if (matcher.find()) {
       ioTPrinter.println("The sql you entered is invalid, please don't use aggregate query.");
-      System.exit(CODE_ERROR);
     }
-  }
-
-  public static Map<String, String> getMeasurementType(String devicePath) {
-    Map map = new HashMap<String, String>();
-    try {
-      SessionDataSet sessionDataSet =
-          session.executeQueryStatement("show timeseries " + devicePath + ".*", timeout);
-      while (sessionDataSet.hasNext()) {
-        RowRecord next = sessionDataSet.next();
-        List<Field> fields = next.getFields();
-        map.put(fields.get(0), fields.get(3));
-      }
-      sessionDataSet.closeOperationHandle();
-      ioTPrinter.println("Export completely!");
-    } catch (StatementExecutionException | IoTDBConnectionException e) {
-      ioTPrinter.println("Cannot dump result because: " + e.getMessage());
-    }
-    return map;
   }
 
   public static String timeTrans(Long time) {
@@ -507,24 +476,22 @@ public class ExportCsv extends AbstractCsvTool {
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     int fileIndex = 0;
     String deviceName = null;
+    boolean writeNull = false;
     List<String> seriesList = new ArrayList<>(headers);
-    if (headers.contains("Device")) {
-      seriesList.remove("Time");
-      seriesList.remove("Device");
+    if (CollectionUtils.isEmpty(headers) || headers.size() <= 1) {
+      writeNull = true;
     } else {
-      deviceName = seriesList.get(1);
-      seriesList.remove("Time");
-      if (deviceName.contains(".`")) {
-        deviceName = deviceName.substring(0, deviceName.lastIndexOf(".`"));
-        for (int i = 0; i < seriesList.size(); i++) {
-          String series = seriesList.get(i);
-          seriesList.set(i, series.substring(series.lastIndexOf(".`") + 1));
-        }
+      if (headers.contains("Device")) {
+        seriesList.remove("Time");
+        seriesList.remove("Device");
       } else {
-        deviceName = deviceName.substring(0, deviceName.lastIndexOf("."));
+        Path path = new Path(seriesList.get(1), true);
+        deviceName = path.getDevice();
+        seriesList.remove("Time");
         for (int i = 0; i < seriesList.size(); i++) {
           String series = seriesList.get(i);
-          seriesList.set(i, series.substring(series.lastIndexOf(".") + 1));
+          path = new Path(series, true);
+          seriesList.set(i, path.getMeasurement());
         }
       }
     }
@@ -533,6 +500,9 @@ public class ExportCsv extends AbstractCsvTool {
       int i = 0;
       final String finalFilePath = filePath + "_" + fileIndex + ".sql";
       FileWriter writer = new FileWriter(finalFilePath);
+      if (writeNull) {
+        break;
+      }
       while (i++ < linesPerFile) {
         if (sessionDataSet.hasNext()) {
           RowRecord rowRecord = sessionDataSet.next();

@@ -26,7 +26,7 @@ import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
-import org.apache.iotdb.tool.ImportCsv;
+import org.apache.iotdb.tool.ImportData;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -529,7 +529,7 @@ public abstract class AbstractCli {
     }
     ctx.getPrinter().println(cmd.split(" ")[1]);
     try {
-      return ImportCsv.importFromTargetPath(
+      return ImportData.importFromTargetPath(
           host,
           Integer.parseInt(port),
           username,
