@@ -72,29 +72,29 @@ public class IoTDBSubscriptionBasicIT {
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
       session.executeNonQueryStatement("flush");
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
     // Create topic
-    String host = EnvFactory.getEnv().getIP();
-    int port = Integer.parseInt(EnvFactory.getEnv().getPort());
-    try (SubscriptionSession session = new SubscriptionSession(host, port)) {
+    final String host = EnvFactory.getEnv().getIP();
+    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
       session.createTopic("topic1");
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
     // Subscription
-    AtomicInteger rowCount = new AtomicInteger();
+    final AtomicInteger rowCount = new AtomicInteger();
     final AtomicBoolean isClosed = new AtomicBoolean(false);
     final Thread thread =
         new Thread(
             () -> {
-              try (SubscriptionPullConsumer consumer =
+              try (final SubscriptionPullConsumer consumer =
                   new SubscriptionPullConsumer.Builder()
                       .host(host)
                       .port(port)
@@ -107,10 +107,11 @@ public class IoTDBSubscriptionBasicIT {
                 while (!isClosed.get()) {
                   try {
                     Thread.sleep(1000); // wait some time
-                  } catch (InterruptedException e) {
+                  } catch (final InterruptedException e) {
                     break;
                   }
-                  List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+                  final List<SubscriptionMessage> messages =
+                      consumer.poll(Duration.ofMillis(10000));
                   if (messages.isEmpty()) {
                     continue;
                   }
@@ -131,7 +132,7 @@ public class IoTDBSubscriptionBasicIT {
                     "consumer {} (group {}) exiting...",
                     consumer.getConsumerId(),
                     consumer.getConsumerGroupId());
-              } catch (Exception e) {
+              } catch (final Exception e) {
                 e.printStackTrace();
                 // avoid fail
               }
@@ -146,7 +147,7 @@ public class IoTDBSubscriptionBasicIT {
           .pollInterval(1, TimeUnit.SECONDS)
           .atMost(120, TimeUnit.SECONDS)
           .untilTrue(new AtomicBoolean(rowCount.get() == 100));
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {

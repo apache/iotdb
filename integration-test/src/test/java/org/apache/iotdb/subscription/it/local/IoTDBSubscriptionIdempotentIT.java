@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.subscription.it.local;
 
 import org.apache.iotdb.it.env.EnvFactory;
@@ -51,7 +70,7 @@ public class IoTDBSubscriptionIdempotentIT {
       consumer.open();
       consumer.subscribe("topic1");
       fail();
-    } catch (Exception ignored) {
+    } catch (final Exception ignored) {
 
     } finally {
       LOGGER.info("consumer exiting...");
@@ -69,7 +88,7 @@ public class IoTDBSubscriptionIdempotentIT {
       consumer.open();
       consumer.unsubscribe("topic1");
       fail();
-    } catch (Exception ignored) {
+    } catch (final Exception ignored) {
 
     } finally {
       LOGGER.info("consumer exiting...");
@@ -85,12 +104,12 @@ public class IoTDBSubscriptionIdempotentIT {
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
       session.createTopic("topic1");
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());
     }
 
-    try (SubscriptionPullConsumer consumer =
+    try (final SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
             .host(host)
             .port(port)
@@ -102,7 +121,7 @@ public class IoTDBSubscriptionIdempotentIT {
       consumer.subscribe("topic1");
       // Subscribe existed subscribed topic
       consumer.subscribe("topic1");
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());
     } finally {
@@ -119,12 +138,12 @@ public class IoTDBSubscriptionIdempotentIT {
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
       session.createTopic("topic1");
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());
     }
 
-    try (SubscriptionPullConsumer consumer =
+    try (final SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
             .host(host)
             .port(port)
@@ -135,7 +154,7 @@ public class IoTDBSubscriptionIdempotentIT {
       consumer.open();
       // unsubscribe existed non-subscribed topic
       consumer.unsubscribe("topic1");
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());
     } finally {

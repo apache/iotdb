@@ -72,7 +72,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
             String.format("insert into root.db.t1(time, s1) values (%s, 1)", i));
       }
       session.executeNonQueryStatement("flush");
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -85,7 +85,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       final Properties config = new Properties();
       config.put(TopicConstant.PATH_KEY, "root.db.*.s");
       session.createTopic("topic1", config);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -109,7 +109,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 while (!isClosed.get()) {
                   try {
                     Thread.sleep(1000); // wait some time
-                  } catch (InterruptedException e) {
+                  } catch (final InterruptedException e) {
                     break;
                   }
                   final List<SubscriptionMessage> messages =
@@ -128,7 +128,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   consumer.commitSync(messages);
                 }
                 consumer.unsubscribe("topic1");
-              } catch (Exception e) {
+              } catch (final Exception e) {
                 e.printStackTrace();
                 // Avoid fail
               } finally {
@@ -157,7 +157,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                           }
                         }));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
@@ -178,7 +178,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
             String.format("insert into root.db.d2(time, s) values (%s, 1)", currentTime + i));
       }
       session.executeNonQueryStatement("flush");
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -191,7 +191,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       final Properties config = new Properties();
       config.put(TopicConstant.START_TIME_KEY, currentTime);
       session.createTopic("topic1", config);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -215,7 +215,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 while (!isClosed.get()) {
                   try {
                     Thread.sleep(1000); // wait some time
-                  } catch (InterruptedException e) {
+                  } catch (final InterruptedException e) {
                     break;
                   }
                   final List<SubscriptionMessage> messages =
@@ -234,7 +234,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   consumer.commitSync(messages);
                 }
                 consumer.unsubscribe("topic1");
-              } catch (Exception e) {
+              } catch (final Exception e) {
                 e.printStackTrace();
                 // Avoid fail
               } finally {
@@ -262,7 +262,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                           }
                         }));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
@@ -278,7 +278,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       session.executeNonQueryStatement(
           "insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)");
       session.executeNonQueryStatement("flush");
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -293,7 +293,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       config.put("processor.tumbling-time.interval-seconds", "1");
       config.put("processor.down-sampling.split-file", "true");
       session.createTopic("topic1", config);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -317,7 +317,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 while (!isClosed.get()) {
                   try {
                     Thread.sleep(1000); // wait some time
-                  } catch (InterruptedException e) {
+                  } catch (final InterruptedException e) {
                     break;
                   }
                   final List<SubscriptionMessage> messages =
@@ -336,7 +336,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   consumer.commitSync(messages);
                 }
                 consumer.unsubscribe("topic1");
-              } catch (Exception e) {
+              } catch (final Exception e) {
                 e.printStackTrace();
                 // Avoid fail
               } finally {
@@ -365,7 +365,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                         "Time,root.db.d1.at1,",
                         expectedResSet));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
