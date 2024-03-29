@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.reque
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotPieceReq;
 import org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request.PipeTransferConfigSnapshotSealReq;
+import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -80,10 +81,15 @@ public class PipeConfigNodeThriftRequestTest {
 
   @Test
   public void testPipeTransferConfigSnapshotSealReq() throws IOException {
-    String fileName = "1.temp";
+    String snapshotName = "cluster_schema.bin";
+    String templateInfoName = "template_info.bin";
+    CNSnapshotFileType fileType = CNSnapshotFileType.SCHEMA;
+    // CreateDatabase
+    String typeString = "200";
 
     PipeTransferConfigSnapshotSealReq req =
-        PipeTransferConfigSnapshotSealReq.toTPipeTransferReq(fileName, 100);
+        PipeTransferConfigSnapshotSealReq.toTPipeTransferReq(
+            snapshotName, 100, templateInfoName, 10, fileType, typeString);
     PipeTransferConfigSnapshotSealReq deserializeReq =
         PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req);
 
@@ -91,7 +97,8 @@ public class PipeConfigNodeThriftRequestTest {
     Assert.assertEquals(req.getType(), deserializeReq.getType());
     Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
-    Assert.assertEquals(req.getFileName(), deserializeReq.getFileName());
-    Assert.assertEquals(req.getFileLength(), deserializeReq.getFileLength());
+    Assert.assertEquals(req.getFileNames(), deserializeReq.getFileNames());
+    Assert.assertEquals(req.getFileLengths(), deserializeReq.getFileLengths());
+    Assert.assertEquals(req.getParameters(), deserializeReq.getParameters());
   }
 }

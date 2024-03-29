@@ -57,16 +57,21 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 
 public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDataRegionExtractor {
@@ -97,31 +102,40 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private boolean shouldExtractInsertion;
 
+  private boolean shouldTransferModFile; // Whether to transfer mods
+
   private Queue<TsFileResource> pendingQueue;
 
   @Override
   public void validate(PipeParameterValidator validator) {
     final PipeParameters parameters = validator.getParameters();
 
-    if (parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY)) {
+    if (parameters.hasAnyAttributes(
+        SOURCE_START_TIME_KEY,
+        EXTRACTOR_START_TIME_KEY,
+        SOURCE_END_TIME_KEY,
+        EXTRACTOR_END_TIME_KEY)) {
       isHistoricalExtractorEnabled = true;
 
       try {
         historicalDataExtractionStartTime =
-            parameters.hasAnyAttributes(SOURCE_START_TIME_KEY)
+            parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY)
                 ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
-                    parameters.getStringByKeys(SOURCE_START_TIME_KEY))
+                    parameters.getStringByKeys(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY))
                 : Long.MIN_VALUE;
         historicalDataExtractionEndTime =
-            parameters.hasAnyAttributes(SOURCE_END_TIME_KEY)
+            parameters.hasAnyAttributes(SOURCE_END_TIME_KEY, EXTRACTOR_END_TIME_KEY)
                 ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
-                    parameters.getStringByKeys(SOURCE_END_TIME_KEY))
+                    parameters.getStringByKeys(SOURCE_END_TIME_KEY, EXTRACTOR_END_TIME_KEY))
                 : Long.MAX_VALUE;
         if (historicalDataExtractionStartTime > historicalDataExtractionEndTime) {
           throw new PipeParameterNotValidException(
               String.format(
-                  "%s should be less than or equal to %s.",
-                  SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY));
+                  "%s or %s should be less than or equal to %s or %s.",
+                  SOURCE_START_TIME_KEY,
+                  EXTRACTOR_START_TIME_KEY,
+                  SOURCE_END_TIME_KEY,
+                  EXTRACTOR_END_TIME_KEY));
         }
         return;
       } catch (Exception e) {
@@ -168,6 +182,14 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 EXTRACTOR_HISTORY_END_TIME_KEY,
                 SOURCE_HISTORY_END_TIME_KEY));
       }
+
+      shouldTransferModFile =
+          parameters.getBooleanOrDefault(
+              Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
+              EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE
+                  || // Should extract deletion
+                  DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters)
+                      .getRight());
     } catch (Exception e) {
       // Compatible with the current validation framework
       throw new PipeParameterNotValidException(e.getMessage());
@@ -370,7 +392,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
               // Pin the resource, in case the file is removed by compaction or anything.
               // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
               try {
-                PipeResourceManager.tsfile().pinTsFileResource(resource);
+                PipeResourceManager.tsfile().pinTsFileResource(resource, shouldTransferModFile);
               } catch (IOException e) {
                 LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath());
               }
@@ -455,6 +477,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
             resource,
+            shouldTransferModFile,
             false,
             false,
             pipeName,

@@ -96,7 +96,7 @@ public class TsFileAndModSettleToolTest {
     }
 
     File directory = new File(folder);
-    FileUtils.deleteDirectory(directory);
+    FileUtils.deleteFileOrDirectory(directory);
     try {
       EnvironmentUtils.cleanEnv();
     } catch (Exception e) {

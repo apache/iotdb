@@ -68,7 +68,7 @@ public class SortUtilTest {
   private void clear() {
     File tmpDir = new File(folderPath);
     if (!tmpDir.exists()) return;
-    FileUtils.deleteDirectory(tmpDir);
+    FileUtils.deleteFileOrDirectory(tmpDir);
   }
 
   @Test

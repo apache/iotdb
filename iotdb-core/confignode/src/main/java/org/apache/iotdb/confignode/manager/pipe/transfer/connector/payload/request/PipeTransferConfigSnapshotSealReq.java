@@ -20,12 +20,21 @@
 package org.apache.iotdb.confignode.manager.pipe.transfer.connector.payload.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
-public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReq {
+public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2 {
+
+  public static final String FILE_TYPE = "fileType";
 
   private PipeTransferConfigSnapshotSealReq() {
     // Empty constructor
@@ -39,9 +48,26 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReq {
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferConfigSnapshotSealReq toTPipeTransferReq(
-      String fileName, long fileLength) throws IOException {
+      String snapshotName,
+      long snapshotLength,
+      String templateFileName,
+      long templateFileLength,
+      CNSnapshotFileType fileType,
+      String typeString)
+      throws IOException {
+    final Map<String, String> parameters = new HashMap<>();
+    parameters.put(FILE_TYPE, Byte.toString(fileType.getType()));
+    parameters.put(ColumnHeaderConstant.TYPE, typeString);
     return (PipeTransferConfigSnapshotSealReq)
-        new PipeTransferConfigSnapshotSealReq().convertToTPipeTransferReq(fileName, fileLength);
+        new PipeTransferConfigSnapshotSealReq()
+            .convertToTPipeTransferReq(
+                Objects.nonNull(templateFileName)
+                    ? Arrays.asList(snapshotName, templateFileName)
+                    : Collections.singletonList(snapshotName),
+                Objects.nonNull(templateFileName)
+                    ? Arrays.asList(snapshotLength, templateFileLength)
+                    : Collections.singletonList(snapshotLength),
+                parameters);
   }
 
   public static PipeTransferConfigSnapshotSealReq fromTPipeTransferReq(TPipeTransferReq req) {
@@ -51,9 +77,26 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferBytes(String fileName, long fileLength) throws IOException {
+  public static byte[] toTPipeTransferBytes(
+      String snapshotName,
+      long snapshotLength,
+      String templateFileName,
+      long templateFileLength,
+      CNSnapshotFileType fileType,
+      String typeString)
+      throws IOException {
+    final Map<String, String> parameters = new HashMap<>();
+    parameters.put(FILE_TYPE, Byte.toString(fileType.getType()));
+    parameters.put(ColumnHeaderConstant.TYPE, typeString);
     return new PipeTransferConfigSnapshotSealReq()
-        .convertToTPipeTransferSnapshotSealBytes(fileName, fileLength);
+        .convertToTPipeTransferSnapshotSealBytes(
+            Objects.nonNull(templateFileName)
+                ? Arrays.asList(snapshotName, templateFileName)
+                : Collections.singletonList(snapshotName),
+            Objects.nonNull(templateFileName)
+                ? Arrays.asList(snapshotLength, templateFileLength)
+                : Collections.singletonList(snapshotLength),
+            parameters);
   }
 
   /////////////////////////////// Object ///////////////////////////////

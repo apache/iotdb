@@ -173,8 +173,8 @@ public class TopicMeta {
     Map<String, String> extractorAttributes = new HashMap<>();
     // disable meta sync
     extractorAttributes.put("source", "iotdb-source");
-    extractorAttributes.put("inclusion", "data");
-    extractorAttributes.put("inclusion.exclusion", "deletion");
+    extractorAttributes.put("inclusion", "data.insert");
+    extractorAttributes.put("inclusion.exclusion", "data.delete");
     // path
     extractorAttributes.putAll(config.getAttributesWithSourcePathOrPattern());
     // time

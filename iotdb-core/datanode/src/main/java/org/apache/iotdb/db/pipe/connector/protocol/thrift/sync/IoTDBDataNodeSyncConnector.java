@@ -33,6 +33,7 @@ import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEve
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -112,11 +113,15 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
     }
 
     final TSStatus status = resp.getStatus();
-    receiverStatusHandler.handle(
-        status,
-        String.format(
-            "Transfer data node write plan %s error, result status %s.",
-            pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), status),
-        pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && resp.getStatus().getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          status,
+          String.format(
+              "Transfer data node write plan %s error, result status %s.",
+              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), status),
+          pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
+    }
   }
 }

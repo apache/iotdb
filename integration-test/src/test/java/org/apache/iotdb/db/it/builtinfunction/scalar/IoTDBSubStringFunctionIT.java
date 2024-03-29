@@ -71,8 +71,8 @@ public class IoTDBSubStringFunctionIT {
   }
 
   private static void registerUDF() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(
           "create function constvalue as 'org.apache.iotdb.db.query.udf.example.ConstValue'");
     } catch (SQLException throwable) {
@@ -82,7 +82,7 @@ public class IoTDBSubStringFunctionIT {
 
   @Test
   public void testNewTransformer() {
-    // normal
+    // Normal
     String[] expectedHeader =
         new String[] {
           "Time,root.sg.s1,SUBSTRING(root.sg.s1,1),SUBSTRING(root.sg.s1,1,3),SUBSTRING(root.sg.s1 FROM 1),SUBSTRING(root.sg.s1 FROM 1 FOR 3)"

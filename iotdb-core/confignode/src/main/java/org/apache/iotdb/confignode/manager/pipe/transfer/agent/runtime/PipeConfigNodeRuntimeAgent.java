@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeCopiedFileDirStartupCleaner;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigRegionListeningQueue;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -52,7 +53,10 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     // PipeTasks will not be started here and will be started by "HandleLeaderChange"
     // procedure when the consensus layer notify leader ready
 
-    // TODO: clean sender (connector) hardlink snapshot dir
+    // Clean sender (connector) hardlink snapshot dir
+    PipeConfigNodeCopiedFileDirStartupCleaner.clean();
+
+    // Clean receiver file dir
     PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
 
     isShutdown.set(false);

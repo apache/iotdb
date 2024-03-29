@@ -21,10 +21,9 @@ package org.apache.iotdb.confignode.manager.pipe.transfer.connector.config;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClientManager;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBSslSyncConnector;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
@@ -47,9 +46,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
@@ -63,6 +61,19 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
       String trustStorePwd,
       boolean useLeaderCache) {
     return new IoTDBConfigNodeSyncClientManager(nodeUrls, useSSL, trustStorePath, trustStorePwd);
+  }
+
+  @Override
+  protected PipeTransferFilePieceReq getTransferSingleFilePieceReq(
+      String fileName, long position, byte[] payLoad) {
+    throw new UnsupportedOperationException(
+        "The config region connector does not support transferring single file piece req.");
+  }
+
+  @Override
+  protected PipeTransferFilePieceReq getTransferMultiFilePieceReq(
+      String fileName, long position, byte[] payLoad) throws IOException {
+    return PipeTransferConfigSnapshotPieceReq.toTPipeTransferReq(fileName, position, payLoad);
   }
 
   @Override
@@ -110,74 +121,30 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     }
 
     final TSStatus status = resp.getStatus();
-    receiverStatusHandler.handle(
-        status,
-        String.format(
-            "Transfer config region write plan %s error, result status %s.",
-            writePlanEvent.getConfigPhysicalPlan().getType(), status),
-        writePlanEvent.getConfigPhysicalPlan().toString());
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          status,
+          String.format(
+              "Transfer config region write plan %s error, result status %s.",
+              writePlanEvent.getConfigPhysicalPlan().getType(), status),
+          writePlanEvent.getConfigPhysicalPlan().toString());
+    }
   }
 
   private void doTransfer(PipeConfigRegionSnapshotEvent snapshotEvent)
       throws PipeException, IOException {
-    final File snapshot = snapshotEvent.getSnapshot();
+    final File snapshotFile = snapshotEvent.getSnapshotFile();
+    final File templateFile = snapshotEvent.getTemplateFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
 
-    // 1. Transfer file piece by piece
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
-    final byte[] readBuffer = new byte[readFileBufferSize];
-    long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(snapshot, "r")) {
-      while (true) {
-        final int readLength = reader.read(readBuffer);
-        if (readLength == -1) {
-          break;
-        }
-
-        final PipeTransferFilePieceResp resp;
-        try {
-          resp =
-              PipeTransferFilePieceResp.fromTPipeTransferResp(
-                  clientAndStatus
-                      .getLeft()
-                      .pipeTransfer(
-                          PipeTransferConfigSnapshotPieceReq.toTPipeTransferReq(
-                              snapshot.getName(),
-                              position,
-                              readLength == readFileBufferSize
-                                  ? readBuffer
-                                  : Arrays.copyOfRange(readBuffer, 0, readLength))));
-        } catch (Exception e) {
-          clientAndStatus.setRight(false);
-          throw new PipeConnectionException(
-              String.format(
-                  "Network error when transfer config region snapshot %s, because %s.",
-                  snapshot, e.getMessage()),
-              e);
-        }
-
-        position += readLength;
-
-        // This case only happens when the connection is broken, and the connector is reconnected
-        // to the receiver, then the receiver will redirect the file position to the last position
-        if (resp.getStatus().getCode()
-            == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
-          position = resp.getEndWritingOffset();
-          reader.seek(position);
-          LOGGER.info("Redirect config region snapshot file position to {}.", position);
-          continue;
-        }
-
-        receiverStatusHandler.handle(
-            resp.getStatus(),
-            String.format(
-                "Transfer config region snapshot %s error, result status %s.",
-                snapshot, resp.getStatus()),
-            snapshot.toString());
-      }
+    // 1. Transfer snapshotFile, and template File if exists
+    transferFilePieces(snapshotFile, clientAndStatus, true);
+    if (Objects.nonNull(templateFile)) {
+      transferFilePieces(templateFile, clientAndStatus, true);
     }
-
-    // 2. Transfer file seal signal, which means the file is transferred completely
+    // 2. Transfer file seal signal, which means the snapshots are transferred completely
     final TPipeTransferResp resp;
     try {
       resp =
@@ -185,22 +152,31 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
               .getLeft()
               .pipeTransfer(
                   PipeTransferConfigSnapshotSealReq.toTPipeTransferReq(
-                      snapshot.getName(), snapshot.length()));
+                      snapshotFile.getName(),
+                      snapshotFile.length(),
+                      Objects.nonNull(templateFile) ? templateFile.getName() : null,
+                      Objects.nonNull(templateFile) ? templateFile.length() : 0,
+                      snapshotEvent.getFileType(),
+                      snapshotEvent.toSealTypeString()));
     } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
               "Network error when seal config region snapshot %s, because %s.",
-              snapshot, e.getMessage()),
+              snapshotFile, e.getMessage()),
           e);
     }
 
-    receiverStatusHandler.handle(
-        resp.getStatus(),
-        String.format(
-            "Seal config region snapshot file %s error, result status %s.",
-            snapshot, resp.getStatus()),
-        snapshot.toString());
-    LOGGER.info("Successfully transferred config region snapshot {}.", snapshot);
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && resp.getStatus().getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          resp.getStatus(),
+          String.format(
+              "Seal config region snapshot file %s error, result status %s.",
+              snapshotFile, resp.getStatus()),
+          snapshotFile.toString());
+    }
+    LOGGER.info("Successfully transferred config region snapshot {}.", snapshotFile);
   }
 }

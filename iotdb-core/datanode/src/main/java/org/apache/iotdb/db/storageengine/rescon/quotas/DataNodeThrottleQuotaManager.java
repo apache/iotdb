@@ -68,11 +68,11 @@ public class DataNodeThrottleQuotaManager {
   }
 
   /**
-   * Check the quota for the current (rpc-context) user. Returns the OperationQuota used to get the
-   * available quota and to report the data/usage of the operation.
+   * Check the quota for the current (rpc-context) user. Returns the {@link OperationQuota} used to
+   * get the available quota and to report the data/usage of the operation.
    *
    * @param userName the region where the operation will be performed
-   * @return the OperationQuota
+   * @return the {@link OperationQuota}
    * @throws RpcThrottlingException if the operation cannot be executed due to quota exceeded.
    */
   public OperationQuota checkQuota(String userName, Statement s) throws RpcThrottlingException {
@@ -104,13 +104,13 @@ public class DataNodeThrottleQuotaManager {
   }
 
   /**
-   * Check the quota for the current (rpc-context) user. Returns the OperationQuota used to get the
-   * available quota and to report the data/usage of the operation.
+   * Check the quota for the current (rpc-context) user. Returns the {@link OperationQuota} used to
+   * get the available quota and to report the data/usage of the operation.
    *
    * @param userName userName of the current user
    * @param numWrites number of writes to perform
    * @param numReads number of short-reads to perform
-   * @return the OperationQuota
+   * @return the {@link OperationQuota}
    * @throws RpcThrottlingException if the operation cannot be executed due to quota exceeded.
    */
   private OperationQuota checkQuota(String userName, int numWrites, int numReads, Statement s)
@@ -124,7 +124,7 @@ public class DataNodeThrottleQuotaManager {
    * Returns the quota for an operation.
    *
    * @param userName login user
-   * @return the OperationQuota
+   * @return the {@link OperationQuota}
    */
   private OperationQuota getQuota(String userName) {
     QuotaLimiter userLimiter = throttleQuotaLimit.getUserLimiter(userName);

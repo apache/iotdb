@@ -57,7 +57,7 @@ public class CreateTimeSeriesStatement extends Statement {
 
   public CreateTimeSeriesStatement() {
     super();
-    statementType = StatementType.CREATE_TIMESERIES;
+    statementType = StatementType.CREATE_TIME_SERIES;
   }
 
   @Override

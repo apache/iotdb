@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -29,15 +29,15 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.net.Socket;
-import java.util.Arrays;
+import java.util.Objects;
 
 public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnector {
 
@@ -75,45 +75,50 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
   private void doTransfer(
       Socket socket, PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
       throws PipeException, IOException {
-    final File snapshot = pipeSchemaRegionSnapshotEvent.getSnapshot();
+    final File mtreeSnapshotFile = pipeSchemaRegionSnapshotEvent.getMTreeSnapshotFile();
+    final File tagLogSnapshotFile = pipeSchemaRegionSnapshotEvent.getTagLogSnapshotFile();
 
-    // 1. Transfer file piece by piece
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
-    final byte[] readBuffer = new byte[readFileBufferSize];
-    long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(snapshot, "r")) {
-      while (true) {
-        final int readLength = reader.read(readBuffer);
-        if (readLength == -1) {
-          break;
-        }
-
-        if (!send(
-            socket,
-            PipeTransferSchemaSnapshotPieceReq.toTPipeTransferBytes(
-                snapshot.getName(),
-                position,
-                readLength == readFileBufferSize
-                    ? readBuffer
-                    : Arrays.copyOfRange(readBuffer, 0, readLength)))) {
-          throw new PipeException(
-              String.format(
-                  "Transfer schema region snapshot %s error. Socket %s.", snapshot, socket));
-        } else {
-          position += readLength;
-        }
-      }
+    // 1. Transfer mTreeSnapshotFile, and tLog file if exists
+    transferFilePieces(mtreeSnapshotFile, socket, true);
+    if (Objects.nonNull(tagLogSnapshotFile)) {
+      transferFilePieces(tagLogSnapshotFile, socket, true);
     }
-
-    // 2. Transfer file seal signal, which means the file is transferred completely
+    // 2. Transfer file seal signal, which means the snapshots is transferred completely
     if (!send(
         socket,
         PipeTransferSchemaSnapshotSealReq.toTPipeTransferBytes(
-            snapshot.getName(), snapshot.length()))) {
-      throw new PipeException(
-          String.format("Seal schema region snapshot %s error. Socket %s.", snapshot, socket));
+            mtreeSnapshotFile.getName(),
+            mtreeSnapshotFile.length(),
+            Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
+            Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
+            pipeSchemaRegionSnapshotEvent.getDatabaseName(),
+            pipeSchemaRegionSnapshotEvent.toSealTypeString()))) {
+      final String errorMessage =
+          String.format(
+              "Seal schema region snapshot file %s and %s error. Socket %s.",
+              mtreeSnapshotFile, tagLogSnapshotFile, socket);
+      receiverStatusHandler.handle(
+          new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+              .setMessage(errorMessage),
+          errorMessage,
+          pipeSchemaRegionSnapshotEvent.toString());
     } else {
-      LOGGER.info("Successfully transferred schema region snapshot {}.", snapshot);
+      LOGGER.info(
+          "Successfully transferred schema region snapshot {} and {}.",
+          mtreeSnapshotFile,
+          tagLogSnapshotFile);
     }
+  }
+
+  @Override
+  protected byte[] getTransferSingleFilePieceBytes(String fileName, long position, byte[] payLoad) {
+    throw new UnsupportedOperationException(
+        "The schema region air gap connector does not support transferring single file piece bytes.");
+  }
+
+  @Override
+  protected byte[] getTransferMultiFilePieceBytes(String fileName, long position, byte[] payLoad)
+      throws IOException {
+    return PipeTransferSchemaSnapshotPieceReq.toTPipeTransferBytes(fileName, position, payLoad);
   }
 }

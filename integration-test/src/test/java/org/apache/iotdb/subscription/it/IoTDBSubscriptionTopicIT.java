@@ -22,7 +22,7 @@ package org.apache.iotdb.subscription.it;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
@@ -52,7 +52,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2.class})
+@Category({MultiClusterIT2Subscription.class})
 public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionTopicIT.class);
@@ -60,7 +60,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   @Test
   public void testTopicPathSubscription() throws Exception {
     // insert some history data on sender
-    try (ISession session = senderEnv.getSessionConnection()) {
+    try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
@@ -91,8 +91,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
 
     // subscribe on sender and insert on receiver
-    AtomicBoolean isClosed = new AtomicBoolean(false);
-    Thread thread =
+    final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final Thread thread =
         new Thread(
             () -> {
               try (SubscriptionPullConsumer consumer =
@@ -140,8 +140,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
     // check data on receiver
     try {
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = receiverEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
         Awaitility.await()
             .atMost(100, TimeUnit.SECONDS)
@@ -168,8 +168,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   @Test
   public void testTopicTimeSubscription() throws Exception {
     // insert some history data on sender
-    long currentTime = System.currentTimeMillis();
-    try (ISession session = senderEnv.getSessionConnection()) {
+    final long currentTime = System.currentTimeMillis();
+    try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
@@ -196,11 +196,11 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
 
     // subscribe on sender and insert on receiver
-    AtomicBoolean isClosed = new AtomicBoolean(false);
-    Thread thread =
+    final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final Thread thread =
         new Thread(
             () -> {
-              try (SubscriptionPullConsumer consumer =
+              try (final SubscriptionPullConsumer consumer =
                       new SubscriptionPullConsumer.Builder()
                           .host(host)
                           .port(port)
@@ -208,7 +208,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                           .consumerGroupId("cg1")
                           .autoCommit(false)
                           .buildPullConsumer();
-                  ISession session = receiverEnv.getSessionConnection()) {
+                  final ISession session = receiverEnv.getSessionConnection()) {
                 consumer.open();
                 consumer.subscribe("topic1");
                 while (!isClosed.get()) {
@@ -217,15 +217,16 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   } catch (InterruptedException e) {
                     break;
                   }
-                  List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+                  final List<SubscriptionMessage> messages =
+                      consumer.poll(Duration.ofMillis(10000));
                   if (messages.isEmpty()) {
                     continue;
                   }
-                  for (SubscriptionMessage message : messages) {
-                    SubscriptionSessionDataSets payload =
+                  for (final SubscriptionMessage message : messages) {
+                    final SubscriptionSessionDataSets payload =
                         (SubscriptionSessionDataSets) message.getPayload();
-                    for (Iterator<Tablet> it = payload.tabletIterator(); it.hasNext(); ) {
-                      Tablet tablet = it.next();
+                    for (final Iterator<Tablet> it = payload.tabletIterator(); it.hasNext(); ) {
+                      final Tablet tablet = it.next();
                       session.insertTablet(tablet);
                     }
                   }
@@ -245,8 +246,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
     // check data on receiver
     try {
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = receiverEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
         Awaitility.await()
             .atMost(100, TimeUnit.SECONDS)
@@ -271,8 +272,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
   @Test
   public void testTopicProcessorSubscription() throws Exception {
-    // insert some history data on sender
-    try (ISession session = senderEnv.getSessionConnection()) {
+    // Insert some history data on sender
+    try (final ISession session = senderEnv.getSessionConnection()) {
       session.executeNonQueryStatement(
           "insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)");
       session.executeNonQueryStatement("flush");
@@ -284,9 +285,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     // create topic
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
-    try (SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
-      Properties config = new Properties();
+      final Properties config = new Properties();
       config.put("processor", "tumbling-time-sampling-processor");
       config.put("processor.tumbling-time.interval-seconds", "1");
       config.put("processor.down-sampling.split-file", "true");
@@ -297,11 +298,11 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
 
     // subscribe on sender and insert on receiver
-    AtomicBoolean isClosed = new AtomicBoolean(false);
-    Thread thread =
+    final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final Thread thread =
         new Thread(
             () -> {
-              try (SubscriptionPullConsumer consumer =
+              try (final SubscriptionPullConsumer consumer =
                       new SubscriptionPullConsumer.Builder()
                           .host(host)
                           .port(port)
@@ -309,7 +310,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                           .consumerGroupId("cg1")
                           .autoCommit(false)
                           .buildPullConsumer();
-                  ISession session = receiverEnv.getSessionConnection()) {
+                  final ISession session = receiverEnv.getSessionConnection()) {
                 consumer.open();
                 consumer.subscribe("topic1");
                 while (!isClosed.get()) {
@@ -318,15 +319,16 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   } catch (InterruptedException e) {
                     break;
                   }
-                  List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
+                  final List<SubscriptionMessage> messages =
+                      consumer.poll(Duration.ofMillis(10000));
                   if (messages.isEmpty()) {
                     continue;
                   }
-                  for (SubscriptionMessage message : messages) {
-                    SubscriptionSessionDataSets payload =
+                  for (final SubscriptionMessage message : messages) {
+                    final SubscriptionSessionDataSets payload =
                         (SubscriptionSessionDataSets) message.getPayload();
-                    for (Iterator<Tablet> it = payload.tabletIterator(); it.hasNext(); ) {
-                      Tablet tablet = it.next();
+                    for (final Iterator<Tablet> it = payload.tabletIterator(); it.hasNext(); ) {
+                      final Tablet tablet = it.next();
                       session.insertTablet(tablet);
                     }
                   }
@@ -345,13 +347,13 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     thread.start();
 
     // check data on receiver
-    Set<String> expectedResSet = new HashSet<>();
+    final Set<String> expectedResSet = new HashSet<>();
     expectedResSet.add("1000,1.0,");
     expectedResSet.add("2000,3.0,");
     expectedResSet.add("3000,5.0,");
     try {
-      try (Connection connection = receiverEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+      try (final Connection connection = receiverEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
         Awaitility.await()
             .atMost(100, TimeUnit.SECONDS)

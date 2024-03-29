@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.confignode.manager.pipe.transfer.task;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.pipe.transfer.extractor.ConfigRegionListeningFilter;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,7 +39,7 @@ public class PipeConfigNodeTaskBuilder {
     this.pipeMeta = pipeMeta;
   }
 
-  public Map<Integer, PipeTask> build() {
+  public Map<Integer, PipeTask> build() throws IllegalPathException {
     final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
 
@@ -48,7 +50,10 @@ public class PipeConfigNodeTaskBuilder {
 
       if (consensusGroupId == Integer.MIN_VALUE
           && consensusGroupIdToPipeTaskMeta.getValue().getLeaderNodeId()
-              == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()) {
+              == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()
+          && !ConfigRegionListeningFilter.parseListeningPlanTypeSet(
+                  pipeStaticMeta.getExtractorParameters())
+              .isEmpty()) {
         consensusGroupIdToPipeTaskMap.put(
             consensusGroupId,
             new PipeConfigNodeTask(

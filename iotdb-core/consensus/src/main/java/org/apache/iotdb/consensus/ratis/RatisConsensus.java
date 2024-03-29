@@ -107,7 +107,7 @@ class RatisConsensus implements IConsensus {
 
   private static final Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
 
-  /** the unique net communication endpoint */
+  /** The unique net communication endpoint */
   private final RaftPeer myself;
 
   private final RaftServer server;
@@ -224,7 +224,7 @@ class RatisConsensus implements IConsensus {
     }
   }
 
-  /** launch a consensus write with retry mechanism */
+  /** Launch a consensus write with retry mechanism */
   private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
       throws IOException {
     RaftClientReply reply = null;
