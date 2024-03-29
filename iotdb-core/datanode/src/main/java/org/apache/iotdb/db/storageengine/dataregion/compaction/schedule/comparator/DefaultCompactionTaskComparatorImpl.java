@@ -107,7 +107,9 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
     // if the max file version of o1 and o2 are different
     // we prefer to execute task with greater file version
     // because we want to compact newly written files
-    if (o1.getMaxFileVersion() != o2.getMaxFileVersion()) {
+    if (o1.getDataRegionId().equals(o2.getDataRegionId())
+        && o1.getTimePartition() == o2.getTimePartition()
+        && o1.getMaxFileVersion() != o2.getMaxFileVersion()) {
       return o2.getMaxFileVersion() > o1.getMaxFileVersion() ? 1 : -1;
     }
 
