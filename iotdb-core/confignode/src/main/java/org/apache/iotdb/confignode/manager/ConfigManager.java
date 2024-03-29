@@ -127,6 +127,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -408,6 +410,15 @@ public class ConfigManager implements IManager {
     return new TDataNodeRestartResp()
         .setStatus(status)
         .setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
+  }
+
+  @Override
+  public TDataNodeRemoveRegionResp removeRegion(TDataNodeRemoveRegionReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      status = procedureManager.removeRegion(req);
+    }
+    return new TDataNodeRemoveRegionResp().setStatus(status);
   }
 
   @Override

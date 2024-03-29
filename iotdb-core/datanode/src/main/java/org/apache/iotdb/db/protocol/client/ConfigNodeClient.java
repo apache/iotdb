@@ -61,6 +61,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
@@ -398,6 +400,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.restartDataNode(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TDataNodeRemoveRegionResp removeRegion(TDataNodeRemoveRegionReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.removeRegion(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

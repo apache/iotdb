@@ -66,6 +66,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -253,6 +255,14 @@ public interface IManager {
    *     TSStatusCode#REJECT_NODE_START} otherwise
    */
   TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req);
+
+  /**
+   * Remove Invalid Region.
+   *
+   * @param req TDataNodeRemoveRegionReq
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if submit RemoveRegionPeerProcedure success.
+   */
+  TDataNodeRemoveRegionResp removeRegion(TDataNodeRemoveRegionReq req);
 
   /**
    * Remove DataNode.

@@ -92,6 +92,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
@@ -251,6 +253,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
     // Print log to record the ConfigNode that performs the RestartDatanodeRequest
     LOGGER.info("Execute RestartDataNodeRequest {} with result {}", req, resp);
+
+    return resp;
+  }
+
+  @Override
+  public TDataNodeRemoveRegionResp removeRegion(TDataNodeRemoveRegionReq req) {
+    TDataNodeRemoveRegionResp resp = configManager.removeRegion(req);
+
+    // Print log to record the ConfigNode that performs the RemoveRegionRequest
+    LOGGER.info("Execute RemoveRegionRequest {} with result {}", req, resp);
 
     return resp;
   }
