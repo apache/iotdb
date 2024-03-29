@@ -72,7 +72,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   }
 
   public void checkClientStatusAndTryReconstructIfNecessary() {
-    // reconstruct all dead clients
+    // Reconstruct all dead clients
     for (final Map.Entry<TEndPoint, Pair<IoTDBSyncClient, Boolean>> entry :
         endPoint2ClientAndStatus.entrySet()) {
       if (Boolean.TRUE.equals(entry.getValue().getRight())) {
@@ -82,7 +82,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       reconstructClient(entry.getKey());
     }
 
-    // check whether any clients are available
+    // Check whether any clients are available
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : endPoint2ClientAndStatus.values()) {
       if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
         return;
@@ -113,7 +113,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   }
 
   private void initClientAndStatus(
-      Pair<IoTDBSyncClient, Boolean> clientAndStatus, TEndPoint endPoint) {
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus, final TEndPoint endPoint) {
     try {
       clientAndStatus.setLeft(
           new IoTDBSyncClient(

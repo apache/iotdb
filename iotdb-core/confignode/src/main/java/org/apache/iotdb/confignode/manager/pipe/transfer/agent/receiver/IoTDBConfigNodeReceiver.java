@@ -95,7 +95,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       new PipeConfigPhysicalPlanExceptionVisitor();
 
   @Override
-  public TPipeTransferResp receive(TPipeTransferReq req) {
+  public TPipeTransferResp receive(final TPipeTransferReq req) {
     try {
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {

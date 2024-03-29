@@ -117,7 +117,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  public synchronized TPipeTransferResp receive(TPipeTransferReq req) {
+  public synchronized TPipeTransferResp receive(final TPipeTransferReq req) {
     try {
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
