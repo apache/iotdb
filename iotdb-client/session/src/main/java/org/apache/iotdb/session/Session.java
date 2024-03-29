@@ -148,7 +148,7 @@ public class Session implements ISession {
       SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
   private static final double CONVERT_THRESHOLD = 0.5;
   private static final double SAMPLE_PROPORTION = 0.05;
-  private static final int MIN_SAMPLE_SIZE = 2;
+  private static final int MIN_RECORDS_SIZE = 40;
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
@@ -1914,7 +1914,7 @@ public class Session implements ISession {
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
     // judge if convert records to tablets.
-    if (enableRecordsAutoConvertTablet) {
+    if (enableRecordsAutoConvertTablet && len >= MIN_RECORDS_SIZE) {
       Set<String> deviceSet = new HashSet<>(deviceIds);
       if ((double) deviceSet.size() / deviceIds.size() <= CONVERT_THRESHOLD
           && judgeConvertOfMultiDevice(deviceIds, measurementsList)) {
@@ -1968,7 +1968,7 @@ public class Session implements ISession {
           "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
     }
     // judge if convert records to tablets.
-    if (enableRecordsAutoConvertTablet) {
+    if (enableRecordsAutoConvertTablet && len >= MIN_RECORDS_SIZE) {
       Set<String> deviceSet = new HashSet<>(deviceIds);
       if ((double) deviceSet.size() / deviceIds.size() <= CONVERT_THRESHOLD
           && judgeConvertOfMultiDevice(deviceIds, measurementsList)) {
@@ -2040,7 +2040,9 @@ public class Session implements ISession {
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
-    if (enableRecordsAutoConvertTablet && judgeConvertOfOneDevice(measurementsList)) {
+    if (enableRecordsAutoConvertTablet
+        && len > MIN_RECORDS_SIZE
+        && judgeConvertOfOneDevice(measurementsList)) {
       convertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, false);
       return;
     }
@@ -2191,7 +2193,9 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "times, subMeasurementsList and valuesList's size should be equal");
     }
-    if (enableRecordsAutoConvertTablet && judgeConvertOfOneDevice(measurementsList)) {
+    if (enableRecordsAutoConvertTablet
+        && len >= MIN_RECORDS_SIZE
+        && judgeConvertOfOneDevice(measurementsList)) {
       convertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, true);
       return;
     }
@@ -2783,9 +2787,6 @@ public class Session implements ISession {
   public boolean judgeConvertOfOneDevice(List<List<String>> measurementsList) {
     int size = measurementsList.size();
     int sampleNum = (int) (size * SAMPLE_PROPORTION);
-    if (sampleNum < MIN_SAMPLE_SIZE) {
-      return false;
-    }
     List<Integer> indexList =
         ThreadLocalRandom.current()
             .ints(0, size)
@@ -2857,9 +2858,6 @@ public class Session implements ISession {
       List<String> deviceIds, List<List<String>> measurementsList) {
     int size = deviceIds.size();
     int sampleNum = (int) (size * SAMPLE_PROPORTION);
-    if (sampleNum < MIN_SAMPLE_SIZE) {
-      return false;
-    }
     Map<String, Set<String>> measurementMap = new HashMap<>(sampleNum + 1, 1);
     List<Integer> indexList =
         ThreadLocalRandom.current()
