@@ -181,7 +181,7 @@ public class IoTDBSubscriptionRestartIT {
             });
     thread.start();
 
-    // Check row count
+    // Check timestamps size
     try {
       // Keep retrying if there are execution failures
       Awaitility.await()
