@@ -2041,7 +2041,7 @@ public class Session implements ISession {
       throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
     if (enableRecordsAutoConvertTablet
-        && len > MIN_RECORDS_SIZE
+        && len >= MIN_RECORDS_SIZE
         && judgeConvertOfOneDevice(measurementsList)) {
       convertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, false);
       return;
@@ -2784,7 +2784,7 @@ public class Session implements ISession {
   }
 
   // sample some records and judge weather need to add too many null values to convert to tablet.
-  public boolean judgeConvertOfOneDevice(List<List<String>> measurementsList) {
+  private boolean judgeConvertOfOneDevice(List<List<String>> measurementsList) {
     int size = measurementsList.size();
     int sampleNum = (int) (size * SAMPLE_PROPORTION);
     List<Integer> indexList =
@@ -2809,7 +2809,7 @@ public class Session implements ISession {
   }
 
   // convert records of one device to tablet and insert
-  public void convertToTabletAndInsert(
+  private void convertToTabletAndInsert(
       String deviceId,
       List<Long> times,
       List<List<String>> measurementsList,
@@ -2854,7 +2854,7 @@ public class Session implements ISession {
   }
 
   // sample some records and judge weather need to add too many null values to convert to tablet.
-  public boolean judgeConvertOfMultiDevice(
+  private boolean judgeConvertOfMultiDevice(
       List<String> deviceIds, List<List<String>> measurementsList) {
     int size = deviceIds.size();
     int sampleNum = (int) (size * SAMPLE_PROPORTION);
@@ -2885,7 +2885,7 @@ public class Session implements ISession {
   }
 
   // convert records of multiple devices to tablets and insert
-  public void convertToTabletsAndInsert(
+  private void convertToTabletsAndInsert(
       List<String> deviceIds,
       List<Long> times,
       List<List<String>> measurementsList,
@@ -2950,7 +2950,7 @@ public class Session implements ISession {
   }
 
   // add one record to  tablet.
-  public void addRecordToTablet(
+  private void addRecordToTablet(
       Tablet tablet,
       Long timestamp,
       List<String> measurements,
