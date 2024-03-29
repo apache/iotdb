@@ -59,7 +59,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
   @Test
   public void testTopicPathSubscription() throws Exception {
-    // insert some history data on sender
+    // Insert some historical data on sender
     try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
@@ -77,7 +77,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       fail(e.getMessage());
     }
 
-    // create topic on sender
+    // Create topic on sender
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
     try (SubscriptionSession session = new SubscriptionSession(host, port)) {
@@ -90,7 +90,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       fail(e.getMessage());
     }
 
-    // subscribe on sender and insert on receiver
+    // Subscribe on sender and insert on receiver
     final AtomicBoolean isClosed = new AtomicBoolean(false);
     final Thread thread =
         new Thread(
@@ -138,7 +138,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
             });
     thread.start();
 
-    // check data on receiver
+    // Check data on receiver
     try {
       try (final Connection connection = receiverEnv.getConnection();
           final Statement statement = connection.createStatement()) {
@@ -167,7 +167,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
   @Test
   public void testTopicTimeSubscription() throws Exception {
-    // insert some history data on sender
+    // Insert some history data on sender
     final long currentTime = System.currentTimeMillis();
     try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
@@ -182,7 +182,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       fail(e.getMessage());
     }
 
-    // create topic on sender
+    // Create topic on sender
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
     try (SubscriptionSession session = new SubscriptionSession(host, port)) {
@@ -195,7 +195,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       fail(e.getMessage());
     }
 
-    // subscribe on sender and insert on receiver
+    // Subscribe on sender and insert on receiver
     final AtomicBoolean isClosed = new AtomicBoolean(false);
     final Thread thread =
         new Thread(
@@ -239,12 +239,12 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                     consumer.getConsumerGroupId());
               } catch (Exception e) {
                 e.printStackTrace();
-                // avoid fail
+                // Avoid failure
               }
             });
     thread.start();
 
-    // check data on receiver
+    // Check data on receiver
     try {
       try (final Connection connection = receiverEnv.getConnection();
           final Statement statement = connection.createStatement()) {
@@ -282,7 +282,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       fail(e.getMessage());
     }
 
-    // create topic
+    // Create topic
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
@@ -297,7 +297,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       fail(e.getMessage());
     }
 
-    // subscribe on sender and insert on receiver
+    // Subscribe on sender and insert on receiver
     final AtomicBoolean isClosed = new AtomicBoolean(false);
     final Thread thread =
         new Thread(
@@ -346,7 +346,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
             });
     thread.start();
 
-    // check data on receiver
+    // Check data on receiver
     final Set<String> expectedResSet = new HashSet<>();
     expectedResSet.add("1000,1.0,");
     expectedResSet.add("2000,3.0,");

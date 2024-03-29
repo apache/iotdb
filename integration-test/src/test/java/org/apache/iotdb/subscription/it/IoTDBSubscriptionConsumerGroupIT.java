@@ -120,7 +120,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   public void test3C1CGSubscribeTwoTopicHistoricalData() throws Exception {
     final long currentTime = System.currentTimeMillis();
 
-    // history data
+    // Historical data
     insertData(currentTime);
 
     createTopics(currentTime);
@@ -146,7 +146,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   public void test3C3CGSubscribeTwoTopicHistoricalData() throws Exception {
     final long currentTime = System.currentTimeMillis();
 
-    // history data
+    // Historical data
     insertData(currentTime);
 
     createTopics(currentTime);
@@ -174,7 +174,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   public void test4C2CGSubscribeTwoTopicHistoricalData() throws Exception {
     final long currentTime = System.currentTimeMillis();
 
-    // history data
+    // Historical data
     insertData(currentTime);
 
     createTopics(currentTime);
@@ -213,7 +213,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     consumers.add(createConsumerAndSubscribeTopics("c2", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
 
-    // realtime data
+    // Realtime data
     insertData(currentTime);
 
     pollMessagesAndCheck(
@@ -320,7 +320,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     consumers.add(createConsumerAndSubscribeTopics("c3", "cg1", "topic1"));
     consumers.add(createConsumerAndSubscribeTopics("c4", "cg2", "topic2"));
 
-    // realtime data
+    // Realtime data
     insertData(currentTime);
 
     pollMessagesAndCheck(
@@ -353,7 +353,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   private void insertData(long currentTime) {
     // Insert some data on sender
-    try (ISession session = senderEnv.getSessionConnection()) {
+    try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
             String.format("insert into root.topic1(time, s) values (%s, 1)", i)); // topic1
@@ -422,7 +422,8 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   private SubscriptionPullConsumer createConsumerAndSubscribeTopics(
-      String consumerId, String consumerGroupId, String... topicNames) throws Exception {
+      final String consumerId, final String consumerGroupId, final String... topicNames)
+      throws Exception {
     final SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
             .host(senderEnv.getIP())
@@ -437,7 +438,8 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   private void pollMessagesAndCheck(
-      List<SubscriptionPullConsumer> consumers, Map<String, String> expectedHeaderWithResult)
+      final List<SubscriptionPullConsumer> consumers,
+      final Map<String, String> expectedHeaderWithResult)
       throws Exception {
     final AtomicBoolean isClosed = new AtomicBoolean(false);
     final AtomicBoolean receiverCrashed = new AtomicBoolean(false);
@@ -447,7 +449,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       final int index = i;
       final String consumerId = consumers.get(index).getConsumerId();
       final String consumerGroupId = consumers.get(index).getConsumerGroupId();
-      Thread t =
+      final Thread t =
           new Thread(
               () -> {
                 try (final SubscriptionPullConsumer consumer = consumers.get(index)) {
@@ -525,7 +527,8 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
   /** @return false -> receiver crashed */
   private boolean insertRowRecordEnrichedByConsumerGroupId(
-      List<String> columnNameList, RowRecord record, String consumerGroupId) throws Exception {
+      final List<String> columnNameList, final RowRecord record, final String consumerGroupId)
+      throws Exception {
     if (columnNameList.size() != 2) {
       LOGGER.warn("unexpected column name list: {}", columnNameList);
       throw new Exception("unexpected column name list");
