@@ -688,7 +688,7 @@ public class PartitionInfo implements SnapshotProcessor {
     if (databasePartitionTables.containsKey(database)) {
       return databasePartitionTables.get(database).getAllReplicaSets();
     } else {
-      return new ArrayList<>();
+      return Collections.emptyList();
     }
   }
 
@@ -704,7 +704,7 @@ public class PartitionInfo implements SnapshotProcessor {
     if (databasePartitionTables.containsKey(database)) {
       return databasePartitionTables.get(database).getAllReplicaSets(type);
     } else {
-      return new ArrayList<>();
+      return Collections.emptyList();
     }
   }
 
@@ -736,7 +736,7 @@ public class PartitionInfo implements SnapshotProcessor {
     if (databasePartitionTables.containsKey(database)) {
       return databasePartitionTables.get(database).getReplicaSets(regionGroupIds);
     } else {
-      return new ArrayList<>();
+      return Collections.emptyList();
     }
   }
 
