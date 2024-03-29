@@ -20,13 +20,13 @@
 package org.apache.iotdb.confignode.it.regionmigration.notpass.datanodecrash;
 
 import org.apache.iotdb.commons.utils.KillPoints.IoTConsensusRemovePeerKillPoints;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityTestFramework;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
 
 import org.junit.Test;
 
-public class CoordinatorRemoveRemotePeerCrashIT extends IoTDBRegionMigrateReliabilityTestFramework {
+public class CoordinatorRemoveRemotePeerCrashIT extends IoTDBRegionMigrateReliabilityITFramework {
   private <T extends Enum<T>> void base(T... dataNodeKillPoints) throws Exception {
-    generalTest(1, 1, 1, 2, noKillPoints(), buildSet(dataNodeKillPoints));
+    successTest(1, 1, 1, 2, noKillPoints(), buildSet(dataNodeKillPoints));
   }
 
   @Test

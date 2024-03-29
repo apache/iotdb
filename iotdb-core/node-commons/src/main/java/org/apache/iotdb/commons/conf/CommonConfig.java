@@ -258,10 +258,10 @@ public class CommonConfig {
   private final long startUpNanosecond = System.nanoTime();
 
   private final boolean isIntegrationTest =
-      System.getProperties().containsKey(IoTDBConstant.IS_INTEGRATION_TEST_PARAM);
+      System.getProperties().containsKey(IoTDBConstant.INTEGRATION_TEST_KILL_POINTS);
 
   private final Set<String> enabledKillPoints =
-      FileUtils.parseKillPoints(System.getProperty(IoTDBConstant.KILL_POINTS));
+      FileUtils.parseKillPoints(System.getProperty(IoTDBConstant.INTEGRATION_TEST_KILL_POINTS));
 
   CommonConfig() {
     // Empty constructor

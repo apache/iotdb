@@ -104,7 +104,7 @@ public class RegionMigrateProcedure
           break;
         case CHANGE_REGION_LEADER:
           handler.changeRegionLeader(consensusGroupId, originalDataNode, destDataNode);
-          FileUtils.logBreakpoint(state.name());
+          FileUtils.logBreakpoint(state);
           setNextState(RegionTransitionState.REMOVE_REGION_PEER);
           break;
         case REMOVE_REGION_PEER:

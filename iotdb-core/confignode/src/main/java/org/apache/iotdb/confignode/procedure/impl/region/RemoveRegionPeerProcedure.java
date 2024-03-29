@@ -82,7 +82,7 @@ public class RemoveRegionPeerProcedure
           tsStatus =
               handler.removeRegionPeer(
                   this.getProcId(), targetDataNode, consensusGroupId, coordinator);
-          logBreakpoint(state.name());
+          logBreakpoint(state);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
             throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
           }
@@ -96,7 +96,7 @@ public class RemoveRegionPeerProcedure
         case DELETE_OLD_REGION_PEER:
           tsStatus =
               handler.deleteOldRegionPeer(this.getProcId(), targetDataNode, consensusGroupId);
-          logBreakpoint(state.name());
+          logBreakpoint(state);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
             throw new ProcedureException("DELETE_OLD_REGION_PEER executed failed in DataNode");
           }
@@ -109,7 +109,7 @@ public class RemoveRegionPeerProcedure
           break;
         case REMOVE_REGION_LOCATION_CACHE:
           handler.removeRegionLocation(consensusGroupId, targetDataNode);
-          logBreakpoint(state.name());
+          logBreakpoint(state);
           LOGGER.info("RemoveRegionPeer state {} success", state);
           LOGGER.info(
               "RemoveRegionPeerProcedure success, region {} has been removed from DataNode {}",

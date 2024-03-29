@@ -28,8 +28,8 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.RegisterManager;
-import org.apache.iotdb.commons.utils.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.KillPoints.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoints.IoTConsensusRemovePeerKillPoints;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.IConsensus;
@@ -255,7 +255,7 @@ public class IoTConsensus implements IConsensus {
             () ->
                 new ConsensusException(
                     String.format("Unable to create consensus dir for group %s", groupId)));
-    FileUtils.logBreakpoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER.toString());
+    FileUtils.logBreakpoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER);
     if (exist.get()) {
       throw new ConsensusGroupAlreadyExistException(groupId);
     }
@@ -302,7 +302,7 @@ public class IoTConsensus implements IConsensus {
       // step 4: let the new peer load snapshot
       logger.info("[IoTConsensus] trigger new peer to load snapshot...");
       impl.triggerSnapshotLoad(peer);
-      FileUtils.logBreakpoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION.toString());
+      FileUtils.logBreakpoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION);
 
       // step 5: notify all the other Peers to build the sync connection to newPeer
       logger.info("[IoTConsensus] notify current peers to build sync log...");
@@ -315,7 +315,7 @@ public class IoTConsensus implements IConsensus {
       // step 7: spot clean
       logger.info("[IoTConsensus] do spot clean...");
       doSpotClean(peer, impl);
-      FileUtils.logBreakpoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE.toString());
+      FileUtils.logBreakpoint(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE);
 
     } catch (ConsensusGroupModifyPeerException e) {
       try {

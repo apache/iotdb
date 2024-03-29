@@ -63,9 +63,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-public class IoTDBRegionMigrateReliabilityTestFramework {
+public class IoTDBRegionMigrateReliabilityITFramework {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBRegionMigrateReliabilityTestFramework.class);
+      LoggerFactory.getLogger(IoTDBRegionMigrateReliabilityITFramework.class);
   private static final String INSERTION =
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(100, 10.1, 20.7)";
   private static final String SHOW_REGIONS = "show regions";
@@ -88,7 +88,7 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  public void generalTest(
+  public void successTest(
       final int dataReplicateFactor,
       final int schemaReplicationFactor,
       final int configNodeNum,
@@ -161,14 +161,14 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
       Map<Integer, Set<Integer>> regionMap = getRegionMap(result);
 
       result = statement.executeQuery(SHOW_DATANODES);
-      Set<Integer> allDataNode = new HashSet<>();
+      Set<Integer> allDataNodeId = new HashSet<>();
       while (result.next()) {
-        allDataNode.add(result.getInt(ColumnHeaderConstant.NODE_ID));
+        allDataNodeId.add(result.getInt(ColumnHeaderConstant.NODE_ID));
       }
 
       final int selectedRegion = selectRegion(regionMap);
       final int originalDataNode = selectOriginalDataNode(regionMap, selectedRegion);
-      final int destDataNode = selectDestDataNode(allDataNode, regionMap, selectedRegion);
+      final int destDataNode = selectDestDataNode(allDataNodeId, regionMap, selectedRegion);
 
       checkRegionFileExist(originalDataNode);
       checkPeersExist(regionMap.get(selectedRegion), originalDataNode, selectedRegion);
@@ -209,9 +209,9 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
       }
       if (checkConfigurationFileDeleted) {
         if (isMigrateSuccess) {
-          checkPeersClear(allDataNode, originalDataNode, selectedRegion);
+          checkPeersClear(allDataNodeId, originalDataNode, selectedRegion);
         } else {
-          checkPeersClear(allDataNode, destDataNode, selectedRegion);
+          checkPeersClear(allDataNodeId, destDataNode, selectedRegion);
         }
       }
 
@@ -224,6 +224,7 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
   private void restartAllDataNodes() {
     EnvFactory.getEnv()
         .getDataNodeWrapperList()
+        .parallelStream()
         .forEach(
             nodeWrapper -> {
               nodeWrapper.stopForcibly();
@@ -255,7 +256,7 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
   }
 
   /**
-   * Monitor the node's log and do something.
+   * Monitor the node's log and kill it when detect specific log.
    *
    * @param nodeWrapper Easy to understand
    * @param killNodeKeywords When detect these keywords in node's log, stop the node forcibly
@@ -294,7 +295,7 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
                   + logFileName
                   + " -Wait");
     } else {
-      throw new RuntimeException("Unsupported system type");
+      throw new UnsupportedOperationException("Unsupported system type " + type);
     }
     builder.redirectErrorStream(true);
 
@@ -314,7 +315,7 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
           if (detectedKeyword.isPresent()) {
             // each keyword only trigger once
             killNodeKeywords.remove(detectedKeyword.get());
-            LOGGER.info("Kill point {} triggered", detectedKeyword);
+            LOGGER.info("Kill point is triggered: {}", detectedKeyword);
             // reboot the node
             nodeWrapper.stopForcibly();
             if (restartTime > 0) {
@@ -419,36 +420,14 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
   }
 
   private static void checkRegionFileExist(int dataNode) {
-    String nodePath = EnvFactory.getEnv().dataNodeIdToWrapper(dataNode).get().getNodePath();
-    File originalRegionDir =
-        new File(
-            nodePath
-                + File.separator
-                + IoTDBConstant.DATA_FOLDER_NAME
-                + File.separator
-                + "datanode"
-                + File.separator
-                + IoTDBConstant.CONSENSUS_FOLDER_NAME
-                + File.separator
-                + IoTDBConstant.DATA_REGION_FOLDER_NAME);
+    File originalRegionDir = new File(buildRegionDirPath(dataNode));
     Assert.assertTrue(originalRegionDir.isDirectory());
     Assert.assertNotEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
   }
 
   /** Check whether the original DataNode's region file has been deleted. */
   private static void checkRegionFileClear(int dataNode) {
-    String nodePath = EnvFactory.getEnv().dataNodeIdToWrapper(dataNode).get().getNodePath();
-    File originalRegionDir =
-        new File(
-            nodePath
-                + File.separator
-                + IoTDBConstant.DATA_FOLDER_NAME
-                + File.separator
-                + "datanode"
-                + File.separator
-                + IoTDBConstant.CONSENSUS_FOLDER_NAME
-                + File.separator
-                + IoTDBConstant.DATA_REGION_FOLDER_NAME);
+    File originalRegionDir = new File(buildRegionDirPath(dataNode));
     Assert.assertTrue(originalRegionDir.isDirectory());
     Assert.assertEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
     LOGGER.info("Original region clear");
@@ -481,39 +460,33 @@ public class IoTDBRegionMigrateReliabilityTestFramework {
         expectDeletedFile.exists());
   }
 
-  private static String buildConfigurationDataFilePath(
-      int localDataNodeId, int remoteDataNodeId, int regionId) {
-    String nodePath = EnvFactory.getEnv().dataNodeIdToWrapper(localDataNodeId).get().getNodePath();
-    String configurationDatDirName =
-        IoTDBConstant.DATA_FOLDER_NAME
-            + File.separator
-            + "datanode"
-            + File.separator
-            + IoTDBConstant.CONSENSUS_FOLDER_NAME
-            + File.separator
-            + IoTDBConstant.DATA_REGION_FOLDER_NAME
-            + File.separator
-            + "1_"
-            + regionId;
-    String expectDeletedFileName =
-        IoTConsensusServerImpl.generateConfigurationDatFileName(remoteDataNodeId);
+  private static String buildRegionDirPath(int dataNode) {
+    String nodePath = EnvFactory.getEnv().dataNodeIdToWrapper(dataNode).get().getNodePath();
     return nodePath
         + File.separator
-        + configurationDatDirName
+        + IoTDBConstant.DATA_FOLDER_NAME
         + File.separator
-        + expectDeletedFileName;
+        + "datanode"
+        + File.separator
+        + IoTDBConstant.CONSENSUS_FOLDER_NAME
+        + File.separator
+        + IoTDBConstant.DATA_REGION_FOLDER_NAME;
+  }
+
+  private static String buildConfigurationDataFilePath(
+      int localDataNodeId, int remoteDataNodeId, int regionId) {
+    String configurationDatDirName =
+        buildRegionDirPath(localDataNodeId) + File.separator + "1_" + regionId;
+    String expectDeletedFileName =
+        IoTConsensusServerImpl.generateConfigurationDatFileName(remoteDataNodeId);
+    return configurationDatDirName + File.separator + expectDeletedFileName;
   }
 
   protected static KeySetView<String, Boolean> noKillPoints() {
     return ConcurrentHashMap.newKeySet();
   }
 
-  protected static KeySetView<String, Boolean> buildSet(String... keywords) {
-    KeySetView<String, Boolean> result = ConcurrentHashMap.newKeySet();
-    result.addAll(Arrays.asList(keywords));
-    return result;
-  }
-
+  @SafeVarargs
   protected static <T extends Enum<T>> KeySetView<String, Boolean> buildSet(T... keywords) {
     KeySetView<String, Boolean> result = ConcurrentHashMap.newKeySet();
     result.addAll(

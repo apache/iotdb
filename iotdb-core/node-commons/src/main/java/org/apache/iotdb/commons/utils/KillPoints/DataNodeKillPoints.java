@@ -17,7 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils;
+package org.apache.iotdb.commons.utils.KillPoints;
+
+import org.apache.iotdb.commons.utils.TestOnly;
 
 @TestOnly
 public enum DataNodeKillPoints {

@@ -263,12 +263,6 @@ public class FileUtils {
     return true;
   }
 
-  public static void logBreakpoint(String logContent) {
-    if (CommonDescriptor.getInstance().getConfig().isIntegrationTest()) {
-      logBreakpointImpl(logContent);
-    }
-  }
-
   public static <T extends Enum<T>> void logBreakpoint(T x) {
     if (CommonDescriptor.getInstance().getConfig().isIntegrationTest()) {
       logBreakpointImpl(enumToString(x));

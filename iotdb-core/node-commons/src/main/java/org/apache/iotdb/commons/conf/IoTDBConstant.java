@@ -343,7 +343,5 @@ public class IoTDBConstant {
 
   public static final String OBJECT_STORAGE_DIR = "object_storage";
 
-  public static final String IS_INTEGRATION_TEST_PARAM = "isIntegrationTest";
-
-  public static final String KILL_POINTS = "killPoints";
+  public static final String INTEGRATION_TEST_KILL_POINTS = "integrationTestKillPoints";
 }

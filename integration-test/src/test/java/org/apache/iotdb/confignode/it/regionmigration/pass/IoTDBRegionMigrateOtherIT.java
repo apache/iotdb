@@ -19,16 +19,18 @@
 
 package org.apache.iotdb.confignode.it.regionmigration.pass;
 
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityTestFramework;
+import org.apache.iotdb.commons.utils.KillPoints.NeverTriggeredKillPoint;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-public class IoTDBRegionMigrateOtherIT extends IoTDBRegionMigrateReliabilityTestFramework {
+public class IoTDBRegionMigrateOtherIT extends IoTDBRegionMigrateReliabilityITFramework {
   @Test
   public void badKillPoint() throws Exception {
     try {
-      generalTest(1, 1, 1, 2, buildSet("??"), noKillPoints());
+      successTest(
+          1, 1, 1, 2, buildSet(NeverTriggeredKillPoint.NEVER_TRIGGERED_KILL_POINT), noKillPoints());
     } catch (AssertionError e) {
       return;
     }

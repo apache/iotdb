@@ -1041,13 +1041,10 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public void registerConfigNodeKillPoints(List<String> killPoints) {
     this.configNodeKillPoints = killPoints;
-    //    configNodeWrapperList.forEach(configNodeWrapper ->
-    // configNodeWrapper.setKillPoints(killPoints));
   }
 
   @Override
   public void registerDataNodeKillPoints(List<String> killPoints) {
     this.dataNodeKillPoints = killPoints;
-    //    dataNodeWrapperList.forEach(dataNodeWrapper -> dataNodeWrapper.setKillPoints(killPoints));
   }
 }

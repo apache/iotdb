@@ -19,29 +19,23 @@
 
 package org.apache.iotdb.confignode.it.regionmigration.notpass.datanodecrash;
 
-import org.apache.iotdb.commons.utils.DataNodeKillPoints;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityTestFramework;
+import org.apache.iotdb.commons.utils.KillPoints.DataNodeKillPoints;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
 
 import org.junit.Test;
 
-public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionMigrateReliabilityTestFramework {
+public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionMigrateReliabilityITFramework {
   // region Coordinator DataNode crash tests
 
   @Test
   public void coordinatorCrashDuringAddPeerTransition() throws Exception {
     failTest(
-        2,
-        1,
-        1,
-        3,
-        noKillPoints(),
-        buildSet(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION.name()));
+        2, 1, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION));
   }
 
   @Test
   public void coordinatorCrashDuringAddPeerDone() throws Exception {
-    failTest(
-        2, 1, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE.name()));
+    failTest(2, 1, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE));
   }
 
   // endregion ----------------------------------------------
@@ -50,8 +44,7 @@ public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionMigrateReliabi
 
   @Test
   public void originalCrashDuringAddPeerDone() throws Exception {
-    failTest(
-        2, 1, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE.name()));
+    failTest(2, 1, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE));
   }
 
   // endregion ----------------------------------------------
@@ -61,29 +54,18 @@ public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionMigrateReliabi
   @Test
   public void destinationCrashDuringCreateLocalPeer() throws Exception {
     failTest(
-        2,
-        2,
-        1,
-        3,
-        noKillPoints(),
-        buildSet(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER.name()));
+        2, 2, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER));
   }
 
   @Test
   public void destinationCrashDuringAddPeerTransition() throws Exception {
     failTest(
-        2,
-        1,
-        1,
-        3,
-        noKillPoints(),
-        buildSet(DataNodeKillPoints.DESTINATION_ADD_PEER_TRANSITION.name()));
+        2, 1, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.DESTINATION_ADD_PEER_TRANSITION));
   }
 
   @Test
   public void destinationCrashDuringAddPeerDone() throws Exception {
-    failTest(
-        2, 1, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.DESTINATION_ADD_PEER_DONE.name()));
+    failTest(2, 1, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.DESTINATION_ADD_PEER_DONE));
   }
 
   // endregion ----------------------------------------------

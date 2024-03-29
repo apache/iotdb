@@ -17,20 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass;
+package org.apache.iotdb.commons.utils.KillPoints;
 
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
-
-import org.junit.Test;
-
-public class IoTDBRegionMigrateNormalIT extends IoTDBRegionMigrateReliabilityITFramework {
-  @Test
-  public void normal1C2DTest() throws Exception {
-    successTest(1, 1, 1, 2, noKillPoints(), noKillPoints());
-  }
-
-  @Test
-  public void normal3C3DTest() throws Exception {
-    successTest(2, 3, 3, 3, noKillPoints(), noKillPoints());
-  }
+public enum NeverTriggeredKillPoint {
+  NEVER_TRIGGERED_KILL_POINT
 }
