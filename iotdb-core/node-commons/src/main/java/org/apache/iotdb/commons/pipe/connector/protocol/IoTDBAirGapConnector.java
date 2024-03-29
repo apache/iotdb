@@ -209,9 +209,9 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
                 : getTransferSingleFilePieceBytes(file.getName(), position, payload))) {
           final String errorMessage =
               String.format("Transfer file %s error. Socket %s.", file, socket);
-          // Send handshake because we don't know whether the receiver side configNode
-          // has set up a new one
           if (mayNeedHandshakeWhenFail()) {
+            // Send handshake because we don't know whether the receiver side configNode
+            // has set up a new one
             sendHandshakeReq(socket);
           }
           receiverStatusHandler.handle(
@@ -263,13 +263,13 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
   }
 
   private byte[] enrichWithLengthAndChecksum(byte[] bytes) {
-    // length of checksum and bytes payload
+    // Length of checksum and bytes payload
     final byte[] length = BytesUtils.intToBytes(bytes.length + LONG_LEN);
 
     final CRC32 crc32 = new CRC32();
     crc32.update(bytes, 0, bytes.length);
 
-    // double length as simple checksum
+    // Double length as simple checksum
     return BytesUtils.concatByteArrayList(
         Arrays.asList(length, length, BytesUtils.longToBytes(crc32.getValue()), bytes));
   }

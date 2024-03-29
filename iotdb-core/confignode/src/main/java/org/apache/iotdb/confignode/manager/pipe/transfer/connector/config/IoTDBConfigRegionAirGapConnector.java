@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -105,14 +106,22 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
 
-    if (event instanceof PipeConfigRegionWritePlanEvent) {
-      doTransfer(socket, (PipeConfigRegionWritePlanEvent) event);
-    } else if (event instanceof PipeConfigRegionSnapshotEvent) {
-      doTransfer(socket, (PipeConfigRegionSnapshotEvent) event);
-    } else if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn(
-          "IoTDBConfigRegionAirGapConnector does not support transferring generic event: {}.",
-          event);
+    try {
+      if (event instanceof PipeConfigRegionWritePlanEvent) {
+        doTransfer(socket, (PipeConfigRegionWritePlanEvent) event);
+      } else if (event instanceof PipeConfigRegionSnapshotEvent) {
+        doTransfer(socket, (PipeConfigRegionSnapshotEvent) event);
+      } else if (!(event instanceof PipeHeartbeatEvent)) {
+        LOGGER.warn(
+            "IoTDBConfigRegionAirGapConnector does not support transferring generic event: {}.",
+            event);
+      }
+    } catch (IOException e) {
+      isSocketAlive.set(socketIndex, false);
+
+      throw new PipeConnectionException(
+          String.format("Network error when transfer event %s, because %s.", event, e.getMessage()),
+          e);
     }
   }
 
