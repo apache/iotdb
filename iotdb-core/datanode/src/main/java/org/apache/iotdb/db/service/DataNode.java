@@ -46,10 +46,9 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -461,6 +460,9 @@ public class DataNode implements DataNodeMBean {
   private List<ConsensusGroupId> getConsensusGroupId() {
     List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
     String dataRegionConsensusDir = config.getDataRegionConsensusDir();
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+      return consensusGroupIds;
+    }
     try (DirectoryStream<Path> stream =
         Files.newDirectoryStream(new File(dataRegionConsensusDir).toPath())) {
       for (Path path : stream) {
@@ -485,71 +487,23 @@ public class DataNode implements DataNodeMBean {
           new File(
               IoTConsensus.buildPeerDir(
                   new File(config.getInvalidDataRegionConsensusDir()), consensusGroupId));
-      if (oldDir.exists() && !oldDir.renameTo(newDir)) {
-        logger.error("Cannot rename {} to {}", oldDir, newDir);
+      if (oldDir.exists() && !FileUtils.moveFileSafe(oldDir, newDir)) {
+        logger.error("move {} to {} failed.", oldDir.getAbsolutePath(), newDir.getAbsolutePath());
+        try {
+          FileUtils.recursivelyDeleteFolder(oldDir.getPath());
+        } catch (IOException e) {
+          logger.error("delete {} failed.", oldDir.getAbsolutePath());
+        }
       }
     }
   }
 
-  private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds)
-      throws StartupException {
+  private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
     List<ConsensusGroupId> invalidConsensusGroupIds =
         getConsensusGroupId().stream()
             .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
             .collect(Collectors.toList());
     renameInvalidRegionDirs(invalidConsensusGroupIds);
-    logger.info("Sending remove invalid region request to ConfigNode-leader...");
-    long startTime = System.currentTimeMillis();
-    /* Send remove region request */
-    int retry = DEFAULT_RETRY;
-    TDataNodeRemoveRegionReq req = new TDataNodeRemoveRegionReq();
-    req.setDataNodeId(config.getDataNodeId());
-    req.setConsensusGroupIds(
-        invalidConsensusGroupIds.stream()
-            .map(
-                consensusGroupId ->
-                    new TConsensusGroupId(consensusGroupId.getType(), consensusGroupId.getId()))
-            .collect(Collectors.toList()));
-    TDataNodeRemoveRegionResp dataNodeRemoveRegionResp = null;
-    while (retry > 0) {
-      try (ConfigNodeClient configNodeClient =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        dataNodeRemoveRegionResp = configNodeClient.removeRegion(req);
-        break;
-      } catch (TException | ClientManagerException e) {
-        logger.warn(
-            "Cannot send remove invalid region request to the cluster, because: {}",
-            e.getMessage());
-        retry--;
-      }
-      try {
-        // Wait to start the next try
-        Thread.sleep(DEFAULT_RETRY_INTERVAL_IN_MS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.warn(REGISTER_INTERRUPTION, e);
-        retry = -1;
-      }
-    }
-    if (dataNodeRemoveRegionResp == null) {
-      // All tries failed
-      logger.error(
-          "Cannot send remove invalid region request to the cluster after {} retries.",
-          DEFAULT_RETRY);
-      throw new StartupException("Cannot send remove invalid region request to the cluster.");
-    }
-    if (dataNodeRemoveRegionResp.getStatus().getCode()
-        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      long endTime = System.currentTimeMillis();
-      logger.info(
-          "Successfully send remove invalid region request to the cluster: {} , which takes {} ms.",
-          config.getClusterName(),
-          (endTime - startTime));
-    } else {
-      /* Throw exception when register failed */
-      logger.error(dataNodeRemoveRegionResp.getStatus().getMessage());
-      throw new StartupException("Cannot send remove invalid region request to the cluster.");
-    }
   }
 
   private void sendRestartRequestToConfigNode() throws StartupException {

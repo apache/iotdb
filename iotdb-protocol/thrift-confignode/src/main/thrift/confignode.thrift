@@ -133,15 +133,6 @@ struct TDataNodeRestartResp {
   4: optional list<common.TConsensusGroupId> consensusGroupIds
 }
 
-struct TDataNodeRemoveRegionReq {
-  1: required i32 dataNodeId
-  2: required list<common.TConsensusGroupId> consensusGroupIds
-}
-
-struct TDataNodeRemoveRegionResp {
-  1: required common.TSStatus status
-}
-
 struct TDataNodeRemoveReq {
   1: required list<common.TDataNodeLocation> dataNodeLocations
 }
@@ -957,15 +948,6 @@ service IConfigNodeRPCService {
    *                           and a detailed error message will be returned.
    */
   TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req)
-
-
-  /**
-     * Remove Invalid Region.
-     *
-     * @return SUCCESS_STATUS if submit RemoveRegionPeerProcedure success.
-     *
-     */
-  TDataNodeRemoveRegionResp removeRegion(TDataNodeRemoveRegionReq req)
 
   /**
    * Get system configurations. i.e. configurations that is not associated with the DataNodeId

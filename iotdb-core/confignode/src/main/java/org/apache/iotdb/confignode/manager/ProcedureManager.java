@@ -69,7 +69,6 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
@@ -104,7 +103,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
@@ -681,30 +679,6 @@ public class ProcedureManager {
         migrateRegionReq.getRegionId(),
         migrateRegionReq.getFromId(),
         migrateRegionReq.getToId());
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  public TSStatus removeRegion(TDataNodeRemoveRegionReq req) {
-    List<TConsensusGroupId> consensusGroupIds = req.getConsensusGroupIds();
-    consensusGroupIds.forEach(
-        consensusGroupId -> {
-          TDataNodeLocation targetDataNode =
-              configManager
-                  .getNodeManager()
-                  .getRegisteredDataNode(req.getDataNodeId())
-                  .getLocation();
-          TDataNodeLocation coordinator =
-              env.getRegionMaintainHandler()
-                  .filterDataNodeWithOtherRegionReplica(consensusGroupId, targetDataNode)
-                  .orElse(targetDataNode);
-          this.executor.submitProcedure(
-              new RemoveRegionPeerProcedure(consensusGroupId, coordinator, targetDataNode));
-          LOGGER.info(
-              "Submit RemoveRegionPeerProcedure successfully, Region: {}, Coordinator: {}, TargetDataNode: {}",
-              consensusGroupId,
-              coordinator.getDataNodeId(),
-              targetDataNode.getDataNodeId());
-        });
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

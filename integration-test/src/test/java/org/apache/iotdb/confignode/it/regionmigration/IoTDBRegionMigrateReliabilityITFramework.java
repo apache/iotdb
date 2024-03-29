@@ -126,7 +126,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         killDataNodeKeywords,
         true,
         true,
-        30,
+        60,
         false);
   }
 

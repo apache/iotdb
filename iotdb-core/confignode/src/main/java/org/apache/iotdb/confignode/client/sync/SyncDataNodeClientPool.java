@@ -52,7 +52,7 @@ public class SyncDataNodeClientPool {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncDataNodeClientPool.class);
 
-  private static final int DEFAULT_RETRY_NUM = 1;
+  private static final int DEFAULT_RETRY_NUM = 6;
 
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
 

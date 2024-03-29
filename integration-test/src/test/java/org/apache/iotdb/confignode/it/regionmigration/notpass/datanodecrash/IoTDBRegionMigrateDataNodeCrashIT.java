@@ -30,12 +30,12 @@ public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionMigrateReliabi
   @Test
   public void coordinatorCrashDuringAddPeerTransition() throws Exception {
     failTest(
-        2, 1, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION));
+        2, 2, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.COORDINATOR_ADD_PEER_TRANSITION));
   }
 
   @Test
   public void coordinatorCrashDuringAddPeerDone() throws Exception {
-    failTest(2, 1, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE));
+    failTest(2, 2, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.COORDINATOR_ADD_PEER_DONE));
   }
 
   // endregion ----------------------------------------------
@@ -44,7 +44,7 @@ public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionMigrateReliabi
 
   @Test
   public void originalCrashDuringAddPeerDone() throws Exception {
-    failTest(2, 1, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE));
+    failTest(2, 2, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE));
   }
 
   // endregion ----------------------------------------------
@@ -60,12 +60,12 @@ public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionMigrateReliabi
   @Test
   public void destinationCrashDuringAddPeerTransition() throws Exception {
     failTest(
-        2, 1, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.DESTINATION_ADD_PEER_TRANSITION));
+        2, 2, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.DESTINATION_ADD_PEER_TRANSITION));
   }
 
   @Test
   public void destinationCrashDuringAddPeerDone() throws Exception {
-    failTest(2, 1, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.DESTINATION_ADD_PEER_DONE));
+    failTest(2, 2, 1, 3, noKillPoints(), buildSet(DataNodeKillPoints.DESTINATION_ADD_PEER_DONE));
   }
 
   // endregion ----------------------------------------------
