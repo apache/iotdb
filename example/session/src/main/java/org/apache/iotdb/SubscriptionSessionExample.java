@@ -77,7 +77,7 @@ public class SubscriptionSessionExample {
     consumer1.open();
     consumer1.subscribe("topic1");
     while (true) {
-      Thread.sleep(1000); // wait some time
+      Thread.sleep(1000); // Wait for some time
       List<SubscriptionMessage> messages = consumer1.poll(Duration.ofMillis(10000));
       if (messages.isEmpty()) {
         break;
