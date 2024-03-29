@@ -46,19 +46,19 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
       LoggerFactory.getLogger(IoTDBSchemaRegionAirGapConnector.class);
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+  public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
         "IoTDBSchemaRegionAirGapConnector can't transfer TabletInsertionEvent.");
   }
 
   @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+  public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
         "IoTDBSchemaRegionAirGapConnector can't transfer TsFileInsertionEvent.");
   }
 
   @Override
-  public void transfer(Event event) throws Exception {
+  public void transfer(final Event event) throws Exception {
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
 
@@ -82,7 +82,7 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
   }
 
   private void doTransfer(
-      Socket socket, PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
+      final Socket socket, final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
       throws PipeException, IOException {
     final File mtreeSnapshotFile = pipeSchemaRegionSnapshotEvent.getMTreeSnapshotFile();
     final File tagLogSnapshotFile = pipeSchemaRegionSnapshotEvent.getTagLogSnapshotFile();
@@ -120,14 +120,15 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
   }
 
   @Override
-  protected byte[] getTransferSingleFilePieceBytes(String fileName, long position, byte[] payLoad) {
+  protected byte[] getTransferSingleFilePieceBytes(
+      final String fileName, final long position, final byte[] payLoad) {
     throw new UnsupportedOperationException(
         "The schema region air gap connector does not support transferring single file piece bytes.");
   }
 
   @Override
-  protected byte[] getTransferMultiFilePieceBytes(String fileName, long position, byte[] payLoad)
-      throws IOException {
+  protected byte[] getTransferMultiFilePieceBytes(
+      final String fileName, final long position, final byte[] payLoad) throws IOException {
     return PipeTransferSchemaSnapshotPieceReq.toTPipeTransferBytes(fileName, position, payLoad);
   }
 }
