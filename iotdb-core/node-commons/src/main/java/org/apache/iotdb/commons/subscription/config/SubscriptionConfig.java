@@ -51,8 +51,8 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionLaunchRetryIntervalMs();
   }
 
-  public int getSubscriptionRecycleUncommittedEventIntervalSeconds() {
-    return COMMON_CONFIG.getSubscriptionRecycleUncommittedEventIntervalSeconds();
+  public int getSubscriptionRecycleUncommittedEventIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionRecycleUncommittedEventIntervalMs();
   }
 
   public long getSubscriptionDefaultPollTimeoutMs() {
@@ -78,8 +78,8 @@ public class SubscriptionConfig {
         "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());
     LOGGER.info("SubscriptionLaunchRetryIntervalMs: {}", getSubscriptionLaunchRetryIntervalMs());
     LOGGER.info(
-        "SubscriptionRecycleUncommittedEventIntervalSeconds: {}",
-        getSubscriptionRecycleUncommittedEventIntervalSeconds());
+        "SubscriptionRecycleUncommittedEventIntervalMs: {}",
+        getSubscriptionRecycleUncommittedEventIntervalMs());
     LOGGER.info("SubscriptionDefaultPollTimeoutMs: {}", getSubscriptionDefaultPollTimeoutMs());
     LOGGER.info("SubscriptionMinPollTimeoutMs: {}", getSubscriptionMinPollTimeoutMs());
   }

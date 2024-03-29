@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.it;
+package org.apache.iotdb.subscription.it.dual;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
@@ -59,7 +59,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
   @Test
   public void testTopicPathSubscription() throws Exception {
-    // insert some history data on sender
+    // Insert some historical data on sender
     try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
@@ -72,130 +72,25 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
             String.format("insert into root.db.t1(time, s1) values (%s, 1)", i));
       }
       session.executeNonQueryStatement("flush");
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
-    // create topic on sender
+    // Create topic on sender
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
-    try (SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
-      Properties config = new Properties();
+      final Properties config = new Properties();
       config.put(TopicConstant.PATH_KEY, "root.db.*.s");
       session.createTopic("topic1", config);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
-    // subscribe on sender and insert on receiver
-    final AtomicBoolean isClosed = new AtomicBoolean(false);
-    final Thread thread =
-        new Thread(
-            () -> {
-              try (SubscriptionPullConsumer consumer =
-                      new SubscriptionPullConsumer.Builder()
-                          .host(host)
-                          .port(port)
-                          .consumerId("c1")
-                          .consumerGroupId("cg1")
-                          .autoCommit(false)
-                          .buildPullConsumer();
-                  ISession session = receiverEnv.getSessionConnection()) {
-                consumer.open();
-                consumer.subscribe("topic1");
-                while (!isClosed.get()) {
-                  try {
-                    Thread.sleep(1000); // wait some time
-                  } catch (InterruptedException e) {
-                    break;
-                  }
-                  List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(10000));
-                  if (messages.isEmpty()) {
-                    continue;
-                  }
-                  for (SubscriptionMessage message : messages) {
-                    SubscriptionSessionDataSets payload =
-                        (SubscriptionSessionDataSets) message.getPayload();
-                    for (Iterator<Tablet> it = payload.tabletIterator(); it.hasNext(); ) {
-                      Tablet tablet = it.next();
-                      session.insertTablet(tablet);
-                    }
-                  }
-                  consumer.commitSync(messages);
-                }
-                consumer.unsubscribe("topic1");
-                LOGGER.info(
-                    "consumer {} (group {}) exiting...",
-                    consumer.getConsumerId(),
-                    consumer.getConsumerGroupId());
-              } catch (Exception e) {
-                e.printStackTrace();
-                // avoid fail
-              }
-            });
-    thread.start();
-
-    // check data on receiver
-    try {
-      try (final Connection connection = receiverEnv.getConnection();
-          final Statement statement = connection.createStatement()) {
-        // Keep retrying if there are execution failures
-        Awaitility.await()
-            .atMost(100, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertSingleResultSetEqual(
-                        TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
-                        new HashMap<String, String>() {
-                          {
-                            put("count(root.db.d1.s)", "100");
-                            put("count(root.db.d2.s)", "100");
-                          }
-                        }));
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    } finally {
-      isClosed.set(true);
-      thread.join();
-    }
-  }
-
-  @Test
-  public void testTopicTimeSubscription() throws Exception {
-    // insert some history data on sender
-    final long currentTime = System.currentTimeMillis();
-    try (final ISession session = senderEnv.getSessionConnection()) {
-      for (int i = 0; i < 100; ++i) {
-        session.executeNonQueryStatement(
-            String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
-        session.executeNonQueryStatement(
-            String.format("insert into root.db.d2(time, s) values (%s, 1)", currentTime + i));
-      }
-      session.executeNonQueryStatement("flush");
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-
-    // create topic on sender
-    final String host = senderEnv.getIP();
-    final int port = Integer.parseInt(senderEnv.getPort());
-    try (SubscriptionSession session = new SubscriptionSession(host, port)) {
-      session.open();
-      Properties config = new Properties();
-      config.put(TopicConstant.START_TIME_KEY, currentTime);
-      session.createTopic("topic1", config);
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-
-    // subscribe on sender and insert on receiver
+    // Subscribe on sender and insert on receiver
     final AtomicBoolean isClosed = new AtomicBoolean(false);
     final Thread thread =
         new Thread(
@@ -214,7 +109,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 while (!isClosed.get()) {
                   try {
                     Thread.sleep(1000); // wait some time
-                  } catch (InterruptedException e) {
+                  } catch (final InterruptedException e) {
                     break;
                   }
                   final List<SubscriptionMessage> messages =
@@ -233,24 +128,130 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   consumer.commitSync(messages);
                 }
                 consumer.unsubscribe("topic1");
-                LOGGER.info(
-                    "consumer {} (group {}) exiting...",
-                    consumer.getConsumerId(),
-                    consumer.getConsumerGroupId());
-              } catch (Exception e) {
+              } catch (final Exception e) {
                 e.printStackTrace();
-                // avoid fail
+                // Avoid fail
+              } finally {
+                LOGGER.info("consumer exiting...");
               }
             });
     thread.start();
 
-    // check data on receiver
+    // Check data on receiver
     try {
       try (final Connection connection = receiverEnv.getConnection();
           final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
         Awaitility.await()
-            .atMost(100, TimeUnit.SECONDS)
+            .pollDelay(1, TimeUnit.SECONDS)
+            .pollInterval(1, TimeUnit.SECONDS)
+            .atMost(120, TimeUnit.SECONDS)
+            .untilAsserted(
+                () ->
+                    TestUtils.assertSingleResultSetEqual(
+                        TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                        new HashMap<String, String>() {
+                          {
+                            put("count(root.db.d1.s)", "100");
+                            put("count(root.db.d2.s)", "100");
+                          }
+                        }));
+      }
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      isClosed.set(true);
+      thread.join();
+    }
+  }
+
+  @Test
+  public void testTopicTimeSubscription() throws Exception {
+    // Insert some historical data on sender
+    final long currentTime = System.currentTimeMillis();
+    try (final ISession session = senderEnv.getSessionConnection()) {
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d2(time, s) values (%s, 1)", currentTime + i));
+      }
+      session.executeNonQueryStatement("flush");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Create topic on sender
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      final Properties config = new Properties();
+      config.put(TopicConstant.START_TIME_KEY, currentTime);
+      session.createTopic("topic1", config);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Subscribe on sender and insert on receiver
+    final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final Thread thread =
+        new Thread(
+            () -> {
+              try (final SubscriptionPullConsumer consumer =
+                      new SubscriptionPullConsumer.Builder()
+                          .host(host)
+                          .port(port)
+                          .consumerId("c1")
+                          .consumerGroupId("cg1")
+                          .autoCommit(false)
+                          .buildPullConsumer();
+                  final ISession session = receiverEnv.getSessionConnection()) {
+                consumer.open();
+                consumer.subscribe("topic1");
+                while (!isClosed.get()) {
+                  try {
+                    Thread.sleep(1000); // wait some time
+                  } catch (final InterruptedException e) {
+                    break;
+                  }
+                  final List<SubscriptionMessage> messages =
+                      consumer.poll(Duration.ofMillis(10000));
+                  if (messages.isEmpty()) {
+                    continue;
+                  }
+                  for (final SubscriptionMessage message : messages) {
+                    final SubscriptionSessionDataSets payload =
+                        (SubscriptionSessionDataSets) message.getPayload();
+                    for (final Iterator<Tablet> it = payload.tabletIterator(); it.hasNext(); ) {
+                      final Tablet tablet = it.next();
+                      session.insertTablet(tablet);
+                    }
+                  }
+                  consumer.commitSync(messages);
+                }
+                consumer.unsubscribe("topic1");
+              } catch (final Exception e) {
+                e.printStackTrace();
+                // Avoid fail
+              } finally {
+                LOGGER.info("consumer exiting...");
+              }
+            });
+    thread.start();
+
+    // Check data on receiver
+    try {
+      try (final Connection connection = receiverEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
+        // Keep retrying if there are execution failures
+        Awaitility.await()
+            .pollDelay(1, TimeUnit.SECONDS)
+            .pollInterval(1, TimeUnit.SECONDS)
+            .atMost(120, TimeUnit.SECONDS)
             .untilAsserted(
                 () ->
                     TestUtils.assertSingleResultSetEqual(
@@ -261,7 +262,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                           }
                         }));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
@@ -277,12 +278,12 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       session.executeNonQueryStatement(
           "insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)");
       session.executeNonQueryStatement("flush");
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
-    // create topic
+    // Create topic
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
@@ -292,12 +293,12 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       config.put("processor.tumbling-time.interval-seconds", "1");
       config.put("processor.down-sampling.split-file", "true");
       session.createTopic("topic1", config);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
-    // subscribe on sender and insert on receiver
+    // Subscribe on sender and insert on receiver
     final AtomicBoolean isClosed = new AtomicBoolean(false);
     final Thread thread =
         new Thread(
@@ -316,7 +317,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 while (!isClosed.get()) {
                   try {
                     Thread.sleep(1000); // wait some time
-                  } catch (InterruptedException e) {
+                  } catch (final InterruptedException e) {
                     break;
                   }
                   final List<SubscriptionMessage> messages =
@@ -335,18 +336,16 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   consumer.commitSync(messages);
                 }
                 consumer.unsubscribe("topic1");
-                LOGGER.info(
-                    "consumer {} (group {}) exiting...",
-                    consumer.getConsumerId(),
-                    consumer.getConsumerGroupId());
-              } catch (Exception e) {
+              } catch (final Exception e) {
                 e.printStackTrace();
-                // avoid fail
+                // Avoid fail
+              } finally {
+                LOGGER.info("consumer exiting...");
               }
             });
     thread.start();
 
-    // check data on receiver
+    // Check data on receiver
     final Set<String> expectedResSet = new HashSet<>();
     expectedResSet.add("1000,1.0,");
     expectedResSet.add("2000,3.0,");
@@ -356,7 +355,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
           final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
         Awaitility.await()
-            .atMost(100, TimeUnit.SECONDS)
+            .pollDelay(1, TimeUnit.SECONDS)
+            .pollInterval(1, TimeUnit.SECONDS)
+            .atMost(120, TimeUnit.SECONDS)
             .untilAsserted(
                 () ->
                     TestUtils.assertResultSetEqual(
@@ -364,7 +365,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                         "Time,root.db.d1.at1,",
                         expectedResSet));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {

@@ -231,7 +231,7 @@ public class CommonConfig {
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
-  private int subscriptionRecycleUncommittedEventIntervalSeconds = 240;
+  private int subscriptionRecycleUncommittedEventIntervalMs = 240000; // 240s
   private long subscriptionDefaultPollTimeoutMs = 30000;
   private long subscriptionMinPollTimeoutMs = 500;
 
@@ -988,14 +988,14 @@ public class CommonConfig {
     this.subscriptionLaunchRetryIntervalMs = subscriptionLaunchRetryIntervalMs;
   }
 
-  public int getSubscriptionRecycleUncommittedEventIntervalSeconds() {
-    return subscriptionRecycleUncommittedEventIntervalSeconds;
+  public int getSubscriptionRecycleUncommittedEventIntervalMs() {
+    return subscriptionRecycleUncommittedEventIntervalMs;
   }
 
-  public void setSubscriptionRecycleUncommittedEventIntervalSeconds(
-      int subscriptionRecycleUncommittedEventIntervalSeconds) {
-    this.subscriptionRecycleUncommittedEventIntervalSeconds =
-        subscriptionRecycleUncommittedEventIntervalSeconds;
+  public void setSubscriptionRecycleUncommittedEventIntervalMs(
+      int subscriptionRecycleUncommittedEventIntervalMs) {
+    this.subscriptionRecycleUncommittedEventIntervalMs =
+        subscriptionRecycleUncommittedEventIntervalMs;
   }
 
   public long getSubscriptionDefaultPollTimeoutMs() {
