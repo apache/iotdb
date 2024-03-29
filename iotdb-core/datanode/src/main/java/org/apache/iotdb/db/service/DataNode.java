@@ -461,7 +461,7 @@ public class DataNode implements DataNodeMBean {
   private List<ConsensusGroupId> getConsensusGroupId() {
     List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
     String dataRegionConsensusDir = config.getDataRegionConsensusDir();
-    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       return consensusGroupIds;
     }
     try (DirectoryStream<Path> stream =
