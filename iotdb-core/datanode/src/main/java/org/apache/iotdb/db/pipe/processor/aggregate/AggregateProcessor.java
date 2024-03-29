@@ -278,6 +278,12 @@ public class AggregateProcessor implements PipeProcessor {
         UDFParametersFactory.TIMESTAMP_PRECISION,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
+    // The aggregated result operators can be configured here because they are global
+    // and stateless, needing only one configuration
+    this.outputName2OperatorMap
+        .values()
+        .forEach(operator -> operator.configureSystemParameters(systemParameters));
+
     // Restore window state
     final ProgressIndex index = pipeTaskMeta.getProgressIndex();
     if (index == MinimumProgressIndex.INSTANCE) {
@@ -418,7 +424,7 @@ public class AggregateProcessor implements PipeProcessor {
               throw new UnsupportedOperationException(
                   String.format("The type %s is not supported", row.getDataType(index)));
           }
-          if (!Objects.isNull(result)) {
+          if (Objects.nonNull(result)) {
             collectWindowOutputs(result.getLeft(), timeSeries, rowCollector);
             if (Objects.nonNull(result.getRight())) {
               resultMap.put(timeSeries, result.getRight());

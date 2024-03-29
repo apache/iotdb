@@ -108,7 +108,7 @@ public class WALNodeRecoverTask implements Runnable {
     try {
       if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
         // delete this wal node folder
-        FileUtils.deleteDirectory(logDirectory);
+        FileUtils.deleteFileOrDirectory(logDirectory);
         logger.info(
             "Successfully recover WAL node in the directory {}, so delete these wal files.",
             logDirectory);

@@ -178,12 +178,12 @@ public class OpcUaConnector implements PipeConnector {
   }
 
   /**
-   * Transfer tablet into eventNodes and post it on the eventBus, so that they will be heard at the
-   * subscribers. Notice that an eventNode is reused to reduce object creation costs.
+   * Transfer {@link Tablet} into eventNodes and post it on the eventBus, so that they will be heard
+   * at the subscribers. Notice that an eventNode is reused to reduce object creation costs.
    *
    * @param server OpcUaServer
    * @param tablet the tablet to send
-   * @throws UaException if failed to create event
+   * @throws UaException if failed to create {@link Event}
    */
   private void transferTablet(OpcUaServer server, Tablet tablet) throws UaException {
     // There is no nameSpace, so that nameSpaceIndex is always 0
@@ -213,7 +213,7 @@ public class OpcUaConnector implements PipeConnector {
           continue;
         }
 
-        // time --> timeStamp
+        // Time --> TimeStamp
         eventNode.setTime(new DateTime(tablet.timestamps[rowIndex]));
 
         // Message --> Value

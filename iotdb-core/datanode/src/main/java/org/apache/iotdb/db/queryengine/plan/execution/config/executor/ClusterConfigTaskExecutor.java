@@ -2212,7 +2212,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final TAlterLogicalViewReq req =
         new TAlterLogicalViewReq(
             context.getQueryId().getId(), ByteBuffer.wrap(stream.toByteArray()));
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
       do {

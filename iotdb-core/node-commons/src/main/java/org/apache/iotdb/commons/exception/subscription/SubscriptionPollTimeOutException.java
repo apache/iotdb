@@ -17,18 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription;
+package org.apache.iotdb.commons.exception.subscription;
 
-import org.apache.iotdb.tsfile.read.common.RowRecord;
+public class SubscriptionPollTimeOutException extends SubscriptionException {
 
-import java.util.List;
+  public SubscriptionPollTimeOutException(String message) {
+    super(message);
+  }
 
-public class EnrichedRowRecord {
-
-  private String topicName;
-  private RowRecord record;
-  private List<String> columnNameList;
-  private List<String> columnTypeList;
-
-  // TODO: translate EnrichedTablets to EnrichedRowRecord
+  protected SubscriptionPollTimeOutException(String message, long timeStamp) {
+    super(message, timeStamp);
+  }
 }

@@ -537,26 +537,26 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_serialize_max_blocking_time_ms",
                 String.valueOf(config.getSubscriptionSerializeMaxBlockingTimeMs()))));
-    config.setSubscriptionClearMaxBlockingTimeMs(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_clear_max_blocking_time_ms",
-                String.valueOf(config.getSubscriptionClearMaxBlockingTimeMs()))));
     config.setSubscriptionLaunchRetryIntervalMs(
         Long.parseLong(
             properties.getProperty(
                 "subscription_launch_retry_interval_ms",
                 String.valueOf(config.getSubscriptionLaunchRetryIntervalMs()))));
-    config.setSubscriptionClearCommittedEventIntervalSeconds(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_clear_committed_event_interval_seconds",
-                String.valueOf(config.getSubscriptionClearCommittedEventIntervalSeconds()))));
     config.setSubscriptionRecycleUncommittedEventIntervalSeconds(
         Integer.parseInt(
             properties.getProperty(
                 "subscription_recycle_uncommitted_event_interval_seconds",
                 String.valueOf(config.getSubscriptionRecycleUncommittedEventIntervalSeconds()))));
+    config.setSubscriptionDefaultPollTimeoutMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_default_poll_timeout_ms",
+                String.valueOf(config.getSubscriptionDefaultPollTimeoutMs()))));
+    config.setSubscriptionMinPollTimeoutMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_min_poll_timeout_ms",
+                String.valueOf(config.getSubscriptionMinPollTimeoutMs()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

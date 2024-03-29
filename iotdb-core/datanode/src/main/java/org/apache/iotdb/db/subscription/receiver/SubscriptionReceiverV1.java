@@ -19,25 +19,26 @@
 
 package org.apache.iotdb.db.subscription.receiver;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.exception.SubscriptionException;
+import org.apache.iotdb.commons.exception.subscription.SubscriptionException;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SerializedEnrichedEvent;
+import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -58,17 +59,14 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribe
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -175,49 +173,20 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // create consumer if not existed
     if (!SubscriptionAgent.consumer()
-        .isConsumerExisted(consumerConfig.getConsumerId(), consumerConfig.getConsumerGroupId())) {
+        .isConsumerExisted(consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId())) {
       createConsumer(consumerConfig);
     } else {
       LOGGER.info(
-          "Subscription: Detect the same consumer {} when handshaking, skip the creation of consumer.",
+          "Subscription: The consumer {} has already existed when handshaking, skip creating consumer.",
           consumerConfig);
     }
 
-    // fetch DN endPoints by CN
-    // TODO: cache result and listen changes
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TDataNodeConfigurationResp resp = configNodeClient.getDataNodeConfiguration(-1);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
-        final String exceptionMessage =
-            String.format(
-                "Subscription: Failed to get data node configuration in config node, status is %s.",
-                resp.getStatus());
-        LOGGER.warn(exceptionMessage);
-        throw new SubscriptionException(exceptionMessage);
-      }
-
-      Map<Integer, TEndPoint> endPoints =
-          Objects.isNull(resp.dataNodeConfigurationMap)
-              ? Collections.emptyMap()
-              : resp.dataNodeConfigurationMap.entrySet().stream()
-                  .collect(
-                      Collectors.toMap(
-                          Entry::getKey, entry -> entry.getValue().location.clientRpcEndPoint));
-
-      LOGGER.info(
-          "Subscription: consumer {} handshake successfully, get DN endPoints: {}",
-          req.getConsumerConfig(),
-          endPoints);
-      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, endPoints);
-    } catch (ClientManagerException | TException e) {
-      final String exceptionMessage =
-          String.format(
-              "Subscription: Failed to get data node configuration in config node, exception is %s.",
-              e.getMessage());
-      LOGGER.warn(exceptionMessage);
-      throw new SubscriptionException(exceptionMessage);
-    }
+    int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    LOGGER.info(
+        "Subscription: consumer {} handshake successfully, data node id: {}",
+        req.getConsumerConfig(),
+        dataNodeId);
+    return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, dataNodeId);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeHeartbeat(PipeSubscribeHeartbeatReq req) {
@@ -339,24 +308,53 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // poll
     Set<String> topicNames = req.getTopicNames();
+    if (topicNames.isEmpty()) {
+      // poll all subscribed topics
+      topicNames =
+          SubscriptionAgent.consumer()
+              .getTopicsSubscribedByConsumer(
+                  consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+    }
+    SubscriptionPollTimer timer =
+        new SubscriptionPollTimer(
+            System.currentTimeMillis(),
+            req.getTimeoutMs() == 0
+                ? SubscriptionConfig.getInstance().getSubscriptionDefaultPollTimeoutMs()
+                : Math.max(
+                    req.getTimeoutMs(),
+                    SubscriptionConfig.getInstance().getSubscriptionMinPollTimeoutMs()));
     List<SerializedEnrichedEvent> events =
-        SubscriptionAgent.broker().poll(consumerConfig, topicNames);
-    List<ByteBuffer> byteBuffers =
+        SubscriptionAgent.broker().poll(consumerConfig, topicNames, timer);
+
+    // serialize events and filter
+    events =
         events.stream()
-            .map(SerializedEnrichedEvent::getByteBuffer)
-            .map(ReadWriteIOUtils::clone) // deep copy
+            .peek((SerializedEnrichedEvent::serialize))
+            .filter((event -> Objects.nonNull(event.getByteBuffer())))
             .collect(Collectors.toList());
-    events.forEach(SerializedEnrichedEvent::clearByteBuffer);
+
     List<String> subscriptionCommitIds =
         events.stream()
             .map(SerializedEnrichedEvent::getSubscriptionCommitId)
             .collect(Collectors.toList());
+
+    if (timer.isExpired()) {
+      LOGGER.warn(
+          "Subscription: timeout happened when consumer {} poll topics {}",
+          consumerConfig,
+          topicNames);
+    }
 
     LOGGER.info(
         "Subscription: consumer {} poll topics {} successfully, commit ids: {}",
         consumerConfig,
         topicNames,
         subscriptionCommitIds);
+
+    // fetch and reset byte buffer
+    List<ByteBuffer> byteBuffers =
+        events.stream().map(SerializedEnrichedEvent::getByteBuffer).collect(Collectors.toList());
+    events.forEach(SerializedEnrichedEvent::resetByteBuffer);
     return PipeSubscribePollResp.directToTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, byteBuffers);
   }
 
@@ -431,8 +429,15 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       unsubscribe(consumerConfig, topics);
     }
 
-    // drop consumer
-    dropConsumer(consumerConfig);
+    // drop consumer if existed
+    if (SubscriptionAgent.consumer()
+        .isConsumerExisted(consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId())) {
+      dropConsumer(consumerConfig);
+    } else {
+      LOGGER.info(
+          "Subscription: The consumer {} does not existed when closing, skip dropping consumer.",
+          consumerConfig);
+    }
 
     LOGGER.info("Subscription: consumer {} close successfully", consumerConfig);
     return PipeSubscribeCloseResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);

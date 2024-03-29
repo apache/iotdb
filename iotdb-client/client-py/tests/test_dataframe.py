@@ -80,7 +80,7 @@ def test_non_time_query():
                 "root.device0.pressure",
                 None,
                 "root.device0",
-                "FLOAT",
+                "DOUBLE",
                 "GORILLA",
                 "LZ4",
                 None,

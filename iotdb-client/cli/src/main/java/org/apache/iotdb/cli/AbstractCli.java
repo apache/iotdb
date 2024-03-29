@@ -480,7 +480,7 @@ public abstract class AbstractCli {
   }
 
   /**
-   * if cli has not specified a zoneId, it will be set to cli's system timezone by default otherwise
+   * If cli has not specified a zoneId, it will be set to cli's system timezone by default otherwise
    * for insert and query accuracy cli should set timezone the same for all sessions.
    *
    * @param specialCmd
@@ -607,7 +607,7 @@ public abstract class AbstractCli {
   }
 
   /**
-   * cache all results.
+   * Cache all results.
    *
    * @param resultSet jdbc resultSet
    * @param maxSizeList the longest result of every column

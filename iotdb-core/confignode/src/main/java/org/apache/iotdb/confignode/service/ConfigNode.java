@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeMetrics;
 import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -307,10 +308,10 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   /**
-   * Register Non-seed ConfigNode when first startup.
+   * Register Non-seed {@link ConfigNode} when first startup.
    *
    * @throws StartupException if register failed.
-   * @throws IOException if consensus manager init failed.
+   * @throws IOException if {@link ConsensusManager} init failed.
    */
   private void sendRegisterConfigNodeRequest() throws StartupException, IOException {
     TConfigNodeRegisterReq req =
@@ -405,9 +406,9 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   /**
-   * Deactivating ConfigNode internal services.
+   * Deactivating {@link ConfigNode} internal services.
    *
-   * @throws IOException if close configManager failed.
+   * @throws IOException if close {@link ConfigNode} failed.
    */
   public void deactivate() throws IOException {
     LOGGER.info("Deactivating {}...", ConfigNodeConstant.GLOBAL_NAME);

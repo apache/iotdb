@@ -329,7 +329,7 @@ public class IoTDBUDFManagementIT {
       try (ResultSet rs = statement.executeQuery("SELECT ABS(s1) FROM root.vehicle.d1")) {
         Assert.assertTrue(rs.next());
         Assert.assertEquals(1, rs.getLong(1));
-        Assert.assertEquals(10.0F, rs.getFloat(2), 0.00001);
+        Assert.assertEquals(10.0F, rs.getDouble(2), 0.00001);
         Assert.assertFalse(rs.next());
       }
     }

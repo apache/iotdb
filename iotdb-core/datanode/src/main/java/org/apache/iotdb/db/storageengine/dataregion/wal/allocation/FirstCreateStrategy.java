@@ -95,7 +95,7 @@ public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
       if (walNode != null) {
         walNode.close();
         if (walNode.getLogDirectory().exists()) {
-          FileUtils.deleteDirectory(walNode.getLogDirectory());
+          FileUtils.deleteFileOrDirectory(walNode.getLogDirectory());
         }
         WALManager.getInstance().subtractTotalDiskUsage(walNode.getDiskUsage());
         WALManager.getInstance().subtractTotalFileNum(walNode.getFileNum());

@@ -17,15 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.config;
+package org.apache.iotdb.itbase.category;
 
-public class ConsumerConstant {
-
-  public static final String CONSUMER_ID_KEY = "consumer-id";
-
-  public static final String CONSUMER_GROUP_ID_KEY = "group-id";
-
-  private ConsumerConstant() {
-    throw new IllegalStateException("Utility class");
-  }
-}
+public interface MultiClusterIT2ManualCreateSchema {}

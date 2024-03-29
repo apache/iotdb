@@ -28,7 +28,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -44,7 +44,7 @@ import java.util.Map;
 
 /** Test pipe's basic functionalities under multiple cluster and consensus protocol settings. */
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2.class})
+@Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
   @Override
   @Before
@@ -64,12 +64,14 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
       int dataRegionReplicationFactor) {
     schemaRegionReplicationFactor = Math.min(schemaRegionReplicationFactor, dataNodesNum);
     dataRegionReplicationFactor = Math.min(dataRegionReplicationFactor, dataNodesNum);
+
+    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
-        .setConfigNodeConsensusProtocolClass(configNodeConsensus)
-        .setSchemaRegionConsensusProtocolClass(schemaRegionConsensus)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(dataRegionConsensus)
         .setSchemaReplicationFactor(schemaRegionReplicationFactor)
         .setDataReplicationFactor(dataRegionReplicationFactor);
@@ -347,7 +349,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1);
+        .setDataReplicationFactor(1)
+        .setEnableSeqSpaceCompaction(false)
+        .setEnableUnseqSpaceCompaction(false)
+        .setEnableCrossSpaceCompaction(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -365,7 +370,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
     StringBuilder nodeUrlsBuilder = new StringBuilder();
     for (DataNodeWrapper wrapper : receiverEnv.getDataNodeWrapperList()) {
       if (connectorName.equals(BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
-        // use default port for convenience
+        // Use default port for convenience
         nodeUrlsBuilder
             .append(wrapper.getIp())
             .append(":")
@@ -379,8 +384,14 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
+      // Test mods transfer
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.db.d1(time, s1) values (1, 1)",
+              "insert into root.db.d1(time, s1) values (3, 1)",
+              "flush",
+              "delete from root.db.d1.s1 where time > 2"))) {
         return;
       }
 
@@ -391,6 +402,8 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector", connectorName);
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.node-urls", nodeUrlsBuilder.toString());
+
+      extractorAttributes.put("source.mods.enable", "true");
 
       // Test forced-log mode, in open releases this might be "file"
       extractorAttributes.put("source.realtime.mode", "forced-log");
@@ -404,6 +417,12 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("1,"));
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv, Arrays.asList("insert into root.db.d1(time, s1) values (2, 2)", "flush"))) {
@@ -441,7 +460,6 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
 
-      System.out.println(status.getMessage());
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
