@@ -112,7 +112,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       final String ip = nodeUrls.get(i).getIp();
       final int port = nodeUrls.get(i).getPort();
 
-      // close the socket if necessary
+      // Close the socket if necessary
       if (sockets.get(i) != null) {
         try {
           sockets.set(i, null).close();
@@ -130,7 +130,6 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       try {
         socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
         socket.setKeepAlive(true);
-        socket.setSoTimeout(handshakeTimeoutMs);
         sockets.set(i, socket);
         LOGGER.info("Successfully connected to target server ip: {}, port: {}.", ip, port);
       } catch (Exception e) {
@@ -142,20 +141,8 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         continue;
       }
 
-      // Try to handshake by PipeTransferHandshakeV2Req. If failed, retry to handshake by
-      // PipeTransferHandshakeV1Req. If failed again, throw PipeConnectionException.
-      if (!send(socket, generateHandShakeV2Payload())) {
-        supportModsIfIsDataNodeReceiver = false;
-        if (!send(socket, generateHandShakeV1Payload())) {
-          throw new PipeConnectionException(
-              "Handshake error with target server ip: " + ip + ", port: " + port);
-        }
-      } else {
-        supportModsIfIsDataNodeReceiver = true;
-      }
+      sendHandshakeReq(socket);
       isSocketAlive.set(i, true);
-      socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
-      LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
     }
 
     for (int i = 0; i < sockets.size(); i++) {
@@ -165,6 +152,22 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     }
     throw new PipeConnectionException(
         String.format("All target servers %s are not available.", nodeUrls));
+  }
+
+  protected void sendHandshakeReq(Socket socket) throws IOException {
+    socket.setSoTimeout(handshakeTimeoutMs);
+    // Try to handshake by PipeTransferHandshakeV2Req. If failed, retry to handshake by
+    // PipeTransferHandshakeV1Req. If failed again, throw PipeConnectionException.
+    if (!send(socket, generateHandShakeV2Payload())) {
+      supportModsIfIsDataNodeReceiver = false;
+      if (!send(socket, generateHandShakeV1Payload())) {
+        throw new PipeConnectionException("Handshake error with target server, socket: " + socket);
+      }
+    } else {
+      supportModsIfIsDataNodeReceiver = true;
+    }
+    socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
+    LOGGER.info("Handshake success. Socket: {}", socket);
   }
 
   protected abstract byte[] generateHandShakeV1Payload() throws IOException;
@@ -206,6 +209,11 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
                 : getTransferSingleFilePieceBytes(file.getName(), position, payload))) {
           final String errorMessage =
               String.format("Transfer file %s error. Socket %s.", file, socket);
+          // Send handshake because we don't know whether the receiver side configNode
+          // has set up a new one
+          if (mayNeedHandshakeWhenFail()) {
+            sendHandshakeReq(socket);
+          }
           receiverStatusHandler.handle(
               new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
                   .setMessage(errorMessage),
@@ -217,6 +225,8 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       }
     }
   }
+
+  protected abstract boolean mayNeedHandshakeWhenFail();
 
   protected abstract byte[] getTransferSingleFilePieceBytes(
       String fileName, long position, byte[] payLoad) throws IOException;

@@ -72,6 +72,11 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
   }
 
   @Override
+  protected boolean mayNeedHandshakeWhenFail() {
+    return true;
+  }
+
+  @Override
   protected byte[] getTransferSingleFilePieceBytes(String fileName, long position, byte[] payLoad) {
     throw new UnsupportedOperationException(
         "The config region air gap connector does not support transferring single file piece bytes.");
@@ -122,6 +127,9 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
           String.format(
               "Transfer config region write plan %s error. Socket: %s.",
               pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), socket);
+      // Send handshake because we don't know whether the receiver side configNode
+      // has set up a new one
+      sendHandshakeReq(socket);
       receiverStatusHandler.handle(
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
@@ -153,6 +161,9 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
             pipeConfigRegionSnapshotEvent.toSealTypeString()))) {
       final String errorMessage =
           String.format("Seal config region snapshot %s error. Socket %s.", snapshot, socket);
+      // Send handshake because we don't know whether the receiver side configNode
+      // has set up a new one
+      sendHandshakeReq(socket);
       receiverStatusHandler.handle(
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),

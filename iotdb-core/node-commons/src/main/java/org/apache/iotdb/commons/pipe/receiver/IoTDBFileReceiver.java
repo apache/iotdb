@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
 public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBFileReceiver.class);
-  private final AtomicReference<File> receiverFileDirWithIdSuffix = new AtomicReference<>();
+  protected final AtomicReference<File> receiverFileDirWithIdSuffix = new AtomicReference<>();
 
   // Used to generate transfer id, which is used to identify a receiver thread.
   private static final AtomicLong RECEIVER_ID_GENERATOR = new AtomicLong(0);

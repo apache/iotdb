@@ -82,6 +82,11 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
   }
 
   @Override
+  protected boolean mayNeedHandshakeWhenFail() {
+    return false;
+  }
+
+  @Override
   protected byte[] generateHandShakeV1Payload() throws IOException {
     return PipeTransferDataNodeHandshakeV1Req.toTPipeTransferBytes(
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
