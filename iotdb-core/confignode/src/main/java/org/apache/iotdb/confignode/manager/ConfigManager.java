@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -217,7 +218,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /** Entry of all management, AssignPartitionManager, AssignRegionManager. */
@@ -1788,7 +1788,7 @@ public class ConfigManager implements IManager {
       HashSet<TDatabaseSchema> deleteDatabaseSchemas = new HashSet<>();
       List<PartialPath> deleteTimeSeriesPatternPaths = new ArrayList<>();
       for (PartialPath path : rawPatternTree.getAllPathPatterns()) {
-        if (path.getFullPath().endsWith(MULTI_LEVEL_PATH_WILDCARD)
+        if (PathPatternUtil.isMultiLevelMatchWildcard(path.getMeasurement())
             && !path.getDevicePath().hasWildcard()) {
           Map<String, TDatabaseSchema> databaseSchemaMap =
               getClusterSchemaManager().getMatchedDatabaseSchemasByPrefix(path.getDevicePath());
