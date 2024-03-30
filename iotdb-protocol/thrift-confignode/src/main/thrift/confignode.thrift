@@ -130,7 +130,6 @@ struct TDataNodeRestartResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional TRuntimeConfiguration runtimeConfiguration
-  4: optional list<common.TConsensusGroupId> consensusGroupIds
 }
 
 struct TDataNodeRemoveReq {

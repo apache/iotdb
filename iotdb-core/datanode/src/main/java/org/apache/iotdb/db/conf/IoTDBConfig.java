@@ -328,14 +328,9 @@ public class IoTDBConfig {
   /** Consensus directory. */
   private String consensusDir = IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + "consensus";
 
-  private String dataRegionConsensusDir =
-      consensusDir + File.separator + IoTDBConstant.DATA_REGION_FOLDER_NAME;
+  private String dataRegionConsensusDir = consensusDir + File.separator + "data_region";
 
-  private String invalidDataRegionConsensusDir =
-      consensusDir + File.separator + IoTDBConstant.INVALID_DATA_REGION_FOLDER_NAME;
-
-  private String schemaRegionConsensusDir =
-      consensusDir + File.separator + IoTDBConstant.SCHEMA_REGION_FOLDER_NAME;
+  private String schemaRegionConsensusDir = consensusDir + File.separator + "schema_region";
 
   /** temp result directory for sortOperator */
   private String sortTmpDir =
@@ -1450,12 +1445,8 @@ public class IoTDBConfig {
 
   public void setConsensusDir(String consensusDir) {
     this.consensusDir = consensusDir;
-    setDataRegionConsensusDir(
-        consensusDir + File.separator + IoTDBConstant.DATA_REGION_FOLDER_NAME);
-    setSchemaRegionConsensusDir(
-        consensusDir + File.separator + IoTDBConstant.SCHEMA_REGION_FOLDER_NAME);
-    setInvalidDataRegionConsensusDir(
-        consensusDir + File.separator + IoTDBConstant.INVALID_DATA_REGION_FOLDER_NAME);
+    setDataRegionConsensusDir(consensusDir + File.separator + "data_region");
+    setSchemaRegionConsensusDir(consensusDir + File.separator + "schema_region");
   }
 
   public String getDataRegionConsensusDir() {
@@ -1464,14 +1455,6 @@ public class IoTDBConfig {
 
   public void setDataRegionConsensusDir(String dataRegionConsensusDir) {
     this.dataRegionConsensusDir = dataRegionConsensusDir;
-  }
-
-  public String getInvalidDataRegionConsensusDir() {
-    return invalidDataRegionConsensusDir;
-  }
-
-  public void setInvalidDataRegionConsensusDir(String invalidDataRegionConsensusDir) {
-    this.invalidDataRegionConsensusDir = invalidDataRegionConsensusDir;
   }
 
   public String getSchemaRegionConsensusDir() {

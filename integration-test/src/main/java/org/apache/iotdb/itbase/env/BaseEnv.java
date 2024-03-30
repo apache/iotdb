@@ -255,8 +255,4 @@ public interface BaseEnv {
   String getLibPath();
 
   Optional<DataNodeWrapper> dataNodeIdToWrapper(int nodeId);
-
-  void registerConfigNodeKillPoints(List<String> killPoints);
-
-  void registerDataNodeKillPoints(List<String> killPoints);
 }

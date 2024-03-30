@@ -17,26 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass;
+package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
+@TestOnly
+public enum DataNodeKillPoints {
+  OriginalRemovePeer,
+  OriginalDeleteOldRegionPeer,
 
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
-
-@RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class})
-public class IoTDBRegionMigrateNormalIT extends IoTDBRegionMigrateReliabilityITFramework {
-  @Test
-  public void normal1C2DTest() throws Exception {
-    successTest(1, 1, 1, 2, noKillPoints(), noKillPoints());
-  }
-
-  @Test
-  public void normal3C3DTest() throws Exception {
-    successTest(2, 3, 3, 3, noKillPoints(), noKillPoints());
-  }
+  CoordinatorRemovePeer,
 }

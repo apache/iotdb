@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -96,7 +95,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 /** {@link NodeManager} manages cluster node addition and removal requests. */
 public class NodeManager {
@@ -355,11 +353,6 @@ public class NodeManager {
 
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
     resp.setRuntimeConfiguration(getRuntimeConfiguration().setClusterId(clusterId));
-    List<TConsensusGroupId> consensusGroupIds =
-        getPartitionManager().getAllReplicaSets(nodeId).stream()
-            .map(TRegionReplicaSet::getRegionId)
-            .collect(Collectors.toList());
-    resp.setConsensusGroupIds(consensusGroupIds);
     return resp;
   }
 

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.it.env.cluster.node;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
 import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
@@ -126,7 +125,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   private int nodePort;
   private int metricPort;
   private long startTime;
-  private List<String> killPoints = new ArrayList<>();
 
   /**
    * Mutable properties are always hardcoded default values to make the cluster be set up
@@ -455,7 +453,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               "-Xmx" + jvmConfig.getMaxHeapSize() + "m",
               "-XX:MaxDirectMemorySize=" + jvmConfig.getMaxDirectMemorySize() + "m",
               "-Djdk.nio.maxCachedBufferSize=262144",
-              "-D" + IoTDBConstant.INTEGRATION_TEST_KILL_POINTS + "=" + killPoints.toString(),
               "-cp",
               server_node_lib_path));
       addStartCmdParams(startCmd);
@@ -641,14 +638,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       return testClassName;
     }
     return testClassName + "_" + testMethodName;
-  }
-
-  public void setKillPoints(List<String> killPoints) {
-    this.killPoints = killPoints;
-  }
-
-  private String getKillPoints() {
-    return killPoints.toString();
   }
 
   /* Abstract methods, which must be implemented in ConfigNode and DataNode. */

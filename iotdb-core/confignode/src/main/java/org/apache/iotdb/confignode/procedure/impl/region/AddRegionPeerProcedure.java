@@ -41,7 +41,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
 import static org.apache.iotdb.confignode.procedure.state.AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
@@ -80,13 +79,11 @@ public class AddRegionPeerProcedure
       switch (state) {
         case CREATE_NEW_REGION_PEER:
           handler.createNewRegionPeer(consensusGroupId, destDataNode);
-          setKillPoint(state);
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
           TSStatus tsStatus =
               handler.addRegionPeer(this.getProcId(), destDataNode, consensusGroupId, coordinator);
-          setKillPoint(state);
           TRegionMigrateResult result;
           if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
             result = handler.waitTaskFinish(this.getProcId(), coordinator);
@@ -127,7 +124,6 @@ public class AddRegionPeerProcedure
           }
         case UPDATE_REGION_LOCATION_CACHE:
           handler.addRegionLocation(consensusGroupId, destDataNode);
-          setKillPoint(state);
           LOGGER.info("AddRegionPeer state {} complete", state);
           LOGGER.info(
               "AddRegionPeerProcedure success, region {} has been added to DataNode {}",
