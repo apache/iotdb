@@ -90,6 +90,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
@@ -702,7 +703,23 @@ public class PartitionInfo implements SnapshotProcessor {
     if (databasePartitionTables.containsKey(database)) {
       return databasePartitionTables.get(database).getAllReplicaSets();
     } else {
-      return new ArrayList<>();
+      return Collections.emptyList();
+    }
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param database The specified Database
+   * @param type SchemaRegion or DataRegion
+   * @return Deep copy of all Regions' RegionReplicaSet with the specified Database and
+   *     TConsensusGroupType
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(String database, TConsensusGroupType type) {
+    if (databasePartitionTables.containsKey(database)) {
+      return databasePartitionTables.get(database).getAllReplicaSets(type);
+    } else {
+      return Collections.emptyList();
     }
   }
 
@@ -734,7 +751,7 @@ public class PartitionInfo implements SnapshotProcessor {
     if (databasePartitionTables.containsKey(database)) {
       return databasePartitionTables.get(database).getReplicaSets(regionGroupIds);
     } else {
-      return new ArrayList<>();
+      return Collections.emptyList();
     }
   }
 
@@ -798,6 +815,25 @@ public class PartitionInfo implements SnapshotProcessor {
     }
 
     return databasePartitionTables.get(database).getRegionGroupCount(type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * <p>Get the all RegionGroups currently in the cluster
+   *
+   * @param type SchemaRegion or DataRegion
+   * @return Map<Database, List<RegionGroupIds>>
+   */
+  public Map<String, List<TConsensusGroupId>> getAllRegionGroupIdMap(TConsensusGroupType type) {
+    Map<String, List<TConsensusGroupId>> result = new TreeMap<>();
+    databasePartitionTables.forEach(
+        (database, databasePartitionTable) -> {
+          if (databasePartitionTable.isNotPreDeleted()) {
+            result.put(database, databasePartitionTable.getAllRegionGroupIds(type));
+          }
+        });
+    return result;
   }
 
   /**

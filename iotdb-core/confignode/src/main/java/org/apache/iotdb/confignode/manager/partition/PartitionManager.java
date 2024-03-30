@@ -712,6 +712,18 @@ public class PartitionManager {
   }
 
   /**
+   * Only leader use this interface.
+   *
+   * @param database The specified Database
+   * @param type SchemaRegion or DataRegion
+   * @return Deep copy of all Regions' RegionReplicaSet with the specified Database and
+   *     TConsensusGroupType
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(String database, TConsensusGroupType type) {
+    return partitionInfo.getAllReplicaSets(database, type);
+  }
+
+  /**
    * Get all RegionGroups currently owned by the specified Database.
    *
    * @param dataNodeId The specified dataNodeId
@@ -780,6 +792,18 @@ public class PartitionManager {
   public int getRegionGroupCount(String database, TConsensusGroupType type)
       throws DatabaseNotExistsException {
     return partitionInfo.getRegionGroupCount(database, type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * <p>Get the all RegionGroups currently in the cluster
+   *
+   * @param type SchemaRegion or DataRegion
+   * @return Map<Database, List<RegionGroupIds>>
+   */
+  public Map<String, List<TConsensusGroupId>> getAllRegionGroupIdMap(TConsensusGroupType type) {
+    return partitionInfo.getAllRegionGroupIdMap(type);
   }
 
   /**
