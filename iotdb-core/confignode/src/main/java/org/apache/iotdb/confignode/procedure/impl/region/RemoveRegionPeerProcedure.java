@@ -42,6 +42,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.DELETE_OLD_REGION_PEER;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
@@ -81,6 +82,7 @@ public class RemoveRegionPeerProcedure
           tsStatus =
               handler.removeRegionPeer(
                   this.getProcId(), targetDataNode, consensusGroupId, coordinator);
+          setKillPoint(state);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
             throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
           }
@@ -94,6 +96,7 @@ public class RemoveRegionPeerProcedure
         case DELETE_OLD_REGION_PEER:
           tsStatus =
               handler.deleteOldRegionPeer(this.getProcId(), targetDataNode, consensusGroupId);
+          setKillPoint(state);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
             throw new ProcedureException("DELETE_OLD_REGION_PEER executed failed in DataNode");
           }
@@ -106,6 +109,7 @@ public class RemoveRegionPeerProcedure
           break;
         case REMOVE_REGION_LOCATION_CACHE:
           handler.removeRegionLocation(consensusGroupId, targetDataNode);
+          setKillPoint(state);
           LOGGER.info("RemoveRegionPeer state {} success", state);
           LOGGER.info(
               "RemoveRegionPeerProcedure success, region {} has been removed from DataNode {}",

@@ -87,6 +87,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 public class IoTConsensusServerImpl {
 
@@ -133,9 +134,8 @@ public class IoTConsensusServerImpl {
     this.configuration = configuration;
     if (configuration.isEmpty()) {
       recoverConfiguration();
-    } else {
-      persistConfiguration();
     }
+    persistConfiguration();
     this.backgroundTaskService = backgroundTaskService;
     this.config = config;
     this.consensusGroupId = thisNode.getGroupId().toString();
@@ -572,7 +572,7 @@ public class IoTConsensusServerImpl {
     configuration.add(targetPeer);
     // step 3, persist configuration
     logger.info("[IoTConsensus] persist new configuration: {}", configuration);
-    persistConfigurationUpdate();
+    persistConfiguration();
   }
 
   public void removeSyncLogChannel(Peer targetPeer) throws ConsensusGroupModifyPeerException {
@@ -584,31 +584,35 @@ public class IoTConsensusServerImpl {
       configuration.remove(targetPeer);
       checkAndUpdateSafeDeletedSearchIndex();
       // step 3, persist configuration
-      persistConfigurationUpdate();
+      persistConfiguration();
       logger.info("[IoTConsensus] configuration updated to {}", this.configuration);
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException("error when remove LogDispatcherThread", e);
     }
   }
 
+  // TODO: persist first and then delete old configuration file
   public void persistConfiguration() {
     try {
-      serializeConfigurationAndFsyncToDisk(CONFIGURATION_FILE_NAME);
+      try (Stream<Path> stream = Files.walk(Paths.get(storageDir))) {
+        stream
+            .filter(Files::isRegularFile)
+            .filter(filePath -> filePath.getFileName().toString().contains("configuration"))
+            .forEach(
+                filePath -> {
+                  try {
+                    Files.delete(filePath);
+                  } catch (IOException e) {
+                    logger.error("Unexpected error occurs when deleting old configuration file", e);
+                  }
+                });
+      }
+      serializeConfigurationAndFsyncToDisk();
     } catch (IOException e) {
       // TODO: (xingtanzjr) need to handle the IOException because the IoTConsensus won't
       // work expectedly
       //  if the exception occurs
       logger.error("Unexpected error occurs when persisting configuration", e);
-    }
-  }
-
-  public void persistConfigurationUpdate() throws ConsensusGroupModifyPeerException {
-    try {
-      serializeConfigurationAndFsyncToDisk(CONFIGURATION_TMP_FILE_NAME);
-      tmpConfigurationUpdate(configuration);
-    } catch (IOException e) {
-      throw new ConsensusGroupModifyPeerException(
-          "Unexpected error occurs when update configuration", e);
     }
   }
 
@@ -631,9 +635,13 @@ public class IoTConsensusServerImpl {
         // recover from split configuration file
         Path dirPath = Paths.get(storageDir);
         List<Peer> tmpPeerList = getConfiguration(dirPath, CONFIGURATION_TMP_FILE_NAME);
-        tmpConfigurationUpdate(tmpPeerList);
+        configuration.addAll(tmpPeerList);
         List<Peer> peerList = getConfiguration(dirPath, CONFIGURATION_FILE_NAME);
-        configuration.addAll(peerList);
+        for (Peer peer : peerList) {
+          if (!configuration.contains(peer)) {
+            configuration.add(peer);
+          }
+        }
       }
       logger.info("Recover IoTConsensus server Impl, configuration: {}", configuration);
     } catch (IOException e) {
@@ -643,28 +651,18 @@ public class IoTConsensusServerImpl {
 
   // @Compatibility
   private void recoverFromOldConfigurationFile(Path oldConfigurationPath) throws IOException {
+    // recover from old configuration file
     ByteBuffer buffer = ByteBuffer.wrap(Files.readAllBytes(oldConfigurationPath));
     int size = buffer.getInt();
     for (int i = 0; i < size; i++) {
       configuration.add(Peer.deserialize(buffer));
     }
-    persistConfiguration();
+    // TODO: delete old file before new file persisted is unsafe
     Files.delete(oldConfigurationPath);
   }
 
-  private void tmpConfigurationUpdate(List<Peer> tmpPeerList) throws IOException {
-    for (Peer peer : tmpPeerList) {
-      Path tmpConfigurationPath =
-          Paths.get(
-              new File(storageDir, peer.getNodeId() + "_" + CONFIGURATION_TMP_FILE_NAME)
-                  .getAbsolutePath());
-      Path configurationPath =
-          Paths.get(
-              new File(storageDir, peer.getNodeId() + "_" + CONFIGURATION_FILE_NAME)
-                  .getAbsolutePath());
-      Files.deleteIfExists(configurationPath);
-      Files.move(tmpConfigurationPath, configurationPath);
-    }
+  public static String generateConfigurationDatFileName(int nodeId) {
+    return nodeId + "_" + CONFIGURATION_FILE_NAME;
   }
 
   private List<Peer> getConfiguration(Path dirPath, String configurationFileName)
@@ -876,10 +874,9 @@ public class IoTConsensusServerImpl {
     return consensusGroupId;
   }
 
-  private void serializeConfigurationAndFsyncToDisk(String configurationFileName)
-      throws IOException {
+  private void serializeConfigurationAndFsyncToDisk() throws IOException {
     for (Peer peer : configuration) {
-      String peerConfigurationFileName = peer.getNodeId() + "_" + configurationFileName;
+      String peerConfigurationFileName = generateConfigurationDatFileName(peer.getNodeId());
       FileOutputStream fileOutputStream =
           new FileOutputStream(new File(storageDir, peerConfigurationFileName));
       try (DataOutputStream outputStream = new DataOutputStream(fileOutputStream)) {
@@ -888,8 +885,8 @@ public class IoTConsensusServerImpl {
         try {
           fileOutputStream.flush();
           fileOutputStream.getFD().sync();
-        } catch (IOException e) {
-          logger.error("Failed to fsync the configuration file {}", peerConfigurationFileName, e);
+        } catch (IOException ignore) {
+          // ignore
         }
       }
     }

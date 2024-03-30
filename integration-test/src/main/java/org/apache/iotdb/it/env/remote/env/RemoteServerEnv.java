@@ -372,4 +372,14 @@ public class RemoteServerEnv implements BaseEnv {
   public Optional<DataNodeWrapper> dataNodeIdToWrapper(int nodeId) {
     throw new UnsupportedOperationException();
   }
+
+  @Override
+  public void registerConfigNodeKillPoints(List<String> killPoints) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void registerDataNodeKillPoints(List<String> killPoints) {
+    throw new UnsupportedOperationException();
+  }
 }
