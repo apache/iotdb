@@ -57,6 +57,7 @@ public abstract class LogWriter implements ILogWriter {
     this.logStream = new FileOutputStream(logFile, true);
     this.logChannel = this.logStream.getChannel();
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWALCompression()) {
+      logger.info("Enable WAL compression with gzip");
       compressedByteBuffer =
           ByteBuffer.allocate(
               compressor.getMaxBytesForCompression(
@@ -69,7 +70,6 @@ public abstract class LogWriter implements ILogWriter {
   @Override
   public void write(ByteBuffer buffer) throws IOException {
     int bufferSize = buffer.position();
-    size += buffer.position();
     buffer.flip();
     boolean compressed = false;
     int uncompressedSize = bufferSize;
@@ -86,9 +86,12 @@ public abstract class LogWriter implements ILogWriter {
     headerBuffer.clear();
     headerBuffer.putInt(bufferSize);
     headerBuffer.put((byte) (compressed ? 1 : 0));
+    size += bufferSize;
+    size += 5;
     try {
       if (compressed) {
         headerBuffer.putInt(uncompressedSize);
+        size += 4;
       }
       headerBuffer.flip();
       logChannel.write(headerBuffer);
