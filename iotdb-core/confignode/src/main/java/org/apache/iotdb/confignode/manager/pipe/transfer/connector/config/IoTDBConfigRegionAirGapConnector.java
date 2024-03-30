@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -72,47 +73,61 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
   }
 
   @Override
-  protected byte[] getTransferSingleFilePieceBytes(String fileName, long position, byte[] payLoad) {
+  protected boolean mayNeedHandshakeWhenFail() {
+    return true;
+  }
+
+  @Override
+  protected byte[] getTransferSingleFilePieceBytes(
+      final String fileName, final long position, final byte[] payLoad) {
     throw new UnsupportedOperationException(
         "The config region air gap connector does not support transferring single file piece bytes.");
   }
 
   @Override
-  protected byte[] getTransferMultiFilePieceBytes(String fileName, long position, byte[] payLoad)
-      throws IOException {
+  protected byte[] getTransferMultiFilePieceBytes(
+      final String fileName, final long position, final byte[] payLoad) throws IOException {
     return PipeTransferConfigSnapshotPieceReq.toTPipeTransferBytes(fileName, position, payLoad);
   }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+  public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
         "IoTDBConfigRegionAirGapConnector can't transfer TabletInsertionEvent.");
   }
 
   @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+  public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
         "IoTDBConfigRegionAirGapConnector can't transfer TsFileInsertionEvent.");
   }
 
   @Override
-  public void transfer(Event event) throws Exception {
+  public void transfer(final Event event) throws Exception {
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
 
-    if (event instanceof PipeConfigRegionWritePlanEvent) {
-      doTransfer(socket, (PipeConfigRegionWritePlanEvent) event);
-    } else if (event instanceof PipeConfigRegionSnapshotEvent) {
-      doTransfer(socket, (PipeConfigRegionSnapshotEvent) event);
-    } else if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn(
-          "IoTDBConfigRegionAirGapConnector does not support transferring generic event: {}.",
-          event);
+    try {
+      if (event instanceof PipeConfigRegionWritePlanEvent) {
+        doTransfer(socket, (PipeConfigRegionWritePlanEvent) event);
+      } else if (event instanceof PipeConfigRegionSnapshotEvent) {
+        doTransfer(socket, (PipeConfigRegionSnapshotEvent) event);
+      } else if (!(event instanceof PipeHeartbeatEvent)) {
+        LOGGER.warn(
+            "IoTDBConfigRegionAirGapConnector does not support transferring generic event: {}.",
+            event);
+      }
+    } catch (IOException e) {
+      isSocketAlive.set(socketIndex, false);
+
+      throw new PipeConnectionException(
+          String.format("Network error when transfer event %s, because %s.", event, e.getMessage()),
+          e);
     }
   }
 
   private void doTransfer(
-      Socket socket, PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent)
+      final Socket socket, final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent)
       throws PipeException, IOException {
     if (!send(
         socket,
@@ -122,6 +137,9 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
           String.format(
               "Transfer config region write plan %s error. Socket: %s.",
               pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), socket);
+      // Send handshake because we don't know whether the receiver side configNode
+      // has set up a new one
+      sendHandshakeReq(socket);
       receiverStatusHandler.handle(
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
@@ -131,7 +149,7 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
   }
 
   private void doTransfer(
-      Socket socket, PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
+      final Socket socket, final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
       throws PipeException, IOException {
     final File snapshot = pipeConfigRegionSnapshotEvent.getSnapshotFile();
     final File templateFile = pipeConfigRegionSnapshotEvent.getTemplateFile();
@@ -153,6 +171,9 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
             pipeConfigRegionSnapshotEvent.toSealTypeString()))) {
       final String errorMessage =
           String.format("Seal config region snapshot %s error. Socket %s.", snapshot, socket);
+      // Send handshake because we don't know whether the receiver side configNode
+      // has set up a new one
+      sendHandshakeReq(socket);
       receiverStatusHandler.handle(
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),

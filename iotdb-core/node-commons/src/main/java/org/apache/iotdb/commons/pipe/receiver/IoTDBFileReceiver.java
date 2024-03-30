@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
 public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBFileReceiver.class);
-  private final AtomicReference<File> receiverFileDirWithIdSuffix = new AtomicReference<>();
+  protected final AtomicReference<File> receiverFileDirWithIdSuffix = new AtomicReference<>();
 
   // Used to generate transfer id, which is used to identify a receiver thread.
   private static final AtomicLong RECEIVER_ID_GENERATOR = new AtomicLong(0);
@@ -90,7 +90,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
     receiverId.set(RECEIVER_ID_GENERATOR.incrementAndGet());
 
-    // clear the original receiver file dir if exists
+    // Clear the original receiver file dir if exists
     if (receiverFileDirWithIdSuffix.get() != null) {
       if (receiverFileDirWithIdSuffix.get().exists()) {
         try {
@@ -578,55 +578,52 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (writingFileWriter != null) {
       try {
         writingFileWriter.close();
-        LOGGER.info("IoTDBThriftReceiverV1#handleExit: writing file writer was closed.");
+        LOGGER.info("IoTDBFileReceiverV1#handleExit: writing file writer was closed.");
       } catch (Exception e) {
-        LOGGER.warn("IoTDBThriftReceiverV1#handleExit: close writing file writer error.", e);
+        LOGGER.warn("IoTDBFileReceiverV1#handleExit: close writing file writer error.", e);
       }
       writingFileWriter = null;
     } else {
-      LOGGER.info(
-          "IoTDBThriftReceiverV1#handleExit: writing file writer is null. No need to close.");
+      LOGGER.info("IoTDBFileReceiverV1#handleExit: writing file writer is null. No need to close.");
     }
 
     if (writingFile != null) {
       try {
         Files.delete(writingFile.toPath());
         LOGGER.info(
-            "IoTDBThriftReceiverV1#handleExit: writing file {} was deleted.",
-            writingFile.getPath());
+            "IoTDBFileReceiverV1#handleExit: writing file {} was deleted.", writingFile.getPath());
       } catch (Exception e) {
-        LOGGER.warn(
-            "IoTDBThriftReceiverV1#handleExit: delete file {} error.", writingFile.getPath());
+        LOGGER.warn("IoTDBFileReceiverV1#handleExit: delete file {} error.", writingFile.getPath());
       }
       writingFile = null;
     } else {
-      LOGGER.info("IoTDBThriftReceiverV1#handleExit: writing file is null. No need to delete.");
+      LOGGER.info("IoTDBFileReceiverV1#handleExit: writing file is null. No need to delete.");
     }
 
-    // clear the original receiver file dir if exists
+    // Clear the original receiver file dir if exists
     if (receiverFileDirWithIdSuffix.get() != null) {
       if (receiverFileDirWithIdSuffix.get().exists()) {
         try {
           Files.delete(receiverFileDirWithIdSuffix.get().toPath());
           LOGGER.info(
-              "IoTDBThriftReceiverV1#handleExit: original receiver file dir {} was deleted.",
+              "IoTDBFileReceiverV1#handleExit: original receiver file dir {} was deleted.",
               receiverFileDirWithIdSuffix.get().getPath());
         } catch (IOException e) {
           LOGGER.warn(
-              "IoTDBThriftReceiverV1#handleExit: delete original receiver file dir {} error.",
+              "IoTDBFileReceiverV1#handleExit: delete original receiver file dir {} error.",
               receiverFileDirWithIdSuffix.get().getPath());
         }
       } else {
         LOGGER.info(
-            "IoTDBThriftReceiverV1#handleExit: original receiver file dir {} does not exist. No need to delete.",
+            "IoTDBFileReceiverV1#handleExit: original receiver file dir {} does not exist. No need to delete.",
             receiverFileDirWithIdSuffix.get().getPath());
       }
       receiverFileDirWithIdSuffix.set(null);
     } else {
       LOGGER.info(
-          "IoTDBThriftReceiverV1#handleExit: original receiver file dir is null. No need to delete.");
+          "IoTDBFileReceiverV1#handleExit: original receiver file dir is null. No need to delete.");
     }
 
-    LOGGER.info("IoTDBThriftReceiverV1#handleExit: receiver exited.");
+    LOGGER.info("IoTDBFileReceiverV1#handleExit: receiver exited.");
   }
 }

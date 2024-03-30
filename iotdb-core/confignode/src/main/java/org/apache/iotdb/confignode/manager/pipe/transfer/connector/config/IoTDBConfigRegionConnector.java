@@ -121,6 +121,10 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     }
 
     final TSStatus status = resp.getStatus();
+    // Send handshake req and then re-transfer the event
+    if (status.getCode() == TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode()) {
+      clientManager.sendHandshakeReq(clientAndStatus);
+    }
     // Only handle the failed statuses to avoid string format performance overhead
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -167,11 +171,16 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
           e);
     }
 
+    final TSStatus status = resp.getStatus();
+    // Send handshake req and then re-transfer the event
+    if (status.getCode() == TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode()) {
+      clientManager.sendHandshakeReq(clientAndStatus);
+    }
     // Only handle the failed statuses to avoid string format performance overhead
-    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && resp.getStatus().getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       receiverStatusHandler.handle(
-          resp.getStatus(),
+          status,
           String.format(
               "Seal config region snapshot file %s error, result status %s.",
               snapshotFile, resp.getStatus()),

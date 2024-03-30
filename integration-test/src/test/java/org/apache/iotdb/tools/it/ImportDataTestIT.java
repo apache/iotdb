@@ -36,7 +36,7 @@ import java.io.IOException;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class ImportCsvTestIT extends AbstractScript {
+public class ImportDataTestIT extends AbstractScript {
 
   private static String ip;
 
@@ -80,7 +80,7 @@ public class ImportCsvTestIT extends AbstractScript {
         new ProcessBuilder(
             "cmd.exe",
             "/c",
-            toolsPath + File.separator + "import-csv.bat",
+            toolsPath + File.separator + "import-data.bat",
             "-h",
             ip,
             "-p",
@@ -106,7 +106,7 @@ public class ImportCsvTestIT extends AbstractScript {
     ProcessBuilder builder =
         new ProcessBuilder(
             "bash",
-            toolsPath + File.separator + "import-csv.sh",
+            toolsPath + File.separator + "import-data.sh",
             "-h",
             ip,
             "-p",

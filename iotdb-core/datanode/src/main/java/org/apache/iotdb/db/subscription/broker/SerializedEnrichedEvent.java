@@ -109,6 +109,6 @@ public class SerializedEnrichedEvent {
     // Recycle events that may not be able to be committed, i.e., those that have been polled but
     // not committed within a certain period of time.
     return System.currentTimeMillis() - lastPolledTimestamp
-        > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalSeconds();
+        > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
   }
 }

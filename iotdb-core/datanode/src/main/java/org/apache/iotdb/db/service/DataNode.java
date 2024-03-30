@@ -473,7 +473,7 @@ public class DataNode implements DataNodeMBean {
       }
 
       try {
-        // wait to start the next try
+        // Wait to start the next try
         Thread.sleep(DEFAULT_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();

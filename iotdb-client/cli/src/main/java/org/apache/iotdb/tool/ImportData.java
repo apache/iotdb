@@ -27,6 +27,7 @@ import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -47,10 +48,16 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.annotation.Nullable;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -66,6 +73,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.jdbc.Config.IOTDB_ERROR_PREFIX;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.BOOLEAN;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.FLOAT;
@@ -73,7 +81,7 @@ import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT32;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT64;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 
-public class ImportCsv extends AbstractCsvTool {
+public class ImportData extends AbstractDataTool {
 
   private static final String FILE_ARGS = "f";
   private static final String FILE_NAME = "file or folder";
@@ -89,6 +97,8 @@ public class ImportCsv extends AbstractCsvTool {
 
   private static final String CSV_SUFFIXS = "csv";
   private static final String TXT_SUFFIXS = "txt";
+
+  private static final String SQL_SUFFIXS = "sql";
 
   private static final String TIMESTAMP_PRECISION_ARGS = "tp";
   private static final String TIMESTAMP_PRECISION_NAME = "timestamp precision (ms/us/ns)";
@@ -122,6 +132,7 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String DATATYPE_TEXT = "text";
 
   private static final String DATATYPE_NULL = "null";
+  private static int fetchSize = 1000;
 
   private static final String INSERT_CSV_MEET_ERROR_MSG = "Meet error when insert csv because ";
 
@@ -377,7 +388,11 @@ public class ImportCsv extends AbstractCsvTool {
 
       File file = new File(targetPath);
       if (file.isFile()) {
-        importFromSingleFile(file);
+        if (file.getName().endsWith(SQL_SUFFIXS)) {
+          importFromSqlFile(file);
+        } else {
+          importFromSingleFile(file);
+        }
       } else if (file.isDirectory()) {
         File[] files = file.listFiles();
         if (files == null) {
@@ -386,7 +401,11 @@ public class ImportCsv extends AbstractCsvTool {
 
         for (File subFile : files) {
           if (subFile.isFile()) {
-            importFromSingleFile(subFile);
+            if (subFile.getName().endsWith(SQL_SUFFIXS)) {
+              importFromSqlFile(subFile);
+            } else {
+              importFromSingleFile(subFile);
+            }
           }
         }
       } else {
@@ -440,6 +459,45 @@ public class ImportCsv extends AbstractCsvTool {
     } else {
       ioTPrinter.println("The file name must end with \"csv\" or \"txt\"!");
     }
+  }
+
+  private static void importFromSqlFile(File file) {
+    try (BufferedReader br = new BufferedReader(new FileReader(file.getAbsolutePath()))) {
+      String line;
+      while ((line = br.readLine()) != null) {
+        executeSql(line);
+      }
+      ioTPrinter.println(file.getName() + " Import completely!");
+    } catch (IOException e) {
+      ioTPrinter.println("SQL file read exception because: " + e.getMessage());
+    }
+  }
+
+  private static void executeSql(String sql) {
+    try (Statement statement = getConnection().createStatement()) {
+      statement.setFetchSize(fetchSize);
+      statement.execute(sql.trim());
+    } catch (SQLException e) {
+      ioTPrinter.println(IOTDB_ERROR_PREFIX + " Can't execute sql because " + e.getMessage());
+      System.exit(CODE_ERROR);
+    }
+  }
+
+  private static Connection getConnection() {
+    // JDBC driver name and database URL
+    String driver = org.apache.iotdb.jdbc.IoTDBDriver.class.getName();
+    String url = Config.IOTDB_URL_PREFIX + host + ":" + port + "/";
+
+    Connection connection = null;
+    try {
+      Class.forName(driver);
+      connection = DriverManager.getConnection(url, username, password);
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+    return connection;
   }
 
   /**

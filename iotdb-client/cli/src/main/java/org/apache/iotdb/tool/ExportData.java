@@ -30,6 +30,8 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.commons.cli.CommandLine;
@@ -39,25 +41,31 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.thrift.TException;
 import org.jline.reader.LineReader;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Export CSV file.
  *
  * @version 1.0.0 20170719
  */
-public class ExportCsv extends AbstractCsvTool {
+public class ExportData extends AbstractDataTool {
 
   private static final String TARGET_DIR_ARGS = "td";
   private static final String TARGET_DIR_NAME = "targetDirectory";
@@ -74,6 +82,14 @@ public class ExportCsv extends AbstractCsvTool {
   private static final String QUERY_COMMAND_ARGS = "q";
   private static final String QUERY_COMMAND_NAME = "queryCommand";
 
+  private static final String EXPORT_TYPE_ARGS = "type";
+
+  private static final String EXPORT_TYPE_NAME = "exportType";
+
+  private static final String EXPORT_SQL_TYPE_NAME = "sql";
+
+  private static final String ALIGNED_ARGS = "aligned";
+  private static final String ALIGNED_NAME = "create the aligned insert sql";
   private static final String LINES_PER_FILE_ARGS = "linesPerFile";
   private static final String LINES_PER_FILE_ARGS_NAME = "Lines Per File";
 
@@ -193,6 +209,7 @@ public class ExportCsv extends AbstractCsvTool {
     targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
     needDataTypePrinted = Boolean.valueOf(commandLine.getOptionValue(DATA_TYPE_ARGS));
     queryCommand = commandLine.getOptionValue(QUERY_COMMAND_ARGS);
+    exportType = commandLine.getOptionValue(EXPORT_TYPE_ARGS);
     String timeoutString = commandLine.getOptionValue(TIMEOUT_ARGS);
     if (timeoutString != null) {
       timeout = Long.parseLong(timeoutString);
@@ -287,6 +304,22 @@ public class ExportCsv extends AbstractCsvTool {
             .build();
     options.addOption(opQuery);
 
+    Option opTypeQuery =
+        Option.builder(EXPORT_TYPE_ARGS)
+            .argName(EXPORT_TYPE_NAME)
+            .hasArg()
+            .desc("Export file type ?" + '\n' + "You can choose csv) or sql) . (optional)")
+            .build();
+    options.addOption(opTypeQuery);
+
+    Option opAligned =
+        Option.builder(ALIGNED_ARGS)
+            .argName(ALIGNED_NAME)
+            .hasArg()
+            .desc("Whether to use the interface of aligned (optional)")
+            .build();
+    options.addOption(opAligned);
+
     Option opLinesPerFile =
         Option.builder(LINES_PER_FILE_ARGS)
             .argName(LINES_PER_FILE_ARGS_NAME)
@@ -337,28 +370,45 @@ public class ExportCsv extends AbstractCsvTool {
    * @param index used to create dump file name
    */
   private static void dumpResult(String sql, int index) {
+    if (EXPORT_SQL_TYPE_NAME.equalsIgnoreCase(exportType)) {
+      legalCheck(sql);
+    }
     final String path = targetDirectory + targetFile + index;
     try {
       SessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout);
       List<Object> headers = new ArrayList<>();
       List<String> names = sessionDataSet.getColumnNames();
       List<String> types = sessionDataSet.getColumnTypes();
-      if (Boolean.TRUE.equals(needDataTypePrinted)) {
-        for (int i = 0; i < names.size(); i++) {
-          if (!"Time".equals(names.get(i)) && !"Device".equals(names.get(i))) {
-            headers.add(String.format("%s(%s)", names.get(i), types.get(i)));
-          } else {
-            headers.add(names.get(i));
-          }
-        }
+      if (EXPORT_SQL_TYPE_NAME.equalsIgnoreCase(exportType)) {
+        writeSqlFile(sessionDataSet, path, names, linesPerFile);
       } else {
-        headers.addAll(names);
+        if (Boolean.TRUE.equals(needDataTypePrinted)) {
+          for (int i = 0; i < names.size(); i++) {
+            if (!"Time".equals(names.get(i)) && !"Device".equals(names.get(i))) {
+              headers.add(String.format("%s(%s)", names.get(i), types.get(i)));
+            } else {
+              headers.add(names.get(i));
+            }
+          }
+        } else {
+          headers.addAll(names);
+        }
+        writeCsvFile(sessionDataSet, path, headers, linesPerFile);
       }
-      writeCsvFile(sessionDataSet, path, headers, linesPerFile);
       sessionDataSet.closeOperationHandle();
       ioTPrinter.println("Export completely!");
     } catch (StatementExecutionException | IoTDBConnectionException | IOException e) {
       ioTPrinter.println("Cannot dump result because: " + e.getMessage());
+    }
+  }
+
+  private static void legalCheck(String sql) {
+    String aggregatePattern =
+        "\\b(count|sum|avg|extreme|max_value|min_value|first_value|last_value|max_time|min_time|stddev|stddev_pop|stddev_samp|variance|var_pop|var_samp|max_by|min_by)\\b\\s*\\(";
+    Pattern pattern = Pattern.compile(aggregatePattern, Pattern.CASE_INSENSITIVE);
+    Matcher matcher = pattern.matcher(sql.toUpperCase(Locale.ROOT));
+    if (matcher.find()) {
+      ioTPrinter.println("The sql you entered is invalid, please don't use aggregate query.");
     }
   }
 
@@ -418,6 +468,114 @@ public class ExportCsv extends AbstractCsvTool {
       fileIndex++;
       csvPrinterWrapper.flush();
       csvPrinterWrapper.close();
+    }
+  }
+
+  public static void writeSqlFile(
+      SessionDataSet sessionDataSet, String filePath, List<String> headers, int linesPerFile)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    int fileIndex = 0;
+    String deviceName = null;
+    boolean writeNull = false;
+    List<String> seriesList = new ArrayList<>(headers);
+    if (CollectionUtils.isEmpty(headers) || headers.size() <= 1) {
+      writeNull = true;
+    } else {
+      if (headers.contains("Device")) {
+        seriesList.remove("Time");
+        seriesList.remove("Device");
+      } else {
+        Path path = new Path(seriesList.get(1), true);
+        deviceName = path.getDevice();
+        seriesList.remove("Time");
+        for (int i = 0; i < seriesList.size(); i++) {
+          String series = seriesList.get(i);
+          path = new Path(series, true);
+          seriesList.set(i, path.getMeasurement());
+        }
+      }
+    }
+    boolean hasNext = true;
+    while (hasNext) {
+      int i = 0;
+      final String finalFilePath = filePath + "_" + fileIndex + ".sql";
+      FileWriter writer = new FileWriter(finalFilePath);
+      if (writeNull) {
+        break;
+      }
+      while (i++ < linesPerFile) {
+        if (sessionDataSet.hasNext()) {
+          RowRecord rowRecord = sessionDataSet.next();
+          List<Field> fields = rowRecord.getFields();
+          List<String> headersTemp = new ArrayList<>(seriesList);
+          List<String> timeseries = new ArrayList<>();
+          if (headers.contains("Device")) {
+            deviceName = fields.get(0).toString();
+            if (deviceName.startsWith("root.__system")) {
+              continue;
+            }
+            for (String header : headersTemp) {
+              timeseries.add(deviceName + "." + header);
+            }
+          } else {
+            if (headers.get(1).startsWith("root.__system")) {
+              continue;
+            }
+            timeseries.addAll(headers);
+            timeseries.remove(0);
+          }
+          String sqlMiddle = null;
+          if (Boolean.TRUE.equals(ALIGNED_ARGS)) {
+            sqlMiddle = " ALIGNED VALUES (" + timeTrans(rowRecord.getTimestamp()) + ",";
+          } else {
+            sqlMiddle = " VALUES (" + timeTrans(rowRecord.getTimestamp()) + ",";
+          }
+          List<String> values = new ArrayList<>();
+          if (headers.contains("Device")) {
+            fields.remove(0);
+          }
+          for (int index = 0; index < fields.size(); index++) {
+            RowRecord next =
+                session
+                    .executeQueryStatement("SHOW TIMESERIES " + timeseries.get(index), timeout)
+                    .next();
+            if (ObjectUtils.isNotEmpty(next)) {
+              List<Field> timeseriesList = next.getFields();
+              String value = fields.get(index).toString();
+              if (value.equals("null")) {
+                headersTemp.remove(seriesList.get(index));
+                continue;
+              }
+              if ("TEXT".equalsIgnoreCase(timeseriesList.get(3).getStringValue())) {
+                values.add("\"" + value + "\"");
+              } else {
+                values.add(value);
+              }
+            } else {
+              headersTemp.remove(seriesList.get(index));
+              continue;
+            }
+          }
+          if (CollectionUtils.isNotEmpty(headersTemp)) {
+            writer.write(
+                "INSERT INTO "
+                    + deviceName
+                    + " (TIMESTAMP,"
+                    + String.join(",", headersTemp)
+                    + ")"
+                    + sqlMiddle
+                    + String.join(",", values)
+                    + ");\n");
+          }
+
+        } else {
+          hasNext = false;
+          break;
+        }
+      }
+      fileIndex++;
+      writer.flush();
+      writer.close();
     }
   }
 }
