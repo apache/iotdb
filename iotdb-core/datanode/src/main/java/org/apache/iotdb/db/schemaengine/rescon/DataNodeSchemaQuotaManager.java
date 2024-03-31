@@ -26,23 +26,23 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @SuppressWarnings("java:S6548") // do not warn about singleton class
 public class DataNodeSchemaQuotaManager {
-  private boolean seriesLimit = false;
+  private boolean measurementLimit = false;
   private boolean deviceLimit = false;
-  private final AtomicLong seriesRemain = new AtomicLong(0);
+  private final AtomicLong measurementRemain = new AtomicLong(0);
   private final AtomicLong deviceRemain = new AtomicLong(0);
 
   /**
    * Update remain quota.
    *
-   * @param seriesRemain -1 means no limit, otherwise it is the remain series quota
+   * @param measurementRemain -1 means no limit, otherwise it is the remain measurement quota
    * @param deviceRemain -1 means no limit, otherwise it is the remain device quota
    */
-  public void updateRemain(long seriesRemain, long deviceRemain) {
-    if (seriesRemain == -1) {
-      this.seriesLimit = false;
+  public void updateRemain(long measurementRemain, long deviceRemain) {
+    if (measurementRemain == -1) {
+      this.measurementLimit = false;
     } else {
-      this.seriesLimit = true;
-      this.seriesRemain.set(seriesRemain);
+      this.measurementLimit = true;
+      this.measurementRemain.set(measurementRemain);
     }
     if (deviceRemain == -1) {
       this.deviceLimit = false;
@@ -53,11 +53,11 @@ public class DataNodeSchemaQuotaManager {
   }
 
   private void checkMeasurementLevel(long acquireNumber) throws SchemaQuotaExceededException {
-    if (seriesLimit) {
-      if (seriesRemain.get() <= 0) {
+    if (measurementLimit) {
+      if (measurementRemain.get() <= 0) {
         throw new SchemaQuotaExceededException(ClusterSchemaQuotaLevel.TIMESERIES);
       } else {
-        seriesRemain.addAndGet(-acquireNumber);
+        measurementRemain.addAndGet(-acquireNumber);
       }
     }
   }
@@ -72,14 +72,14 @@ public class DataNodeSchemaQuotaManager {
     }
   }
 
-  public void check(long acquireSeriesNumber, int acquireDeviceNumber)
+  public void check(long acquireMeasurementNumber, int acquireDeviceNumber)
       throws SchemaQuotaExceededException {
     if (acquireDeviceNumber > 0) {
       checkDeviceLevel();
     }
     // if pass device check, check measurement level
     try {
-      checkMeasurementLevel(acquireSeriesNumber);
+      checkMeasurementLevel(acquireMeasurementNumber);
     } catch (SchemaQuotaExceededException e) {
       // if measurement level check failed, roll back device remain
       if (acquireDeviceNumber > 0) {
@@ -89,8 +89,8 @@ public class DataNodeSchemaQuotaManager {
     }
   }
 
-  public boolean isSeriesLimit() {
-    return seriesLimit;
+  public boolean isMeasurementLimit() {
+    return measurementLimit;
   }
 
   public boolean isDeviceLimit() {

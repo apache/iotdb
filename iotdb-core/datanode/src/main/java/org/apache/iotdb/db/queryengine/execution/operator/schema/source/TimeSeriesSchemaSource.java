@@ -132,7 +132,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
 
   @Override
   public long getSchemaStatistic(ISchemaRegion schemaRegion) {
-    return schemaRegion.getSchemaRegionStatistics().getSeriesNumber();
+    return schemaRegion.getSchemaRegionStatistics().getSeriesNumber(true);
   }
 
   private String mapToString(Map<String, String> map) {
