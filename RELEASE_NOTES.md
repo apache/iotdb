@@ -19,6 +19,32 @@
 
 -->
 
+# Apache IoTDB 1.3.1
+## Features & Improvements
+- Add cluster script for one-click start-stop (start-all/stop-all.sh & start-all/stop-all.bat)
+- Add script for one-click instance information collection (collect-info.sh & collect-info.bat)
+- Add new statistical aggregators include stddev and variance
+- Add repair tsfile data command
+- Support setting timeout threshold for Fill clause. When time beyond the threshold, do not fill value.
+- Simplify the time range specification for data synchronization, directly set start and end times
+- Improved system observability (adding dispersion monitoring of cluster nodes, observability of distributed task scheduling framework)
+- Optimized default log output strategy
+- Enhance memory control for Load TsFile, covering the entire process
+- Rest API (Version 2) adds column type return.
+- Improve the process of query execution
+- Session automatically fetch all available DataNodes
+  ...
+  Bugs
+- Fix issue with abnormal behavior when time precision is not in milliseconds during grouping by month.
+- Fix issue with abnormal behavior when duration contains multiple units during grouping by month.
+- Fix bug where limit and offset cannot be pushed down when there is an order by clause.
+- Fix abnormal behavior in combination scenario of grouping by month + align by device + limit.
+- Fix deserialization errors during IoT protocol synchronization.
+- Fix concurrent exceptions in deleting timeseries.
+- Fix issue where group by level in view sequences does not execute correctly.
+- Fix potential issue of metadata creation failure when increasing election timeout.
+
+
 # Apache IoTDB 1.1.0
 
 ## New Features
