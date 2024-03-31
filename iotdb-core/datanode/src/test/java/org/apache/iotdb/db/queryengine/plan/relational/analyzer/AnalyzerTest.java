@@ -62,10 +62,69 @@ public class AnalyzerTest {
   private final NopAccessControl nopAccessControl = new NopAccessControl();
 
   @Test
-  public void testRawDataQuery() throws OperatorNotFoundException {
-    String sql = "SELECT s1, (s1 + 1) as t from table1 where time > 100 and s2 > 10";
+  public void testMockQuery() throws OperatorNotFoundException {
+    String sql =
+        "SELECT s1, (s1 + 1) as t from table1 where time > 100 and s2 > 10 offset 2 limit 3";
     Metadata metadata = Mockito.mock(Metadata.class);
     Mockito.when(metadata.tableExists(Mockito.any())).thenReturn(true);
+
+    TableHandle tableHandle = Mockito.mock(TableHandle.class);
+    Mockito.when(
+            metadata.getTableHandle(Mockito.any(), eq(new QualifiedObjectName("testdb", "table1"))))
+        .thenReturn(Optional.of(tableHandle));
+
+    Map<String, ColumnHandle> map = new HashMap<>();
+    TableSchema tableSchema = Mockito.mock(TableSchema.class);
+    Mockito.when(tableSchema.getTableName()).thenReturn("table1");
+    ColumnSchema column1 =
+        ColumnSchema.builder().setName("time").setType(INT64).setHidden(false).build();
+    ColumnHandle column1Handle = Mockito.mock(ColumnHandle.class);
+    map.put("time", column1Handle);
+    ColumnSchema column2 =
+        ColumnSchema.builder().setName("s1").setType(INT32).setHidden(false).build();
+    ColumnHandle column2Handle = Mockito.mock(ColumnHandle.class);
+    map.put("s1", column2Handle);
+    ColumnSchema column3 =
+        ColumnSchema.builder().setName("s2").setType(INT64).setHidden(false).build();
+    ColumnHandle column3Handle = Mockito.mock(ColumnHandle.class);
+    map.put("s2", column3Handle);
+    List<ColumnSchema> columnSchemaList = Arrays.asList(column1, column2, column3);
+    Mockito.when(tableSchema.getColumns()).thenReturn(columnSchemaList);
+
+    Mockito.when(metadata.getTableSchema(Mockito.any(), eq(tableHandle))).thenReturn(tableSchema);
+    Mockito.when(metadata.getColumnHandles(Mockito.any(), eq(tableHandle))).thenReturn(map);
+
+    ResolvedFunction lLessThanI =
+        new ResolvedFunction(
+            new BoundSignature("l<i", BOOLEAN, Arrays.asList(INT64, INT32)),
+            new FunctionId("l<i"),
+            FunctionKind.SCALAR,
+            true);
+
+    ResolvedFunction iAddi =
+        new ResolvedFunction(
+            new BoundSignature("l+i", INT64, Arrays.asList(INT32, INT32)),
+            new FunctionId("l+i"),
+            FunctionKind.SCALAR,
+            true);
+
+    Mockito.when(
+            metadata.resolveOperator(eq(OperatorType.LESS_THAN), eq(Arrays.asList(INT64, INT32))))
+        .thenReturn(lLessThanI);
+    Mockito.when(metadata.resolveOperator(eq(OperatorType.ADD), eq(Arrays.asList(INT32, INT32))))
+        .thenReturn(iAddi);
+
+    Analysis actualAnalysis = analyzeSQL(sql, metadata);
+    assertNotNull(actualAnalysis);
+    System.out.println(actualAnalysis.getTypes());
+  }
+
+  @Test
+  public void testSingleTableQuery() throws OperatorNotFoundException {
+    String sql =
+        "SELECT tag1 as tmp_tag, tag2, attribute1, s1+1 as add_s1, s2 FROM table1 " +
+                "WHERE time>1 AND tag1=\"A\" and tag3=\"B\" AND s1=1 AND s3=3 ORDER BY time DESC OFFSET 10 LIMIT 5";
+    Metadata metadata = new TestMatadata();
 
     TableHandle tableHandle = Mockito.mock(TableHandle.class);
     Mockito.when(

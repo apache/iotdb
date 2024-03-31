@@ -22,30 +22,49 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.IPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.util.Collections;
 import java.util.concurrent.ScheduledExecutorService;
+
+import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 
 public class RelationalModelPlanner implements IPlanner {
 
   @Override
   public IAnalysis analyze(MPPQueryContext context) {
-    return null;
+    SessionInfo sessionInfo = null;
+    StatementAnalyzerFactory statementAnalyzerFactory = null;
+    Analyzer analyzer =
+        new Analyzer(
+            sessionInfo,
+            statementAnalyzerFactory,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            NOOP);
+    return analyzer.analyze(null);
+    // return null;
   }
 
   @Override
   public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
+    // TODO need implemented by Beyyes
+
     return null;
   }
 
   @Override
   public DistributedQueryPlan doDistributionPlan(IAnalysis analysis, LogicalQueryPlan logicalPlan) {
+    // TODO
     return null;
   }
 
