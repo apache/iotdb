@@ -19,32 +19,26 @@
 
 package org.apache.iotdb.db.queryengine.transformation.datastructure.tv;
 
-import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.Cache;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.udf.api.collector.PointCollector;
-import org.apache.iotdb.udf.api.type.Binary;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ElasticSerializableTVList implements PointCollector {
+public class ElasticSerializableTVList {
 
   public static ElasticSerializableTVList newElasticSerializableTVList(
       TSDataType dataType, String queryId, float memoryLimitInMB, int cacheSize) {
-    return dataType.equals(TSDataType.TEXT)
-        ? new ElasticSerializableBinaryTVList(queryId, memoryLimitInMB, cacheSize)
-        : new ElasticSerializableTVList(dataType, queryId, memoryLimitInMB, cacheSize);
+//    return dataType.equals(TSDataType.TEXT)
+//        ? new ElasticSerializableBinaryTVList(queryId, memoryLimitInMB, cacheSize)
+//        : new ElasticSerializableTVList(dataType, queryId, memoryLimitInMB, cacheSize);
+    return new ElasticSerializableTVList(dataType, queryId, memoryLimitInMB, cacheSize);
   }
 
   protected TSDataType dataType;
@@ -55,11 +49,6 @@ public class ElasticSerializableTVList implements PointCollector {
 
   protected LRUCache cache;
   protected List<SerializableTVList> tvLists;
-  /**
-   * the bitmap used to indicate whether one value is null in the tvLists. The size of bitMap is the
-   * same as tvLists and the length of whole bits is the same as tvLists' length.
-   */
-  protected List<BitMap> bitMaps;
 
   protected int size;
   protected int evictionUpperBound;
@@ -78,7 +67,6 @@ public class ElasticSerializableTVList implements PointCollector {
     this.cacheSize = cacheSize;
 
     cache = new LRUCache(cacheSize);
-    bitMaps = new ArrayList<>();
     tvLists = new ArrayList<>();
     size = 0;
     evictionUpperBound = 0;
@@ -97,7 +85,6 @@ public class ElasticSerializableTVList implements PointCollector {
     this.cacheSize = cacheSize;
 
     cache = new LRUCache(cacheSize);
-    bitMaps = new ArrayList<>();
     tvLists = new ArrayList<>();
     size = 0;
     evictionUpperBound = 0;
@@ -111,106 +98,68 @@ public class ElasticSerializableTVList implements PointCollector {
     return size;
   }
 
-  public boolean isNull(int index) {
-    return bitMaps.get(index / internalTVListCapacity).isMarked(index % internalTVListCapacity);
+  public boolean isNull(int index) throws IOException {
+    return cache.get(index / internalTVListCapacity).isNull(index % internalTVListCapacity);
   }
 
   public long getTime(int index) throws IOException {
-    return cache.get(index / internalTVListCapacity).getTimeByIndex(index % internalTVListCapacity);
+    return cache.get(index / internalTVListCapacity).getTime(index % internalTVListCapacity);
   }
 
   public int getInt(int index) throws IOException {
-    return cache.get(index / internalTVListCapacity).getIntByIndex(index % internalTVListCapacity);
+    return cache.get(index / internalTVListCapacity).getInt(index % internalTVListCapacity);
   }
 
   public long getLong(int index) throws IOException {
-    return cache.get(index / internalTVListCapacity).getLongByIndex(index % internalTVListCapacity);
+    return cache.get(index / internalTVListCapacity).getLong(index % internalTVListCapacity);
   }
 
   public float getFloat(int index) throws IOException {
     return cache
         .get(index / internalTVListCapacity)
-        .getFloatByIndex(index % internalTVListCapacity);
+        .getFloat(index % internalTVListCapacity);
   }
 
   public double getDouble(int index) throws IOException {
     return cache
         .get(index / internalTVListCapacity)
-        .getDoubleByIndex(index % internalTVListCapacity);
+        .getDouble(index % internalTVListCapacity);
   }
 
   public boolean getBoolean(int index) throws IOException {
     return cache
         .get(index / internalTVListCapacity)
-        .getBooleanByIndex(index % internalTVListCapacity);
+        .getBoolean(index % internalTVListCapacity);
   }
 
   public org.apache.iotdb.tsfile.utils.Binary getBinary(int index) throws IOException {
     return cache
         .get(index / internalTVListCapacity)
-        .getBinaryByIndex(index % internalTVListCapacity);
+        .getBinary(index % internalTVListCapacity);
   }
 
   public String getString(int index) throws IOException {
     return cache
         .get(index / internalTVListCapacity)
-        .getBinaryByIndex(index % internalTVListCapacity)
+        .getBinary(index % internalTVListCapacity)
         .getStringValue(TSFileConfig.STRING_CHARSET);
   }
 
-  public void put(long timestamp, Object value) throws IOException {
-    switch (dataType) {
-      case INT32:
-        putInt(timestamp, (Integer) value);
-        break;
-      case INT64:
-        putLong(timestamp, (Long) value);
-        break;
-      case FLOAT:
-        putFloat(timestamp, (Float) value);
-        break;
-      case DOUBLE:
-        putDouble(timestamp, (Double) value);
-        break;
-      case BOOLEAN:
-        putBoolean(timestamp, (Boolean) value);
-        break;
-      case TEXT:
-        putBinary(
-            timestamp,
-            UDFBinaryTransformer.transformToUDFBinary(
-                (org.apache.iotdb.tsfile.utils.Binary) value));
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
-  }
-
-  @Override
-  public void putInt(long timestamp, int value) throws IOException {
-    checkExpansion();
-    cache.get(size / internalTVListCapacity).putInt(timestamp, value);
-    ++size;
-  }
-
-  public void putInts(TimeColumn timeColumn, IntColumn column) throws IOException {
-    assert timeColumn.getPositionCount() == column.getPositionCount();
-    putInts(timeColumn.getTimes(), column.getInts(), column.isNull());
-  }
-
-  public void putInts(long[] times, int[] values, boolean[] isNulls) throws IOException {
-    assert times.length == values.length && values.length == isNulls.length;
+  public void putColumn(TimeColumn timeColumn, Column valueColumn) throws IOException {
     checkExpansion();
 
     int begin = 0, end = 0;
-    int total = times.length;
+    int total = timeColumn.getPositionCount();
     while (total > 0) {
       int consumed = Math.min(total, internalTVListCapacity) - size % internalTVListCapacity;
       end += consumed;
 
-      cache.get(size / internalTVListCapacity).putInts(times, values, begin, end);
-      markBitMapByNullArray(isNulls, begin, end);
+      // Construct sub-regions
+      TimeColumn subTimeRegion = (TimeColumn) timeColumn.getRegion(begin, consumed);
+      Column subValueRegion = valueColumn.getRegion(begin, consumed);
+
+      // Fill row record list
+      cache.get(size / internalTVListCapacity).putColumns(subTimeRegion, subValueRegion);
 
       total -= consumed;
       size += consumed;
@@ -222,80 +171,6 @@ public class ElasticSerializableTVList implements PointCollector {
     }
   }
 
-  @Override
-  public void putLong(long timestamp, long value) throws IOException {
-    checkExpansion();
-    cache.get(size / internalTVListCapacity).putLong(timestamp, value);
-    ++size;
-  }
-
-  @Override
-  public void putFloat(long timestamp, float value) throws IOException {
-    checkExpansion();
-    cache.get(size / internalTVListCapacity).putFloat(timestamp, value);
-    ++size;
-  }
-
-  @Override
-  public void putDouble(long timestamp, double value) throws IOException {
-    checkExpansion();
-    cache.get(size / internalTVListCapacity).putDouble(timestamp, value);
-    ++size;
-  }
-
-  @Override
-  public void putBoolean(long timestamp, boolean value) throws IOException {
-    checkExpansion();
-    cache.get(size / internalTVListCapacity).putBoolean(timestamp, value);
-    ++size;
-  }
-
-  @Override
-  public void putBinary(long timestamp, Binary value) throws IOException {
-    checkExpansion();
-    cache
-        .get(size / internalTVListCapacity)
-        .putBinary(timestamp, UDFBinaryTransformer.transformToBinary(value));
-    ++size;
-  }
-
-  @Override
-  public void putString(long timestamp, String value) throws IOException {
-    checkExpansion();
-    cache.get(size / internalTVListCapacity).putBinary(timestamp, BytesUtils.valueOf(value));
-    ++size;
-  }
-
-  public void putNull(long timestamp) throws IOException {
-    switch (dataType) {
-      case INT32:
-        putInt(timestamp, 0);
-        break;
-      case INT64:
-        putLong(timestamp, 0L);
-        break;
-      case FLOAT:
-        putFloat(timestamp, 0.0F);
-        break;
-      case DOUBLE:
-        putDouble(timestamp, 0.0D);
-        break;
-      case BOOLEAN:
-        putBoolean(timestamp, false);
-        break;
-      case TEXT:
-        putBinary(
-            timestamp,
-            UDFBinaryTransformer.transformToUDFBinary(
-                org.apache.iotdb.tsfile.utils.Binary.EMPTY_VALUE));
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
-    bitMaps.get((size - 1) / internalTVListCapacity).mark((size - 1) % internalTVListCapacity);
-  }
-
   private void checkExpansion() {
     if (size % internalTVListCapacity == 0) {
       doExpansion();
@@ -304,18 +179,6 @@ public class ElasticSerializableTVList implements PointCollector {
 
   private void doExpansion() {
     tvLists.add(SerializableTVList.newSerializableTVList(dataType, queryId));
-    bitMaps.add(new BitMap(internalTVListCapacity));
-  }
-
-  private void markBitMapByNullArray(boolean[] isNulls, int from, int to) {
-    BitMap bitmap = bitMaps.get(size / internalTVListCapacity);
-
-    int offset = size % internalTVListCapacity;
-    for (int i = from; i < to; i++) {
-      if (isNulls[i]) {
-        bitmap.mark(offset + i - from);
-      }
-    }
   }
 
   public LayerPointReader constructPointReaderUsingTrivialEvictionStrategy() {
@@ -411,13 +274,12 @@ public class ElasticSerializableTVList implements PointCollector {
       super(capacity);
     }
 
-    BatchData get(int targetIndex) throws IOException {
+    SerializableTVList get(int targetIndex) throws IOException {
       if (!containsKey(targetIndex)) {
         if (cacheCapacity <= super.size()) {
           int lastIndex = getLast();
           if (lastIndex < evictionUpperBound / internalTVListCapacity) {
             tvLists.set(lastIndex, null);
-            bitMaps.set(lastIndex, null);
           } else {
             tvLists.get(lastIndex).serialize();
           }

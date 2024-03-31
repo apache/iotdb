@@ -34,7 +34,7 @@ public abstract class UniversalUDFQueryTransformer extends UDFQueryTransformer {
 
   protected UniversalUDFQueryTransformer(UDTFExecutor executor) {
     super(executor);
-    layerPointReader = executor.getCollector().constructPointReaderUsingTrivialEvictionStrategy();
+    layerPointReader = executor.getOutputStorage().constructPointReaderUsingTrivialEvictionStrategy();
     isLayerPointReaderConstant = layerPointReader.isConstantPointReader();
   }
 

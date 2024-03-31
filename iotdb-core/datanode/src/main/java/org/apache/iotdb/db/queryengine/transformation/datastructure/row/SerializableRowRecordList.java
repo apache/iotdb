@@ -34,13 +34,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
+import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.BinaryUtils.MIN_ARRAY_HEADER_SIZE;
+import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.BinaryUtils.MIN_OBJECT_HEADER_SIZE;
 import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.*;
 
 public class SerializableRowRecordList implements SerializableList {
-
-  protected static final int MIN_OBJECT_HEADER_SIZE = 8;
-  protected static final int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
-
   public static SerializableRowRecordList newSerializableRowRecordList(
       String queryId, TSDataType[] dataTypes, int internalRowRecordListCapacity) {
     SerializationRecorder recorder = new SerializationRecorder(queryId);
@@ -87,13 +85,13 @@ public class SerializableRowRecordList implements SerializableList {
           throw new UnSupportedDataTypeException(dataType.toString());
       }
     }
+    rowLength += ReadWriteIOUtils.BIT_LEN;  // null field
 
-    // 1 extra bit for null fields mark in bitMap
-    int size = (int) (memoryLimitInMB * MB / 2 / (rowLength + ReadWriteIOUtils.BIT_LEN));
-    if (size <= 0) {
+    int capacity = (int) (memoryLimitInMB * MB / 2 / rowLength);
+    if (capacity <= 0) {
       throw new QueryProcessException("Memory is not enough for current query.");
     }
-    return size;
+    return capacity;
   }
 
   private final SerializationRecorder serializationRecorder;
@@ -119,6 +117,7 @@ public class SerializableRowRecordList implements SerializableList {
 
     valueColumnCount = dataTypes.length;
     prefixNullCount = 0;
+    skipPrefixNullCount = 0;
     isAllNull = true;
 
     init();
@@ -233,7 +232,7 @@ public class SerializableRowRecordList implements SerializableList {
     isAllNull = false;
 
     blocks.add(columns);
-    skipPrefixNullCount = columns[0].getPositionCount();
+    skipPrefixNullCount += columns[0].getPositionCount();
   }
 
   @Override

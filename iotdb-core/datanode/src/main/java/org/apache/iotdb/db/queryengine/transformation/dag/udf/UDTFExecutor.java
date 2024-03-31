@@ -21,10 +21,12 @@ package org.apache.iotdb.db.queryengine.transformation.dag.udf;
 
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.adapter.PointCollectorAdaptor;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
@@ -48,7 +50,9 @@ public class UDTFExecutor {
   protected final UDTFConfigurations configurations;
 
   protected UDTF udtf;
-  protected ElasticSerializableTVList collector;
+
+  protected ElasticSerializableTVList outputStorage;
+  protected PointCollectorAdaptor collector;
   protected Object currentValue;
 
   public UDTFExecutor(String functionName, ZoneId zoneId) {
@@ -68,7 +72,7 @@ public class UDTFExecutor {
     // Mappable UDF does not need PointCollector
     if (!AccessStrategy.AccessStrategyType.MAPPABLE_ROW_BY_ROW.equals(
         configurations.getAccessStrategy().getAccessStrategyType())) {
-      collector =
+      outputStorage =
           ElasticSerializableTVList.newElasticSerializableTVList(
               UDFDataTypeTransformer.transformToTsDataType(configurations.getOutputDataType()),
               queryId,
@@ -103,12 +107,17 @@ public class UDTFExecutor {
 
   public void execute(Row row, boolean isCurrentRowNull) {
     try {
+      // Execute UDTF
       if (isCurrentRowNull) {
         // A null row will never trigger any UDF computing
         collector.putNull(row.getTime());
       } else {
         udtf.transform(row, collector);
       }
+      // Store output data
+      TimeColumn timeColumn = collector.buildTimeColumn();
+      Column valueColumn = collector.buildValueColumn();
+      outputStorage.putColumn(timeColumn, valueColumn);
     } catch (Exception e) {
       onError("transform(Row, PointCollector)", e);
     }
@@ -124,7 +133,12 @@ public class UDTFExecutor {
 
   public void execute(RowWindow rowWindow) {
     try {
+      // Execute UDTF
       udtf.transform(rowWindow, collector);
+      // Store output data
+      TimeColumn timeColumn = collector.buildTimeColumn();
+      Column valueColumn = collector.buildValueColumn();
+      outputStorage.putColumn(timeColumn, valueColumn);
     } catch (Exception e) {
       onError("transform(RowWindow, PointCollector)", e);
     }
@@ -171,7 +185,7 @@ public class UDTFExecutor {
     return configurations;
   }
 
-  public ElasticSerializableTVList getCollector() {
-    return collector;
+  public ElasticSerializableTVList getOutputStorage() {
+    return outputStorage;
   }
 }

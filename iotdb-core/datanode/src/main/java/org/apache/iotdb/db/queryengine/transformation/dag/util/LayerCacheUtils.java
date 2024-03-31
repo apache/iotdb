@@ -59,36 +59,36 @@ public class LayerCacheUtils {
       return yieldableState;
     }
 
-    if (source.isCurrentNull()) {
-      target.putNull(source.currentTime());
-    } else {
-      switch (dataType) {
-        case INT32:
-          target.putInt(source.currentTime(), source.currentInt());
-          break;
-        case INT64:
-          target.putLong(source.currentTime(), source.currentLong());
-          break;
-        case FLOAT:
-          target.putFloat(source.currentTime(), source.currentFloat());
-          break;
-        case DOUBLE:
-          target.putDouble(source.currentTime(), source.currentDouble());
-          break;
-        case BOOLEAN:
-          target.putBoolean(source.currentTime(), source.currentBoolean());
-          break;
-        case TEXT:
-          target.putBinary(
-              source.currentTime(),
-              UDFBinaryTransformer.transformToUDFBinary(source.currentBinary()));
-          break;
-        default:
-          throw new UnsupportedOperationException(dataType.name());
-      }
-    }
-
-    source.readyForNext();
+//    if (source.isCurrentNull()) {
+//      target.putNull(source.currentTime());
+//    } else {
+//      switch (dataType) {
+//        case INT32:
+//          target.putInt(source.currentTime(), source.currentInt());
+//          break;
+//        case INT64:
+//          target.putLong(source.currentTime(), source.currentLong());
+//          break;
+//        case FLOAT:
+//          target.putFloat(source.currentTime(), source.currentFloat());
+//          break;
+//        case DOUBLE:
+//          target.putDouble(source.currentTime(), source.currentDouble());
+//          break;
+//        case BOOLEAN:
+//          target.putBoolean(source.currentTime(), source.currentBoolean());
+//          break;
+//        case TEXT:
+//          target.putBinary(
+//              source.currentTime(),
+//              UDFBinaryTransformer.transformToUDFBinary(source.currentBinary()));
+//          break;
+//        default:
+//          throw new UnsupportedOperationException(dataType.name());
+//      }
+//    }
+//
+//    source.readyForNext();
 
     return YieldableState.YIELDABLE;
   }
@@ -147,36 +147,36 @@ public class LayerCacheUtils {
       return false;
     }
 
-    if (source.isCurrentNull()) {
-      target.putNull(source.currentTime());
-    } else {
-      switch (dataType) {
-        case INT32:
-          target.putInt(source.currentTime(), source.currentInt());
-          break;
-        case INT64:
-          target.putLong(source.currentTime(), source.currentLong());
-          break;
-        case FLOAT:
-          target.putFloat(source.currentTime(), source.currentFloat());
-          break;
-        case DOUBLE:
-          target.putDouble(source.currentTime(), source.currentDouble());
-          break;
-        case BOOLEAN:
-          target.putBoolean(source.currentTime(), source.currentBoolean());
-          break;
-        case TEXT:
-          target.putBinary(
-              source.currentTime(),
-              UDFBinaryTransformer.transformToUDFBinary(source.currentBinary()));
-          break;
-        default:
-          throw new UnsupportedOperationException(dataType.name());
-      }
-    }
-
-    source.readyForNext();
+//    if (source.isCurrentNull()) {
+//      target.putNull(source.currentTime());
+//    } else {
+//      switch (dataType) {
+//        case INT32:
+//          target.putInt(source.currentTime(), source.currentInt());
+//          break;
+//        case INT64:
+//          target.putLong(source.currentTime(), source.currentLong());
+//          break;
+//        case FLOAT:
+//          target.putFloat(source.currentTime(), source.currentFloat());
+//          break;
+//        case DOUBLE:
+//          target.putDouble(source.currentTime(), source.currentDouble());
+//          break;
+//        case BOOLEAN:
+//          target.putBoolean(source.currentTime(), source.currentBoolean());
+//          break;
+//        case TEXT:
+//          target.putBinary(
+//              source.currentTime(),
+//              UDFBinaryTransformer.transformToUDFBinary(source.currentBinary()));
+//          break;
+//        default:
+//          throw new UnsupportedOperationException(dataType.name());
+//      }
+//    }
+//
+//    source.readyForNext();
 
     return true;
   }
