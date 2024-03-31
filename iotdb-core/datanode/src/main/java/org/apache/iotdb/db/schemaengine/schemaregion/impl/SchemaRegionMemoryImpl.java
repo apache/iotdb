@@ -469,7 +469,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               regionStatistics,
               metric,
               measurementMNode -> {
-                regionStatistics.addTimeseries(1L);
+                regionStatistics.addMeasurement(1L);
                 if (measurementMNode.getOffset() == -1) {
                   return;
                 }
@@ -556,7 +556,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan.getAlias());
 
       // update statistics and schemaDataTypeNumMap
-      regionStatistics.addTimeseries(1L);
+      regionStatistics.addMeasurement(1L);
 
       // update tag index
       if (offset != -1 && isRecovering) {
@@ -625,7 +625,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan.getAliasList());
 
       // update statistics and schemaDataTypeNumMap
-      regionStatistics.addTimeseries(seriesCount);
+      regionStatistics.addMeasurement(seriesCount);
 
       List<Long> tagOffsets = plan.getTagOffsets();
       for (int i = 0; i < measurements.size(); i++) {
@@ -782,8 +782,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throw new RuntimeException(e);
     }
     // update statistics
-    regionStatistics.addTimeseries(1L);
-    // TODO: CRTODO: shall we update id table?
+    regionStatistics.addView(1L);
   }
 
   @Override
@@ -859,8 +858,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException, IOException {
     IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
-
-    regionStatistics.deleteTimeseries(1L);
+    if (measurementMNode.isLogicalView()) {
+      regionStatistics.deleteView(1L);
+    } else {
+      regionStatistics.deleteMeasurement(1L);
+    }
   }
 
   private void recoverRollbackPreDeleteTimeseries(PartialPath path) throws MetadataException {
@@ -873,8 +875,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException, IOException {
     IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
-
-    regionStatistics.deleteTimeseries(1L);
+    if (measurementMNode.isLogicalView()) {
+      regionStatistics.deleteView(1L);
+    } else {
+      regionStatistics.deleteMeasurement(1L);
+    }
   }
   // endregion
 
