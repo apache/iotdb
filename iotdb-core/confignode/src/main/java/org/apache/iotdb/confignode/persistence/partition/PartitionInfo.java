@@ -688,8 +688,11 @@ public class PartitionInfo implements SnapshotProcessor {
     databasePartitionTables
         .values()
         .forEach(
-            databasePartitionTable ->
-                result.addAll(databasePartitionTable.getAllReplicaSets(type)));
+            databasePartitionTable -> {
+              if (databasePartitionTable.isNotPreDeleted()) {
+                result.addAll(databasePartitionTable.getAllReplicaSets(type));
+              }
+            });
     return result;
   }
 
