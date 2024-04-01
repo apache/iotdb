@@ -288,6 +288,7 @@ struct TDataNodeHeartbeatResp {
   10: optional list<binary> pipeMetaList
   11: optional string activateStatus
   12: optional set<common.TEndPoint> confirmedConfigNodeEndPoints
+  13: optional map<common.TConsensusGroupId, i64> consensusLogicalTimeMap
 }
 
 struct TPipeHeartbeatReq {

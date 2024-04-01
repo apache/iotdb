@@ -1398,6 +1398,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     // Judging leader if necessary
     if (req.isNeedJudgeLeader()) {
       resp.setJudgedLeaders(getJudgedLeaders());
+      resp.setConsensusLogicalTimeMap(getLogicalClockMap());
     }
 
     // Sampling load if necessary
@@ -1491,6 +1492,27 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 result.put(
                     groupId.convertToTConsensusGroupId(),
                     SchemaRegionConsensusImpl.getInstance().isLeader(groupId)));
+
+    return result;
+  }
+
+  private Map<TConsensusGroupId, Long> getLogicalClockMap() {
+    Map<TConsensusGroupId, Long> result = new HashMap<>();
+    DataRegionConsensusImpl.getInstance()
+        .getAllConsensusGroupIds()
+        .forEach(
+            groupId ->
+                result.put(
+                    groupId.convertToTConsensusGroupId(),
+                    DataRegionConsensusImpl.getInstance().getLogicalClock(groupId)));
+
+    SchemaRegionConsensusImpl.getInstance()
+        .getAllConsensusGroupIds()
+        .forEach(
+            groupId ->
+                result.put(
+                    groupId.convertToTConsensusGroupId(),
+                    SchemaRegionConsensusImpl.getInstance().getLogicalClock(groupId)));
 
     return result;
   }
