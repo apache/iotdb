@@ -21,9 +21,9 @@ package org.apache.iotdb.db.pipe.agent.receiver;
 
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.receiver.airgap.IoTDBAirGapReceiverAgent;
-import org.apache.iotdb.db.pipe.receiver.legacy.IoTDBLegacyPipeReceiverAgent;
-import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBDataNodeReceiverAgent;
+import org.apache.iotdb.db.pipe.receiver.protocol.airgap.IoTDBAirGapReceiverAgent;
+import org.apache.iotdb.db.pipe.receiver.protocol.legacy.IoTDBLegacyPipeReceiverAgent;
+import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
