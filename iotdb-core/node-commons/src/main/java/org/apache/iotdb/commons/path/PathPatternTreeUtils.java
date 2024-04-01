@@ -36,7 +36,7 @@ public class PathPatternTreeUtils {
     if (SchemaConstant.ALL_MATCH_SCOPE.equals(fullPathPrefixTree)) {
       return patternTree;
     }
-    PathPatternTree result = new PathPatternTree();
+    PathPatternTree result = new PathPatternTree(patternTree.isContainWildcard());
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       for (PartialPath fullPathOrPrefix : fullPathPrefixTree.getAllPathPatterns()) {
         if (fullPathOrPrefix.endWithMultiLevelWildcard()) {
