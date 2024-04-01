@@ -46,6 +46,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class RaftConsensusTest {
+
   private static final Logger logger = LoggerFactory.getLogger(RaftConsensusTest.class);
 
   private ConsensusGroupId gid;
@@ -173,18 +174,32 @@ public class RaftConsensusTest {
 
   @Test
   public void crashAndStart() throws Exception {
+    long startTimeMs = System.currentTimeMillis();
     servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
     servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
     miniCluster.waitUntilActiveLeaderElectedAndReady();
+    long firstElectionTimeMs = System.currentTimeMillis();
     doConsensus(0, 200, 200);
+    long firstIngestionTimeMs = System.currentTimeMillis();
 
     miniCluster.stop();
+    long stopTimeMs = System.currentTimeMillis();
     miniCluster.restart();
+    long restartTimeMs = System.currentTimeMillis();
 
     miniCluster.waitUntilActiveLeaderElectedAndReady();
+    long secondElectionTimeMs = System.currentTimeMillis();
     doConsensus(0, 10, 210);
+    long secondIngestionTimeMs = System.currentTimeMillis();
+
+    logger.info(
+        "First election {}ms, first ingestion {}ms, stop {}ms, restart {}ms, secondElection {}ms, secondIngestion {}ms",
+        firstElectionTimeMs - startTimeMs,
+        firstIngestionTimeMs - firstElectionTimeMs, stopTimeMs - firstIngestionTimeMs,
+        restartTimeMs - stopTimeMs, secondElectionTimeMs - restartTimeMs,
+        secondIngestionTimeMs - secondElectionTimeMs);
   }
 
   @Test

@@ -81,8 +81,8 @@ public class RaftConfig {
   private double flowControlMinFlow = 10_000_000;
   private double flowControlMaxFlow = 100_000_000;
   private int entryAllocatorCapacity = 100000;
-  private int dispatcherMinBatchSize = 10;
-  private long dispatcherMaxCompressionIntervalMs = 100;
+  private int dispatcherMinBatchSize = 1;
+  private long dispatcherMaxCompressionIntervalMs = 1;
   private CompressionType dispatchingCompressionType = CompressionType.LZ4;
   private ConsistencyLevel consistencyLevel = ConsistencyLevel.STRONG_CONSISTENCY;
   private RPCConfig rpcConfig;

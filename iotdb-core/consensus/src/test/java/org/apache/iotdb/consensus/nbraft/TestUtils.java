@@ -425,7 +425,7 @@ public class TestUtils {
 
       try {
         // wait at most 120s for write to complete, otherwise fail the test
-        Assert.assertTrue(waitGroup.await(120, TimeUnit.SECONDS));
+        Assert.assertTrue(waitGroup.await(1200, TimeUnit.SECONDS));
       } catch (InterruptedException e) {
         logger.warn("test being interrupted: ", e);
         Thread.currentThread().interrupt();

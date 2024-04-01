@@ -113,12 +113,15 @@ public class RaftConsensus implements IConsensus {
     } catch (StartupException e) {
       throw new IOException(e);
     }
-    Runtime.getRuntime()
-        .addShutdownHook(
-            new Thread(
-                () -> {
-                  logger.info(Timer.Statistic.getReport());
-                }));
+    if (Timer.ENABLE_INSTRUMENTING) {
+      Runtime.getRuntime()
+          .addShutdownHook(
+              new Thread(
+                  () -> {
+                    logger.info(Timer.Statistic.getReport());
+                  }));
+    }
+
     reportThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("NodeReportThread");
     ScheduledExecutorUtil.safelyScheduleAtFixedRate(
         reportThread, this::generateNodeReport, 5, 5, TimeUnit.SECONDS);
