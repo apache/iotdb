@@ -76,7 +76,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
 
   @Override
   protected ByteBuffer readData(long position, int totalSize) throws IOException {
-    acquireReadDataSizeWithCompactionWriteRateLimiter(totalSize);
+    acquireReadDataSizeWithCompactionReadRateLimiter(totalSize);
     ByteBuffer buffer = super.readData(position, totalSize);
     readDataSize.addAndGet(totalSize);
     return buffer;
@@ -250,7 +250,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
         .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
   }
 
-  private void acquireReadDataSizeWithCompactionWriteRateLimiter(long readDataSize) {
+  private void acquireReadDataSizeWithCompactionReadRateLimiter(long readDataSize) {
     while (readDataSize > 0) {
       if (readDataSize > Integer.MAX_VALUE) {
         CompactionTaskManager.getInstance()
