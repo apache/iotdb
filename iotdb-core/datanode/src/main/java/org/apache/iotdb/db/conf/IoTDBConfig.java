@@ -688,7 +688,7 @@ public class IoTDBConfig {
   private int compactionWriteThroughputMbPerSec = 16;
 
   /** The limit of compaction read can reach per second */
-  private int compactionReadThroughputMbPerSec = 16;
+  private int compactionReadThroughputMbPerSec = 40;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
