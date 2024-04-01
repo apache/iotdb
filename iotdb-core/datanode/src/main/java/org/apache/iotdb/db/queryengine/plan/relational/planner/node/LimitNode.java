@@ -3,26 +3,26 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Optional;
 
-public class OutputNode extends SingleChildProcessNode {
+public class LimitNode extends SingleChildProcessNode {
+  private final long count;
+  // what's the meaning?
+  private final Optional<OrderingScheme> tiesResolvingScheme;
+  // private final boolean partial;
+  // private final List<Symbol> preSortedInputs;
 
-  private final List<String> outputColumnNames;
-
-  private final List<Symbol> symbols;
-
-  public OutputNode(
-      PlanNodeId id, PlanNode child, List<String> outputColumnNames, List<Symbol> symbols) {
+  public LimitNode(
+      PlanNodeId id, PlanNode child, long count, Optional<OrderingScheme> tiesResolvingScheme) {
     super(id, child);
-    this.id = id;
-    this.child = child;
-    this.outputColumnNames = outputColumnNames;
-    this.symbols = symbols;
+    this.count = count;
+    this.tiesResolvingScheme = tiesResolvingScheme;
   }
 
   @Override

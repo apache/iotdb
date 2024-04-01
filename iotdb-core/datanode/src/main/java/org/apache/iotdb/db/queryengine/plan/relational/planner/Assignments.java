@@ -13,12 +13,13 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.db.relational.sql.tree.Expression;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import org.apache.iotdb.db.relational.sql.tree.Expression;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -35,234 +36,196 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.util.Arrays.asList;
 import static java.util.Objects.requireNonNull;
 
-public class Assignments
-{
-    public static Builder builder()
-    {
-        return new Builder();
+public class Assignments {
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  public static Assignments identity(Symbol... symbols) {
+    return identity(asList(symbols));
+  }
+
+  public static Assignments identity(Iterable<Symbol> symbols) {
+    return builder().putIdentities(symbols).build();
+  }
+
+  public static Assignments copyOf(Map<Symbol, Expression> assignments) {
+    return builder().putAll(assignments).build();
+  }
+
+  public static Assignments of() {
+    return builder().build();
+  }
+
+  public static Assignments of(Symbol symbol, Expression expression) {
+    return builder().put(symbol, expression).build();
+  }
+
+  public static Assignments of(
+      Symbol symbol1, Expression expression1, Symbol symbol2, Expression expression2) {
+    return builder().put(symbol1, expression1).put(symbol2, expression2).build();
+  }
+
+  private final Map<Symbol, Expression> assignments;
+
+  @JsonCreator
+  public Assignments(@JsonProperty("assignments") Map<Symbol, Expression> assignments) {
+    this.assignments = ImmutableMap.copyOf(requireNonNull(assignments, "assignments is null"));
+  }
+
+  public List<Symbol> getOutputs() {
+    return ImmutableList.copyOf(assignments.keySet());
+  }
+
+  @JsonProperty("assignments")
+  public Map<Symbol, Expression> getMap() {
+    return assignments;
+  }
+
+  public Assignments rewrite(Function<Expression, Expression> rewrite) {
+    return assignments.entrySet().stream()
+        .map(entry -> Maps.immutableEntry(entry.getKey(), rewrite.apply(entry.getValue())))
+        .collect(toAssignments());
+  }
+
+  public Assignments filter(Collection<Symbol> symbols) {
+    return filter(symbols::contains);
+  }
+
+  public Assignments filter(Predicate<Symbol> predicate) {
+    return assignments.entrySet().stream()
+        .filter(entry -> predicate.test(entry.getKey()))
+        .collect(toAssignments());
+  }
+
+  private Collector<Entry<Symbol, Expression>, Builder, Assignments> toAssignments() {
+    return Collector.of(
+        Assignments::builder,
+        (builder, entry) -> builder.put(entry.getKey(), entry.getValue()),
+        (left, right) -> {
+          left.putAll(right.build());
+          return left;
+        },
+        Builder::build);
+  }
+
+  public Collection<Expression> getExpressions() {
+    return assignments.values();
+  }
+
+  public Set<Symbol> getSymbols() {
+    return assignments.keySet();
+  }
+
+  public Set<Entry<Symbol, Expression>> entrySet() {
+    return assignments.entrySet();
+  }
+
+  public Expression get(Symbol symbol) {
+    return assignments.get(symbol);
+  }
+
+  public int size() {
+    return assignments.size();
+  }
+
+  public boolean isEmpty() {
+    return size() == 0;
+  }
+
+  public void forEach(BiConsumer<Symbol, Expression> consumer) {
+    assignments.forEach(consumer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
     }
 
-    public static Assignments identity(Symbol... symbols)
-    {
-        return identity(asList(symbols));
+    Assignments that = (Assignments) o;
+
+    return assignments.equals(that.assignments);
+  }
+
+  @Override
+  public int hashCode() {
+    return assignments.hashCode();
+  }
+
+  public static class Assignment {
+    private final Symbol output;
+    private final Expression expression;
+
+    public Assignment(Symbol output, Expression expression) {
+      this.output = requireNonNull(output, "output is null");
+      this.expression = requireNonNull(expression, "expression is null");
     }
 
-    public static Assignments identity(Iterable<Symbol> symbols)
-    {
-        return builder().putIdentities(symbols).build();
+    public Symbol getOutput() {
+      return output;
     }
 
-    public static Assignments copyOf(Map<Symbol, Expression> assignments)
-    {
-        return builder()
-                .putAll(assignments)
-                .build();
+    public Expression getExpression() {
+      return expression;
+    }
+  }
+
+  public static class Builder {
+    private final Map<Symbol, Expression> assignments = new LinkedHashMap<>();
+
+    public Builder putAll(Assignments assignments) {
+      return putAll(assignments.getMap());
     }
 
-    public static Assignments of()
-    {
-        return builder().build();
+    public Builder putAll(Map<Symbol, ? extends Expression> assignments) {
+      for (Entry<Symbol, ? extends Expression> assignment : assignments.entrySet()) {
+        put(assignment.getKey(), assignment.getValue());
+      }
+      return this;
     }
 
-    public static Assignments of(Symbol symbol, Expression expression)
-    {
-        return builder().put(symbol, expression).build();
+    public Builder put(Symbol symbol, Expression expression) {
+      if (assignments.containsKey(symbol)) {
+        Expression assignment = assignments.get(symbol);
+        checkState(
+            assignment.equals(expression),
+            "Symbol %s already has assignment %s, while adding %s",
+            symbol,
+            assignment,
+            expression);
+      }
+      assignments.put(symbol, expression);
+      return this;
     }
 
-    public static Assignments of(Symbol symbol1, Expression expression1, Symbol symbol2, Expression expression2)
-    {
-        return builder().put(symbol1, expression1).put(symbol2, expression2).build();
+    public Builder put(Entry<Symbol, Expression> assignment) {
+      put(assignment.getKey(), assignment.getValue());
+      return this;
     }
 
-    private final Map<Symbol, Expression> assignments;
-
-    @JsonCreator
-    public Assignments(@JsonProperty("assignments") Map<Symbol, Expression> assignments)
-    {
-        this.assignments = ImmutableMap.copyOf(requireNonNull(assignments, "assignments is null"));
+    public Builder putIdentities(Iterable<Symbol> symbols) {
+      for (Symbol symbol : symbols) {
+        putIdentity(symbol);
+      }
+      return this;
     }
 
-    public List<Symbol> getOutputs()
-    {
-        return ImmutableList.copyOf(assignments.keySet());
+    public Builder putIdentity(Symbol symbol) {
+      put(symbol, symbol.toSymbolReference());
+      return this;
     }
 
-    @JsonProperty("assignments")
-    public Map<Symbol, Expression> getMap()
-    {
-        return assignments;
+    public Assignments build() {
+      return new Assignments(assignments);
     }
 
-    public Assignments rewrite(Function<Expression, Expression> rewrite)
-    {
-        return assignments.entrySet().stream()
-                .map(entry -> Maps.immutableEntry(entry.getKey(), rewrite.apply(entry.getValue())))
-                .collect(toAssignments());
+    public Builder add(Assignment assignment) {
+      put(assignment.getOutput(), assignment.getExpression());
+      return this;
     }
-
-    public Assignments filter(Collection<Symbol> symbols)
-    {
-        return filter(symbols::contains);
-    }
-
-    public Assignments filter(Predicate<Symbol> predicate)
-    {
-        return assignments.entrySet().stream()
-                .filter(entry -> predicate.test(entry.getKey()))
-                .collect(toAssignments());
-    }
-
-    private Collector<Entry<Symbol, Expression>, Builder, Assignments> toAssignments()
-    {
-        return Collector.of(
-                Assignments::builder,
-                (builder, entry) -> builder.put(entry.getKey(), entry.getValue()),
-                (left, right) -> {
-                    left.putAll(right.build());
-                    return left;
-                },
-                Builder::build);
-    }
-
-    public Collection<Expression> getExpressions()
-    {
-        return assignments.values();
-    }
-
-    public Set<Symbol> getSymbols()
-    {
-        return assignments.keySet();
-    }
-
-    public Set<Entry<Symbol, Expression>> entrySet()
-    {
-        return assignments.entrySet();
-    }
-
-    public Expression get(Symbol symbol)
-    {
-        return assignments.get(symbol);
-    }
-
-    public int size()
-    {
-        return assignments.size();
-    }
-
-    public boolean isEmpty()
-    {
-        return size() == 0;
-    }
-
-    public void forEach(BiConsumer<Symbol, Expression> consumer)
-    {
-        assignments.forEach(consumer);
-    }
-
-    @Override
-    public boolean equals(Object o)
-    {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-
-        Assignments that = (Assignments) o;
-
-        return assignments.equals(that.assignments);
-    }
-
-    @Override
-    public int hashCode()
-    {
-        return assignments.hashCode();
-    }
-
-    public static class Assignment
-    {
-        private final Symbol output;
-        private final Expression expression;
-
-        public Assignment(Symbol output, Expression expression)
-        {
-            this.output = requireNonNull(output, "output is null");
-            this.expression = requireNonNull(expression, "expression is null");
-        }
-
-        public Symbol getOutput()
-        {
-            return output;
-        }
-
-        public Expression getExpression()
-        {
-            return expression;
-        }
-    }
-
-    public static class Builder
-    {
-        private final Map<Symbol, Expression> assignments = new LinkedHashMap<>();
-
-        public Builder putAll(Assignments assignments)
-        {
-            return putAll(assignments.getMap());
-        }
-
-        public Builder putAll(Map<Symbol, ? extends Expression> assignments)
-        {
-            for (Entry<Symbol, ? extends Expression> assignment : assignments.entrySet()) {
-                put(assignment.getKey(), assignment.getValue());
-            }
-            return this;
-        }
-
-        public Builder put(Symbol symbol, Expression expression)
-        {
-            if (assignments.containsKey(symbol)) {
-                Expression assignment = assignments.get(symbol);
-                checkState(
-                        assignment.equals(expression),
-                        "Symbol %s already has assignment %s, while adding %s",
-                        symbol,
-                        assignment,
-                        expression);
-            }
-            assignments.put(symbol, expression);
-            return this;
-        }
-
-        public Builder put(Entry<Symbol, Expression> assignment)
-        {
-            put(assignment.getKey(), assignment.getValue());
-            return this;
-        }
-
-        public Builder putIdentities(Iterable<Symbol> symbols)
-        {
-            for (Symbol symbol : symbols) {
-                putIdentity(symbol);
-            }
-            return this;
-        }
-
-        public Builder putIdentity(Symbol symbol)
-        {
-            put(symbol, symbol.toSymbolReference());
-            return this;
-        }
-
-        public Assignments build()
-        {
-            return new Assignments(assignments);
-        }
-
-        public Builder add(Assignment assignment)
-        {
-            put(assignment.getOutput(), assignment.getExpression());
-            return this;
-        }
-    }
+  }
 }

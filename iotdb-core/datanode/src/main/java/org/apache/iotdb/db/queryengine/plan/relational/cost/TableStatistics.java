@@ -14,7 +14,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.cost;
 
-
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 
 import java.util.LinkedHashMap;
@@ -25,98 +24,89 @@ import static java.lang.String.format;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Objects.requireNonNull;
 
-public final class TableStatistics
-{
-    private static final TableStatistics EMPTY = TableStatistics.builder().build();
+public final class TableStatistics {
+  private static final TableStatistics EMPTY = TableStatistics.builder().build();
 
-    private final Estimate rowCount;
-    private final Map<ColumnHandle, ColumnStatistics> columnStatistics;
+  private final Estimate rowCount;
+  private final Map<ColumnHandle, ColumnStatistics> columnStatistics;
 
-    public static TableStatistics empty()
-    {
-        return EMPTY;
+  public static TableStatistics empty() {
+    return EMPTY;
+  }
+
+  public TableStatistics(Estimate rowCount, Map<ColumnHandle, ColumnStatistics> columnStatistics) {
+    this.rowCount = requireNonNull(rowCount, "rowCount cannot be null");
+    if (!rowCount.isUnknown() && rowCount.getValue() < 0) {
+      throw new IllegalArgumentException(
+          format("rowCount must be greater than or equal to 0: %s", rowCount.getValue()));
+    }
+    this.columnStatistics =
+        unmodifiableMap(requireNonNull(columnStatistics, "columnStatistics cannot be null"));
+  }
+
+  public Estimate getRowCount() {
+    return rowCount;
+  }
+
+  public Map<ColumnHandle, ColumnStatistics> getColumnStatistics() {
+    return columnStatistics;
+  }
+
+  public boolean isEmpty() {
+    return equals(empty());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TableStatistics that = (TableStatistics) o;
+    return Objects.equals(rowCount, that.rowCount)
+        && Objects.equals(columnStatistics, that.columnStatistics);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(rowCount, columnStatistics);
+  }
+
+  @Override
+  public String toString() {
+    return "TableStatistics{"
+        + "rowCount="
+        + rowCount
+        + ", columnStatistics="
+        + columnStatistics
+        + '}';
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  public static final class Builder {
+    private final Map<ColumnHandle, ColumnStatistics> columnStatisticsMap = new LinkedHashMap<>();
+    private Estimate rowCount = Estimate.unknown();
+
+    public Builder setRowCount(Estimate rowCount) {
+      this.rowCount = requireNonNull(rowCount, "rowCount cannot be null");
+      return this;
     }
 
-    public TableStatistics(Estimate rowCount, Map<ColumnHandle, ColumnStatistics> columnStatistics)
-    {
-        this.rowCount = requireNonNull(rowCount, "rowCount cannot be null");
-        if (!rowCount.isUnknown() && rowCount.getValue() < 0) {
-            throw new IllegalArgumentException(format("rowCount must be greater than or equal to 0: %s", rowCount.getValue()));
-        }
-        this.columnStatistics = unmodifiableMap(requireNonNull(columnStatistics, "columnStatistics cannot be null"));
+    public Builder setColumnStatistics(
+        ColumnHandle columnHandle, ColumnStatistics columnStatistics) {
+      requireNonNull(columnHandle, "columnHandle cannot be null");
+      requireNonNull(columnStatistics, "columnStatistics cannot be null");
+      this.columnStatisticsMap.put(columnHandle, columnStatistics);
+      return this;
     }
 
-    public Estimate getRowCount()
-    {
-        return rowCount;
+    public TableStatistics build() {
+      return new TableStatistics(rowCount, columnStatisticsMap);
     }
-
-    public Map<ColumnHandle, ColumnStatistics> getColumnStatistics()
-    {
-        return columnStatistics;
-    }
-
-    public boolean isEmpty()
-    {
-        return equals(empty());
-    }
-
-    @Override
-    public boolean equals(Object o)
-    {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        TableStatistics that = (TableStatistics) o;
-        return Objects.equals(rowCount, that.rowCount) &&
-                Objects.equals(columnStatistics, that.columnStatistics);
-    }
-
-    @Override
-    public int hashCode()
-    {
-        return Objects.hash(rowCount, columnStatistics);
-    }
-
-    @Override
-    public String toString()
-    {
-        return "TableStatistics{" +
-                "rowCount=" + rowCount +
-                ", columnStatistics=" + columnStatistics +
-                '}';
-    }
-
-    public static Builder builder()
-    {
-        return new Builder();
-    }
-
-    public static final class Builder
-    {
-        private final Map<ColumnHandle, ColumnStatistics> columnStatisticsMap = new LinkedHashMap<>();
-        private Estimate rowCount = Estimate.unknown();
-
-        public Builder setRowCount(Estimate rowCount)
-        {
-            this.rowCount = requireNonNull(rowCount, "rowCount cannot be null");
-            return this;
-        }
-
-        public Builder setColumnStatistics(ColumnHandle columnHandle, ColumnStatistics columnStatistics)
-        {
-            requireNonNull(columnHandle, "columnHandle cannot be null");
-            requireNonNull(columnStatistics, "columnStatistics cannot be null");
-            this.columnStatisticsMap.put(columnHandle, columnStatistics);
-            return this;
-        }
-
-        public TableStatistics build()
-        {
-            return new TableStatistics(rowCount, columnStatisticsMap);
-        }
-    }
+  }
 }

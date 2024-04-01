@@ -13,7 +13,6 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import com.google.common.collect.ImmutableMap;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -22,108 +21,70 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.session.Session;
 
+import com.google.common.collect.ImmutableMap;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
-import java.util.function.BiPredicate;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
 
-class PlanBuilder
-{
-    private final PlanNode root;
+class PlanBuilder {
+  private final PlanNode root;
 
-    public PlanBuilder(PlanNode root)
-    {
-        requireNonNull(root, "root is null");
+  public PlanBuilder(PlanNode root) {
+    requireNonNull(root, "root is null");
 
-        this.root = root;
-    }
+    this.root = root;
+  }
 
-    public static PlanBuilder newPlanBuilder(RelationPlan plan, Analysis analysis,
-                                            Session session)
-    {
-        return newPlanBuilder(plan, analysis, ImmutableMap.of(), session);
-    }
+  public static PlanBuilder newPlanBuilder(RelationPlan plan, Analysis analysis, Session session) {
+    return newPlanBuilder(plan, analysis, ImmutableMap.of(), session);
+  }
 
-    public static PlanBuilder newPlanBuilder(RelationPlan plan, Analysis analysis,
-                                             Map<ScopeAware<Expression>, Symbol> mappings,
-                                             Session session)
-    {
-        return new PlanBuilder(plan.getRoot());
-    }
+  public static PlanBuilder newPlanBuilder(
+      RelationPlan plan,
+      Analysis analysis,
+      Map<ScopeAware<Expression>, Symbol> mappings,
+      Session session) {
+    return new PlanBuilder(plan.getRoot());
+  }
 
-    public PlanBuilder withNewRoot(PlanNode root)
-    {
-        return new PlanBuilder(root);
-    }
+  public PlanBuilder withNewRoot(PlanNode root) {
+    return new PlanBuilder(root);
+  }
 
-    public PlanBuilder withScope(Scope scope, List<Symbol> fields)
-    {
-        return new PlanBuilder(root);
-    }
+  public PlanBuilder withScope(Scope scope, List<Symbol> fields) {
+    return new PlanBuilder(root);
+  }
 
-    public PlanNode getRoot()
-    {
-        return root;
-    }
+  public PlanNode getRoot() {
+    return root;
+  }
 
-    public boolean canTranslate(Expression expression)
-    {
-        return translations.canTranslate(expression);
-    }
+  public <T extends Expression> PlanBuilder appendProjections(
+      Iterable<T> expressions, SymbolAllocator symbolAllocator, QueryId idAllocator) {
+    Assignments.Builder projections = Assignments.builder();
 
-    public Symbol translate(Expression expression)
-    {
-        return Symbol.from(translations.rewrite(expression));
-    }
+    // add an identity projection for underlying plan
+    // TODO needed?
+    // projections.putIdentities(root.getOutputSymbols());
 
-    public Expression rewrite(Expression expression)
-    {
-        return translations.rewrite(expression);
-    }
+    Map<ScopeAware<Expression>, Symbol> mappings = new HashMap<>();
+    //        for (T expression : expressions) {
+    //            // Skip any expressions that have already been translated and recorded in the
+    // translation map, or that are duplicated in the list of exp
+    //            if (!mappings.containsKey(scopeAwareKey(expression, translations.getAnalysis(),
+    //                    translations.getScope())) && !alreadyHasTranslation.test(translations,
+    // expression)) {
+    //                Symbol symbol = symbolAllocator.newSymbol("expr",
+    // translations.getAnalysis().getType(expression));
+    //                projections.put(symbol, rewriter.apply(translations, expression));
+    //                mappings.put(scopeAwareKey(expression, translations.getAnalysis(),
+    // translations.getScope()), symbol);
+    //            }
+    //        }
 
-    public TranslationMap getTranslations()
-    {
-        return translations;
-    }
-
-    public Scope getScope()
-    {
-        return translations.getScope();
-    }
-
-    public PlanBuilder appendProjections(Expression expressions, SymbolAllocator symbolAllocator, QueryId idAllocator)
-    {
-        return appendProjections(expressions, symbolAllocator, idAllocator, TranslationMap::rewrite, TranslationMap::canTranslate);
-    }
-
-    public <T extends Expression> PlanBuilder appendProjections(
-            Iterable<T> expressions,
-            SymbolAllocator symbolAllocator,
-            QueryId idAllocator,
-            BiFunction<TranslationMap, T, Expression> rewriter,
-            BiPredicate<TranslationMap, T> alreadyHasTranslation)
-    {
-        Assignments.Builder projections = Assignments.builder();
-
-        // add an identity projection for underlying plan
-        projections.putIdentities(root.getOutputSymbols());
-
-        Map<ScopeAware<Expression>, Symbol> mappings = new HashMap<>();
-        for (T expression : expressions) {
-            // Skip any expressions that have already been translated and recorded in the translation map, or that are duplicated in the list of exp
-            if (!mappings.containsKey(scopeAwareKey(expression, translations.getAnalysis(), translations.getScope())) && !alreadyHasTranslation.test(translations, expression)) {
-                Symbol symbol = symbolAllocator.newSymbol("expr", translations.getAnalysis().getType(expression));
-                projections.put(symbol, rewriter.apply(translations, expression));
-                mappings.put(scopeAwareKey(expression, translations.getAnalysis(), translations.getScope()), symbol);
-            }
-        }
-
-        return new PlanBuilder(
-                getTranslations().withAdditionalMappings(mappings),
-                new ProjectNode(idAllocator.genPlanNodeId(), root, projections.build()));
-    }
+    return new PlanBuilder(new ProjectNode(idAllocator.genPlanNodeId(), root, projections.build()));
+  }
 }

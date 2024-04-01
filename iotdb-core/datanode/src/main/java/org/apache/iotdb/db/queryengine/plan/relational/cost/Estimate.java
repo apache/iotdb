@@ -20,75 +20,65 @@ import static java.lang.Double.NaN;
 import static java.lang.Double.isInfinite;
 import static java.lang.Double.isNaN;
 
-public final class Estimate
-{
-    // todo eventually add some notion of statistic reliability
-    //      Skipping for now as there hard to compute it properly and so far we do not have
-    //      usecase for that.
+public final class Estimate {
+  // todo eventually add some notion of statistic reliability
+  //      Skipping for now as there hard to compute it properly and so far we do not have
+  //      usecase for that.
 
-    private static final Estimate UNKNOWN = new Estimate(NaN);
-    private static final Estimate ZERO = new Estimate(0);
+  private static final Estimate UNKNOWN = new Estimate(NaN);
+  private static final Estimate ZERO = new Estimate(0);
 
-    private final double value;
+  private final double value;
 
-    public static Estimate unknown()
-    {
-        return UNKNOWN;
+  public static Estimate unknown() {
+    return UNKNOWN;
+  }
+
+  public static Estimate zero() {
+    return ZERO;
+  }
+
+  public static Estimate of(double value) {
+    if (isNaN(value)) {
+      throw new IllegalArgumentException("value is NaN");
     }
-
-    public static Estimate zero()
-    {
-        return ZERO;
+    if (isInfinite(value)) {
+      throw new IllegalArgumentException("value is infinite");
     }
+    return new Estimate(value);
+  }
 
-    public static Estimate of(double value)
-    {
-        if (isNaN(value)) {
-            throw new IllegalArgumentException("value is NaN");
-        }
-        if (isInfinite(value)) {
-            throw new IllegalArgumentException("value is infinite");
-        }
-        return new Estimate(value);
-    }
+  private Estimate(double value) {
+    this.value = value;
+  }
 
-    private Estimate(double value)
-    {
-        this.value = value;
-    }
+  public boolean isUnknown() {
+    return isNaN(value);
+  }
 
-    public boolean isUnknown()
-    {
-        return isNaN(value);
-    }
+  public double getValue() {
+    return value;
+  }
 
-    public double getValue()
-    {
-        return value;
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Estimate estimate = (Estimate) o;
+    return Double.compare(estimate.value, value) == 0;
+  }
 
-    @Override
-    public boolean equals(Object o)
-    {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        Estimate estimate = (Estimate) o;
-        return Double.compare(estimate.value, value) == 0;
-    }
+  @Override
+  public int hashCode() {
+    return Objects.hash(value);
+  }
 
-    @Override
-    public int hashCode()
-    {
-        return Objects.hash(value);
-    }
-
-    @Override
-    public String toString()
-    {
-        return String.valueOf(value);
-    }
+  @Override
+  public String toString() {
+    return String.valueOf(value);
+  }
 }

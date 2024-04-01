@@ -3,26 +3,21 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class OutputNode extends SingleChildProcessNode {
+public class SortNode extends SingleChildProcessNode {
+  private final OrderingScheme orderingScheme;
+  private final boolean partial;
 
-  private final List<String> outputColumnNames;
-
-  private final List<Symbol> symbols;
-
-  public OutputNode(
-      PlanNodeId id, PlanNode child, List<String> outputColumnNames, List<Symbol> symbols) {
-    super(id, child);
-    this.id = id;
-    this.child = child;
-    this.outputColumnNames = outputColumnNames;
-    this.symbols = symbols;
+  public SortNode(PlanNodeId id, PlanNode planNode, OrderingScheme scheme, boolean partial) {
+    super(id, planNode);
+    this.orderingScheme = scheme;
+    this.partial = partial;
   }
 
   @Override

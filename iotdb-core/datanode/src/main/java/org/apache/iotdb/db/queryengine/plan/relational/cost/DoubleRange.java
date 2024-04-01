@@ -26,93 +26,79 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.cost.StatsUtil.toStatsRepresentation;
 
-public class DoubleRange
-{
-    private final double min;
-    private final double max;
+public class DoubleRange {
+  private final double min;
+  private final double max;
 
-    /**
-     * Creates DoubleRange from Trino native representation.
-     */
-    public static Optional<DoubleRange> from(Type type, Object minTrinoNativeValue, Object maxTrinoNativeValue)
-    {
-        requireNonNull(minTrinoNativeValue, "minTrinoNativeValue is null");
-        requireNonNull(maxTrinoNativeValue, "maxTrinoNativeValue is null");
+  /** Creates DoubleRange from Trino native representation. */
+  public static Optional<DoubleRange> from(
+      Type type, Object minTrinoNativeValue, Object maxTrinoNativeValue) {
+    requireNonNull(minTrinoNativeValue, "minTrinoNativeValue is null");
+    requireNonNull(maxTrinoNativeValue, "maxTrinoNativeValue is null");
 
-        OptionalDouble min = toStatsRepresentation(type, minTrinoNativeValue);
-        OptionalDouble max = toStatsRepresentation(type, maxTrinoNativeValue);
+    OptionalDouble min = toStatsRepresentation(type, minTrinoNativeValue);
+    OptionalDouble max = toStatsRepresentation(type, maxTrinoNativeValue);
 
-        if (!min.isPresent() && !max.isPresent()) {
-            return Optional.empty();
-        }
-        if (!min.isPresent() || !max.isPresent()) {
-            throw new IllegalStateException(format(
-                    "One of min/max was converted to stats representation while the other was not for type %s: %s, %s",
-                    type,
-                    min,
-                    max));
-        }
-        return Optional.of(new DoubleRange(min.getAsDouble(), max.getAsDouble()));
+    if (!min.isPresent() && !max.isPresent()) {
+      return Optional.empty();
     }
-
-    public DoubleRange(double min, double max)
-    {
-        if (isNaN(min)) {
-            throw new IllegalArgumentException("min must not be NaN");
-        }
-        if (isNaN(max)) {
-            throw new IllegalArgumentException("max must not be NaN");
-        }
-        if (min > max) {
-            throw new IllegalArgumentException(format("max must be greater than or equal to min. min: %s. max: %s. ", min, max));
-        }
-        this.min = min;
-        this.max = max;
+    if (!min.isPresent() || !max.isPresent()) {
+      throw new IllegalStateException(
+          format(
+              "One of min/max was converted to stats representation while the other was not for type %s: %s, %s",
+              type, min, max));
     }
+    return Optional.of(new DoubleRange(min.getAsDouble(), max.getAsDouble()));
+  }
 
-    public double getMin()
-    {
-        return min;
+  public DoubleRange(double min, double max) {
+    if (isNaN(min)) {
+      throw new IllegalArgumentException("min must not be NaN");
     }
+    if (isNaN(max)) {
+      throw new IllegalArgumentException("max must not be NaN");
+    }
+    if (min > max) {
+      throw new IllegalArgumentException(
+          format("max must be greater than or equal to min. min: %s. max: %s. ", min, max));
+    }
+    this.min = min;
+    this.max = max;
+  }
 
-    public double getMax()
-    {
-        return max;
-    }
+  public double getMin() {
+    return min;
+  }
 
-    public static DoubleRange union(DoubleRange first, DoubleRange second)
-    {
-        requireNonNull(first, "first is null");
-        requireNonNull(second, "second is null");
-        return new DoubleRange(min(first.min, second.min), max(first.max, second.max));
-    }
+  public double getMax() {
+    return max;
+  }
 
-    @Override
-    public boolean equals(Object o)
-    {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        DoubleRange range = (DoubleRange) o;
-        return Double.compare(range.min, min) == 0 &&
-                Double.compare(range.max, max) == 0;
-    }
+  public static DoubleRange union(DoubleRange first, DoubleRange second) {
+    requireNonNull(first, "first is null");
+    requireNonNull(second, "second is null");
+    return new DoubleRange(min(first.min, second.min), max(first.max, second.max));
+  }
 
-    @Override
-    public int hashCode()
-    {
-        return Objects.hash(min, max);
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DoubleRange range = (DoubleRange) o;
+    return Double.compare(range.min, min) == 0 && Double.compare(range.max, max) == 0;
+  }
 
-    @Override
-    public String toString()
-    {
-        return "DoubleRange{" +
-                "min=" + min +
-                ", max=" + max +
-                '}';
-    }
+  @Override
+  public int hashCode() {
+    return Objects.hash(min, max);
+  }
+
+  @Override
+  public String toString() {
+    return "DoubleRange{" + "min=" + min + ", max=" + max + '}';
+  }
 }

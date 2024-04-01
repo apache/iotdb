@@ -122,8 +122,8 @@ public class AnalyzerTest {
   @Test
   public void testSingleTableQuery() throws OperatorNotFoundException {
     String sql =
-        "SELECT tag1 as tmp_tag, tag2, attribute1, s1+1 as add_s1, s2 FROM table1 " +
-                "WHERE time>1 AND tag1=\"A\" and tag3=\"B\" AND s1=1 AND s3=3 ORDER BY time DESC OFFSET 10 LIMIT 5";
+        "SELECT tag1 as tmp_tag, tag2, attribute1, s1+1 as add_s1, s2 FROM table1 "
+            + "WHERE time>1 AND tag1=\"A\" and tag3=\"B\" AND s1=1 AND s3=3 ORDER BY time DESC OFFSET 10 LIMIT 5";
     Metadata metadata = new TestMatadata();
 
     TableHandle tableHandle = Mockito.mock(TableHandle.class);

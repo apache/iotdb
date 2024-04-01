@@ -13,36 +13,31 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.cost;
 
-
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import java.util.OptionalDouble;
 
-import static java.lang.Float.intBitsToFloat;
-import static java.lang.Math.toIntExact;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.iotdb.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.iotdb.tsfile.read.common.type.IntType.INT32;
 
-public final class StatsUtil
-{
-    private StatsUtil() {}
+public final class StatsUtil {
+  private StatsUtil() {}
 
-    public static OptionalDouble toStatsRepresentation(Type type, Object value)
-    {
-        requireNonNull(type, "type is null");
-        requireNonNull(value, "value is null");
+  public static OptionalDouble toStatsRepresentation(Type type, Object value) {
+    requireNonNull(type, "type is null");
+    requireNonNull(value, "value is null");
 
-        if (type == BOOLEAN) {
-            return OptionalDouble.of((boolean) value ? 1 : 0);
-        }
-        if (type == INT32) {
-            return OptionalDouble.of((long) value);
-        }
-        if (type == DOUBLE) {
-            return OptionalDouble.of((double) value);
-        }
-        return OptionalDouble.empty();
+    if (type == BOOLEAN) {
+      return OptionalDouble.of((boolean) value ? 1 : 0);
     }
+    if (type == INT32) {
+      return OptionalDouble.of((long) value);
+    }
+    if (type == DOUBLE) {
+      return OptionalDouble.of((double) value);
+    }
+    return OptionalDouble.empty();
+  }
 }

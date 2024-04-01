@@ -13,43 +13,39 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.cost;
 
-import com.google.common.collect.ImmutableMap;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.session.Session;
+
+import com.google.common.collect.ImmutableMap;
 
 import java.util.Map;
 import java.util.WeakHashMap;
 
 import static java.util.Objects.requireNonNull;
 
-public class CachingTableStatsProvider
-        implements TableStatsProvider
-{
-    private final Metadata metadata;
-    private final Session session;
+public class CachingTableStatsProvider implements TableStatsProvider {
+  private final Metadata metadata;
+  private final Session session;
 
-    private final Map<TableHandle, TableStatistics> cache = new WeakHashMap<>();
+  private final Map<TableHandle, TableStatistics> cache = new WeakHashMap<>();
 
-    public CachingTableStatsProvider(Metadata metadata, Session session)
-    {
-        this.metadata = requireNonNull(metadata, "metadata is null");
-        this.session = requireNonNull(session, "session is null");
+  public CachingTableStatsProvider(Metadata metadata, Session session) {
+    this.metadata = requireNonNull(metadata, "metadata is null");
+    this.session = requireNonNull(session, "session is null");
+  }
+
+  @Override
+  public TableStatistics getTableStatistics(TableHandle tableHandle) {
+    TableStatistics stats = cache.get(tableHandle);
+    if (stats == null) {
+      // stats = metadata.getTableStatistics(session, tableHandle);
+      cache.put(tableHandle, TableStatistics.empty());
     }
+    return stats;
+  }
 
-    @Override
-    public TableStatistics getTableStatistics(TableHandle tableHandle)
-    {
-        TableStatistics stats = cache.get(tableHandle);
-        if (stats == null) {
-            // stats = metadata.getTableStatistics(session, tableHandle);
-            cache.put(tableHandle, TableStatistics.empty());
-        }
-        return stats;
-    }
-
-    public Map<TableHandle, TableStatistics> getCachedTableStatistics()
-    {
-        return ImmutableMap.copyOf(cache);
-    }
+  public Map<TableHandle, TableStatistics> getCachedTableStatistics() {
+    return ImmutableMap.copyOf(cache);
+  }
 }

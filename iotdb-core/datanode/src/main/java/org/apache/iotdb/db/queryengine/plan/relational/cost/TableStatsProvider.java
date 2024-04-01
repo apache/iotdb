@@ -16,5 +16,5 @@ package org.apache.iotdb.db.queryengine.plan.relational.cost;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 
 public interface TableStatsProvider {
-    TableStatistics getTableStatistics(TableHandle tableHandle);
+  TableStatistics getTableStatistics(TableHandle tableHandle);
 }

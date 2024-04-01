@@ -13,10 +13,11 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
+
+import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 
@@ -24,56 +25,54 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 /**
- * The purpose of this class is to hold the current plan built so far
- * for a relation (query, table, values, etc.), and the mapping to
- * indicate how the fields (by position) in the relation map to
+ * The purpose of this class is to hold the current plan built so far for a relation (query, table,
+ * values, etc.), and the mapping to indicate how the fields (by position) in the relation map to
  * the outputs of the plan.
  */
 class RelationPlan {
-    private final PlanNode root;
-    private final List<Symbol> fieldMappings; // for each field in the relation, the corresponding symbol from "root"
-    private final Scope scope;
+  private final PlanNode root;
+  private final List<Symbol>
+      fieldMappings; // for each field in the relation, the corresponding symbol from "root"
+  private final Scope scope;
 
-    public RelationPlan(PlanNode root, Scope scope, List<Symbol> fieldMappings) {
-        requireNonNull(root, "root is null");
-        requireNonNull(fieldMappings, "fieldMappings is null");
-        requireNonNull(scope, "scope is null");
+  public RelationPlan(PlanNode root, Scope scope, List<Symbol> fieldMappings) {
+    requireNonNull(root, "root is null");
+    requireNonNull(fieldMappings, "fieldMappings is null");
+    requireNonNull(scope, "scope is null");
 
-        int allFieldCount = scope.getLocalScopeFieldCount();
-        checkArgument(allFieldCount == fieldMappings.size(),
-                "Number of outputs (%s) doesn't match number of fields in local scope (%s)",
-                fieldMappings.size(),
-                allFieldCount);
+    int allFieldCount = scope.getLocalScopeFieldCount();
+    checkArgument(
+        allFieldCount == fieldMappings.size(),
+        "Number of outputs (%s) doesn't match number of fields in local scope (%s)",
+        fieldMappings.size(),
+        allFieldCount);
 
-        this.root = root;
-        this.scope = scope;
-        this.fieldMappings = ImmutableList.copyOf(fieldMappings);
-    }
+    this.root = root;
+    this.scope = scope;
+    this.fieldMappings = ImmutableList.copyOf(fieldMappings);
+  }
 
-    public Symbol getSymbol(int fieldIndex)
-    {
-        checkArgument(fieldIndex >= 0 && fieldIndex < fieldMappings.size(),
-                "No field->symbol mapping for field %s", fieldIndex);
-        return fieldMappings.get(fieldIndex);
-    }
+  public Symbol getSymbol(int fieldIndex) {
+    checkArgument(
+        fieldIndex >= 0 && fieldIndex < fieldMappings.size(),
+        "No field->symbol mapping for field %s",
+        fieldIndex);
+    return fieldMappings.get(fieldIndex);
+  }
 
-    public PlanNode getRoot()
-    {
-        return root;
-    }
+  public PlanNode getRoot() {
+    return root;
+  }
 
-    public List<Symbol> getFieldMappings()
-    {
-        return fieldMappings;
-    }
+  public List<Symbol> getFieldMappings() {
+    return fieldMappings;
+  }
 
-    public RelationType getDescriptor()
-    {
-        return scope.getRelationType();
-    }
+  public RelationType getDescriptor() {
+    return scope.getRelationType();
+  }
 
-    public Scope getScope()
-    {
-        return scope;
-    }
+  public Scope getScope() {
+    return scope;
+  }
 }
