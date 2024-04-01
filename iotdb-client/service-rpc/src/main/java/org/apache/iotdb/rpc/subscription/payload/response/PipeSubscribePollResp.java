@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
@@ -32,6 +33,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
@@ -58,6 +60,25 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
     resp.type = PipeSubscribeResponseType.POLL_TABLETS.getType();
     try {
       resp.body = serializeEnrichedTabletsList(enrichedTabletsList);
+    } catch (IOException e) {
+      resp.status = RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, e.getMessage());
+    }
+
+    return resp;
+  }
+
+  public static PipeSubscribePollResp toTPipeSubscribeResp(
+      TSStatus status, List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsWithByteBufferList) {
+    final PipeSubscribePollResp resp = new PipeSubscribePollResp();
+
+    resp.enrichedTabletsList =
+        enrichedTabletsWithByteBufferList.stream().map(Pair::getRight).collect(Collectors.toList());
+
+    resp.status = status;
+    resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
+    resp.type = PipeSubscribeResponseType.POLL_TABLETS.getType();
+    try {
+      resp.body = serializeEnrichedTabletsWithByteBufferList(enrichedTabletsWithByteBufferList);
     } catch (IOException e) {
       resp.status = RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, e.getMessage());
     }
@@ -104,6 +125,21 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
     List<ByteBuffer> byteBufferList = new ArrayList<>();
     for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
       byteBufferList.add(serializeEnrichedTablets(enrichedTablets));
+    }
+    return byteBufferList;
+  }
+
+  public static List<ByteBuffer> serializeEnrichedTabletsWithByteBufferList(
+      List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsWithByteBufferList)
+      throws IOException {
+    List<ByteBuffer> byteBufferList = new ArrayList<>();
+    for (Pair<ByteBuffer, EnrichedTablets> enrichedTabletsWithByteBuffer :
+        enrichedTabletsWithByteBufferList) {
+      if (Objects.nonNull(enrichedTabletsWithByteBuffer.getLeft())) {
+        byteBufferList.add(enrichedTabletsWithByteBuffer.getLeft());
+      } else {
+        byteBufferList.add(serializeEnrichedTablets(enrichedTabletsWithByteBuffer.getRight()));
+      }
     }
     return byteBufferList;
   }

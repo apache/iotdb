@@ -71,6 +71,10 @@ public class SerializedEnrichedEvent {
     return true;
   }
 
+  public EnrichedTablets getEnrichedTablets() {
+    return enrichedTablets;
+  }
+
   public ByteBuffer getByteBuffer() {
     return byteBuffer;
   }
