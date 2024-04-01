@@ -38,9 +38,9 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskL
   private int registeredTaskCount;
 
   public SubscriptionConnectorSubtaskLifeCycle(
-      final PipeConnectorSubtaskExecutor executor, // SubscriptionSubtaskExecutor
-      final PipeConnectorSubtask subtask, // SubscriptionConnectorSubtask
-      final BoundedBlockingPendingQueue<Event> pendingQueue) {
+      PipeConnectorSubtaskExecutor executor, // SubscriptionSubtaskExecutor
+      PipeConnectorSubtask subtask, // SubscriptionConnectorSubtask
+      BoundedBlockingPendingQueue<Event> pendingQueue) {
     super(executor, subtask, pendingQueue);
 
     runningTaskCount = 0;
@@ -68,7 +68,7 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskL
   }
 
   @Override
-  public synchronized boolean deregister(final String ignored) {
+  public synchronized boolean deregister(String ignored) {
     if (registeredTaskCount <= 0) {
       throw new IllegalStateException("registeredTaskCount <= 0");
     }

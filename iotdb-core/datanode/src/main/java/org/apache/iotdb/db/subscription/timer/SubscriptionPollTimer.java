@@ -26,7 +26,7 @@ public class SubscriptionPollTimer {
   private long deadlineMs;
   private long timeoutMs;
 
-  public SubscriptionPollTimer(final long startMs, final long timeoutMs) {
+  public SubscriptionPollTimer(long startMs, long timeoutMs) {
     this.update(startMs);
     this.reset(timeoutMs);
   }
@@ -39,7 +39,7 @@ public class SubscriptionPollTimer {
     return !this.isExpired();
   }
 
-  public void reset(final long timeoutMs) {
+  public void reset(long timeoutMs) {
     if (timeoutMs < 0L) {
       throw new IllegalArgumentException("Invalid negative timeout " + timeoutMs);
     } else {
@@ -57,7 +57,7 @@ public class SubscriptionPollTimer {
     update(System.currentTimeMillis());
   }
 
-  public void update(final long currentTimeMs) {
+  public void update(long currentTimeMs) {
     this.currentTimeMs = Math.max(currentTimeMs, this.currentTimeMs);
   }
 

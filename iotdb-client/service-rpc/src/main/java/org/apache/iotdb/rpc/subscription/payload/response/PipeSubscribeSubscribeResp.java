@@ -32,7 +32,7 @@ public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
    * Serialize the incoming parameters into `PipeSubscribeSubscribeResp`, called by the subscription
    * server.
    */
-  public static PipeSubscribeSubscribeResp toTPipeSubscribeResp(final TSStatus status) {
+  public static PipeSubscribeSubscribeResp toTPipeSubscribeResp(TSStatus status) {
     final PipeSubscribeSubscribeResp resp = new PipeSubscribeSubscribeResp();
 
     resp.status = status;
@@ -44,7 +44,7 @@ public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
 
   /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
   public static PipeSubscribeSubscribeResp fromTPipeSubscribeResp(
-      final TPipeSubscribeResp subscribeResp) {
+      TPipeSubscribeResp subscribeResp) {
     final PipeSubscribeSubscribeResp resp = new PipeSubscribeSubscribeResp();
 
     resp.status = subscribeResp.status;
