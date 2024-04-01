@@ -36,23 +36,6 @@ public class PathPatternTreeUtils {
     if (SchemaConstant.ALL_MATCH_SCOPE.equals(fullPathPrefixTree)) {
       return patternTree;
     }
-    PathPatternTree result = new PathPatternTree(patternTree.isContainWildcard());
-    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (PartialPath fullPathOrPrefix : fullPathPrefixTree.getAllPathPatterns()) {
-        if (fullPathOrPrefix.endWithMultiLevelWildcard()) {
-          // prefix
-          for (PartialPath temp : pathPattern.intersectWithPrefixPattern(fullPathOrPrefix)) {
-            result.appendPathPattern(temp);
-          }
-        } else {
-          // full path
-          if (pathPattern.matchFullPath(fullPathOrPrefix)) {
-            result.appendPathPattern(fullPathOrPrefix);
-          }
-        }
-      }
-    }
-    result.constructTree();
-    return result;
+    return patternTree.intersectWithFullPathPrefixTree(fullPathPrefixTree);
   }
 }
