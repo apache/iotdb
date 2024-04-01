@@ -83,6 +83,7 @@ public class CompactionTaskManager implements IService {
   private final AtomicInteger finishedTaskNum = new AtomicInteger(0);
 
   private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
+  private final RateLimiter compactionReadRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
   private volatile boolean init = false;
 
@@ -248,6 +249,12 @@ public class CompactionTaskManager implements IService {
     return mergeWriteRateLimiter;
   }
 
+  public RateLimiter getCompactionReadRateLimiter() {
+    setCompactionReadRate(
+        IoTDBDescriptor.getInstance().getConfig().getCompactionReadThroughputMbPerSec());
+    return compactionReadRateLimiter;
+  }
+
   private void setWriteMergeRate(final double throughoutMbPerSec) {
     double throughout = throughoutMbPerSec * 1024.0 * 1024.0;
     // if throughout = 0, disable rate limiting
@@ -256,6 +263,17 @@ public class CompactionTaskManager implements IService {
     }
     if (mergeWriteRateLimiter.getRate() != throughout) {
       mergeWriteRateLimiter.setRate(throughout);
+    }
+  }
+
+  private void setCompactionReadRate(final double throughoutMbPerSec) {
+    double throughout = throughoutMbPerSec * 1024.0 * 1024.0;
+    // if throughout = 0, disable rate limiting
+    if (throughout <= 0) {
+      throughout = Double.MAX_VALUE;
+    }
+    if (compactionReadRateLimiter.getRate() != throughout) {
+      compactionReadRateLimiter.setRate(throughout);
     }
   }
 

@@ -658,6 +658,12 @@ public class IoTDBDescriptor {
                 "compaction_write_throughput_mb_per_sec",
                 Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
+    conf.setCompactionReadThroughputMbPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_read_throughput_mb_per_sec",
+                Integer.toString(conf.getCompactionReadThroughputMbPerSec()))));
+
     conf.setEnableTsFileValidation(
         Boolean.parseBoolean(
             properties.getProperty(

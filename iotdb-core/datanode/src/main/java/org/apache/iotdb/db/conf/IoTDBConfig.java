@@ -687,6 +687,9 @@ public class IoTDBConfig {
   /** The limit of compaction merge can reach per second */
   private int compactionWriteThroughputMbPerSec = 16;
 
+  /** The limit of compaction read can reach per second */
+  private int compactionReadThroughputMbPerSec = 16;
+
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
    * equal to 0.
@@ -2034,6 +2037,14 @@ public class IoTDBConfig {
 
   public void setCompactionWriteThroughputMbPerSec(int compactionWriteThroughputMbPerSec) {
     this.compactionWriteThroughputMbPerSec = compactionWriteThroughputMbPerSec;
+  }
+
+  public int getCompactionReadThroughputMbPerSec() {
+    return compactionReadThroughputMbPerSec;
+  }
+
+  public void setCompactionReadThroughputMbPerSec(int compactionReadThroughputMbPerSec) {
+    this.compactionReadThroughputMbPerSec = compactionReadThroughputMbPerSec;
   }
 
   public boolean isEnableTimedFlushSeqMemtable() {
