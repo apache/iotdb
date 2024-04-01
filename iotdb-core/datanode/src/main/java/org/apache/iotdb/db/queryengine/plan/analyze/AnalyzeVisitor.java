@@ -65,6 +65,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpre
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByConditionParameter;
@@ -2410,6 +2411,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Analysis analysis = new Analysis();
     analysis.setStatement(internalCreateTimeSeriesStatement);
+    checkIsTemplateCompatible(
+        internalCreateTimeSeriesStatement.getDevicePath(),
+        internalCreateTimeSeriesStatement.getMeasurements(),
+        null);
 
     PathPatternTree pathPatternTree = new PathPatternTree();
     for (String measurement : internalCreateTimeSeriesStatement.getMeasurements()) {
@@ -2435,8 +2440,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setStatement(internalCreateMultiTimeSeriesStatement);
 
     PathPatternTree pathPatternTree = new PathPatternTree();
-    for (PartialPath devicePath : internalCreateMultiTimeSeriesStatement.getDeviceMap().keySet()) {
-      pathPatternTree.appendFullPath(devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
+    for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> entry :
+        internalCreateMultiTimeSeriesStatement.getDeviceMap().entrySet()) {
+      checkIsTemplateCompatible(entry.getKey(), entry.getValue().right.getMeasurements(), null);
+      pathPatternTree.appendFullPath(entry.getKey().concatNode(ONE_LEVEL_PATH_WILDCARD));
     }
 
     SchemaPartition schemaPartitionInfo;
