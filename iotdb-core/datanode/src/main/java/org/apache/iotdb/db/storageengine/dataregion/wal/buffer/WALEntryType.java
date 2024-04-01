@@ -38,6 +38,8 @@ public enum WALEntryType {
   DELETE_DATA_NODE((byte) 6),
   /** {@link org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint} */
   MEMORY_TABLE_CHECKPOINT((byte) 7),
+  /** {@link org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode} */
+  INSERT_ROWS_NODE((byte) 8),
   // endregion
   // region signal entry type
   // signal wal buffer has been closed

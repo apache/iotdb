@@ -30,9 +30,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -43,7 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class InsertRowsNode extends InsertNode {
+public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   /**
    * Suppose there is an InsertRowsNode, which contains 5 InsertRowNodes,
@@ -265,4 +268,74 @@ public class InsertRowsNode extends InsertNode {
     this.progressIndex = progressIndex;
     insertRowNodeList.forEach(insertRowNode -> insertRowNode.setProgressIndex(progressIndex));
   }
+
+  // region serialize & deserialize methods for WAL
+  /** Serialized size for wal. */
+  @Override
+  public int serializedSize() {
+    return Short.BYTES + subSerializeSize();
+  }
+
+  private int subSerializeSize() {
+    int size = Integer.BYTES;
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      size += insertRowNode.serializedSize();
+    }
+    return size;
+  }
+
+  /**
+   * Compared with {@link this#serialize(ByteBuffer)}, more info: search index, less info:
+   * isNeedInferType
+   */
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    buffer.putShort(PlanNodeType.INSERT_ROWS.getNodeType());
+    subSerialize(buffer);
+  }
+
+  private void subSerialize(IWALByteBufferView buffer) {
+    buffer.putInt(insertRowNodeList.size());
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      insertRowNode.serializeToWAL(buffer);
+    }
+  }
+
+  /**
+   * Deserialize from wal.
+   *
+   * @param stream - DataInputStream
+   * @return InsertRowNode
+   * @throws IOException - If an I/O error occurs.
+   * @throws IllegalArgumentException - If meets illegal argument.
+   */
+  public static InsertRowsNode deserializeFromWAL(DataInputStream stream) throws IOException {
+    // we do not store plan node id in wal entry
+    InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
+    int listSize = stream.readInt();
+    for (int i = 0; i < listSize; i++) {
+      InsertRowNode insertRowNode = InsertRowNode.deserializeFromWAL(stream);
+      insertRowsNode.addOneInsertRowNode(insertRowNode, i);
+    }
+    return insertRowsNode;
+  }
+
+  /**
+   * Deserialize from wal.
+   *
+   * @param buffer - ByteBuffer
+   * @return InsertRowNode
+   * @throws IllegalArgumentException - If meets illegal argument
+   */
+  public static InsertRowsNode deserializeFromWAL(ByteBuffer buffer) {
+    // we do not store plan node id in wal entry
+    InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
+    int listSize = buffer.getInt();
+    for (int i = 0; i < listSize; i++) {
+      InsertRowNode insertRowNode = InsertRowNode.deserializeFromWAL(buffer);
+      insertRowsNode.addOneInsertRowNode(insertRowNode, i);
+    }
+    return insertRowsNode;
+  }
+  // endregion
 }

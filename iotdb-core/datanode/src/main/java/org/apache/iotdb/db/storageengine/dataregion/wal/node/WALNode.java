@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -127,6 +128,12 @@ public class WALNode implements IWALNode {
   @Override
   public WALFlushListener log(long memTableId, InsertRowNode insertRowNode) {
     WALEntry walEntry = new WALInfoEntry(memTableId, insertRowNode);
+    return log(walEntry);
+  }
+
+  @Override
+  public WALFlushListener log(long memTableId, InsertRowsNode insertRowsNode) {
+    WALEntry walEntry = new WALInfoEntry(memTableId, insertRowsNode);
     return log(walEntry);
   }
 

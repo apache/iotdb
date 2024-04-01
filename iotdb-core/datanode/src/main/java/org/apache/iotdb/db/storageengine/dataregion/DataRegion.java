@@ -1181,14 +1181,18 @@ public class DataRegion implements IDataRegionForQuery {
       if (tsFileProcessor == null) {
         continue;
       }
-      tsFileProcessorMap.compute(tsFileProcessor, (k, v) -> {
-        if (v == null) {
-          v = new InsertRowsNode(insertRowsNode.getPlanNodeId());
-          v.setSearchIndex(insertRowNode.getSearchIndex());
-        }
-        v.addOneInsertRowNode(insertRowNode, v.getInsertRowNodeList().size());
-        return v;
-      });
+      int finalI = i;
+      tsFileProcessorMap.compute(
+          tsFileProcessor,
+          (k, v) -> {
+            if (v == null) {
+              v = new InsertRowsNode(insertRowsNode.getPlanNodeId());
+              v.setSearchIndex(insertRowNode.getSearchIndex());
+              v.setAligned(insertRowNode.isAligned());
+            }
+            v.addOneInsertRowNode(insertRowNode, finalI);
+            return v;
+          });
       try {
         tsFileProcessor.insert(insertRowNode, costsForMetrics);
       } catch (WriteProcessException e) {
@@ -1204,7 +1208,11 @@ public class DataRegion implements IDataRegionForQuery {
       try {
         tsFileProcessor.insert(subInsertRowsNode, costsForMetrics);
       } catch (WriteProcessException e) {
-        insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        insertRowsNode
+            .getResults()
+            .put(
+                subInsertRowsNode.getInsertRowNodeIndexList().get(0),
+                RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
 
       if (entry.getKey().shouldFlush()) {
