@@ -142,22 +142,21 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
             true);
     SchemaRegionListeningQueue listener =
         PipeAgent.runtime().schemaListener(schemaRegion.getSchemaRegionId());
-    if (listener.isOpened()) {
-      if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.getLeft())) {
+    if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.getLeft())) {
+      if (listener.isOpened()) {
         logger.warn(
             "Schema Region Listening Queue Listen to snapshot failed, the historical data may not be transferred. snapshotPaths:{}",
             snapshotPaths);
-        return;
       }
-      listener.tryListenToSnapshot(
-          snapshotPaths.getLeft().toString(),
-          // Transfer tLogSnapshot iff it exists and is non-empty
-          Objects.nonNull(snapshotPaths.getRight())
-                  && snapshotPaths.getRight().toFile().length() > 0
-              ? snapshotPaths.getRight().toString()
-              : null,
-          schemaRegion.getDatabaseFullPath());
+      return;
     }
+    listener.tryListenToSnapshot(
+        snapshotPaths.getLeft().toString(),
+        // Transfer tLogSnapshot iff it exists and is non-empty
+        Objects.nonNull(snapshotPaths.getRight()) && snapshotPaths.getRight().toFile().length() > 0
+            ? snapshotPaths.getRight().toString()
+            : null,
+        schemaRegion.getDatabaseFullPath());
   }
 
   @Override

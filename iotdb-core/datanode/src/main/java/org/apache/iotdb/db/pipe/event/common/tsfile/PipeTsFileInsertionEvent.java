@@ -44,7 +44,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
-  private boolean isTsFileFormatValid = true;
+  private final AtomicBoolean isTsFileFormatValid = new AtomicBoolean(true);
 
   private final TsFileResource resource;
   private File tsFile;
@@ -104,7 +104,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         processor.addCloseFileListener(
             o -> {
               synchronized (isClosed) {
-                isTsFileFormatValid = o.isTsFileFormatValidForPipe();
+                isTsFileFormatValid.set(o.isTsFileFormatValidForPipe());
                 isClosed.set(true);
                 isClosed.notifyAll();
               }
@@ -113,7 +113,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     }
     // Check again after register close listener in case TsFile is closed during the process
     isClosed.set(resource.isClosed());
-    isTsFileFormatValid = resource.getProcessor().isTsFileFormatValidForPipe();
+    // This must be set here to judge the validity of closed tsFiles
+    isTsFileFormatValid.set(resource.getProcessor().isTsFileFormatValidForPipe());
   }
 
   /**

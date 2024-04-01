@@ -205,9 +205,11 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
             .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
         return true;
       } catch (IOException e) {
-        LOGGER.warn(
-            "Config Region Listening Queue Listen to snapshot failed, the historical data may not be transferred.",
-            e);
+        if (PipeConfigNodeAgent.runtime().listener().isOpened()) {
+          LOGGER.warn(
+              "Config Region Listening Queue Listen to snapshot failed, the historical data may not be transferred.",
+              e);
+        }
       }
     }
     return false;
@@ -223,9 +225,11 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           .listener()
           .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
     } catch (IOException e) {
-      LOGGER.warn(
-          "Config Region Listening Queue Listen to snapshot failed when startup, snapshot will be tried again when starting schema transferring pipes",
-          e);
+      if (PipeConfigNodeAgent.runtime().listener().isOpened()) {
+        LOGGER.warn(
+            "Config Region Listening Queue Listen to snapshot failed when startup, snapshot will be tried again when starting schema transferring pipes",
+            e);
+      }
     }
   }
 
