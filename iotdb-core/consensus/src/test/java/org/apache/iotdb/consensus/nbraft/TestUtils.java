@@ -126,6 +126,7 @@ public class TestUtils {
     private final Logger logger = LoggerFactory.getLogger(IntegerCounter.class);
     private List<Peer> configuration;
     private int id;
+    private File lastSnapshotRoot;
 
     public static void resetStorage() {
       storage.clear();
@@ -175,6 +176,7 @@ public class TestUtils {
 
     @Override
     public boolean takeSnapshot(File snapshotDir) {
+      lastSnapshotRoot = snapshotDir;
       snapshotDir.mkdirs();
       File snapshot = new File(snapshotDir.getAbsolutePath() + File.separator + "snapshot");
       try (FileWriter writer = new FileWriter(snapshot)) {
@@ -232,6 +234,11 @@ public class TestUtils {
 
     public List<Peer> getConfiguration() {
       return configuration;
+    }
+
+    @Override
+    public File getSnapshotRoot() {
+      return lastSnapshotRoot;
     }
   }
 

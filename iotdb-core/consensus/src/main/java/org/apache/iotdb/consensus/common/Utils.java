@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.consensus.common;
 
+import java.util.regex.Pattern;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
 import org.slf4j.Logger;
@@ -78,5 +80,39 @@ public class Utils {
       return Collections.emptyList();
     }
     return allFiles;
+  }
+  public static long getLatestSnapshotIndex(String storageDir, String snapshotDirName, Pattern snapshotIndexPattern) {
+    long snapShotIndex = 0;
+    File directory = new File(storageDir);
+    File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(snapshotDirName));
+    if (versionFiles == null || versionFiles.length == 0) {
+      return snapShotIndex;
+    }
+    for (File file : versionFiles) {
+      snapShotIndex =
+          Math.max(
+              snapShotIndex,
+              Long.parseLong(snapshotIndexPattern.matcher(file.getName()).replaceAll("")));
+    }
+    return snapShotIndex;
+  }
+
+  public static void clearOldSnapshot(String storageDir, String snapshotDirName, String newSnapshotDirName) {
+    File directory = new File(storageDir);
+    File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(snapshotDirName));
+    if (versionFiles == null || versionFiles.length == 0) {
+      logger.error(
+          "Can not find any snapshot dir after build a new snapshot");
+      return;
+    }
+    for (File file : versionFiles) {
+      if (!file.getName().equals(newSnapshotDirName)) {
+        try {
+          FileUtils.deleteDirectory(file);
+        } catch (IOException e) {
+          logger.error("Delete old snapshot dir {} failed", file.getAbsolutePath(), e);
+        }
+      }
+    }
   }
 }

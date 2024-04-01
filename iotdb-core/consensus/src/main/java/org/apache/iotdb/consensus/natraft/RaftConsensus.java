@@ -38,6 +38,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
@@ -306,12 +307,16 @@ public class RaftConsensus implements IConsensus {
 
   @Override
   public void triggerSnapshot(ConsensusGroupId groupId, boolean force)
-      throws ConsensusGroupNotExistException {
+      throws ConsensusException {
     RaftMember impl = stateMachineMap.get(groupId);
     if (impl == null) {
       throw new ConsensusGroupNotExistException(groupId);
     }
-    impl.triggerSnapshot();
+    try {
+      impl.triggerSnapshot();
+    } catch (ConsensusGroupModifyPeerException e) {
+      throw new ConsensusException(e);
+    }
   }
 
   @Override

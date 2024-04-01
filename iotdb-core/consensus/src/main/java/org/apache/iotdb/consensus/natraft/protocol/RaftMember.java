@@ -22,6 +22,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol;
 
+import java.util.regex.Pattern;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -33,9 +34,11 @@ import org.apache.iotdb.commons.utils.Timer.Statistic;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.Utils;
 import org.apache.iotdb.consensus.common.request.ChangePeersRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.client.GenericHandler;
 import org.apache.iotdb.consensus.natraft.client.SyncClientAdaptor;
@@ -114,6 +117,8 @@ import java.util.function.Consumer;
 
 public class RaftMember {
 
+  public static final String SNAPSHOT_DIR_NAME = "snapshot";
+  private static final Pattern SNAPSHOT_INDEX_PATTEN = Pattern.compile(".*[^\\d](?=(\\d+))");
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
   private static final String CONFIGURATION_TMP_FILE_NAME = "configuration.dat.tmp";
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
@@ -196,7 +201,7 @@ public class RaftMember {
   private FlowBalancer flowBalancer;
   private Consumer<ConsensusGroupId> onRemove;
   private EntryAllocator<RequestEntry> requestEntryAllocator;
-
+  private String newSnapshotDirName;
   public RaftMember(
       String storageDir,
       RaftConfig config,
@@ -1383,8 +1388,28 @@ public class RaftMember {
     return changeConfig(peers);
   }
 
-  public void triggerSnapshot() {
+  public void triggerSnapshot() throws ConsensusGroupModifyPeerException {
     logManager.takeSnapshot(this);
+    try {
+      long newSnapshotIndex = Utils.getLatestSnapshotIndex(storageDir, SNAPSHOT_DIR_NAME, SNAPSHOT_INDEX_PATTEN) + 1;
+      newSnapshotDirName =
+          String.format(
+              "%s_%s_%d", SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), newSnapshotIndex);
+      File snapshotDir = new File(storageDir, newSnapshotDirName);
+      if (snapshotDir.exists()) {
+        org.apache.commons.io.FileUtils.deleteDirectory(snapshotDir);
+      }
+      if (!snapshotDir.mkdirs()) {
+        throw new ConsensusGroupModifyPeerException(
+            String.format("%s: cannot mkdir for snapshot", thisNode.getGroupId()));
+      }
+      if (!stateMachine.takeSnapshot(snapshotDir)) {
+        throw new ConsensusGroupModifyPeerException("unknown error when taking snapshot");
+      }
+      Utils.clearOldSnapshot(storageDir, SNAPSHOT_DIR_NAME, newSnapshotDirName);
+    } catch (IOException e) {
+      throw new ConsensusGroupModifyPeerException("error when taking snapshot", e);
+    }
   }
 
   public TSStatus transferLeader(Peer peer) throws ConsensusException {
