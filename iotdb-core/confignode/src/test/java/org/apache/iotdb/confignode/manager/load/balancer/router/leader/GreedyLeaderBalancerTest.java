@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.load.balancer.router.leader;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -32,6 +33,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -76,7 +78,7 @@ public class GreedyLeaderBalancerTest {
 
     Map<TConsensusGroupId, Integer> leaderDistribution =
         BALANCER.generateOptimalLeaderDistribution(
-            regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
+            new TreeMap<>(), regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     Map<Integer, AtomicInteger> leaderCounter = new ConcurrentHashMap<>();
     leaderDistribution.forEach(
         (regionGroupId, leaderId) ->
@@ -129,7 +131,7 @@ public class GreedyLeaderBalancerTest {
 
     Map<TConsensusGroupId, Integer> leaderDistribution =
         BALANCER.generateOptimalLeaderDistribution(
-            regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
+            new TreeMap<>(), regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
     Map<Integer, AtomicInteger> leaderCounter = new ConcurrentHashMap<>();
     leaderDistribution.forEach(
         (regionGroupId, leaderId) ->

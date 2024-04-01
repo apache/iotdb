@@ -100,7 +100,8 @@ public class SubscriptionSession extends Session {
     executeNonQueryStatement(sql);
   }
 
-  public void drop(String topicName) throws IoTDBConnectionException, StatementExecutionException {
+  public void dropTopic(String topicName)
+      throws IoTDBConnectionException, StatementExecutionException {
     final String sql = String.format("DROP TOPIC %s", topicName);
     executeNonQueryStatement(sql);
   }

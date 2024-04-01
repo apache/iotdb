@@ -45,13 +45,13 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
   @Test
   public void testDoubleLivingAutoConflict() throws Exception {
     // Double living is two clusters each with a pipe connecting to the other.
-    DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String senderIp = senderDataNode.getIp();
-    int senderPort = senderDataNode.getPort();
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String senderIp = senderDataNode.getIp();
+    final int senderPort = senderDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
     for (int i = 0; i < 100; ++i) {
       if (!TestUtils.tryExecuteNonQueryWithRetry(
@@ -63,15 +63,15 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
       return;
     }
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("source.inclusion", "all");
       extractorAttributes.put("source.inclusion.exclusion", "");
-      // add this property to avoid making self cycle.
+      // Add this property to avoid making self cycle.
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
 
       connectorAttributes.put("sink", "iotdb-thrift-sink");
@@ -79,7 +79,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("sink.ip", receiverIp);
       connectorAttributes.put("sink.port", Integer.toString(receiverPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -109,15 +109,15 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
       return;
     }
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("source.inclusion", "all");
       extractorAttributes.put("source.inclusion.exclusion", "");
-      // add this property to avoid to make self cycle.
+      // Add this property to avoid to make self cycle.
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
@@ -125,7 +125,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.ip", senderIp);
       connectorAttributes.put("connector.port", Integer.toString(senderPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -145,7 +145,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
       return;
     }
 
-    Set<String> expectedResSet = new HashSet<>();
+    final Set<String> expectedResSet = new HashSet<>();
     for (int i = 0; i < 400; ++i) {
       expectedResSet.add(i + ",1.0,");
     }
@@ -188,19 +188,19 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testDoubleLivingAutoConflictTemplate() throws Exception {
-    DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String senderIp = senderDataNode.getIp();
-    int senderPort = senderDataNode.getPort();
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String senderIp = senderDataNode.getIp();
+    final int senderPort = senderDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("source.inclusion", "all");
       extractorAttributes.put("source.inclusion.exclusion", "");
@@ -211,7 +211,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -222,11 +222,11 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
     }
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("source.inclusion", "all");
       extractorAttributes.put("source.inclusion.exclusion", "");
@@ -237,7 +237,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.ip", senderIp);
       connectorAttributes.put("connector.port", Integer.toString(senderPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -280,7 +280,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
       return;
     }
 
-    Set<String> expectedResSet = new HashSet<>();
+    final Set<String> expectedResSet = new HashSet<>();
     for (int i = 0; i < 400; ++i) {
       expectedResSet.add(i + ",1.0,");
     }

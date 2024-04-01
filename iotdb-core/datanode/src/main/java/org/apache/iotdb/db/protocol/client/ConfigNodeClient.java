@@ -323,16 +323,16 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
    * @param <T> the type of rpc result
    * @throws TException if fails more than RETRY_NUM times, throw TException(MSG_RECONNECTION_FAIL)
    */
-  private <T> T executeRemoteCallWithRetry(Operation<T> call, Predicate<T> check)
+  private <T> T executeRemoteCallWithRetry(final Operation<T> call, final Predicate<T> check)
       throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        T result = call.execute();
+        final T result = call.execute();
         if (check.test(result)) {
           return result;
         }
       } catch (TException e) {
-        String message =
+        final String message =
             String.format(
                 MSG_RECONNECTION_DATANODE_FAIL,
                 configNode,

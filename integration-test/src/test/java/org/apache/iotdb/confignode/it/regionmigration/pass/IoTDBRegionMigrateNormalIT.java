@@ -17,35 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.it;
+package org.apache.iotdb.confignode.it.regionmigration.pass;
 
-import org.apache.iotdb.it.env.MultiEnvFactory;
-import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
-abstract class AbstractSubscriptionDualIT {
-
-  protected BaseEnv senderEnv;
-  protected BaseEnv receiverEnv;
-
-  @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
-
-    senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
+@RunWith(IoTDBTestRunner.class)
+@Category({ClusterIT.class})
+public class IoTDBRegionMigrateNormalIT extends IoTDBRegionMigrateReliabilityITFramework {
+  @Test
+  public void normal1C2DTest() throws Exception {
+    successTest(1, 1, 1, 2, noKillPoints(), noKillPoints());
   }
 
-  @After
-  public final void tearDown() {
-    senderEnv.cleanClusterEnvironment();
-    receiverEnv.cleanClusterEnvironment();
+  @Test
+  public void normal3C3DTest() throws Exception {
+    successTest(2, 3, 3, 3, noKillPoints(), noKillPoints());
   }
 }

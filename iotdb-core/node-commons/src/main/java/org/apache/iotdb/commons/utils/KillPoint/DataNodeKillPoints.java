@@ -17,12 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils;
+package org.apache.iotdb.commons.utils.KillPoint;
 
-@TestOnly
 public enum DataNodeKillPoints {
-  OriginalRemovePeer,
-  OriginalDeleteOldRegionPeer,
-
-  CoordinatorRemovePeer,
+  ORIGINAL_ADD_PEER_DONE,
+  DESTINATION_CREATE_LOCAL_PEER,
+  DESTINATION_ADD_PEER_TRANSITION,
+  DESTINATION_ADD_PEER_DONE,
+  COORDINATOR_ADD_PEER_TRANSITION,
+  COORDINATOR_ADD_PEER_DONE,
 }

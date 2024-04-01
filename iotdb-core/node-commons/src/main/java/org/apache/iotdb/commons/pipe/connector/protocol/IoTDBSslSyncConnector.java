@@ -187,6 +187,11 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
           continue;
         }
 
+        // Send handshake req and then re-transfer the event
+        if (status.getCode()
+            == TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode()) {
+          clientManager.sendHandshakeReq(clientAndStatus);
+        }
         // Only handle the failed statuses to avoid string format performance overhead
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {

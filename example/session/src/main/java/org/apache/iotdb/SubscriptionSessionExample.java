@@ -50,7 +50,7 @@ public class SubscriptionSessionExample {
             .build();
     session.open(false);
 
-    // insert some historical data
+    // Insert some historical data
     long currentTime = System.currentTimeMillis();
     for (int i = 0; i < 100; ++i) {
       session.executeNonQueryStatement(
@@ -62,14 +62,14 @@ public class SubscriptionSessionExample {
     }
     session.executeNonQueryStatement("flush");
 
-    // create topic
+    // Create topic
     try (SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
       subscriptionSession.open();
       subscriptionSession.createTopic("topic1");
       subscriptionSession.createTopic("topic2");
     }
 
-    // subscription: property-style ctor
+    // Subscription: property-style ctor
     Properties config = new Properties();
     config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
     config.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
@@ -77,7 +77,7 @@ public class SubscriptionSessionExample {
     consumer1.open();
     consumer1.subscribe("topic1");
     while (true) {
-      Thread.sleep(1000); // wait some time
+      Thread.sleep(1000); // Wait for some time
       List<SubscriptionMessage> messages = consumer1.poll(Duration.ofMillis(10000));
       if (messages.isEmpty()) {
         break;
@@ -92,10 +92,10 @@ public class SubscriptionSessionExample {
           }
         }
       }
-      // auto commit
+      // Auto commit
     }
 
-    // show topics and subscriptions
+    // Show topics and subscriptions
     try (SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
       subscriptionSession.open();
       subscriptionSession.getTopics().forEach((System.out::println));
@@ -105,7 +105,7 @@ public class SubscriptionSessionExample {
     consumer1.unsubscribe("topic1");
     consumer1.close();
 
-    // subscription: builder-style ctor
+    // Subscription: builder-style ctor
     try (SubscriptionPullConsumer consumer2 =
         new SubscriptionPullConsumer.Builder()
             .consumerId("c2")
@@ -135,7 +135,7 @@ public class SubscriptionSessionExample {
       consumer2.unsubscribe("topic2");
     }
 
-    // query
+    // Query
     SessionDataSet dataSet = session.executeQueryStatement("select ** from root.**");
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());

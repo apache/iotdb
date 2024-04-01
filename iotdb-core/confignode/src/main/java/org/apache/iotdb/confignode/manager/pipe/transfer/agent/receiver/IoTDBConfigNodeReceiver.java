@@ -95,11 +95,18 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       new PipeConfigPhysicalPlanExceptionVisitor();
 
   @Override
-  public TPipeTransferResp receive(TPipeTransferReq req) {
+  public TPipeTransferResp receive(final TPipeTransferReq req) {
     try {
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
-        switch (PipeRequestType.valueOf(rawRequestType)) {
+        final PipeRequestType type = PipeRequestType.valueOf(rawRequestType);
+        if (needHandshake(type)) {
+          return new TPipeTransferResp(
+              new TSStatus(TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode())
+                  .setMessage(
+                      "The receiver ConfigNode has set up a new receiver and the sender must re-send its handshake request."));
+        }
+        switch (type) {
           case HANDSHAKE_CONFIGNODE_V1:
             return handleTransferHandshakeV1(
                 PipeTransferConfigNodeHandshakeV1Req.fromTPipeTransferReq(req));
@@ -136,6 +143,16 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       LOGGER.warn(error, e);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
+  }
+
+  // This indicates that the client from DataNode to ConfigNode is newly created and
+  // thus the sender needs to re-handshake to notify its configurations.
+  // Note that the sender needs not to reconstruct its client because the client
+  // is directly linked to the preceding DataNode and has not broken.
+  private boolean needHandshake(PipeRequestType type) {
+    return Objects.isNull(receiverFileDirWithIdSuffix.get())
+        && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V1
+        && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V2;
   }
 
   private TPipeTransferResp handleTransferConfigPlan(PipeTransferConfigPlanReq req)

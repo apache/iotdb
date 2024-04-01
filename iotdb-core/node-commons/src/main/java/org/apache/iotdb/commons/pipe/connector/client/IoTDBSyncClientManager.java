@@ -72,7 +72,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   }
 
   public void checkClientStatusAndTryReconstructIfNecessary() {
-    // reconstruct all dead clients
+    // Reconstruct all dead clients
     for (final Map.Entry<TEndPoint, Pair<IoTDBSyncClient, Boolean>> entry :
         endPoint2ClientAndStatus.entrySet()) {
       if (Boolean.TRUE.equals(entry.getValue().getRight())) {
@@ -82,7 +82,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       reconstructClient(entry.getKey());
     }
 
-    // check whether any clients are available
+    // Check whether any clients are available
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : endPoint2ClientAndStatus.values()) {
       if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
         return;
@@ -109,11 +109,11 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     }
 
     initClientAndStatus(clientAndStatus, endPoint);
-    sendHandshakeReq(clientAndStatus, endPoint);
+    sendHandshakeReq(clientAndStatus);
   }
 
   private void initClientAndStatus(
-      Pair<IoTDBSyncClient, Boolean> clientAndStatus, TEndPoint endPoint) {
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus, final TEndPoint endPoint) {
     try {
       clientAndStatus.setLeft(
           new IoTDBSyncClient(
@@ -137,7 +137,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     }
   }
 
-  public void sendHandshakeReq(Pair<IoTDBSyncClient, Boolean> clientAndStatus, TEndPoint endPoint) {
+  public void sendHandshakeReq(final Pair<IoTDBSyncClient, Boolean> clientAndStatus) {
+    final IoTDBSyncClient client = clientAndStatus.getLeft();
     try {
       final HashMap<String, String> params = new HashMap<>();
       params.put(
@@ -146,41 +147,39 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, getClusterId());
 
       // Try to handshake by PipeTransferHandshakeV2Req.
-      TPipeTransferResp resp = clientAndStatus.getLeft().pipeTransfer(buildHandshakeV2Req(params));
+      TPipeTransferResp resp = client.pipeTransfer(buildHandshakeV2Req(params));
       // Receiver may be an old version, so we need to retry to handshake by
       // PipeTransferHandshakeV1Req.
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
         LOGGER.info(
             "Handshake error with target server ip: {}, port: {}, because: {}. "
                 + "Retry to handshake by PipeTransferHandshakeV1Req.",
-            endPoint.getIp(),
-            endPoint.getPort(),
+            client.getIpAddress(),
+            client.getPort(),
             resp.getStatus());
         supportModsIfIsDataNodeReceiver = false;
-        resp = clientAndStatus.getLeft().pipeTransfer(buildHandshakeV1Req());
+        resp = client.pipeTransfer(buildHandshakeV1Req());
       }
 
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             "Handshake error with target server ip: {}, port: {}, because: {}.",
-            endPoint.getIp(),
-            endPoint.getPort(),
+            client.getIpAddress(),
+            client.getPort(),
             resp.getStatus());
       } else {
         clientAndStatus.setRight(true);
-        clientAndStatus
-            .getLeft()
-            .setTimeout((int) PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
+        client.setTimeout((int) PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
         LOGGER.info(
             "Handshake success. Target server ip: {}, port: {}",
-            endPoint.getIp(),
-            endPoint.getPort());
+            client.getIpAddress(),
+            client.getPort());
       }
     } catch (Exception e) {
       LOGGER.warn(
           "Handshake error with target server ip: {}, port: {}, because: {}.",
-          endPoint.getIp(),
-          endPoint.getPort(),
+          client.getIpAddress(),
+          client.getPort(),
           e.getMessage(),
           e);
     }

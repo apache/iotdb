@@ -39,7 +39,7 @@ import java.io.PrintWriter;
 import java.time.ZoneId;
 import java.util.List;
 
-public abstract class AbstractCsvTool {
+public abstract class AbstractDataTool {
 
   protected static final String HOST_ARGS = "h";
   protected static final String HOST_NAME = "host";
@@ -116,12 +116,13 @@ public abstract class AbstractCsvTool {
 
   protected static String timeZoneID;
   protected static String timeFormat;
+  protected static String exportType;
   protected static Session session;
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
-  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractCsvTool.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractDataTool.class);
 
-  protected AbstractCsvTool() {}
+  protected AbstractDataTool() {}
 
   protected static String checkRequiredArg(String arg, String name, CommandLine commandLine)
       throws ArgsErrorException {
