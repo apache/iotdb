@@ -80,7 +80,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     this.dataRegionId = tsFileResource.getDataRegionId();
     this.sequence = sequence;
     this.callbackAfterUnsealedTsFileRecovered = callbackAfterUnsealedTsFileRecovered;
-    this.walRedoer = new TsFilePlanRedoer(tsFileResource, sequence);
+    this.walRedoer = new TsFilePlanRedoer(tsFileResource);
     this.recoverListener = new WALRecoverListener(tsFileResource.getTsFilePath());
   }
 
