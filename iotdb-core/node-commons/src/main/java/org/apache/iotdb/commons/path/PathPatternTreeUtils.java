@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.path;
 
+import org.apache.iotdb.commons.schema.SchemaConstant;
+
 public class PathPatternTreeUtils {
   /**
    * Intersect the pattern tree with the full path prefix tree, and return the intersected pattern
@@ -31,6 +33,9 @@ public class PathPatternTreeUtils {
    */
   public static PathPatternTree intersectWithFullPathPrefixTree(
       PathPatternTree patternTree, PathPatternTree fullPathPrefixTree) {
+    if (SchemaConstant.ALL_MATCH_SCOPE.equals(fullPathPrefixTree)) {
+      return patternTree;
+    }
     PathPatternTree result = new PathPatternTree();
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       for (PartialPath fullPathOrPrefix : fullPathPrefixTree.getAllPathPatterns()) {
