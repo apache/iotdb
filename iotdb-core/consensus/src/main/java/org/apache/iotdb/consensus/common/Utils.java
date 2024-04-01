@@ -18,10 +18,9 @@
  */
 package org.apache.iotdb.consensus.common;
 
-import java.util.regex.Pattern;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +34,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class Utils {
   private static final Logger logger = LoggerFactory.getLogger(Utils.class);
@@ -81,7 +81,9 @@ public class Utils {
     }
     return allFiles;
   }
-  public static long getLatestSnapshotIndex(String storageDir, String snapshotDirName, Pattern snapshotIndexPattern) {
+
+  public static long getLatestSnapshotIndex(
+      String storageDir, String snapshotDirName, Pattern snapshotIndexPattern) {
     long snapShotIndex = 0;
     File directory = new File(storageDir);
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(snapshotDirName));
@@ -97,12 +99,12 @@ public class Utils {
     return snapShotIndex;
   }
 
-  public static void clearOldSnapshot(String storageDir, String snapshotDirName, String newSnapshotDirName) {
+  public static void clearOldSnapshot(
+      String storageDir, String snapshotDirName, String newSnapshotDirName) {
     File directory = new File(storageDir);
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(snapshotDirName));
     if (versionFiles == null || versionFiles.length == 0) {
-      logger.error(
-          "Can not find any snapshot dir after build a new snapshot");
+      logger.error("Can not find any snapshot dir after build a new snapshot");
       return;
     }
     for (File file : versionFiles) {

@@ -42,6 +42,8 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
+import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
+import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.client.RaftConsensusClientPool.AsyncRaftServiceClientPoolFactory;
 import org.apache.iotdb.consensus.natraft.client.SyncClientAdaptor;
@@ -268,7 +270,7 @@ public class RaftConsensus implements IConsensus {
 
   @Override
   public void addRemotePeer(ConsensusGroupId groupId, Peer peer)
-      throws ConsensusGroupNotExistException {
+      throws ConsensusGroupNotExistException, PeerAlreadyInConsensusGroupException {
     RaftMember impl = stateMachineMap.get(groupId);
     if (impl == null) {
       throw new ConsensusGroupNotExistException(groupId);
@@ -278,7 +280,7 @@ public class RaftConsensus implements IConsensus {
 
   @Override
   public void removeRemotePeer(ConsensusGroupId groupId, Peer peer)
-      throws ConsensusGroupNotExistException {
+      throws ConsensusGroupNotExistException, PeerNotInConsensusGroupException {
     RaftMember impl = stateMachineMap.get(groupId);
     if (impl == null) {
       throw new ConsensusGroupNotExistException(groupId);
@@ -306,8 +308,7 @@ public class RaftConsensus implements IConsensus {
   }
 
   @Override
-  public void triggerSnapshot(ConsensusGroupId groupId, boolean force)
-      throws ConsensusException {
+  public void triggerSnapshot(ConsensusGroupId groupId, boolean force) throws ConsensusException {
     RaftMember impl = stateMachineMap.get(groupId);
     if (impl == null) {
       throw new ConsensusGroupNotExistException(groupId);

@@ -22,7 +22,6 @@
 
 package org.apache.iotdb.consensus.natraft.protocol;
 
-import java.util.regex.Pattern;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -39,6 +38,8 @@ import org.apache.iotdb.consensus.common.request.ChangePeersRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
+import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
+import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.client.GenericHandler;
 import org.apache.iotdb.consensus.natraft.client.SyncClientAdaptor;
@@ -114,6 +115,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 public class RaftMember {
 
@@ -202,6 +204,7 @@ public class RaftMember {
   private Consumer<ConsensusGroupId> onRemove;
   private EntryAllocator<RequestEntry> requestEntryAllocator;
   private String newSnapshotDirName;
+
   public RaftMember(
       String storageDir,
       RaftConfig config,
@@ -1347,10 +1350,10 @@ public class RaftMember {
     return StatusUtils.getStatus(TSStatusCode.TIME_OUT);
   }
 
-  public TSStatus addPeer(Peer newPeer) {
+  public TSStatus addPeer(Peer newPeer) throws PeerAlreadyInConsensusGroupException {
     List<Peer> allNodes = getAllNodes();
     if (allNodes.contains(newPeer)) {
-      return StatusUtils.OK.deepCopy().setMessage("Peer already exists");
+      throw new PeerAlreadyInConsensusGroupException(groupId, newPeer);
     }
 
     List<Peer> newPeers = new ArrayList<>(allNodes);
@@ -1358,10 +1361,10 @@ public class RaftMember {
     return changeConfig(newPeers);
   }
 
-  public TSStatus removePeer(Peer toRemove) {
+  public TSStatus removePeer(Peer toRemove) throws PeerNotInConsensusGroupException {
     List<Peer> allNodes = getAllNodes();
     if (!allNodes.contains(toRemove)) {
-      return StatusUtils.OK.deepCopy().setMessage("Peer already removed");
+      throw new PeerNotInConsensusGroupException(groupId, toRemove.toString());
     }
 
     List<Peer> newPeers = new ArrayList<>(allNodes);
@@ -1391,7 +1394,8 @@ public class RaftMember {
   public void triggerSnapshot() throws ConsensusGroupModifyPeerException {
     logManager.takeSnapshot(this);
     try {
-      long newSnapshotIndex = Utils.getLatestSnapshotIndex(storageDir, SNAPSHOT_DIR_NAME, SNAPSHOT_INDEX_PATTEN) + 1;
+      long newSnapshotIndex =
+          Utils.getLatestSnapshotIndex(storageDir, SNAPSHOT_DIR_NAME, SNAPSHOT_INDEX_PATTEN) + 1;
       newSnapshotDirName =
           String.format(
               "%s_%s_%d", SNAPSHOT_DIR_NAME, thisNode.getGroupId().getId(), newSnapshotIndex);
@@ -1414,20 +1418,22 @@ public class RaftMember {
 
   public TSStatus transferLeader(Peer peer) throws ConsensusException {
     logger.info("{}: transferring leadership to {}", name, peer);
-    if (thisNode.equals(peer)) {
+    if (thisNode.equals(peer) && isLeader()) {
       return StatusUtils.OK;
     }
-    if (!isLeader()) {
-      return StatusUtils.NO_LEADER.deepCopy().setMessage("This node is not a leader");
-    }
+
     if (!allNodes.contains(peer)) {
       return StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy().setMessage("Peer not in this group");
     }
 
     AsyncRaftServiceClient client = getClient(peer.getEndpoint());
     try {
+      logger.info("Forcing {} to start an election", peer);
       return SyncClientAdaptor.forceElection(client, groupId);
-    } catch (TException | InterruptedException e) {
+    } catch (TException e) {
+      throw new ConsensusException(e.getMessage(), e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       throw new ConsensusException(e.getMessage(), e);
     }
   }
@@ -1437,17 +1443,19 @@ public class RaftMember {
       return StatusUtils.OK;
     }
 
-    heartbeatThread.setLastHeartbeatReceivedTime(0);
-    heartbeatThread.notifyHeartbeat();
+    logger.info("{}: starting a forced election", name);
     long waitStart = System.currentTimeMillis();
     long maxWait = 10_000L;
     while (!isLeader() && (System.currentTimeMillis() - waitStart) < maxWait) {
+      heartbeatThread.setLastHeartbeatReceivedTime(0);
+      heartbeatThread.notifyHeartbeat();
       try {
         Thread.sleep(100);
       } catch (InterruptedException e) {
         return StatusUtils.TIME_OUT;
       }
     }
+    logger.info("{}: forced election ends, result: {}", name, isLeader());
     if (isLeader()) {
       return StatusUtils.OK;
     } else {

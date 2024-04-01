@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.natraft.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId.Factory;
@@ -28,6 +29,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.ChangePeersRequest;
 import org.apache.iotdb.consensus.common.request.RequestType;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.natraft.RaftConsensus;
 import org.apache.iotdb.consensus.natraft.exception.UnknownLogTypeException;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
@@ -231,6 +233,23 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
       throws TException {
     RaftMember member = getMember(groupId);
     resultHandler.onComplete(member.matchLog(index, term));
+  }
+
+  @Override
+  public void transferLeader(
+      TConsensusGroupId groupId,
+      int peerNodeId,
+      TEndPoint peerEndPoint,
+      AsyncMethodCallback<TSStatus> resultHandler)
+      throws TException {
+    RaftMember member = getMember(groupId);
+    try {
+      resultHandler.onComplete(
+          member.transferLeader(
+              new Peer(Factory.createFromTConsensusGroupId(groupId), peerNodeId, peerEndPoint)));
+    } catch (ConsensusException e) {
+      throw new TException(e);
+    }
   }
 
   @Override

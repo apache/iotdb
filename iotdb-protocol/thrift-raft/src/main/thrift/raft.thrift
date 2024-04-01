@@ -177,6 +177,8 @@ service RaftService {
 
   common.TSStatus sendSnapshot(1:SendSnapshotRequest request)
 
+  common.TSStatus transferLeader(1:common.TConsensusGroupId groupId, 2:i32 peerNodeId, 3:common.TEndPoint peerEndPoint)
+
   /**
   * Test if a log of "index" and "term" exists.
   **/

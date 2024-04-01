@@ -35,8 +35,7 @@ public class ConfigChangeEntry extends Entry {
   private List<Peer> oldPeers;
   private List<Peer> newPeers;
 
-  public ConfigChangeEntry() {
-  }
+  public ConfigChangeEntry() {}
 
   public ConfigChangeEntry(List<Peer> oldPeers, List<Peer> newPeers) {
     this.oldPeers = oldPeers;

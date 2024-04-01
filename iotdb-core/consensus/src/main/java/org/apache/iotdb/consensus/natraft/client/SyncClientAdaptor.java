@@ -7,6 +7,7 @@ package org.apache.iotdb.consensus.natraft.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.raft.thrift.AppendCompressedEntriesRequest;
@@ -106,6 +107,17 @@ public class SyncClientAdaptor {
       throws TException, InterruptedException {
     GenericHandler<TSStatus> matchTermHandler = new GenericHandler<>(client.getEndpoint());
     client.forceElection(groupId.convertToTConsensusGroupId(), matchTermHandler);
+    return matchTermHandler.getResult(config.getConnectionTimeoutInMS());
+  }
+
+  public static TSStatus transferLeader(AsyncRaftServiceClient client, Peer peer)
+      throws TException, InterruptedException {
+    GenericHandler<TSStatus> matchTermHandler = new GenericHandler<>(client.getEndpoint());
+    client.transferLeader(
+        peer.getGroupId().convertToTConsensusGroupId(),
+        peer.getNodeId(),
+        peer.getEndpoint(),
+        matchTermHandler);
     return matchTermHandler.getResult(config.getConnectionTimeoutInMS());
   }
 
