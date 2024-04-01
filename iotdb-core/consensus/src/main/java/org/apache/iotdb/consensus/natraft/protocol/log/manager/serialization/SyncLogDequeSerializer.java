@@ -453,14 +453,16 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       compressedLength =
           compressor.compress(
               compressingBuffer.array(), 0, compressingBuffer.position(), compressedBuffer.array());
-      logger.debug("Compressed a log block from {} to {} bytes", compressingBuffer.position(), compressedLength);
+      logger.debug(
+          "Compressed a log block from {} to {} bytes",
+          compressingBuffer.position(),
+          compressedLength);
       compressedBuffer.position(0);
       compressedBuffer.limit(compressedLength);
 
       ByteBuffer tempBuffer = ByteBuffer.allocate(compressingBuffer.position());
       unCompressor.uncompress(compressedBuffer, tempBuffer);
       compressedBuffer.position(0);
-
 
       Statistic.PERSISTENCE_COMPRESSED_SIZE.add(compressedLength);
       Statistic.PERSISTENCE_COMPRESS_TIME.calOperationCostTimeFromStart(startTime);

@@ -295,8 +295,7 @@ public class RaftConsensus implements IConsensus {
   }
 
   @Override
-  public void transferLeader(ConsensusGroupId groupId, Peer newLeader)
-      throws ConsensusException {
+  public void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException {
     RaftMember impl = stateMachineMap.get(groupId);
     if (impl == null) {
       throw new ConsensusGroupNotExistException(groupId);
