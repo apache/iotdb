@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.mtree.lock;
 
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.StampedWriterPreferredLock;
