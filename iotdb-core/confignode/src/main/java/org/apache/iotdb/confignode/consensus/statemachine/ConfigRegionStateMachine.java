@@ -205,7 +205,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
             .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
         return true;
       } catch (IOException e) {
-        LOGGER.error(
+        LOGGER.warn(
             "Config Region Listening Queue Listen to snapshot failed, the historical data may not be transferred.",
             e);
       }
@@ -412,7 +412,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         startIndex = endIndex;
         while (logReader.hasNext()) {
           endIndex++;
-          // read and re-serialize the PhysicalPlan
+          // Read and re-serialize the PhysicalPlan
           ConfigPhysicalPlan nextPlan = logReader.next();
           try {
             TSStatus status = executor.executeNonQueryPlan(nextPlan);

@@ -110,7 +110,7 @@ public abstract class IoTDBConnector implements PipeConnector {
         .validate(
             args -> args.equals("retry") || args.equals("ignore"),
             String.format(
-                "The key %s or %s must be specified.",
+                "The value of key %s or %s must be either 'retry' or 'ignore'.",
                 CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY,
                 SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY),
             parameters
