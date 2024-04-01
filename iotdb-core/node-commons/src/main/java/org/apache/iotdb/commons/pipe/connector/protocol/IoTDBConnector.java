@@ -108,7 +108,7 @@ public abstract class IoTDBConnector implements PipeConnector {
             parameters.hasAttribute(SINK_IOTDB_HOST_KEY),
             parameters.hasAttribute(SINK_IOTDB_PORT_KEY))
         .validate(
-            args -> args.equals("retry") || args.equals("ignore"),
+            arg -> arg.equals("retry") || arg.equals("ignore"),
             String.format(
                 "The value of key %s or %s must be either 'retry' or 'ignore'.",
                 CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY,
