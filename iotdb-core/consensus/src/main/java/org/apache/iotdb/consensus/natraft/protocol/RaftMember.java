@@ -281,9 +281,8 @@ public class RaftMember {
       return;
     }
 
-    if (newNodes.contains(thisNode)) {
-      applyNewNodes();
-    } else if (isLeader() && !newNodes.isEmpty()) {
+    applyNewNodes();
+    if (isLeader() && !newNodes.isEmpty()) {
       try {
         TSStatus tsStatus = transferLeader(newNodes.get(0));
         logger.info("The result of leadership transfer in {} is {}", groupId, tsStatus);
@@ -300,6 +299,7 @@ public class RaftMember {
       allNodes = newNodes;
       newNodes = null;
       persistConfiguration();
+      stateMachine.event().notifyConfigurationChanged(status.term.get(), getLastIndex(), allNodes);
     } finally {
       logManager.writeUnlock();
     }
