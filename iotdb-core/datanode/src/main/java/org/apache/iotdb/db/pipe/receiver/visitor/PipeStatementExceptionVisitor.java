@@ -90,6 +90,9 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
     return visitGeneralActivateTemplate(batchActivateTemplateStatement, context);
   }
 
+  // InternalBatchActivateTemplateNode is converted to BatchActivateTemplateStatement
+  // No need to handle InternalBatchActivateTemplateStatement
+
   private TSStatus visitGeneralActivateTemplate(
       Statement activateTemplateStatement, Exception context) {
     if (context instanceof MetadataException || context instanceof StatementAnalyzeException) {
