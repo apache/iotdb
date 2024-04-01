@@ -129,7 +129,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         }
       }
     }
-    return isTsFileFormatValid;
+    return isTsFileFormatValid.get();
   }
 
   public File getTsFile() {
