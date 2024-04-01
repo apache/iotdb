@@ -31,6 +31,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.junit.Assert;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -360,6 +361,8 @@ public class TestUtils {
       }
       String expected = new TreeMap<>(expectedHeaderWithResult).toString();
       String actual = new TreeMap<>(actualHeaderWithResult).toString();
+      LoggerFactory.getLogger(TestUtils.class)
+          .info("assertSingleResultSetEqual: expected {}, actual {}", expected, actual);
       assertEquals(expected, actual);
       assertFalse(actualResultSet.next());
     } catch (Exception e) {
