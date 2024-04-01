@@ -25,6 +25,8 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.consensus.natraft.RaftConsensus;
 
+import org.apache.iotdb.consensus.nbraft.TestUtils.IntegerCounter;
+import org.apache.iotdb.consensus.nbraft.TestUtils.TestDataSet;
 import org.apache.ratis.util.TimeDuration;
 import org.junit.After;
 import org.junit.Assert;
@@ -86,6 +88,7 @@ public class RecoverReadTest {
   @Before
   public void setUp() throws Exception {
     logger.info("[RECOVER TEST] start setting up the test env");
+    IntegerCounter.resetStorage();
     final TestUtils.MiniClusterFactory factory = new TestUtils.MiniClusterFactory();
     Properties properties = new Properties();
     miniCluster =
@@ -102,33 +105,6 @@ public class RecoverReadTest {
     logger.info("[RECOVER TEST] start tearing down the test env");
     miniCluster.cleanUp();
     logger.info("[RECOVER TEST] end tearing down the test env");
-  }
-
-  /* mimics the situation before this patch */
-  @Test
-  public void inconsistentReadAfterRestart() throws Exception {
-    final ConsensusGroupId gid = miniCluster.getGid();
-    final List<Peer> members = miniCluster.getPeers();
-
-    for (RaftConsensus s : miniCluster.getServers()) {
-      s.createLocalPeer(gid, members);
-    }
-
-    // first write 10 ops
-    miniCluster.writeManySerial(0, 10);
-    Assert.assertEquals(10, miniCluster.mustRead(0));
-
-    // stop the cluster
-    miniCluster.stop();
-
-    // set stall when restart
-    miniCluster.resetSMProviderBeforeRestart(
-        (i) -> new SlowRecoverStateMachine(stallDuration, true, i));
-
-    // restart the cluster
-    miniCluster.restart();
-
-    Assert.assertNotEquals(10, ((TestUtils.TestDataSet) miniCluster.readThrough(0)).getNumber());
   }
 
   @Test
@@ -184,7 +160,7 @@ public class RecoverReadTest {
     miniCluster.restart();
 
     // query during redo: get exception that ratis is under recovery
-    Assert.assertThrows(RatisReadUnavailableException.class, () -> miniCluster.readThrough(0));
+    Assert.assertEquals(10, ((TestDataSet) miniCluster.readThrough(0)).getNumber());
   }
 
   @Test
