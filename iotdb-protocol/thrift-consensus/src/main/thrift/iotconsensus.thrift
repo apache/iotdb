@@ -118,6 +118,7 @@ struct TCleanupTransferredSnapshotRes {
 service IoTConsensusIService {
   TSyncLogEntriesRes syncLogEntries(TSyncLogEntriesReq req)
   TInactivatePeerRes inactivatePeer(TInactivatePeerReq req)
+  TInactivatePeerRes inactivatePeerForDeletionPurpose(TInactivatePeerReq req)
   TActivatePeerRes activatePeer(TActivatePeerReq req)
   TBuildSyncLogChannelRes buildSyncLogChannel(TBuildSyncLogChannelReq req)
   TRemoveSyncLogChannelRes removeSyncLogChannel(TRemoveSyncLogChannelReq req)

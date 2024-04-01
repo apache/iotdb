@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.FunctionWithException;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
@@ -60,6 +61,7 @@ import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteRes;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -382,9 +384,28 @@ public class IoTConsensusServerImpl {
   public void inactivePeer(Peer peer) throws ConsensusGroupModifyPeerException {
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(peer.getEndpoint())) {
+      inactivePeer(peer, client::inactivatePeer);
+    } catch (ClientManagerException e) {
+      throw new ConsensusGroupModifyPeerException(e);
+    }
+  }
+
+  public void inactivePeerForDeletionPurpose(Peer peer) throws ConsensusGroupModifyPeerException {
+    try (SyncIoTConsensusServiceClient client =
+        syncClientManager.borrowClient(peer.getEndpoint())) {
+      inactivePeer(peer, client::inactivatePeerForDeletionPurpose);
+    } catch (ClientManagerException e) {
+      throw new ConsensusGroupModifyPeerException(e);
+    }
+  }
+
+  public void inactivePeer(
+      Peer peer,
+      FunctionWithException<TInactivatePeerReq, TInactivatePeerRes, Exception> sendRequest)
+      throws ConsensusGroupModifyPeerException {
+    try {
       TInactivatePeerRes res =
-          client.inactivatePeer(
-              new TInactivatePeerReq(peer.getGroupId().convertToTConsensusGroupId()));
+          sendRequest.apply(new TInactivatePeerReq(peer.getGroupId().convertToTConsensusGroupId()));
       if (!isSuccess(res.status)) {
         throw new ConsensusGroupModifyPeerException(
             String.format("error when inactivating %s. %s", peer, res.getStatus()));
@@ -478,7 +499,7 @@ public class IoTConsensusServerImpl {
       throws ConsensusGroupModifyPeerException {
     // The configuration will be modified during iterating because we will add the targetPeer to
     // configuration
-    List<Peer> currentMembers = new ArrayList<>(this.configuration);
+    ImmutableList<Peer> currentMembers = ImmutableList.copyOf(this.configuration);
     for (Peer peer : currentMembers) {
       if (peer.equals(targetPeer)) {
         // if the targetPeer is the same as current peer, skip it because removing itself is illegal

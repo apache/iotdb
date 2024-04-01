@@ -30,7 +30,8 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
-import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerCoordinatorKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.IConsensus;
@@ -264,6 +265,7 @@ public class IoTConsensus implements IConsensus {
 
   @Override
   public void deleteLocalPeer(ConsensusGroupId groupId) throws ConsensusException {
+    KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);
     AtomicBoolean exist = new AtomicBoolean(false);
     stateMachineMap.computeIfPresent(
         groupId,
@@ -273,6 +275,7 @@ public class IoTConsensus implements IConsensus {
           FileUtils.deleteFileOrDirectory(new File(buildPeerDir(storageDir, groupId)));
           return null;
         });
+    KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
     if (!exist.get()) {
       throw new ConsensusGroupNotExistException(groupId);
     }
@@ -329,7 +332,7 @@ public class IoTConsensus implements IConsensus {
         logger.error(
             "[IoTConsensus] failed to cleanup side effects after failed to add remote peer", mpe);
       }
-      throw new ConsensusException(e.getMessage());
+      throw new ConsensusException(e);
     }
   }
 
@@ -351,7 +354,7 @@ public class IoTConsensus implements IConsensus {
       throw new PeerNotInConsensusGroupException(groupId, peer.toString());
     }
 
-    KillPoint.setKillPoint(IoTConsensusRemovePeerKillPoints.INIT);
+    KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.INIT);
 
     try {
       // let other peers remove the sync channel with target peer
@@ -360,18 +363,18 @@ public class IoTConsensus implements IConsensus {
       throw new ConsensusException(e.getMessage());
     }
     KillPoint.setKillPoint(
-        IoTConsensusRemovePeerKillPoints.AFTER_NOTIFY_PEERS_TO_REMOVE_SYNC_LOG_CHANNEL);
+        IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_NOTIFY_PEERS_TO_REMOVE_SYNC_LOG_CHANNEL);
 
     try {
       // let target peer reject new write
-      impl.inactivePeer(peer);
-      KillPoint.setKillPoint(IoTConsensusRemovePeerKillPoints.AFTER_INACTIVE_PEER);
+      impl.inactivePeerForDeletionPurpose(peer);
+      KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_INACTIVE_PEER);
       // wait its SyncLog to complete
       impl.waitTargetPeerUntilSyncLogCompleted(peer);
     } catch (ConsensusGroupModifyPeerException e) {
       throw new ConsensusException(e.getMessage());
     }
-    KillPoint.setKillPoint(IoTConsensusRemovePeerKillPoints.FINISH);
+    KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.FINISH);
   }
 
   @Override
