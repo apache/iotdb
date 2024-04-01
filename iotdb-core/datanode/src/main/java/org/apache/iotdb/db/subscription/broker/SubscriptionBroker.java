@@ -37,11 +37,11 @@ public class SubscriptionBroker {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionBroker.class);
 
-  private final String brokerId; // consumer group id
+  private final String brokerId; // Consumer group id
 
   private final Map<String, SubscriptionPrefetchingQueue> topicNameToPrefetchingQueue;
 
-  public SubscriptionBroker(String brokerId) {
+  public SubscriptionBroker(final String brokerId) {
     this.brokerId = brokerId;
     this.topicNameToPrefetchingQueue = new ConcurrentHashMap<>();
   }
@@ -52,14 +52,15 @@ public class SubscriptionBroker {
 
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
 
-  public List<SerializedEnrichedEvent> poll(Set<String> topicNames, SubscriptionPollTimer timer) {
-    List<SerializedEnrichedEvent> events = new ArrayList<>();
-    for (Map.Entry<String, SubscriptionPrefetchingQueue> entry :
+  public List<SerializedEnrichedEvent> poll(
+      final Set<String> topicNames, final SubscriptionPollTimer timer) {
+    final List<SerializedEnrichedEvent> events = new ArrayList<>();
+    for (final Map.Entry<String, SubscriptionPrefetchingQueue> entry :
         topicNameToPrefetchingQueue.entrySet()) {
-      String topicName = entry.getKey();
-      SubscriptionPrefetchingQueue prefetchingQueue = entry.getValue();
+      final String topicName = entry.getKey();
+      final SubscriptionPrefetchingQueue prefetchingQueue = entry.getValue();
       if (topicNames.contains(topicName)) {
-        SerializedEnrichedEvent event = prefetchingQueue.poll(timer);
+        final SerializedEnrichedEvent event = prefetchingQueue.poll(timer);
         if (Objects.nonNull(event)) {
           events.add(event);
         }
@@ -72,8 +73,9 @@ public class SubscriptionBroker {
     return events;
   }
 
-  public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) {
-    for (Map.Entry<String, List<String>> entry : topicNameToSubscriptionCommitIds.entrySet()) {
+  public void commit(final Map<String, List<String>> topicNameToSubscriptionCommitIds) {
+    for (final Map.Entry<String, List<String>> entry :
+        topicNameToSubscriptionCommitIds.entrySet()) {
       final String topicName = entry.getKey();
       final SubscriptionPrefetchingQueue prefetchingQueue =
           topicNameToPrefetchingQueue.get(topicName);
@@ -89,7 +91,7 @@ public class SubscriptionBroker {
   /////////////////////////////// prefetching queue ///////////////////////////////
 
   public void bindPrefetchingQueue(
-      String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {
+      final String topicName, final BoundedBlockingPendingQueue<Event> inputPendingQueue) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.nonNull(prefetchingQueue)) {
@@ -101,7 +103,7 @@ public class SubscriptionBroker {
         topicName, new SubscriptionPrefetchingQueue(brokerId, topicName, inputPendingQueue));
   }
 
-  public void unbindPrefetchingQueue(String topicName) {
+  public void unbindPrefetchingQueue(final String topicName) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
@@ -112,7 +114,7 @@ public class SubscriptionBroker {
     topicNameToPrefetchingQueue.remove(topicName);
   }
 
-  public void executePrefetch(String topicName) {
+  public void executePrefetch(final String topicName) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {

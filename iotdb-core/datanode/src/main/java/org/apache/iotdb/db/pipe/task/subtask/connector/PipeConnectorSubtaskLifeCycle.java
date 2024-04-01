@@ -38,9 +38,9 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
   private int registeredTaskCount;
 
   public PipeConnectorSubtaskLifeCycle(
-      PipeConnectorSubtaskExecutor executor,
-      PipeConnectorSubtask subtask,
-      BoundedBlockingPendingQueue<Event> pendingQueue) {
+      final PipeConnectorSubtaskExecutor executor,
+      final PipeConnectorSubtask subtask,
+      final BoundedBlockingPendingQueue<Event> pendingQueue) {
     this.executor = executor;
     this.subtask = subtask;
     this.pendingQueue = pendingQueue;
@@ -89,7 +89,7 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
    *     the {@link PipeConnectorSubtask} should never be used again
    * @throws IllegalStateException if {@link PipeConnectorSubtaskLifeCycle#registeredTaskCount} <= 0
    */
-  public synchronized boolean deregister(String pipeNameToDeregister) {
+  public synchronized boolean deregister(final String pipeNameToDeregister) {
     if (registeredTaskCount <= 0) {
       throw new IllegalStateException("registeredTaskCount <= 0");
     }

@@ -41,7 +41,7 @@ public class PipeSubscribeCloseReq extends TPipeSubscribeReq {
   }
 
   /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
-  public static PipeSubscribeCloseReq fromTPipeSubscribeReq(TPipeSubscribeReq closeReq) {
+  public static PipeSubscribeCloseReq fromTPipeSubscribeReq(final TPipeSubscribeReq closeReq) {
     final PipeSubscribeCloseReq req = new PipeSubscribeCloseReq();
 
     req.version = closeReq.version;
