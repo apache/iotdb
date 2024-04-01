@@ -116,7 +116,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
         && PipeAgent.runtime()
             .schemaListener(schemaRegion.getSchemaRegionId())
             .createSnapshot(snapshotDir)) {
-      listen2Snapshot4PipeListener(true);
+      listen2Snapshot4PipeListener();
       return true;
     }
     return false;
@@ -130,16 +130,16 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
         .loadSnapshot(latestSnapshotRootDir);
     // We recompute the snapshot for pipe listener when loading snapshot
     // to recover the newest snapshot in cache
-    listen2Snapshot4PipeListener(false);
+    listen2Snapshot4PipeListener();
   }
 
-  public void listen2Snapshot4PipeListener(boolean isTmp) {
+  public void listen2Snapshot4PipeListener() {
     Pair<Path, Path> snapshotPaths =
         SchemaRegionSnapshotParser.getSnapshotPaths(
             Utils.fromConsensusGroupIdToRaftGroupId(schemaRegion.getSchemaRegionId())
                 .getUuid()
                 .toString(),
-            isTmp);
+            true);
     SchemaRegionListeningQueue listener =
         PipeAgent.runtime().schemaListener(schemaRegion.getSchemaRegionId());
     if (listener.isOpened()) {
