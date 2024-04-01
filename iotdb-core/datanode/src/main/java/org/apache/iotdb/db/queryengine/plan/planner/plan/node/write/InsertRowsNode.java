@@ -291,13 +291,14 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
     buffer.putShort(PlanNodeType.INSERT_ROWS.getNodeType());
+    buffer.putLong(searchIndex);
     subSerialize(buffer);
   }
 
   private void subSerialize(IWALByteBufferView buffer) {
     buffer.putInt(insertRowNodeList.size());
     for (InsertRowNode insertRowNode : insertRowNodeList) {
-      insertRowNode.serializeToWAL(buffer);
+      insertRowNode.subSerialize(buffer);
     }
   }
 
@@ -312,11 +313,13 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   public static InsertRowsNode deserializeFromWAL(DataInputStream stream) throws IOException {
     // we do not store plan node id in wal entry
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
+    long searchIndex = stream.readLong();
     int listSize = stream.readInt();
     for (int i = 0; i < listSize; i++) {
-      InsertRowNode insertRowNode = InsertRowNode.deserializeFromWAL(stream);
+      InsertRowNode insertRowNode = InsertRowNode.subDeserializeFromWAL(stream);
       insertRowsNode.addOneInsertRowNode(insertRowNode, i);
     }
+    insertRowsNode.setSearchIndex(searchIndex);
     return insertRowsNode;
   }
 
@@ -330,11 +333,13 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   public static InsertRowsNode deserializeFromWAL(ByteBuffer buffer) {
     // we do not store plan node id in wal entry
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
+    long searchIndex = buffer.getLong();
     int listSize = buffer.getInt();
     for (int i = 0; i < listSize; i++) {
-      InsertRowNode insertRowNode = InsertRowNode.deserializeFromWAL(buffer);
+      InsertRowNode insertRowNode = InsertRowNode.subDeserializeFromWAL(buffer);
       insertRowsNode.addOneInsertRowNode(insertRowNode, i);
     }
+    insertRowsNode.setSearchIndex(searchIndex);
     return insertRowsNode;
   }
   // endregion
