@@ -1193,11 +1193,6 @@ public class DataRegion implements IDataRegionForQuery {
             v.addOneInsertRowNode(insertRowNode, finalI);
             return v;
           });
-      try {
-        tsFileProcessor.insert(insertRowNode, costsForMetrics);
-      } catch (WriteProcessException e) {
-        insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-      }
       executedInsertRowNodeList.add(insertRowNode);
     }
 
