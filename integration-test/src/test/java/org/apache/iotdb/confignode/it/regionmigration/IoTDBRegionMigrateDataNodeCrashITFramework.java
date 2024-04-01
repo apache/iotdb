@@ -17,21 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.notpass.datanodecrash;
+package org.apache.iotdb.confignode.it.regionmigration;
 
-import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusInactivatePeerKillPoints;
-
-import org.junit.Test;
-
-public class IoTDBRegionMigrateOriginalCrashWhenRemoveRemotePeerIT
-    extends IoTDBRegionMigrateDataNodeCrashITFramework {
-  @Test
-  public void crashBeforeInactivate() throws Exception {
-    success(IoTConsensusInactivatePeerKillPoints.BEFORE_INACTIVATE);
-  }
-
-  @Test
-  public void crashAfterInactivate() throws Exception {
-    success(IoTConsensusInactivatePeerKillPoints.AFTER_INACTIVATE);
+public class IoTDBRegionMigrateDataNodeCrashITFramework
+    extends IoTDBRegionMigrateReliabilityITFramework {
+  @SafeVarargs
+  public final <T extends Enum<T>> void success(T... dataNodeKillPoints) throws Exception {
+    successTest(1, 1, 1, 2, noKillPoints(), buildSet(dataNodeKillPoints));
   }
 }

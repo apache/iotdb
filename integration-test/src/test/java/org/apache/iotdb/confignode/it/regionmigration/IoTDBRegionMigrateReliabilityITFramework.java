@@ -20,9 +20,13 @@
 package org.apache.iotdb.confignode.it.regionmigration;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -52,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -155,7 +160,9 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
-        final Statement statement = connection.createStatement()) {
+        final Statement statement = connection.createStatement();
+        SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
       statement.execute(INSERTION);
 
@@ -184,7 +191,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
 
       boolean success = false;
       try {
-        awaitUntilSuccess(statement, selectedRegion, originalDataNode, destDataNode);
+        awaitUntilSuccess(client, selectedRegion, originalDataNode, destDataNode);
         success = true;
       } catch (ConditionTimeoutException e) {
         if (expectMigrateSuccess) {
@@ -366,7 +373,9 @@ public class IoTDBRegionMigrateReliabilityITFramework {
   }
 
   private static String regionMigrateCommand(int who, int from, int to) {
-    return String.format(REGION_MIGRATE_COMMAND_FORMAT, who, from, to);
+    String result = String.format(REGION_MIGRATE_COMMAND_FORMAT, who, from, to);
+    LOGGER.info(result);
+    return result;
   }
 
   private static Map<Integer, Set<Integer>> getRegionMap(ResultSet showRegionsResult)
@@ -375,12 +384,23 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     while (showRegionsResult.next()) {
       if (String.valueOf(TConsensusGroupType.DataRegion)
           .equals(showRegionsResult.getString(ColumnHeaderConstant.TYPE))) {
-        int region = showRegionsResult.getInt(ColumnHeaderConstant.REGION_ID);
-        int dataNode = showRegionsResult.getInt(ColumnHeaderConstant.DATA_NODE_ID);
-        regionMap.putIfAbsent(region, new HashSet<>());
-        regionMap.get(region).add(dataNode);
+        int regionId = showRegionsResult.getInt(ColumnHeaderConstant.REGION_ID);
+        int dataNodeId = showRegionsResult.getInt(ColumnHeaderConstant.DATA_NODE_ID);
+        regionMap.computeIfAbsent(regionId, id -> new HashSet<>()).add(dataNodeId);
       }
     }
+    return regionMap;
+  }
+
+  private static Map<Integer, Set<Integer>> getRegionMap(List<TRegionInfo> regionInfoList) {
+    Map<Integer, Set<Integer>> regionMap = new HashMap<>();
+    regionInfoList.forEach(
+        regionInfo -> {
+          int regionId = regionInfo.getConsensusGroupId().getId();
+          regionMap
+              .computeIfAbsent(regionId, regionId1 -> new HashSet<>())
+              .add(regionInfo.getDataNodeId());
+        });
     return regionMap;
   }
 
@@ -404,7 +424,10 @@ public class IoTDBRegionMigrateReliabilityITFramework {
   }
 
   private static void awaitUntilSuccess(
-      Statement statement, int selectedRegion, int originalDataNode, int destDataNode) {
+      SyncConfigNodeIServiceClient client,
+      int selectedRegion,
+      int originalDataNode,
+      int destDataNode) {
     AtomicReference<Set<Integer>> lastTimeDataNodes = new AtomicReference<>();
     AtomicReference<Exception> lastException = new AtomicReference<>();
     try {
@@ -413,8 +436,8 @@ public class IoTDBRegionMigrateReliabilityITFramework {
           .until(
               () -> {
                 try {
-                  Map<Integer, Set<Integer>> newRegionMap =
-                      getRegionMap(statement.executeQuery(SHOW_REGIONS));
+                  TShowRegionResp resp = client.showRegion(new TShowRegionReq());
+                  Map<Integer, Set<Integer>> newRegionMap = getRegionMap(resp.getRegionInfoList());
                   Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
                   lastTimeDataNodes.set(dataNodes);
                   return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);

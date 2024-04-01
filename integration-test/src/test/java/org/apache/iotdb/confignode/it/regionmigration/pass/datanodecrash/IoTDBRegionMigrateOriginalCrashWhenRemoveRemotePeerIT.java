@@ -17,34 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.notpass.datanodecrash;
+package org.apache.iotdb.confignode.it.regionmigration.pass.datanodecrash;
 
-import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerCoordinatorKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusInactivatePeerKillPoints;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFramework;
 
 import org.junit.Test;
 
-public class IoTDBRegionMigrateCoordinatorCrashWhenRemoveRemotePeerIT
+public class IoTDBRegionMigrateOriginalCrashWhenRemoveRemotePeerIT
     extends IoTDBRegionMigrateDataNodeCrashITFramework {
-
   @Test
-  public void initCrash() throws Exception {
-    success(IoTConsensusRemovePeerCoordinatorKillPoints.INIT);
+  public void crashBeforeInactivate() throws Exception {
+    success(IoTConsensusInactivatePeerKillPoints.BEFORE_INACTIVATE);
   }
 
   @Test
-  public void crashAfterNotifyPeersToRemoveSyncLogChannel() throws Exception {
-    success(
-        IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_NOTIFY_PEERS_TO_REMOVE_SYNC_LOG_CHANNEL);
-  }
-
-  @Test
-  public void crashAfterInactivePeer() throws Exception {
-    success(IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_INACTIVE_PEER);
-  }
-
-  @Test
-  public void crashAfterFinish() throws Exception {
-    success(IoTConsensusRemovePeerCoordinatorKillPoints.FINISH);
+  public void crashAfterInactivate() throws Exception {
+    success(IoTConsensusInactivatePeerKillPoints.AFTER_INACTIVATE);
   }
 }
