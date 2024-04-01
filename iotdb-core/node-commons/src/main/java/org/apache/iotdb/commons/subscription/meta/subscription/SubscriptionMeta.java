@@ -41,7 +41,8 @@ public class SubscriptionMeta {
     // Empty constructor
   }
 
-  public SubscriptionMeta(String topicName, String consumerGroupId, Set<String> consumerIds) {
+  public SubscriptionMeta(
+      final String topicName, final String consumerGroupId, final Set<String> consumerIds) {
     this.topicName = topicName;
     this.consumerGroupId = consumerGroupId;
     this.consumerIds = consumerIds;
@@ -71,7 +72,7 @@ public class SubscriptionMeta {
     ReadWriteIOUtils.write(consumerGroupId, outputStream);
 
     ReadWriteIOUtils.write(consumerIds.size(), outputStream);
-    for (String consumerId : consumerIds) {
+    for (final String consumerId : consumerIds) {
       ReadWriteIOUtils.write(consumerId, outputStream);
     }
   }
@@ -81,7 +82,7 @@ public class SubscriptionMeta {
     ReadWriteIOUtils.write(consumerGroupId, outputStream);
 
     ReadWriteIOUtils.write(consumerIds.size(), outputStream);
-    for (String consumerId : consumerIds) {
+    for (final String consumerId : consumerIds) {
       ReadWriteIOUtils.write(consumerId, outputStream);
     }
   }

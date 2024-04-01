@@ -101,7 +101,7 @@ public class PipeRuntimeMeta {
     consensusGroupId2TaskMetaMap = new ConcurrentHashMap<>();
   }
 
-  public PipeRuntimeMeta(ConcurrentMap<Integer, PipeTaskMeta> consensusGroupId2TaskMetaMap) {
+  public PipeRuntimeMeta(final ConcurrentMap<Integer, PipeTaskMeta> consensusGroupId2TaskMetaMap) {
     this.consensusGroupId2TaskMetaMap = consensusGroupId2TaskMetaMap;
   }
 
@@ -121,7 +121,7 @@ public class PipeRuntimeMeta {
     return exceptionsClearTime.get();
   }
 
-  public void setExceptionsClearTime(long exceptionsClearTime) {
+  public void setExceptionsClearTime(final long exceptionsClearTime) {
     if (exceptionsClearTime > this.getExceptionsClearTime()) {
       this.exceptionsClearTime.set(exceptionsClearTime);
     }
@@ -131,18 +131,18 @@ public class PipeRuntimeMeta {
     return isStoppedByRuntimeException.get();
   }
 
-  public void setIsStoppedByRuntimeException(boolean isStoppedByRuntimeException) {
+  public void setIsStoppedByRuntimeException(final boolean isStoppedByRuntimeException) {
     this.isStoppedByRuntimeException.set(isStoppedByRuntimeException);
   }
 
   public ByteBuffer serialize() throws IOException {
-    PublicBAOS byteArrayOutputStream = new PublicBAOS();
-    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
     serialize(outputStream);
     return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
   }
 
-  public void serialize(OutputStream outputStream) throws IOException {
+  public void serialize(final OutputStream outputStream) throws IOException {
     PipeRuntimeMetaVersion.VERSION_2.serialize(outputStream);
 
     ReadWriteIOUtils.write(status.get().getType(), outputStream);
@@ -151,7 +151,8 @@ public class PipeRuntimeMeta {
     final Map<Integer, PipeTaskMeta> consensusGroupId2TaskMetaMapView =
         new HashMap<>(consensusGroupId2TaskMetaMap);
     ReadWriteIOUtils.write(consensusGroupId2TaskMetaMapView.size(), outputStream);
-    for (Map.Entry<Integer, PipeTaskMeta> entry : consensusGroupId2TaskMetaMapView.entrySet()) {
+    for (final Map.Entry<Integer, PipeTaskMeta> entry :
+        consensusGroupId2TaskMetaMapView.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       entry.getValue().serialize(outputStream);
     }
@@ -160,7 +161,7 @@ public class PipeRuntimeMeta {
     final Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMapView =
         new HashMap<>(nodeId2PipeRuntimeExceptionMap);
     ReadWriteIOUtils.write(dataNodeId2PipeRuntimeExceptionMapView.size(), outputStream);
-    for (Map.Entry<Integer, PipeRuntimeException> entry :
+    for (final Map.Entry<Integer, PipeRuntimeException> entry :
         dataNodeId2PipeRuntimeExceptionMapView.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       entry.getValue().serialize(outputStream);
@@ -170,7 +171,7 @@ public class PipeRuntimeMeta {
     ReadWriteIOUtils.write(isStoppedByRuntimeException.get(), outputStream);
   }
 
-  public static PipeRuntimeMeta deserialize(InputStream inputStream) throws IOException {
+  public static PipeRuntimeMeta deserialize(final InputStream inputStream) throws IOException {
     final byte pipeRuntimeVersionByte = ReadWriteIOUtils.readByte(inputStream);
     final PipeRuntimeMetaVersion pipeRuntimeMetaVersion =
         PipeRuntimeMetaVersion.deserialize(pipeRuntimeVersionByte);
@@ -185,8 +186,8 @@ public class PipeRuntimeMeta {
     }
   }
 
-  private static PipeRuntimeMeta deserializeVersion1(InputStream inputStream, byte pipeStatusByte)
-      throws IOException {
+  private static PipeRuntimeMeta deserializeVersion1(
+      final InputStream inputStream, final byte pipeStatusByte) throws IOException {
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(pipeStatusByte));
@@ -201,7 +202,8 @@ public class PipeRuntimeMeta {
     return pipeRuntimeMeta;
   }
 
-  private static PipeRuntimeMeta deserializeVersion2(InputStream inputStream) throws IOException {
+  private static PipeRuntimeMeta deserializeVersion2(final InputStream inputStream)
+      throws IOException {
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(inputStream)));
@@ -226,7 +228,7 @@ public class PipeRuntimeMeta {
     return pipeRuntimeMeta;
   }
 
-  public static PipeRuntimeMeta deserialize(ByteBuffer byteBuffer) {
+  public static PipeRuntimeMeta deserialize(final ByteBuffer byteBuffer) {
     final byte pipeRuntimeVersionByte = ReadWriteIOUtils.readByte(byteBuffer);
     final PipeRuntimeMetaVersion pipeRuntimeMetaVersion =
         PipeRuntimeMetaVersion.deserialize(pipeRuntimeVersionByte);
@@ -242,7 +244,7 @@ public class PipeRuntimeMeta {
   }
 
   private static PipeRuntimeMeta deserializeVersion1(
-      ByteBuffer byteBuffer, byte pipeRuntimeVersionByte) {
+      final ByteBuffer byteBuffer, final byte pipeRuntimeVersionByte) {
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(pipeRuntimeVersionByte));
@@ -290,7 +292,7 @@ public class PipeRuntimeMeta {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    PipeRuntimeMeta that = (PipeRuntimeMeta) o;
+    final PipeRuntimeMeta that = (PipeRuntimeMeta) o;
     return Objects.equals(status.get().getType(), that.status.get().getType())
         && consensusGroupId2TaskMetaMap.equals(that.consensusGroupId2TaskMetaMap)
         && nodeId2PipeRuntimeExceptionMap.equals(that.nodeId2PipeRuntimeExceptionMap)

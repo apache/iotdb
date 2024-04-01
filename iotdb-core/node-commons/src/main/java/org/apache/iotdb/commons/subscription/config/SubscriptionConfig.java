@@ -86,7 +86,9 @@ public class SubscriptionConfig {
 
   /////////////////////////////// Singleton ///////////////////////////////
 
-  private SubscriptionConfig() {}
+  private SubscriptionConfig() {
+    // Avoid instantiation
+  }
 
   public static SubscriptionConfig getInstance() {
     return SubscriptionConfig.SubscriptionConfigHolder.INSTANCE;
