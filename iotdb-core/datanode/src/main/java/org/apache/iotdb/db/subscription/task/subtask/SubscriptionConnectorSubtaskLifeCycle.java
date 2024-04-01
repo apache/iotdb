@@ -92,6 +92,42 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskL
   }
 
   @Override
+  public synchronized void start() {
+    if (runningTaskCount < 0) {
+      throw new IllegalStateException("runningTaskCount < 0");
+    }
+
+    if (runningTaskCount == 0) {
+      executor.start(subtask.getTaskID());
+    }
+
+    runningTaskCount++;
+    LOGGER.info(
+        "Start subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
+        subtask,
+        runningTaskCount,
+        registeredTaskCount);
+  }
+
+  @Override
+  public synchronized void stop() {
+    if (runningTaskCount <= 0) {
+      throw new IllegalStateException("runningTaskCount <= 0");
+    }
+
+    if (runningTaskCount == 1) {
+      executor.stop(subtask.getTaskID());
+    }
+
+    runningTaskCount--;
+    LOGGER.info(
+        "Stop subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
+        subtask,
+        runningTaskCount,
+        registeredTaskCount);
+  }
+
+  @Override
   public synchronized void close() {
     executor.deregister(subtask.getTaskID());
     SubscriptionAgent.broker().unbindPrefetchingQueue((SubscriptionConnectorSubtask) subtask);
