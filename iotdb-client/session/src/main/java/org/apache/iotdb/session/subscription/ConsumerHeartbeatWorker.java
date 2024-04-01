@@ -41,7 +41,16 @@ public class ConsumerHeartbeatWorker implements Runnable {
       return;
     }
 
-    for (SubscriptionSessionConnection connection : consumer.getSessionConnections()) {
+    consumer.acquireReadLock();
+    try {
+      heartbeatInternal();
+    } finally {
+      consumer.releaseReadLock();
+    }
+  }
+
+  private void heartbeatInternal() {
+    for (final SubscriptionSessionConnection connection : consumer.getSessionConnections()) {
       try {
         connection.heartbeat();
       } catch (TException | StatementExecutionException e) {

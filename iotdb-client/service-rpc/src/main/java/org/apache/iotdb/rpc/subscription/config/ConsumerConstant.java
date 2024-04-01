@@ -25,6 +25,8 @@ public class ConsumerConstant {
 
   public static final String HOST_KEY = "host";
   public static final String PORT_KEY = "port";
+  public static final String NODE_URLS_KEY = "node-urls";
+
   public static final String USERNAME_KEY = "username";
   public static final String PASSWORD_KEY = "password";
 

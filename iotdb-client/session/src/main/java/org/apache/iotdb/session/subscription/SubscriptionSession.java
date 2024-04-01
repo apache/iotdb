@@ -55,7 +55,9 @@ public class SubscriptionSession extends Session {
             .username(username)
             .password(password)
             // disable auto fetch
-            .enableAutoFetch(false));
+            .enableAutoFetch(false)
+            // disable redirection
+            .enableRedirection(false));
   }
 
   @Override

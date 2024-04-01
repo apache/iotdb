@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.session.subscription;
 
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.thrift.TException;
@@ -56,7 +57,10 @@ public class PullConsumerAutoCommitWorker implements Runnable {
       try {
         consumer.commitSync(entry.getValue());
         consumer.getUncommittedMessages().remove(entry.getKey());
-      } catch (TException | IOException | StatementExecutionException e) {
+      } catch (TException
+          | IOException
+          | StatementExecutionException
+          | IoTDBConnectionException e) {
         LOGGER.warn("something unexpected happened when auto commit messages...", e);
       }
     }
