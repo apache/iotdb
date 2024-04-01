@@ -331,17 +331,19 @@ public class IoTDBRegionMigrateReliabilityITFramework {
           if (detectedKeyword.isPresent()) {
             // each keyword only trigger once
             killNodeKeywords.remove(detectedKeyword.get());
-            LOGGER.info("Kill point is triggered: {}", detectedKeyword);
-            // reboot the node
+            LOGGER.info("Kill point triggered: {}", detectedKeyword.get());
+            // reboot the ConfigNode, for now we don't reboot DataNode
             nodeWrapper.stopForcibly();
-            if (restartTime > 0) {
-              try {
-                TimeUnit.SECONDS.sleep(restartTime);
-              } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+            if (nodeWrapper instanceof ConfigNodeWrapper) {
+              if (restartTime > 0) {
+                try {
+                  TimeUnit.SECONDS.sleep(restartTime);
+                } catch (InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                }
               }
+              nodeWrapper.start();
             }
-            nodeWrapper.start();
           }
           if (killNodeKeywords.isEmpty()) {
             break;
@@ -496,7 +498,6 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         .forEach(
             targetDataNode ->
                 checkPeerClearIfNodeAlive(targetDataNode, originalDataNode, regionId));
-    LOGGER.info("Peer clear");
   }
 
   private static void checkPeersClear(Set<Integer> dataNodes, int originalDataNode, int regionId) {
@@ -519,6 +520,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     Assert.assertFalse(
         "configuration file should be deleted, but it didn't: " + expectDeletedFile.getPath(),
         expectDeletedFile.exists());
+    LOGGER.info("configuration file has been deleted: {}", expectDeletedFile.getPath());
   }
 
   private static String buildRegionDirPath(int dataNode) {

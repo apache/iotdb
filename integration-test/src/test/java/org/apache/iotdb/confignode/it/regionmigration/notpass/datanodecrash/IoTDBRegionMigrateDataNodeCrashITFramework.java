@@ -19,33 +19,12 @@
 
 package org.apache.iotdb.confignode.it.regionmigration.notpass.datanodecrash;
 
-import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerKillPoints;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
 
-import org.junit.Test;
-
-public class CoordinatorRemoveRemotePeerCrashIT extends IoTDBRegionMigrateReliabilityITFramework {
-  private <T extends Enum<T>> void base(T... dataNodeKillPoints) throws Exception {
+public class IoTDBRegionMigrateDataNodeCrashITFramework
+    extends IoTDBRegionMigrateReliabilityITFramework {
+  @SafeVarargs
+  final <T extends Enum<T>> void success(T... dataNodeKillPoints) throws Exception {
     successTest(1, 1, 1, 2, noKillPoints(), buildSet(dataNodeKillPoints));
-  }
-
-  @Test
-  public void initCrash() throws Exception {
-    base(IoTConsensusRemovePeerKillPoints.INIT);
-  }
-
-  @Test
-  public void crashAfterNotifyPeersToRemoveSyncLogChannel() throws Exception {
-    base(IoTConsensusRemovePeerKillPoints.AFTER_NOTIFY_PEERS_TO_REMOVE_SYNC_LOG_CHANNEL);
-  }
-
-  @Test
-  public void crashAfterInactivePeer() throws Exception {
-    base(IoTConsensusRemovePeerKillPoints.AFTER_INACTIVE_PEER);
-  }
-
-  @Test
-  public void crashAfterFinish() throws Exception {
-    base(IoTConsensusRemovePeerKillPoints.FINISH);
   }
 }

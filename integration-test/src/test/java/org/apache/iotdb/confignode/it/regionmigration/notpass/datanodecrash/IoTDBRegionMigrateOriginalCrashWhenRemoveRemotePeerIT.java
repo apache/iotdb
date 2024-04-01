@@ -17,19 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.exception;
+package org.apache.iotdb.confignode.it.regionmigration.notpass.datanodecrash;
 
-public class ConsensusException extends Exception {
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusInactivatePeerKillPoints;
 
-  public ConsensusException(String message) {
-    super(message);
+import org.junit.Test;
+
+public class IoTDBRegionMigrateOriginalCrashWhenRemoveRemotePeerIT
+    extends IoTDBRegionMigrateDataNodeCrashITFramework {
+  @Test
+  public void crashBeforeInactivate() throws Exception {
+    success(IoTConsensusInactivatePeerKillPoints.BEFORE_INACTIVATE);
   }
 
-  public ConsensusException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public ConsensusException(Exception e) {
-    super(e);
+  @Test
+  public void crashAfterInactivate() throws Exception {
+    success(IoTConsensusInactivatePeerKillPoints.AFTER_INACTIVATE);
   }
 }

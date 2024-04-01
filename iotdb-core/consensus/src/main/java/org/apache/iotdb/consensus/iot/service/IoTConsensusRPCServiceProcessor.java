@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.iot.service;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusInactivatePeerKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
@@ -154,6 +155,15 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
     impl.setActive(false);
     resultHandler.onComplete(
         new TInactivatePeerRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+  }
+
+  @Override
+  public void inactivatePeerForDeletionPurpose(
+      TInactivatePeerReq req, AsyncMethodCallback<TInactivatePeerRes> resultHandler)
+      throws TException {
+    KillPoint.setKillPoint(IoTConsensusInactivatePeerKillPoints.BEFORE_INACTIVATE);
+    inactivatePeer(req, resultHandler);
+    KillPoint.setKillPoint(IoTConsensusInactivatePeerKillPoints.AFTER_INACTIVATE);
   }
 
   @Override
