@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.consensus.nbraft;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -39,8 +37,8 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.consensus.natraft.RaftConsensus;
 import org.apache.iotdb.consensus.ratis.utils.Retriable;
-
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
 import org.apache.ratis.util.FileUtils;
 import org.apache.ratis.util.TimeDuration;
@@ -57,16 +55,17 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 public class TestUtils {
 
@@ -229,9 +228,7 @@ public class TestUtils {
     }
   }
 
-  /**
-   * A Mini Raft CLuster Wrapper for Test Env.
-   */
+  /** A Mini Raft CLuster Wrapper for Test Env. */
   static class MiniCluster {
 
     private final ConsensusGroupId gid;
@@ -391,8 +388,9 @@ public class TestUtils {
       final TSStatus response;
       try {
         response = servers.get(serverIndex).write(gid, increment);
-        Assert.assertTrue(response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            || response.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+        Assert.assertTrue(
+            response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                || response.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
       } catch (Throwable e) {
         Assert.fail("Test Env: test write failed due to " + e);
       }
