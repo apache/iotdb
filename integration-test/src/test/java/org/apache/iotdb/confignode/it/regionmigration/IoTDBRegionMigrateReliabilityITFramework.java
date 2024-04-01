@@ -130,6 +130,8 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         false);
   }
 
+  // region general test
+
   public void generalTestWithAllOptions(
       final int dataReplicateFactor,
       final int schemaReplicationFactor,
@@ -140,7 +142,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       final boolean checkOriginalRegionDirDeleted,
       final boolean checkConfigurationFileDeleted,
       final int restartTime,
-      final boolean isMigrateSuccess)
+      final boolean expectMigrateSuccess)
       throws Exception {
     // prepare env
     EnvFactory.getEnv()
@@ -185,17 +187,20 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         awaitUntilSuccess(statement, selectedRegion, originalDataNode, destDataNode);
         success = true;
       } catch (ConditionTimeoutException e) {
-        LOGGER.error("Region migrate failed", e);
+        if (expectMigrateSuccess) {
+          LOGGER.error("Region migrate failed", e);
+          Assert.fail();
+        }
       }
-      // Assert.assertTrue(isMigrateSuccess == success);
+      if (!expectMigrateSuccess && success) {
+        LOGGER.error("Region migrate succeeded unexpectedly");
+        Assert.fail();
+      }
 
       // make sure all kill points have been triggered
       checkKillPointsAllTriggered(killConfigNodeKeywords);
       checkKillPointsAllTriggered(killDataNodeKeywords);
 
-      if (!success) {
-        restartAllDataNodes();
-      }
       System.out.println(
           "originalDataNode: "
               + EnvFactory.getEnv().dataNodeIdToWrapper(originalDataNode).get().getNodePath());
@@ -206,21 +211,20 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       // check if there is anything remain
       if (checkOriginalRegionDirDeleted) {
         if (success) {
-          checkRegionFileClear(originalDataNode);
-          checkRegionFileExist(destDataNode);
+          checkRegionFileClearIfNodeAlive(originalDataNode);
+          checkRegionFileExistIfNodeAlive(destDataNode);
         } else {
-          checkRegionFileClear(destDataNode);
-          checkRegionFileExist(originalDataNode);
+          checkRegionFileClearIfNodeAlive(destDataNode);
+          checkRegionFileExistIfNodeAlive(originalDataNode);
         }
       }
       if (checkConfigurationFileDeleted) {
         if (success) {
-          checkPeersClear(allDataNodeId, originalDataNode, selectedRegion);
+          checkPeersClearIfNodeAlive(allDataNodeId, originalDataNode, selectedRegion);
         } else {
-          checkPeersClear(allDataNodeId, destDataNode, selectedRegion);
+          checkPeersClearIfNodeAlive(allDataNodeId, destDataNode, selectedRegion);
         }
       }
-
     } catch (InconsistentDataException ignore) {
 
     }
@@ -403,7 +407,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     AtomicReference<Exception> lastException = new AtomicReference<>();
     try {
       Awaitility.await()
-          .atMost(2, TimeUnit.MINUTES)
+          .atMost(1, TimeUnit.MINUTES)
           .until(
               () -> {
                 try {
@@ -434,10 +438,22 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     }
   }
 
+  private static void checkRegionFileExistIfNodeAlive(int dataNode) {
+    if (EnvFactory.getEnv().dataNodeIdToWrapper(dataNode).get().isAlive()) {
+      checkRegionFileExist(dataNode);
+    }
+  }
+
   private static void checkRegionFileExist(int dataNode) {
     File originalRegionDir = new File(buildRegionDirPath(dataNode));
     Assert.assertTrue(originalRegionDir.isDirectory());
     Assert.assertNotEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
+  }
+
+  private static void checkRegionFileClearIfNodeAlive(int dataNode) {
+    if (EnvFactory.getEnv().dataNodeIdToWrapper(dataNode).get().isAlive()) {
+      checkRegionFileClear(dataNode);
+    }
   }
 
   /** Check whether the original DataNode's region file has been deleted. */
@@ -448,8 +464,21 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     LOGGER.info("Original region clear");
   }
 
+  private static void checkPeersExistIfNodeAlive(
+      Set<Integer> dataNodes, int originalDataNode, int regionId) {
+    dataNodes.forEach(
+        targetDataNode -> checkPeerExistIfNodeAlive(targetDataNode, originalDataNode, regionId));
+  }
+
   private static void checkPeersExist(Set<Integer> dataNodes, int originalDataNode, int regionId) {
     dataNodes.forEach(targetDataNode -> checkPeerExist(targetDataNode, originalDataNode, regionId));
+  }
+
+  private static void checkPeerExistIfNodeAlive(
+      int checkTargetDataNode, int originalDataNode, int regionId) {
+    if (EnvFactory.getEnv().dataNodeIdToWrapper(checkTargetDataNode).get().isAlive()) {
+      checkPeerExist(checkTargetDataNode, originalDataNode, regionId);
+    }
   }
 
   private static void checkPeerExist(int checkTargetDataNode, int originalDataNode, int regionId) {
@@ -460,11 +489,28 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         expectExistedFile.exists());
   }
 
+  private static void checkPeersClearIfNodeAlive(
+      Set<Integer> dataNodes, int originalDataNode, int regionId) {
+    dataNodes.stream()
+        .filter(dataNode -> dataNode != originalDataNode)
+        .forEach(
+            targetDataNode ->
+                checkPeerClearIfNodeAlive(targetDataNode, originalDataNode, regionId));
+    LOGGER.info("Peer clear");
+  }
+
   private static void checkPeersClear(Set<Integer> dataNodes, int originalDataNode, int regionId) {
     dataNodes.stream()
         .filter(dataNode -> dataNode != originalDataNode)
         .forEach(targetDataNode -> checkPeerClear(targetDataNode, originalDataNode, regionId));
     LOGGER.info("Peer clear");
+  }
+
+  private static void checkPeerClearIfNodeAlive(
+      int checkTargetDataNode, int originalDataNode, int regionId) {
+    if (EnvFactory.getEnv().dataNodeIdToWrapper(checkTargetDataNode).get().isAlive()) {
+      checkPeerClear(checkTargetDataNode, originalDataNode, regionId);
+    }
   }
 
   private static void checkPeerClear(int checkTargetDataNode, int originalDataNode, int regionId) {
