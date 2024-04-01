@@ -33,7 +33,7 @@ public class PipeMeta {
   private final PipeStaticMeta staticMeta;
   private final PipeRuntimeMeta runtimeMeta;
 
-  public PipeMeta(final PipeStaticMeta staticMeta, final PipeRuntimeMeta runtimeMeta) {
+  public PipeMeta(PipeStaticMeta staticMeta, PipeRuntimeMeta runtimeMeta) {
     this.staticMeta = staticMeta;
     this.runtimeMeta = runtimeMeta;
   }
@@ -47,24 +47,24 @@ public class PipeMeta {
   }
 
   public ByteBuffer serialize() throws IOException {
-    final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-    final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
     serialize(outputStream);
     return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
   }
 
-  public void serialize(final OutputStream outputStream) throws IOException {
+  public void serialize(OutputStream outputStream) throws IOException {
     staticMeta.serialize(outputStream);
     runtimeMeta.serialize(outputStream);
   }
 
-  public static PipeMeta deserialize(final FileInputStream fileInputStream) throws IOException {
+  public static PipeMeta deserialize(FileInputStream fileInputStream) throws IOException {
     final PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(fileInputStream);
     final PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(fileInputStream);
     return new PipeMeta(staticMeta, runtimeMeta);
   }
 
-  public static PipeMeta deserialize(final ByteBuffer byteBuffer) {
+  public static PipeMeta deserialize(ByteBuffer byteBuffer) {
     final PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(byteBuffer);
     final PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(byteBuffer);
     return new PipeMeta(staticMeta, runtimeMeta);

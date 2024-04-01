@@ -45,12 +45,12 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
     extends ConfigPhysicalPlanVisitor<TSStatus, TSStatus> {
 
   @Override
-  public TSStatus visitPlan(final ConfigPhysicalPlan plan, final TSStatus context) {
+  public TSStatus visitPlan(ConfigPhysicalPlan plan, TSStatus context) {
     return context;
   }
 
   @Override
-  public TSStatus visitCreateDatabase(final DatabaseSchemaPlan plan, final TSStatus context) {
+  public TSStatus visitCreateDatabase(DatabaseSchemaPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
       if (context
           .getMessage()
@@ -74,7 +74,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitAlterDatabase(final DatabaseSchemaPlan plan, final TSStatus context) {
+  public TSStatus visitAlterDatabase(DatabaseSchemaPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -86,7 +86,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitDeleteDatabase(final DeleteDatabasePlan plan, final TSStatus context) {
+  public TSStatus visitDeleteDatabase(DeleteDatabasePlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -95,8 +95,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitCreateSchemaTemplate(
-      final CreateSchemaTemplatePlan plan, final TSStatus context) {
+  public TSStatus visitCreateSchemaTemplate(CreateSchemaTemplatePlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -105,8 +104,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitExtendSchemaTemplate(
-      final ExtendSchemaTemplatePlan plan, final TSStatus context) {
+  public TSStatus visitExtendSchemaTemplate(ExtendSchemaTemplatePlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -118,8 +116,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitCommitSetSchemaTemplate(
-      final CommitSetSchemaTemplatePlan plan, final TSStatus context) {
+  public TSStatus visitCommitSetSchemaTemplate(CommitSetSchemaTemplatePlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
       if (context.getMessage().contains("Template already exists")) {
         return new TSStatus(
@@ -138,7 +135,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
 
   @Override
   public TSStatus visitPipeUnsetSchemaTemplate(
-      final PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan, final TSStatus context) {
+      PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan, TSStatus context) {
     if (context.getCode() == TSStatusCode.TEMPLATE_NOT_SET.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -152,7 +149,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
 
   @Override
   public TSStatus visitDropSchemaTemplate(
-      final DropSchemaTemplatePlan dropSchemaTemplatePlan, final TSStatus context) {
+      DropSchemaTemplatePlan dropSchemaTemplatePlan, TSStatus context) {
     if (context.getCode() == TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -162,7 +159,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
 
   @Override
   public TSStatus visitPipeDeleteTimeSeries(
-      final PipeDeleteTimeSeriesPlan pipeDeleteTimeSeriesPlan, final TSStatus context) {
+      PipeDeleteTimeSeriesPlan pipeDeleteTimeSeriesPlan, TSStatus context) {
     if (context.getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -172,7 +169,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
 
   @Override
   public TSStatus visitPipeDeleteLogicalView(
-      final PipeDeleteLogicalViewPlan pipeDeleteLogicalViewPlan, final TSStatus context) {
+      PipeDeleteLogicalViewPlan pipeDeleteLogicalViewPlan, TSStatus context) {
     if (context.getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -182,7 +179,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
 
   @Override
   public TSStatus visitPipeDeactivateTemplate(
-      final PipeDeactivateTemplatePlan pipeDeactivateTemplatePlan, final TSStatus context) {
+      PipeDeactivateTemplatePlan pipeDeactivateTemplatePlan, TSStatus context) {
     if (context.getCode() == TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -191,7 +188,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitCreateUser(final AuthorPlan plan, final TSStatus context) {
+  public TSStatus visitCreateUser(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.USER_ALREADY_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -200,7 +197,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitUpdateUser(final AuthorPlan plan, final TSStatus context) {
+  public TSStatus visitUpdateUser(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.USER_NOT_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -209,7 +206,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitDropUser(final AuthorPlan plan, final TSStatus context) {
+  public TSStatus visitDropUser(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.USER_NOT_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -218,7 +215,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitGrantUser(final AuthorPlan plan, final TSStatus context) {
+  public TSStatus visitGrantUser(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()) {
       // Admin user
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
@@ -232,7 +229,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitRevokeUser(final AuthorPlan plan, final TSStatus context) {
+  public TSStatus visitRevokeUser(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.NOT_HAS_PRIVILEGE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -246,7 +243,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitCreateRole(final AuthorPlan plan, final TSStatus context) {
+  public TSStatus visitCreateRole(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.ROLE_ALREADY_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -255,7 +252,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitDropRole(final AuthorPlan plan, final TSStatus context) {
+  public TSStatus visitDropRole(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.ROLE_NOT_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -264,7 +261,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitGrantRole(final AuthorPlan plan, final TSStatus context) {
+  public TSStatus visitGrantRole(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.ROLE_NOT_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -273,7 +270,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitRevokeRole(final AuthorPlan plan, final TSStatus context) {
+  public TSStatus visitRevokeRole(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.NOT_HAS_PRIVILEGE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -285,7 +282,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitGrantRoleToUser(final AuthorPlan plan, final TSStatus context) {
+  public TSStatus visitGrantRoleToUser(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.USER_ALREADY_HAS_ROLE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -294,7 +291,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitRevokeRoleFromUser(final AuthorPlan plan, final TSStatus context) {
+  public TSStatus visitRevokeRoleFromUser(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.USER_NOT_HAS_ROLE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -306,7 +303,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitTTL(final SetTTLPlan plan, final TSStatus context) {
+  public TSStatus visitTTL(SetTTLPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());

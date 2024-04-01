@@ -57,7 +57,7 @@ import java.util.Objects;
 public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
 
   @Override
-  public Statement visitPlan(final PlanNode node, final Void context) {
+  public Statement visitPlan(PlanNode node, Void context) {
     throw new UnsupportedOperationException(
         String.format(
             "PipePlanToStatementVisitor does not support visiting general plan, PlanNode: %s",
@@ -65,9 +65,8 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   }
 
   @Override
-  public CreateTimeSeriesStatement visitCreateTimeSeries(
-      final CreateTimeSeriesNode node, final Void context) {
-    final CreateTimeSeriesStatement statement = new CreateTimeSeriesStatement();
+  public CreateTimeSeriesStatement visitCreateTimeSeries(CreateTimeSeriesNode node, Void context) {
+    CreateTimeSeriesStatement statement = new CreateTimeSeriesStatement();
     statement.setPath(node.getPath());
     statement.setDataType(node.getDataType());
     statement.setEncoding(node.getEncoding());
@@ -81,8 +80,8 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
 
   @Override
   public CreateAlignedTimeSeriesStatement visitCreateAlignedTimeSeries(
-      final CreateAlignedTimeSeriesNode node, final Void context) {
-    final CreateAlignedTimeSeriesStatement statement = new CreateAlignedTimeSeriesStatement();
+      CreateAlignedTimeSeriesNode node, Void context) {
+    CreateAlignedTimeSeriesStatement statement = new CreateAlignedTimeSeriesStatement();
     statement.setDataTypes(node.getDataTypes());
     statement.setCompressors(node.getCompressors());
     statement.setEncodings(node.getEncodings());
@@ -96,21 +95,21 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
 
   @Override
   public CreateMultiTimeSeriesStatement visitCreateMultiTimeSeries(
-      final CreateMultiTimeSeriesNode node, final Void context) {
-    final CreateMultiTimeSeriesStatement statement = new CreateMultiTimeSeriesStatement();
+      CreateMultiTimeSeriesNode node, Void context) {
+    CreateMultiTimeSeriesStatement statement = new CreateMultiTimeSeriesStatement();
 
-    final List<PartialPath> paths = new ArrayList<>();
-    final List<TSDataType> dataTypes = new ArrayList<>();
-    final List<TSEncoding> encodings = new ArrayList<>();
-    final List<CompressionType> compressors = new ArrayList<>();
-    final List<Map<String, String>> propsList = new ArrayList<>();
-    final List<String> aliasList = new ArrayList<>();
-    final List<Map<String, String>> tagsList = new ArrayList<>();
-    final List<Map<String, String>> attributesList = new ArrayList<>();
+    List<PartialPath> paths = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressors = new ArrayList<>();
+    List<Map<String, String>> propsList = new ArrayList<>();
+    List<String> aliasList = new ArrayList<>();
+    List<Map<String, String>> tagsList = new ArrayList<>();
+    List<Map<String, String>> attributesList = new ArrayList<>();
 
-    for (final Map.Entry<PartialPath, MeasurementGroup> path2Group :
+    for (Map.Entry<PartialPath, MeasurementGroup> path2Group :
         node.getMeasurementGroupMap().entrySet()) {
-      final MeasurementGroup group = path2Group.getValue();
+      MeasurementGroup group = path2Group.getValue();
       dataTypes.addAll(
           Objects.nonNull(group.getDataTypes()) ? group.getDataTypes() : new ArrayList<>());
       encodings.addAll(
@@ -146,9 +145,8 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   }
 
   @Override
-  public AlterTimeSeriesStatement visitAlterTimeSeries(
-      final AlterTimeSeriesNode node, final Void context) {
-    final AlterTimeSeriesStatement statement = new AlterTimeSeriesStatement();
+  public AlterTimeSeriesStatement visitAlterTimeSeries(AlterTimeSeriesNode node, Void context) {
+    AlterTimeSeriesStatement statement = new AlterTimeSeriesStatement();
     statement.setAlterMap(node.getAlterMap());
     statement.setAlterType(node.getAlterType());
     statement.setAttributesMap(node.getAttributesMap());
@@ -160,7 +158,7 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
 
   @Override
   public InternalCreateTimeSeriesStatement visitInternalCreateTimeSeries(
-      final InternalCreateTimeSeriesNode node, final Void context) {
+      InternalCreateTimeSeriesNode node, Void context) {
     return new InternalCreateTimeSeriesStatement(
         node.getDevicePath(),
         node.getMeasurementGroup().getMeasurements(),
@@ -171,37 +169,36 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   }
 
   @Override
-  public ActivateTemplateStatement visitActivateTemplate(
-      final ActivateTemplateNode node, final Void context) {
-    final ActivateTemplateStatement statement = new ActivateTemplateStatement();
+  public ActivateTemplateStatement visitActivateTemplate(ActivateTemplateNode node, Void context) {
+    ActivateTemplateStatement statement = new ActivateTemplateStatement();
     statement.setPath(node.getActivatePath());
     return statement;
   }
 
   @Override
   public BatchActivateTemplateStatement visitInternalBatchActivateTemplate(
-      final InternalBatchActivateTemplateNode node, final Void context) {
+      InternalBatchActivateTemplateNode node, Void context) {
     return new BatchActivateTemplateStatement(
         new ArrayList<>(node.getTemplateActivationMap().keySet()));
   }
 
   @Override
   public InternalCreateMultiTimeSeriesStatement visitInternalCreateMultiTimeSeries(
-      final InternalCreateMultiTimeSeriesNode node, final Void context) {
+      InternalCreateMultiTimeSeriesNode node, Void context) {
     return new InternalCreateMultiTimeSeriesStatement(node.getDeviceMap());
   }
 
   @Override
   public BatchActivateTemplateStatement visitBatchActivateTemplate(
-      final BatchActivateTemplateNode node, final Void context) {
+      BatchActivateTemplateNode node, Void context) {
     return new BatchActivateTemplateStatement(
         new ArrayList<>(node.getTemplateActivationMap().keySet()));
   }
 
   @Override
   public CreateLogicalViewStatement visitCreateLogicalView(
-      final CreateLogicalViewNode node, final Void context) {
-    final CreateLogicalViewStatement statement = new CreateLogicalViewStatement();
+      CreateLogicalViewNode node, Void context) {
+    CreateLogicalViewStatement statement = new CreateLogicalViewStatement();
     statement.setTargetFullPaths(node.getViewPathList());
     statement.setViewExpressions(new ArrayList<>(node.getViewPathToSourceExpressionMap().values()));
     return statement;
@@ -210,8 +207,8 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   // We do not support AlterLogicalViewNode parsing and use direct rpc instead
 
   @Override
-  public DeleteDataStatement visitDeleteData(final DeleteDataNode node, final Void context) {
-    final DeleteDataStatement statement = new DeleteDataStatement();
+  public DeleteDataStatement visitDeleteData(DeleteDataNode node, Void context) {
+    DeleteDataStatement statement = new DeleteDataStatement();
     statement.setDeleteEndTime(node.getDeleteEndTime());
     statement.setDeleteStartTime(node.getDeleteStartTime());
     statement.setPathList(node.getPathList());
