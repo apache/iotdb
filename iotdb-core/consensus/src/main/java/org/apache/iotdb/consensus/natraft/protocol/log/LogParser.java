@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.natraft.protocol.log;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.natraft.exception.UnknownLogTypeException;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry.Types;
+import org.apache.iotdb.consensus.natraft.protocol.log.logtype.ConfigChangeEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.logtype.EmptyEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.logtype.RequestEntry;
 
@@ -76,6 +77,11 @@ public class LogParser {
         EmptyEntry emptyLog = new EmptyEntry();
         emptyLog.deserialize(buffer);
         log = emptyLog;
+        break;
+      case CONFIG_CHANGE:
+        ConfigChangeEntry configChangeEntry = new ConfigChangeEntry();
+        configChangeEntry.deserialize(buffer);
+        log = configChangeEntry;
         break;
       default:
         throw new IllegalArgumentException(type.toString());

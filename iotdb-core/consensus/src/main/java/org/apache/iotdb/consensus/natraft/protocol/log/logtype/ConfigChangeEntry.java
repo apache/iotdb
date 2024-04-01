@@ -35,6 +35,9 @@ public class ConfigChangeEntry extends Entry {
   private List<Peer> oldPeers;
   private List<Peer> newPeers;
 
+  public ConfigChangeEntry() {
+  }
+
   public ConfigChangeEntry(List<Peer> oldPeers, List<Peer> newPeers) {
     this.oldPeers = oldPeers;
     this.newPeers = newPeers;
@@ -47,7 +50,7 @@ public class ConfigChangeEntry extends Entry {
             ? new PublicBAOS(getDefaultSerializationBufferSize())
             : new PublicBAOS(buffer);
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-      dataOutputStream.writeByte((byte) Types.EMPTY.ordinal());
+      dataOutputStream.writeByte((byte) Types.CONFIG_CHANGE.ordinal());
       dataOutputStream.writeLong(getCurrLogIndex());
       dataOutputStream.writeLong(getCurrLogTerm());
       dataOutputStream.writeLong(getPrevTerm());

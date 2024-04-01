@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId.Factory;
 import org.apache.iotdb.commons.utils.Timer.Statistic;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
+import org.apache.iotdb.consensus.common.request.ChangePeersRequest;
+import org.apache.iotdb.consensus.common.request.RequestType;
 import org.apache.iotdb.consensus.natraft.RaftConsensus;
 import org.apache.iotdb.consensus.natraft.exception.UnknownLogTypeException;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
@@ -82,11 +84,14 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
       throws UnknownLogTypeException {
     ConfigChangeEntry configChangeEntry = null;
     for (ByteBuffer entryBuffer : request.entries) {
+      entryBuffer.mark();
       Entry entry = LogParser.getINSTANCE().parse(entryBuffer, null);
       if (entry instanceof ConfigChangeEntry) {
         configChangeEntry = (ConfigChangeEntry) entry;
+        entryBuffer.reset();
         break;
       }
+      entryBuffer.reset();
     }
     return configChangeEntry;
   }
@@ -232,8 +237,24 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
   public void executeRequest(ExecuteReq request, AsyncMethodCallback<TSStatus> resultHandler)
       throws TException {
     RaftMember member = getMember(request.groupId);
-    resultHandler.onComplete(
-        member.executeForwardedRequest(new ByteBufferConsensusRequest(request.requestBytes)));
+    RequestType requestType = RequestType.USER_REQUEST;
+    if (request.isSetRequestType()) {
+      requestType = RequestType.values()[request.getRequestType()];
+    }
+
+    switch (requestType) {
+      case USER_REQUEST:
+        resultHandler.onComplete(
+            member.executeForwardedRequest(new ByteBufferConsensusRequest(request.requestBytes)));
+        break;
+      case CHANGE_PEERS:
+        ChangePeersRequest changePeersRequest =
+            ChangePeersRequest.deserialize(request.requestBytes);
+        resultHandler.onComplete(member.changeConfig(changePeersRequest.getPeers()));
+        break;
+      default:
+        throw new TException("Unrecognized request type: " + requestType);
+    }
   }
 
   @Override

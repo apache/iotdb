@@ -131,6 +131,7 @@ struct RequestCommitIndexResponse {
 struct ExecuteReq {
   1: required binary requestBytes
   2: optional common.TConsensusGroupId groupId
+  3: optional i8 requestType
 }
 
 exception NoMemberException {

@@ -67,6 +67,7 @@ public class SyncClientAdaptor {
     ExecuteReq req = new ExecuteReq();
     req.requestBytes = request.serializeToByteBuffer();
     req.setGroupId(groupId.convertToTConsensusGroupId());
+    req.setRequestType(((byte) request.getRequestType().ordinal()));
 
     client.executeRequest(req, new ForwardRequestHandler(status, request, receiver));
     synchronized (status) {

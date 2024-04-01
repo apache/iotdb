@@ -29,6 +29,7 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.natraft.RaftConsensus;
+import org.apache.iotdb.consensus.nbraft.TestUtils.IntegerCounter;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -59,6 +60,7 @@ public class RaftConsensusTest {
 
   @Before
   public void setUp() throws IOException {
+    IntegerCounter.resetStorage();
     miniCluster = new TestUtils.MiniClusterFactory().setConfig(properties).create();
     miniCluster.start();
     gid = miniCluster.getGid();
@@ -134,6 +136,7 @@ public class RaftConsensusTest {
     servers.get(0).removeRemotePeer(gid, peers.get(2));
     servers.get(2).deleteLocalPeer(gid);
 
+    logger.info("Writing after member change");
     miniCluster.waitUntilActiveLeaderElectedAndReady();
     doConsensus(0, 10, 20);
   }

@@ -188,6 +188,7 @@ public class LogUtils {
       ByteBuffer uncompressedBuffer = ByteBuffer.wrap(uncompressed);
       result.add(uncompressedBuffer);
     }
+    logger.info("Uncompressed buffers: {}", result);
     return result;
   }
 

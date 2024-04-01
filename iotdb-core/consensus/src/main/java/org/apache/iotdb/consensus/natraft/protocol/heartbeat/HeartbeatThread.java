@@ -21,10 +21,12 @@ package org.apache.iotdb.consensus.natraft.protocol.heartbeat;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.RaftRole;
+import org.apache.iotdb.consensus.natraft.protocol.log.logtype.EmptyEntry;
 import org.apache.iotdb.consensus.natraft.utils.NodeUtils;
 import org.apache.iotdb.consensus.raft.thrift.ElectionRequest;
 import org.apache.iotdb.consensus.raft.thrift.HeartBeatRequest;
@@ -317,6 +319,7 @@ public class HeartbeatThread implements Runnable {
       localMember.getStatus().setRole(RaftRole.LEADER);
       localMember.getStatus().setLeader(localMember.getThisNode());
       localMember.getLogDispatcher().wakeUp();
+      localMember.appendAndExecute(new EmptyEntry());
     }
   }
 

@@ -300,7 +300,8 @@ public class RaftConsensus implements IConsensus {
     if (impl == null) {
       throw new ConsensusGroupNotExistException(groupId);
     }
-    impl.transferLeader(newLeader);
+    TSStatus status = impl.transferLeader(newLeader);
+    logger.info("The result of leadership transfer in {} is {}", groupId, status);
   }
 
   @Override

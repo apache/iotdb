@@ -32,6 +32,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.request.RequestType;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
@@ -126,6 +127,10 @@ public class TestUtils {
     private List<Peer> configuration;
     private int id;
 
+    public static void resetStorage() {
+      storage.clear();
+    }
+
     public IntegerCounter(int id) {
       this.id = id;
     }
@@ -153,6 +158,8 @@ public class TestUtils {
       TestRequest testRequest;
       if (request instanceof ByteBufferConsensusRequest) {
         testRequest = new TestRequest(request.serializeToByteBuffer());
+      } else if (request.getRequestType().equals(RequestType.CHANGE_PEERS)) {
+        return request;
       } else {
         testRequest = (TestRequest) request;
       }

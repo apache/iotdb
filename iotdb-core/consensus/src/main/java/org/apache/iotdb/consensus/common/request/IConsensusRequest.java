@@ -63,4 +63,8 @@ public interface IConsensusRequest {
   default PartialPath conflictKey() {
     return null;
   }
+
+  default RequestType getRequestType() {
+    return RequestType.USER_REQUEST;
+  }
 }

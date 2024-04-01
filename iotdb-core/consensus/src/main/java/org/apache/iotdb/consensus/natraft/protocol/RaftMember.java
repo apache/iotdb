@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.utils.Timer.Statistic;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.ChangePeersRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.natraft.client.AsyncRaftServiceClient;
@@ -236,6 +237,7 @@ public class RaftMember {
     this.electionReqHandler = new ElectionReqHandler(this);
     this.requestEntryAllocator =
         new EntryAllocator<>(config, RequestEntry::new, this::getSafeIndex);
+    this.logDispatcher = new PipelinedLogDispatcher(this, config);
     this.logManager =
         new DirectorySnapshotRaftLogManager(
             new SyncLogDequeSerializer(groupId, config, this),
@@ -250,7 +252,6 @@ public class RaftMember {
         config.isUseFollowerSlidingWindow() ? new Factory() : new BlockingLogAppender.Factory();
     this.logAppender = appenderFactory.create(this, config);
     this.logSequencer = SEQUENCER_FACTORY.create(this, config);
-    this.logDispatcher = new PipelinedLogDispatcher(this, config);
     this.onRemove = onRemove;
 
     initPeerMap();
@@ -274,6 +275,13 @@ public class RaftMember {
 
     if (newNodes.contains(thisNode)) {
       applyNewNodes();
+    } else if (isLeader() && !newNodes.isEmpty()) {
+      try {
+        TSStatus tsStatus = transferLeader(newNodes.get(0));
+        logger.info("The result of leadership transfer in {} is {}", groupId, tsStatus);
+      } catch (ConsensusException e) {
+        logger.error("Cannot transfer leadership to {}", newNodes.get(0), e);
+      }
     }
   }
 
@@ -649,11 +657,14 @@ public class RaftMember {
     logger.debug("{}: Processing request {}", name, request);
     RequestEntry entry;
     entry = requestEntryAllocator.Allocate();
-    //    entry = new RequestEntry();
     entry.setRequest(request);
     entry.preSerialize();
     entry.receiveTime = System.nanoTime();
 
+    return appendAndExecute(entry);
+  }
+
+  public TSStatus appendAndExecute(Entry entry) {
     // just like processPlanLocally,we need to check the size of log
     if (!checkLogSize(entry)) {
       logger.error(
@@ -1240,7 +1251,7 @@ public class RaftMember {
   }
 
   public TSStatus changeConfig(List<Peer> newNodes) {
-    TSStatus tsStatus = ensureLeader(null);
+    TSStatus tsStatus = ensureLeader(new ChangePeersRequest(newNodes));
     if (tsStatus != null) {
       return tsStatus;
     }
@@ -1377,6 +1388,7 @@ public class RaftMember {
   }
 
   public TSStatus transferLeader(Peer peer) throws ConsensusException {
+    logger.info("{}: transferring leadership to {}", name, peer);
     if (thisNode.equals(peer)) {
       return StatusUtils.OK;
     }
