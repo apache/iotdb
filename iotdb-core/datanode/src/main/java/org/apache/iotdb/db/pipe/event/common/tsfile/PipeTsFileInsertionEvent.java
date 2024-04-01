@@ -97,7 +97,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     this.isGeneratedByPipe = isGeneratedByPipe;
 
     isClosed = new AtomicBoolean(resource.isClosed());
-    // register close listener if TsFile is not closed
+    // Register close listener if TsFile is not closed
     if (!isClosed.get()) {
       final TsFileProcessor processor = resource.getProcessor();
       if (processor != null) {
@@ -111,8 +111,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
             });
       }
     }
-    // check again after register close listener in case TsFile is closed during the process
+    // Check again after register close listener in case TsFile is closed during the process
     isClosed.set(resource.isClosed());
+    isTsFileFormatValid = resource.getProcessor().isTsFileFormatValidForPipe();
   }
 
   /**
