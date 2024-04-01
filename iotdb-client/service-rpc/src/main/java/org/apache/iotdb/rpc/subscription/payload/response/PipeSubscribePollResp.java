@@ -50,24 +50,6 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
    * server.
    */
   public static PipeSubscribePollResp toTPipeSubscribeResp(
-      TSStatus status, List<EnrichedTablets> enrichedTabletsList) {
-    final PipeSubscribePollResp resp = new PipeSubscribePollResp();
-
-    resp.enrichedTabletsList = enrichedTabletsList;
-
-    resp.status = status;
-    resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
-    resp.type = PipeSubscribeResponseType.POLL_TABLETS.getType();
-    try {
-      resp.body = serializeEnrichedTabletsList(enrichedTabletsList);
-    } catch (IOException e) {
-      resp.status = RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, e.getMessage());
-    }
-
-    return resp;
-  }
-
-  public static PipeSubscribePollResp toTPipeSubscribeResp(
       TSStatus status, List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsWithByteBufferList) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
