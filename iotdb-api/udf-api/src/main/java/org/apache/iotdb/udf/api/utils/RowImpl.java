@@ -70,7 +70,7 @@ public class RowImpl implements Row {
 
   @Override
   public Binary getBinary(int columnIndex) {
-    return transformToUDFBinary((org.apache.iotdb.tsfile.utils.Binary) rowRecord[columnIndex]);
+    return transformToUDFBinary((org.apache.tsfile.utils.Binary) rowRecord[columnIndex]);
   }
 
   @Override
@@ -97,7 +97,7 @@ public class RowImpl implements Row {
     this.rowRecord = rowRecord;
   }
 
-  public static Binary transformToUDFBinary(org.apache.iotdb.tsfile.utils.Binary binary) {
+  public static Binary transformToUDFBinary(org.apache.tsfile.utils.Binary binary) {
     return binary == null ? null : new Binary(binary.getValues());
   }
 

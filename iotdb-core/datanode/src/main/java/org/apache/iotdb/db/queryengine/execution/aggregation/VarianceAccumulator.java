@@ -22,11 +22,11 @@ package org.apache.iotdb.db.queryengine.execution.aggregation;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.Arrays;
 

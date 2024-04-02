@@ -20,9 +20,9 @@ package org.apache.iotdb.hadoop.tsfile.record;
 
 import org.apache.hadoop.io.Writable;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.StringContainer;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.BooleanDataPoint;
 import org.apache.tsfile.write.record.datapoint.DataPoint;

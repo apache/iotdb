@@ -73,12 +73,12 @@ public class ElasticSerializableRowRecordListBackedMultiColumnRow implements Row
   @Override
   public Binary getBinary(int columnIndex) {
     return UDFBinaryTransformer.transformToUDFBinary(
-        (org.apache.iotdb.tsfile.utils.Binary) rowRecord[columnIndex]);
+        (org.apache.tsfile.utils.Binary) rowRecord[columnIndex]);
   }
 
   @Override
   public String getString(int columnIndex) {
-    return ((org.apache.iotdb.tsfile.utils.Binary) rowRecord[columnIndex])
+    return ((org.apache.tsfile.utils.Binary) rowRecord[columnIndex])
         .getStringValue(TSFileConfig.STRING_CHARSET);
   }
 

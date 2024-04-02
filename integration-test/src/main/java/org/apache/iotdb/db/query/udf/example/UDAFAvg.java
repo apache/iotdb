@@ -29,8 +29,8 @@ import org.apache.iotdb.udf.api.type.Type;
 import org.apache.iotdb.udf.api.utils.ResultValue;
 
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 

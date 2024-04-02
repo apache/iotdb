@@ -31,7 +31,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Map;
 
-/** Like {@link org.apache.iotdb.tsfile.utils.ReadWriteIOUtils}. */
+/** Like {@link org.apache.tsfile.utils.ReadWriteIOUtils}. */
 public class WALWriteUtils {
   public static final int BOOLEAN_LEN = ReadWriteIOUtils.BOOLEAN_LEN;
   public static final int SHORT_LEN = ReadWriteIOUtils.SHORT_LEN;

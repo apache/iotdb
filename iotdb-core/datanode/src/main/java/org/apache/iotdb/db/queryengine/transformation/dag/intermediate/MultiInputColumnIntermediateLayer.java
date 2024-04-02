@@ -40,7 +40,7 @@ import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrat
 import org.apache.iotdb.udf.api.customizer.strategy.StateWindowAccessStrategy;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

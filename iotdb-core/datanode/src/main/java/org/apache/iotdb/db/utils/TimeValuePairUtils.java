@@ -20,7 +20,6 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.utils.Binary;
@@ -31,6 +30,7 @@ import org.apache.tsfile.utils.TsPrimitiveType.TsDouble;
 import org.apache.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.tsfile.utils.TsPrimitiveType.TsLong;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.ArrayList;
 

@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 
-import org.apache.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.io.IOException;
 

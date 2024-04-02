@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
 
-import org.apache.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 public class CompareNonEqualTransformer extends CompareBinaryTransformer {
 

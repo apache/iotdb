@@ -54,7 +54,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
 
   @Override
   public void putString(long timestamp, String value) throws IOException {
-    org.apache.iotdb.tsfile.utils.Binary binary = BytesUtils.valueOf(value);
+    org.apache.tsfile.utils.Binary binary = BytesUtils.valueOf(value);
     super.putBinary(timestamp, UDFBinaryTransformer.transformToUDFBinary(binary));
     totalByteArrayLengthLimit += byteArrayLengthForMemoryControl;
     totalByteArrayLength += binary.getLength();
@@ -114,7 +114,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
       newElasticSerializableTVList.bitMaps.add(null);
     }
     newElasticSerializableTVList.size = internalListEvictionUpperBound * newInternalTVListCapacity;
-    org.apache.iotdb.tsfile.utils.Binary empty = BytesUtils.valueOf("");
+    org.apache.tsfile.utils.Binary empty = BytesUtils.valueOf("");
     for (int i = newElasticSerializableTVList.size; i < evictionUpperBound; ++i) {
       newElasticSerializableTVList.putBinary(i, UDFBinaryTransformer.transformToUDFBinary(empty));
     }

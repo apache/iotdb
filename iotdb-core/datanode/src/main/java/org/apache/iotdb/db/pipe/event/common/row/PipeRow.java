@@ -101,13 +101,13 @@ public class PipeRow implements Row {
   @Override
   public org.apache.iotdb.pipe.api.type.Binary getBinary(int columnIndex) {
     return PipeBinaryTransformer.transformToPipeBinary(
-        ((org.apache.iotdb.tsfile.utils.Binary[]) valueColumns[columnIndex])[rowIndex]);
+        ((org.apache.tsfile.utils.Binary[]) valueColumns[columnIndex])[rowIndex]);
   }
 
   @Override
   public String getString(int columnIndex) {
-    final org.apache.iotdb.tsfile.utils.Binary binary =
-        ((org.apache.iotdb.tsfile.utils.Binary[]) valueColumns[columnIndex])[rowIndex];
+    final org.apache.tsfile.utils.Binary binary =
+        ((org.apache.tsfile.utils.Binary[]) valueColumns[columnIndex])[rowIndex];
     return binary == null ? null : binary.getStringValue(TSFileConfig.STRING_CHARSET);
   }
 

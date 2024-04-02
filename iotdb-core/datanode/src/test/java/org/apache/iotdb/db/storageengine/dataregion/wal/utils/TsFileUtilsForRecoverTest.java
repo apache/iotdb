@@ -22,7 +22,7 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.utils.TsFileGeneratorUtils;
 
-/** like org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest */
+/** like org.apache.tsfile.utils.TsFileGeneratorForTest */
 public class TsFileUtilsForRecoverTest {
   public static String getTestTsFilePath(
       String logicalStorageGroupName,
