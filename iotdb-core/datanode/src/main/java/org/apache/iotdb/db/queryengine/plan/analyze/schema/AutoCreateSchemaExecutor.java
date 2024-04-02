@@ -402,10 +402,10 @@ class AutoCreateSchemaExecutor {
     }
 
     if (!templateExtendInfoMap.isEmpty()) {
-      for (TemplateExtendInfo templateExtendInfo : templateExtendInfoMap.values()) {
-        templateExtendInfo = templateExtendInfo.deduplicate();
+      for (Map.Entry<String, TemplateExtendInfo> entry : templateExtendInfoMap.entrySet()) {
+        TemplateExtendInfo templateExtendInfo = entry.getValue().deduplicate();
         internalExtendTemplate(
-            templateExtendInfo.getTemplateName(),
+            entry.getKey(),
             templateExtendInfo.getMeasurements(),
             templateExtendInfo.getDataTypes(),
             templateExtendInfo.getEncodings(),

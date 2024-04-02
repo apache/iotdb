@@ -34,7 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
-import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
 import org.apache.iotdb.confignode.service.ConfigNode;
@@ -205,9 +205,11 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
             .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
         return true;
       } catch (IOException e) {
-        LOGGER.error(
-            "Config Region Listening Queue Listen to snapshot failed, the historical data may not be transferred.",
-            e);
+        if (PipeConfigNodeAgent.runtime().listener().isOpened()) {
+          LOGGER.warn(
+              "Config Region Listening Queue Listen to snapshot failed, the historical data may not be transferred.",
+              e);
+        }
       }
     }
     return false;
@@ -223,9 +225,11 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
           .listener()
           .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
     } catch (IOException e) {
-      LOGGER.error(
-          "Config Region Listening Queue Listen to snapshot failed when startup, snapshot will be tried again when starting schema transferring pipes",
-          e);
+      if (PipeConfigNodeAgent.runtime().listener().isOpened()) {
+        LOGGER.warn(
+            "Config Region Listening Queue Listen to snapshot failed when startup, snapshot will be tried again when starting schema transferring pipes",
+            e);
+      }
     }
   }
 
@@ -412,7 +416,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         startIndex = endIndex;
         while (logReader.hasNext()) {
           endIndex++;
-          // read and re-serialize the PhysicalPlan
+          // Read and re-serialize the PhysicalPlan
           ConfigPhysicalPlan nextPlan = logReader.next();
           try {
             TSStatus status = executor.executeNonQueryPlan(nextPlan);
