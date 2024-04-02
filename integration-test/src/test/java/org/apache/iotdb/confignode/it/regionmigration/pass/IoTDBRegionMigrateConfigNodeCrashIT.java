@@ -35,43 +35,43 @@ import java.util.stream.Collectors;
 public class IoTDBRegionMigrateConfigNodeCrashIT extends IoTDBRegionMigrateReliabilityITFramework {
   @Test
   @Ignore
-  public void cnCrashDuringPreCheck() throws Exception {
+  public void cnCrashDuringPreCheckTest() throws Exception {
     successTest(1, 1, 1, 2, buildSet(RegionTransitionState.REGION_MIGRATE_PREPARE), noKillPoints());
   }
 
   @Test
-  public void cnCrashDuringCreatePeer() throws Exception {
+  public void cnCrashDuringCreatePeerTest() throws Exception {
     successTest(1, 1, 1, 2, buildSet(AddRegionPeerState.CREATE_NEW_REGION_PEER), noKillPoints());
   }
 
   @Test
-  public void cnCrashDuringDoAddPeer() throws Exception {
+  public void cnCrashDuringDoAddPeerTest() throws Exception {
     successTest(1, 1, 1, 2, buildSet(AddRegionPeerState.DO_ADD_REGION_PEER), noKillPoints());
   }
 
   @Test
-  public void cnCrashDuringUpdateCache() throws Exception {
+  public void cnCrashDuringUpdateCacheTest() throws Exception {
     successTest(
         1, 1, 1, 2, buildSet(AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE), noKillPoints());
   }
 
   @Test
-  public void cnCrashDuringChangeRegionLeader() throws Exception {
+  public void cnCrashDuringChangeRegionLeaderTest() throws Exception {
     successTest(1, 1, 1, 2, buildSet(RegionTransitionState.CHANGE_REGION_LEADER), noKillPoints());
   }
 
   @Test
-  public void cnCrashDuringRemoveRegionPeer() throws Exception {
+  public void cnCrashDuringRemoveRegionPeerTest() throws Exception {
     successTest(1, 1, 1, 2, buildSet(RemoveRegionPeerState.REMOVE_REGION_PEER), noKillPoints());
   }
 
   @Test
-  public void cnCrashDuringDeleteOldRegionPeer() throws Exception {
+  public void cnCrashDuringDeleteOldRegionPeerTest() throws Exception {
     successTest(1, 1, 1, 2, buildSet(RemoveRegionPeerState.DELETE_OLD_REGION_PEER), noKillPoints());
   }
 
   @Test
-  public void cnCrashDuringRemoveRegionLocationCache() throws Exception {
+  public void cnCrashDuringRemoveRegionLocationCacheTest() throws Exception {
     successTest(
         1, 1, 1, 2, buildSet(RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE), noKillPoints());
   }

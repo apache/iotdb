@@ -500,7 +500,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     File originalRegionDir = new File(buildRegionDirPath(dataNode));
     Assert.assertTrue(originalRegionDir.isDirectory());
     Assert.assertEquals(0, Objects.requireNonNull(originalRegionDir.listFiles()).length);
-    LOGGER.info("Original region clear");
+    LOGGER.info("Original DataNode {} region file clear", dataNode);
   }
 
   private static void checkPeersExistIfNodeAlive(
