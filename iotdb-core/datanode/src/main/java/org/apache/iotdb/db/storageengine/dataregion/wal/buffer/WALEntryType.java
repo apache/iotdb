@@ -62,7 +62,10 @@ public enum WALEntryType {
 
   /** Returns true when this type should be searched. */
   public boolean needSearch() {
-    return this == INSERT_TABLET_NODE || this == INSERT_ROW_NODE || this == DELETE_DATA_NODE;
+    return this == INSERT_TABLET_NODE
+        || this == INSERT_ROW_NODE
+        || this == INSERT_ROWS_NODE
+        || this == DELETE_DATA_NODE;
   }
 
   public static WALEntryType valueOf(byte code) {
