@@ -242,7 +242,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       if (isDataRegionTimePartitionCoveredByTimeRange()) {
         event.skipParsingTime();
       } else {
-        // Since we only record the upper and lower bounds that time partition have ever reached, if
+        // Since we only record the upper and lower bounds that time partition has ever reached, if
         // the time partition cannot be covered by the time range during query, it will not be
         // possible later.
         disableSkippingTimeParse = true;

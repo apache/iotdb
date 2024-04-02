@@ -28,7 +28,7 @@ public class PipeParameterValidator {
 
   private final PipeParameters parameters;
 
-  public PipeParameterValidator(PipeParameters parameters) {
+  public PipeParameterValidator(final PipeParameters parameters) {
     this.parameters = parameters;
   }
 
@@ -43,7 +43,7 @@ public class PipeParameterValidator {
    * @param key key of the attribute
    * @throws PipeAttributeNotProvidedException if the attribute is not provided
    */
-  public PipeParameterValidator validateRequiredAttribute(String key)
+  public PipeParameterValidator validateRequiredAttribute(final String key)
       throws PipeAttributeNotProvidedException {
     if (!parameters.hasAttribute(key)) {
       throw new PipeAttributeNotProvidedException(key);
@@ -52,7 +52,7 @@ public class PipeParameterValidator {
   }
 
   public PipeParameterValidator validateAttributeValueRange(
-      String key, boolean canBeOptional, String... optionalValues)
+      final String key, final boolean canBeOptional, final String... optionalValues)
       throws PipeAttributeNotProvidedException {
     if (!parameters.hasAttribute(key)) {
       if (!canBeOptional) {
@@ -81,9 +81,9 @@ public class PipeParameterValidator {
    * @throws PipeParameterNotValidException if the given argument is not valid
    */
   public PipeParameterValidator validate(
-      PipeParameterValidator.SingleObjectValidationRule validationRule,
-      String messageToThrow,
-      Object argument)
+      final PipeParameterValidator.SingleObjectValidationRule validationRule,
+      final String messageToThrow,
+      final Object argument)
       throws PipeParameterNotValidException {
     if (!validationRule.validate(argument)) {
       throw new PipeParameterNotValidException(messageToThrow);
@@ -93,7 +93,7 @@ public class PipeParameterValidator {
 
   public interface SingleObjectValidationRule {
 
-    boolean validate(Object arg);
+    boolean validate(final Object arg);
   }
 
   /**
@@ -105,9 +105,9 @@ public class PipeParameterValidator {
    * @throws PipeParameterNotValidException if the given arguments are not valid
    */
   public PipeParameterValidator validate(
-      PipeParameterValidator.MultipleObjectsValidationRule validationRule,
-      String messageToThrow,
-      Object... arguments)
+      final PipeParameterValidator.MultipleObjectsValidationRule validationRule,
+      final String messageToThrow,
+      final Object... arguments)
       throws PipeParameterNotValidException {
     if (!validationRule.validate(arguments)) {
       throw new PipeParameterNotValidException(messageToThrow);
@@ -117,6 +117,6 @@ public class PipeParameterValidator {
 
   public interface MultipleObjectsValidationRule {
 
-    boolean validate(Object... args);
+    boolean validate(final Object... args);
   }
 }

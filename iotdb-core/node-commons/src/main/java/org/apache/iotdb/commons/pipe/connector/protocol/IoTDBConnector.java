@@ -84,28 +84,43 @@ public abstract class IoTDBConnector implements PipeConnector {
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     final PipeParameters parameters = validator.getParameters();
-    validator.validate(
-        args ->
-            (boolean) args[0]
-                || (((boolean) args[1] || (boolean) args[2]) && (boolean) args[3])
-                || (boolean) args[4]
-                || (((boolean) args[5] || (boolean) args[6]) && (boolean) args[7]),
-        String.format(
-            "One of %s, %s:%s, %s, %s:%s must be specified",
-            CONNECTOR_IOTDB_NODE_URLS_KEY,
-            CONNECTOR_IOTDB_HOST_KEY,
-            CONNECTOR_IOTDB_PORT_KEY,
-            SINK_IOTDB_NODE_URLS_KEY,
-            SINK_IOTDB_HOST_KEY,
-            SINK_IOTDB_PORT_KEY),
-        parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY),
-        parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY),
-        parameters.hasAttribute(CONNECTOR_IOTDB_HOST_KEY),
-        parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY),
-        parameters.hasAttribute(SINK_IOTDB_NODE_URLS_KEY),
-        parameters.hasAttribute(SINK_IOTDB_IP_KEY),
-        parameters.hasAttribute(SINK_IOTDB_HOST_KEY),
-        parameters.hasAttribute(SINK_IOTDB_PORT_KEY));
+    validator
+        .validate(
+            args ->
+                (boolean) args[0]
+                    || (((boolean) args[1] || (boolean) args[2]) && (boolean) args[3])
+                    || (boolean) args[4]
+                    || (((boolean) args[5] || (boolean) args[6]) && (boolean) args[7]),
+            String.format(
+                "One of %s, %s:%s, %s, %s:%s must be specified",
+                CONNECTOR_IOTDB_NODE_URLS_KEY,
+                CONNECTOR_IOTDB_HOST_KEY,
+                CONNECTOR_IOTDB_PORT_KEY,
+                SINK_IOTDB_NODE_URLS_KEY,
+                SINK_IOTDB_HOST_KEY,
+                SINK_IOTDB_PORT_KEY),
+            parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY),
+            parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY),
+            parameters.hasAttribute(CONNECTOR_IOTDB_HOST_KEY),
+            parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY),
+            parameters.hasAttribute(SINK_IOTDB_NODE_URLS_KEY),
+            parameters.hasAttribute(SINK_IOTDB_IP_KEY),
+            parameters.hasAttribute(SINK_IOTDB_HOST_KEY),
+            parameters.hasAttribute(SINK_IOTDB_PORT_KEY))
+        .validate(
+            arg -> arg.equals("retry") || arg.equals("ignore"),
+            String.format(
+                "The value of key %s or %s must be either 'retry' or 'ignore'.",
+                CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY,
+                SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY),
+            parameters
+                .getStringOrDefault(
+                    Arrays.asList(
+                        CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY,
+                        SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY),
+                    CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_DEFAULT_VALUE)
+                .trim()
+                .toLowerCase());
   }
 
   @Override
@@ -129,7 +144,8 @@ public abstract class IoTDBConnector implements PipeConnector {
                         CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY,
                         SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY),
                     CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_DEFAULT_VALUE)
-                .equals("retry"),
+                .trim()
+                .equalsIgnoreCase("retry"),
             parameters.getLongOrDefault(
                 Arrays.asList(
                     CONNECTOR_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY,

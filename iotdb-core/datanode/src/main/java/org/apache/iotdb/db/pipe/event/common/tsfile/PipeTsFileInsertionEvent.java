@@ -44,8 +44,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
-  private boolean isTsFileFormatValid = true;
-
   private final TsFileResource resource;
   private File tsFile;
 
@@ -97,27 +95,42 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     this.isGeneratedByPipe = isGeneratedByPipe;
 
     isClosed = new AtomicBoolean(resource.isClosed());
-    // register close listener if TsFile is not closed
+    // Register close listener if TsFile is not closed
     if (!isClosed.get()) {
       final TsFileProcessor processor = resource.getProcessor();
       if (processor != null) {
         processor.addCloseFileListener(
             o -> {
               synchronized (isClosed) {
-                isTsFileFormatValid = o.isTsFileFormatValidForPipe();
                 isClosed.set(true);
                 isClosed.notifyAll();
               }
             });
       }
     }
-    // check again after register close listener in case TsFile is closed during the process
+    // Check again after register close listener in case TsFile is closed during the process
+    // TsFile flushing steps:
+    // 1. Flush tsFile
+    // 2. First listener (Set resource status "closed" -> Set processor == null -> processor == null
+    // is seen)
+    // 3. Other listeners (Set "closed" status for events)
+    // Then we can imply that:
+    // 1. If the listener cannot be executed because all listeners passed, then resources status is
+    // set "closed" and can be set here
+    // 2. If the listener cannot be executed because processor == null is seen, then resources
+    // status is set "closed" and can be set here
+    // Then we know:
+    // 1. The status in the event can be closed eventually.
+    // 2. If the status is "closed", then the resource status is "closed".
+    // Then we know:
+    // If the status is "closed", then the resource status is "closed", the tsFile won't be altered
+    // and can be sent.
     isClosed.set(resource.isClosed());
   }
 
   /**
-   * @return {@code false} if this file can't be sent by pipe due to format violations or is empty.
-   *     {@code true} otherwise.
+   * @return {@code false} if this file can't be sent by pipe because it is empty. {@code true}
+   *     otherwise.
    */
   public boolean waitForTsFileClose() throws InterruptedException {
     if (!isClosed.get()) {
@@ -127,7 +140,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         }
       }
     }
-    return isTsFileFormatValid;
+    // From illustrations above we know If the status is "closed", then the tsFile is flushed
+    // And here we guarantee that the isEmpty() is set before flushing if tsFile is empty
+    // Then we know: "isClosed" --> tsFile flushed --> (isEmpty() <--> tsFile is empty)
+    return !resource.isEmpty();
   }
 
   public File getTsFile() {
@@ -321,14 +337,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public String toString() {
     return String.format(
-            "PipeTsFileInsertionEvent{isTsFileFormatValid=%s, resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s, dataContainer=%s}",
-            isTsFileFormatValid,
-            resource,
-            tsFile,
-            isLoaded,
-            isGeneratedByPipe,
-            isClosed.get(),
-            dataContainer)
+            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s, dataContainer=%s}",
+            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get(), dataContainer)
         + " - "
         + super.toString();
   }

@@ -27,7 +27,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
@@ -66,6 +69,24 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
   @Override
   public TSStatus visitCreateAlignedTimeseries(
       CreateAlignedTimeSeriesStatement statement, Exception context) {
+    return visitGeneralCreateTimeSeries(statement, context);
+  }
+
+  @Override
+  public TSStatus visitCreateMultiTimeseries(
+      CreateMultiTimeSeriesStatement statement, Exception context) {
+    return visitGeneralCreateTimeSeries(statement, context);
+  }
+
+  @Override
+  public TSStatus visitInternalCreateTimeseries(
+      InternalCreateTimeSeriesStatement statement, Exception context) {
+    return visitGeneralCreateTimeSeries(statement, context);
+  }
+
+  @Override
+  public TSStatus visitInternalCreateMultiTimeSeries(
+      InternalCreateMultiTimeSeriesStatement statement, Exception context) {
     return visitGeneralCreateTimeSeries(statement, context);
   }
 
