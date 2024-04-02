@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.iotdb.tsfile.utils.UnsynchronizedPublicBAOS;
 import org.apache.iotdb.tsfile.write.page.PageWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -96,7 +97,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   public ChunkWriterImpl(IMeasurementSchema schema) {
     this.measurementSchema = schema;
     this.compressor = ICompressor.getCompressor(schema.getCompressor());
-    this.pageBuffer = new PublicBAOS();
+    this.pageBuffer = new UnsynchronizedPublicBAOS();
 
     this.pageSizeThreshold = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.maxNumberOfPointsInPage =
