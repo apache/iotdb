@@ -387,9 +387,6 @@ public class IoTDBSubscriptionRestartIT {
       fail(e.getMessage());
     }
 
-    // Shutdown leader CN
-    EnvFactory.getEnv().shutdownConfigNode(EnvFactory.getEnv().getLeaderConfigNodeIndex());
-
     // Subscription again
     final Map<Long, Long> timestamps = new HashMap<>();
     final AtomicBoolean isClosed = new AtomicBoolean(false);
@@ -433,6 +430,9 @@ public class IoTDBSubscriptionRestartIT {
             });
     thread.start();
 
+    // Shutdown leader CN
+    EnvFactory.getEnv().shutdownConfigNode(EnvFactory.getEnv().getLeaderConfigNodeIndex());
+
     // Insert some realtime data
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
       for (int i = 100; i < 200; ++i) {
@@ -443,6 +443,21 @@ public class IoTDBSubscriptionRestartIT {
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+
+    // Show topics and subscriptions
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      final TShowTopicResp showTopicResp = client.showTopic(new TShowTopicReq());
+      Assert.assertEquals(RpcUtils.SUCCESS_STATUS.getCode(), showTopicResp.status.getCode());
+      Assert.assertNotNull(showTopicResp.topicInfoList);
+      Assert.assertEquals(1, showTopicResp.topicInfoList.size());
+
+      final TShowSubscriptionResp showSubscriptionResp =
+          client.showSubscription(new TShowSubscriptionReq());
+      Assert.assertEquals(RpcUtils.SUCCESS_STATUS.getCode(), showSubscriptionResp.status.getCode());
+      Assert.assertNotNull(showSubscriptionResp.subscriptionInfoList);
+      Assert.assertEquals(1, showSubscriptionResp.subscriptionInfoList.size());
     }
 
     // Check timestamps size
