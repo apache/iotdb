@@ -2020,6 +2020,16 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus handleClientExit(String clientId) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    PipeConfigNodeAgent.receiver().handleClientExit(clientId);
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
   public TGetRegionIdResp getRegionId(TGetRegionIdReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()

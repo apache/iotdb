@@ -977,6 +977,13 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus handlePipeConfigClientExit(String clientId) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.handlePipeConfigClientExit(clientId),
+        status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TGetRegionIdResp getRegionId(TGetRegionIdReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getRegionId(req), resp -> !updateConfigNodeLeader(resp.status));

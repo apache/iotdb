@@ -2672,4 +2672,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .setMessage(e.toString()));
     }
   }
+
+  @Override
+  public void handlePipeConfigClientExit(String clientId) {
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSStatus status = configNodeClient.handlePipeConfigClientExit(clientId);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
+        LOGGER.warn("Failed to handlePipeConfigClientExit, status is {}.", status);
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Failed to handlePipeConfigClientExit.", e);
+    }
+  }
 }

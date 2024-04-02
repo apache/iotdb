@@ -351,6 +351,15 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return result.status;
   }
 
+  @Override
+  public synchronized void handleExit() {
+    if (Objects.isNull(configReceiverId)) {
+      super.handleExit();
+    } else {
+      ClusterConfigTaskExecutor.getInstance().handlePipeConfigClientExit(configReceiverId);
+    }
+  }
+
   /** Used to identify the sender client */
   private String getConfigReceiverId() {
     if (Objects.isNull(configReceiverId)) {
