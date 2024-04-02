@@ -25,11 +25,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class InsertRowsNodeSerdeTest {
@@ -68,5 +73,58 @@ public class InsertRowsNodeSerdeTest {
     Assert.assertEquals(PlanNodeType.INSERT_ROWS.getNodeType(), byteBuffer.getShort());
 
     Assert.assertEquals(node, InsertRowsNode.deserialize(byteBuffer));
+  }
+
+  @Test
+  public void testSerializeAndDeserializeForWAL() throws IllegalPathException, IOException {
+    InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId("plan node 1"));
+    insertRowsNode.addOneInsertRowNode(
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath("root.sg.d1"),
+            false,
+            new String[] {"s1", "s2", "s3"},
+            new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64},
+            new MeasurementSchema[] {
+              new MeasurementSchema("s1", TSDataType.DOUBLE),
+              new MeasurementSchema("s2", TSDataType.FLOAT),
+              new MeasurementSchema("s3", TSDataType.INT64)
+            },
+            1000L,
+            new Object[] {1.0, 2f, 300L},
+            false),
+        0);
+
+    insertRowsNode.addOneInsertRowNode(
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath("root.sg.d2"),
+            false,
+            new String[] {"s1", "s4"},
+            new TSDataType[] {TSDataType.DOUBLE, TSDataType.BOOLEAN},
+            new MeasurementSchema[] {
+              new MeasurementSchema("s1", TSDataType.DOUBLE),
+              new MeasurementSchema("s4", TSDataType.BOOLEAN),
+            },
+            2000L,
+            new Object[] {2.0, false},
+            false),
+        1);
+
+    int serializedSize = insertRowsNode.serializedSize();
+
+    byte[] bytes = new byte[serializedSize];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+
+    insertRowsNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+
+    Assert.assertEquals(PlanNodeType.INSERT_ROWS.getNodeType(), dataInputStream.readShort());
+
+    InsertRowsNode tmpNode = InsertRowsNode.deserializeFromWAL(dataInputStream);
+    tmpNode.setPlanNodeId(insertRowsNode.getPlanNodeId());
+    Assert.assertEquals(insertRowsNode, tmpNode);
   }
 }

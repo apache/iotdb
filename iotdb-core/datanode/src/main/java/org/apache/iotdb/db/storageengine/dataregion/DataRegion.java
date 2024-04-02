@@ -1162,7 +1162,6 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void insertToTsFileProcessors(
       InsertRowsNode insertRowsNode, boolean[] areSequence, long[] timePartitionIds) {
-    List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
     long[] costsForMetrics = new long[4];
     Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
     for (int i = 0; i < areSequence.length; i++) {
@@ -1189,6 +1188,7 @@ public class DataRegion implements IDataRegionForQuery {
           });
     }
 
+    List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
     for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
       TsFileProcessor tsFileProcessor = entry.getKey();
       InsertRowsNode subInsertRowsNode = entry.getValue();
@@ -3181,16 +3181,6 @@ public class DataRegion implements IDataRegionForQuery {
               v.addOneInsertRowNode(insertRowNode, finalI);
               return v;
             });
-
-        //        // insert to sequence or unSequence file
-        //        try {
-        //          insertToTsFileProcessor(
-        //              insertRowNode, isSequence, timePartitionId, tsFileProcessorMapForFlushing);
-        //        } catch (WriteProcessException e) {
-        //          insertRowsOfOneDeviceNode
-        //              .getResults()
-        //              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-        //        }
       }
       List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
       for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
