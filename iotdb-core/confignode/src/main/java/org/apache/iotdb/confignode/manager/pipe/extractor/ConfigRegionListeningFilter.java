@@ -21,10 +21,8 @@ package org.apache.iotdb.confignode.manager.pipe.extractor;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -143,15 +141,6 @@ public class ConfigRegionListeningFilter {
     // Do not transfer roll back set template plan
     if (type.equals(ConfigPhysicalPlanType.CommitSetSchemaTemplate)
         && ((CommitSetSchemaTemplatePlan) plan).isRollback()) {
-      return false;
-    }
-
-    // Do not transfer system database plan
-    if (type.equals(ConfigPhysicalPlanType.CreateDatabase)
-        && ((DatabaseSchemaPlan) plan)
-            .getSchema()
-            .getName()
-            .equals(SchemaConstant.SYSTEM_DATABASE)) {
       return false;
     }
 
