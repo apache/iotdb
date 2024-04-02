@@ -326,7 +326,7 @@ public class PathPatternTree {
           if (tmp.size() == 1 && tmp.get(0).getName().equals(nodes[i])) {
             curNode = tmp.get(0);
             if (tarNode.getChildren(nodes[i]) == null) {
-              tarNode.addChild(new PathPatternNode<>(nodes[i], VoidSerializer.getInstance()));
+              tarNode.addChild(curNode);
             }
             tarNode = tarNode.getChildren(nodes[i]);
           } else {
