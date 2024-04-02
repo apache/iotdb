@@ -21,8 +21,6 @@ package org.apache.iotdb.commons.pipe.connector;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
-import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -93,13 +91,13 @@ public class PipeReceiverStatusHandler {
       case 200: // SUCCESS_STATUS
       case 400: // REDIRECTION_RECOMMEND
         {
-          return;
+          throw new RuntimeException();
         }
 
       case 1809: // PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION
         {
           LOGGER.info("Idempotent conflict exception: will be ignored. status: {}", status);
-          return;
+          throw new RuntimeException();
         }
 
       case 1808: // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
@@ -109,81 +107,10 @@ public class PipeReceiverStatusHandler {
         }
 
       case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
-        if (!isRetryAllowedWhenConflictOccurs) {
-          LOGGER.warn(
-              "User conflict exception: will be ignored because retry is not allowed. event: {}. status: {}",
-              shouldRecordIgnoredDataWhenConflictOccurs ? recordMessage : "not recorded",
-              status);
-          return;
-        }
-
-        synchronized (this) {
-          recordExceptionStatusIfNecessary(recordMessage);
-
-          if (exceptionEventHasBeenRetried.get()
-              && System.currentTimeMillis() - exceptionFirstEncounteredTime.get()
-                  > retryMaxMillisWhenConflictOccurs) {
-            LOGGER.warn(
-                "User conflict exception: retry timeout. will be ignored. event: {}. status: {}",
-                shouldRecordIgnoredDataWhenConflictOccurs ? recordMessage : "not recorded",
-                status);
-            resetExceptionStatus();
-            return;
-          }
-
-          LOGGER.warn(
-              "User conflict exception: will retry {}. status: {}",
-              (retryMaxMillisWhenConflictOccurs == Long.MAX_VALUE ? "forever" : "for at least ")
-                  + (retryMaxMillisWhenConflictOccurs
-                          + exceptionFirstEncounteredTime.get()
-                          - System.currentTimeMillis())
-                      / 1000.0
-                  + " seconds",
-              status);
-          exceptionEventHasBeenRetried.set(true);
-          throw new PipeRuntimeConnectorRetryTimesConfigurableException(
-              exceptionMessage,
-              (int)
-                  Math.max(
-                      PipeSubtask.MAX_RETRY_TIMES,
-                      Math.min(CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenConflictOccurs * 1.1)));
-        }
+        throw new RuntimeException();
 
       default: // Other exceptions
-        synchronized (this) {
-          recordExceptionStatusIfNecessary(recordMessage);
-
-          if (exceptionEventHasBeenRetried.get()
-              && System.currentTimeMillis() - exceptionFirstEncounteredTime.get()
-                  > retryMaxMillisWhenOtherExceptionsOccur) {
-            LOGGER.warn(
-                "Unclassified exception: retry timeout. will be ignored. event: {}. status: {}",
-                shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
-                status);
-            resetExceptionStatus();
-            return;
-          }
-
-          LOGGER.warn(
-              "Unclassified exception: will retry {}. status: {}",
-              retryMaxMillisWhenOtherExceptionsOccur == Long.MAX_VALUE
-                  ? "forever"
-                  : "for at least "
-                      + (retryMaxMillisWhenOtherExceptionsOccur
-                              + exceptionFirstEncounteredTime.get()
-                              - System.currentTimeMillis())
-                          / 1000.0
-                      + " seconds",
-              status);
-          exceptionEventHasBeenRetried.set(true);
-          throw new PipeRuntimeConnectorRetryTimesConfigurableException(
-              exceptionMessage,
-              (int)
-                  Math.max(
-                      PipeSubtask.MAX_RETRY_TIMES,
-                      Math.min(
-                          CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenOtherExceptionsOccur * 1.1)));
-        }
+        throw new RuntimeException();
     }
   }
 

@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -370,16 +369,6 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   private void createPipes(final long currentTime) {
-    final StringBuilder nodeUrlsBuilder = new StringBuilder();
-    for (final DataNodeWrapper wrapper : receiverEnv.getDataNodeWrapperList()) {
-      // Use default port for convenience
-      nodeUrlsBuilder
-          .append(wrapper.getIp())
-          .append(":")
-          .append(wrapper.getPipeAirGapReceiverPort())
-          .append(",");
-    }
-
     // For sync reference
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -387,8 +376,9 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      connectorAttributes.put("connector", "iotdb-air-gap-connector");
-      connectorAttributes.put("connector.node-urls", nodeUrlsBuilder.toString());
+      connectorAttributes.put("connector", "iotdb-thrift-sync-connector");
+      connectorAttributes.put("connector.ip", receiverEnv.getIP());
+      connectorAttributes.put("connector.port", receiverEnv.getPort());
 
       extractorAttributes.put("inclusion", "data.insert");
       extractorAttributes.put("inclusion.exclusion", "data.delete");
@@ -411,8 +401,9 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      connectorAttributes.put("connector", "iotdb-air-gap-connector");
-      connectorAttributes.put("connector.node-urls", nodeUrlsBuilder.toString());
+      connectorAttributes.put("connector", "iotdb-thrift-sync-connector");
+      connectorAttributes.put("connector.ip", receiverEnv.getIP());
+      connectorAttributes.put("connector.port", receiverEnv.getPort());
 
       extractorAttributes.put("inclusion", "data.insert");
       extractorAttributes.put("inclusion.exclusion", "data.delete");
