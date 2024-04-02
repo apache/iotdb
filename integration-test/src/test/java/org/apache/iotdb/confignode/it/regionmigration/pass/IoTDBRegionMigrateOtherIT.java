@@ -43,7 +43,7 @@ public class IoTDBRegionMigrateOtherIT extends IoTDBRegionMigrateReliabilityITFr
           2,
           buildSet(NeverTriggeredKillPoint.NEVER_TRIGGERED_KILL_POINT),
           noKillPoints(),
-          KillNode.ORIGINAL_DATANODE);
+          KillNode.ALL_NODES);
     } catch (AssertionError e) {
       return;
     }

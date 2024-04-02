@@ -192,9 +192,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       checkPeersExist(regionMap.get(selectedRegion), originalDataNode, selectedRegion);
 
       // set kill points
-      if (killNode == KillNode.CONFIG_NODE) {
-        setConfigNodeKillPoints(killConfigNodeKeywords, restartTime);
-      } else if (killNode == KillNode.ORIGINAL_DATANODE) {
+      if (killNode == KillNode.ORIGINAL_DATANODE) {
         setDataNodeKillPoints(
             Collections.singletonList(
                 EnvFactory.getEnv().dataNodeIdToWrapper(originalDataNode).get()),
@@ -206,6 +204,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
             killDataNodeKeywords,
             restartTime);
       } else {
+        setConfigNodeKillPoints(killConfigNodeKeywords, restartTime);
         setDataNodeKillPoints(
             EnvFactory.getEnv().getDataNodeWrapperList(), killDataNodeKeywords, restartTime);
       }

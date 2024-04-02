@@ -25,7 +25,6 @@ public class IoTDBRegionMigrateDataNodeCrashITFramework
     extends IoTDBRegionMigrateReliabilityITFramework {
   @SafeVarargs
   public final <T extends Enum<T>> void success(T... dataNodeKillPoints) throws Exception {
-    successTest(
-        1, 1, 1, 2, noKillPoints(), buildSet(dataNodeKillPoints), KillNode.ORIGINAL_DATANODE);
+    successTest(1, 1, 1, 2, noKillPoints(), buildSet(dataNodeKillPoints), KillNode.ALL_NODES);
   }
 }

@@ -33,11 +33,11 @@ import org.junit.runner.RunWith;
 public class IoTDBRegionMigrateNormalIT extends IoTDBRegionMigrateReliabilityITFramework {
   @Test
   public void normal1C2DTest() throws Exception {
-    successTest(1, 1, 1, 2, noKillPoints(), noKillPoints(), KillNode.ORIGINAL_DATANODE);
+    successTest(1, 1, 1, 2, noKillPoints(), noKillPoints(), KillNode.ALL_NODES);
   }
 
   @Test
   public void normal3C3DTest() throws Exception {
-    successTest(2, 3, 3, 3, noKillPoints(), noKillPoints(), KillNode.ORIGINAL_DATANODE);
+    successTest(2, 3, 3, 3, noKillPoints(), noKillPoints(), KillNode.ALL_NODES);
   }
 }
