@@ -478,34 +478,28 @@ public class DataNode implements DataNodeMBean {
     return consensusGroupIds;
   }
 
-  // TODO: remove for current version, add todo for rename
-  private void renameInvalidRegionDirs(List<ConsensusGroupId> invalidConsensusGroupIds) {
-    for (ConsensusGroupId consensusGroupId : invalidConsensusGroupIds) {
-      File oldDir =
-          new File(
-              IoTConsensus.buildPeerDir(
-                  new File(config.getDataRegionConsensusDir()), consensusGroupId));
-      File newDir =
-          new File(
-              IoTConsensus.buildPeerDir(
-                  new File(config.getInvalidDataRegionConsensusDir()), consensusGroupId));
-      if (oldDir.exists() && !FileUtils.moveFileSafe(oldDir, newDir)) {
-        logger.error("move {} to {} failed.", oldDir.getAbsolutePath(), newDir.getAbsolutePath());
-        try {
-          FileUtils.recursivelyDeleteFolder(oldDir.getPath());
-        } catch (IOException e) {
-          logger.error("delete {} failed.", oldDir.getAbsolutePath());
-        }
-      }
-    }
-  }
-
   private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
     List<ConsensusGroupId> invalidConsensusGroupIds =
         getConsensusGroupId().stream()
             .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
             .collect(Collectors.toList());
-    renameInvalidRegionDirs(invalidConsensusGroupIds);
+    logger.info("Remove invalid region directories... {}", invalidConsensusGroupIds);
+    for (ConsensusGroupId consensusGroupId : invalidConsensusGroupIds) {
+      File oldDir =
+          new File(
+              IoTConsensus.buildPeerDir(
+                  new File(config.getDataRegionConsensusDir()), consensusGroupId));
+      if (oldDir.exists()) {
+        try {
+          FileUtils.recursivelyDeleteFolder(oldDir.getPath());
+          logger.info("delete {} succeed.", oldDir.getAbsolutePath());
+        } catch (IOException e) {
+          logger.error("delete {} failed.", oldDir.getAbsolutePath());
+        }
+      } else {
+        logger.info("delete {} failed, because it does not exist.", oldDir.getAbsolutePath());
+      }
+    }
   }
 
   private void sendRestartRequestToConfigNode() throws StartupException {

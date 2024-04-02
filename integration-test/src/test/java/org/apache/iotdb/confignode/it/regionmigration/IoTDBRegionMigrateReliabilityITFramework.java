@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.metrics.utils.SystemType;
 
@@ -55,6 +57,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -100,7 +103,8 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       final int configNodeNum,
       final int dataNodeNum,
       KeySetView<String, Boolean> killConfigNodeKeywords,
-      KeySetView<String, Boolean> killDataNodeKeywords)
+      KeySetView<String, Boolean> killDataNodeKeywords,
+      KillNode killNode)
       throws Exception {
     generalTestWithAllOptions(
         dataReplicateFactor,
@@ -112,7 +116,8 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         true,
         true,
         0,
-        true);
+        true,
+        killNode);
   }
 
   public void failTest(
@@ -121,7 +126,8 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       final int configNodeNum,
       final int dataNodeNum,
       KeySetView<String, Boolean> killConfigNodeKeywords,
-      KeySetView<String, Boolean> killDataNodeKeywords)
+      KeySetView<String, Boolean> killDataNodeKeywords,
+      KillNode killNode)
       throws Exception {
     generalTestWithAllOptions(
         dataReplicateFactor,
@@ -133,7 +139,8 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         true,
         true,
         60,
-        false);
+        false,
+        killNode);
   }
 
   // region general test
@@ -148,7 +155,8 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       final boolean checkOriginalRegionDirDeleted,
       final boolean checkConfigurationFileDeleted,
       final int restartTime,
-      final boolean expectMigrateSuccess)
+      final boolean expectMigrateSuccess,
+      KillNode killNode)
       throws Exception {
     // prepare env
     EnvFactory.getEnv()
@@ -184,8 +192,30 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       checkPeersExist(regionMap.get(selectedRegion), originalDataNode, selectedRegion);
 
       // set kill points
-      setConfigNodeKillPoints(killConfigNodeKeywords, restartTime);
-      setDataNodeKillPoints(killDataNodeKeywords, restartTime);
+      if (killNode == KillNode.CONFIG_NODE) {
+        setConfigNodeKillPoints(killConfigNodeKeywords, restartTime);
+      } else if (killNode == KillNode.ORIGINAL_DATANODE) {
+        setDataNodeKillPoints(
+            Collections.singletonList(
+                EnvFactory.getEnv().dataNodeIdToWrapper(originalDataNode).get()),
+            killDataNodeKeywords,
+            restartTime);
+      } else if (killNode == KillNode.DESTINATION_DATANODE) {
+        setDataNodeKillPoints(
+            Collections.singletonList(EnvFactory.getEnv().dataNodeIdToWrapper(destDataNode).get()),
+            killDataNodeKeywords,
+            restartTime);
+      } else {
+        setDataNodeKillPoints(
+            EnvFactory.getEnv().getDataNodeWrapperList(), killDataNodeKeywords, restartTime);
+      }
+
+      System.out.println(
+          "originalDataNode: "
+              + EnvFactory.getEnv().dataNodeIdToWrapper(originalDataNode).get().getNodePath());
+      System.out.println(
+          "destDataNode: "
+              + EnvFactory.getEnv().dataNodeIdToWrapper(destDataNode).get().getNodePath());
 
       // region migration start
       statement.execute(regionMigrateCommand(selectedRegion, originalDataNode, destDataNode));
@@ -209,12 +239,10 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       checkKillPointsAllTriggered(killConfigNodeKeywords);
       checkKillPointsAllTriggered(killDataNodeKeywords);
 
-      System.out.println(
-          "originalDataNode: "
-              + EnvFactory.getEnv().dataNodeIdToWrapper(originalDataNode).get().getNodePath());
-      System.out.println(
-          "destDataNode: "
-              + EnvFactory.getEnv().dataNodeIdToWrapper(destDataNode).get().getNodePath());
+      if (!expectMigrateSuccess && killNode != KillNode.DESTINATION_DATANODE) {
+        restartDataNodes(
+            Collections.singletonList(EnvFactory.getEnv().dataNodeIdToWrapper(destDataNode).get()));
+      }
 
       // check if there is anything remain
       if (checkOriginalRegionDirDeleted) {
@@ -239,14 +267,28 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     LOGGER.info("test pass");
   }
 
-  private void restartAllDataNodes() {
-    EnvFactory.getEnv()
-        .getDataNodeWrapperList()
+  private void restartDataNodes(List<DataNodeWrapper> dataNodeWrappers) {
+    dataNodeWrappers
         .parallelStream()
         .forEach(
             nodeWrapper -> {
-              nodeWrapper.stopForcibly();
+              nodeWrapper.stop();
+              Awaitility.await()
+                  .atMost(1, TimeUnit.MINUTES)
+                  .pollDelay(2, TimeUnit.SECONDS)
+                  .until(() -> !nodeWrapper.isAlive());
+              LOGGER.info("Node {} stopped.", nodeWrapper.getId());
               nodeWrapper.start();
+              Awaitility.await()
+                  .atMost(1, TimeUnit.MINUTES)
+                  .pollDelay(2, TimeUnit.SECONDS)
+                  .until(nodeWrapper::isAlive);
+              try {
+                TimeUnit.SECONDS.sleep(10);
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+              LOGGER.info("Node {} restarted.", nodeWrapper.getId());
             });
   }
 
@@ -263,14 +305,13 @@ public class IoTDBRegionMigrateReliabilityITFramework {
   }
 
   private void setDataNodeKillPoints(
-      KeySetView<String, Boolean> killDataNodeKeywords, int nodeRestartTime) {
-    EnvFactory.getEnv()
-        .getDataNodeWrapperList()
-        .forEach(
-            dataNodeWrapper ->
-                executorService.submit(
-                    () ->
-                        nodeLogKillPoint(dataNodeWrapper, killDataNodeKeywords, nodeRestartTime)));
+      List<DataNodeWrapper> dataNodeWrappers,
+      KeySetView<String, Boolean> killDataNodeKeywords,
+      int nodeRestartTime) {
+    dataNodeWrappers.forEach(
+        dataNodeWrapper ->
+            executorService.submit(
+                () -> nodeLogKillPoint(dataNodeWrapper, killDataNodeKeywords, nodeRestartTime)));
   }
 
   /**
@@ -342,6 +383,8 @@ public class IoTDBRegionMigrateReliabilityITFramework {
             LOGGER.info("Kill point triggered: {}", detectedKeyword.get());
             // reboot the ConfigNode, for now we don't reboot DataNode
             nodeWrapper.stopForcibly();
+            LOGGER.info("Node {} stopped.", nodeWrapper.getId());
+            Assert.assertFalse(nodeWrapper.isAlive());
             if (nodeWrapper instanceof ConfigNodeWrapper) {
               if (restartTime > 0) {
                 try {
@@ -351,6 +394,8 @@ public class IoTDBRegionMigrateReliabilityITFramework {
                 }
               }
               nodeWrapper.start();
+              LOGGER.info("Node {} restarted.", nodeWrapper.getId());
+              Assert.assertTrue(nodeWrapper.isAlive());
             }
           }
           if (killNodeKeywords.isEmpty()) {

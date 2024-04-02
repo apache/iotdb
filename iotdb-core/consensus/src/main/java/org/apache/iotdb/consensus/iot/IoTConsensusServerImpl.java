@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.FunctionWithException;
@@ -583,6 +585,7 @@ public class IoTConsensusServerImpl {
 
   public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex)
       throws ConsensusGroupModifyPeerException {
+    KillPoint.setKillPoint(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE);
     // step 1, build sync channel in LogDispatcher
     logger.info(
         "[IoTConsensus] build sync log channel to {} with initialSyncIndex {}",
@@ -700,11 +703,6 @@ public class IoTConsensusServerImpl {
       tmpConfiguration.add(Peer.deserialize(buffer));
     }
     return tmpConfiguration;
-  }
-
-  public void resetConfiguration(List<Peer> newConfiguration) {
-    configuration.clear();
-    configuration.addAll(newConfiguration);
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
