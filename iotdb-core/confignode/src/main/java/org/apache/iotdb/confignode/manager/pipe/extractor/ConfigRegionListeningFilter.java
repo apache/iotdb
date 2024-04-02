@@ -146,15 +146,6 @@ public class ConfigRegionListeningFilter {
       return false;
     }
 
-    // Do not transfer system database plan
-    if (type.equals(ConfigPhysicalPlanType.CreateDatabase)
-        && ((DatabaseSchemaPlan) plan)
-            .getSchema()
-            .getName()
-            .equals(SchemaConstant.SYSTEM_DATABASE)) {
-      return false;
-    }
-
     // PipeEnriched & UnsetTemplate are not listened directly,
     // but their inner plan or converted plan are listened.
     return type.equals(ConfigPhysicalPlanType.PipeEnriched)

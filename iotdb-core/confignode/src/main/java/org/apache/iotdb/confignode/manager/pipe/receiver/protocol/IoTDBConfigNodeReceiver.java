@@ -181,13 +181,6 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   private TSStatus executePlan(ConfigPhysicalPlan plan) throws ConsensusException {
     switch (plan.getType()) {
       case CreateDatabase:
-        if (((DatabaseSchemaPlan) plan)
-            .getSchema()
-            .getName()
-            .equals(SchemaConstant.SYSTEM_DATABASE)) {
-          // System database doesn't need transferring
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        }
         // Here we only reserve database name and substitute the sender's local information
         // with the receiver's default configurations
         TDatabaseSchema schema = ((DatabaseSchemaPlan) plan).getSchema();
