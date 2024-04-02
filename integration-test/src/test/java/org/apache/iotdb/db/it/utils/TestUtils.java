@@ -31,6 +31,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.junit.Assert;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -46,7 +47,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
-import org.slf4j.LoggerFactory;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
@@ -361,7 +361,8 @@ public class TestUtils {
       }
       String expected = new TreeMap<>(expectedHeaderWithResult).toString();
       String actual = new TreeMap<>(actualHeaderWithResult).toString();
-      LoggerFactory.getLogger(TestUtils.class).info("assertSingleResultSetEqual expected {}, actual {}", expected, actual);
+      LoggerFactory.getLogger(TestUtils.class)
+          .info("assertSingleResultSetEqual expected {}, actual {}", expected, actual);
       assertEquals(expected, actual);
       assertFalse(actualResultSet.next());
     } catch (Exception e) {
