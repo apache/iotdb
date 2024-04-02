@@ -39,6 +39,7 @@ import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -59,6 +60,7 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribe
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -325,14 +327,6 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                     SubscriptionConfig.getInstance().getSubscriptionMinPollTimeoutMs()));
     List<SerializedEnrichedEvent> events =
         SubscriptionAgent.broker().poll(consumerConfig, topicNames, timer);
-
-    // serialize events and filter
-    events =
-        events.stream()
-            .peek((SerializedEnrichedEvent::serialize))
-            .filter((event -> Objects.nonNull(event.getByteBuffer())))
-            .collect(Collectors.toList());
-
     List<String> subscriptionCommitIds =
         events.stream()
             .map(SerializedEnrichedEvent::getSubscriptionCommitId)
@@ -344,18 +338,21 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           consumerConfig,
           topicNames);
     }
-
     LOGGER.info(
         "Subscription: consumer {} poll topics {} successfully, commit ids: {}",
         consumerConfig,
         topicNames,
         subscriptionCommitIds);
 
-    // fetch and reset byte buffer
-    List<ByteBuffer> byteBuffers =
-        events.stream().map(SerializedEnrichedEvent::getByteBuffer).collect(Collectors.toList());
+    List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsWithByteBufferList =
+        events.stream()
+            .map(event -> new Pair<>(event.getByteBuffer(), event.getEnrichedTablets()))
+            .collect(Collectors.toList());
+    TPipeSubscribeResp resp =
+        PipeSubscribePollResp.toTPipeSubscribeResp(
+            RpcUtils.SUCCESS_STATUS, enrichedTabletsWithByteBufferList);
     events.forEach(SerializedEnrichedEvent::resetByteBuffer);
-    return PipeSubscribePollResp.directToTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, byteBuffers);
+    return resp;
   }
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(PipeSubscribeCommitReq req) {
