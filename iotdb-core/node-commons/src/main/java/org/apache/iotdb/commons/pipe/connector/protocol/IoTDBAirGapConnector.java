@@ -209,6 +209,11 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
                 : getTransferSingleFilePieceBytes(file.getName(), position, payload))) {
           final String errorMessage =
               String.format("Transfer file %s error. Socket %s.", file, socket);
+          if (mayNeedHandshakeWhenFail()) {
+            // Send handshake because we don't know whether the receiver side configNode
+            // has set up a new one
+            sendHandshakeReq(socket);
+          }
           receiverStatusHandler.handle(
               new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
                   .setMessage(errorMessage),
@@ -220,6 +225,8 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       }
     }
   }
+
+  protected abstract boolean mayNeedHandshakeWhenFail();
 
   protected abstract byte[] getTransferSingleFilePieceBytes(
       String fileName, long position, byte[] payLoad) throws IOException;
