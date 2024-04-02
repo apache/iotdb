@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -152,9 +152,9 @@ public abstract class IoTDBConnector implements PipeConnector {
                 CONNECTOR_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_DEFAULT_VALUE));
   }
 
-  protected Set<TEndPoint> parseNodeUrls(PipeParameters parameters)
+  protected LinkedHashSet<TEndPoint> parseNodeUrls(PipeParameters parameters)
       throws PipeParameterNotValidException {
-    final Set<TEndPoint> givenNodeUrls = new HashSet<>(nodeUrls);
+    final LinkedHashSet<TEndPoint> givenNodeUrls = new LinkedHashSet<>(nodeUrls);
 
     try {
       if (parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY)
@@ -207,6 +207,7 @@ public abstract class IoTDBConnector implements PipeConnector {
     }
 
     checkNodeUrls(givenNodeUrls);
+
     return givenNodeUrls;
   }
 
