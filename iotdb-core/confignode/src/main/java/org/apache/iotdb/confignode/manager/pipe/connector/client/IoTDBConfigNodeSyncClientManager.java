@@ -34,8 +34,12 @@ import java.util.Map;
 public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
 
   public IoTDBConfigNodeSyncClientManager(
-      List<TEndPoint> endPoints, boolean useSSL, String trustStorePath, String trustStorePwd) {
-    super(endPoints, useSSL, trustStorePath, trustStorePwd, false);
+      List<TEndPoint> endPoints,
+      boolean useSSL,
+      String trustStorePath,
+      String trustStorePwd,
+      String loadBalanceStrategy) {
+    super(endPoints, useSSL, trustStorePath, trustStorePwd, false, loadBalanceStrategy);
   }
 
   @Override
