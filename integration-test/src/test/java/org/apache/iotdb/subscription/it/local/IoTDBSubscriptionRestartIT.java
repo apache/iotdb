@@ -24,9 +24,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -53,7 +55,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -67,11 +68,11 @@ public class IoTDBSubscriptionRestartIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setConfigNodeConsensusProtocolClass(RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(RATIS_CONSENSUS)
-        .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(3);
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setSchemaReplicationFactor(1)
+        .setDataReplicationFactor(1);
 
     EnvFactory.getEnv().initClusterEnvironment(3, 3);
   }
@@ -243,10 +244,22 @@ public class IoTDBSubscriptionRestartIT {
       return;
     }
 
+    // Insert some historical data
+    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+      }
+      session.executeNonQueryStatement("flush");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
     // Shutdown DN 1 & DN 2
+    Thread.sleep(10000); // wait some time
     EnvFactory.getEnv().shutdownDataNode(1);
     EnvFactory.getEnv().shutdownDataNode(2);
-    Thread.sleep(10000); // wait some time
 
     // Subscription again
     final Map<Long, Long> timestamps = new HashMap<>();
@@ -295,10 +308,11 @@ public class IoTDBSubscriptionRestartIT {
     Thread.sleep(10000); // wait some time
     EnvFactory.getEnv().startDataNode(1);
     EnvFactory.getEnv().startDataNode(2);
+    ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown();
 
     // Insert some realtime data
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      for (int i = 0; i < 100; ++i) {
+      for (int i = 100; i < 200; ++i) {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
@@ -315,7 +329,130 @@ public class IoTDBSubscriptionRestartIT {
           .pollDelay(1, TimeUnit.SECONDS)
           .pollInterval(1, TimeUnit.SECONDS)
           .atMost(120, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(100, timestamps.size()));
+          .untilAsserted(() -> Assert.assertEquals(200, timestamps.size()));
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      isClosed.set(true);
+      thread.join();
+    }
+  }
+
+  @Test
+  public void testSubscriptionWhenConfigNodeLeaderChange() throws Exception {
+    // Fetch ip and port from DN 0
+    final String host = EnvFactory.getEnv().getIP();
+    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+
+    // Create topic
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      session.createTopic("topic1");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Subscription
+    final SubscriptionPullConsumer consumer;
+    try {
+      consumer =
+          new SubscriptionPullConsumer.Builder()
+              .host(host)
+              .port(port)
+              .consumerId("c1")
+              .consumerGroupId("cg1")
+              .autoCommit(true)
+              .heartbeatInterval(1000)
+              .endpointsSyncInterval(5000) // narrow endpoints sync interval
+              .buildPullConsumer();
+      consumer.open();
+      consumer.subscribe("topic1");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+      return;
+    }
+
+    // Insert some historical data
+    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+      }
+      session.executeNonQueryStatement("flush");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Shutdown leader CN
+    EnvFactory.getEnv().shutdownConfigNode(EnvFactory.getEnv().getLeaderConfigNodeIndex());
+
+    // Subscription again
+    final Map<Long, Long> timestamps = new HashMap<>();
+    final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final Thread thread =
+        new Thread(
+            () -> {
+              try (final SubscriptionPullConsumer consumerRef = consumer) {
+                while (!isClosed.get()) {
+                  try {
+                    Thread.sleep(1000); // wait some time
+                  } catch (final InterruptedException e) {
+                    break;
+                  }
+                  final List<SubscriptionMessage> messages;
+                  try {
+                    messages = consumerRef.poll(Duration.ofMillis(10000));
+                  } catch (final Exception e) {
+                    e.printStackTrace();
+                    // Avoid failure
+                    continue;
+                  }
+                  for (final SubscriptionMessage message : messages) {
+                    final SubscriptionSessionDataSets payload =
+                        (SubscriptionSessionDataSets) message.getPayload();
+                    for (final SubscriptionSessionDataSet dataSet : payload) {
+                      while (dataSet.hasNext()) {
+                        final long timestamp = dataSet.next().getTimestamp();
+                        timestamps.put(timestamp, timestamp);
+                      }
+                    }
+                    // Auto commit
+                  }
+                }
+                consumerRef.unsubscribe("topic1");
+              } catch (final Exception e) {
+                e.printStackTrace();
+                // Avoid failure
+              } finally {
+                LOGGER.info("consumer exiting...");
+              }
+            });
+    thread.start();
+
+    // Insert some realtime data
+    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      for (int i = 100; i < 200; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+      }
+      session.executeNonQueryStatement("flush");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Check timestamps size
+    try {
+      // Keep retrying if there are execution failures
+      Awaitility.await()
+          .pollDelay(1, TimeUnit.SECONDS)
+          .pollInterval(1, TimeUnit.SECONDS)
+          .atMost(120, TimeUnit.SECONDS)
+          .untilAsserted(() -> Assert.assertEquals(200, timestamps.size()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
