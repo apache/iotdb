@@ -23,11 +23,15 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
@@ -69,6 +73,24 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
     return visitGeneralCreateTimeSeries(statement, context);
   }
 
+  @Override
+  public TSStatus visitCreateMultiTimeseries(
+      CreateMultiTimeSeriesStatement statement, Exception context) {
+    return visitGeneralCreateTimeSeries(statement, context);
+  }
+
+  @Override
+  public TSStatus visitInternalCreateTimeseries(
+      InternalCreateTimeSeriesStatement statement, Exception context) {
+    return visitGeneralCreateTimeSeries(statement, context);
+  }
+
+  @Override
+  public TSStatus visitInternalCreateMultiTimeSeries(
+      InternalCreateMultiTimeSeriesStatement statement, Exception context) {
+    return visitGeneralCreateTimeSeries(statement, context);
+  }
+
   private TSStatus visitGeneralCreateTimeSeries(Statement statement, Exception context) {
     if (context instanceof SemanticException) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
@@ -89,9 +111,12 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
     return visitGeneralActivateTemplate(batchActivateTemplateStatement, context);
   }
 
+  // InternalBatchActivateTemplateNode is converted to BatchActivateTemplateStatement
+  // No need to handle InternalBatchActivateTemplateStatement
+
   private TSStatus visitGeneralActivateTemplate(
       Statement activateTemplateStatement, Exception context) {
-    if (context instanceof MetadataException) {
+    if (context instanceof MetadataException || context instanceof StatementAnalyzeException) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
