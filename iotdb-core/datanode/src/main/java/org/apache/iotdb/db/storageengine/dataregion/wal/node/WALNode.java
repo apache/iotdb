@@ -54,10 +54,10 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener.Status;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.utils.TsFileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

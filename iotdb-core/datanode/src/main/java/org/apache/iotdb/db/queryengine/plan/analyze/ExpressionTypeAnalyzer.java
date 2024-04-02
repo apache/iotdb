@@ -44,8 +44,9 @@ import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDAFInformationInf
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFInformationInferrer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.Arrays;
 import java.util.HashSet;

@@ -19,7 +19,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
+
+import org.apache.tsfile.utils.TsFileGeneratorUtils;
 
 /** like org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest */
 public class TsFileUtilsForRecoverTest {

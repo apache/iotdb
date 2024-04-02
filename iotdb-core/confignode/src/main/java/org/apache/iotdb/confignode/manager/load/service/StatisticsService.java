@@ -42,9 +42,9 @@ import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.eventbus.EventBus;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

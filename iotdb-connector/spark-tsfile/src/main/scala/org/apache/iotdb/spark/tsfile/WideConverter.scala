@@ -24,19 +24,19 @@ import java.util
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileStatus
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput
-import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata
-import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader
-import org.apache.iotdb.tsfile.read.common.Path
-import org.apache.iotdb.tsfile.read.expression.impl.{BinaryExpression, GlobalTimeExpression, SingleSeriesExpression}
-import org.apache.iotdb.tsfile.read.expression.{IExpression, QueryExpression}
-import org.apache.iotdb.tsfile.read.filter.factory.{TimeFilterApi, ValueFilterApi}
-import org.apache.iotdb.tsfile.utils.Binary
-import org.apache.iotdb.tsfile.write.record.TSRecord
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
-import org.apache.iotdb.tsfile.write.schema.{IMeasurementSchema, MeasurementSchema, Schema}
+import org.apache.tsfile.common.constant.QueryConstant
+import org.apache.tsfile.file.metadata.TsFileMetadata
+import org.apache.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
+import org.apache.tsfile.common.conf.TSFileConfig
+import org.apache.tsfile.read.TsFileSequenceReader
+import org.apache.tsfile.read.common.Path
+import org.apache.tsfile.read.expression.impl.{BinaryExpression, GlobalTimeExpression, SingleSeriesExpression}
+import org.apache.tsfile.read.expression.{IExpression, QueryExpression}
+import org.apache.tsfile.read.filter.factory.{TimeFilterApi, ValueFilterApi}
+import org.apache.tsfile.utils.Binary
+import org.apache.tsfile.write.record.TSRecord
+import org.apache.tsfile.write.record.datapoint.DataPoint
+import org.apache.tsfile.write.schema.{IMeasurementSchema, MeasurementSchema, Schema}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._

@@ -25,9 +25,10 @@ import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.I
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.ArrayList;
 import java.util.Arrays;

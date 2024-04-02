@@ -27,8 +27,8 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

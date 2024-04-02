@@ -24,9 +24,9 @@
     <@pp.changeOutputFile name="/org/apache/iotdb/db/queryengine/execution/operator/window/${className}.java" />
 package org.apache.iotdb.db.queryengine.execution.operator.window;
 
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.tsfile.block.column.Column;
 <#if type.dataType == "Binary">
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Binary;
 </#if>
 
 /*

@@ -25,9 +25,10 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,7 +38,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class TsFileNameGenerator {
 

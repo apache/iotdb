@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.execution.memory;
 
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
+import org.apache.tsfile.read.common.block.TsBlock;
 
 public class StatementMemorySource {
   private final TsBlock tsBlock;

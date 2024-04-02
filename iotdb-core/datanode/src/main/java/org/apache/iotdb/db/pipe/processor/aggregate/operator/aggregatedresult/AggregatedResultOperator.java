@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult;
 
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.CustomizedReadableIntermediateResults;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Pair;
 
 import java.util.Map;
 import java.util.Set;

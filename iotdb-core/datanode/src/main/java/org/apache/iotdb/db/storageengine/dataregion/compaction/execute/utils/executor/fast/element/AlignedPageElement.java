@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionAlignedChunkReader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
+
+import org.apache.tsfile.file.header.PageHeader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.common.header;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;

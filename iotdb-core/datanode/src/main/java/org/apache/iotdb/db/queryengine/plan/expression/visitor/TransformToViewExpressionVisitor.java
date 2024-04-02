@@ -72,7 +72,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

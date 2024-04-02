@@ -21,7 +21,8 @@ package org.apache.iotdb.confignode.manager.load.balancer.router.priority;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.util.Comparator;
 import java.util.List;

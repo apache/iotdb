@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.utils.windowing.api;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 
 public interface Window {
 

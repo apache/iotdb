@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache;
 
-import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.TimeValuePair;
 
 /** this interface declares the operations of LastCache data */
 public interface ILastCacheContainer {

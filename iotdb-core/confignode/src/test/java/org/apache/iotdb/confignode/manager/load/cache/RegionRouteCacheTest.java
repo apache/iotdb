@@ -21,8 +21,8 @@ package org.apache.iotdb.confignode.manager.load.cache;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.confignode.manager.load.cache.route.RegionRouteCache;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 

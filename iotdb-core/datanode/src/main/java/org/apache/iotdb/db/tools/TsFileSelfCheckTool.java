@@ -19,18 +19,18 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.db.exception.TsFileTimeseriesMetadataException;
-import org.apache.iotdb.tsfile.exception.TsFileStatisticsMistakesException;
-import org.apache.iotdb.tsfile.file.IMetadataIndexEntry;
-import org.apache.iotdb.tsfile.file.metadata.DeviceMetadataIndexEntry;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.exception.TsFileStatisticsMistakesException;
+import org.apache.tsfile.file.IMetadataIndexEntry;
+import org.apache.tsfile.file.metadata.DeviceMetadataIndexEntry;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.file.metadata.enums.MetadataIndexNodeType;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

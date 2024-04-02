@@ -23,7 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.tsfile.utils.FilePathUtils.splitTsFilePath;
+import static org.apache.tsfile.utils.FilePathUtils.splitTsFilePath;
 
 public class TsFileID {
 

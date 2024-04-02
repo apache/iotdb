@@ -21,8 +21,9 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PathPatternNode.VoidSerializer;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
+
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

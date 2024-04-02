@@ -22,10 +22,11 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
-import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
+
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.factory.FilterFactory;
+import org.apache.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.tsfile.read.reader.series.PaginationController;
 
 import java.util.Collections;
 import java.util.HashSet;

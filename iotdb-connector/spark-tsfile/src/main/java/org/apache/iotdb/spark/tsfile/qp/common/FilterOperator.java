@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.common;
 
-import org.apache.iotdb.tsfile.utils.StringContainer;
+import org.apache.tsfile.utils.StringContainer;
 
 import java.util.ArrayList;
 import java.util.List;

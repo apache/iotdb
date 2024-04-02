@@ -21,8 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.tools;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.Interval;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.UnseqSpaceStatistics;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 

@@ -43,9 +43,9 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
+            <groupId>org.apache.tsfile</groupId>
             <artifactId>tsfile</artifactId>
-            <version>${project.version}</version>
+            <version>${tsfile.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>

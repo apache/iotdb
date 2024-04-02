@@ -45,10 +45,10 @@ import org.apache.iotdb.confignode.manager.load.service.HeartbeatService;
 import org.apache.iotdb.confignode.manager.load.service.StatisticsService;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
+import org.apache.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.Map;

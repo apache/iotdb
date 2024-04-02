@@ -25,11 +25,11 @@ import org.apache.hadoop.mapreduce.Job
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput
 import org.apache.iotdb.spark.tsfile.DefaultSource.SerializableConfiguration
 import org.apache.iotdb.spark.tsfile.qp.Executor
-import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID
-import org.apache.iotdb.tsfile.read.common.Field
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet
-import org.apache.iotdb.tsfile.read.{TsFileReader, TsFileSequenceReader}
+import org.apache.tsfile.common.constant.QueryConstant
+import org.apache.tsfile.file.metadata.PlainDeviceID
+import org.apache.tsfile.read.common.Field
+import org.apache.tsfile.read.query.dataset.QueryDataSet
+import org.apache.tsfile.read.{TsFileReader, TsFileSequenceReader}
 import org.apache.spark.TaskContext
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow

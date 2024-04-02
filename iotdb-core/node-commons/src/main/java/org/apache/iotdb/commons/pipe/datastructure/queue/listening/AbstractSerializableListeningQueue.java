@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinke
 import org.apache.iotdb.commons.pipe.datastructure.queue.serializer.PlainQueueSerializer;
 import org.apache.iotdb.commons.pipe.datastructure.queue.serializer.QueueSerializer;
 import org.apache.iotdb.commons.pipe.datastructure.queue.serializer.QueueSerializerType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

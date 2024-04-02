@@ -23,10 +23,10 @@ import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
+import org.apache.tsfile.read.common.RowRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

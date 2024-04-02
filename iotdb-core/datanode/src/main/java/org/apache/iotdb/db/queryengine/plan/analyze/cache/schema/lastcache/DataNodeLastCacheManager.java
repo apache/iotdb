@@ -21,8 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 
+import org.apache.tsfile.read.TimeValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
