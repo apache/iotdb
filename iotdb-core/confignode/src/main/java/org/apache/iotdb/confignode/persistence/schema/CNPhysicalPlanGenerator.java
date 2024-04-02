@@ -52,10 +52,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Stack;
 
@@ -83,6 +86,8 @@ public class CNPhysicalPlanGenerator
 
   private final HashMap<Integer, String> templateTable = new HashMap<>();
 
+  private final List<IConfigMNode> templateNodeList = new ArrayList<>();
+
   // All plan will be stored at this deque
   private final Deque<ConfigPhysicalPlan> planDeque = new ArrayDeque<>();
 
@@ -93,7 +98,7 @@ public class CNPhysicalPlanGenerator
 
   public CNPhysicalPlanGenerator(Path snapshotFilePath, CNSnapshotFileType fileType)
       throws IOException {
-    if (fileType == CNSnapshotFileType.SCHEMA_TEMPLATE) {
+    if (fileType == CNSnapshotFileType.SCHEMA) {
       logger.warn("schema_template need two files");
       return;
     }
@@ -107,7 +112,7 @@ public class CNPhysicalPlanGenerator
   public CNPhysicalPlanGenerator(Path schemaInfoFile, Path templateFile) throws IOException {
     inputStream = Files.newInputStream(schemaInfoFile);
     templateInputStream = Files.newInputStream(templateFile);
-    snapshotFileType = CNSnapshotFileType.SCHEMA_TEMPLATE;
+    snapshotFileType = CNSnapshotFileType.SCHEMA;
   }
 
   @Override
@@ -127,12 +132,16 @@ public class CNPhysicalPlanGenerator
       generateUserRolePhysicalPlan(false);
     } else if (snapshotFileType == CNSnapshotFileType.USER_ROLE) {
       generateGrantRolePhysicalPlan();
-    } else if (snapshotFileType == CNSnapshotFileType.SCHEMA_TEMPLATE) {
+    } else if (snapshotFileType == CNSnapshotFileType.SCHEMA) {
       generateTemplatePlan();
       if (latestException != null) {
         return false;
       }
       generateDatabasePhysicalPlan();
+      if (latestException != null) {
+        return false;
+      }
+      generateSetTemplatePlan();
     }
     snapshotFileType = CNSnapshotFileType.INVALID;
     try {
@@ -171,32 +180,33 @@ public class CNPhysicalPlanGenerator
   private void generateUserRolePhysicalPlan(boolean isUser) {
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
-      Pair<String, Boolean> versionAndName =
+      final Pair<String, Boolean> versionAndName =
           readAuthString(dataInputStream, STRING_ENCODING, strBufferLocal);
       if (versionAndName == null) {
         return;
       }
       String user = versionAndName.left;
       if (isUser) {
-        // skip password
         readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-        AuthorPlan createUser = new AuthorPlan(ConfigPhysicalPlanType.CreateUser);
+        final AuthorPlan createUser = new AuthorPlan(ConfigPhysicalPlanType.CreateUser);
         createUser.setUserName(user);
         createUser.setPassword(DEFAULT_PASSWORD);
+        createUser.setPermissions(new HashSet<>());
+        createUser.setNodeNameList(new ArrayList<>());
         planDeque.add(createUser);
       } else {
-        AuthorPlan createRole = new AuthorPlan(ConfigPhysicalPlanType.CreateRole);
+        final AuthorPlan createRole = new AuthorPlan(ConfigPhysicalPlanType.CreateRole);
         createRole.setRoleName(user);
+        createRole.setPermissions(new HashSet<>());
+        createRole.setNodeNameList(new ArrayList<>());
         planDeque.add(createRole);
       }
 
-      int privilegeMask = dataInputStream.readInt();
-      // translate sys privileges
+      final int privilegeMask = dataInputStream.readInt();
       generateGrantSysPlan(user, isUser, privilegeMask);
-      // translate path privileges
       while (dataInputStream.available() != 0) {
-        String path = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-        PartialPath priPath;
+        final String path = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+        final PartialPath priPath;
         try {
           priPath = new PartialPath(path);
         } catch (IllegalPathException exception) {
@@ -208,7 +218,7 @@ public class CNPhysicalPlanGenerator
       }
     } catch (IOException ioException) {
       logger.error(
-          "Got IOException when deserialize userole file, type:{}", snapshotFileType, ioException);
+          "Got IOException when deserialize use&role file, type:{}", snapshotFileType, ioException);
       latestException = ioException;
     } finally {
       strBufferLocal.remove();
@@ -219,10 +229,12 @@ public class CNPhysicalPlanGenerator
     try (DataInputStream roleInputStream =
         new DataInputStream(new BufferedInputStream((inputStream)))) {
       while (roleInputStream.available() != 0) {
-        String roleName = readString(roleInputStream, STRING_ENCODING, strBufferLocal);
-        AuthorPlan plan = new AuthorPlan(ConfigPhysicalPlanType.GrantRoleToUser);
+        final String roleName = readString(roleInputStream, STRING_ENCODING, strBufferLocal);
+        final AuthorPlan plan = new AuthorPlan(ConfigPhysicalPlanType.GrantRoleToUser);
         plan.setUserName(userName);
         plan.setRoleName(roleName);
+        plan.setNodeNameList(new ArrayList<>());
+        plan.setPermissions(new HashSet<>());
         planDeque.add(plan);
       }
     } catch (IOException ioException) {
@@ -236,13 +248,15 @@ public class CNPhysicalPlanGenerator
   private void generateGrantSysPlan(String userName, boolean isUser, int sysMask) {
     for (int i = 0; i < PrivilegeType.getSysPriCount(); i++) {
       if ((sysMask & (1 << i)) != 0) {
-        AuthorPlan plan =
+        final AuthorPlan plan =
             new AuthorPlan(
                 isUser ? ConfigPhysicalPlanType.GrantUser : ConfigPhysicalPlanType.GrantRole);
         if (isUser) {
           plan.setUserName(userName);
+          plan.setRoleName("");
         } else {
           plan.setRoleName(userName);
+          plan.setUserName("");
         }
         plan.setPermissions(Collections.singleton(AuthUtils.posToSysPri(i)));
         if ((sysMask & (1 << (i + 16))) != 0) {
@@ -258,13 +272,15 @@ public class CNPhysicalPlanGenerator
       String userName, boolean isUser, PartialPath path, int priMask) {
     for (int pos = 0; pos < PrivilegeType.getPathPriCount(); pos++) {
       if (((1 << pos) & priMask) != 0) {
-        AuthorPlan plan =
+        final AuthorPlan plan =
             new AuthorPlan(
                 isUser ? ConfigPhysicalPlanType.GrantUser : ConfigPhysicalPlanType.GrantRole);
         if (isUser) {
           plan.setUserName(userName);
+          plan.setRoleName("");
         } else {
           plan.setRoleName(userName);
+          plan.setUserName("");
         }
         plan.setPermissions(Collections.singleton(AuthUtils.pathPosToPri(pos)));
         plan.setNodeNameList(Collections.singletonList(path));
@@ -279,8 +295,8 @@ public class CNPhysicalPlanGenerator
   private void generateDatabasePhysicalPlan() {
     try (BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream)) {
       byte type = ReadWriteIOUtils.readByte(bufferedInputStream);
-      String name = null;
-      int childNum = 0;
+      String name;
+      int childNum;
       Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
       IConfigMNode databaseMNode;
       IConfigMNode internalMNode;
@@ -332,16 +348,17 @@ public class CNPhysicalPlanGenerator
 
   private void generateTemplatePlan() {
     try (BufferedInputStream bufferedInputStream = new BufferedInputStream(templateInputStream)) {
-      ByteBuffer byteBuffer = ByteBuffer.wrap(IOUtils.toByteArray(bufferedInputStream));
-      // skip id
+      final ByteBuffer byteBuffer = ByteBuffer.wrap(IOUtils.toByteArray(bufferedInputStream));
+      // Skip id
       ReadWriteIOUtils.readInt(byteBuffer);
       int size = ReadWriteIOUtils.readInt(byteBuffer);
       while (size > 0) {
-        Template template = new Template();
+        final Template template = new Template();
         template.deserialize(byteBuffer);
-        template.setId(0);
         templateTable.put(template.getId(), template.getName());
-        CreateSchemaTemplatePlan plan = new CreateSchemaTemplatePlan(template.serialize().array());
+        template.setId(0);
+        final CreateSchemaTemplatePlan plan =
+            new CreateSchemaTemplatePlan(template.serialize().array());
         planDeque.add(plan);
         size--;
       }
@@ -351,27 +368,46 @@ public class CNPhysicalPlanGenerator
     }
   }
 
+  private void generateSetTemplatePlan() {
+    if (templateNodeList.isEmpty()) {
+      return;
+    }
+    for (IConfigMNode templateNode : templateNodeList) {
+      String templateName = templateTable.get(templateNode.getSchemaTemplateId());
+      CommitSetSchemaTemplatePlan plan =
+          new CommitSetSchemaTemplatePlan(templateName, templateNode.getFullPath());
+      planDeque.add(plan);
+    }
+  }
+
   private IConfigMNode deserializeDatabaseMNode(InputStream inputStream) throws IOException {
-    IDatabaseMNode<IConfigMNode> databaseMNode =
+    final IDatabaseMNode<IConfigMNode> databaseMNode =
         nodeFactory.createDatabaseMNode(null, ReadWriteIOUtils.readString(inputStream));
     databaseMNode.getAsMNode().setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
     databaseMNode
         .getAsMNode()
         .setDatabaseSchema(ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(inputStream));
+    long databaseTTL = -1L;
     if (databaseMNode.getAsMNode().getDatabaseSchema().isSetTTL()) {
-      SetTTLPlan plan =
-          new SetTTLPlan(
-              Collections.singletonList(databaseMNode.getAsMNode().getDatabaseSchema().getName()),
-              databaseMNode.getAsMNode().getDatabaseSchema().getTTL());
-      planDeque.add(plan);
+      databaseTTL = databaseMNode.getAsMNode().getDatabaseSchema().getTTL();
       databaseMNode.getAsMNode().getDatabaseSchema().unsetTTL();
     }
 
-    DatabaseSchemaPlan createDBPlan =
+    if (databaseMNode.getAsMNode().getSchemaTemplateId() >= 0 && !templateTable.isEmpty()) {
+      templateNodeList.add((IConfigMNode) databaseMNode);
+    }
+
+    final DatabaseSchemaPlan createDBPlan =
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.CreateDatabase, databaseMNode.getAsMNode().getDatabaseSchema());
     planDeque.add(createDBPlan);
-
+    if (databaseTTL != -1L) {
+      final SetTTLPlan setTTLPlan =
+          new SetTTLPlan(
+              Arrays.asList(databaseMNode.getAsMNode().getDatabaseSchema().getName().split("\\.")),
+              databaseTTL);
+      planDeque.add(setTTLPlan);
+    }
     return databaseMNode.getAsMNode();
   }
 
@@ -379,14 +415,8 @@ public class CNPhysicalPlanGenerator
     IConfigMNode basicMNode =
         nodeFactory.createInternalMNode(null, ReadWriteIOUtils.readString(inputStream));
     basicMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
-    if (basicMNode.getSchemaTemplateId() >= 0) {
-      if (!templateTable.isEmpty()) {
-        String templateName = templateTable.get(basicMNode.getSchemaTemplateId());
-        // ignore preset plan.
-        CommitSetSchemaTemplatePlan plan =
-            new CommitSetSchemaTemplatePlan(templateName, basicMNode.getFullPath());
-        planDeque.add(plan);
-      }
+    if (basicMNode.getSchemaTemplateId() >= 0 && !templateTable.isEmpty()) {
+      templateNodeList.add(basicMNode);
     }
     return basicMNode;
   }

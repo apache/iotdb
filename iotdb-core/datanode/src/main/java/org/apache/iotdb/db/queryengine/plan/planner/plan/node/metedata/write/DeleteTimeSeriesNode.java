@@ -54,7 +54,7 @@ public class DeleteTimeSeriesNode extends PlanNode {
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.DELETE_TIMESERIES;
+    return PlanNodeType.DELETE_TIME_SERIES;
   }
 
   @Override
@@ -79,13 +79,13 @@ public class DeleteTimeSeriesNode extends PlanNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.DELETE_TIMESERIES.serialize(byteBuffer);
+    PlanNodeType.DELETE_TIME_SERIES.serialize(byteBuffer);
     patternTree.serialize(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.DELETE_TIMESERIES.serialize(stream);
+    PlanNodeType.DELETE_TIME_SERIES.serialize(stream);
     patternTree.serialize(stream);
   }
 

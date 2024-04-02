@@ -22,20 +22,26 @@ package org.apache.iotdb.db.pipe.extractor.schemaregion;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
 
@@ -43,10 +49,18 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   private Set<PlanNodeType> listenedTypeSet = new HashSet<>();
 
-  // If close() is called, hasBeenClosed will be set to true even if the extractor is started again.
-  // If the extractor is closed, it should not be started again. This is to avoid the case that
-  // the extractor is closed and then be reused by processor.
-  private final AtomicBoolean hasBeenClosed = new AtomicBoolean(false);
+  // TODO: Delete this
+  @Override
+  public void validate(PipeParameterValidator validator) throws Exception {
+    if (IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getSchemaRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.SIMPLE_CONSENSUS)) {
+      throw new PipeException(
+          "IoTDBSchemaRegionExtractor does not transferring events under simple consensus");
+    }
+    super.validate(validator);
+  }
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
@@ -62,8 +76,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
     // Delay the start process to schema region leader ready
     if (!PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)
         || hasBeenStarted.get()
-        || hasBeenClosed.get()
-        || listenedTypeSet.isEmpty()) {
+        || hasBeenClosed.get()) {
       return;
     }
 
@@ -76,21 +89,24 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
     super.start();
   }
 
+  @Override
+  protected boolean needTransferSnapshot() {
+    return PipeSchemaRegionSnapshotEvent.needTransferSnapshot(listenedTypeSet);
+  }
+
+  @Override
+  protected void triggerSnapshot() {
+    try {
+      SchemaRegionConsensusImpl.getInstance().triggerSnapshot(schemaRegionId, true);
+    } catch (ConsensusException e) {
+      throw new PipeException("Exception encountered when triggering schema region snapshot.", e);
+    }
+  }
+
   // This method will return events only after schema region leader gets ready
   @Override
   public synchronized EnrichedEvent supply() throws Exception {
-    if (!PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)
-        || hasBeenClosed.get()
-        || listenedTypeSet.isEmpty()) {
-      return null;
-    }
-
-    // Delayed start
-    if (!hasBeenStarted.get()) {
-      start();
-    }
-
-    return super.supply();
+    return PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId) ? super.supply() : null;
   }
 
   @Override
@@ -102,6 +118,11 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   protected boolean isTypeListened(Event event) {
     return listenedTypeSet.contains(
         ((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType());
+  }
+
+  @Override
+  protected void confineHistoricalEventTransferTypes(PipeSnapshotEvent event) {
+    ((PipeSchemaRegionSnapshotEvent) event).confineTransferredTypes(listenedTypeSet);
   }
 
   @Override
@@ -117,7 +138,6 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
     super.close();
 
     if (!listenedTypeSet.isEmpty()) {
-      // TODO: check me
       // The queue is not closed here, and is closed iff the PipeMetaKeeper
       // has no schema pipe after one successful sync
       PipeAgent.runtime().decreaseAndGetSchemaListenerReferenceCount(schemaRegionId);

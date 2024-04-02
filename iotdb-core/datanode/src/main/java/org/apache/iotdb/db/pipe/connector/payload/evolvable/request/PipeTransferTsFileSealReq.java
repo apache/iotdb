@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
 
-public class PipeTransferTsFileSealReq extends PipeTransferFileSealReq {
+public class PipeTransferTsFileSealReq extends PipeTransferFileSealReqV1 {
 
   private PipeTransferTsFileSealReq() {
     // Empty constructor

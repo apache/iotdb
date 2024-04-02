@@ -87,6 +87,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 public class IoTConsensusServerImpl {
 
@@ -133,9 +134,8 @@ public class IoTConsensusServerImpl {
     this.configuration = configuration;
     if (configuration.isEmpty()) {
       recoverConfiguration();
-    } else {
-      persistConfiguration();
     }
+    persistConfiguration();
     this.backgroundTaskService = backgroundTaskService;
     this.config = config;
     this.consensusGroupId = thisNode.getGroupId().toString();
@@ -572,7 +572,7 @@ public class IoTConsensusServerImpl {
     configuration.add(targetPeer);
     // step 3, persist configuration
     logger.info("[IoTConsensus] persist new configuration: {}", configuration);
-    persistConfigurationUpdate();
+    persistConfiguration();
   }
 
   public void removeSyncLogChannel(Peer targetPeer) throws ConsensusGroupModifyPeerException {
@@ -584,16 +584,30 @@ public class IoTConsensusServerImpl {
       configuration.remove(targetPeer);
       checkAndUpdateSafeDeletedSearchIndex();
       // step 3, persist configuration
-      persistConfigurationUpdate();
+      persistConfiguration();
       logger.info("[IoTConsensus] configuration updated to {}", this.configuration);
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException("error when remove LogDispatcherThread", e);
     }
   }
 
+  // TODO: persist first and then delete old configuration file
   public void persistConfiguration() {
     try {
-      serializeConfigurationAndFsyncToDisk(CONFIGURATION_FILE_NAME);
+      try (Stream<Path> stream = Files.walk(Paths.get(storageDir))) {
+        stream
+            .filter(Files::isRegularFile)
+            .filter(filePath -> filePath.getFileName().toString().contains("configuration"))
+            .forEach(
+                filePath -> {
+                  try {
+                    Files.delete(filePath);
+                  } catch (IOException e) {
+                    logger.error("Unexpected error occurs when deleting old configuration file", e);
+                  }
+                });
+      }
+      serializeConfigurationAndFsyncToDisk();
     } catch (IOException e) {
       // TODO: (xingtanzjr) need to handle the IOException because the IoTConsensus won't
       // work expectedly
@@ -602,30 +616,7 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  public void persistConfigurationUpdate() throws ConsensusGroupModifyPeerException {
-    try {
-      serializeConfigurationAndFsyncToDisk(CONFIGURATION_TMP_FILE_NAME);
-      Path tmpConfigurationPath =
-          Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
-      Path configurationPath =
-          Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
-      Files.deleteIfExists(configurationPath);
-      Files.move(tmpConfigurationPath, configurationPath);
-    } catch (IOException e) {
-      throw new ConsensusGroupModifyPeerException(
-          "Unexpected error occurs when update configuration", e);
-    }
-  }
-
-  private void serializeConfigurationTo(DataOutputStream outputStream) throws IOException {
-    outputStream.writeInt(configuration.size());
-    for (Peer peer : configuration) {
-      peer.serialize(outputStream);
-    }
-  }
-
   public void recoverConfiguration() {
-    ByteBuffer buffer;
     try {
       Path tmpConfigurationPath =
           Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
@@ -635,20 +626,64 @@ public class IoTConsensusServerImpl {
       // interrupted
       // unexpectedly, we need substitute configuration with tmpConfiguration file
       if (Files.exists(tmpConfigurationPath)) {
-        if (Files.exists(configurationPath)) {
-          Files.delete(configurationPath);
-        }
+        Files.deleteIfExists(configurationPath);
         Files.move(tmpConfigurationPath, configurationPath);
       }
-      buffer = ByteBuffer.wrap(Files.readAllBytes(configurationPath));
-      int size = buffer.getInt();
-      for (int i = 0; i < size; i++) {
-        configuration.add(Peer.deserialize(buffer));
+      if (Files.exists(configurationPath)) {
+        recoverFromOldConfigurationFile(configurationPath);
+      } else {
+        // recover from split configuration file
+        Path dirPath = Paths.get(storageDir);
+        List<Peer> tmpPeerList = getConfiguration(dirPath, CONFIGURATION_TMP_FILE_NAME);
+        configuration.addAll(tmpPeerList);
+        List<Peer> peerList = getConfiguration(dirPath, CONFIGURATION_FILE_NAME);
+        for (Peer peer : peerList) {
+          if (!configuration.contains(peer)) {
+            configuration.add(peer);
+          }
+        }
       }
       logger.info("Recover IoTConsensus server Impl, configuration: {}", configuration);
     } catch (IOException e) {
       logger.error("Unexpected error occurs when recovering configuration", e);
     }
+  }
+
+  // @Compatibility
+  private void recoverFromOldConfigurationFile(Path oldConfigurationPath) throws IOException {
+    // recover from old configuration file
+    ByteBuffer buffer = ByteBuffer.wrap(Files.readAllBytes(oldConfigurationPath));
+    int size = buffer.getInt();
+    for (int i = 0; i < size; i++) {
+      configuration.add(Peer.deserialize(buffer));
+    }
+    // TODO: delete old file before new file persisted is unsafe
+    Files.delete(oldConfigurationPath);
+  }
+
+  public static String generateConfigurationDatFileName(int nodeId) {
+    return nodeId + "_" + CONFIGURATION_FILE_NAME;
+  }
+
+  private List<Peer> getConfiguration(Path dirPath, String configurationFileName)
+      throws IOException {
+    ByteBuffer buffer;
+    List<Peer> tmpConfiguration = new ArrayList<>();
+    Path[] files =
+        Files.walk(dirPath)
+            .filter(Files::isRegularFile)
+            .filter(filePath -> filePath.getFileName().toString().contains(configurationFileName))
+            .toArray(Path[]::new);
+    for (Path file : files) {
+      buffer = ByteBuffer.wrap(Files.readAllBytes(file));
+      tmpConfiguration.add(Peer.deserialize(buffer));
+    }
+    return tmpConfiguration;
+  }
+
+  public void resetConfiguration(List<Peer> newConfiguration) {
+    configuration.clear();
+    configuration.addAll(newConfiguration);
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
@@ -839,17 +874,21 @@ public class IoTConsensusServerImpl {
     return consensusGroupId;
   }
 
-  private void serializeConfigurationAndFsyncToDisk(String configurationFileName)
-      throws IOException {
-    FileOutputStream fileOutputStream =
-        new FileOutputStream(new File(storageDir, configurationFileName));
-    DataOutputStream outputStream = new DataOutputStream(fileOutputStream);
-    try {
-      serializeConfigurationTo(outputStream);
-    } finally {
-      fileOutputStream.flush();
-      fileOutputStream.getFD().sync();
-      outputStream.close();
+  private void serializeConfigurationAndFsyncToDisk() throws IOException {
+    for (Peer peer : configuration) {
+      String peerConfigurationFileName = generateConfigurationDatFileName(peer.getNodeId());
+      FileOutputStream fileOutputStream =
+          new FileOutputStream(new File(storageDir, peerConfigurationFileName));
+      try (DataOutputStream outputStream = new DataOutputStream(fileOutputStream)) {
+        peer.serialize(outputStream);
+      } finally {
+        try {
+          fileOutputStream.flush();
+          fileOutputStream.getFD().sync();
+        } catch (IOException ignore) {
+          // ignore
+        }
+      }
     }
   }
 

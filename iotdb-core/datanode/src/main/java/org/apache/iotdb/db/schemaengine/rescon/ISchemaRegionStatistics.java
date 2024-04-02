@@ -27,7 +27,7 @@ public interface ISchemaRegionStatistics {
 
   int getSchemaRegionId();
 
-  long getSeriesNumber();
+  long getSeriesNumber(boolean includeView);
 
   long getDevicesNumber();
 

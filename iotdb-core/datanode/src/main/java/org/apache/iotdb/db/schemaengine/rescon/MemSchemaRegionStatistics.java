@@ -32,8 +32,10 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   protected MemSchemaEngineStatistics schemaEngineStatistics;
   private final int schemaRegionId;
   private final AtomicLong memoryUsage = new AtomicLong(0);
-  private final AtomicLong seriesNumber = new AtomicLong(0);
+  // normal series number, not include view and template series
+  private final AtomicLong measurementNumber = new AtomicLong(0);
   private final AtomicLong devicesNumber = new AtomicLong(0);
+  private final AtomicLong viewNumber = new AtomicLong(0);
   private final Map<Integer, Integer> templateUsage = new ConcurrentHashMap<>();
 
   private long mlogLength = 0;
@@ -59,18 +61,32 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   }
 
   @Override
-  public long getSeriesNumber() {
-    return seriesNumber.get() + getTemplateSeriesNumber();
+  public long getSeriesNumber(boolean includeView) {
+    if (includeView) {
+      return viewNumber.get() + measurementNumber.get() + getTemplateSeriesNumber();
+    } else {
+      return measurementNumber.get() + getTemplateSeriesNumber();
+    }
   }
 
-  public void addTimeseries(long addedNum) {
-    seriesNumber.addAndGet(addedNum);
-    schemaEngineStatistics.addTimeseries(addedNum);
+  public void addMeasurement(long addedNum) {
+    measurementNumber.addAndGet(addedNum);
+    schemaEngineStatistics.addMeasurement(addedNum);
   }
 
-  public void deleteTimeseries(long deletedNum) {
-    seriesNumber.addAndGet(-deletedNum);
-    schemaEngineStatistics.deleteTimeseries(deletedNum);
+  public void deleteMeasurement(long deletedNum) {
+    measurementNumber.addAndGet(-deletedNum);
+    schemaEngineStatistics.deleteMeasurement(deletedNum);
+  }
+
+  public void addView(long addedNum) {
+    viewNumber.addAndGet(addedNum);
+    schemaEngineStatistics.addView(addedNum);
+  }
+
+  public void deleteView(long deletedNum) {
+    viewNumber.addAndGet(-deletedNum);
+    schemaEngineStatistics.deleteView(deletedNum);
   }
 
   @Override
@@ -144,10 +160,12 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   @Override
   public void clear() {
     schemaEngineStatistics.releaseMemory(memoryUsage.get());
-    schemaEngineStatistics.deleteTimeseries(seriesNumber.get());
+    schemaEngineStatistics.deleteMeasurement(measurementNumber.get());
+    schemaEngineStatistics.deleteView(viewNumber.get());
     memoryUsage.getAndSet(0);
-    seriesNumber.getAndSet(0);
+    measurementNumber.getAndSet(0);
     devicesNumber.getAndSet(0);
+    viewNumber.getAndAdd(0);
     templateUsage.forEach(
         (templateId, cnt) -> schemaEngineStatistics.deactivateTemplate(templateId, cnt));
     templateUsage.clear();

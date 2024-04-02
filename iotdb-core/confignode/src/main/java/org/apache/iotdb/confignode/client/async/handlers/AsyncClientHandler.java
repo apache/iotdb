@@ -216,6 +216,7 @@ public class AsyncClientHandler<Q, R> {
             countDownLatch);
       case PIPE_PUSH_ALL_META:
       case PIPE_PUSH_SINGLE_META:
+      case PIPE_PUSH_MULTI_META:
         return new PipePushMetaRPCHandler(
             requestType,
             requestId,
@@ -223,7 +224,9 @@ public class AsyncClientHandler<Q, R> {
             dataNodeLocationMap,
             (Map<Integer, TPushPipeMetaResp>) responseMap,
             countDownLatch);
+      case TOPIC_PUSH_ALL_META:
       case TOPIC_PUSH_SINGLE_META:
+      case TOPIC_PUSH_MULTI_META:
         return new TopicPushMetaRPCHandler(
             requestType,
             requestId,
@@ -231,6 +234,7 @@ public class AsyncClientHandler<Q, R> {
             dataNodeLocationMap,
             (Map<Integer, TPushTopicMetaResp>) responseMap,
             countDownLatch);
+      case CONSUMER_GROUP_PUSH_ALL_META:
       case CONSUMER_GROUP_PUSH_SINGLE_META:
         return new ConsumerGroupPushMetaRPCHandler(
             requestType,
@@ -258,7 +262,6 @@ public class AsyncClientHandler<Q, R> {
       case LOAD_CONFIGURATION:
       case SET_SYSTEM_STATUS:
       case UPDATE_REGION_ROUTE_MAP:
-      case BROADCAST_LATEST_CONFIG_NODE_GROUP:
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
       case UPDATE_TEMPLATE:
       case CHANGE_REGION_LEADER:

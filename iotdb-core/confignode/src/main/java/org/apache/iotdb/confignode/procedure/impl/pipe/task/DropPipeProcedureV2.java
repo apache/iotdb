@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -37,6 +38,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -51,6 +53,18 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public DropPipeProcedureV2(String pipeName) throws PipeException {
     super();
     this.pipeName = pipeName;
+  }
+
+  /** This is only used when the pipe task info lock is held by another procedure. */
+  public DropPipeProcedureV2(String pipeName, AtomicReference<PipeTaskInfo> pipeTaskInfo)
+      throws PipeException {
+    super();
+    this.pipeName = pipeName;
+    this.pipeTaskInfo = pipeTaskInfo;
+  }
+
+  public String getPipeName() {
+    return pipeName;
   }
 
   @Override

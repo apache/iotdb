@@ -68,8 +68,8 @@ public class SubscriptionTableResp implements DataSet {
       showSubscriptionInfoList.add(
           new TShowSubscriptionInfo(
               subscriptionMeta.getTopicName(),
-              subscriptionMeta.getConsumerGroupID(),
-              subscriptionMeta.getConsumerIDs()));
+              subscriptionMeta.getConsumerGroupId(),
+              subscriptionMeta.getConsumerIds()));
     }
     return new TShowSubscriptionResp(status).setSubscriptionInfoList(showSubscriptionInfoList);
   }

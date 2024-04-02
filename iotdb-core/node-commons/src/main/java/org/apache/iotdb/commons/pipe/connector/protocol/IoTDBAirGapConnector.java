@@ -19,19 +19,24 @@
 
 package org.apache.iotdb.commons.pipe.connector.protocol;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -60,6 +65,9 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
   private boolean eLanguageEnable;
 
   private long currentClientIndex = 0;
+
+  // The air gap connector does not use clientManager thus we put handshake type here
+  protected boolean supportModsIfIsDataNodeReceiver = true;
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
@@ -104,7 +112,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       final String ip = nodeUrls.get(i).getIp();
       final int port = nodeUrls.get(i).getPort();
 
-      // close the socket if necessary
+      // Close the socket if necessary
       if (sockets.get(i) != null) {
         try {
           sockets.set(i, null).close();
@@ -122,7 +130,6 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       try {
         socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
         socket.setKeepAlive(true);
-        socket.setSoTimeout(handshakeTimeoutMs);
         sockets.set(i, socket);
         LOGGER.info("Successfully connected to target server ip: {}, port: {}.", ip, port);
       } catch (Exception e) {
@@ -134,17 +141,8 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         continue;
       }
 
-      // Try to handshake by PipeTransferHandshakeV2Req. If failed, retry to handshake by
-      // PipeTransferHandshakeV1Req. If failed again, throw PipeConnectionException.
-      if (!send(socket, generateHandShakeV2Payload())
-          && !send(socket, generateHandShakeV1Payload())) {
-        throw new PipeConnectionException(
-            "Handshake error with target server ip: " + ip + ", port: " + port);
-      } else {
-        isSocketAlive.set(i, true);
-        socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
-        LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
-      }
+      sendHandshakeReq(socket);
+      isSocketAlive.set(i, true);
     }
 
     for (int i = 0; i < sockets.size(); i++) {
@@ -154,6 +152,22 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     }
     throw new PipeConnectionException(
         String.format("All target servers %s are not available.", nodeUrls));
+  }
+
+  protected void sendHandshakeReq(Socket socket) throws IOException {
+    socket.setSoTimeout(handshakeTimeoutMs);
+    // Try to handshake by PipeTransferHandshakeV2Req. If failed, retry to handshake by
+    // PipeTransferHandshakeV1Req. If failed again, throw PipeConnectionException.
+    if (!send(socket, generateHandShakeV2Payload())) {
+      supportModsIfIsDataNodeReceiver = false;
+      if (!send(socket, generateHandShakeV1Payload())) {
+        throw new PipeConnectionException("Handshake error with target server, socket: " + socket);
+      }
+    } else {
+      supportModsIfIsDataNodeReceiver = true;
+    }
+    socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
+    LOGGER.info("Handshake success. Socket: {}", socket);
   }
 
   protected abstract byte[] generateHandShakeV1Payload() throws IOException;
@@ -171,6 +185,54 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
           e);
     }
   }
+
+  protected void transferFilePieces(File file, Socket socket, boolean isMultiFile)
+      throws PipeException, IOException {
+    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    final byte[] readBuffer = new byte[readFileBufferSize];
+    long position = 0;
+    try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
+      while (true) {
+        final int readLength = reader.read(readBuffer);
+        if (readLength == -1) {
+          break;
+        }
+
+        final byte[] payload =
+            readLength == readFileBufferSize
+                ? readBuffer
+                : Arrays.copyOfRange(readBuffer, 0, readLength);
+        if (!send(
+            socket,
+            isMultiFile
+                ? getTransferMultiFilePieceBytes(file.getName(), position, payload)
+                : getTransferSingleFilePieceBytes(file.getName(), position, payload))) {
+          final String errorMessage =
+              String.format("Transfer file %s error. Socket %s.", file, socket);
+          if (mayNeedHandshakeWhenFail()) {
+            // Send handshake because we don't know whether the receiver side configNode
+            // has set up a new one
+            sendHandshakeReq(socket);
+          }
+          receiverStatusHandler.handle(
+              new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+                  .setMessage(errorMessage),
+              errorMessage,
+              file.toString());
+        } else {
+          position += readLength;
+        }
+      }
+    }
+  }
+
+  protected abstract boolean mayNeedHandshakeWhenFail();
+
+  protected abstract byte[] getTransferSingleFilePieceBytes(
+      String fileName, long position, byte[] payLoad) throws IOException;
+
+  protected abstract byte[] getTransferMultiFilePieceBytes(
+      String fileName, long position, byte[] payLoad) throws IOException;
 
   protected int nextSocketIndex() {
     final int socketSize = sockets.size();
@@ -201,13 +263,13 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
   }
 
   private byte[] enrichWithLengthAndChecksum(byte[] bytes) {
-    // length of checksum and bytes payload
+    // Length of checksum and bytes payload
     final byte[] length = BytesUtils.intToBytes(bytes.length + LONG_LEN);
 
     final CRC32 crc32 = new CRC32();
     crc32.update(bytes, 0, bytes.length);
 
-    // double length as simple checksum
+    // Double length as simple checksum
     return BytesUtils.concatByteArrayList(
         Arrays.asList(length, length, BytesUtils.longToBytes(crc32.getValue()), bytes));
   }

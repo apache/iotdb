@@ -145,7 +145,7 @@ public class ConfigNodeStartupCheck extends StartupChecks {
 
     // The leader distribution policy is limited
     if (!ILeaderBalancer.GREEDY_POLICY.equals(CONF.getLeaderDistributionPolicy())
-        && !ILeaderBalancer.MIN_COST_FLOW_POLICY.equals(CONF.getLeaderDistributionPolicy())) {
+        && !ILeaderBalancer.CFD_POLICY.equals(CONF.getLeaderDistributionPolicy())) {
       throw new ConfigurationException(
           "leader_distribution_policy",
           CONF.getRoutePriorityPolicy(),

@@ -24,9 +24,12 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -45,7 +48,7 @@ public abstract class IoTDBReceiverAgent {
     initConstructors();
   }
 
-  public final TPipeTransferResp receive(TPipeTransferReq req) {
+  public final TPipeTransferResp receive(final TPipeTransferReq req) {
     final byte reqVersion = req.getVersion();
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
       return getReceiver(reqVersion).receive(req);
@@ -57,7 +60,7 @@ public abstract class IoTDBReceiverAgent {
     }
   }
 
-  protected final IoTDBReceiver getReceiver(byte reqVersion) {
+  protected final IoTDBReceiver getReceiver(final byte reqVersion) {
     if (receiverThreadLocal.get() == null) {
       return setAndGetReceiver(reqVersion);
     }
@@ -77,7 +80,7 @@ public abstract class IoTDBReceiverAgent {
     return receiverThreadLocal.get();
   }
 
-  private IoTDBReceiver setAndGetReceiver(byte reqVersion) {
+  private IoTDBReceiver setAndGetReceiver(final byte reqVersion) {
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
       receiverThreadLocal.set(RECEIVER_CONSTRUCTORS.get(reqVersion).get());
     } else {
@@ -92,6 +95,22 @@ public abstract class IoTDBReceiverAgent {
     if (receiver != null) {
       receiver.handleExit();
       receiverThreadLocal.remove();
+    }
+  }
+
+  public static void cleanPipeReceiverDir(final File receiverFileDir) {
+    try {
+      FileUtils.deleteDirectory(receiverFileDir);
+      LOGGER.info("Clean pipe receiver dir {} successfully.", receiverFileDir);
+    } catch (Exception e) {
+      LOGGER.warn("Clean pipe receiver dir {} failed.", receiverFileDir, e);
+    }
+
+    try {
+      FileUtils.forceMkdir(receiverFileDir);
+      LOGGER.info("Create pipe receiver dir {} successfully.", receiverFileDir);
+    } catch (IOException e) {
+      LOGGER.warn("Create pipe receiver dir {} failed.", receiverFileDir, e);
     }
   }
 }

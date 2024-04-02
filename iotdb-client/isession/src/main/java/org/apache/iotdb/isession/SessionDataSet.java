@@ -38,7 +38,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
 
-public class SessionDataSet implements AutoCloseable {
+public class SessionDataSet implements ISessionDataSet {
 
   private final IoTDBRpcDataSet ioTDBRpcDataSet;
 
@@ -143,14 +143,17 @@ public class SessionDataSet implements AutoCloseable {
     ioTDBRpcDataSet.fetchSize = fetchSize;
   }
 
+  @Override
   public List<String> getColumnNames() {
     return new ArrayList<>(ioTDBRpcDataSet.columnNameList);
   }
 
+  @Override
   public List<String> getColumnTypes() {
     return new ArrayList<>(ioTDBRpcDataSet.columnTypeList);
   }
 
+  @Override
   public boolean hasNext() throws StatementExecutionException, IoTDBConnectionException {
     return ioTDBRpcDataSet.next();
   }
@@ -220,6 +223,7 @@ public class SessionDataSet implements AutoCloseable {
    *
    * @return One complete row saved in RowRecord
    */
+  @Override
   public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {
     if (!ioTDBRpcDataSet.hasCachedRecord && !hasNext()) {
       return null;

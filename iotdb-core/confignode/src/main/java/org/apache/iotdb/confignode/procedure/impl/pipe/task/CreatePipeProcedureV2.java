@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -51,6 +52,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -68,6 +70,31 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public CreatePipeProcedureV2(TCreatePipeReq createPipeRequest) throws PipeException {
     super();
     this.createPipeRequest = createPipeRequest;
+  }
+
+  /** This is only used when the pipe task info lock is held by another procedure. */
+  public CreatePipeProcedureV2(
+      TCreatePipeReq createPipeRequest, AtomicReference<PipeTaskInfo> pipeTaskInfo)
+      throws PipeException {
+    super();
+    this.pipeTaskInfo = pipeTaskInfo;
+    this.createPipeRequest = createPipeRequest;
+  }
+
+  /**
+   * This should be called after {@link #executeFromValidateTask} and {@link
+   * #executeFromCalculateInfoForTask}.
+   */
+  public String getPipeName() {
+    return createPipeRequest.getPipeName();
+  }
+
+  /**
+   * This should be called after {@link #executeFromValidateTask} and {@link
+   * #executeFromCalculateInfoForTask}.
+   */
+  public CreatePipePlanV2 constructPlan() {
+    return new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
   }
 
   @Override
