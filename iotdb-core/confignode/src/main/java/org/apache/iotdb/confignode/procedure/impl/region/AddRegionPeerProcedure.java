@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
 import static org.apache.iotdb.confignode.procedure.state.AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE;
@@ -101,17 +102,15 @@ public class AddRegionPeerProcedure
               LOGGER.warn(
                   "result is {}, will use resetPeerList to clean in the future",
                   result.getTaskStatus());
-              //              List<TDataNodeLocation> correctDataNodeLocations =
-              //
-              // env.getConfigManager().getPartitionManager().getAllReplicaSets().stream()
-              //                      .filter(
-              //                          tRegionReplicaSet ->
-              //
-              // tRegionReplicaSet.getRegionId().equals(consensusGroupId))
-              //                      .findAny()
-              //                      .get()
-              //                      .getDataNodeLocations();
-              //              handler.resetPeerList(consensusGroupId, correctDataNodeLocations);
+              List<TDataNodeLocation> correctDataNodeLocations =
+                  env.getConfigManager().getPartitionManager().getAllReplicaSets().stream()
+                      .filter(
+                          tRegionReplicaSet ->
+                              tRegionReplicaSet.getRegionId().equals(consensusGroupId))
+                      .findAny()
+                      .get()
+                      .getDataNodeLocations();
+              handler.resetPeerList(consensusGroupId, correctDataNodeLocations);
               return Flow.NO_MORE_STATE;
             case PROCESSING:
               // should never happen

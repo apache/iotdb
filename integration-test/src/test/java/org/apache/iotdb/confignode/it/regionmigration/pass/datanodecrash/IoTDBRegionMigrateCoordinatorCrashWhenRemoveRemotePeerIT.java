@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.notpass.datanodecrash;
+package org.apache.iotdb.confignode.it.regionmigration.pass.datanodecrash;
 
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerCoordinatorKillPoints;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFramework;

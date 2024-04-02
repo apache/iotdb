@@ -84,12 +84,17 @@ public class RemoveRegionPeerProcedure
                   this.getProcId(), targetDataNode, consensusGroupId, coordinator);
           setKillPoint(state);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
-            throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
-          }
-          TRegionMigrateResult removeRegionPeerResult =
-              handler.waitTaskFinish(this.getProcId(), coordinator);
-          if (removeRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
-            throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
+            LOGGER.warn(
+                "{} task submitted failed, procedure will continue. You should manually clear peer list.",
+                state);
+          } else {
+            TRegionMigrateResult removeRegionPeerResult =
+                handler.waitTaskFinish(this.getProcId(), coordinator);
+            if (removeRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
+              LOGGER.warn(
+                  "{} executed failed, procedure will continue. You should manually clear peer list.",
+                  state);
+            }
           }
           setNextState(DELETE_OLD_REGION_PEER);
           break;
@@ -99,7 +104,7 @@ public class RemoveRegionPeerProcedure
           setKillPoint(state);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
             LOGGER.warn(
-                "DELETE_OLD_REGION_PEER executed failed, procedure will continue. You can manually delete region file.");
+                "DELETE_OLD_REGION_PEER task submitted failed, procedure will continue. You can manually delete region file.");
           } else {
             TRegionMigrateResult deleteOldRegionPeerResult =
                 handler.waitTaskFinish(this.getProcId(), targetDataNode);
