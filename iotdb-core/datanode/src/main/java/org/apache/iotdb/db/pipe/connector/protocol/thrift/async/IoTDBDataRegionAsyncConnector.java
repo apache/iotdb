@@ -99,6 +99,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     retryConnector.validate(validator);
 
     final PipeParameters parameters = validator.getParameters();
+
     validator.validate(
         args -> !((boolean) args[0] || (boolean) args[1] || (boolean) args[2]),
         "Only 'iotdb-thrift-ssl-sink' supports SSL transmission currently.",
@@ -124,7 +125,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             nodeUrls,
             parameters.getBooleanOrDefault(
                 Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
-                CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE));
+                CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE),
+            loadBalanceStrategy);
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new IoTDBThriftAsyncPipeTransferBatchReqBuilder(parameters);

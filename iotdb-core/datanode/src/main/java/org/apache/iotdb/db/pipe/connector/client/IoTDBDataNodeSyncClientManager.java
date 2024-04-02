@@ -47,8 +47,9 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
       boolean useSSL,
       String trustStorePath,
       String trustStorePwd,
-      boolean useLeaderCache) {
-    super(endPoints, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
+      boolean useLeaderCache,
+      String loadBalanceStrategy) {
+    super(endPoints, useSSL, trustStorePath, trustStorePwd, useLeaderCache, loadBalanceStrategy);
   }
 
   @Override

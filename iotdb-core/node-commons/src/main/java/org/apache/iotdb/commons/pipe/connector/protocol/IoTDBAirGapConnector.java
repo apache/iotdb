@@ -48,6 +48,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_AIR_GAP_E_LANGUAGE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
@@ -61,10 +64,12 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
   protected final List<Socket> sockets = new ArrayList<>();
   protected final List<Boolean> isSocketAlive = new ArrayList<>();
 
-  private int handshakeTimeoutMs;
-  private boolean eLanguageEnable;
-
+  private LoadBalancer loadBalancer;
   private long currentClientIndex = 0;
+
+  private int handshakeTimeoutMs;
+
+  private boolean eLanguageEnable;
 
   // The air gap connector does not use clientManager thus we put handshake type here
   protected boolean supportModsIfIsDataNodeReceiver = true;
@@ -84,6 +89,23 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     for (int i = 0; i < nodeUrls.size(); i++) {
       isSocketAlive.add(false);
       sockets.add(null);
+    }
+
+    switch (loadBalanceStrategy) {
+      case CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY:
+        loadBalancer = new RoundRobinLoadBalancer();
+        break;
+      case CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY:
+        loadBalancer = new RandomLoadBalancer();
+        break;
+      case CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY:
+        loadBalancer = new PriorityLoadBalancer();
+        break;
+      default:
+        LOGGER.warn(
+            "Unknown load balance strategy: {}, use round-robin strategy instead.",
+            loadBalanceStrategy);
+        loadBalancer = new RoundRobinLoadBalancer();
     }
 
     handshakeTimeoutMs =
@@ -235,16 +257,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       String fileName, long position, byte[] payLoad) throws IOException;
 
   protected int nextSocketIndex() {
-    final int socketSize = sockets.size();
-    // Round-robin, find the next alive client
-    for (int tryCount = 0; tryCount < socketSize; ++tryCount) {
-      final int clientIndex = (int) (currentClientIndex++ % socketSize);
-      if (Boolean.TRUE.equals(isSocketAlive.get(clientIndex))) {
-        return clientIndex;
-      }
-    }
-    throw new PipeConnectionException(
-        "All sockets are dead, please check the connection to the receiver.");
+    return loadBalancer.nextSocketIndex();
   }
 
   protected boolean send(Socket socket, byte[] bytes) throws IOException {
@@ -294,6 +307,67 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       } finally {
         isSocketAlive.set(i, false);
       }
+    }
+  }
+
+  /////////////////////// Strategies for load balance //////////////////////////
+
+  private interface LoadBalancer {
+    int nextSocketIndex();
+  }
+
+  private class RoundRobinLoadBalancer implements LoadBalancer {
+    @Override
+    public int nextSocketIndex() {
+      final int socketSize = sockets.size();
+      // Round-robin, find the next alive client
+      for (int tryCount = 0; tryCount < socketSize; ++tryCount) {
+        final int clientIndex = (int) (currentClientIndex++ % socketSize);
+        if (Boolean.TRUE.equals(isSocketAlive.get(clientIndex))) {
+          return clientIndex;
+        }
+      }
+
+      throw new PipeConnectionException(
+          "All sockets are dead, please check the connection to the receiver.");
+    }
+  }
+
+  private class RandomLoadBalancer implements LoadBalancer {
+    @Override
+    public int nextSocketIndex() {
+      final int socketSize = sockets.size();
+      final int clientIndex = (int) (Math.random() * socketSize);
+      if (Boolean.TRUE.equals(isSocketAlive.get(clientIndex))) {
+        return clientIndex;
+      }
+
+      // Random, find the next alive client
+      for (int tryCount = 0; tryCount < socketSize - 1; ++tryCount) {
+        final int nextClientIndex = (clientIndex + tryCount + 1) % socketSize;
+        if (Boolean.TRUE.equals(isSocketAlive.get(nextClientIndex))) {
+          return nextClientIndex;
+        }
+      }
+
+      throw new PipeConnectionException(
+          "All sockets are dead, please check the connection to the receiver.");
+    }
+  }
+
+  private class PriorityLoadBalancer implements LoadBalancer {
+    @Override
+    public int nextSocketIndex() {
+      // Priority, find the first alive client
+      final int socketSize = sockets.size();
+      for (int i = 0; i < socketSize; ++i) {
+        if (Boolean.TRUE.equals(isSocketAlive.get(i))) {
+          return i;
+        }
+      }
+
+      throw new PipeConnectionException(
+          "All sockets are dead, please check the connection to the receiver.");
     }
   }
 }

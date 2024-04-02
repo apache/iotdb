@@ -113,7 +113,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
             CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE);
 
     clientManager =
-        constructClient(nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
+        constructClient(
+            nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache, loadBalanceStrategy);
   }
 
   protected abstract IoTDBSyncClientManager constructClient(
@@ -121,7 +122,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
       boolean useSSL,
       String trustStorePath,
       String trustStorePwd,
-      boolean useLeaderCache);
+      boolean useLeaderCache,
+      String loadBalanceStrategy);
 
   @Override
   public void handshake() throws Exception {
