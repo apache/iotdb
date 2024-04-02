@@ -24,7 +24,6 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
-import org.apache.iotdb.session.Session.Builder;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -252,10 +251,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       try {
         commitSync(entry.getValue());
         uncommittedMessages.remove(entry.getKey());
-      } catch (TException
-          | IOException
-          | StatementExecutionException
-          | IoTDBConnectionException e) {
+      } catch (final Exception e) {
         LOGGER.warn("something unexpected happened when commit messages during close", e);
       }
     }
@@ -312,6 +308,16 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
     public Builder consumerGroupId(String consumerGroupId) {
       super.consumerGroupId(consumerGroupId);
+      return this;
+    }
+
+    public Builder heartbeatInterval(int heartbeatInterval) {
+      super.heartbeatInterval(heartbeatInterval);
+      return this;
+    }
+
+    public Builder endpointsSyncInterval(int endpointsSyncInterval) {
+      super.endpointsSyncInterval(endpointsSyncInterval);
       return this;
     }
 

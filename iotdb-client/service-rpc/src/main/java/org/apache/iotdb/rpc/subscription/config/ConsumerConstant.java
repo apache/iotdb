@@ -33,6 +33,16 @@ public class ConsumerConstant {
   public static final String CONSUMER_ID_KEY = "consumer-id";
   public static final String CONSUMER_GROUP_ID_KEY = "group-id";
 
+  /////////////////////////////// hidden ///////////////////////////////
+
+  public static final String HEARTBEAT_INTERVAL_KEY = "heartbeat-interval"; // unit: ms
+  public static final int HEARTBEAT_INTERVAL_DEFAULT_VALUE = 5000;
+  public static final int HEARTBEAT_INTERVAL_MIN_VALUE = 1000;
+
+  public static final String ENDPOINTS_SYNC_INTERVAL_KEY = "endpoints-sync-interval"; // unit: ms
+  public static final int ENDPOINTS_SYNC_INTERVAL_DEFAULT_VALUE = 30000;
+  public static final int ENDPOINTS_SYNC_INTERVAL_MIN_VALUE = 5000;
+
   /////////////////////////////// pull consumer ///////////////////////////////
 
   public static final String AUTO_COMMIT_KEY = "auto-commit";

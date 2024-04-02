@@ -29,7 +29,6 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
@@ -54,17 +53,27 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+@Category({ClusterIT.class})
 public class IoTDBSubscriptionRestartIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionRestartIT.class);
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setConfigNodeConsensusProtocolClass(RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(RATIS_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(RATIS_CONSENSUS)
+        .setSchemaReplicationFactor(3)
+        .setDataReplicationFactor(3);
+
+    EnvFactory.getEnv().initClusterEnvironment(3, 3);
   }
 
   @After
@@ -73,7 +82,7 @@ public class IoTDBSubscriptionRestartIT {
   }
 
   @Test
-  public void testSubscriptionAfterRestart() throws Exception {
+  public void testSubscriptionAfterRestartCluster() throws Exception {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
@@ -174,12 +183,130 @@ public class IoTDBSubscriptionRestartIT {
                 consumer.unsubscribe("topic1");
               } catch (final Exception e) {
                 e.printStackTrace();
-                // avoid fail
+                // Avoid failure
               } finally {
                 LOGGER.info("consumer exiting...");
               }
             });
     thread.start();
+
+    // Check timestamps size
+    try {
+      // Keep retrying if there are execution failures
+      Awaitility.await()
+          .pollDelay(1, TimeUnit.SECONDS)
+          .pollInterval(1, TimeUnit.SECONDS)
+          .atMost(120, TimeUnit.SECONDS)
+          .untilAsserted(() -> Assert.assertEquals(100, timestamps.size()));
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      isClosed.set(true);
+      thread.join();
+    }
+  }
+
+  @Test
+  public void testSubscriptionAfterRestartDN() throws Exception {
+    // Fetch ip and port from DN 0
+    final String host = EnvFactory.getEnv().getIP();
+    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+
+    // Create topic
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      session.createTopic("topic1");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Subscription
+    final SubscriptionPullConsumer consumer;
+    try {
+      consumer =
+          new SubscriptionPullConsumer.Builder()
+              .host(host)
+              .port(port)
+              .consumerId("c1")
+              .consumerGroupId("cg1")
+              .autoCommit(true)
+              .heartbeatInterval(1000)
+              .endpointsSyncInterval(5000) // narrow endpoints sync interval
+              .buildPullConsumer();
+      consumer.open();
+      consumer.subscribe("topic1");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+      return;
+    }
+
+    // Shutdown DN 1 & DN 2
+    EnvFactory.getEnv().shutdownDataNode(1);
+    EnvFactory.getEnv().shutdownDataNode(2);
+    Thread.sleep(10000); // wait some time
+
+    // Subscription again
+    final Map<Long, Long> timestamps = new HashMap<>();
+    final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final Thread thread =
+        new Thread(
+            () -> {
+              try (final SubscriptionPullConsumer consumerRef = consumer) {
+                while (!isClosed.get()) {
+                  try {
+                    Thread.sleep(1000); // wait some time
+                  } catch (final InterruptedException e) {
+                    break;
+                  }
+                  final List<SubscriptionMessage> messages;
+                  try {
+                    messages = consumerRef.poll(Duration.ofMillis(10000));
+                  } catch (final Exception e) {
+                    e.printStackTrace();
+                    // Avoid failure
+                    continue;
+                  }
+                  for (final SubscriptionMessage message : messages) {
+                    final SubscriptionSessionDataSets payload =
+                        (SubscriptionSessionDataSets) message.getPayload();
+                    for (final SubscriptionSessionDataSet dataSet : payload) {
+                      while (dataSet.hasNext()) {
+                        final long timestamp = dataSet.next().getTimestamp();
+                        timestamps.put(timestamp, timestamp);
+                      }
+                    }
+                    // Auto commit
+                  }
+                }
+                consumerRef.unsubscribe("topic1");
+              } catch (final Exception e) {
+                e.printStackTrace();
+                // Avoid failure
+              } finally {
+                LOGGER.info("consumer exiting...");
+              }
+            });
+    thread.start();
+
+    // Start DN 1 & DN 2
+    Thread.sleep(10000); // wait some time
+    EnvFactory.getEnv().startDataNode(1);
+    EnvFactory.getEnv().startDataNode(2);
+
+    // Insert some realtime data
+    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+      }
+      session.executeNonQueryStatement("flush");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
 
     // Check timestamps size
     try {
