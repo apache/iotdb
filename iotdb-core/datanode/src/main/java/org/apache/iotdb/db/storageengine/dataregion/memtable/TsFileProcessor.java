@@ -998,16 +998,16 @@ public class TsFileProcessor {
    * flushManager again.
    */
   private Future<?> addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
-    Map<IDeviceID, Long> lastTimeForEachDevice = new HashMap<>();
-    if (sequence) {
-      lastTimeForEachDevice = tobeFlushed.getMaxTime();
-      // If some devices have been removed in MemTable, the number of device in MemTable and
-      // tsFileResource will not be the same. And the endTime of these devices in resource will be
-      // Long.minValue.
-      // In the case, we need to delete the removed devices in tsFileResource.
-      if (lastTimeForEachDevice.size() != tsFileResource.getDevices().size()) {
-        tsFileResource.deleteRemovedDeviceAndUpdateEndTime(lastTimeForEachDevice);
-      } else {
+    final Map<IDeviceID, Long> lastTimeForEachDevice = tobeFlushed.getMaxTime();
+
+    // If some devices have been removed in MemTable, the number of device in MemTable and
+    // tsFileResource will not be the same. And the endTime of these devices in resource will be
+    // Long.minValue.
+    // In the case, we need to delete the removed devices in tsFileResource.
+    if (lastTimeForEachDevice.size() != tsFileResource.getDevices().size()) {
+      tsFileResource.deleteRemovedDeviceAndUpdateEndTime(lastTimeForEachDevice);
+    } else {
+      if (sequence) {
         tsFileResource.updateEndTime(lastTimeForEachDevice);
       }
     }

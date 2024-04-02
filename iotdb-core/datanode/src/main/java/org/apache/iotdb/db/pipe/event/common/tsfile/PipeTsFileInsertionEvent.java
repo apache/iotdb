@@ -113,8 +113,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     }
     // Check again after register close listener in case TsFile is closed during the process
     isClosed.set(resource.isClosed());
-    // This must be set here to judge the validity of closed tsFiles
-    isTsFileFormatValid.set(resource.getProcessor().isTsFileFormatValidForPipe());
   }
 
   /**
@@ -129,7 +127,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         }
       }
     }
-    return isTsFileFormatValid.get();
+    return isTsFileFormatValid.get() && !resource.isEmpty();
   }
 
   public File getTsFile() {
