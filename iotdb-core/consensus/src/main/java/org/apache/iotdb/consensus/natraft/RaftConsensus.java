@@ -262,7 +262,7 @@ public class RaftConsensus implements IConsensus {
         (k, v) -> {
           exist.set(true);
           v.stop();
-          FileUtils.deleteDirectory(new File(buildPeerDir(groupId)));
+          FileUtils.deleteFileOrDirectory(new File(buildPeerDir(groupId)));
           return null;
         });
 

@@ -109,7 +109,7 @@ public class ConfigNodeConfig {
 
   /** RegionGroup allocate policy. */
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
-      RegionBalancer.RegionGroupAllocatePolicy.GREEDY_COPY_SET;
+      RegionBalancer.RegionGroupAllocatePolicy.GCR;
 
   /** Max concurrent client number. */
   private int rpcMaxConcurrentClientNum = 65535;
@@ -188,7 +188,7 @@ public class ConfigNodeConfig {
   private long unknownDataNodeDetectInterval = heartbeatIntervalInMs;
 
   /** The policy of cluster RegionGroups' leader distribution. */
-  private String leaderDistributionPolicy = ILeaderBalancer.MIN_COST_FLOW_POLICY;
+  private String leaderDistributionPolicy = ILeaderBalancer.CFD_POLICY;
 
   /** Whether to enable auto leader balance for Ratis consensus protocol. */
   private boolean enableAutoLeaderBalanceForRatisConsensus = true;

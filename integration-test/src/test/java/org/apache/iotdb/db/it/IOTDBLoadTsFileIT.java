@@ -50,8 +50,10 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
@@ -228,6 +230,71 @@ public class IOTDBLoadTsFileIT {
           String.format(
               "delete timeseries %s.%s",
               SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00.getMeasurementId()));
+    }
+  }
+
+  @Test
+  public void testLoadWithExtendTemplate() throws Exception {
+    long writtenPoint1 = 0;
+    // device 0, device 1, sg 0
+    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_0,
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_00,
+              SchemaConfig.MEASUREMENT_01,
+              SchemaConfig.MEASUREMENT_02,
+              SchemaConfig.MEASUREMENT_03));
+      generator.registerAlignedTimeseries(
+          SchemaConfig.DEVICE_1,
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_10,
+              SchemaConfig.MEASUREMENT_11,
+              SchemaConfig.MEASUREMENT_12,
+              SchemaConfig.MEASUREMENT_13));
+      generator.generateData(SchemaConfig.DEVICE_0, 10000, PARTITION_INTERVAL / 10_000, false);
+      generator.generateData(SchemaConfig.DEVICE_1, 10000, PARTITION_INTERVAL / 10_000, true);
+      writtenPoint1 = generator.getTotalNumber();
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("create database root.sg.test_0");
+      statement.execute(
+          "create device template t1 (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla)");
+      statement.execute(" set device template t1 to root.sg.test_0.d_0");
+
+      statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+        if (resultSet.next()) {
+          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          Assert.assertEquals(writtenPoint1, sg1Count);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+
+      Set<String> nodes =
+          new HashSet<>(
+              Arrays.asList(
+                  "lat",
+                  "lon",
+                  SchemaConfig.MEASUREMENT_00.getMeasurementId(),
+                  SchemaConfig.MEASUREMENT_01.getMeasurementId(),
+                  SchemaConfig.MEASUREMENT_02.getMeasurementId(),
+                  SchemaConfig.MEASUREMENT_03.getMeasurementId()));
+      try (ResultSet resultSet = statement.executeQuery("show nodes in schema template t1")) {
+        while (resultSet.next()) {
+          String device = resultSet.getString(ColumnHeaderConstant.CHILD_NODES);
+          Assert.assertTrue(nodes.remove(device));
+        }
+        Assert.assertTrue(nodes.isEmpty());
+      } catch (Exception e) {
+        e.printStackTrace();
+        Assert.fail("Parse result set error.");
+      }
     }
   }
 

@@ -31,6 +31,9 @@ import org.apache.thrift.transport.TTransportException;
 public class IoTDBSyncClient extends IClientRPCService.Client
     implements ThriftClient, AutoCloseable {
 
+  private String ipAddress;
+  private int port;
+
   public IoTDBSyncClient(
       ThriftClientProperty property,
       String ipAddress,
@@ -52,10 +55,20 @@ public class IoTDBSyncClient extends IClientRPCService.Client
                         trustStorePwd)
                     : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                         ipAddress, port, property.getConnectionTimeoutMs())));
+    this.ipAddress = ipAddress;
+    this.port = port;
     final TTransport transport = getInputProtocol().getTransport();
     if (!transport.isOpen()) {
       transport.open();
     }
+  }
+
+  public String getIpAddress() {
+    return ipAddress;
+  }
+
+  public int getPort() {
+    return port;
   }
 
   public void setTimeout(int timeout) {

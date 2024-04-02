@@ -113,6 +113,7 @@ public class SessionTest {
             .fetchSize(1000)
             .zoneId(ZoneId.systemDefault())
             .enableRedirection(true)
+            .enableRecordsAutoConvertTablet(true)
             .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
             .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
             .version(Version.V_0_13)
@@ -964,9 +965,9 @@ public class SessionTest {
     map.put("one", tablet);
     session.insertAlignedTablets(map, false);
     session.setEnableRedirection(true);
-    Assert.assertEquals(true, session.isEnableRedirection());
+    Assert.assertTrue(session.isEnableRedirection());
     session.setEnableQueryRedirection(true);
-    Assert.assertEquals(true, session.isEnableQueryRedirection());
+    Assert.assertTrue(session.isEnableQueryRedirection());
   }
 
   @Test

@@ -22,11 +22,10 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.consensus.natraft.RaftConsensus;
-
 import org.apache.iotdb.consensus.nbraft.TestUtils.IntegerCounter;
 import org.apache.iotdb.consensus.nbraft.TestUtils.TestDataSet;
+
 import org.apache.ratis.util.TimeDuration;
 import org.junit.After;
 import org.junit.Assert;

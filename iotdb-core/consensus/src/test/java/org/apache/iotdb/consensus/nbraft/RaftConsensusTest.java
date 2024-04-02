@@ -197,8 +197,10 @@ public class RaftConsensusTest {
     logger.info(
         "First election {}ms, first ingestion {}ms, stop {}ms, restart {}ms, secondElection {}ms, secondIngestion {}ms",
         firstElectionTimeMs - startTimeMs,
-        firstIngestionTimeMs - firstElectionTimeMs, stopTimeMs - firstIngestionTimeMs,
-        restartTimeMs - stopTimeMs, secondElectionTimeMs - restartTimeMs,
+        firstIngestionTimeMs - firstElectionTimeMs,
+        stopTimeMs - firstIngestionTimeMs,
+        restartTimeMs - stopTimeMs,
+        secondElectionTimeMs - restartTimeMs,
         secondIngestionTimeMs - secondElectionTimeMs);
   }
 

@@ -197,6 +197,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           targetNodeUrl.getIp(),
           targetNodeUrl.getPort());
 
+      supportModsIfIsDataNodeReceiver = false;
       isHandshakeFinished.set(false);
       resp.set(null);
       exception.set(null);

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 
 import org.slf4j.Logger;
@@ -54,6 +54,12 @@ public class SerializedEnrichedEvent {
     this.committedTimestamp = INVALID_TIMESTAMP;
   }
 
+  //////////////////////////// serialization ////////////////////////////
+
+  public EnrichedTablets getEnrichedTablets() {
+    return enrichedTablets;
+  }
+
   /** @return true -> byte buffer is not null */
   public boolean serialize() {
     if (Objects.isNull(byteBuffer)) {
@@ -75,10 +81,12 @@ public class SerializedEnrichedEvent {
     return byteBuffer;
   }
 
-  public void clearByteBuffer() {
-    byteBuffer.clear();
+  public void resetByteBuffer() {
+    // maybe friendly for gc
     byteBuffer = null;
   }
+
+  //////////////////////////// commit ////////////////////////////
 
   public String getSubscriptionCommitId() {
     return enrichedTablets.getSubscriptionCommitId();
@@ -90,16 +98,18 @@ public class SerializedEnrichedEvent {
     }
   }
 
-  public void recordLastPolledTimestamp() {
-    lastPolledTimestamp = Math.max(lastPolledTimestamp, System.currentTimeMillis());
-  }
-
   public void recordCommittedTimestamp() {
     committedTimestamp = System.currentTimeMillis();
   }
 
   public boolean isCommitted() {
     return committedTimestamp != INVALID_TIMESTAMP;
+  }
+
+  //////////////////////////// pollable ////////////////////////////
+
+  public void recordLastPolledTimestamp() {
+    lastPolledTimestamp = Math.max(lastPolledTimestamp, System.currentTimeMillis());
   }
 
   public boolean pollable() {
@@ -109,6 +119,6 @@ public class SerializedEnrichedEvent {
     // Recycle events that may not be able to be committed, i.e., those that have been polled but
     // not committed within a certain period of time.
     return System.currentTimeMillis() - lastPolledTimestamp
-        > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalSeconds();
+        > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
   }
 }

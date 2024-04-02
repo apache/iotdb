@@ -366,6 +366,10 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
   }
 
+  public boolean supportModsIfIsDataNodeReceiver() {
+    return clientManager.supportModsIfIsDataNodeReceiver();
+  }
+
   //////////////////////////// Operations for close ////////////////////////////
 
   /**

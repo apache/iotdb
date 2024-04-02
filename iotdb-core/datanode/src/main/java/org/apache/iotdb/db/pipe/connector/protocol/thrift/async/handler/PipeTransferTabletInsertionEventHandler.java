@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
@@ -73,9 +74,13 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
 
     final TSStatus status = response.getStatus();
     try {
-      connector
-          .statusHandler()
-          .handle(response.getStatus(), response.getStatus().getMessage(), event.toString());
+      // Only handle the failed statuses to avoid string format performance overhead
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        connector
+            .statusHandler()
+            .handle(response.getStatus(), response.getStatus().getMessage(), event.toString());
+      }
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event)
             .decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), true);

@@ -146,7 +146,6 @@ public class ConsensusManager {
                                   RatisConfig.Snapshot.newBuilder()
                                       .setAutoTriggerThreshold(
                                           CONF.getConfigNodeRatisSnapshotTriggerThreshold())
-                                      .setCreationGap(1)
                                       .build())
                               .setLog(
                                   RatisConfig.Log.newBuilder()
@@ -438,6 +437,6 @@ public class ConsensusManager {
   }
 
   public void manuallyTakeSnapshot() throws ConsensusException {
-    consensusImpl.triggerSnapshot(ConfigNodeInfo.CONFIG_REGION_ID, false);
+    consensusImpl.triggerSnapshot(ConfigNodeInfo.CONFIG_REGION_ID, true);
   }
 }

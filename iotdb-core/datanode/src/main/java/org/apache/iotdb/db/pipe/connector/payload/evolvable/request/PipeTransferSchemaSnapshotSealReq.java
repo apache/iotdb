@@ -20,12 +20,18 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReq;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
-public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReq {
+public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReqV2 {
 
   private PipeTransferSchemaSnapshotSealReq() {
     // Empty constructor
@@ -39,9 +45,26 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReq {
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferSchemaSnapshotSealReq toTPipeTransferReq(
-      String fileName, long fileLength) throws IOException {
+      String mTreeSnapshotName,
+      long mTreeSnapshotLength,
+      String tLogName,
+      long tLogLength,
+      String databaseName,
+      String typeString)
+      throws IOException {
+    final Map<String, String> parameters = new HashMap<>();
+    parameters.put(ColumnHeaderConstant.DATABASE, databaseName);
+    parameters.put(ColumnHeaderConstant.TYPE, typeString);
     return (PipeTransferSchemaSnapshotSealReq)
-        new PipeTransferSchemaSnapshotSealReq().convertToTPipeTransferReq(fileName, fileLength);
+        new PipeTransferSchemaSnapshotSealReq()
+            .convertToTPipeTransferReq(
+                Objects.nonNull(tLogName)
+                    ? Arrays.asList(mTreeSnapshotName, tLogName)
+                    : Collections.singletonList(mTreeSnapshotName),
+                Objects.nonNull(tLogName)
+                    ? Arrays.asList(mTreeSnapshotLength, tLogLength)
+                    : Collections.singletonList(mTreeSnapshotLength),
+                parameters);
   }
 
   public static PipeTransferSchemaSnapshotSealReq fromTPipeTransferReq(TPipeTransferReq req) {
@@ -51,9 +74,26 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferBytes(String fileName, long fileLength) throws IOException {
+  public static byte[] toTPipeTransferBytes(
+      String mTreeSnapshotName,
+      long mTreeSnapshotLength,
+      String tLogName,
+      long tLogLength,
+      String databaseName,
+      String typeString)
+      throws IOException {
+    final Map<String, String> parameters = new HashMap<>();
+    parameters.put(ColumnHeaderConstant.DATABASE, databaseName);
+    parameters.put(ColumnHeaderConstant.TYPE, typeString);
     return new PipeTransferSchemaSnapshotSealReq()
-        .convertToTPipeTransferSnapshotSealBytes(fileName, fileLength);
+        .convertToTPipeTransferSnapshotSealBytes(
+            Objects.nonNull(tLogName)
+                ? Arrays.asList(mTreeSnapshotName, tLogName)
+                : Collections.singletonList(mTreeSnapshotName),
+            Objects.nonNull(tLogName)
+                ? Arrays.asList(mTreeSnapshotLength, tLogLength)
+                : Collections.singletonList(mTreeSnapshotLength),
+            parameters);
   }
 
   /////////////////////////////// Object ///////////////////////////////

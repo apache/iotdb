@@ -113,7 +113,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
-import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -517,14 +517,13 @@ public class ConfigPlanExecutor {
   }
 
   public boolean takeSnapshot(File snapshotDir) {
-
-    // consensus layer needs to ensure that the directory exists.
+    // Consensus layer needs to ensure that the directory exists.
     // if it does not exist, print a log to warn there may have a problem.
     if (!snapshotDir.exists()) {
       LOGGER.warn(
           "snapshot directory [{}] is not exist,start to create it.",
           snapshotDir.getAbsolutePath());
-      // try to create a directory to enable snapshot operation
+      // Try to create a directory to enable snapshot operation
       if (!snapshotDir.mkdirs()) {
         LOGGER.error("snapshot directory [{}] can not be created.", snapshotDir.getAbsolutePath());
         return false;
@@ -535,7 +534,7 @@ public class ConfigPlanExecutor {
     // which may result in incorrect results.
     File[] fileList = snapshotDir.listFiles();
     if (fileList != null && fileList.length > 0) {
-      LOGGER.error("snapshot directory [{}] is not empty.", snapshotDir.getAbsolutePath());
+      LOGGER.error("Snapshot directory [{}] is not empty.", snapshotDir.getAbsolutePath());
       return false;
     }
 

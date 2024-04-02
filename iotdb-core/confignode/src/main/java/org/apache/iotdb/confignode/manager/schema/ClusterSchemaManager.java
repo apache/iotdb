@@ -510,7 +510,7 @@ public class ClusterSchemaManager {
     // Get all StorageGroupSchemas
     Map<String, TDatabaseSchema> databaseSchemaMap =
         getMatchedDatabaseSchemasByName(getDatabaseNames());
-    if (databaseSchemaMap.size() == 0) {
+    if (databaseSchemaMap.isEmpty()) {
       // Skip when there are no StorageGroups
       return;
     }

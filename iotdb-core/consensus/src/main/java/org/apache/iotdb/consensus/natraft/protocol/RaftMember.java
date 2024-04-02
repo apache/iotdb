@@ -307,7 +307,7 @@ public class RaftMember {
 
   public void remove() {
     stop();
-    FileUtils.deleteDirectory(new File(storageDir));
+    FileUtils.deleteFileOrDirectory(new File(storageDir));
     onRemove.accept(groupId);
   }
 

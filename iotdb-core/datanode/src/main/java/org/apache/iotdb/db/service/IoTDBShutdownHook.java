@@ -56,22 +56,22 @@ public class IoTDBShutdownHook extends Thread {
   @Override
   public void run() {
     logger.info("DataNode exiting...");
-    // stop external rpc service firstly.
+    // Stop external rpc service firstly.
     RPCService.getInstance().stop();
 
-    // close rocksdb if possible to avoid lose data
+    // Close rocksdb if possible to avoid lose data
     if (SchemaEngineMode.valueOf(CommonDescriptor.getInstance().getConfig().getSchemaEngineMode())
         .equals(SchemaEngineMode.Rocksdb_based)) {
       SchemaEngine.getInstance().clear();
     }
 
-    // reject write operations to make sure all tsfiles will be sealed
+    // Reject write operations to make sure all tsfiles will be sealed
     CommonDescriptor.getInstance().getConfig().setStopping(true);
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
-    // wait all wal are flushed
+    // Wait all wal are flushed
     WALManager.getInstance().waitAllWALFlushed();
 
-    // flush data to Tsfile and remove WAL log files
+    // Flush data to Tsfile and remove WAL log files
     if (!IoTDBDescriptor.getInstance()
         .getConfig()
         .getDataRegionConsensusProtocolClass()
@@ -105,7 +105,7 @@ public class IoTDBShutdownHook extends Thread {
               });
     }
 
-    // close consensusImpl
+    // Close consensusImpl
     try {
       SchemaRegionConsensusImpl.getInstance().stop();
       DataRegionConsensusImpl.getInstance().stop();
@@ -113,7 +113,7 @@ public class IoTDBShutdownHook extends Thread {
       logger.error("Stop ConsensusImpl error in IoTDBShutdownHook", e);
     }
 
-    // clear lock file
+    // Clear lock file
     DirectoryChecker.getInstance().deregisterAll();
 
     // Set and report shutdown to cluster ConfigNode-leader

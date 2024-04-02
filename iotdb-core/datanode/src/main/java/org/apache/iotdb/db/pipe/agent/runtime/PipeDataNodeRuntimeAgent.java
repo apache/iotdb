@@ -33,8 +33,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
-import org.apache.iotdb.db.pipe.progress.assigner.SimpleConsensusProgressIndexAssigner;
-import org.apache.iotdb.db.pipe.resource.PipeHardlinkFileDirStartupCleaner;
+import org.apache.iotdb.db.pipe.progress.SimpleConsensusProgressIndexAssigner;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -65,10 +65,10 @@ public class PipeDataNodeRuntimeAgent implements IService {
 
   public synchronized void preparePipeResources(
       ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
-    // clean sender (connector) hardlink file dir
-    PipeHardlinkFileDirStartupCleaner.clean();
+    // Clean sender (connector) hardlink file dir and snapshot dir
+    PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.clean();
 
-    // clean receiver file dir
+    // Clean receiver file dir
     PipeAgent.receiver().cleanPipeReceiverDirs();
 
     PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);

@@ -98,7 +98,7 @@ public class DirectorySnapshot extends Snapshot {
     }
     member.getStateMachine().loadSnapshot(new File(localSnapshotTmpDirPath));
     member.getLogManager().applySnapshot(this);
-    FileUtils.deleteDirectory(new File(localSnapshotTmpDirPath));
+    FileUtils.deleteFileOrDirectory(new File(localSnapshotTmpDirPath));
     return tsStatus;
   }
 

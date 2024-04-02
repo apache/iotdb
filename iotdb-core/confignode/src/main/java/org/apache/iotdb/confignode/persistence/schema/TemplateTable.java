@@ -113,7 +113,7 @@ public class TemplateTable {
       Template temp = this.templateMap.get(template.getName());
       if (temp != null) {
         LOGGER.error(
-            "Failed to create template, because template name {} is exists", template.getName());
+            "Failed to create template, because template name {} exists", template.getName());
         throw new MetadataException("Duplicated template name: " + temp.getName());
       }
       template.setId(templateIdGenerator.getAndIncrement());
