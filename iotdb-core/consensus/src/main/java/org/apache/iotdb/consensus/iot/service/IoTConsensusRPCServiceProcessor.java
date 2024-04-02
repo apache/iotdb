@@ -211,7 +211,6 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       responseStatus.setMessage(e.getMessage());
     }
-    KillPoint.setKillPoint(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE);
     resultHandler.onComplete(new TBuildSyncLogChannelRes(responseStatus));
   }
 

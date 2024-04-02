@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.it.regionmigration.pass;
 
+import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -32,11 +33,11 @@ import org.junit.runner.RunWith;
 public class IoTDBRegionMigrateNormalIT extends IoTDBRegionMigrateReliabilityITFramework {
   @Test
   public void normal1C2DTest() throws Exception {
-    successTest(1, 1, 1, 2, noKillPoints(), noKillPoints());
+    successTest(1, 1, 1, 2, noKillPoints(), noKillPoints(), KillNode.ORIGINAL_DATANODE);
   }
 
   @Test
   public void normal3C3DTest() throws Exception {
-    successTest(2, 3, 3, 3, noKillPoints(), noKillPoints());
+    successTest(2, 3, 3, 3, noKillPoints(), noKillPoints(), KillNode.ORIGINAL_DATANODE);
   }
 }

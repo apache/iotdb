@@ -431,14 +431,12 @@ public class IoTConsensus implements IConsensus {
     for (Peer peer : impl.getConfiguration()) {
       if (!peers.contains(peer)) {
         try {
-          removeRemotePeer(groupId, peer);
-        } catch (ConsensusException e) {
+          impl.removeSyncLogChannel(peer);
+        } catch (ConsensusGroupModifyPeerException e) {
           logger.error("Failed to remove peer {} from group {}", peer, groupId, e);
-          throw e;
         }
       }
     }
-    impl.resetConfiguration(peers);
   }
 
   public IoTConsensusServerImpl getImpl(ConsensusGroupId groupId) {
