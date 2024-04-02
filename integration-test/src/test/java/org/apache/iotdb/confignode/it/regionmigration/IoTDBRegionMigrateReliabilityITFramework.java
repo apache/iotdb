@@ -36,6 +36,7 @@ import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.metrics.utils.SystemType;
 
+import org.apache.thrift.TException;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
@@ -430,17 +431,25 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       int destDataNode) {
     AtomicReference<Set<Integer>> lastTimeDataNodes = new AtomicReference<>();
     AtomicReference<Exception> lastException = new AtomicReference<>();
+    AtomicReference<SyncConfigNodeIServiceClient> clientRef = new AtomicReference<>(client);
     try {
       Awaitility.await()
           .atMost(1, TimeUnit.MINUTES)
+          .pollDelay(2, TimeUnit.SECONDS)
           .until(
               () -> {
                 try {
-                  TShowRegionResp resp = client.showRegion(new TShowRegionReq());
+                  TShowRegionResp resp = clientRef.get().showRegion(new TShowRegionReq());
                   Map<Integer, Set<Integer>> newRegionMap = getRegionMap(resp.getRegionInfoList());
                   Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
                   lastTimeDataNodes.set(dataNodes);
                   return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
+                } catch (TException e) {
+                  clientRef.set(
+                      (SyncConfigNodeIServiceClient)
+                          EnvFactory.getEnv().getLeaderConfigNodeConnection());
+                  lastException.set(e);
+                  return false;
                 } catch (Exception e) {
                   // Any exception can be ignored
                   lastException.set(e);
@@ -458,7 +467,12 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       lastTimeDataNodes.get().remove(originalDataNode);
       lastTimeDataNodes.get().add(destDataNode);
       String expectSetStr = lastTimeDataNodes.toString();
-      LOGGER.info("DataNode Set {} is unexpected, expect {}", actualSetStr, expectSetStr);
+      LOGGER.error("DataNode Set {} is unexpected, expect {}", actualSetStr, expectSetStr);
+      if (lastException.get() == null) {
+        LOGGER.info("No exception during awaiting");
+      } else {
+        LOGGER.error("Last exception during awaiting:", lastException.get());
+      }
       throw e;
     }
   }
