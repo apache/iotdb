@@ -126,6 +126,21 @@ public abstract class IoTDBConnector implements PipeConnector {
             "Load balance strategy should be one of %s, but got %s.",
             CONNECTOR_LOAD_BALANCE_STRATEGY_SET, loadBalanceStrategy),
         loadBalanceStrategy);
+
+    validator.validate(
+        arg -> arg.equals("retry") || arg.equals("ignore"),
+        String.format(
+            "The value of key %s or %s must be either 'retry' or 'ignore'.",
+            CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY,
+            SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY),
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY,
+                    SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY),
+                CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_DEFAULT_VALUE)
+            .trim()
+            .toLowerCase());
   }
 
   @Override
@@ -149,7 +164,8 @@ public abstract class IoTDBConnector implements PipeConnector {
                         CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY,
                         SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY),
                     CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_DEFAULT_VALUE)
-                .equals("retry"),
+                .trim()
+                .equalsIgnoreCase("retry"),
             parameters.getLongOrDefault(
                 Arrays.asList(
                     CONNECTOR_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY,
