@@ -886,16 +886,14 @@ public class DataRegion implements IDataRegionForQuery {
               && insertRowNode.getTime()
                   > lastFlushTimeMap.getFlushedTime(timePartitionId, insertRowNode.getDeviceID());
 
-      Map<TsFileProcessor, Boolean> tsFileProcessorMapForFlushing = new HashMap<>();
-
       // insert to sequence or unSequence file
-      insertToTsFileProcessor(
-          insertRowNode, isSequence, timePartitionId, tsFileProcessorMapForFlushing);
+      TsFileProcessor tsFileProcessor =
+          insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
 
       // check memtable size and may asyncTryToFlush the work memtable
-      for (Map.Entry<TsFileProcessor, Boolean> entry : tsFileProcessorMapForFlushing.entrySet()) {
-        if (entry.getKey().shouldFlush()) {
-          fileFlushPolicy.apply(this, entry.getKey(), entry.getValue());
+      if (tsFileProcessor != null) {
+        if (tsFileProcessor.shouldFlush()) {
+          fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
         }
       }
     } finally {
@@ -1106,18 +1104,15 @@ public class DataRegion implements IDataRegionForQuery {
             latestFlushedTime);
   }
 
-  private void insertToTsFileProcessor(
-      InsertRowNode insertRowNode,
-      boolean sequence,
-      long timePartitionId,
-      Map<TsFileProcessor, Boolean> tsFileProcessorMapForFlushing)
+  private TsFileProcessor insertToTsFileProcessor(
+      InsertRowNode insertRowNode, boolean sequence, long timePartitionId)
       throws WriteProcessException {
     if (insertRowNode.allMeasurementFailed()) {
-      return;
+      return null;
     }
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
     if (tsFileProcessor == null) {
-      return;
+      return null;
     }
     long[] costsForMetrics = new long[4];
     tsFileProcessor.insert(insertRowNode, costsForMetrics);
@@ -1126,18 +1121,17 @@ public class DataRegion implements IDataRegionForQuery {
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
 
-    tsFileProcessorMapForFlushing.put(tsFileProcessor, sequence);
-
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
           && insertRowNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
-        return;
+        return tsFileProcessor;
       }
       // disable updating last cache on follower
       long startTime = System.nanoTime();
       tryToUpdateInsertRowLastCache(insertRowNode);
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
     }
+    return tsFileProcessor;
   }
 
   private void tryToUpdateInsertRowLastCache(InsertRowNode node) {
@@ -1193,10 +1187,8 @@ public class DataRegion implements IDataRegionForQuery {
             v.addOneInsertRowNode(insertRowNode, finalI);
             return v;
           });
-      executedInsertRowNodeList.add(insertRowNode);
     }
 
-    // check memtable size and may asyncTryToFlush the work memtable
     for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
       TsFileProcessor tsFileProcessor = entry.getKey();
       InsertRowsNode subInsertRowsNode = entry.getValue();
@@ -1209,7 +1201,9 @@ public class DataRegion implements IDataRegionForQuery {
                 subInsertRowsNode.getInsertRowNodeIndexList().get(0),
                 RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
+      executedInsertRowNodeList.addAll(subInsertRowsNode.getInsertRowNodeList());
 
+      // check memtable size and may asyncTryToFlush the work memtable
       if (entry.getKey().shouldFlush()) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
@@ -3132,7 +3126,8 @@ public class DataRegion implements IDataRegionForQuery {
       if (deleted) {
         return;
       }
-      Map<TsFileProcessor, Boolean> tsFileProcessorMapForFlushing = new HashMap<>();
+      long[] costsForMetrics = new long[4];
+      Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
         if (!isAlive(insertRowNode.getTime())) {
@@ -3170,22 +3165,68 @@ public class DataRegion implements IDataRegionForQuery {
             config.isEnableSeparateData()
                 && insertRowNode.getTime()
                     > lastFlushTimeMap.getFlushedTime(timePartitionId, insertRowNode.getDeviceID());
+        TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, isSequence);
+        if (tsFileProcessor == null) {
+          continue;
+        }
+        int finalI = i;
+        tsFileProcessorMap.compute(
+            tsFileProcessor,
+            (k, v) -> {
+              if (v == null) {
+                v = new InsertRowsNode(insertRowsOfOneDeviceNode.getPlanNodeId());
+                v.setSearchIndex(insertRowNode.getSearchIndex());
+                v.setAligned(insertRowNode.isAligned());
+              }
+              v.addOneInsertRowNode(insertRowNode, finalI);
+              return v;
+            });
 
-        // insert to sequence or unSequence file
+        //        // insert to sequence or unSequence file
+        //        try {
+        //          insertToTsFileProcessor(
+        //              insertRowNode, isSequence, timePartitionId, tsFileProcessorMapForFlushing);
+        //        } catch (WriteProcessException e) {
+        //          insertRowsOfOneDeviceNode
+        //              .getResults()
+        //              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        //        }
+      }
+      List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
+      for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
+        TsFileProcessor tsFileProcessor = entry.getKey();
+        InsertRowsNode subInsertRowsNode = entry.getValue();
         try {
-          insertToTsFileProcessor(
-              insertRowNode, isSequence, timePartitionId, tsFileProcessorMapForFlushing);
+          tsFileProcessor.insert(subInsertRowsNode, costsForMetrics);
         } catch (WriteProcessException e) {
           insertRowsOfOneDeviceNode
               .getResults()
-              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+              .put(
+                  subInsertRowsNode.getInsertRowNodeIndexList().get(0),
+                  RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
+        executedInsertRowNodeList.addAll(subInsertRowsNode.getInsertRowNodeList());
+
+        // check memtable size and may asyncTryToFlush the work memtable
+        if (tsFileProcessor.shouldFlush()) {
+          fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
         }
       }
-      // check memtable size and may asyncTryToFlush the work memtable
-      for (Map.Entry<TsFileProcessor, Boolean> entry : tsFileProcessorMapForFlushing.entrySet()) {
-        if (entry.getKey().shouldFlush()) {
-          fileFlushPolicy.apply(this, entry.getKey(), entry.getValue());
+
+      PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+        if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+            && insertRowsOfOneDeviceNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
+          return;
         }
+        // disable updating last cache on follower
+        startTime = System.nanoTime();
+        tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
+        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+            System.nanoTime() - startTime);
       }
     } finally {
       writeUnlock();
