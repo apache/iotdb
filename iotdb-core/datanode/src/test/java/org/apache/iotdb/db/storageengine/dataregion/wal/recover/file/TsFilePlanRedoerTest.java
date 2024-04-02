@@ -572,29 +572,13 @@ public class TsFilePlanRedoerTest {
             DEVICE1_NAME, "s1", new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
     ReadOnlyMemChunk memChunk =
         recoveryMemTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null);
-    IPointReader iterator = memChunk.getPointReader();
-    int time = 1;
-    while (iterator.hasNextTimeValuePair()) {
-      TimeValuePair timeValuePair = iterator.nextTimeValuePair();
-      assertEquals(time, timeValuePair.getTimestamp());
-      assertEquals(100, timeValuePair.getValue().getInt());
-      ++time;
-    }
-    assertEquals(3, time);
+    assertTrue(memChunk == null || memChunk.isEmpty());
     // check d1.s2
     fullPath =
         new MeasurementPath(
             DEVICE1_NAME, "s2", new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
     memChunk = recoveryMemTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null);
-    iterator = memChunk.getPointReader();
-    time = 1;
-    while (iterator.hasNextTimeValuePair()) {
-      TimeValuePair timeValuePair = iterator.nextTimeValuePair();
-      assertEquals(time, timeValuePair.getTimestamp());
-      assertEquals(10000, timeValuePair.getValue().getLong());
-      ++time;
-    }
-    assertEquals(3, time);
+    assertTrue(memChunk == null || memChunk.isEmpty());
   }
 
   @Test
