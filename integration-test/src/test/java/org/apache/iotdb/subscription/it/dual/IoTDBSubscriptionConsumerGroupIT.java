@@ -376,7 +376,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      connectorAttributes.put("connector", "iotdb-thrift-sync-connector");
+      connectorAttributes.put("connector", "iotdb-legacy-pipe-sink");
       connectorAttributes.put("connector.ip", receiverEnv.getIP());
       connectorAttributes.put("connector.port", receiverEnv.getPort());
 
@@ -401,7 +401,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      connectorAttributes.put("connector", "iotdb-thrift-sync-connector");
+      connectorAttributes.put("connector", "iotdb-legacy-pipe-sink");
       connectorAttributes.put("connector.ip", receiverEnv.getIP());
       connectorAttributes.put("connector.port", receiverEnv.getPort());
 

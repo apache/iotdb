@@ -38,7 +38,6 @@ abstract class AbstractSubscriptionDualIT {
 
     senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
     receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-    receiverEnv.getConfig().getCommonConfig().setPipeAirGapReceiverEnabled(true);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
