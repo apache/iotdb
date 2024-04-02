@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.utils.KillPoint;
 
 public enum KillNode {
+  ALL_NODES,
   CONFIG_NODE,
   ORIGINAL_DATANODE,
   DESTINATION_DATANODE,
