@@ -53,6 +53,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
 
+  private static final IoTDBConnectionException NO_PROVIDERS_EXCEPTION =
+      new IoTDBConnectionException("Cluster has no available subscription providers to connect");
+
   private final List<TEndPoint> initialEndpoints;
 
   private final String username;
@@ -208,7 +211,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     acquireReadLock();
     try {
-      getDefaultSessionConnection().subscribe(topicNames);
+      subscribeWithRedirection(topicNames);
     } finally {
       releaseReadLock();
     }
@@ -228,7 +231,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     acquireReadLock();
     try {
-      getDefaultSessionConnection().unsubscribe(topicNames);
+      unsubscribeWithRedirection(topicNames);
     } finally {
       releaseReadLock();
     }
@@ -301,21 +304,21 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     closeProviders();
 
     for (final TEndPoint endPoint : initialEndpoints) {
-      final SubscriptionProvider defaultSubscriptionProvider;
+      final SubscriptionProvider defaultProvider;
       final int defaultDataNodeId;
 
       try {
-        defaultSubscriptionProvider = constructProvider(endPoint);
-        defaultDataNodeId = defaultSubscriptionProvider.handshake();
+        defaultProvider = constructProvider(endPoint);
+        defaultDataNodeId = defaultProvider.handshake();
       } catch (final Exception e) {
         LOGGER.warn("Failed to create connection with {}, exception: {}", endPoint, e.getMessage());
         continue; // try next endpoint
       }
-      addProvider(defaultDataNodeId, defaultSubscriptionProvider);
+      addProvider(defaultDataNodeId, defaultProvider);
 
       final Map<Integer, TEndPoint> allEndPoints;
       try {
-        allEndPoints = defaultSubscriptionProvider.getSessionConnection().fetchAllEndPoints();
+        allEndPoints = defaultProvider.getSessionConnection().fetchAllEndPoints();
       } catch (final Exception e) {
         LOGGER.warn(
             "Failed to fetch all endpoints from {}, exception: {}, will retry later...",
@@ -329,10 +332,10 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
           continue;
         }
 
-        final SubscriptionProvider subscriptionProvider;
+        final SubscriptionProvider provider;
         try {
-          subscriptionProvider = constructProvider(entry.getValue());
-          subscriptionProvider.handshake();
+          provider = constructProvider(entry.getValue());
+          provider.handshake();
         } catch (final Exception e) {
           LOGGER.warn(
               "Failed to create connection with {}, exception: {}, will retry later...",
@@ -340,23 +343,44 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
               e.getMessage());
           continue; // retry later
         }
-        addProvider(entry.getKey(), subscriptionProvider);
+        addProvider(entry.getKey(), provider);
       }
 
       break;
     }
 
-    if (subscriptionProviders.isEmpty()) {
-      throw new IoTDBConnectionException("Cluster has no nodes to connect");
+    if (hasNoProviders()) {
+      throw NO_PROVIDERS_EXCEPTION;
     }
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
   private void closeProviders() throws IoTDBConnectionException {
-    for (final SubscriptionProvider provider : subscriptionProviders.values()) {
+    for (final SubscriptionProvider provider : getAllProviders()) {
       provider.close();
     }
     subscriptionProviders.clear();
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
+  void addProvider(final int dataNodeId, final SubscriptionProvider provider) {
+    // the subscription provider is opened
+    LOGGER.info("add new subscription provider {}", provider);
+    subscriptionProviders.put(dataNodeId, provider);
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
+  void closeAndRemoveProvider(final int dataNodeId) throws IoTDBConnectionException {
+    if (!containsProvider(dataNodeId)) {
+      return;
+    }
+    final SubscriptionProvider provider = subscriptionProviders.get(dataNodeId);
+    try {
+      provider.close();
+    } finally {
+      LOGGER.info("close and remove stale subscription provider {}", provider);
+      subscriptionProviders.remove(dataNodeId);
+    }
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
@@ -370,57 +394,85 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  Set<Integer> getAvailableDataNodeIds() {
-    return subscriptionProviders.keySet();
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void addProvider(final int dataNodeId, final SubscriptionProvider subscriptionProvider) {
-    // the subscription provider is opened
-    subscriptionProviders.put(dataNodeId, subscriptionProvider);
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void closeAndRemoveProvider(final int dataNodeId) throws IoTDBConnectionException {
-    if (!containsProvider(dataNodeId)) {
-      return;
-    }
-    final SubscriptionProvider subscriptionProvider = subscriptionProviders.get(dataNodeId);
-    try {
-      subscriptionProvider.close();
-    } finally {
-      subscriptionProviders.remove(dataNodeId);
-    }
-  }
-
-  /////////////////////////////// session connection ///////////////////////////////
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  protected SubscriptionSessionConnection getDefaultSessionConnection()
-      throws IoTDBConnectionException {
-    if (hasNoProviders()) {
-      throw new IoTDBConnectionException("Cluster has no nodes to connect");
-    }
-    // get the subscription provider with minimal data node id
-    return subscriptionProviders.get(subscriptionProviders.firstKey()).getSessionConnection();
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  protected List<SubscriptionSessionConnection> getSessionConnections() {
+  List<SubscriptionProvider> getAvailableProviders() {
     return subscriptionProviders.values().stream()
-        .map(SubscriptionProvider::getSessionConnection)
+        .filter(SubscriptionProvider::isAvailable)
         .collect(Collectors.toList());
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  protected SubscriptionSessionConnection getSessionConnection(final int dataNodeId)
-      throws IoTDBConnectionException {
+  List<SubscriptionProvider> getAllProviders() {
+    return new ArrayList<>(subscriptionProviders.values());
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  SubscriptionProvider getProvider(final int dataNodeId) {
     if (!containsProvider(dataNodeId)) {
-      throw new IoTDBConnectionException(
-          String.format(
-              "Failed to get subscription session connection with data node id %s", dataNodeId));
+      return null;
     }
-    return subscriptionProviders.get(dataNodeId).getSessionConnection();
+    final SubscriptionProvider provider = subscriptionProviders.get(dataNodeId);
+    if (!provider.isAvailable()) {
+      return null;
+    }
+    return provider;
+  }
+
+  /////////////////////////////// redirection ///////////////////////////////
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  public void subscribeWithRedirection(final Set<String> topicNames)
+      throws IoTDBConnectionException {
+    for (final SubscriptionProvider provider : getAvailableProviders()) {
+      try {
+        provider.getSessionConnection().subscribe(topicNames);
+        return;
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "Failed to subscribe topics {} from subscription provider {}, exception: {}, try next subscription provider...",
+            topicNames,
+            provider,
+            e.getMessage());
+      }
+    }
+    throw NO_PROVIDERS_EXCEPTION;
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  public void unsubscribeWithRedirection(final Set<String> topicNames)
+      throws IoTDBConnectionException {
+    for (final SubscriptionProvider provider : getAvailableProviders()) {
+      try {
+        provider.getSessionConnection().unsubscribe(topicNames);
+        return;
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "Failed to unsubscribe topics {} from subscription provider {}, exception: {}, try next subscription provider...",
+            topicNames,
+            provider,
+            e.getMessage());
+      }
+    }
+    throw NO_PROVIDERS_EXCEPTION;
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  public Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection()
+      throws IoTDBConnectionException {
+    Map<Integer, TEndPoint> endPoints = null;
+    for (final SubscriptionProvider provider : getAvailableProviders()) {
+      try {
+        endPoints = provider.getSessionConnection().fetchAllEndPoints();
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "Failed to fetch all endpoints from subscription provider {}, exception: {}, try next subscription provider...",
+            provider,
+            e.getMessage());
+      }
+    }
+    if (Objects.isNull(endPoints)) {
+      throw NO_PROVIDERS_EXCEPTION;
+    }
+    return endPoints;
   }
 
   /////////////////////////////// builder ///////////////////////////////

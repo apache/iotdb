@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -63,9 +64,9 @@ public class SubscriptionSession extends Session {
   @Override
   public SessionConnection constructSessionConnection(
       Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
-    if (endpoint == null) {
-      return new SubscriptionSessionConnection(
-          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
+    if (Objects.isNull(endpoint)) {
+      throw new IllegalStateException(
+          "subscription session must be configured with an endpoint...");
     }
     return new SubscriptionSessionConnection(
         session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);

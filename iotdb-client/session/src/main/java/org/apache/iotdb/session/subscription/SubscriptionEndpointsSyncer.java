@@ -61,17 +61,9 @@ public class SubscriptionEndpointsSyncer implements Runnable {
       }
     }
 
-    final SubscriptionSessionConnection sessionConnection;
-    try {
-      sessionConnection = consumer.getDefaultSessionConnection();
-    } catch (final IoTDBConnectionException e) {
-      LOGGER.warn("something unexpected happened when syncing subscription endpoints...", e);
-      return;
-    }
-
     final Map<Integer, TEndPoint> allEndPoints;
     try {
-      allEndPoints = sessionConnection.fetchAllEndPoints();
+      allEndPoints = consumer.fetchAllEndPointsWithRedirection();
     } catch (final Exception e) {
       LOGGER.warn(
           "Failed to fetch all endpoints, exception: {}, will retry later...", e.getMessage());
@@ -81,29 +73,29 @@ public class SubscriptionEndpointsSyncer implements Runnable {
     // open new providers
     for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
       if (!consumer.containsProvider(entry.getKey())) {
-        final SubscriptionProvider subscriptionProvider;
+        final SubscriptionProvider provider = consumer.constructProvider(entry.getValue());
         try {
-          subscriptionProvider = consumer.constructProvider(entry.getValue());
-          subscriptionProvider.handshake();
+          provider.handshake();
         } catch (final Exception e) {
           LOGGER.warn(
-              "Failed to create connection with {}, exception: {}, will retry later...",
-              entry.getValue(),
+              "Failed to create connection with subscription provider {}, exception: {}, will retry later...",
+              provider,
               e.getMessage());
           continue; // retry later
         }
-        consumer.addProvider(entry.getKey(), subscriptionProvider);
+        consumer.addProvider(entry.getKey(), provider);
       }
     }
 
     // remove stale providers
-    for (final Integer dataNodeId : consumer.getAvailableDataNodeIds()) {
+    for (final SubscriptionProvider provider : consumer.getAllProviders()) {
+      final int dataNodeId = provider.getDataNodeId();
       if (!allEndPoints.containsKey(dataNodeId)) {
         try {
           consumer.closeAndRemoveProvider(dataNodeId);
         } catch (final IoTDBConnectionException e) {
           LOGGER.warn(
-              "Failed to close and remove subscription provider with data node id {}, exception: {}",
+              "Exception occurred when closing and removing subscription provider with data node id {}: {}",
               dataNodeId,
               e.getMessage());
         }

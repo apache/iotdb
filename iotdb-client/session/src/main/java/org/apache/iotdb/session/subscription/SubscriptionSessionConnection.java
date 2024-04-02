@@ -57,7 +57,8 @@ public class SubscriptionSessionConnection extends SessionConnection {
   private static final String STATUS_COLUMN_NAME = "Status";
   private static final String IP_COLUMN_NAME = "RpcAddress";
   private static final String PORT_COLUMN_NAME = "RpcPort";
-  private static final String REMOVING_STATUS = "Removing";
+  private static final String REMOVING_STATUS = "Removing"; // remove DN
+  private static final String UNKNOWN_STATUS = "Unknown"; // stop and restart DN
 
   public SubscriptionSessionConnection(
       Session session,
@@ -70,16 +71,6 @@ public class SubscriptionSessionConnection extends SessionConnection {
     super(session, endPoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
   }
 
-  public SubscriptionSessionConnection(
-      Session session,
-      ZoneId zoneId,
-      Supplier<List<TEndPoint>> availableNodes,
-      int maxRetryCount,
-      long retryIntervalInMs)
-      throws IoTDBConnectionException {
-    super(session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
-  }
-
   // from org.apache.iotdb.session.NodesSupplier.updateDataNodeList
   public Map<Integer, TEndPoint> fetchAllEndPoints()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -87,8 +78,9 @@ public class SubscriptionSessionConnection extends SessionConnection {
     SessionDataSet.DataIterator iterator = dataSet.iterator();
     Map<Integer, TEndPoint> endPoints = new HashMap<>();
     while (iterator.next()) {
-      // ignore removing DN
-      if (REMOVING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))) {
+      // ignore removing and unknown DN
+      if (REMOVING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME)) ||
+          UNKNOWN_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))) {
         continue;
       }
       String ip = iterator.getString(IP_COLUMN_NAME);

@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
@@ -148,9 +149,9 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
     acquireReadLock();
     try {
-      for (SubscriptionSessionConnection connection : getSessionConnections()) {
+      for (final SubscriptionProvider provider : getAvailableProviders()) {
         // TODO: network timeout
-        enrichedTabletsList.addAll(connection.poll(topicNames, timeoutMs));
+        enrichedTabletsList.addAll(provider.getSessionConnection().poll(topicNames, timeoutMs));
       }
     } finally {
       releaseReadLock();
@@ -202,7 +203,14 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     acquireReadLock();
     try {
-      getSessionConnection(dataNodeId).commitSync(topicNameToSubscriptionCommitIds);
+      final SubscriptionProvider provider = getProvider(dataNodeId);
+      if (Objects.isNull(provider)) {
+        throw new IoTDBConnectionException(
+            String.format(
+                "something unexpected happened when commit messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                dataNodeId));
+      }
+      provider.getSessionConnection().commitSync(topicNameToSubscriptionCommitIds);
     } finally {
       releaseReadLock();
     }
