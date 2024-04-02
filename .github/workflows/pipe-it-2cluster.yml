@@ -31,11 +31,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [ 17 ]
+        java: [ 8, 11, 17 ]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster1: [ LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode ]
-        cluster2: [ LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode ]
-        os: [ ubuntu-latest ]
+        cluster1: [ LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, ScalableSingleNodeMode, ScalableSingleNodeMode ]
+        cluster2: [ LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, ScalableSingleNodeMode, ScalableSingleNodeMode ]
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
