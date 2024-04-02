@@ -90,7 +90,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -163,12 +162,6 @@ public class TsFileProcessor {
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
   private static final String FLUSH_QUERY_WRITE_RELEASE =
       "{}: {} get flushQueryLock write lock released";
-
-  /**
-   * Whether this file keeps TsFile format. If the file violates TsFile format, then it shouldn't be
-   * captured by pipe engine.
-   */
-  private AtomicBoolean isTsFileFormatValidForPipe = new AtomicBoolean(true);
 
   /** Close file listener. */
   private final List<CloseFileListener> closeFileListeners = new CopyOnWriteArrayList<>();
@@ -1362,7 +1355,6 @@ public class TsFileProcessor {
     // Remove this processor from Closing list in DataRegion,
     // Mark the TsFileResource closed, no need writer anymore
     writer.close();
-    isTsFileFormatValidForPipe.set(false); // Empty file, no need to be captured by pipe
     for (CloseFileListener closeFileListener : closeFileListeners) {
       closeFileListener.onClosed(this);
     }
@@ -1374,11 +1366,6 @@ public class TsFileProcessor {
         tsFileResource.getTsFile().getAbsoluteFile());
 
     writer = null;
-  }
-
-  /** Only useful after TsFile is closed. */
-  public boolean isTsFileFormatValidForPipe() {
-    return isTsFileFormatValidForPipe.get();
   }
 
   public boolean isManagedByFlushManager() {
