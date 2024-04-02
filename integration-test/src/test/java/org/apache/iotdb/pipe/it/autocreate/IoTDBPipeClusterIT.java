@@ -721,9 +721,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       final Thread t =
           new Thread(
               () -> {
-                try (SyncConfigNodeIServiceClient client =
+                try (final SyncConfigNodeIServiceClient client =
                     (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-                  TSStatus status =
+                  final TSStatus status =
                       client.createPipe(
                           new TCreatePipeReq("p1", connectorAttributes)
                               .setExtractorAttributes(extractorAttributes)
@@ -755,9 +755,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       final Thread t =
           new Thread(
               () -> {
-                try (SyncConfigNodeIServiceClient client =
+                try (final SyncConfigNodeIServiceClient client =
                     (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-                  TSStatus status = client.dropPipe("p1");
+                  final TSStatus status = client.dropPipe("p1");
                   if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                     successCount.incrementAndGet();
                   }

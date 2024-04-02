@@ -2009,6 +2009,7 @@ public class ConfigManager implements IManager {
     TPipeTransferResp result =
         PipeConfigNodeAgent.receiver()
             .receive(
+                req.getClientId(),
                 req.isAirGap
                     ? new AirGapPseudoTPipeTransferRequest()
                         .setVersion(req.version)

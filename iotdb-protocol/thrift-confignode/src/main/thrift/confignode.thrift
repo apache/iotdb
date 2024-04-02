@@ -730,6 +730,7 @@ struct TPipeConfigTransferReq {
   2: required i16 type
   3: required binary body
   4: required bool isAirGap
+  5: required string clientId
 }
 
 struct TPipeConfigTransferResp {

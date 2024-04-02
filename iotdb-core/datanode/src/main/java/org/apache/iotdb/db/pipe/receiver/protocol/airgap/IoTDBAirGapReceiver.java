@@ -89,7 +89,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
           e);
       throw e;
     } finally {
-      PipeAgent.receiver().thrift().handleClientExit();
+      PipeAgent.receiver().thrift().handleClientExit(null);
       socket.close();
     }
   }
@@ -116,7 +116,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
                   .setVersion(ReadWriteIOUtils.readByte(byteBuffer))
                   .setType(ReadWriteIOUtils.readShort(byteBuffer))
                   .setBody(byteBuffer.slice());
-      final TPipeTransferResp resp = agent.receive(req);
+      final TPipeTransferResp resp = agent.receive(null, req);
 
       final TSStatus status = resp.getStatus();
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

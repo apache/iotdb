@@ -61,7 +61,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   // Used to generate transfer id, which is used to identify a receiver thread.
   private static final AtomicLong RECEIVER_ID_GENERATOR = new AtomicLong(0);
-  private final AtomicLong receiverId = new AtomicLong(0);
+  protected final AtomicLong receiverId = new AtomicLong(0);
 
   private File writingFile;
   private RandomAccessFile writingFileWriter;

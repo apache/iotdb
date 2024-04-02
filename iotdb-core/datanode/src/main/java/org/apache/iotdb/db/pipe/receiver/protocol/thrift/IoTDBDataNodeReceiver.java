@@ -89,6 +89,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -103,6 +104,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private final PipeStatementTSStatusVisitor statusVisitor = new PipeStatementTSStatusVisitor();
   private final PipeStatementExceptionVisitor exceptionVisitor =
       new PipeStatementExceptionVisitor();
+
+  // Note:
+  // 1. If the receiver is DataNode -- DataNode, the two Ids are not used.
+  // 2. If the receiver is ConfigNode -- DataNode -- ConfigNode, only the two Ids are used.
+  // A receiver will only be either of the upper two because its thread local feature.
+  private static final AtomicLong CONFIG_RECEIVER_ID_GENERATOR = new AtomicLong(0);
+  protected String configReceiverId;
 
   static {
     try {
@@ -302,7 +310,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TPipeTransferResp handleTransferConfigPlan(TPipeTransferReq req) {
-    return ClusterConfigTaskExecutor.getInstance().handleTransferConfigPlan(req);
+    return ClusterConfigTaskExecutor.getInstance()
+        .handleTransferConfigPlan(getConfigReceiverId(), req);
   }
 
   private TSStatus executeStatementAndClassifyExceptions(Statement statement) {
@@ -340,5 +349,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 ClusterSchemaFetcher.getInstance(),
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
     return result.status;
+  }
+
+  /** Used to identify the sender client */
+  private String getConfigReceiverId() {
+    if (Objects.isNull(configReceiverId)) {
+      configReceiverId =
+          System.currentTimeMillis()
+              + "_"
+              + IoTDBDescriptor.getInstance().getConfig().getDataNodeId()
+              + "_"
+              + CONFIG_RECEIVER_ID_GENERATOR.incrementAndGet();
+    }
+    return configReceiverId;
   }
 }

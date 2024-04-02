@@ -236,5 +236,5 @@ public interface IConfigTaskExecutor {
 
   TThrottleQuotaResp getThrottleQuota();
 
-  TPipeTransferResp handleTransferConfigPlan(TPipeTransferReq req);
+  TPipeTransferResp handleTransferConfigPlan(String clientId, TPipeTransferReq req);
 }

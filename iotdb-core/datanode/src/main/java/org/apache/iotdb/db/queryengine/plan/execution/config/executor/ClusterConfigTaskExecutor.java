@@ -2647,10 +2647,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public TPipeTransferResp handleTransferConfigPlan(TPipeTransferReq req) {
+  public TPipeTransferResp handleTransferConfigPlan(String clientId, TPipeTransferReq req) {
     final TPipeConfigTransferReq configTransferReq =
         new TPipeConfigTransferReq(
-            req.version, req.type, req.body, req instanceof AirGapPseudoTPipeTransferRequest);
+            req.version,
+            req.type,
+            req.body,
+            req instanceof AirGapPseudoTPipeTransferRequest,
+            clientId);
 
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
