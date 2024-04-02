@@ -986,8 +986,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus handlePipeConfigClientExit(String clientId) throws TException {
-    return null;
+  public TSStatus handlePipeConfigClientExit(String clientId) {
+    return configManager.handleClientExit(clientId);
   }
 
   @Override
