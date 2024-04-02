@@ -326,7 +326,7 @@ public class PathPatternTree {
           if (tmp.size() == 1 && tmp.get(0).getName().equals(nodes[i])) {
             curNode = tmp.get(0);
             if (tarNode.getChildren(nodes[i]) == null) {
-              tarNode.addChild(curNode);
+              tarNode.addChild(new PathPatternNode<>(nodes[i], VoidSerializer.getInstance()));
             }
             tarNode = tarNode.getChildren(nodes[i]);
           } else {
@@ -335,7 +335,11 @@ public class PathPatternTree {
           }
         }
       }
-      if (!done) {
+      if (done) {
+        for (PathPatternNode<Void, VoidSerializer> node : curNode.getChildren().values()) {
+          tarNode.addChild(node);
+        }
+      } else {
         // this branch is to construct intersection one by one
         if (partialPathList == null) {
           partialPathList = getAllPathPatterns();
