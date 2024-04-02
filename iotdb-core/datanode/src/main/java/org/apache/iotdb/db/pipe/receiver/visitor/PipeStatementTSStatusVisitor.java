@@ -81,10 +81,6 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
 
   @Override
   public TSStatus visitCreateTimeseries(CreateTimeSeriesStatement statement, TSStatus context) {
-    if (context.getCode() == TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(context.getMessage());
-    }
     return visitGeneralCreateTimeSeries(statement, context);
   }
 
@@ -99,7 +95,9 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
         || context.getCode() == TSStatusCode.ALIAS_ALREADY_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
-    } else if (context.getCode() == TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()) {
+    } else if (context.getCode() == TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
+        || context.getCode() == TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode()
+        || context.getCode() == TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
@@ -125,8 +123,7 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
     return visitGeneralCreateMultiTimeseries(internalCreateMultiTimeSeriesStatement, context);
   }
 
-  private TSStatus visitGeneralCreateMultiTimeseries(
-      Statement internalCreateTimeSeriesStatement, TSStatus context) {
+  private TSStatus visitGeneralCreateMultiTimeseries(Statement statement, TSStatus context) {
     if (context.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       for (TSStatus status : context.getSubStatus()) {
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -135,13 +132,16 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
             return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
                 .setMessage(context.getMessage());
           }
-          return visitStatement(internalCreateTimeSeriesStatement, context);
+          return visitStatement(statement, context);
         }
       }
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
+    } else if (context.getCode() == TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
     }
-    return visitStatement(internalCreateTimeSeriesStatement, context);
+    return visitStatement(statement, context);
   }
 
   @Override
@@ -166,7 +166,10 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   @Override
   public TSStatus visitCreateLogicalView(
       CreateLogicalViewStatement createLogicalViewStatement, TSStatus context) {
-    if (context.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+    if (context.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    } else if (context.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       for (TSStatus status : context.getSubStatus()) {
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
