@@ -79,8 +79,8 @@ public class SubscriptionSessionConnection extends SessionConnection {
     Map<Integer, TEndPoint> endPoints = new HashMap<>();
     while (iterator.next()) {
       // ignore removing and unknown DN
-      if (REMOVING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME)) ||
-          UNKNOWN_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))) {
+      if (REMOVING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))
+          || UNKNOWN_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))) {
         continue;
       }
       String ip = iterator.getString(IP_COLUMN_NAME);
