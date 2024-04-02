@@ -62,15 +62,11 @@ import java.util.concurrent.PriorityBlockingQueue;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_SET;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LEADER_CACHE_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LOAD_BALANCE_STRATEGY_KEY;
 
 public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
@@ -83,7 +79,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       "Failed to borrow client from client pool or exception occurred "
           + "when sending to receiver %s:%s.";
 
-  private String loadBalanceStrategy;
   private IoTDBDataNodeAsyncClientManager clientManager;
 
   private final IoTDBDataRegionSyncConnector retryConnector = new IoTDBDataRegionSyncConnector();
@@ -111,20 +106,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
         parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
         parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
-
-    loadBalanceStrategy =
-        parameters
-            .getStringOrDefault(
-                Arrays.asList(CONNECTOR_LOAD_BALANCE_STRATEGY_KEY, SINK_LOAD_BALANCE_STRATEGY_KEY),
-                CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY)
-            .trim()
-            .toLowerCase();
-    validator.validate(
-        arg -> CONNECTOR_LOAD_BALANCE_STRATEGY_SET.contains(loadBalanceStrategy),
-        String.format(
-            "Load balance strategy should be one of %s, but got %s.",
-            CONNECTOR_LOAD_BALANCE_STRATEGY_SET, loadBalanceStrategy),
-        loadBalanceStrategy);
   }
 
   @Override
