@@ -19,7 +19,9 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.util.Version;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
@@ -29,6 +31,7 @@ import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Properties;
 
 public class SubscriptionSessionExample {
 
@@ -58,7 +61,6 @@ public class SubscriptionSessionExample {
           String.format("insert into root.sg.d3(time, s5) values (%s, 5)", currentTime + 2 * i));
     }
     session.executeNonQueryStatement("flush");
-    session.close();
 
     // Create topic
     try (SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
@@ -67,43 +69,41 @@ public class SubscriptionSessionExample {
       subscriptionSession.createTopic("topic2");
     }
 
-    //    // Subscription: property-style ctor
-    //    Properties config = new Properties();
-    //    config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
-    //    config.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-    //    SubscriptionPullConsumer consumer1 = new SubscriptionPullConsumer(config);
-    //    consumer1.open();
-    //    consumer1.subscribe("topic1");
-    //    while (true) {
-    //      Thread.sleep(1000); // Wait for some time
-    //      List<SubscriptionMessage> messages = consumer1.poll(Duration.ofMillis(10000));
-    //      if (messages.isEmpty()) {
-    //        break;
-    //      }
-    //      for (SubscriptionMessage message : messages) {
-    //        SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets)
-    // message.getPayload();
-    //        for (SubscriptionSessionDataSet dataSet : payload) {
-    //          System.out.println(dataSet.getColumnNames());
-    //          System.out.println(dataSet.getColumnTypes());
-    //          while (dataSet.hasNext()) {
-    //            System.out.println(dataSet.next());
-    //          }
-    //        }
-    //      }
-    //      // Auto commit
-    //    }
-    //
-    //    // Show topics and subscriptions
-    //    try (SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667))
-    // {
-    //      subscriptionSession.open();
-    //      subscriptionSession.getTopics().forEach((System.out::println));
-    //      subscriptionSession.getSubscriptions().forEach((System.out::println));
-    //    }
-    //
-    //    consumer1.unsubscribe("topic1");
-    //    consumer1.close();
+    // Subscription: property-style ctor
+    Properties config = new Properties();
+    config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
+    config.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+    SubscriptionPullConsumer consumer1 = new SubscriptionPullConsumer(config);
+    consumer1.open();
+    consumer1.subscribe("topic1");
+    while (true) {
+      Thread.sleep(1000); // Wait for some time
+      List<SubscriptionMessage> messages = consumer1.poll(Duration.ofMillis(10000));
+      if (messages.isEmpty()) {
+        break;
+      }
+      for (SubscriptionMessage message : messages) {
+        SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
+        for (SubscriptionSessionDataSet dataSet : payload) {
+          System.out.println(dataSet.getColumnNames());
+          System.out.println(dataSet.getColumnTypes());
+          while (dataSet.hasNext()) {
+            System.out.println(dataSet.next());
+          }
+        }
+      }
+      // Auto commit
+    }
+
+    // Show topics and subscriptions
+    try (SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
+      subscriptionSession.open();
+      subscriptionSession.getTopics().forEach((System.out::println));
+      subscriptionSession.getSubscriptions().forEach((System.out::println));
+    }
+
+    consumer1.unsubscribe("topic1");
+    consumer1.close();
 
     // Subscription: builder-style ctor
     try (SubscriptionPullConsumer consumer2 =
@@ -115,13 +115,10 @@ public class SubscriptionSessionExample {
       consumer2.open();
       consumer2.subscribe("topic2");
       while (true) {
-        Thread.sleep(5000); // wait some time
-        final List<SubscriptionMessage> messages;
-        try {
-          messages = consumer2.poll(Duration.ofMillis(10000));
-        } catch (final Exception e) {
-          e.printStackTrace();
-          continue;
+        Thread.sleep(1000); // wait some time
+        List<SubscriptionMessage> messages = consumer2.poll(Duration.ofMillis(10000));
+        if (messages.isEmpty()) {
+          break;
         }
         for (SubscriptionMessage message : messages) {
           SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
@@ -133,20 +130,16 @@ public class SubscriptionSessionExample {
             }
           }
         }
-        try {
-          consumer2.commitSync(messages);
-        } catch (final Exception e) {
-          e.printStackTrace();
-        }
+        consumer2.commitSync(messages);
       }
-      // consumer2.unsubscribe("topic2");
+      consumer2.unsubscribe("topic2");
     }
 
-    //    // Query
-    //    SessionDataSet dataSet = session.executeQueryStatement("select ** from root.**");
-    //    while (dataSet.hasNext()) {
-    //      System.out.println(dataSet.next());
-    //    }
-    //    session.close();
+    // Query
+    SessionDataSet dataSet = session.executeQueryStatement("select ** from root.**");
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+    session.close();
   }
 }
