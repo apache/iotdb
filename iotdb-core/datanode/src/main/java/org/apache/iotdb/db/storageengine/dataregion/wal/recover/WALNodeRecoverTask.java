@@ -155,7 +155,8 @@ public class WALNodeRecoverTask implements Runnable {
         WALEntry walEntry = walReader.next();
         long searchIndex = DEFAULT_SEARCH_INDEX;
         if (walEntry.getType() == WALEntryType.INSERT_TABLET_NODE
-            || walEntry.getType() == WALEntryType.INSERT_ROW_NODE) {
+            || walEntry.getType() == WALEntryType.INSERT_ROW_NODE
+            || walEntry.getType() == WALEntryType.INSERT_ROWS_NODE) {
           InsertNode insertNode = (InsertNode) walEntry.getValue();
           if (insertNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
             searchIndex = insertNode.getSearchIndex();

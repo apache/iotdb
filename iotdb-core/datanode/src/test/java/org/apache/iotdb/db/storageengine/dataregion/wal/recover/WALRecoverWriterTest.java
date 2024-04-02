@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
@@ -103,10 +104,34 @@ public class WALRecoverWriterTest {
   }
 
   @Test
-  public void testCompleteFile() throws IOException, IllegalPathException {
+  public void testCompleteFile1() throws IOException, IllegalPathException {
     // prepare file
     WALMetaData walMetaData = new WALMetaData();
     WALEntry walEntry = new WALInfoEntry(1, getInsertRowNode());
+    int size = walEntry.serializedSize();
+    WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
+    walEntry.serialize(buffer);
+    walMetaData.add(size, 1, walEntry.getMemTableId());
+    try (WALWriter walWriter = new WALWriter(logFile)) {
+      walWriter.write(buffer.getBuffer(), walMetaData);
+    }
+    // recover
+    WALRecoverWriter walRecoverWriter = new WALRecoverWriter(logFile);
+    walRecoverWriter.recover(walMetaData);
+    // verify file
+    try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
+      Assert.assertTrue(reader.hasNext());
+      Assert.assertEquals(size, reader.next().capacity());
+      Assert.assertFalse(reader.hasNext());
+      Assert.assertEquals(1, reader.getFirstSearchIndex());
+    }
+  }
+
+  @Test
+  public void testCompleteFile2() throws IOException, IllegalPathException {
+    // prepare file
+    WALMetaData walMetaData = new WALMetaData();
+    WALEntry walEntry = new WALInfoEntry(1, getInsertRowsNode());
     int size = walEntry.serializedSize();
     WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
     walEntry.serialize(buffer);
@@ -196,5 +221,71 @@ public class WALRecoverWriterTest {
           new MeasurementSchema("s6", TSDataType.TEXT)
         });
     return insertRowNode;
+  }
+
+  public static InsertRowsNode getInsertRowsNode() throws IllegalPathException {
+    String devicePath = "root.test_sg.test_d";
+    TSDataType[] dataTypes =
+        new TSDataType[] {
+          TSDataType.DOUBLE,
+          TSDataType.FLOAT,
+          TSDataType.INT64,
+          TSDataType.INT32,
+          TSDataType.BOOLEAN,
+          TSDataType.TEXT
+        };
+
+    Object[] columns = new Object[6];
+    columns[0] = 1.0;
+    columns[1] = 2.0f;
+    columns[2] = 10000L;
+    columns[3] = 100;
+    columns[4] = false;
+    columns[5] = new Binary("hh" + 0, TSFileConfig.STRING_CHARSET);
+
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(devicePath),
+            false,
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            dataTypes,
+            111L,
+            columns,
+            false);
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.DOUBLE),
+          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("s3", TSDataType.INT64),
+          new MeasurementSchema("s4", TSDataType.INT32),
+          new MeasurementSchema("s5", TSDataType.BOOLEAN),
+          new MeasurementSchema("s6", TSDataType.TEXT)
+        });
+
+    InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
+    insertRowsNode.addOneInsertRowNode(insertRowNode, 0);
+    insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(devicePath),
+            false,
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            dataTypes,
+            112L,
+            columns,
+            false);
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.DOUBLE),
+          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("s3", TSDataType.INT64),
+          new MeasurementSchema("s4", TSDataType.INT32),
+          new MeasurementSchema("s5", TSDataType.BOOLEAN),
+          new MeasurementSchema("s6", TSDataType.TEXT)
+        });
+    insertRowsNode.addOneInsertRowNode(insertRowNode, 2);
+    insertRowsNode.setSearchIndex(1);
+    return insertRowsNode;
   }
 }
