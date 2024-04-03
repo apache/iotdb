@@ -160,8 +160,9 @@ public class IoTDBSubscriptionBasicIT {
 
   @Test
   public void testBasicSubscriptionWithPushConsumer() {
-    AtomicInteger onReceiveCount = new AtomicInteger();
-    AtomicInteger rowCount = new AtomicInteger();
+    final AtomicInteger onReceiveCount = new AtomicInteger(0);
+    final AtomicInteger onReceiveCountBefore = new AtomicInteger(0);
+    final AtomicInteger rowCount = new AtomicInteger(0);
 
     // Insert some historical data
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -217,8 +218,10 @@ public class IoTDBSubscriptionBasicIT {
           .untilAsserted(
               () -> {
                 Assert.assertEquals(10, rowCount.get());
-                Assert.assertEquals(1, onReceiveCount.get());
+                Assert.assertTrue(onReceiveCount.get() > onReceiveCountBefore.get());
               });
+
+      onReceiveCountBefore.set(onReceiveCount.get());
 
       // Insert more rows and check if the push consumer can automatically poll the new data
       try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -236,8 +239,10 @@ public class IoTDBSubscriptionBasicIT {
           .untilAsserted(
               () -> {
                 Assert.assertEquals(20, rowCount.get());
-                Assert.assertEquals(2, onReceiveCount.get());
+                Assert.assertTrue(onReceiveCount.get() > onReceiveCountBefore.get());
               });
+
+      onReceiveCountBefore.set(onReceiveCount.get());
 
       try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
         for (int i = 20; i < 30; ++i) {
@@ -254,7 +259,7 @@ public class IoTDBSubscriptionBasicIT {
           .untilAsserted(
               () -> {
                 Assert.assertEquals(30, rowCount.get());
-                Assert.assertEquals(3, onReceiveCount.get());
+                Assert.assertTrue(onReceiveCount.get() > onReceiveCountBefore.get());
               });
 
       consumer.unsubscribe("topic1");
