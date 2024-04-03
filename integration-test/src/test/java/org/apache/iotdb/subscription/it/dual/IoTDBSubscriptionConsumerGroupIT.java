@@ -784,12 +784,14 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
           String.format(
               "insert into root.%s.topic1(time, s) values (%s, 1)",
               consumerGroupId, record.getTimestamp());
+      LOGGER.info(sql);
       return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
     } else if ("root.topic2.s".equals(columnName)) {
       final String sql =
           String.format(
               "insert into root.%s.topic2(time, s) values (%s, 1)",
               consumerGroupId, record.getTimestamp());
+      LOGGER.info(sql);
       return TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, sql);
     } else {
       LOGGER.warn("unexpected column name: {}", columnName);
