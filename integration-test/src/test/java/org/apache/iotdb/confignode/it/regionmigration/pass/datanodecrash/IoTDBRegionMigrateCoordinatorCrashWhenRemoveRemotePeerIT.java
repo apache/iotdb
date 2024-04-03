@@ -21,9 +21,12 @@ package org.apache.iotdb.confignode.it.regionmigration.pass.datanodecrash;
 
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusRemovePeerCoordinatorKillPoints;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFramework;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+@RunWith(IoTDBTestRunner.class)
 public class IoTDBRegionMigrateCoordinatorCrashWhenRemoveRemotePeerIT
     extends IoTDBRegionMigrateDataNodeCrashITFramework {
 
