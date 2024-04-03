@@ -175,9 +175,9 @@ public abstract class EnrichedEvent implements Event {
 
   /**
    * Externally skip the report of the processing {@link ProgressIndex} of this {@link
-   * EnrichedEvent}.
+   * EnrichedEvent} when committed. Report by generated events are still allowed.
    */
-  public void skipReport() {
+  public void skipReportOnCommit() {
     shouldReportOnCommit = false;
   }
 

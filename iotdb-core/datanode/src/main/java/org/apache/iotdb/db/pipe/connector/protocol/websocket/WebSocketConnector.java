@@ -120,9 +120,9 @@ public class WebSocketConnector implements PipeConnector {
 
     try {
       for (TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
-        ((EnrichedEvent) event).increaseReferenceCount(WebSocketConnector.class.getName());
-
-        server.addEvent(event, this);
+        // Skip report if any tablet events is added
+        ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReportOnCommit();
+        transfer(event);
       }
     } finally {
       tsFileInsertionEvent.close();
