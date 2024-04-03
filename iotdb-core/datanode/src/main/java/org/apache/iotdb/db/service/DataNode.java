@@ -112,9 +112,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -457,30 +454,9 @@ public class DataNode implements DataNodeMBean {
     }
   }
 
-  // TODO: Implement in IConsensus, not in DataNode
-  private List<ConsensusGroupId> getConsensusGroupId() {
-    List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
-    String dataRegionConsensusDir = config.getDataRegionConsensusDir();
-    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
-      return consensusGroupIds;
-    }
-    try (DirectoryStream<Path> stream =
-        Files.newDirectoryStream(new File(dataRegionConsensusDir).toPath())) {
-      for (Path path : stream) {
-        String[] items = path.getFileName().toString().split("_");
-        ConsensusGroupId consensusGroupId =
-            ConsensusGroupId.Factory.create(Integer.parseInt(items[0]), Integer.parseInt(items[1]));
-        consensusGroupIds.add(consensusGroupId);
-      }
-    } catch (IOException e) {
-      logger.error("Cannot get consensus group id from {}", dataRegionConsensusDir, e);
-    }
-    return consensusGroupIds;
-  }
-
   private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
     List<ConsensusGroupId> invalidConsensusGroupIds =
-        getConsensusGroupId().stream()
+        DataRegionConsensusImpl.getInstance().getAllConsensusGroupIdsFromDisk().stream()
             .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
             .collect(Collectors.toList());
     logger.info("Remove invalid region directories... {}", invalidConsensusGroupIds);

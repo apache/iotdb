@@ -688,6 +688,12 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
+  public List<ConsensusGroupId> getAllConsensusGroupIdsFromDisk() {
+    logger.warn("RatisConsensus does not support getAllConsensusGroupIdsFromDisk");
+    return Collections.emptyList();
+  }
+
+  @Override
   public void triggerSnapshot(ConsensusGroupId groupId, boolean force) throws ConsensusException {
     final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     final RaftGroup groupInfo = getGroupInfo(raftGroupId);

@@ -417,6 +417,22 @@ public class IoTConsensus implements IConsensus {
     return new ArrayList<>(stateMachineMap.keySet());
   }
 
+  @Override
+  public List<ConsensusGroupId> getAllConsensusGroupIdsFromDisk() {
+    List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
+    try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
+      for (Path path : stream) {
+        String[] items = path.getFileName().toString().split("_");
+        ConsensusGroupId consensusGroupId =
+            ConsensusGroupId.Factory.create(Integer.parseInt(items[0]), Integer.parseInt(items[1]));
+        consensusGroupIds.add(consensusGroupId);
+      }
+    } catch (IOException e) {
+      logger.error("Failed to get all consensus group ids from disk", e);
+    }
+    return consensusGroupIds;
+  }
+
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))

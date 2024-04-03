@@ -138,8 +138,9 @@ public class IoTConsensusServerImpl {
     this.configuration = configuration;
     if (configuration.isEmpty()) {
       recoverConfiguration();
+    } else {
+      persistConfiguration();
     }
-    persistConfiguration();
     this.backgroundTaskService = backgroundTaskService;
     this.config = config;
     this.consensusGroupId = thisNode.getGroupId().toString();
@@ -615,23 +616,12 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  // TODO: persist first and then delete old configuration file
   public void persistConfiguration() {
     try {
-      try (Stream<Path> stream = Files.walk(Paths.get(storageDir))) {
-        stream
-            .filter(Files::isRegularFile)
-            .filter(filePath -> filePath.getFileName().toString().contains("configuration"))
-            .forEach(
-                filePath -> {
-                  try {
-                    Files.delete(filePath);
-                  } catch (IOException e) {
-                    logger.error("Unexpected error occurs when deleting old configuration file", e);
-                  }
-                });
-      }
-      serializeConfigurationAndFsyncToDisk();
+      serializeConfigurationAndFsyncToDisk(CONFIGURATION_TMP_FILE_NAME);
+      deleteConfiguration(CONFIGURATION_FILE_NAME);
+      serializeConfigurationAndFsyncToDisk(CONFIGURATION_FILE_NAME);
+      deleteConfiguration(CONFIGURATION_TMP_FILE_NAME);
     } catch (IOException e) {
       // TODO: (xingtanzjr) need to handle the IOException because the IoTConsensus won't
       // work expectedly
@@ -666,6 +656,7 @@ public class IoTConsensusServerImpl {
             configuration.add(peer);
           }
         }
+        persistConfiguration();
       }
       logger.info("Recover IoTConsensus server Impl, configuration: {}", configuration);
     } catch (IOException e) {
@@ -681,12 +672,12 @@ public class IoTConsensusServerImpl {
     for (int i = 0; i < size; i++) {
       configuration.add(Peer.deserialize(buffer));
     }
-    // TODO: delete old file before new file persisted is unsafe
+    persistConfiguration();
     Files.delete(oldConfigurationPath);
   }
 
-  public static String generateConfigurationDatFileName(int nodeId) {
-    return nodeId + "_" + CONFIGURATION_FILE_NAME;
+  public static String generateConfigurationDatFileName(int nodeId, String suffix) {
+    return nodeId + "_" + suffix;
   }
 
   private List<Peer> getConfiguration(Path dirPath, String configurationFileName)
@@ -893,9 +884,9 @@ public class IoTConsensusServerImpl {
     return consensusGroupId;
   }
 
-  private void serializeConfigurationAndFsyncToDisk() throws IOException {
+  private void serializeConfigurationAndFsyncToDisk(String suffix) throws IOException {
     for (Peer peer : configuration) {
-      String peerConfigurationFileName = generateConfigurationDatFileName(peer.getNodeId());
+      String peerConfigurationFileName = generateConfigurationDatFileName(peer.getNodeId(), suffix);
       FileOutputStream fileOutputStream =
           new FileOutputStream(new File(storageDir, peerConfigurationFileName));
       try (DataOutputStream outputStream = new DataOutputStream(fileOutputStream)) {
@@ -905,9 +896,25 @@ public class IoTConsensusServerImpl {
           fileOutputStream.flush();
           fileOutputStream.getFD().sync();
         } catch (IOException ignore) {
-          // ignore
+          // ignore sync exception
         }
       }
+    }
+  }
+
+  private void deleteConfiguration(String suffix) throws IOException {
+    try (Stream<Path> stream = Files.walk(Paths.get(storageDir))) {
+      stream
+          .filter(Files::isRegularFile)
+          .filter(filePath -> filePath.getFileName().toString().contains(suffix))
+          .forEach(
+              filePath -> {
+                try {
+                  Files.delete(filePath);
+                } catch (IOException e) {
+                  logger.error("Unexpected error occurs when deleting old configuration file", e);
+                }
+              });
     }
   }
 

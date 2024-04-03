@@ -207,4 +207,11 @@ public interface IConsensus {
    * @return consensusGroupId list
    */
   List<ConsensusGroupId> getAllConsensusGroupIds();
+
+  /**
+   * Return all consensus group ids from disk.
+   *
+   * @return consensusGroupId list
+   */
+  List<ConsensusGroupId> getAllConsensusGroupIdsFromDisk();
 }
