@@ -19,21 +19,9 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
-
 public enum AckStrategy {
   BEFORE_CONSUME,
   AFTER_CONSUME;
-
-  public AckStrategy fromString(String s) {
-    if (s.equals(ConsumerConstant.ACK_STRATEGY_BEFORE_CONSUME)) {
-      return BEFORE_CONSUME;
-    } else if (s.equals(ConsumerConstant.ACK_STRATEGY_AFTER_CONSUME)) {
-      return AFTER_CONSUME;
-    } else {
-      return defaultValue();
-    }
-  }
 
   public static AckStrategy defaultValue() {
     // Use AFTER_CONSUME by default
