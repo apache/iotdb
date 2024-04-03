@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -80,7 +81,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     this.dataRegionId = tsFileResource.getDataRegionId();
     this.sequence = sequence;
     this.callbackAfterUnsealedTsFileRecovered = callbackAfterUnsealedTsFileRecovered;
-    this.walRedoer = new TsFilePlanRedoer(tsFileResource, sequence);
+    this.walRedoer = new TsFilePlanRedoer(tsFileResource);
     this.recoverListener = new WALRecoverListener(tsFileResource.getTsFilePath());
   }
 
@@ -188,6 +189,15 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         case MEMORY_TABLE_SNAPSHOT:
           IMemTable memTable = (IMemTable) walEntry.getValue();
           if (!memTable.isSignalMemTable()) {
+            if (tsFileResource != null) {
+              for (IDeviceID device : tsFileResource.getDevices()) {
+                memTable.delete(
+                    new PartialPath(device, "*"),
+                    new PartialPath(device),
+                    tsFileResource.getStartTime(device),
+                    tsFileResource.getEndTime(device));
+              }
+            }
             walRedoer.resetRecoveryMemTable(memTable);
           }
           // update memtable's database and dataRegionId
