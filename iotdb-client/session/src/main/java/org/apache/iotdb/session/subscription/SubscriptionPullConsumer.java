@@ -148,7 +148,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
     acquireReadLock();
     try {
-      for (final SubscriptionProvider provider : getAvailableProviders()) {
+      for (final SubscriptionProvider provider : getAllAvailableProviders()) {
         // TODO: network timeout
         enrichedTabletsList.addAll(provider.getSessionConnection().poll(topicNames, timeoutMs));
       }
@@ -203,7 +203,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     acquireReadLock();
     try {
       final SubscriptionProvider provider = getProvider(dataNodeId);
-      if (Objects.isNull(provider)) {
+      if (Objects.isNull(provider) || !provider.isAvailable()) {
         throw new IoTDBConnectionException(
             String.format(
                 "something unexpected happened when commit messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",

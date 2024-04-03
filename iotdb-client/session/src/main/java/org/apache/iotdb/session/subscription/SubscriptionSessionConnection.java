@@ -20,7 +20,6 @@
 package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -57,8 +56,7 @@ public class SubscriptionSessionConnection extends SessionConnection {
   private static final String STATUS_COLUMN_NAME = "Status";
   private static final String IP_COLUMN_NAME = "RpcAddress";
   private static final String PORT_COLUMN_NAME = "RpcPort";
-  private static final String REMOVING_STATUS = "Removing"; // remove DN
-  private static final String UNKNOWN_STATUS = "Unknown"; // stop and restart DN
+  private static final String REMOVING_STATUS = "Removing";
 
   public SubscriptionSessionConnection(
       Session session,
@@ -78,17 +76,12 @@ public class SubscriptionSessionConnection extends SessionConnection {
     SessionDataSet.DataIterator iterator = dataSet.iterator();
     Map<Integer, TEndPoint> endPoints = new HashMap<>();
     while (iterator.next()) {
-      // ignore removing and unknown DN
-      if (REMOVING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))
-          || UNKNOWN_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))) {
+      // ignore removing DN
+      if (REMOVING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))) {
         continue;
       }
       String ip = iterator.getString(IP_COLUMN_NAME);
       String port = iterator.getString(PORT_COLUMN_NAME);
-      // TODO: check logic
-      if ("0.0.0.0".equals(ip)) {
-        ip = SessionConfig.DEFAULT_HOST;
-      }
       if (ip != null && port != null) {
         endPoints.put(
             iterator.getInt(NODE_ID_COLUMN_NAME), new TEndPoint(ip, Integer.parseInt(port)));

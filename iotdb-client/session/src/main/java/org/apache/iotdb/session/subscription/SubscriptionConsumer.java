@@ -407,7 +407,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  List<SubscriptionProvider> getAvailableProviders() {
+  List<SubscriptionProvider> getAllAvailableProviders() {
     return subscriptionProviders.values().stream()
         .filter(SubscriptionProvider::isAvailable)
         .collect(Collectors.toList());
@@ -420,14 +420,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   SubscriptionProvider getProvider(final int dataNodeId) {
-    if (!containsProvider(dataNodeId)) {
-      return null;
-    }
-    final SubscriptionProvider provider = subscriptionProviders.get(dataNodeId);
-    if (!provider.isAvailable()) {
-      return null;
-    }
-    return provider;
+    return containsProvider(dataNodeId) ? subscriptionProviders.get(dataNodeId) : null;
   }
 
   /////////////////////////////// redirection ///////////////////////////////
@@ -435,7 +428,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   public void subscribeWithRedirection(final Set<String> topicNames)
       throws IoTDBConnectionException {
-    for (final SubscriptionProvider provider : getAvailableProviders()) {
+    for (final SubscriptionProvider provider : getAllAvailableProviders()) {
       try {
         provider.getSessionConnection().subscribe(topicNames);
         return;
@@ -453,7 +446,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   public void unsubscribeWithRedirection(final Set<String> topicNames)
       throws IoTDBConnectionException {
-    for (final SubscriptionProvider provider : getAvailableProviders()) {
+    for (final SubscriptionProvider provider : getAllAvailableProviders()) {
       try {
         provider.getSessionConnection().unsubscribe(topicNames);
         return;
@@ -472,7 +465,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   public Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection()
       throws IoTDBConnectionException {
     Map<Integer, TEndPoint> endPoints = null;
-    for (final SubscriptionProvider provider : getAvailableProviders()) {
+    for (final SubscriptionProvider provider : getAllAvailableProviders()) {
       try {
         endPoints = provider.getSessionConnection().fetchAllEndPoints();
       } catch (final Exception e) {

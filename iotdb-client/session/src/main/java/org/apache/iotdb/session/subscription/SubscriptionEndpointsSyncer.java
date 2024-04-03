@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 
 public class SubscriptionEndpointsSyncer implements Runnable {
 
@@ -70,24 +71,49 @@ public class SubscriptionEndpointsSyncer implements Runnable {
       return; // retry later
     }
 
-    // open new providers
+    // add new providers or handshake existed providers
     for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
-      if (!consumer.containsProvider(entry.getKey())) {
-        final SubscriptionProvider provider = consumer.constructProvider(entry.getValue());
+      final SubscriptionProvider provider = consumer.getProvider(entry.getKey());
+      // new provider
+      if (Objects.isNull(provider)) {
+        final SubscriptionProvider newProvider = consumer.constructProvider(entry.getValue());
         try {
-          provider.handshake();
+          newProvider.handshake();
         } catch (final Exception e) {
           LOGGER.warn(
               "Failed to create connection with subscription provider {}, exception: {}, will retry later...",
-              provider,
+              newProvider,
               e.getMessage());
           continue; // retry later
         }
-        consumer.addProvider(entry.getKey(), provider);
+        consumer.addProvider(entry.getKey(), newProvider);
+      } else {
+        // existed provider
+        try {
+          provider.getSessionConnection().heartbeat();
+          provider.setAvailable();
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "something unexpected happened when sending heartbeat to subscription provider {}, exception: {}, set subscription provider unavailable",
+              provider,
+              e.getMessage());
+          provider.setUnavailable();
+        }
+        // close and remove unavailable provider (reset the connection as much as possible)
+        if (!provider.isAvailable()) {
+          try {
+            consumer.closeAndRemoveProvider(entry.getKey());
+          } catch (final IoTDBConnectionException e) {
+            LOGGER.warn(
+                "Exception occurred when closing and removing subscription provider with data node id {}: {}",
+                entry.getKey(),
+                e.getMessage());
+          }
+        }
       }
     }
 
-    // remove stale providers
+    // close and remove stale providers
     for (final SubscriptionProvider provider : consumer.getAllProviders()) {
       final int dataNodeId = provider.getDataNodeId();
       if (!allEndPoints.containsKey(dataNodeId)) {
