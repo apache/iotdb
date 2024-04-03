@@ -133,14 +133,6 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     workerExecutor = null;
   }
 
-  AckStrategy getAckStrategy() {
-    return this.ackStrategy;
-  }
-
-  ConsumeListener getConsumeListener() {
-    return this.consumeListener;
-  }
-
   /////////////////////////////// builder ///////////////////////////////
 
   public static class Builder extends SubscriptionConsumer.Builder {
@@ -208,6 +200,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       }
 
       try {
+        // Poll all subscribed topics by passing an empty set
         List<SubscriptionMessage> pollResults =
             poll(Collections.emptySet(), ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_TIME_OUT);
 
