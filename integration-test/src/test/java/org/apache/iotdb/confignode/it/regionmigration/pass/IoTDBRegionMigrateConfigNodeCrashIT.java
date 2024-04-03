@@ -25,14 +25,17 @@ import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabil
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+@RunWith(IoTDBTestRunner.class)
 public class IoTDBRegionMigrateConfigNodeCrashIT extends IoTDBRegionMigrateReliabilityITFramework {
   @Test
   @Ignore
@@ -60,7 +63,7 @@ public class IoTDBRegionMigrateConfigNodeCrashIT extends IoTDBRegionMigrateRelia
   }
 
   @Test
-  public void cnCrashDuringDoAddPeerTest() throws Exception {
+  public void testCnCrashDuringDoAddPeer() throws Exception {
     successTest(
         1,
         1,

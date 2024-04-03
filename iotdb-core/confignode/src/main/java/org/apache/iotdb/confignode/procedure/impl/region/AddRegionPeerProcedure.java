@@ -40,7 +40,9 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
 import static org.apache.iotdb.confignode.procedure.state.AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE;
@@ -80,8 +82,11 @@ public class AddRegionPeerProcedure
       outerSwitch:
       switch (state) {
         case CREATE_NEW_REGION_PEER:
-          handler.createNewRegionPeer(consensusGroupId, destDataNode);
+          TSStatus status = handler.createNewRegionPeer(consensusGroupId, destDataNode);
           setKillPoint(state);
+          if (status.getCode() != SUCCESS_STATUS.getStatusCode()) {
+            rollback(env, handler);
+          }
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
@@ -99,18 +104,8 @@ public class AddRegionPeerProcedure
               // coordinator crashed and lost its task table
             case FAIL:
               // maybe some DataNode crash
-              LOGGER.warn(
-                  "result is {}, will use resetPeerList to clean in the future",
-                  result.getTaskStatus());
-              List<TDataNodeLocation> correctDataNodeLocations =
-                  env.getConfigManager().getPartitionManager().getAllReplicaSets().stream()
-                      .filter(
-                          tRegionReplicaSet ->
-                              tRegionReplicaSet.getRegionId().equals(consensusGroupId))
-                      .findAny()
-                      .get()
-                      .getDataNodeLocations();
-              handler.resetPeerList(consensusGroupId, correctDataNodeLocations);
+              LOGGER.warn("result is {}, resetPeerList", result.getTaskStatus());
+              rollback(env, handler);
               return Flow.NO_MORE_STATE;
             case PROCESSING:
               // should never happen
@@ -142,6 +137,51 @@ public class AddRegionPeerProcedure
     }
     LOGGER.info("AddRegionPeer state {} complete", state);
     return Flow.HAS_MORE_STATE;
+  }
+
+  private void rollback(ConfigNodeProcedureEnv env, RegionMaintainHandler handler) {
+    List<TDataNodeLocation> correctDataNodeLocations =
+        env.getConfigManager().getPartitionManager().getAllReplicaSets().stream()
+            .filter(tRegionReplicaSet -> tRegionReplicaSet.getRegionId().equals(consensusGroupId))
+            .findAny()
+            .get()
+            .getDataNodeLocations();
+
+    String correctStr =
+        correctDataNodeLocations.stream()
+            .map(TDataNodeLocation::getDataNodeId)
+            .collect(Collectors.toList())
+            .toString();
+    List<TDataNodeLocation> relatedDataNodeLocations = new ArrayList<>(correctDataNodeLocations);
+    relatedDataNodeLocations.add(destDataNode);
+    LOGGER.info(
+        "Will reset peer list of consensus group {} on DataNode {}",
+        consensusGroupId,
+        relatedDataNodeLocations.stream()
+            .map(TDataNodeLocation::getDataNodeId)
+            .collect(Collectors.toList()));
+    relatedDataNodeLocations
+        .parallelStream()
+        .forEach(
+            correctDataNodeLocation -> {
+              TSStatus resetResult =
+                  handler.resetPeerList(
+                      consensusGroupId, correctDataNodeLocations, correctDataNodeLocation);
+              if (resetResult.getCode() == SUCCESS_STATUS.getStatusCode()) {
+                LOGGER.info(
+                    "peer list of consensus group {} on DataNode {} has been successfully reset to {}",
+                    consensusGroupId,
+                    correctDataNodeLocation.getDataNodeId(),
+                    correctStr);
+              } else {
+                // TODO: more precise
+                LOGGER.warn(
+                    "peer list of consensus group {} on DataNode {} failed to reset to {}, you may manually reset it",
+                    consensusGroupId,
+                    correctDataNodeLocation.getDataNodeId(),
+                    correctStr);
+              }
+            });
   }
 
   @Override
