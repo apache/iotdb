@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
@@ -41,8 +42,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     implements TabletInsertionEvent {
@@ -54,7 +59,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
 
-  private TabletInsertionDataContainer dataContainer;
+  private final List<TabletInsertionDataContainer> dataContainers = new ArrayList<>();
 
   private ProgressIndex progressIndex;
 
@@ -130,7 +135,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     try {
       PipeResourceManager.wal().unpin(walEntryHandler);
       // Release the container's memory.
-      dataContainer = null;
+      dataContainers.clear();
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -209,28 +214,18 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
-    try {
-      if (dataContainer == null) {
-        dataContainer =
-            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), pipePattern);
-      }
-      return dataContainer.processRowByRow(consumer);
-    } catch (Exception e) {
-      throw new PipeException("Process row by row error.", e);
-    }
+    return initDataContainers().stream()
+        .map(tabletInsertionDataContainer -> tabletInsertionDataContainer.processRowByRow(consumer))
+        .flatMap(Collection::stream)
+        .collect(Collectors.toList());
   }
 
   @Override
   public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
-    try {
-      if (dataContainer == null) {
-        dataContainer =
-            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), pipePattern);
-      }
-      return dataContainer.processTablet(consumer);
-    } catch (Exception e) {
-      throw new PipeException("Process tablet error.", e);
-    }
+    return initDataContainers().stream()
+        .map(tabletInsertionDataContainer -> tabletInsertionDataContainer.processTablet(consumer))
+        .flatMap(Collection::stream)
+        .collect(Collectors.toList());
   }
 
   /////////////////////////// convertToTablet ///////////////////////////
@@ -239,15 +234,39 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     return isAligned;
   }
 
-  public Tablet convertToTablet() {
+  public List<Tablet> convertToTablets() {
+    return initDataContainers().stream()
+        .map(TabletInsertionDataContainer::convertToTablet)
+        .collect(Collectors.toList());
+  }
+
+  /////////////////////////// dataContainer ///////////////////////////
+
+  private List<TabletInsertionDataContainer> initDataContainers() {
     try {
-      if (dataContainer == null) {
-        dataContainer =
-            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), pipePattern);
+      if (!dataContainers.isEmpty()) {
+        return dataContainers;
       }
-      return dataContainer.convertToTablet();
+      InsertNode node = getInsertNode();
+      switch (node.getType()) {
+        case INSERT_ROW:
+        case INSERT_TABLET:
+          dataContainers.add(
+              new TabletInsertionDataContainer(pipeTaskMeta, this, node, pipePattern));
+          break;
+        case INSERT_ROWS:
+          for (InsertRowNode insertRowNode : ((InsertRowsNode) node).getInsertRowNodeList()) {
+            dataContainers.add(
+                new TabletInsertionDataContainer(pipeTaskMeta, this, insertRowNode, pipePattern));
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException("Unsupported node type " + node.getType());
+      }
+      dataContainers.get(dataContainers.size() - 1).markAsNeedToReport();
+      return dataContainers;
     } catch (Exception e) {
-      throw new PipeException("Convert to tablet error.", e);
+      throw new PipeException("Initialize data container error.", e);
     }
   }
 
@@ -261,9 +280,17 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         && (Objects.isNull(node) || !pipePattern.coversDevice(node.getDevicePath().getFullPath()));
   }
 
-  public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {
-    return new PipeRawTabletInsertionEvent(
-        convertToTablet(), isAligned, pipeName, pipeTaskMeta, this, true);
+  public List<PipeRawTabletInsertionEvent> toRawTabletInsertionEvents() {
+    final List<PipeRawTabletInsertionEvent> events =
+        convertToTablets().stream()
+            .map(
+                tablet ->
+                    new PipeRawTabletInsertionEvent(
+                        tablet, isAligned, pipeName, pipeTaskMeta, this, false))
+            .filter(event -> !event.hasNoNeedParsingAndIsEmpty())
+            .collect(Collectors.toList());
+    events.get(events.size() - 1).markAsNeedToReport();
+    return events;
   }
 
   /////////////////////////// Object ///////////////////////////
@@ -271,8 +298,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public String toString() {
     return String.format(
-            "PipeInsertNodeTabletInsertionEvent{walEntryHandler=%s, progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s, dataContainer=%s}",
-            walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, dataContainer)
+            "PipeInsertNodeTabletInsertionEvent{walEntryHandler=%s, progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s, dataContainers=%s}",
+            walEntryHandler, progressIndex, isAligned, isGeneratedByPipe, dataContainers)
         + " - "
         + super.toString();
   }

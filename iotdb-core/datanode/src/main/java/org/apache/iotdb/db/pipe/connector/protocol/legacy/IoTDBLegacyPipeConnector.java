@@ -306,11 +306,12 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
       throws IoTDBConnectionException, StatementExecutionException {
-    final Tablet tablet = pipeInsertNodeInsertionEvent.convertToTablet();
-    if (pipeInsertNodeInsertionEvent.isAligned()) {
-      sessionPool.insertAlignedTablet(tablet);
-    } else {
-      sessionPool.insertTablet(tablet);
+    for (final Tablet tablet : pipeInsertNodeInsertionEvent.convertToTablets()) {
+      if (pipeInsertNodeInsertionEvent.isAligned()) {
+        sessionPool.insertAlignedTablet(tablet);
+      } else {
+        sessionPool.insertTablet(tablet);
+      }
     }
   }
 

@@ -75,6 +75,9 @@ public class TabletInsertionDataContainer {
 
   private Tablet tablet;
 
+  // Whether the container shall report progress
+  private boolean shouldReport = false;
+
   private static final Integer CACHED_FULL_ROW_INDEX_LIST_ROW_COUNT_UPPER = 16;
   private static final Map<Integer, List<Integer>> cachedFullRowIndexList = new HashMap<>();
 
@@ -122,6 +125,10 @@ public class TabletInsertionDataContainer {
 
   public boolean isAligned() {
     return isAligned;
+  }
+
+  public void markAsNeedToReport() {
+    shouldReport = true;
   }
 
   //////////////////////////// parse ////////////////////////////
@@ -551,7 +558,7 @@ public class TabletInsertionDataContainer {
 
   ////////////////////////////  process  ////////////////////////////
 
-  public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
+  public List<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     if (valueColumns.length == 0 || timestampColumn.length == 0) {
       return Collections.emptyList();
     }
@@ -571,13 +578,13 @@ public class TabletInsertionDataContainer {
               columnNameStringList),
           rowCollector);
     }
-    return rowCollector.convertToTabletInsertionEvents();
+    return rowCollector.convertToTabletInsertionEvents(shouldReport);
   }
 
-  public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
+  public List<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, sourceEvent);
     consumer.accept(convertToTablet(), rowCollector);
-    return rowCollector.convertToTabletInsertionEvents();
+    return rowCollector.convertToTabletInsertionEvents(shouldReport);
   }
 
   ////////////////////////////  convertToTablet  ////////////////////////////

@@ -169,8 +169,10 @@ public class OpcUaConnector implements PipeConnector {
     }
 
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      transferTablet(
-          server, ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
+      for (final Tablet tablet :
+          ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablets()) {
+        transferTablet(server, tablet);
+      }
     } else {
       transferTablet(
           server, ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet());

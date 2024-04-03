@@ -369,7 +369,8 @@ public class WebSocketConnectorServer extends WebSocketServer {
       try {
         ByteBuffer tabletBuffer;
         if (event instanceof PipeInsertNodeTabletInsertionEvent) {
-          tabletBuffer = ((PipeInsertNodeTabletInsertionEvent) event).convertToTablet().serialize();
+          tabletBuffer =
+              ((PipeInsertNodeTabletInsertionEvent) event).convertToTablets().get(0).serialize();
         } else if (event instanceof PipeRawTabletInsertionEvent) {
           tabletBuffer = ((PipeRawTabletInsertionEvent) event).convertToTablet().serialize();
         } else {
