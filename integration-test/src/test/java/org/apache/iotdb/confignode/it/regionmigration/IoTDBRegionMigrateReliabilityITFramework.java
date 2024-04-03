@@ -80,6 +80,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
   private static final String SHOW_REGIONS = "show regions";
   private static final String SHOW_DATANODES = "show datanodes";
   private static final String REGION_MIGRATE_COMMAND_FORMAT = "migrate region %d from %d to %d";
+  private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
   ExecutorService executorService = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
 
   @Before
@@ -622,7 +623,8 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     String configurationDatDirName =
         buildRegionDirPath(localDataNodeId) + File.separator + "1_" + regionId;
     String expectDeletedFileName =
-        IoTConsensusServerImpl.generateConfigurationDatFileName(remoteDataNodeId);
+        IoTConsensusServerImpl.generateConfigurationDatFileName(
+            remoteDataNodeId, CONFIGURATION_FILE_NAME);
     return configurationDatDirName + File.separator + expectDeletedFileName;
   }
 

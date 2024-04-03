@@ -49,6 +49,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -241,6 +242,12 @@ class SimpleConsensus implements IConsensus {
   @Override
   public List<ConsensusGroupId> getAllConsensusGroupIds() {
     return new ArrayList<>(stateMachineMap.keySet());
+  }
+
+  @Override
+  public List<ConsensusGroupId> getAllConsensusGroupIdsFromDisk() {
+    logger.warn("SimpleConsensus does not support getAllConsensusGroupIdsFromDisk");
+    return Collections.emptyList();
   }
 
   @Override
