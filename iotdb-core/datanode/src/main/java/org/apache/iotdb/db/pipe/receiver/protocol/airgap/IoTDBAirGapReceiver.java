@@ -100,6 +100,11 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     try {
       final byte[] data = readData(inputStream);
 
+      if (data.length == 0) {
+        // The socket may be closed, the outer may close the receiver gracefully
+        return;
+      }
+
       if (!checkSum(data)) {
         LOGGER.warn("Checksum failed, receiverId: {}", receiverId);
         fail();
@@ -167,15 +172,18 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
   private byte[] readData(InputStream inputStream) throws IOException {
     final int length = readLength(inputStream);
 
-    if (length == 0) {
+    if (length <= 0) {
       // Will fail() after checkSum()
       return new byte[0];
     }
 
     final byte[] resultBuffer = new byte[length];
-    readTillFull(inputStream, resultBuffer);
-    if (isELanguagePayload) {
-      skipTillEnough(inputStream, AirGapELanguageConstant.E_LANGUAGE_SUFFIX.length);
+    if (!readTillFull(inputStream, resultBuffer)) {
+      return new byte[0];
+    }
+    if (isELanguagePayload
+        && (!skipTillEnough(inputStream, AirGapELanguageConstant.E_LANGUAGE_SUFFIX.length))) {
+      return new byte[0];
     }
     return resultBuffer;
   }
@@ -186,7 +194,9 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
    */
   private int readLength(InputStream inputStream) throws IOException {
     final byte[] doubleIntLengthBytes = new byte[2 * INT_LEN];
-    readTillFull(inputStream, doubleIntLengthBytes);
+    if (!readTillFull(inputStream, doubleIntLengthBytes)) {
+      return -1;
+    }
 
     // Check the header of the request, if it is an E-Language request, skip the E-Language header.
     // We assert AirGapELanguageConstant.E_LANGUAGE_PREFIX.length > 2 * INT_LEN here.
@@ -194,8 +204,10 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
         doubleIntLengthBytes,
         BytesUtils.subBytes(AirGapELanguageConstant.E_LANGUAGE_PREFIX, 0, 2 * INT_LEN))) {
       isELanguagePayload = true;
-      skipTillEnough(
-          inputStream, (long) AirGapELanguageConstant.E_LANGUAGE_PREFIX.length - 2 * INT_LEN);
+      if (!skipTillEnough(
+          inputStream, (long) AirGapELanguageConstant.E_LANGUAGE_PREFIX.length - 2 * INT_LEN)) {
+        return -1;
+      }
       return readLength(inputStream);
     }
 
@@ -207,18 +219,48 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
         : 0;
   }
 
-  private void readTillFull(InputStream inputStream, byte[] readBuffer) throws IOException {
+  /**
+   * Read to the buffer until it is full.
+   *
+   * @param inputStream the input socket stream
+   * @param readBuffer the buffer to read into
+   * @return {@link true} iff the read is successful, if not the socket may be closed.
+   * @throws IOException if any IOException occurs
+   */
+  private boolean readTillFull(InputStream inputStream, byte[] readBuffer) throws IOException {
     int alreadyReadBytes = 0;
     while (alreadyReadBytes < readBuffer.length) {
-      alreadyReadBytes +=
+      final int readBytes =
           inputStream.read(readBuffer, alreadyReadBytes, readBuffer.length - alreadyReadBytes);
+      // In socket input stream readBytes == -1 indicates EOF, namely the
+      // socket is closed
+      if (readBytes == -1) {
+        return false;
+      }
+      alreadyReadBytes += readBytes;
     }
+    return true;
   }
 
-  private void skipTillEnough(InputStream inputStream, long length) throws IOException {
-    int currentSkippedBytes = 0;
+  /**
+   * Skip given number of bytes of the buffer until enough bytes is skipped.
+   *
+   * @param inputStream the input socket stream
+   * @param length the length to skip
+   * @return {@link true} iff the skip is successful, if not the socket may be closed.
+   * @throws IOException if any IOException occurs
+   */
+  private boolean skipTillEnough(InputStream inputStream, long length) throws IOException {
+    long currentSkippedBytes = 0;
     while (currentSkippedBytes < length) {
-      currentSkippedBytes += (int) inputStream.skip(length - currentSkippedBytes);
+      final long skippedBytes = inputStream.skip(length - currentSkippedBytes);
+      // In socket input stream skippedBytes == 0 indicates EOF, namely the
+      // socket is closed
+      if (skippedBytes == 0) {
+        return false;
+      }
+      currentSkippedBytes += skippedBytes;
     }
+    return true;
   }
 }
