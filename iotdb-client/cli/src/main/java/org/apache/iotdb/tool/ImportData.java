@@ -74,12 +74,12 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.jdbc.Config.IOTDB_ERROR_PREFIX;
-import static org.apache.tsfile.file.metadata.enums.TSDataType.BOOLEAN;
-import static org.apache.tsfile.file.metadata.enums.TSDataType.DOUBLE;
-import static org.apache.tsfile.file.metadata.enums.TSDataType.FLOAT;
-import static org.apache.tsfile.file.metadata.enums.TSDataType.INT32;
-import static org.apache.tsfile.file.metadata.enums.TSDataType.INT64;
-import static org.apache.tsfile.file.metadata.enums.TSDataType.TEXT;
+import static org.apache.tsfile.enums.TSDataType.BOOLEAN;
+import static org.apache.tsfile.enums.TSDataType.DOUBLE;
+import static org.apache.tsfile.enums.TSDataType.FLOAT;
+import static org.apache.tsfile.enums.TSDataType.INT32;
+import static org.apache.tsfile.enums.TSDataType.INT64;
+import static org.apache.tsfile.enums.TSDataType.TEXT;
 
 public class ImportData extends AbstractDataTool {
 

@@ -26,7 +26,8 @@ import org.apache.hadoop.fs.FileStatus
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput
 import org.apache.tsfile.common.constant.QueryConstant
 import org.apache.tsfile.file.metadata.TsFileMetadata
-import org.apache.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
+import org.apache.tsfile.enums.TSDataType
+import org.apache.tsfile.file.metadata.enums.TSEncoding
 import org.apache.tsfile.common.conf.TSFileConfig
 import org.apache.tsfile.read.TsFileSequenceReader
 import org.apache.tsfile.read.common.Path
@@ -138,7 +139,7 @@ object WideConverter extends Converter {
       val measurementIds = reader.getAllMeasurements.keySet()
       requiredSchema.foreach(f => {
         if (!QueryConstant.RESERVED_TIME.equals(f.name)) {
-          val path = new org.apache.iotdb.tsfile.read.common.Path(f.name, true)
+          val path = new org.apache.tsfile.read.common.Path(f.name, true)
           if (devices.contains(path.getDevice) && measurementIds.contains(path.getMeasurement)) {
             queriedSchema = queriedSchema.add(f)
           }
@@ -160,10 +161,10 @@ object WideConverter extends Converter {
     */
   def toQueryExpression(schema: StructType, filters: Seq[Filter]): QueryExpression = {
     //get paths from schema
-    val paths = new util.ArrayList[org.apache.iotdb.tsfile.read.common.Path]
+    val paths = new util.ArrayList[org.apache.tsfile.read.common.Path]
     schema.foreach(f => {
       if (!QueryConstant.RESERVED_TIME.equals(f.name)) { // the time field is excluded
-        paths.add(new org.apache.iotdb.tsfile.read.common.Path(f.name, true))
+        paths.add(new org.apache.tsfile.read.common.Path(f.name, true))
       }
     })
 

@@ -178,8 +178,7 @@ public class MergeUpgradeTest {
       long ptNum,
       long valueOffset)
       throws WriteProcessException, IOException {
-    for (org.apache.iotdb.tsfile.write.schema.MeasurementSchema MeasurementSchema :
-        measurementSchemas) {
+    for (org.apache.tsfile.write.schema.MeasurementSchema MeasurementSchema : measurementSchemas) {
       fileWriter.registerTimeseries(new Path(deviceName), MeasurementSchema);
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
