@@ -118,7 +118,7 @@ final class SubscriptionProvider extends SubscriptionSession {
 
   @Override
   public String toString() {
-    return "{endPoint="
+    return "SubscriptionProvider{endPoint="
         + endPoint
         + ", dataNodeId="
         + dataNodeId
