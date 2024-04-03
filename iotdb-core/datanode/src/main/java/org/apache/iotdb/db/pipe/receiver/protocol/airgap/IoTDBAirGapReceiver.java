@@ -136,9 +136,9 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
             req);
         fail();
       }
-    } catch (PipeConnectionException e) {
-      LOGGER.info("Socket close encountered when listening to data. Because: {}", e.getMessage());
-    } catch (Exception e) {
+    } catch (final PipeConnectionException e) {
+      LOGGER.info("Socket closed when listening to data. Because: {}", e.getMessage());
+    } catch (final Exception e) {
       LOGGER.warn("Exception during handling receiving, receiverId: {}", receiverId, e);
       fail();
     }
@@ -218,7 +218,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
    * @throws IOException if any IOException occurs
    * @throws PipeConnectionException if the socket is closed during listening
    */
-  private void readTillFull(InputStream inputStream, byte[] readBuffer)
+  private void readTillFull(final InputStream inputStream, final byte[] readBuffer)
       throws IOException, PipeConnectionException {
     int alreadyReadBytes = 0;
     while (alreadyReadBytes < readBuffer.length) {
@@ -227,7 +227,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       // In socket input stream readBytes == -1 indicates EOF, namely the
       // socket is closed
       if (readBytes == -1) {
-        throw new PipeConnectionException("Socket closed when readTillFull.");
+        throw new PipeConnectionException("Socket closed when executing readTillFull.");
       }
       alreadyReadBytes += readBytes;
     }
@@ -241,7 +241,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
    * @throws IOException if any IOException occurs
    * @throws PipeConnectionException if the socket is closed during skipping
    */
-  private void skipTillEnough(InputStream inputStream, long length)
+  private void skipTillEnough(final InputStream inputStream, final long length)
       throws IOException, PipeConnectionException {
     long currentSkippedBytes = 0;
     while (currentSkippedBytes < length) {
@@ -249,7 +249,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       // In socket input stream skippedBytes == 0 indicates EOF, namely the
       // socket is closed
       if (skippedBytes == 0) {
-        throw new PipeConnectionException("Socket closed when skipTillEnough.");
+        throw new PipeConnectionException("Socket closed when executing skipTillEnough.");
       }
       currentSkippedBytes += skippedBytes;
     }
