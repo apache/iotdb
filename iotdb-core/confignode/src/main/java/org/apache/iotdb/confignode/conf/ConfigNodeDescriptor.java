@@ -39,9 +39,11 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Properties;
 
@@ -105,7 +107,7 @@ public class ConfigNodeDescriptor {
       try (InputStream inputStream = url.openStream()) {
 
         LOGGER.info("Start to read config file {}", url);
-        commonProperties.load(inputStream);
+        commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
       } catch (FileNotFoundException e) {
         LOGGER.error("Fail to find config file {}, reject ConfigNode startup.", url, e);
@@ -128,7 +130,7 @@ public class ConfigNodeDescriptor {
       try (InputStream inputStream = url.openStream()) {
         LOGGER.info("start reading ConfigNode conf file: {}", url);
         Properties properties = new Properties();
-        properties.load(inputStream);
+        properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
         commonProperties.putAll(properties);
         loadProperties(commonProperties);
       } catch (IOException | BadNodeUrlException e) {
