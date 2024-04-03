@@ -348,13 +348,13 @@ public class RegionMaintainHandler {
   }
 
   public TSStatus resetPeerList(
-      TConsensusGroupId regionId, List<TDataNodeLocation> correctDataNodeLocations) {
-    Optional<TDataNodeLocation> optional = filterDataNodeWithOtherRegionReplica(regionId, null);
-    TDataNodeLocation selectDataNode = optional.get();
+      TConsensusGroupId regionId,
+      List<TDataNodeLocation> correctDataNodeLocations,
+      TDataNodeLocation target) {
     TSStatus status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
-                selectDataNode.getInternalEndPoint(),
+                target.getInternalEndPoint(),
                 new TResetPeerListReq(regionId, correctDataNodeLocations),
                 DataNodeRequestType.RESET_PEER_LIST);
     return status;
