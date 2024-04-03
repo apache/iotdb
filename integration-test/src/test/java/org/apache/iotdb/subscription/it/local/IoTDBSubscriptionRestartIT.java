@@ -71,8 +71,8 @@ public class IoTDBSubscriptionRestartIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
-        .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1);
+        .setSchemaReplicationFactor(3)
+        .setDataReplicationFactor(2);
 
     EnvFactory.getEnv().initClusterEnvironment(3, 3);
   }
@@ -209,7 +209,7 @@ public class IoTDBSubscriptionRestartIT {
   }
 
   @Test
-  public void testSubscriptionAfterRestartDN() throws Exception {
+  public void testSubscriptionAfterRestartDataNode() throws Exception {
     // Fetch ip and port from DN 0
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
