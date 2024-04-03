@@ -25,6 +25,8 @@ import javax.validation.constraints.NotNull;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Properties;
@@ -84,7 +86,7 @@ public abstract class MppBaseConfig {
       return;
     }
     try (InputStream confInput = Files.newInputStream(Paths.get(filePath))) {
-      properties.load(confInput);
+      properties.load(new InputStreamReader(confInput, StandardCharsets.UTF_8));
     }
   }
 

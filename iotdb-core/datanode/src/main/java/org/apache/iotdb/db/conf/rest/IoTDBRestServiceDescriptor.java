@@ -28,8 +28,10 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
 public class IoTDBRestServiceDescriptor {
@@ -64,7 +66,7 @@ public class IoTDBRestServiceDescriptor {
     try (InputStream inputStream = url.openStream()) {
       logger.info("Start to read config file {}", url);
       Properties properties = new Properties();
-      properties.load(inputStream);
+      properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
       return properties;
     } catch (FileNotFoundException e) {
       logger.warn("REST service fail to find config file {}", url, e);
