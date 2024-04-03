@@ -48,7 +48,7 @@ public class TsFileManager {
   private final TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
   private final TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
 
-  private boolean allowCompaction = true;
+  private volatile boolean allowCompaction = true;
   private final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
   public TsFileManager(String storageGroupName, String dataRegionId, String storageGroupDir) {

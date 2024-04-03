@@ -388,6 +388,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       return Collections.singletonList(taskResources);
 
     } catch (MergeException e) {
+      // This exception may be caused by drop database
+      if (!tsFileManager.isAllowCompaction()) {
+        return Collections.emptyList();
+      }
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
     return Collections.emptyList();

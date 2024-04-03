@@ -43,6 +43,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.StopReadTsFileByInterruptException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -167,7 +168,9 @@ public abstract class AbstractCompactionTask {
           resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
         }
       }
-    } else if (e instanceof InterruptedException) {
+    } else if (e instanceof InterruptedException
+        || Thread.interrupted()
+        || e instanceof StopReadTsFileByInterruptException) {
       logger.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
       Thread.currentThread().interrupt();
     } else {
