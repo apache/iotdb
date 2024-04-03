@@ -24,7 +24,8 @@ import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.subscription.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionParameterNotValidException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionConnection;
 import org.apache.iotdb.session.subscription.model.Subscription;
@@ -65,8 +66,8 @@ public class SubscriptionSession extends Session {
   public SessionConnection constructSessionConnection(
       Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
     if (Objects.isNull(endpoint)) {
-      throw new IllegalStateException(
-          "subscription session must be configured with an endpoint...");
+      throw new SubscriptionParameterNotValidException(
+          "Subscription session must be configured with an endpoint.");
     }
     return new SubscriptionSessionConnection(
         session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
@@ -80,14 +81,14 @@ public class SubscriptionSession extends Session {
     executeNonQueryStatement(sql);
   }
 
-  public void createTopic(String topicName, Properties config)
+  public void createTopic(String topicName, Properties properties)
       throws IoTDBConnectionException, StatementExecutionException {
-    if (config.isEmpty()) {
+    if (properties.isEmpty()) {
       createTopic(topicName);
     }
     final StringBuilder sb = new StringBuilder();
     sb.append('(');
-    config.forEach(
+    properties.forEach(
         (k, v) ->
             sb.append('\'')
                 .append(k)

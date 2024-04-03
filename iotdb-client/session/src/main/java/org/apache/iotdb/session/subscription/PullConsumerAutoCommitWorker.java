@@ -42,8 +42,8 @@ public class PullConsumerAutoCommitWorker implements Runnable {
     }
 
     long currentTimestamp = System.currentTimeMillis();
-    long index = currentTimestamp / consumer.getAutoCommitInterval();
-    if (currentTimestamp % consumer.getAutoCommitInterval() == 0) {
+    long index = currentTimestamp / consumer.getAutoCommitIntervalMs();
+    if (currentTimestamp % consumer.getAutoCommitIntervalMs() == 0) {
       index -= 1;
     }
 

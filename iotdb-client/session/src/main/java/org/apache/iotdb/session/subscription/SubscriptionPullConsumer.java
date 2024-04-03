@@ -21,8 +21,8 @@ package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.subscription.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 
 import org.apache.thrift.TException;
@@ -53,7 +53,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPullConsumer.class);
 
   private final boolean autoCommit;
-  private final int autoCommitInterval;
+  private final int autoCommitIntervalMs;
 
   private ScheduledExecutorService autoCommitWorkerExecutor;
   private SortedMap<Long, Set<SubscriptionMessage>> uncommittedMessages;
@@ -66,26 +66,29 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     super(builder);
 
     this.autoCommit = builder.autoCommit;
-    this.autoCommitInterval = builder.autoCommitInterval;
+    this.autoCommitIntervalMs = builder.autoCommitIntervalMs;
   }
 
-  public SubscriptionPullConsumer(Properties config) {
+  public SubscriptionPullConsumer(Properties properties) {
     this(
-        config,
+        properties,
         (Boolean)
-            config.getOrDefault(
+            properties.getOrDefault(
                 ConsumerConstant.AUTO_COMMIT_KEY, ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE),
         (Integer)
-            config.getOrDefault(
-                ConsumerConstant.AUTO_COMMIT_INTERVAL_KEY,
-                ConsumerConstant.AUTO_COMMIT_INTERVAL_DEFAULT_VALUE));
+            properties.getOrDefault(
+                ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_KEY,
+                ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE));
   }
 
-  private SubscriptionPullConsumer(Properties config, boolean autoCommit, int autoCommitInterval) {
-    super(new Builder().autoCommit(autoCommit).autoCommitInterval(autoCommitInterval), config);
+  private SubscriptionPullConsumer(
+      Properties properties, boolean autoCommit, int autoCommitIntervalMs) {
+    super(
+        new Builder().autoCommit(autoCommit).autoCommitIntervalMs(autoCommitIntervalMs),
+        properties);
 
     this.autoCommit = autoCommit;
-    this.autoCommitInterval = autoCommitInterval;
+    this.autoCommitIntervalMs = autoCommitIntervalMs;
   }
 
   /////////////////////////////// open & close ///////////////////////////////
@@ -161,8 +164,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
     if (autoCommit) {
       long currentTimestamp = System.currentTimeMillis();
-      long index = currentTimestamp / autoCommitInterval;
-      if (currentTimestamp % autoCommitInterval == 0) {
+      long index = currentTimestamp / autoCommitIntervalMs;
+      if (currentTimestamp % autoCommitIntervalMs == 0) {
         index -= 1;
       }
       uncommittedMessages
@@ -238,7 +241,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
               return t;
             });
     autoCommitWorkerExecutor.scheduleAtFixedRate(
-        new PullConsumerAutoCommitWorker(this), 0, autoCommitInterval, TimeUnit.MILLISECONDS);
+        new PullConsumerAutoCommitWorker(this), 0, autoCommitIntervalMs, TimeUnit.MILLISECONDS);
   }
 
   private void shutdownAutoCommitWorker() {
@@ -261,8 +264,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     return isClosed.get();
   }
 
-  int getAutoCommitInterval() {
-    return autoCommitInterval;
+  int getAutoCommitIntervalMs() {
+    return autoCommitIntervalMs;
   }
 
   SortedMap<Long, Set<SubscriptionMessage>> getUncommittedMessages() {
@@ -274,7 +277,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   public static class Builder extends SubscriptionConsumer.Builder {
 
     private boolean autoCommit = ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE;
-    private int autoCommitInterval = ConsumerConstant.AUTO_COMMIT_INTERVAL_DEFAULT_VALUE;
+    private int autoCommitIntervalMs = ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE;
 
     public Builder host(String host) {
       super.host(host);
@@ -326,9 +329,9 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       return this;
     }
 
-    public Builder autoCommitInterval(int autoCommitInterval) {
-      this.autoCommitInterval =
-          Math.max(autoCommitInterval, ConsumerConstant.AUTO_COMMIT_INTERVAL_MIN_VALUE);
+    public Builder autoCommitIntervalMs(int autoCommitIntervalMs) {
+      this.autoCommitIntervalMs =
+          Math.max(autoCommitIntervalMs, ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_MIN_VALUE);
       return this;
     }
 

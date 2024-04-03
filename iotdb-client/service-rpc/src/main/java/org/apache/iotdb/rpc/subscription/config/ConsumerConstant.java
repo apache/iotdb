@@ -35,22 +35,23 @@ public class ConsumerConstant {
 
   /////////////////////////////// hidden ///////////////////////////////
 
-  public static final String HEARTBEAT_INTERVAL_KEY = "heartbeat-interval"; // unit: ms
-  public static final int HEARTBEAT_INTERVAL_DEFAULT_VALUE = 5000;
-  public static final int HEARTBEAT_INTERVAL_MIN_VALUE = 1000;
+  public static final String HEARTBEAT_INTERVAL_MS_KEY = "heartbeat-interval-ms"; // unit: ms
+  public static final int HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE = 5000;
+  public static final int HEARTBEAT_INTERVAL_MS_MIN_VALUE = 1000;
 
-  public static final String ENDPOINTS_SYNC_INTERVAL_KEY = "endpoints-sync-interval"; // unit: ms
-  public static final int ENDPOINTS_SYNC_INTERVAL_DEFAULT_VALUE = 30000;
-  public static final int ENDPOINTS_SYNC_INTERVAL_MIN_VALUE = 5000;
+  public static final String ENDPOINTS_SYNC_INTERVAL_MS_KEY =
+      "endpoints-sync-interval-ms"; // unit: ms
+  public static final int ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE = 30000;
+  public static final int ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE = 5000;
 
   /////////////////////////////// pull consumer ///////////////////////////////
 
   public static final String AUTO_COMMIT_KEY = "auto-commit";
   public static final boolean AUTO_COMMIT_DEFAULT_VALUE = true;
 
-  public static final String AUTO_COMMIT_INTERVAL_KEY = "auto-commit-interval"; // unit: ms
-  public static final int AUTO_COMMIT_INTERVAL_DEFAULT_VALUE = 5000;
-  public static final int AUTO_COMMIT_INTERVAL_MIN_VALUE = 500;
+  public static final String AUTO_COMMIT_INTERVAL_MS_KEY = "auto-commit-interval-ms"; // unit: ms
+  public static final int AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE = 5000;
+  public static final int AUTO_COMMIT_INTERVAL_MS_MIN_VALUE = 500;
 
   /////////////////////////////// push consumer ///////////////////////////////
 
