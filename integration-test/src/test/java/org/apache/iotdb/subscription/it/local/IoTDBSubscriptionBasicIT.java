@@ -24,8 +24,11 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.session.subscription.AckStrategy;
+import org.apache.iotdb.session.subscription.ConsumeResult;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
@@ -65,7 +68,7 @@ public class IoTDBSubscriptionBasicIT {
   }
 
   @Test
-  public void testBasicSubscription() throws Exception {
+  public void testBasicSubscriptionWithPullConsumer() throws Exception {
     // Insert some historical data
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
       for (int i = 0; i < 100; ++i) {
@@ -152,6 +155,113 @@ public class IoTDBSubscriptionBasicIT {
     } finally {
       isClosed.set(true);
       thread.join();
+    }
+  }
+
+  @Test
+  public void testBasicSubscriptionWithPushConsumer() {
+    AtomicInteger onReceiveCount = new AtomicInteger();
+    AtomicInteger rowCount = new AtomicInteger();
+
+    // Insert some historical data
+    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      for (int i = 0; i < 10; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+      }
+      session.executeNonQueryStatement("flush");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Create topic
+    final String host = EnvFactory.getEnv().getIP();
+    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      session.createTopic("topic1");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Subscription
+    try (final SubscriptionPushConsumer consumer =
+        new SubscriptionPushConsumer.Builder()
+            .host(host)
+            .port(port)
+            .consumerId("c1")
+            .consumerGroupId("cg1")
+            .ackStrategy(AckStrategy.BEFORE_CONSUME)
+            .consumeListener(
+                message -> {
+                  onReceiveCount.getAndIncrement();
+                  SubscriptionSessionDataSets dataSets =
+                      (SubscriptionSessionDataSets) message.getPayload();
+                  dataSets
+                      .tabletIterator()
+                      .forEachRemaining(tablet -> rowCount.addAndGet(tablet.rowSize));
+                  return ConsumeResult.SUCCESS;
+                })
+            .buildPushConsumer()) {
+
+      consumer.open();
+      consumer.subscribe("topic1");
+
+      // The push consumer should automatically poll 10 rows of data by 1 onReceive()
+      Awaitility.await()
+          .pollDelay(1, TimeUnit.SECONDS)
+          .pollInterval(1, TimeUnit.SECONDS)
+          .atMost(10, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                Assert.assertEquals(10, rowCount.get());
+                Assert.assertEquals(1, onReceiveCount.get());
+              });
+
+      // Insert more rows and check if the push consumer can automatically poll the new data
+      try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        for (int i = 10; i < 20; ++i) {
+          session.executeNonQueryStatement(
+              String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+        }
+        session.executeNonQueryStatement("flush");
+      }
+
+      Awaitility.await()
+          .pollDelay(1, TimeUnit.SECONDS)
+          .pollInterval(1, TimeUnit.SECONDS)
+          .atMost(10, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                Assert.assertEquals(20, rowCount.get());
+                Assert.assertEquals(2, onReceiveCount.get());
+              });
+
+      try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        for (int i = 20; i < 30; ++i) {
+          session.executeNonQueryStatement(
+              String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+        }
+        session.executeNonQueryStatement("flush");
+      }
+
+      Awaitility.await()
+          .pollDelay(1, TimeUnit.SECONDS)
+          .pollInterval(1, TimeUnit.SECONDS)
+          .atMost(10, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                Assert.assertEquals(30, rowCount.get());
+                Assert.assertEquals(3, onReceiveCount.get());
+              });
+
+      consumer.unsubscribe("topic1");
+
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 }

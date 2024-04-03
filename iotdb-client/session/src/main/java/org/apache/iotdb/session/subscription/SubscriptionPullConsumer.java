@@ -23,7 +23,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
-import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -31,9 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -45,7 +42,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
 public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
@@ -143,14 +139,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   public List<SubscriptionMessage> poll(Set<String> topicNames, long timeoutMs)
       throws TException, IOException, StatementExecutionException {
-    // TODO: network timeout
-    List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
-    for (SubscriptionSessionConnection connection : getSessionConnections()) {
-      enrichedTabletsList.addAll(connection.poll(topicNames, timeoutMs));
-    }
-
-    List<SubscriptionMessage> messages =
-        enrichedTabletsList.stream().map(SubscriptionMessage::new).collect(Collectors.toList());
+    List<SubscriptionMessage> messages = super.poll(topicNames, timeoutMs);
     if (autoCommit) {
       long currentTimestamp = System.currentTimeMillis();
       long index = currentTimestamp / autoCommitInterval;
@@ -166,32 +155,12 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   public void commitSync(SubscriptionMessage message)
       throws TException, IOException, StatementExecutionException {
-    commitSync(Collections.singletonList(message));
+    super.commitSync(Collections.singletonList(message));
   }
 
   public void commitSync(Iterable<SubscriptionMessage> messages)
       throws TException, IOException, StatementExecutionException {
-    Map<Integer, Map<String, List<String>>> dataNodeIdToTopicNameToSubscriptionCommitIds =
-        new HashMap<>();
-    for (SubscriptionMessage message : messages) {
-      dataNodeIdToTopicNameToSubscriptionCommitIds
-          .computeIfAbsent(
-              message.parseDataNodeIdFromSubscriptionCommitId(), (id) -> new HashMap<>())
-          .computeIfAbsent(message.getTopicName(), (topicName) -> new ArrayList<>())
-          .add(message.getSubscriptionCommitId());
-    }
-    for (Map.Entry<Integer, Map<String, List<String>>> entry :
-        dataNodeIdToTopicNameToSubscriptionCommitIds.entrySet()) {
-      commitSyncInternal(entry.getKey(), entry.getValue());
-    }
-  }
-
-  /////////////////////////////// utility ///////////////////////////////
-
-  private void commitSyncInternal(
-      int dataNodeId, Map<String, List<String>> topicNameToSubscriptionCommitIds)
-      throws TException, IOException, StatementExecutionException {
-    getSessionConnection(dataNodeId).commitSync(topicNameToSubscriptionCommitIds);
+    super.commitSync(messages);
   }
 
   /////////////////////////////// auto commit ///////////////////////////////
@@ -236,6 +205,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     }
   }
 
+  @Override
   boolean isClosed() {
     return isClosed.get();
   }

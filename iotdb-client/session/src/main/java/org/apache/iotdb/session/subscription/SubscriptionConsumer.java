@@ -24,10 +24,12 @@ import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 
 import org.apache.thrift.TException;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -211,7 +213,43 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     return isClosed.get();
   }
 
+  /////////////////////////////// poll & commit ///////////////////////////////
+
+  protected List<SubscriptionMessage> poll(Set<String> topicNames, long timeoutMs)
+      throws TException, IOException, StatementExecutionException {
+    // TODO: network timeout
+    List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
+    for (SubscriptionSessionConnection connection : getSessionConnections()) {
+      enrichedTabletsList.addAll(connection.poll(topicNames, timeoutMs));
+    }
+
+    return enrichedTabletsList.stream().map(SubscriptionMessage::new).collect(Collectors.toList());
+  }
+
+  protected void commitSync(Iterable<SubscriptionMessage> messages)
+      throws TException, IOException, StatementExecutionException {
+    Map<Integer, Map<String, List<String>>> dataNodeIdToTopicNameToSubscriptionCommitIds =
+        new HashMap<>();
+    for (SubscriptionMessage message : messages) {
+      dataNodeIdToTopicNameToSubscriptionCommitIds
+          .computeIfAbsent(
+              message.parseDataNodeIdFromSubscriptionCommitId(), (id) -> new HashMap<>())
+          .computeIfAbsent(message.getTopicName(), (topicName) -> new ArrayList<>())
+          .add(message.getSubscriptionCommitId());
+    }
+    for (Map.Entry<Integer, Map<String, List<String>>> entry :
+        dataNodeIdToTopicNameToSubscriptionCommitIds.entrySet()) {
+      commitSyncInternal(entry.getKey(), entry.getValue());
+    }
+  }
+
   /////////////////////////////// utility ///////////////////////////////
+
+  private void commitSyncInternal(
+      int dataNodeId, Map<String, List<String>> topicNameToSubscriptionCommitIds)
+      throws TException, IOException, StatementExecutionException {
+    getSessionConnection(dataNodeId).commitSync(topicNameToSubscriptionCommitIds);
+  }
 
   private SubscriptionSessionConnection getDefaultSessionConnection() {
     return defaultSubscriptionProvider.getSessionConnection();
