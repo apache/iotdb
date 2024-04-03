@@ -400,7 +400,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C1CGSubscribeTWOTopicHistoricalDataWithAsyncConnector() throws Exception {
+  public void test3C1CGSubscribeTwoTopicHistoricalDataWithAsyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         ASYNC_CONNECTOR_ATTRIBUTES,
         __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -408,7 +408,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C1CGSubscribeTWOTopicHistoricalDataWithSyncConnector() throws Exception {
+  public void test3C1CGSubscribeTwoTopicHistoricalDataWithSyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         SYNC_CONNECTOR_ATTRIBUTES,
         __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -416,7 +416,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C1CGSubscribeTWOTopicHistoricalDataWithLegacyConnector() throws Exception {
+  public void test3C1CGSubscribeTwoTopicHistoricalDataWithLegacyConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         LEGACY_CONNECTOR_ATTRIBUTES,
         __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -424,7 +424,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C1CGSubscribeTWOTopicHistoricalDataWithAirGapConnector() throws Exception {
+  public void test3C1CGSubscribeTwoTopicHistoricalDataWithAirGapConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         AIR_GAP_CONNECTOR_ATTRIBUTES,
         __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -432,7 +432,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C1CGSubscribeTWOTopicRealtimeDataWithAsyncConnector() throws Exception {
+  public void test3C1CGSubscribeTwoTopicRealtimeDataWithAsyncConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         ASYNC_CONNECTOR_ATTRIBUTES,
         __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -440,7 +440,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C1CGSubscribeTWOTopicRealtimeDataWithSyncConnector() throws Exception {
+  public void test3C1CGSubscribeTwoTopicRealtimeDataWithSyncConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         SYNC_CONNECTOR_ATTRIBUTES,
         __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -448,7 +448,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C1CGSubscribeTWOTopicRealtimeDataWithLegacyConnector() throws Exception {
+  public void test3C1CGSubscribeTwoTopicRealtimeDataWithLegacyConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         LEGACY_CONNECTOR_ATTRIBUTES,
         __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -456,7 +456,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C1CGSubscribeTWOTopicRealtimeDataWithAirGapConnector() throws Exception {
+  public void test3C1CGSubscribeTwoTopicRealtimeDataWithAirGapConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         AIR_GAP_CONNECTOR_ATTRIBUTES,
         __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -464,7 +464,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C3CGSubscribeTWOTopicHistoricalDataWithAsyncConnector() throws Exception {
+  public void test3C3CGSubscribeTwoTopicHistoricalDataWithAsyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         ASYNC_CONNECTOR_ATTRIBUTES,
         __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -472,7 +472,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C3CGSubscribeTWOTopicHistoricalDataWithSyncConnector() throws Exception {
+  public void test3C3CGSubscribeTwoTopicHistoricalDataWithSyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         SYNC_CONNECTOR_ATTRIBUTES,
         __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -480,7 +480,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C3CGSubscribeTWOTopicHistoricalDataWithLegacyConnector() throws Exception {
+  public void test3C3CGSubscribeTwoTopicHistoricalDataWithLegacyConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         LEGACY_CONNECTOR_ATTRIBUTES,
         __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -488,7 +488,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C3CGSubscribeTWOTopicHistoricalDataWithAirGapConnector() throws Exception {
+  public void test3C3CGSubscribeTwoTopicHistoricalDataWithAirGapConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         AIR_GAP_CONNECTOR_ATTRIBUTES,
         __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -496,7 +496,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C3CGSubscribeTWOTopicRealtimeDataWithAsyncConnector() throws Exception {
+  public void test3C3CGSubscribeTwoTopicRealtimeDataWithAsyncConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         ASYNC_CONNECTOR_ATTRIBUTES,
         __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -504,7 +504,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C3CGSubscribeTWOTopicRealtimeDataWithSyncConnector() throws Exception {
+  public void test3C3CGSubscribeTwoTopicRealtimeDataWithSyncConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         SYNC_CONNECTOR_ATTRIBUTES,
         __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -512,7 +512,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C3CGSubscribeTWOTopicRealtimeDataWithLegacyConnector() throws Exception {
+  public void test3C3CGSubscribeTwoTopicRealtimeDataWithLegacyConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         LEGACY_CONNECTOR_ATTRIBUTES,
         __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -520,7 +520,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test3C3CGSubscribeTWOTopicRealtimeDataWithAirGapConnector() throws Exception {
+  public void test3C3CGSubscribeTwoTopicRealtimeDataWithAirGapConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         AIR_GAP_CONNECTOR_ATTRIBUTES,
         __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -528,7 +528,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test4C2CGSubscribeTWOTopicHistoricalDataWithAsyncConnector() throws Exception {
+  public void test4C2CGSubscribeTwoTopicHistoricalDataWithAsyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         ASYNC_CONNECTOR_ATTRIBUTES,
         __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -536,7 +536,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test4C2CGSubscribeTWOTopicHistoricalDataWithSyncConnector() throws Exception {
+  public void test4C2CGSubscribeTwoTopicHistoricalDataWithSyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         SYNC_CONNECTOR_ATTRIBUTES,
         __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -544,7 +544,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test4C2CGSubscribeTWOTopicHistoricalDataWithLegacyConnector() throws Exception {
+  public void test4C2CGSubscribeTwoTopicHistoricalDataWithLegacyConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         LEGACY_CONNECTOR_ATTRIBUTES,
         __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -552,7 +552,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test4C2CGSubscribeTWOTopicHistoricalDataWithAirGapConnector() throws Exception {
+  public void test4C2CGSubscribeTwoTopicHistoricalDataWithAirGapConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
         AIR_GAP_CONNECTOR_ATTRIBUTES,
         __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -560,7 +560,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test4C2CGSubscribeTWOTopicRealtimeDataWithAsyncConnector() throws Exception {
+  public void test4C2CGSubscribeTwoTopicRealtimeDataWithAsyncConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         ASYNC_CONNECTOR_ATTRIBUTES,
         __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -568,7 +568,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test4C2CGSubscribeTWOTopicRealtimeDataWithSyncConnector() throws Exception {
+  public void test4C2CGSubscribeTwoTopicRealtimeDataWithSyncConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         SYNC_CONNECTOR_ATTRIBUTES,
         __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -576,7 +576,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test4C2CGSubscribeTWOTopicRealtimeDataWithLegacyConnector() throws Exception {
+  public void test4C2CGSubscribeTwoTopicRealtimeDataWithLegacyConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         LEGACY_CONNECTOR_ATTRIBUTES,
         __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
@@ -584,7 +584,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   }
 
   @Test
-  public void test4C2CGSubscribeTWOTopicRealtimeDataWithAirGapConnector() throws Exception {
+  public void test4C2CGSubscribeTwoTopicRealtimeDataWithAirGapConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
         AIR_GAP_CONNECTOR_ATTRIBUTES,
         __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
