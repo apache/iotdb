@@ -74,8 +74,8 @@ public class SubscriptionEndpointsSyncer implements Runnable {
     // add new providers or handshake existed providers
     for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
       final SubscriptionProvider provider = consumer.getProvider(entry.getKey());
-      // new provider
       if (Objects.isNull(provider)) {
+        // new provider
         final SubscriptionProvider newProvider = consumer.constructProvider(entry.getValue());
         try {
           newProvider.handshake();
