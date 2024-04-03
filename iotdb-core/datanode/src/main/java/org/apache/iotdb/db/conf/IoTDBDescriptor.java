@@ -68,8 +68,10 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -163,7 +165,7 @@ public class IoTDBDescriptor {
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
         LOGGER.info("Start to read config file {}", url);
-        commonProperties.load(inputStream);
+        commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
       } catch (FileNotFoundException e) {
         LOGGER.error("Fail to find config file {}, reject DataNode startup.", url, e);
         System.exit(-1);
@@ -184,7 +186,7 @@ public class IoTDBDescriptor {
       try (InputStream inputStream = url.openStream()) {
         LOGGER.info("Start to read config file {}", url);
         Properties properties = new Properties();
-        properties.load(inputStream);
+        properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
         commonProperties.putAll(properties);
         loadProperties(commonProperties);
       } catch (FileNotFoundException e) {
@@ -1640,7 +1642,7 @@ public class IoTDBDescriptor {
     Properties commonProperties = new Properties();
     try (InputStream inputStream = url.openStream()) {
       LOGGER.info("Start to reload config file {}", url);
-      commonProperties.load(inputStream);
+      commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
     } catch (Exception e) {
       LOGGER.warn("Fail to reload config file {}", url, e);
       throw new QueryProcessException(
@@ -1655,7 +1657,7 @@ public class IoTDBDescriptor {
     try (InputStream inputStream = url.openStream()) {
       LOGGER.info("Start to reload config file {}", url);
       Properties properties = new Properties();
-      properties.load(inputStream);
+      properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
       commonProperties.putAll(properties);
       loadHotModifiedProps(commonProperties);
     } catch (Exception e) {
