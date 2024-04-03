@@ -134,7 +134,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
       PipeResourceManager.wal().unpin(walEntryHandler);
-      // Release the container's memory.
+      // Release the containers' memory.
       dataContainers.clear();
       return true;
     } catch (Exception e) {
@@ -195,6 +195,14 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         }
         // We assume that `timestamps` is ordered.
         return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
+      } else if (insertNode instanceof InsertRowsNode) {
+        for (InsertRowNode node : ((InsertRowsNode) insertNode).getInsertRowNodeList()) {
+          final long timestamp = node.getTime();
+          if (startTime <= timestamp && timestamp <= endTime) {
+            return true;
+          }
+        }
+        return false;
       } else {
         throw new UnSupportedDataTypeException(
             String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
