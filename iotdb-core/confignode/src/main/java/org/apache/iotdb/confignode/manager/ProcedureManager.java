@@ -1142,7 +1142,7 @@ public class ProcedureManager {
       final Procedure<ConfigNodeProcedureEnv> finishedProcedure =
           executor.getResultOrProcedure(procedureId);
       if (!finishedProcedure.isFinished()) {
-        // the procedure is still executing
+        // The procedure is still executing
         statusList.add(
             RpcUtils.getStatus(
                 TSStatusCode.OVERLAP_WITH_EXISTING_TASK, "Procedure execution timed out."));
