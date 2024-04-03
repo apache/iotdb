@@ -106,7 +106,7 @@ public class WebSocketConnector implements PipeConnector {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent event =
           (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
-      event.skipReport();
+      event.skipReportOnCommit();
       for (PipeRawTabletInsertionEvent rawTabletInsertionEvent :
           event.toRawTabletInsertionEvents()) {
         // Transfer raw tablet insertion event to make sure one event binds
