@@ -131,6 +131,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
   }
 
+  public long getPipeListeningQueueTransferSnapshotThreshold() {
+    return COMMON_CONFIG.getPipeListeningQueueTransferSnapshotThreshold();
+  }
+
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
   public boolean isSeperatedPipeHeartbeatEnabled() {
@@ -284,6 +288,9 @@ public class PipeConfig {
         isPipeConnectorRPCThriftCompressionEnabled());
     LOGGER.info(
         "PipeLeaderCacheMemoryUsagePercentage: {}", getPipeLeaderCacheMemoryUsagePercentage());
+    LOGGER.info(
+        "PipeListeningQueueTransferSnapshotThreshold: {}",
+        getPipeListeningQueueTransferSnapshotThreshold());
 
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());

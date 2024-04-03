@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.queue.listening;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.queue.serializer.QueueSerializerType;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
@@ -77,8 +78,9 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   }
 
   public synchronized Pair<Long, List<PipeSnapshotEvent>> findAvailableSnapshots() {
-    // TODO: configure maximum number of events from snapshot to queue tail
-    if (queueTailIndex2SnapshotsCache.getLeft() < queue.getTailIndex() - 1000) {
+    if (queueTailIndex2SnapshotsCache.getLeft()
+        < queue.getTailIndex()
+            - PipeConfig.getInstance().getPipeListeningQueueTransferSnapshotThreshold()) {
       clearSnapshots();
     }
     return queueTailIndex2SnapshotsCache;
