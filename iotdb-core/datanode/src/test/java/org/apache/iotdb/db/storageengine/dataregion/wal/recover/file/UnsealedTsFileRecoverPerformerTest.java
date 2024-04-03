@@ -18,17 +18,22 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
+import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.TsFileUtilsForRecoverTest;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -38,17 +43,21 @@ import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -57,6 +66,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -316,6 +326,83 @@ public class UnsealedTsFileRecoverPerformerTest {
       recoverPerformer.redoLog(walEntry1);
       recoverPerformer.redoLog(walEntry2);
       recoverPerformer.endRecovery();
+    }
+  }
+
+  @Test
+  public void testRecoverDuplicate()
+      throws IllegalPathException, IOException, WriteProcessException, DataRegionException,
+          WALRecoverException {
+    // generate crashed .tsfile
+    File file = new File(FILE_NAME);
+    generateCrashedFile(file);
+    assertTrue(file.exists());
+    assertFalse(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
+    assertFalse(new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX)).exists());
+    tsFileResource = new TsFileResource(file);
+
+    int fakeMemTableId = 1;
+
+    IMemTable memTable = new PrimitiveMemTable();
+    memTable.setDatabaseAndDataRegionId(SG_NAME, "0");
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
+    memTable.write(DEVICE1_NAME, schemaList, 1, new Object[] {100000});
+    WALEntry duplicateMemTableSnapshotWalEntry = new WALInfoEntry(fakeMemTableId++, memTable);
+
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId("plannode 1"),
+            new PartialPath(DEVICE1_NAME),
+            false,
+            new String[] {"s1"},
+            new TSDataType[] {TSDataType.INT32},
+            2,
+            new Integer[] {20},
+            false);
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {new MeasurementSchema("s1", TSDataType.INT32)});
+    WALEntry duplicateWalEntry = new WALInfoEntry(fakeMemTableId++, insertRowNode);
+
+    InsertRowNode insertRowNode2 =
+        new InsertRowNode(
+            new PlanNodeId("plannode 2"),
+            new PartialPath(DEVICE1_NAME),
+            false,
+            new String[] {"s1"},
+            new TSDataType[] {TSDataType.INT32},
+            10,
+            new Integer[] {10},
+            false);
+    insertRowNode2.setMeasurementSchemas(
+        new MeasurementSchema[] {new MeasurementSchema("s1", TSDataType.INT32)});
+
+    WALEntry normalWalEntry = new WALInfoEntry(fakeMemTableId++, insertRowNode2);
+
+    try (UnsealedTsFileRecoverPerformer performer =
+        new UnsealedTsFileRecoverPerformer(tsFileResource, true, p -> assertFalse(p.canWrite()))) {
+      performer.startRecovery();
+      performer.redoLog(duplicateMemTableSnapshotWalEntry);
+      performer.redoLog(duplicateWalEntry);
+      performer.redoLog(normalWalEntry);
+      performer.endRecovery();
+      performer.getTsFileResource();
+    }
+
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME)) {
+      List<ChunkMetadata> chunkMetadataList =
+          reader.getChunkMetadataList(new Path(DEVICE1_NAME, "s1", true));
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        Chunk chunk = reader.readMemChunk(chunkMetadata);
+        ChunkReader chunkReader = new ChunkReader(chunk);
+        while (chunkReader.hasNextSatisfiedPage()) {
+          BatchData batchData = chunkReader.nextPageData();
+          while (batchData.hasCurrent()) {
+            Assert.assertEquals((int) batchData.currentTime(), batchData.currentValue());
+            batchData.next();
+          }
+        }
+      }
     }
   }
 }
