@@ -125,7 +125,7 @@ public class TsFilePlanRedoer {
         long minTimeInNode;
         minTimeInNode = node.getTime();
         if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTimeInNode) {
-          return;
+          continue;
         }
       }
       if (node.isAligned()) {
