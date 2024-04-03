@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteRespo
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -100,11 +101,6 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     try {
       final byte[] data = readData(inputStream);
 
-      if (data.length == 0) {
-        // The socket may be closed, the outer may close the receiver gracefully
-        return;
-      }
-
       if (!checkSum(data)) {
         LOGGER.warn("Checksum failed, receiverId: {}", receiverId);
         fail();
@@ -140,6 +136,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
             req);
         fail();
       }
+    } catch (PipeConnectionException e) {
+      LOGGER.info("Socket close encountered when listening to data. Because: {}", e.getMessage());
     } catch (Exception e) {
       LOGGER.warn("Exception during handling receiving, receiverId: {}", receiverId, e);
       fail();
@@ -178,12 +176,9 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     }
 
     final byte[] resultBuffer = new byte[length];
-    if (!readTillFull(inputStream, resultBuffer)) {
-      return new byte[0];
-    }
-    if (isELanguagePayload
-        && (!skipTillEnough(inputStream, AirGapELanguageConstant.E_LANGUAGE_SUFFIX.length))) {
-      return new byte[0];
+    readTillFull(inputStream, resultBuffer);
+    if (isELanguagePayload) {
+      skipTillEnough(inputStream, AirGapELanguageConstant.E_LANGUAGE_SUFFIX.length);
     }
     return resultBuffer;
   }
@@ -194,9 +189,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
    */
   private int readLength(InputStream inputStream) throws IOException {
     final byte[] doubleIntLengthBytes = new byte[2 * INT_LEN];
-    if (!readTillFull(inputStream, doubleIntLengthBytes)) {
-      return -1;
-    }
+    readTillFull(inputStream, doubleIntLengthBytes);
 
     // Check the header of the request, if it is an E-Language request, skip the E-Language header.
     // We assert AirGapELanguageConstant.E_LANGUAGE_PREFIX.length > 2 * INT_LEN here.
@@ -204,10 +197,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
         doubleIntLengthBytes,
         BytesUtils.subBytes(AirGapELanguageConstant.E_LANGUAGE_PREFIX, 0, 2 * INT_LEN))) {
       isELanguagePayload = true;
-      if (!skipTillEnough(
-          inputStream, (long) AirGapELanguageConstant.E_LANGUAGE_PREFIX.length - 2 * INT_LEN)) {
-        return -1;
-      }
+      skipTillEnough(
+          inputStream, (long) AirGapELanguageConstant.E_LANGUAGE_PREFIX.length - 2 * INT_LEN);
       return readLength(inputStream);
     }
 
@@ -224,10 +215,11 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
    *
    * @param inputStream the input socket stream
    * @param readBuffer the buffer to read into
-   * @return {@link true} iff the read is successful, if not the socket may be closed.
    * @throws IOException if any IOException occurs
+   * @throws PipeConnectionException if the socket is closed during listening
    */
-  private boolean readTillFull(InputStream inputStream, byte[] readBuffer) throws IOException {
+  private void readTillFull(InputStream inputStream, byte[] readBuffer)
+      throws IOException, PipeConnectionException {
     int alreadyReadBytes = 0;
     while (alreadyReadBytes < readBuffer.length) {
       final int readBytes =
@@ -235,11 +227,10 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       // In socket input stream readBytes == -1 indicates EOF, namely the
       // socket is closed
       if (readBytes == -1) {
-        return false;
+        throw new PipeConnectionException("Socket closed when readTillFull.");
       }
       alreadyReadBytes += readBytes;
     }
-    return true;
   }
 
   /**
@@ -247,20 +238,20 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
    *
    * @param inputStream the input socket stream
    * @param length the length to skip
-   * @return {@link true} iff the skip is successful, if not the socket may be closed.
    * @throws IOException if any IOException occurs
+   * @throws PipeConnectionException if the socket is closed during skipping
    */
-  private boolean skipTillEnough(InputStream inputStream, long length) throws IOException {
+  private void skipTillEnough(InputStream inputStream, long length)
+      throws IOException, PipeConnectionException {
     long currentSkippedBytes = 0;
     while (currentSkippedBytes < length) {
       final long skippedBytes = inputStream.skip(length - currentSkippedBytes);
       // In socket input stream skippedBytes == 0 indicates EOF, namely the
       // socket is closed
       if (skippedBytes == 0) {
-        return false;
+        throw new PipeConnectionException("Socket closed when skipTillEnough.");
       }
       currentSkippedBytes += skippedBytes;
     }
-    return true;
   }
 }
