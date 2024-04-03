@@ -264,7 +264,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     return isClosed.get();
   }
 
-  int getAutoCommitIntervalMs() {
+  long getAutoCommitIntervalMs() {
     return autoCommitIntervalMs;
   }
 
