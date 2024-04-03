@@ -34,13 +34,13 @@ public class ConsumerConstant {
   public static final String CONSUMER_GROUP_ID_KEY = "group-id";
 
   public static final String HEARTBEAT_INTERVAL_MS_KEY = "heartbeat-interval-ms"; // unit: ms
-  public static final int HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE = 5000;
-  public static final int HEARTBEAT_INTERVAL_MS_MIN_VALUE = 1000;
+  public static final long HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE = 5000;
+  public static final long HEARTBEAT_INTERVAL_MS_MIN_VALUE = 1000;
 
   public static final String ENDPOINTS_SYNC_INTERVAL_MS_KEY =
       "endpoints-sync-interval-ms"; // unit: ms
-  public static final int ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE = 30000;
-  public static final int ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE = 5000;
+  public static final long ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE = 30000;
+  public static final long ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE = 5000;
 
   /////////////////////////////// pull consumer ///////////////////////////////
 
@@ -48,8 +48,8 @@ public class ConsumerConstant {
   public static final boolean AUTO_COMMIT_DEFAULT_VALUE = true;
 
   public static final String AUTO_COMMIT_INTERVAL_MS_KEY = "auto-commit-interval-ms"; // unit: ms
-  public static final int AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE = 5000;
-  public static final int AUTO_COMMIT_INTERVAL_MS_MIN_VALUE = 500;
+  public static final long AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE = 5000;
+  public static final long AUTO_COMMIT_INTERVAL_MS_MIN_VALUE = 500;
 
   /////////////////////////////// push consumer ///////////////////////////////
 

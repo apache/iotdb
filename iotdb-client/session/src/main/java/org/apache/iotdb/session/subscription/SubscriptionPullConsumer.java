@@ -53,7 +53,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPullConsumer.class);
 
   private final boolean autoCommit;
-  private final int autoCommitIntervalMs;
+  private final long autoCommitIntervalMs;
 
   private ScheduledExecutorService autoCommitWorkerExecutor;
   private SortedMap<Long, Set<SubscriptionMessage>> uncommittedMessages;
@@ -75,14 +75,14 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
         (Boolean)
             properties.getOrDefault(
                 ConsumerConstant.AUTO_COMMIT_KEY, ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE),
-        (Integer)
+        (Long)
             properties.getOrDefault(
                 ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_KEY,
                 ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE));
   }
 
   private SubscriptionPullConsumer(
-      Properties properties, boolean autoCommit, int autoCommitIntervalMs) {
+      Properties properties, boolean autoCommit, long autoCommitIntervalMs) {
     super(
         new Builder().autoCommit(autoCommit).autoCommitIntervalMs(autoCommitIntervalMs),
         properties);
@@ -277,7 +277,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   public static class Builder extends SubscriptionConsumer.Builder {
 
     private boolean autoCommit = ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE;
-    private int autoCommitIntervalMs = ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE;
+    private long autoCommitIntervalMs = ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE;
 
     public Builder host(String host) {
       super.host(host);
@@ -314,12 +314,12 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       return this;
     }
 
-    public Builder heartbeatIntervalMs(int heartbeatIntervalMs) {
+    public Builder heartbeatIntervalMs(long heartbeatIntervalMs) {
       super.heartbeatIntervalMs(heartbeatIntervalMs);
       return this;
     }
 
-    public Builder endpointsSyncIntervalMs(int endpointsSyncIntervalMs) {
+    public Builder endpointsSyncIntervalMs(long endpointsSyncIntervalMs) {
       super.endpointsSyncIntervalMs(endpointsSyncIntervalMs);
       return this;
     }
@@ -329,7 +329,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       return this;
     }
 
-    public Builder autoCommitIntervalMs(int autoCommitIntervalMs) {
+    public Builder autoCommitIntervalMs(long autoCommitIntervalMs) {
       this.autoCommitIntervalMs =
           Math.max(autoCommitIntervalMs, ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_MIN_VALUE);
       return this;

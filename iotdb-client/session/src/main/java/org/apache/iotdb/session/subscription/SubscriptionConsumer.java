@@ -64,8 +64,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private final String consumerId;
   private final String consumerGroupId;
 
-  private final int heartbeatIntervalMs;
-  private final int endpointsSyncIntervalMs;
+  private final long heartbeatIntervalMs;
+  private final long endpointsSyncIntervalMs;
 
   private final SortedMap<Integer, SubscriptionProvider> subscriptionProviders =
       new ConcurrentSkipListMap<>();
@@ -127,12 +127,12 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
             .consumerId((String) properties.get(ConsumerConstant.CONSUMER_ID_KEY))
             .consumerGroupId((String) properties.get(ConsumerConstant.CONSUMER_GROUP_ID_KEY))
             .heartbeatIntervalMs(
-                (Integer)
+                (Long)
                     properties.getOrDefault(
                         ConsumerConstant.HEARTBEAT_INTERVAL_MS_KEY,
                         ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE))
             .endpointsSyncIntervalMs(
-                (Integer)
+                (Long)
                     properties.getOrDefault(
                         ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_KEY,
                         ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE)));
@@ -498,8 +498,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     protected String consumerId;
     protected String consumerGroupId;
 
-    protected int heartbeatIntervalMs = ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE;
-    protected int endpointsSyncIntervalMs =
+    protected long heartbeatIntervalMs = ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE;
+    protected long endpointsSyncIntervalMs =
         ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE;
 
     public Builder host(String host) {
@@ -537,13 +537,13 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       return this;
     }
 
-    public Builder heartbeatIntervalMs(int heartbeatIntervalMs) {
+    public Builder heartbeatIntervalMs(long heartbeatIntervalMs) {
       this.heartbeatIntervalMs =
           Math.max(heartbeatIntervalMs, ConsumerConstant.HEARTBEAT_INTERVAL_MS_MIN_VALUE);
       return this;
     }
 
-    public Builder endpointsSyncIntervalMs(int endpointsSyncIntervalMs) {
+    public Builder endpointsSyncIntervalMs(long endpointsSyncIntervalMs) {
       this.endpointsSyncIntervalMs =
           Math.max(endpointsSyncIntervalMs, ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE);
       return this;
