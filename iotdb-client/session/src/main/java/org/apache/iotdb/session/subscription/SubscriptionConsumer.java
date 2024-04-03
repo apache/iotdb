@@ -64,8 +64,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private final String consumerId;
   private final String consumerGroupId;
 
-  private final int heartbeatInterval;
-  private final int endpointsSyncInterval;
+  private final int heartbeatIntervalMs;
+  private final int endpointsSyncIntervalMs;
 
   private final SortedMap<Integer, SubscriptionProvider> subscriptionProviders =
       new ConcurrentSkipListMap<>();
@@ -102,8 +102,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     this.consumerId = builder.consumerId;
     this.consumerGroupId = builder.consumerGroupId;
 
-    this.heartbeatInterval = builder.heartbeatInterval;
-    this.endpointsSyncInterval = builder.endpointsSyncInterval;
+    this.heartbeatIntervalMs = builder.heartbeatIntervalMs;
+    this.endpointsSyncIntervalMs = builder.endpointsSyncIntervalMs;
   }
 
   protected SubscriptionConsumer(Builder builder, Properties properties) {
@@ -126,12 +126,12 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
                         ConsumerConstant.PASSWORD_KEY, SessionConfig.DEFAULT_PASSWORD))
             .consumerId((String) properties.get(ConsumerConstant.CONSUMER_ID_KEY))
             .consumerGroupId((String) properties.get(ConsumerConstant.CONSUMER_GROUP_ID_KEY))
-            .heartbeatInterval(
+            .heartbeatIntervalMs(
                 (Integer)
                     properties.getOrDefault(
                         ConsumerConstant.HEARTBEAT_INTERVAL_MS_KEY,
                         ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE))
-            .endpointsSyncInterval(
+            .endpointsSyncIntervalMs(
                 (Integer)
                     properties.getOrDefault(
                         ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_KEY,
@@ -271,7 +271,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
               return t;
             });
     heartbeatWorkerExecutor.scheduleAtFixedRate(
-        new ConsumerHeartbeatWorker(this), 0, heartbeatInterval, TimeUnit.MILLISECONDS);
+        new ConsumerHeartbeatWorker(this), 0, heartbeatIntervalMs, TimeUnit.MILLISECONDS);
   }
 
   private void shutdownHeartbeatWorker() {
@@ -298,7 +298,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
               return t;
             });
     endpointsSyncerExecutor.scheduleAtFixedRate(
-        new SubscriptionEndpointsSyncer(this), 0, endpointsSyncInterval, TimeUnit.MILLISECONDS);
+        new SubscriptionEndpointsSyncer(this), 0, endpointsSyncIntervalMs, TimeUnit.MILLISECONDS);
   }
 
   private void shutdownEndpointsSyncer() {
@@ -498,8 +498,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     protected String consumerId;
     protected String consumerGroupId;
 
-    protected int heartbeatInterval = ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE;
-    protected int endpointsSyncInterval = ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE;
+    protected int heartbeatIntervalMs = ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE;
+    protected int endpointsSyncIntervalMs =
+        ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE;
 
     public Builder host(String host) {
       this.host = host;
@@ -536,15 +537,15 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       return this;
     }
 
-    public Builder heartbeatInterval(int heartbeatInterval) {
-      this.heartbeatInterval =
-          Math.max(heartbeatInterval, ConsumerConstant.HEARTBEAT_INTERVAL_MS_MIN_VALUE);
+    public Builder heartbeatIntervalMs(int heartbeatIntervalMs) {
+      this.heartbeatIntervalMs =
+          Math.max(heartbeatIntervalMs, ConsumerConstant.HEARTBEAT_INTERVAL_MS_MIN_VALUE);
       return this;
     }
 
-    public Builder endpointsSyncInterval(int endpointsSyncInterval) {
-      this.endpointsSyncInterval =
-          Math.max(endpointsSyncInterval, ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE);
+    public Builder endpointsSyncIntervalMs(int endpointsSyncIntervalMs) {
+      this.endpointsSyncIntervalMs =
+          Math.max(endpointsSyncIntervalMs, ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE);
       return this;
     }
 

@@ -33,8 +33,6 @@ public class ConsumerConstant {
   public static final String CONSUMER_ID_KEY = "consumer-id";
   public static final String CONSUMER_GROUP_ID_KEY = "group-id";
 
-  /////////////////////////////// hidden ///////////////////////////////
-
   public static final String HEARTBEAT_INTERVAL_MS_KEY = "heartbeat-interval-ms"; // unit: ms
   public static final int HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE = 5000;
   public static final int HEARTBEAT_INTERVAL_MS_MIN_VALUE = 1000;

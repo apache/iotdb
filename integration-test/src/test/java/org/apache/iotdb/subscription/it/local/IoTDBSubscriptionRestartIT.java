@@ -233,8 +233,8 @@ public class IoTDBSubscriptionRestartIT {
               .consumerId("c1")
               .consumerGroupId("cg1")
               .autoCommit(true)
-              .heartbeatInterval(1000)
-              .endpointsSyncInterval(5000) // narrow endpoints sync interval
+              .heartbeatIntervalMs(1000)
+              .endpointsSyncIntervalMs(5000) // narrow endpoints sync interval
               .buildPullConsumer();
       consumer.open();
       consumer.subscribe("topic1");
@@ -364,8 +364,8 @@ public class IoTDBSubscriptionRestartIT {
               .consumerId("c1")
               .consumerGroupId("cg1")
               .autoCommit(true)
-              .heartbeatInterval(1000)
-              .endpointsSyncInterval(5000) // narrow endpoints sync interval
+              .heartbeatIntervalMs(1000)
+              .endpointsSyncIntervalMs(5000) // narrow endpoints sync interval
               .buildPullConsumer();
       consumer.open();
       consumer.subscribe("topic1");

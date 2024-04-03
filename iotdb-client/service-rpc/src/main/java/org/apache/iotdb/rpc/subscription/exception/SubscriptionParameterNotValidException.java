@@ -33,7 +33,7 @@ public class SubscriptionParameterNotValidException extends SubscriptionExceptio
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof SubscriptionException
+    return obj instanceof SubscriptionParameterNotValidException
         && Objects.equals(getMessage(), ((SubscriptionParameterNotValidException) obj).getMessage())
         && Objects.equals(
             getTimeStamp(), ((SubscriptionParameterNotValidException) obj).getTimeStamp());

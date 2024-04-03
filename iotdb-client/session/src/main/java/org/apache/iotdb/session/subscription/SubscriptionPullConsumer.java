@@ -314,13 +314,13 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       return this;
     }
 
-    public Builder heartbeatInterval(int heartbeatInterval) {
-      super.heartbeatInterval(heartbeatInterval);
+    public Builder heartbeatIntervalMs(int heartbeatIntervalMs) {
+      super.heartbeatIntervalMs(heartbeatIntervalMs);
       return this;
     }
 
-    public Builder endpointsSyncInterval(int endpointsSyncInterval) {
-      super.endpointsSyncInterval(endpointsSyncInterval);
+    public Builder endpointsSyncIntervalMs(int endpointsSyncIntervalMs) {
+      super.endpointsSyncIntervalMs(endpointsSyncIntervalMs);
       return this;
     }
 

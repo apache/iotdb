@@ -33,7 +33,7 @@ public class SubscriptionPollTimeOutException extends SubscriptionException {
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof SubscriptionException
+    return obj instanceof SubscriptionPollTimeOutException
         && Objects.equals(getMessage(), ((SubscriptionPollTimeOutException) obj).getMessage())
         && Objects.equals(getTimeStamp(), ((SubscriptionPollTimeOutException) obj).getTimeStamp());
   }
