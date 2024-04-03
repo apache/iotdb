@@ -437,19 +437,18 @@ public class IoTConsensus implements IConsensus {
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
-    if (impl.isReadOnly()) {
-      throw new ConsensusException("system is in read-only status now");
-    } else if (!impl.isActive()) {
-      throw new ConsensusException(
-          "peer is inactive and not ready to receive reset configuration request.");
-    }
-
-    for (Peer peer : impl.getConfiguration()) {
-      if (!peers.contains(peer)) {
-        try {
-          impl.removeSyncLogChannel(peer);
-        } catch (ConsensusGroupModifyPeerException e) {
-          logger.error("Failed to remove peer {} from group {}", peer, groupId, e);
+    Peer localPeer = new Peer(groupId, thisNodeId, thisNode);
+    if (!peers.contains(localPeer)) {
+      logger.info("local peer is not in the new configuration, delete local peer {}", groupId);
+      deleteLocalPeer(groupId);
+    } else {
+      for (Peer peer : impl.getConfiguration()) {
+        if (!peers.contains(peer)) {
+          try {
+            impl.removeSyncLogChannel(peer);
+          } catch (ConsensusGroupModifyPeerException e) {
+            logger.error("Failed to remove peer {} from group {}", peer, groupId, e);
+          }
         }
       }
     }

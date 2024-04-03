@@ -239,11 +239,6 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       checkKillPointsAllTriggered(killConfigNodeKeywords);
       checkKillPointsAllTriggered(killDataNodeKeywords);
 
-      if (!expectMigrateSuccess && killNode != KillNode.DESTINATION_DATANODE) {
-        restartDataNodes(
-            Collections.singletonList(EnvFactory.getEnv().dataNodeIdToWrapper(destDataNode).get()));
-      }
-
       // check if there is anything remain
       if (checkOriginalRegionDirDeleted) {
         if (success) {
