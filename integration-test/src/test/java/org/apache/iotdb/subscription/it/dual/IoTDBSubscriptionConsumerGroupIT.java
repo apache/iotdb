@@ -65,6 +65,11 @@ import static org.junit.Assert.fail;
 @Category({MultiClusterIT2Subscription.class})
 public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT {
 
+  // Test dimensions:
+  // 1. multi scenario of consumer, consumer group and subscribed topic
+  // 2. historical or realtime data
+  // 3. multi pipe sync protocol for reference
+
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBSubscriptionConsumerGroupIT.class);
 
@@ -271,6 +276,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         expectedHeaderWithResult);
   }
 
+  // -------------------------------------- //
+  // 3 consumers, 1 consumer group, 1 topic //
+  // -------------------------------------- //
+
   @Test
   public void test3C1CGSubscribeOneTopicHistoricalDataWithAsyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
@@ -334,6 +343,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
         __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
   }
+
+  // --------------------------------------- //
+  // 3 consumers, 3 consumer groups, 1 topic //
+  // --------------------------------------- //
 
   @Test
   public void test3C3CGSubscribeOneTopicHistoricalDataWithAsyncConnector() throws Exception {
@@ -399,6 +412,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
   }
 
+  // --------------------------------------- //
+  // 3 consumers, 1 consumer group, 2 topics //
+  // --------------------------------------- //
+
   @Test
   public void test3C1CGSubscribeTwoTopicHistoricalDataWithAsyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
@@ -463,6 +480,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
   }
 
+  // ---------------------------------------- //
+  // 3 consumers, 3 consumer groups, 2 topics //
+  // ---------------------------------------- //
+
   @Test
   public void test3C3CGSubscribeTwoTopicHistoricalDataWithAsyncConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
@@ -526,6 +547,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
         __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
   }
+
+  // ---------------------------------------- //
+  // 4 consumers, 2 consumer groups, 2 topics //
+  // ---------------------------------------- //
 
   @Test
   public void test4C2CGSubscribeTwoTopicHistoricalDataWithAsyncConnector() throws Exception {
