@@ -292,7 +292,7 @@ public class IoTConsensus implements IConsensus {
     try {
       // step 1: inactive new Peer to prepare for following steps
       logger.info("[IoTConsensus] inactivate new peer: {}", peer);
-      impl.inactivePeer(peer);
+      impl.inactivePeer(peer, false);
 
       // step 2: take snapshot
       logger.info("[IoTConsensus] start to take snapshot...");
@@ -367,7 +367,7 @@ public class IoTConsensus implements IConsensus {
 
     try {
       // let target peer reject new write
-      impl.inactivePeerForDeletionPurpose(peer);
+      impl.inactivePeer(peer, true);
       KillPoint.setKillPoint(IoTConsensusRemovePeerCoordinatorKillPoints.AFTER_INACTIVE_PEER);
       // wait its SyncLog to complete
       impl.waitTargetPeerUntilSyncLogCompleted(peer);
@@ -433,23 +433,40 @@ public class IoTConsensus implements IConsensus {
     return consensusGroupIds;
   }
 
-  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
+  public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
+      throws ConsensusException {
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
     Peer localPeer = new Peer(groupId, thisNodeId, thisNode);
-    if (!peers.contains(localPeer)) {
-      logger.info("local peer is not in the new configuration, delete local peer {}", groupId);
+    if (!correctPeers.contains(localPeer)) {
+      logger.warn(
+          "[RESET PEER LIST] Local peer is not in the correct configuration, delete local peer {}",
+          groupId);
       deleteLocalPeer(groupId);
-    } else {
-      for (Peer peer : impl.getConfiguration()) {
-        if (!peers.contains(peer)) {
-          try {
-            impl.removeSyncLogChannel(peer);
-          } catch (ConsensusGroupModifyPeerException e) {
-            logger.error("Failed to remove peer {} from group {}", peer, groupId, e);
-          }
+      return;
+    }
+    String previousPeerListStr = impl.getConfiguration().toString();
+    for (Peer peer : impl.getConfiguration()) {
+      if (!correctPeers.contains(peer)) {
+        try {
+          impl.removeSyncLogChannel(peer);
+        } catch (ConsensusGroupModifyPeerException e) {
+          logger.error(
+              "[RESET PEER LIST] Failed to remove peer {}'s sync log channel from group {}",
+              peer,
+              groupId,
+              e);
         }
+      }
+    }
+    logger.info(
+        "[RESET PEER LIST] Local peer list has been reset: {} -> {}",
+        previousPeerListStr,
+        impl.getConfiguration());
+    for (Peer peer : correctPeers) {
+      if (!impl.getConfiguration().contains(peer)) {
+        logger.warn("[RESET PEER LIST] \"Correct peer\" {} is not in local peer list", peer);
       }
     }
   }
