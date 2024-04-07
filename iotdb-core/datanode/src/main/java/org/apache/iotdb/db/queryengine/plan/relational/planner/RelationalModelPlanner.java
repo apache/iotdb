@@ -63,12 +63,12 @@ public class RelationalModelPlanner implements IPlanner {
   @Override
   public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
     // TODO need implemented by Beyyes
-      try {
-          new LogicalPlanner(context, metadata, null, null).plan((Analysis)analysis);
-      } catch (IoTDBException e) {
-          throw new RuntimeException(e);
-      }
-      return null;
+    try {
+      new LogicalPlanner(context, metadata, null, null).plan((Analysis) analysis);
+    } catch (IoTDBException e) {
+      throw new RuntimeException(e);
+    }
+    return null;
   }
 
   @Override
