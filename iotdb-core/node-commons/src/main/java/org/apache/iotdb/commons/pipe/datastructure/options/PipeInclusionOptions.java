@@ -85,19 +85,23 @@ public class PipeInclusionOptions {
     ALIAS_OPTIONS_MAP.put(
         "all", Collections.unmodifiableSet(new HashSet<>(Arrays.asList("data", "schema", "auth"))));
     ALIAS_OPTIONS_MAP.put(
-        "deletion",
+        "delete",
         Collections.unmodifiableSet(
             new HashSet<>(
                 Arrays.asList(
+                    "data.delete",
                     "schema.database.drop",
-                    "schema.timeseries.ordinary.delete",
+                    "schema.timeseries.ordinary.drop",
                     "schema.timeseries.view.drop",
                     "schema.timeseries.template.drop",
+                    "schema.timeseries.template.unset",
                     "schema.timeseries.template.deactivate",
                     "auth.role.drop",
-                    "auth.user.drop"))));
+                    "auth.role.revoke",
+                    "auth.user.drop",
+                    "auth.user.revoke"))));
     ALIAS_OPTIONS_MAP.put(
-        "schema.deletion",
+        "schema.delete",
         Collections.unmodifiableSet(
             new HashSet<>(
                 Arrays.asList(
@@ -105,11 +109,14 @@ public class PipeInclusionOptions {
                     "schema.timeseries.ordinary.delete",
                     "schema.timeseries.view.drop",
                     "schema.timeseries.template.drop",
+                    "schema.timeseries.template.unset",
                     "schema.timeseries.template.deactivate"))));
     ALIAS_OPTIONS_MAP.put(
-        "auth.deletion",
+        "auth.delete",
         Collections.unmodifiableSet(
-            new HashSet<>(Arrays.asList("auth.role.drop", "auth.user.drop"))));
+            new HashSet<>(
+                Arrays.asList(
+                    "auth.role.drop", "auth.role.revoke", "auth.user.drop", "auth.user.revoke"))));
   }
 
   public static boolean hasAtLeastOneOption(String inclusionString, String exclusionString) {

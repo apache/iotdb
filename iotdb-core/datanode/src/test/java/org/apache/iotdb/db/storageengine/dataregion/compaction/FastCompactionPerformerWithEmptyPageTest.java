@@ -29,6 +29,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionT
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -59,7 +61,7 @@ public class FastCompactionPerformerWithEmptyPageTest extends AbstractCompaction
 
   @Test
   public void test1() throws IOException, IllegalPathException {
-    String device = "root.testsg.d1";
+    IDeviceID device = new PlainDeviceID("root.testsg.d1");
     TsFileResource seqFile1 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile1)) {
       writer.startChunkGroup("d1");

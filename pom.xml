@@ -41,7 +41,6 @@
         <module>distribution</module>
         <module>example</module>
         <module>library-udf</module>
-        <module>integration-test</module>
     </modules>
     <properties>
         <!-- This was the last version to support Java 8 -->
@@ -94,7 +93,7 @@
       https://github.com/apache/iotdb-bin-resources/tree/main/iotdb-tools-thrift
     -->
         <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
-        <jackson.version>2.15.3</jackson.version>
+        <jackson.version>2.15.4</jackson.version>
         <!-- This is the last version to support the javax namespace -->
         <jakarta.servlet-api.version>4.0.4</jakarta.servlet-api.version>
         <!-- This is the last version to support the javax namespace -->
@@ -142,7 +141,7 @@
       is for ensuring the SNAPSHOT will stay available. We should however have the Ratis folks do a
       new release soon, as releasing with this version is more than sub-ideal.
     -->
-        <ratis.version>3.1.0-21cb7b6-SNAPSHOT</ratis.version>
+        <ratis.version>3.1.0-52e8db6-SNAPSHOT</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor-netty.version>1.1.13</reactor-netty.version>
         <reactor.version>3.5.10</reactor.version>
@@ -171,7 +170,7 @@
         <!-- This is the matching version of spring-boot for spring 5.3.30 -->
         <spring-boot.version>2.7.18</spring-boot.version>
         <!-- This is the last version to support the javax namespace -->
-        <spring.version>5.3.30</spring.version>
+        <spring.version>5.3.33</spring.version>
         <!-- This was the last version to support Java 8 -->
         <swagger.version>1.6.11</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
@@ -1672,7 +1671,7 @@
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-configuration2</artifactId>
-                <version>2.9.0</version>
+                <version>2.10.1</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.orc</groupId>

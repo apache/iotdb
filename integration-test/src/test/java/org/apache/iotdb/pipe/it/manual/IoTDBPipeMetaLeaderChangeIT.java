@@ -27,12 +27,11 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,9 +40,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-@Ignore
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2.class})
+@Category({MultiClusterIT2ManualCreateSchema.class})
 public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
   @Override
   @Before
@@ -66,16 +64,16 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
 
   @Test
   public void testConfigNodeLeaderChange() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.inclusion.exclusion", "");
@@ -86,7 +84,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
       connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
       connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -129,16 +127,16 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
 
   @Test
   public void testSchemaRegionLeaderChange() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.inclusion.exclusion", "");
@@ -149,7 +147,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
       connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
       connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -172,7 +170,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
       }
     }
 
-    int index;
+    final int index;
     try {
       index = senderEnv.getFirstLeaderSchemaRegionDataNodeIndex();
       senderEnv.shutdownDataNode(index);

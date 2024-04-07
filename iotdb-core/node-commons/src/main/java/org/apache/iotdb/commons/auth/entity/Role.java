@@ -81,10 +81,10 @@ public class Role {
   public int getAllSysPrivileges() {
     int privs = 0;
     for (Integer sysPri : sysPrivilegeSet) {
-      privs |= 1 << sysPriTopos(sysPri);
+      privs |= 1 << AuthUtils.sysPriTopos(sysPri);
     }
     for (Integer sysGrantOpt : sysPriGrantOpt) {
-      privs |= 1 << (sysPriTopos(sysGrantOpt) + 16);
+      privs |= 1 << (AuthUtils.sysPriTopos(sysGrantOpt) + 16);
     }
     return privs;
   }
@@ -126,61 +126,6 @@ public class Role {
     this.sysPriGrantOpt = grantOpt;
   }
 
-  private int posToSysPri(int pos) {
-    switch (pos) {
-      case 0:
-        return PrivilegeType.MANAGE_DATABASE.ordinal();
-      case 1:
-        return PrivilegeType.MANAGE_USER.ordinal();
-      case 2:
-        return PrivilegeType.MANAGE_ROLE.ordinal();
-      case 3:
-        return PrivilegeType.USE_TRIGGER.ordinal();
-      case 4:
-        return PrivilegeType.USE_UDF.ordinal();
-      case 5:
-        return PrivilegeType.USE_CQ.ordinal();
-      case 6:
-        return PrivilegeType.USE_PIPE.ordinal();
-      case 7:
-        return PrivilegeType.EXTEND_TEMPLATE.ordinal();
-      case 8:
-        return PrivilegeType.MAINTAIN.ordinal();
-      case 9:
-        return PrivilegeType.USE_MODEL.ordinal();
-      default:
-        return -1;
-    }
-  }
-
-  private int sysPriTopos(int privilegeId) {
-    PrivilegeType type = PrivilegeType.values()[privilegeId];
-    switch (type) {
-      case MANAGE_DATABASE:
-        return 0;
-      case MANAGE_USER:
-        return 1;
-      case MANAGE_ROLE:
-        return 2;
-      case USE_TRIGGER:
-        return 3;
-      case USE_UDF:
-        return 4;
-      case USE_CQ:
-        return 5;
-      case USE_PIPE:
-        return 6;
-      case EXTEND_TEMPLATE:
-        return 7;
-      case MAINTAIN:
-        return 8;
-      case USE_MODEL:
-        return 9;
-      default:
-        return -1;
-    }
-  }
-
   public void setSysPrivilegeSet(int privilegeMask) {
     if (sysPrivilegeSet == null) {
       sysPrivilegeSet = new HashSet<>();
@@ -190,10 +135,10 @@ public class Role {
     }
     for (int i = 0; i < SYS_PRI_SIZE; i++) {
       if ((privilegeMask & (1 << i)) != 0) {
-        sysPrivilegeSet.add(posToSysPri(i));
+        sysPrivilegeSet.add(AuthUtils.posToSysPri(i));
       }
       if ((privilegeMask & (1 << (i + 16))) != 0) {
-        sysPriGrantOpt.add(posToSysPri(i));
+        sysPriGrantOpt.add(AuthUtils.posToSysPri(i));
       }
     }
   }

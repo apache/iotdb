@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -126,6 +127,23 @@ public class WALWriteUtils {
     }
     int len = 0;
     byte[] bytes = s.getBytes();
+    len += write(bytes.length, buffer);
+    buffer.put(bytes);
+    len += bytes.length;
+    return len;
+  }
+
+  /**
+   * Write IDeviceID to byteBuffer.
+   *
+   * @return the length of string represented by byte[].
+   */
+  public static int write(IDeviceID deviceID, IWALByteBufferView buffer) {
+    if (deviceID == null) {
+      return write(NO_BYTE_TO_READ, buffer);
+    }
+    int len = 0;
+    byte[] bytes = deviceID.getBytes();
     len += write(bytes.length, buffer);
     buffer.put(bytes);
     len += bytes.length;

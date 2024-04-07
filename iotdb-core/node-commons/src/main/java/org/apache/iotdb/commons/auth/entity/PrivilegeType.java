@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.commons.auth.entity;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /** This enum class contains all available privileges in IoTDB. */
 public enum PrivilegeType {
   READ_DATA(true),
@@ -77,5 +80,13 @@ public enum PrivilegeType {
       }
     }
     return size;
+  }
+
+  public static Set<PrivilegeType> toPriType(Set<Integer> priSet) {
+    Set<PrivilegeType> typeSet = new HashSet<>();
+    for (Integer pri : priSet) {
+      typeSet.add(PrivilegeType.values()[pri]);
+    }
+    return typeSet;
   }
 }

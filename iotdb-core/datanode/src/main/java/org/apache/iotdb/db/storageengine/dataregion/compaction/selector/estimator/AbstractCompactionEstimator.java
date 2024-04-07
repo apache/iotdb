@@ -27,6 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import org.apache.commons.collections4.map.LRUMap;
@@ -109,7 +110,7 @@ public abstract class AbstractCompactionEstimator {
 
   protected int calculatingMaxOverlapFileNumInSubCompactionTask(List<TsFileResource> resources)
       throws IOException {
-    Set<String> devices = new HashSet<>();
+    Set<IDeviceID> devices = new HashSet<>();
     List<DeviceTimeIndex> resourceDevices = new ArrayList<>(resources.size());
     for (TsFileResource resource : resources) {
       DeviceTimeIndex deviceTimeIndex = getDeviceTimeIndexFromCache(resource);
@@ -117,7 +118,7 @@ public abstract class AbstractCompactionEstimator {
       resourceDevices.add(deviceTimeIndex);
     }
     int maxOverlapFileNumInSubCompactionTask = 1;
-    for (String device : devices) {
+    for (IDeviceID device : devices) {
       List<DeviceTimeIndex> resourcesContainsCurrentDevice =
           resourceDevices.stream()
               .filter(resource -> !resource.definitelyNotContains(device))

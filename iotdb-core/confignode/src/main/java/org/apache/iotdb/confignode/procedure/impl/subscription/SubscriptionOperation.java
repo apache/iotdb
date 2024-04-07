@@ -28,6 +28,8 @@ public enum SubscriptionOperation {
   ALTER_CONSUMER_GROUP("alter consumer group"),
   CREATE_SUBSCRIPTION("create subscription"),
   DROP_SUBSCRIPTION("drop subscription"),
+  SYNC_CONSUMER_GROUP_META("sync consumer group meta"),
+  SYNC_TOPIC_META("sync topic meta"),
   ;
 
   private final String name;

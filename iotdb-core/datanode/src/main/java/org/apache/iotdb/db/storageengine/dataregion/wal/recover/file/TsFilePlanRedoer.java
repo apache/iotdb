@@ -26,7 +26,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -42,15 +41,11 @@ import java.util.List;
  */
 public class TsFilePlanRedoer {
   private final TsFileResource tsFileResource;
-  // only unsequence file tolerates duplicated data
-  private final boolean sequence;
-
   // store data when redoing logs
   private IMemTable recoveryMemTable;
 
-  public TsFilePlanRedoer(TsFileResource tsFileResource, boolean sequence) {
+  public TsFilePlanRedoer(TsFileResource tsFileResource) {
     this.tsFileResource = tsFileResource;
-    this.sequence = sequence;
     this.recoveryMemTable =
         new PrimitiveMemTable(tsFileResource.getDatabaseName(), tsFileResource.getDataRegionId());
     WritingMetrics.getInstance().recordActiveMemTableCount(tsFileResource.getDataRegionId(), 1);
@@ -80,23 +75,20 @@ public class TsFilePlanRedoer {
     if (!node.hasValidMeasurements()) {
       return;
     }
-    String deviceId = node.getDevicePath().getFullPath();
     if (tsFileResource != null) {
       // orders of insert node is guaranteed by storage engine, just check time in the file
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      long lastEndTime = tsFileResource.getEndTime(deviceId);
+      long lastEndTime = tsFileResource.getEndTime(node.getDeviceID());
       long minTimeInNode;
       if (node instanceof InsertRowNode) {
         minTimeInNode = ((InsertRowNode) node).getTime();
       } else {
         minTimeInNode = ((InsertTabletNode) node).getTimes()[0];
       }
-      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTimeInNode && sequence) {
+      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTimeInNode) {
         return;
       }
     }
-
-    node.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(deviceId));
 
     if (node instanceof InsertRowNode) {
       if (node.isAligned()) {

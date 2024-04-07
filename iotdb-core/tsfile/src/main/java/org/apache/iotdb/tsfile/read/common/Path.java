@@ -21,6 +21,8 @@ package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.PathParseException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -49,6 +51,11 @@ public class Path implements Serializable, Comparable<Path> {
   private static final String ILLEGAL_PATH_ARGUMENT = "Path parameter is null";
 
   public Path() {}
+
+  // Only used for test
+  public Path(IDeviceID deviceID) {
+    this(((PlainDeviceID) deviceID).toStringID());
+  }
 
   /**
    * this constructor doesn't split the path, only useful for table header.
@@ -87,6 +94,10 @@ public class Path implements Serializable, Comparable<Path> {
         measurement = pathSc;
       }
     }
+  }
+
+  public Path(IDeviceID device, String measurement, boolean needCheck) {
+    this(((PlainDeviceID) device).toStringID(), measurement, needCheck);
   }
 
   /**
@@ -137,6 +148,11 @@ public class Path implements Serializable, Comparable<Path> {
 
   public String getDevice() {
     return device;
+  }
+
+  public IDeviceID getIDeviceID() {
+    // TODO
+    return new PlainDeviceID(getDevice());
   }
 
   public String getMeasurement() {

@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -62,7 +63,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
-import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
+import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -95,6 +96,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 /** {@link NodeManager} manages cluster node addition and removal requests. */
 public class NodeManager {
@@ -353,6 +355,11 @@ public class NodeManager {
 
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
     resp.setRuntimeConfiguration(getRuntimeConfiguration().setClusterId(clusterId));
+    List<TConsensusGroupId> consensusGroupIds =
+        getPartitionManager().getAllReplicaSets(nodeId).stream()
+            .map(TRegionReplicaSet::getRegionId)
+            .collect(Collectors.toList());
+    resp.setConsensusGroupIds(consensusGroupIds);
     return resp;
   }
 
@@ -366,10 +373,8 @@ public class NodeManager {
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
 
-    DataNodeRemoveHandler dataNodeRemoveHandler =
-        new DataNodeRemoveHandler((ConfigManager) configManager);
-    DataNodeToStatusResp preCheckStatus =
-        dataNodeRemoveHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
+    RegionMaintainHandler handler = new RegionMaintainHandler((ConfigManager) configManager);
+    DataNodeToStatusResp preCheckStatus = handler.checkRemoveDataNodeRequest(removeDataNodePlan);
     if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(
           "The remove DataNode request check failed. req: {}, check result: {}",

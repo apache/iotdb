@@ -219,7 +219,7 @@ public class PipePluginInfo implements SnapshotProcessor {
 
   public JarResp getPipePluginJar(GetPipePluginJarPlan getPipePluginJarPlan) {
     try {
-      List<ByteBuffer> jarList = new ArrayList<>();
+      final List<ByteBuffer> jarList = new ArrayList<>();
       for (String jarName : getPipePluginJarPlan.getJarNames()) {
         jarList.add(
             ExecutableManager.transferToBytebuffer(
@@ -298,7 +298,7 @@ public class PipePluginInfo implements SnapshotProcessor {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    PipePluginInfo other = (PipePluginInfo) obj;
+    final PipePluginInfo other = (PipePluginInfo) obj;
     return Objects.equals(pipePluginExecutableManager, other.pipePluginExecutableManager)
         && Objects.equals(pipePluginMetaKeeper, other.pipePluginMetaKeeper);
   }

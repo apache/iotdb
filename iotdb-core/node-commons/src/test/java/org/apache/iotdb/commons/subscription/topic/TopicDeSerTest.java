@@ -52,6 +52,6 @@ public class TopicDeSerTest {
     Assert.assertEquals(topicMeta.getCreationTime(), topicMeta2.getCreationTime());
     Assert.assertEquals(topicMeta.getConfig(), topicMeta2.getConfig());
     Assert.assertEquals(
-        topicMeta.getSubscribedConsumerGroupIDs(), topicMeta2.getSubscribedConsumerGroupIDs());
+        topicMeta.getSubscribedConsumerGroupIds(), topicMeta2.getSubscribedConsumerGroupIds());
   }
 }

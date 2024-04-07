@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -968,7 +969,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     TsFileResource target = tsFileManager.getTsFileList(false).get(0);
     try (TsFileSequenceReader reader = new TsFileSequenceReader(target.getTsFilePath())) {
       List<AlignedChunkMetadata> chunkMetadataList =
-          reader.getAlignedChunkMetadata("root.testsg.d1");
+          reader.getAlignedChunkMetadata(new PlainDeviceID("root.testsg.d1"));
       for (AlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
         ChunkMetadata timeChunkMetadata =
             (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
