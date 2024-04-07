@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.event.common.row.PipeResetTabletRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
+import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -469,20 +470,15 @@ public class AggregateProcessor implements PipeProcessor {
                 final AtomicReference<TimeSeriesRuntimeState> stateReference =
                     pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).get(timeSeries);
                 synchronized (stateReference) {
-                  // This is only a formal tablet insertion event to collect all the results
-                  final PipeRawTabletInsertionEvent tabletInsertionEvent =
-                      new PipeRawTabletInsertionEvent(
-                          null, false, pipeName, pipeTaskMeta, null, false);
-                  tabletInsertionEvent
-                      .processRowByRow(
-                          (row, rowCollector) -> {
-                            try {
-                              collectWindowOutputs(
-                                  stateReference.get().forceOutput(), timeSeries, rowCollector);
-                            } catch (Exception e) {
-                              exception.set(e);
-                            }
-                          })
+                  PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, null);
+                  try {
+                    collectWindowOutputs(
+                        stateReference.get().forceOutput(), timeSeries, rowCollector);
+                  } catch (IOException e) {
+                    exception.set(e);
+                  }
+                  rowCollector
+                      .convertToTabletInsertionEvents()
                       .forEach(
                           tabletEvent -> {
                             try {

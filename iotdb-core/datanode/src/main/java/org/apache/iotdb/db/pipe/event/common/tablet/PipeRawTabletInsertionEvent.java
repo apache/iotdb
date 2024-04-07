@@ -124,7 +124,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public void bindProgressIndex(ProgressIndex overridingProgressIndex) {
-    // Normally not all events need to report progress, but if the overriddenProgressIndex
+    // Normally not all events need to report progress, but if the overridingProgressIndex
     // is given, indicating that the progress needs to be reported.
     if (Objects.nonNull(overridingProgressIndex)) {
       markAsNeedToReport();
@@ -135,7 +135,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public ProgressIndex getProgressIndex() {
-    // If the overriddenProgressIndex is given, ignore the sourceEvent's progressIndex.
+    // If the overridingProgressIndex is given, ignore the sourceEvent's progressIndex.
     if (Objects.nonNull(overridingProgressIndex)) {
       return overridingProgressIndex;
     }
