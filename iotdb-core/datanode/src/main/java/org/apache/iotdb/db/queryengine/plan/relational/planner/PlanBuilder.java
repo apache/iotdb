@@ -14,12 +14,12 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
-import org.apache.iotdb.session.Session;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -38,7 +38,8 @@ class PlanBuilder {
     this.root = root;
   }
 
-  public static PlanBuilder newPlanBuilder(RelationPlan plan, Analysis analysis, Session session) {
+  public static PlanBuilder newPlanBuilder(
+      RelationPlan plan, Analysis analysis, SessionInfo session) {
     return newPlanBuilder(plan, analysis, ImmutableMap.of(), session);
   }
 
@@ -46,7 +47,7 @@ class PlanBuilder {
       RelationPlan plan,
       Analysis analysis,
       Map<ScopeAware<Expression>, Symbol> mappings,
-      Session session) {
+      SessionInfo session) {
     return new PlanBuilder(plan.getRoot());
   }
 

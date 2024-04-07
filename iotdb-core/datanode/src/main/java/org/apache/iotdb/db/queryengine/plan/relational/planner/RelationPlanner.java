@@ -14,6 +14,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.relational.sql.tree.Query;
 import org.apache.iotdb.db.relational.sql.tree.QuerySpecification;
 import org.apache.iotdb.db.relational.sql.tree.SubqueryExpression;
 import org.apache.iotdb.db.relational.sql.tree.Table;
-import org.apache.iotdb.session.Session;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -49,14 +49,14 @@ class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
   private final QueryId idAllocator;
-  private final Session session;
+  private final SessionInfo session;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
 
   RelationPlanner(
       Analysis analysis,
       SymbolAllocator symbolAllocator,
       QueryId idAllocator,
-      Session session,
+      SessionInfo session,
       Map<NodeRef<Node>, RelationPlan> recursiveSubqueries) {
     requireNonNull(analysis, "analysis is null");
     requireNonNull(symbolAllocator, "symbolAllocator is null");

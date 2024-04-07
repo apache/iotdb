@@ -107,7 +107,7 @@ public class RelationalModelPlanner implements IPlanner {
   public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
     // TODO need implemented by Beyyes
     try {
-      new LogicalPlanner(context, metadata, null, null).plan((Analysis) analysis);
+      new LogicalPlanner(context, metadata, null, warningCollector).plan((Analysis) analysis);
     } catch (IoTDBException e) {
       throw new RuntimeException(e);
     }

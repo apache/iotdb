@@ -14,6 +14,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
@@ -29,7 +30,6 @@ import org.apache.iotdb.db.relational.sql.tree.OrderBy;
 import org.apache.iotdb.db.relational.sql.tree.Query;
 import org.apache.iotdb.db.relational.sql.tree.QuerySpecification;
 import org.apache.iotdb.db.relational.sql.tree.SortItem;
-import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import com.google.common.collect.ImmutableList;
@@ -54,7 +54,7 @@ class QueryPlanner {
   private final QueryId idAllocator;
   // private final Map<NodeRef<LambdaArgumentDeclaration>, Symbol> lambdaDeclarationToSymbolMap;
   // private final PlannerContext plannerContext;
-  private final Session session;
+  private final SessionInfo session;
   // private final SubqueryPlanner subqueryPlanner;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
 
@@ -62,7 +62,7 @@ class QueryPlanner {
       Analysis analysis,
       SymbolAllocator symbolAllocator,
       QueryId idAllocator,
-      Session session,
+      SessionInfo session,
       Map<NodeRef<Node>, RelationPlan> recursiveSubqueries) {
     requireNonNull(analysis, "analysis is null");
     requireNonNull(symbolAllocator, "symbolAllocator is null");

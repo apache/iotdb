@@ -81,15 +81,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationSt
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
-import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -182,7 +175,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
-import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -277,42 +269,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public ClientRPCServiceImpl() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
-    metadata =
-        new Metadata() {
-          @Override
-          public boolean tableExists(QualifiedObjectName name) {
-            return false;
-          }
-
-          @Override
-          public TableSchema getTableSchema(SessionInfo session, TableHandle tableHandle) {
-            return null;
-          }
-
-          @Override
-          public TableMetadata getTableMetadata(SessionInfo session, TableHandle tableHandle) {
-            return null;
-          }
-
-          @Override
-          public Optional<TableHandle> getTableHandle(
-              SessionInfo session, QualifiedObjectName name) {
-            return Optional.empty();
-          }
-
-          @Override
-          public Map<String, ColumnHandle> getColumnHandles(
-              SessionInfo session, TableHandle tableHandle) {
-            return null;
-          }
-
-          @Override
-          public ResolvedFunction resolveOperator(
-              OperatorType operatorType, List<? extends Type> argumentTypes)
-              throws OperatorNotFoundException {
-            return null;
-          }
-        };
+    metadata = new TableMetadataImpl();
     relationSqlParser = new SqlParser();
   }
 

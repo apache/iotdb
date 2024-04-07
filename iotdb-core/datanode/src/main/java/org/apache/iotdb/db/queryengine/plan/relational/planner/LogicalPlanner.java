@@ -15,6 +15,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -25,7 +26,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.relational.sql.tree.Query;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
 import org.apache.iotdb.db.relational.sql.tree.Table;
-import org.apache.iotdb.session.Session;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -44,7 +44,7 @@ public class LogicalPlanner {
 
   private final MPPQueryContext context;
 
-  private final Session session;
+  private final SessionInfo session;
   private final SymbolAllocator symbolAllocator = new SymbolAllocator();
   private final Metadata metadata;
   private final WarningCollector warningCollector;
@@ -52,7 +52,7 @@ public class LogicalPlanner {
   public LogicalPlanner(
       MPPQueryContext context,
       Metadata metadata,
-      Session session,
+      SessionInfo session,
       WarningCollector warningCollector) {
     this.context = context;
     this.metadata = metadata;
