@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -108,6 +109,7 @@ import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
+import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
@@ -1787,6 +1789,7 @@ public class ConfigManager implements IManager {
       boolean canOptimize = false;
       HashSet<TDatabaseSchema> deleteDatabaseSchemas = new HashSet<>();
       List<PartialPath> deleteTimeSeriesPatternPaths = new ArrayList<>();
+      List<PartialPath> deleteDatabasePatternPaths = new ArrayList<>();
       for (PartialPath path : rawPatternTree.getAllPathPatterns()) {
         if (path.getFullPath().endsWith(MULTI_LEVEL_PATH_WILDCARD)
             && !path.getDevicePath().hasWildcard()) {
@@ -1794,6 +1797,7 @@ public class ConfigManager implements IManager {
               getClusterSchemaManager().getMatchedDatabaseSchemasByPrefix(path.getDevicePath());
           if (!databaseSchemaMap.isEmpty()) {
             deleteDatabaseSchemas.addAll(databaseSchemaMap.values());
+            deleteDatabasePatternPaths.add(path);
             canOptimize = true;
             continue;
           }
@@ -1803,6 +1807,20 @@ public class ConfigManager implements IManager {
       if (!canOptimize) {
         return procedureManager.deleteTimeSeries(queryId, rawPatternTree, isGeneratedByPipe);
       }
+      // check if the database is using template
+      PathPatternTree deleteDatabasePatternTree = new PathPatternTree();
+      for (PartialPath path : deleteDatabasePatternPaths) {
+        deleteDatabasePatternTree.appendPathPattern(path);
+      }
+      deleteDatabasePatternTree.constructTree();
+      try{
+        if(SchemaUtils.checkSchemaRegionUsingTemplate(this, getRelatedSchemaRegionGroup(deleteDatabasePatternTree))){
+          // TODO return RpcUtils.getStatus(TSStatusCode.DATABASE_TEMPLATE_ACTIVATED);
+        }
+      }catch (MetadataException e){
+        // TODO
+      }
+
       if (!deleteTimeSeriesPatternPaths.isEmpty()) {
         // 1. delete time series that can not be optimized
         PathPatternTree deleteTimeSeriesPatternTree = new PathPatternTree();

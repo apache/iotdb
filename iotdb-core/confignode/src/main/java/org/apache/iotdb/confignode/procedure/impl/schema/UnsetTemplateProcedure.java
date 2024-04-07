@@ -114,7 +114,7 @@ public class UnsetTemplateProcedure
           if (isFailed()) {
             return Flow.NO_MORE_STATE;
           }
-          if (checkDataNodeTemplateActivation(env) > 0) {
+          if (checkDataNodeTemplateActivation(env)) {
             setFailure(new ProcedureException(new TemplateIsInUseException(path.getFullPath())));
             return Flow.NO_MORE_STATE;
           } else {
@@ -180,84 +180,23 @@ public class UnsetTemplateProcedure
     }
   }
 
-  private long checkDataNodeTemplateActivation(ConfigNodeProcedureEnv env) {
+  private boolean checkDataNodeTemplateActivation(ConfigNodeProcedureEnv env) {
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(path);
     patternTree.appendPathPattern(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
-      patternTree.serialize(dataOutputStream);
-    } catch (IOException ignored) {
+      return SchemaUtils.checkDataNodeTemplateActivation(env.getConfigManager(), patternTree, template);
+    }catch (MetadataException e) {
+      setFailure(
+              new ProcedureException(
+                      new MetadataException(
+                              String.format(
+                                      "Unset template %s from %s failed when [check DataNode template activation] because %s",
+                                      template.getName(),
+                                      path,
+                                      e.getMessage()))));
+      return false;
     }
-    ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-
-    Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
-        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
-
-    List<TCountPathsUsingTemplateResp> respList = new ArrayList<>();
-    DataNodeRegionTaskExecutor<TCountPathsUsingTemplateReq, TCountPathsUsingTemplateResp>
-        regionTask =
-            new DataNodeRegionTaskExecutor<
-                TCountPathsUsingTemplateReq, TCountPathsUsingTemplateResp>(
-                env,
-                relatedSchemaRegionGroup,
-                false,
-                DataNodeRequestType.COUNT_PATHS_USING_TEMPLATE,
-                ((dataNodeLocation, consensusGroupIdList) ->
-                    new TCountPathsUsingTemplateReq(
-                        template.getId(), patternTreeBytes, consensusGroupIdList))) {
-
-              @Override
-              protected List<TConsensusGroupId> processResponseOfOneDataNode(
-                  TDataNodeLocation dataNodeLocation,
-                  List<TConsensusGroupId> consensusGroupIdList,
-                  TCountPathsUsingTemplateResp response) {
-                respList.add(response);
-                List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-                if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  return failedRegionList;
-                }
-
-                if (response.getStatus().getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-                  List<TSStatus> subStatus = response.getStatus().getSubStatus();
-                  for (int i = 0; i < subStatus.size(); i++) {
-                    if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                      failedRegionList.add(consensusGroupIdList.get(i));
-                    }
-                  }
-                } else {
-                  failedRegionList.addAll(consensusGroupIdList);
-                }
-                return failedRegionList;
-              }
-
-              @Override
-              protected void onAllReplicasetFailure(
-                  TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {
-                setFailure(
-                    new ProcedureException(
-                        new MetadataException(
-                            String.format(
-                                "Unset template %s from %s failed when [check DataNode template activation] because all replicaset of schemaRegion %s failed. %s",
-                                template.getName(),
-                                path,
-                                consensusGroupId.id,
-                                dataNodeLocationSet))));
-                interruptTask();
-              }
-            };
-    regionTask.execute();
-    if (isFailed()) {
-      return 0;
-    }
-
-    long result = 0;
-    for (TCountPathsUsingTemplateResp resp : respList) {
-      result += resp.getCount();
-    }
-
-    return result;
   }
 
   private void unsetTemplate(ConfigNodeProcedureEnv env) {
