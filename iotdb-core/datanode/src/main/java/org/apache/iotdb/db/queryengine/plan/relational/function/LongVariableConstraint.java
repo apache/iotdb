@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.function;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
@@ -34,12 +32,10 @@ public class LongVariableConstraint {
     this.expression = requireNonNull(expression, "expression is null");
   }
 
-  @JsonProperty
   public String getName() {
     return name;
   }
 
-  @JsonProperty
   public String getExpression() {
     return expression;
   }

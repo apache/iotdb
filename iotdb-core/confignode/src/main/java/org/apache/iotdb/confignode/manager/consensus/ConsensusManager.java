@@ -75,8 +75,7 @@ public class ConsensusManager {
   private final IManager configManager;
   private IConsensus consensusImpl;
 
-  public ConsensusManager(IManager configManager, ConfigRegionStateMachine stateMachine)
-      throws IOException {
+  public ConsensusManager(IManager configManager, ConfigRegionStateMachine stateMachine) {
     this.configManager = configManager;
     setConsensusLayer(stateMachine);
   }
@@ -107,7 +106,7 @@ public class ConsensusManager {
   }
 
   /** ConsensusLayer local implementation. */
-  private void setConsensusLayer(ConfigRegionStateMachine stateMachine) throws IOException {
+  private void setConsensusLayer(ConfigRegionStateMachine stateMachine) {
     if (SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
       upgrade();
       consensusImpl =

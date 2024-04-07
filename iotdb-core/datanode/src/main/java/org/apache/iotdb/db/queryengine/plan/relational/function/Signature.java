@@ -21,8 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.function;
 
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -56,27 +54,22 @@ public class Signature {
     this.variableArity = variableArity;
   }
 
-  @JsonProperty
   public TypeSignature getReturnType() {
     return returnType;
   }
 
-  @JsonProperty
   public List<TypeSignature> getArgumentTypes() {
     return argumentTypes;
   }
 
-  @JsonProperty
   public boolean isVariableArity() {
     return variableArity;
   }
 
-  @JsonProperty
   public List<TypeVariableConstraint> getTypeVariableConstraints() {
     return typeVariableConstraints;
   }
 
-  @JsonProperty
   public List<LongVariableConstraint> getLongVariableConstraints() {
     return longVariableConstraints;
   }

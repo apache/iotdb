@@ -26,6 +26,7 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +50,7 @@ public class PipeParameters {
   private final Map<String, String> attributes;
 
   public PipeParameters(Map<String, String> attributes) {
-    this.attributes = attributes;
+    this.attributes = attributes == null ? new HashMap<>() : attributes;
   }
 
   public Map<String, String> getAttribute() {

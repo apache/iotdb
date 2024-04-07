@@ -306,6 +306,11 @@ public class TsBlock {
     }
 
     @Override
+    public long getUsedMemorySize() {
+      return getRetainedSizeInBytes();
+    }
+
+    @Override
     public void close() {
       // do nothing
     }
@@ -438,6 +443,11 @@ public class TsBlock {
     public TimeValuePair currentTimeValuePair() {
       return new TimeValuePair(
           timeColumn.getLong(rowIndex), new TsPrimitiveType.TsVector(currentValue()));
+    }
+
+    @Override
+    public long getUsedMemorySize() {
+      return getRetainedSizeInBytes();
     }
 
     @Override
