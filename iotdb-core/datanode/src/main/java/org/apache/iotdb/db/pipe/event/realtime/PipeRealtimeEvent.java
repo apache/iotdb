@@ -55,7 +55,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       PipePattern pattern,
       long startTime,
       long endTime) {
-    // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
+    // PipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
     // is only used in the realtime event extractor, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
     super(event != null ? event.getPipeName() : null, pipeTaskMeta, pattern, startTime, endTime);

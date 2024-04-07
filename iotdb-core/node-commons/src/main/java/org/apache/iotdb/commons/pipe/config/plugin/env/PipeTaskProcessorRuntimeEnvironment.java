@@ -19,9 +19,19 @@
 
 package org.apache.iotdb.commons.pipe.config.plugin.env;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+
 public class PipeTaskProcessorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-  public PipeTaskProcessorRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
+  private final PipeTaskMeta pipeTaskMeta;
+
+  public PipeTaskProcessorRuntimeEnvironment(
+      String pipeName, long creationTime, int regionId, PipeTaskMeta pipeTaskMeta) {
     super(pipeName, creationTime, regionId);
+    this.pipeTaskMeta = pipeTaskMeta;
+  }
+
+  public PipeTaskMeta getPipeTaskMeta() {
+    return pipeTaskMeta;
   }
 }

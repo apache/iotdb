@@ -34,6 +34,8 @@ import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -83,7 +85,7 @@ public class TsFileSplitter {
       }
 
       reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
-      String curDevice = null;
+      IDeviceID curDevice = null;
       boolean isTimeChunkNeedDecode = true;
       Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData = new HashMap<>();
       Map<Integer, long[]> pageIndex2Times = null;
@@ -122,7 +124,8 @@ public class TsFileSplitter {
             TTimePartitionSlot timePartitionSlot =
                 TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime());
             ChunkData chunkData =
-                ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
+                ChunkData.createChunkData(
+                    isAligned, ((PlainDeviceID) curDevice).toStringID(), header, timePartitionSlot);
 
             if (!needDecodeChunk(chunkMetadata)) {
               chunkData.setNotDecode();
@@ -170,7 +173,11 @@ public class TsFileSplitter {
                   }
                   timePartitionSlot = pageTimePartitionSlot;
                   chunkData =
-                      ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
+                      ChunkData.createChunkData(
+                          isAligned,
+                          ((PlainDeviceID) curDevice).toStringID(),
+                          header,
+                          timePartitionSlot);
                 }
                 if (isAligned) {
                   pageIndex2ChunkData
@@ -210,7 +217,11 @@ public class TsFileSplitter {
                         timePartitionSlot.getStartTime()
                             + TimePartitionUtils.getTimePartitionInterval();
                     chunkData =
-                        ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
+                        ChunkData.createChunkData(
+                            isAligned,
+                            ((PlainDeviceID) curDevice).toStringID(),
+                            header,
+                            timePartitionSlot);
                   }
                   satisfiedLength += 1;
                 }
@@ -341,8 +352,9 @@ public class TsFileSplitter {
   private void getChunkMetadata(
       TsFileSequenceReader reader, Map<Long, IChunkMetadata> offset2ChunkMetadata)
       throws IOException {
-    Map<String, List<TimeseriesMetadata>> device2Metadata = reader.getAllTimeseriesMetadata(true);
-    for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
+    Map<IDeviceID, List<TimeseriesMetadata>> device2Metadata =
+        reader.getAllTimeseriesMetadata(true);
+    for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
       for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
         for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
           offset2ChunkMetadata.put(chunkMetadata.getOffsetOfChunkHeader(), chunkMetadata);

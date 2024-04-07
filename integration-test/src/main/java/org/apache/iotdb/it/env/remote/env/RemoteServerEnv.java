@@ -49,6 +49,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.jdbc.Config.VERSION;
 
@@ -364,6 +365,21 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public String getLibPath() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Optional<DataNodeWrapper> dataNodeIdToWrapper(int nodeId) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void registerConfigNodeKillPoints(List<String> killPoints) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void registerDataNodeKillPoints(List<String> killPoints) {
     throw new UnsupportedOperationException();
   }
 }

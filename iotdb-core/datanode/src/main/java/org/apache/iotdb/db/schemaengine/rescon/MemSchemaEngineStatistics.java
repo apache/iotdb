@@ -38,16 +38,13 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   // Total size of schema region
   private final long memoryCapacity =
       IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
-
   private final ClusterTemplateManager clusterTemplateManager =
       ClusterTemplateManager.getInstance();
 
   protected final AtomicLong memoryUsage = new AtomicLong(0);
-
-  private final AtomicLong totalSeriesNumber = new AtomicLong(0);
-
+  private final AtomicLong totalMeasurementNumber = new AtomicLong(0);
+  private final AtomicLong totalViewNumber = new AtomicLong(0);
   private final Map<Integer, Integer> templateUsage = new ConcurrentHashMap<>();
-
   private volatile boolean allowToCreateNewSeries = true;
 
   private final Object allowToCreateNewSeriesLock = new Object();
@@ -101,12 +98,12 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
             logger.info(
                 "Current series memory {} come back to normal level, total series number is {}.",
                 memoryUsage,
-                totalSeriesNumber);
+                totalMeasurementNumber.get() + totalViewNumber.get());
           } else {
             logger.debug(
                 "Current series memory {} come back to normal level, total series number is {}.",
                 memoryUsage,
-                totalSeriesNumber);
+                totalMeasurementNumber.get() + totalViewNumber.get());
           }
           allowToCreateNewSeries = true;
         }
@@ -116,7 +113,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   @Override
   public long getTotalSeriesNumber() {
-    return totalSeriesNumber.get() + getTemplateSeriesNumber();
+    return totalMeasurementNumber.get() + totalViewNumber.get() + getTemplateSeriesNumber();
   }
 
   @Override
@@ -152,12 +149,20 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
     templateUsage.compute(templateId, (k, v) -> (v == null || v <= cnt) ? null : v - cnt);
   }
 
-  public void addTimeseries(long addedNum) {
-    totalSeriesNumber.addAndGet(addedNum);
+  public void addMeasurement(long addedNum) {
+    totalMeasurementNumber.addAndGet(addedNum);
   }
 
-  public void deleteTimeseries(long deletedNum) {
-    totalSeriesNumber.addAndGet(-deletedNum);
+  public void deleteMeasurement(long deletedNum) {
+    totalMeasurementNumber.addAndGet(-deletedNum);
+  }
+
+  public void addView(long addedNum) {
+    totalViewNumber.addAndGet(addedNum);
+  }
+
+  public void deleteView(long deletedNum) {
+    totalViewNumber.addAndGet(-deletedNum);
   }
 
   @Override

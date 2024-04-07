@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
@@ -26,6 +27,9 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegionTest;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinException;
@@ -54,31 +58,31 @@ import java.util.Set;
 public class WalDeleteOutdatedNewTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String identifier1 = String.valueOf(Integer.MAX_VALUE);
-  private static final String logDirectory1 = TestConstant.BASE_OUTPUT_PATH.concat("1/2910/");
+  private static final String logDirectory1 =
+      TestConstant.BASE_OUTPUT_PATH.concat("sequence/root.test_sg/1/2910/");
   private static final String databasePath = "root.test_sg";
   private static final String devicePath = databasePath + ".test_d";
   private static final String dataRegionId = "1";
   private WALMode prevMode;
-  private boolean prevIsClusterMode;
   private WALNode walNode1;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(logDirectory1);
     prevMode = config.getWalMode();
-    prevIsClusterMode = config.isClusterMode();
     config.setWalMode(WALMode.SYNC);
-    config.setClusterMode(true);
     walNode1 = new WALNode(identifier1, logDirectory1);
+    DataRegion dataRegion = new DataRegionTest.DummyDataRegion(logDirectory1, databasePath);
+    dataRegion.updatePartitionFileVersion(2911, 0);
+    StorageEngine.getInstance().setDataRegion(new DataRegionId(1), dataRegion);
   }
 
   @After
   public void tearDown() throws Exception {
     walNode1.close();
     config.setWalMode(prevMode);
-    config.setClusterMode(prevIsClusterMode);
     EnvironmentUtils.cleanDir(logDirectory1);
-
+    StorageEngine.getInstance().reset();
     WALInsertNodeCache.getInstance(1).clear();
   }
 

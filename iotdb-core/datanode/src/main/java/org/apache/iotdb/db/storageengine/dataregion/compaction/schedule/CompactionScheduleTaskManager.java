@@ -304,10 +304,12 @@ public class CompactionScheduleTaskManager implements IService {
       }
     }
 
-    public void waitRepairTaskFinish() {
+    public void waitRepairTaskFinish() throws InterruptedException {
       for (Future<Void> result : submitRepairScanTaskFutures) {
         try {
           result.get();
+        } catch (InterruptedException e) {
+          throw e;
         } catch (CancellationException cancellationException) {
           logger.info("[RepairScheduler] scan task is cancelled");
         } catch (Exception e) {

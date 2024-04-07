@@ -192,7 +192,7 @@ class SimpleConsensus implements IConsensus {
         (k, v) -> {
           exist.set(true);
           v.stop();
-          FileUtils.deleteDirectory(new File(buildPeerDir(groupId)));
+          FileUtils.deleteFileOrDirectory(new File(buildPeerDir(groupId)));
           return null;
         });
     if (!exist.get()) {
@@ -216,7 +216,7 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
-  public void triggerSnapshot(ConsensusGroupId groupId) throws ConsensusException {
+  public void triggerSnapshot(ConsensusGroupId groupId, boolean force) throws ConsensusException {
     throw new ConsensusException("SimpleConsensus does not support snapshot trigger currently");
   }
 
@@ -241,6 +241,11 @@ class SimpleConsensus implements IConsensus {
   @Override
   public List<ConsensusGroupId> getAllConsensusGroupIds() {
     return new ArrayList<>(stateMachineMap.keySet());
+  }
+
+  @Override
+  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
+    throw new ConsensusException("SimpleConsensus does not support reset peer list");
   }
 
   private String buildPeerDir(ConsensusGroupId groupId) {

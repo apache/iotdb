@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc.subscription;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AbstractAsyncRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -35,7 +34,8 @@ import java.util.concurrent.CountDownLatch;
 
 public class ConsumerGroupPushMetaRPCHandler
     extends AbstractAsyncRPCHandler<TPushConsumerGroupMetaResp> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipePushMetaRPCHandler.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(ConsumerGroupPushMetaRPCHandler.class);
 
   public ConsumerGroupPushMetaRPCHandler(
       DataNodeRequestType requestType,

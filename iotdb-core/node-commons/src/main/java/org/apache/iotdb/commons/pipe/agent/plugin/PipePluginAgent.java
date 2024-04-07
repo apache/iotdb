@@ -19,53 +19,63 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskTemporaryRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public abstract class PipePluginAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePluginAgent.class);
 
-  private final PipePluginConstructor pipeExtractorConstructor;
-  private final PipePluginConstructor pipeProcessorConstructor;
-  private final PipePluginConstructor pipeConnectorConstructor;
+  protected final PipePluginMetaKeeper pipePluginMetaKeeper;
+  private final PipeExtractorConstructor pipeExtractorConstructor;
+  private final PipeProcessorConstructor pipeProcessorConstructor;
+  private final PipeConnectorConstructor pipeConnectorConstructor;
 
   protected PipePluginAgent(PipePluginMetaKeeper pipePluginMetaKeeper) {
+    this.pipePluginMetaKeeper = pipePluginMetaKeeper;
     pipeExtractorConstructor = createPipeExtractorConstructor(pipePluginMetaKeeper);
     pipeProcessorConstructor = createPipeProcessorConstructor(pipePluginMetaKeeper);
     pipeConnectorConstructor = createPipeConnectorConstructor(pipePluginMetaKeeper);
   }
 
-  protected abstract PipePluginConstructor createPipeExtractorConstructor(
+  protected abstract PipeExtractorConstructor createPipeExtractorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
-  protected abstract PipePluginConstructor createPipeProcessorConstructor(
+  protected abstract PipeProcessorConstructor createPipeProcessorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
-  protected abstract PipePluginConstructor createPipeConnectorConstructor(
+  protected abstract PipeConnectorConstructor createPipeConnectorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
   public final PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
-    return (PipeExtractor) pipeExtractorConstructor.reflectPlugin(extractorParameters);
+    return pipeExtractorConstructor.reflectPlugin(extractorParameters);
   }
 
   public final PipeProcessor reflectProcessor(PipeParameters processorParameters) {
-    return (PipeProcessor) pipeProcessorConstructor.reflectPlugin(processorParameters);
+    return pipeProcessorConstructor.reflectPlugin(processorParameters);
   }
 
   public final PipeConnector reflectConnector(PipeParameters connectorParameters) {
-    return (PipeConnector) pipeConnectorConstructor.reflectPlugin(connectorParameters);
+    return pipeConnectorConstructor.reflectPlugin(connectorParameters);
   }
 
   public void validate(
@@ -124,5 +134,65 @@ public abstract class PipePluginAgent {
         LOGGER.warn("Failed to close temporary connector: {}", e.getMessage(), e);
       }
     }
+  }
+
+  /**
+   * Get the registered subClasses names of the given parent {@link PipeProcessor}. This method is
+   * usually used to dynamically pick one or more {@link PipeProcessor} as the "plugin" of the
+   * parent class.
+   *
+   * @param parentClass the parent {@link PipeProcessor} to be checked
+   * @return All the pluginNames of the plugin's subClass
+   * @throws PipeException if any exception occurs
+   */
+  public final List<String> getSubProcessorNamesWithSpecifiedParent(
+      Class<? extends PipeProcessor> parentClass) throws PipeException {
+    return Arrays.stream(pipePluginMetaKeeper.getAllPipePluginMeta())
+        .map(pipePluginMeta -> pipePluginMeta.getPluginName().toLowerCase())
+        .filter(
+            pluginName -> {
+              try (PipeProcessor processor =
+                  (PipeProcessor) pipeProcessorConstructor.reflectPluginByKey(pluginName)) {
+                return processor.getClass().getSuperclass() == parentClass;
+              } catch (Exception e) {
+                return false;
+              }
+            })
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Use the pipeProcessorName, {@link PipeParameters} and {@link PipeProcessorRuntimeConfiguration}
+   * to construct a fully prepared {@link PipeProcessor}. Note that the {@link PipeParameters} with
+   * the processor's name will be used to validate and customize the {@link PipeProcessor}
+   * regardless of its original processor name k-v pair, yet the original {@link PipeParameters} is
+   * left unchanged.
+   *
+   * @param pipeProcessorName the processor's pluginName
+   * @param processorParameters the parameters
+   * @param runtimeConfigurations the runtimeConfigurations
+   * @return the customized {@link PipeProcessor}
+   */
+  public final PipeProcessor getConfiguredProcessor(
+      String pipeProcessorName,
+      PipeParameters processorParameters,
+      PipeProcessorRuntimeConfiguration runtimeConfigurations) {
+    final HashMap<String, String> processorKeyMap = new HashMap<>();
+    if (Objects.nonNull(pipeProcessorName)) {
+      processorKeyMap.put(PipeProcessorConstant.PROCESSOR_KEY, pipeProcessorName);
+    }
+    final PipeParameters replacedParameters =
+        processorParameters.addOrReplaceEquivalentAttributesWithClone(
+            new PipeParameters(processorKeyMap));
+    final PipeProcessor processor = reflectProcessor(replacedParameters);
+    // Validate and customize should be called to expose exceptions in advance
+    // and configure the processor.
+    try {
+      processor.validate(new PipeParameterValidator(replacedParameters));
+      processor.customize(replacedParameters, runtimeConfigurations);
+    } catch (Exception e) {
+      throw new PipeException(e.getMessage(), e);
+    }
+    return processor;
   }
 }

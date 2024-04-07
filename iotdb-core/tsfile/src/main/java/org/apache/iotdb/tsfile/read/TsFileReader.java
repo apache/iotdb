@@ -36,7 +36,7 @@ public class TsFileReader implements AutoCloseable {
   private IChunkLoader chunkLoader;
   private TsFileExecutor tsFileExecutor;
 
-  /** constructor, create ReadOnlyTsFile with TsFileSequenceReader. */
+  /** Constructor, create ReadOnlyTsFile with {@link TsFileSequenceReader}. */
   public TsFileReader(TsFileSequenceReader fileReader) throws IOException {
     this.fileReader = fileReader;
     this.metadataQuerier = new MetadataQuerierByFileImpl(fileReader);

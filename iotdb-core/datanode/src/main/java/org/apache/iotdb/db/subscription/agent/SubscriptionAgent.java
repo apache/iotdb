@@ -19,20 +19,40 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
-import org.apache.iotdb.db.subscription.agent.topic.TopicAgent;
-
 public class SubscriptionAgent {
-  private final TopicAgent topicAgent;
+
+  private final SubscriptionReceiverAgent receiverAgent;
+
+  private final SubscriptionRuntimeAgent runtimeAgent;
+
+  //////////////////////////// singleton ////////////////////////////
 
   private SubscriptionAgent() {
-    topicAgent = new TopicAgent();
+    receiverAgent = new SubscriptionReceiverAgent();
+    runtimeAgent = new SubscriptionRuntimeAgent();
   }
 
   private static class SubscriptionAgentHolder {
     private static final SubscriptionAgent HANDLE = new SubscriptionAgent();
   }
 
-  public static TopicAgent topic() {
-    return SubscriptionAgentHolder.HANDLE.topicAgent;
+  public static SubscriptionReceiverAgent receiver() {
+    return SubscriptionAgentHolder.HANDLE.receiverAgent;
+  }
+
+  public static SubscriptionRuntimeAgent runtime() {
+    return SubscriptionAgentHolder.HANDLE.runtimeAgent;
+  }
+
+  public static SubscriptionConsumerAgent consumer() {
+    return SubscriptionAgentHolder.HANDLE.runtimeAgent.consumer();
+  }
+
+  public static SubscriptionBrokerAgent broker() {
+    return SubscriptionAgentHolder.HANDLE.runtimeAgent.broker();
+  }
+
+  public static SubscriptionTopicAgent topic() {
+    return SubscriptionAgentHolder.HANDLE.runtimeAgent.topic();
   }
 }

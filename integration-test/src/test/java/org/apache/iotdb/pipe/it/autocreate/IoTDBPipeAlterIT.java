@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -43,20 +43,20 @@ import java.util.Set;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2.class})
+@Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testBasicAlterPipe() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    // create pipe
-    String sql =
+    // Create pipe
+    final String sql =
         String.format(
             "create pipe a2b with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
             receiverDataNode.getIpAndPortString());
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(sql);
     } catch (SQLException e) {
       fail(e.getMessage());
@@ -64,13 +64,13 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
     // show pipe
     long lastCreationTime;
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
-      // check status
+      // Check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
-      // check configurations
+      // Check configurations
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
       Assert.assertTrue(
@@ -78,43 +78,43 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
               .get(0)
               .pipeConnector
               .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // record last creation time
+      // Record last creation time
       lastCreationTime = showPipeResult.get(0).creationTime;
     }
 
-    // stop pipe
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    // Stop pipe
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute("stop pipe a2b");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
 
-    // show pipe
-    try (SyncConfigNodeIServiceClient client =
+    // Show pipe
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
-      // check status
+      // Check status
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
     }
 
-    // alter pipe (modify)
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    // Alter pipe (modify)
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute("alter pipe a2b modify sink ('sink.batch.enable'='false')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
 
-    // show pipe
-    try (SyncConfigNodeIServiceClient client =
+    // Show pipe
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
-      // check status
+      // Check status
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
-      // check configurations
+      // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=false"));
       Assert.assertTrue(
           showPipeResult.get(0).pipeProcessor.contains("processor=do-nothing-processor"));
@@ -123,34 +123,34 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
               .get(0)
               .pipeConnector
               .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // check creation time and record last creation time
+      // Check creation time and record last creation time
       Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
       lastCreationTime = showPipeResult.get(0).creationTime;
-      // check exception message
+      // Check exception message
       Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
     }
 
-    // start pipe
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    // Start pipe
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute("start pipe a2b");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
 
-    // alter pipe (replace)
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    // Alter pipe (replace)
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(
           "alter pipe a2b replace processor ('processor'='tumbling-time-sampling-processor')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
 
-    // show pipe
-    try (SyncConfigNodeIServiceClient client =
+    // Show pipe
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
       // check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
@@ -166,29 +166,29 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
               .get(0)
               .pipeConnector
               .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // check creation time and record last creation time
+      // Check creation time and record last creation time
       Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
       lastCreationTime = showPipeResult.get(0).creationTime;
       // check exception message
       Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
     }
 
-    // alter pipe (modify)
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    // Alter pipe (modify)
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute("alter pipe a2b modify sink ('connector.batch.enable'='true')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
 
-    // show pipe
-    try (SyncConfigNodeIServiceClient client =
+    // Show pipe
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
-      // check status
+      // Check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
-      // check configurations
+      // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertTrue(
           showPipeResult
@@ -200,25 +200,25 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
               .get(0)
               .pipeConnector
               .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // check creation time and record last creation time
+      // Check creation time and record last creation time
       Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
       lastCreationTime = showPipeResult.get(0).creationTime;
-      // check exception message
+      // Check exception message
       Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
     }
 
-    // alter pipe (replace empty)
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    // Alter pipe (replace empty)
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute("alter pipe a2b replace processor ()");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
 
     // show pipe
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
       // check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
@@ -234,29 +234,29 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
               .get(0)
               .pipeConnector
               .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // check creation time and record last creation time
+      // Check creation time and record last creation time
       Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
       lastCreationTime = showPipeResult.get(0).creationTime;
-      // check exception message
+      // Check exception message
       Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
     }
 
-    // alter pipe (modify empty)
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    // Alter pipe (modify empty)
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute("alter pipe a2b modify sink ()");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
 
-    // show pipe
-    try (SyncConfigNodeIServiceClient client =
+    // Show pipe
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
-      // check status
+      // Check status
       Assert.assertEquals("RUNNING", showPipeResult.get(0).state);
-      // check configurations
+      // Check configurations
       Assert.assertTrue(showPipeResult.get(0).pipeConnector.contains("batch.enable=true"));
       Assert.assertFalse(
           showPipeResult
@@ -268,37 +268,36 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
               .get(0)
               .pipeConnector
               .contains(String.format("node-urls=%s", receiverDataNode.getIpAndPortString())));
-      // check creation time and record last creation time
+      // Check creation time and record last creation time
       Assert.assertTrue(showPipeResult.get(0).creationTime > lastCreationTime);
-      lastCreationTime = showPipeResult.get(0).creationTime;
-      // check exception message
+      // Check exception message
       Assert.assertEquals("", showPipeResult.get(0).exceptionMessage);
     }
   }
 
   @Test
   public void testAlterPipeFailure() {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     // alter non-existed pipe
     String sql =
         String.format(
             "alter pipe a2b modify sink ('node-urls'='%s', 'batch.enable'='true')",
             receiverDataNode.getIpAndPortString());
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(sql);
       fail();
     } catch (SQLException ignore) {
     }
 
-    // create pipe
+    // Create pipe
     sql =
         String.format(
             "create pipe a2b with sink ('node-urls'='%s', 'batch.enable'='false')",
             receiverDataNode.getIpAndPortString());
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(sql);
     } catch (SQLException e) {
       fail(e.getMessage());
@@ -307,21 +306,21 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testAlterPipeProcessor() {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    // create pipe
-    String sql =
+    // Create pipe
+    final String sql =
         String.format(
             "create pipe a2b with processor ('processor'='tumbling-time-sampling-processor', 'processor.tumbling-time.interval-seconds'='1', 'processor.down-sampling.split-file'='true') with sink ('node-urls'='%s', 'batch.enable'='false')",
             receiverDataNode.getIpAndPortString());
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(sql);
     } catch (SQLException e) {
       fail(e.getMessage());
     }
 
-    // insert data on sender
+    // Insert data on sender
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         senderEnv,
         Arrays.asList(
@@ -330,24 +329,24 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       fail();
     }
 
-    // check data on receiver
-    Set<String> expectedResSet = new HashSet<>();
+    // Check data on receiver
+    final Set<String> expectedResSet = new HashSet<>();
     expectedResSet.add("1000,1.0,");
     expectedResSet.add("2000,3.0,");
     expectedResSet.add("3000,5.0,");
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv, "select * from root.**", "Time,root.db.d1.at1,", expectedResSet);
 
-    // alter pipe (modify 'processor.tumbling-time.interval-seconds')
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    // Alter pipe (modify 'processor.tumbling-time.interval-seconds')
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(
           "alter pipe a2b modify processor ('processor.tumbling-time.interval-seconds'='2')");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
 
-    // insert data on sender
+    // Insert data on sender
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
         senderEnv,
         Arrays.asList(
@@ -356,7 +355,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       fail();
     }
 
-    // check data on receiver
+    // Check data on receiver
     expectedResSet.clear();
     expectedResSet.add("11000,1.0,");
     expectedResSet.add("13000,5.0,");

@@ -20,6 +20,7 @@
 package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -29,12 +30,12 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 
-public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
+public class TsFileDeviceIterator implements Iterator<Pair<IDeviceID, Boolean>> {
   private final TsFileSequenceReader reader;
 
   // device -> firstMeasurmentNode offset
-  private final Queue<Pair<String, long[]>> queue;
-  private Pair<String, Boolean> currentDevice = null;
+  private final Queue<Pair<IDeviceID, long[]>> queue;
+  private Pair<IDeviceID, Boolean> currentDevice = null;
   private MetadataIndexNode measurementNode;
 
   // <startOffset, endOffset>, device leaf node offset in this file
@@ -43,13 +44,13 @@ public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
   public TsFileDeviceIterator(
       TsFileSequenceReader reader,
       List<long[]> leafDeviceNodeOffsetList,
-      Queue<Pair<String, long[]>> queue) {
+      Queue<Pair<IDeviceID, long[]>> queue) {
     this.reader = reader;
     this.queue = queue;
     this.leafDeviceNodeOffsetList = leafDeviceNodeOffsetList;
   }
 
-  public Pair<String, Boolean> current() {
+  public Pair<IDeviceID, Boolean> current() {
     return currentDevice;
   }
 
@@ -74,15 +75,15 @@ public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
   }
 
   @Override
-  public Pair<String, Boolean> next() {
+  public Pair<IDeviceID, Boolean> next() {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    Pair<String, long[]> startEndPair = queue.remove();
+    Pair<IDeviceID, long[]> startEndPair = queue.remove();
     try {
       // get the first measurement node of this device, to know if the device is aligned
       this.measurementNode =
-          reader.readMetadataIndexNode(startEndPair.right[0], startEndPair.right[1]);
+          reader.readMetadataIndexNode(startEndPair.right[0], startEndPair.right[1], false);
       boolean isAligned = reader.isAlignedDevice(measurementNode);
       currentDevice = new Pair<>(startEndPair.left, isAligned);
       return currentDevice;
