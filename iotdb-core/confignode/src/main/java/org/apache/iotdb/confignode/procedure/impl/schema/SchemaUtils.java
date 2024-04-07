@@ -24,12 +24,14 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -42,167 +44,168 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import java.util.stream.Collectors;
 
 public class SchemaUtils {
-    /**
-     * Check whether the specific template is activated on the given pattern tree.
-     *
-     * @return true if the template is activated on the given pattern tree, false otherwise.
-     * @throws MetadataException if any error occurs when checking the activation.
-     */
-    public static boolean checkDataNodeTemplateActivation(ConfigManager configManager, PathPatternTree patternTree, Template template)
-    throws MetadataException{
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-        try {
-            patternTree.serialize(dataOutputStream);
-        } catch (IOException ignored) {
-        }
-        ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-
-        Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
-                configManager.getRelatedSchemaRegionGroup(patternTree);
-
-        List<TCountPathsUsingTemplateResp> respList = new ArrayList<>();
-        final MetadataException[] exception = {null};
-        DataNodeRegionTaskExecutor<TCountPathsUsingTemplateReq, TCountPathsUsingTemplateResp>
-                regionTask =
-                new DataNodeRegionTaskExecutor<
-                        TCountPathsUsingTemplateReq, TCountPathsUsingTemplateResp>(
-                        configManager,
-                        relatedSchemaRegionGroup,
-                        false,
-                        DataNodeRequestType.COUNT_PATHS_USING_TEMPLATE,
-                        ((dataNodeLocation, consensusGroupIdList) ->
-                                new TCountPathsUsingTemplateReq(
-                                        template.getId(), patternTreeBytes, consensusGroupIdList))) {
-
-                    @Override
-                    protected List<TConsensusGroupId> processResponseOfOneDataNode(
-                            TDataNodeLocation dataNodeLocation,
-                            List<TConsensusGroupId> consensusGroupIdList,
-                            TCountPathsUsingTemplateResp response) {
-                        respList.add(response);
-                        List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-                        if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                            return failedRegionList;
-                        }
-
-                        if (response.getStatus().getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-                            List<TSStatus> subStatus = response.getStatus().getSubStatus();
-                            for (int i = 0; i < subStatus.size(); i++) {
-                                if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                                    failedRegionList.add(consensusGroupIdList.get(i));
-                                }
-                            }
-                        } else {
-                            failedRegionList.addAll(consensusGroupIdList);
-                        }
-                        return failedRegionList;
-                    }
-
-                    @Override
-                    protected void onAllReplicasetFailure(
-                            TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {
-                        exception[0] = new MetadataException(
-                                                String.format(
-                                                        "all replicaset of schemaRegion %s failed. %s",
-                                                        consensusGroupId.id,
-                                                        dataNodeLocationSet));
-                        interruptTask();
-                    }
-                };
-        regionTask.execute();
-        if (exception[0]!=null) {
-            throw exception[0];
-        }
-        for (TCountPathsUsingTemplateResp resp : respList) {
-            if(resp.count>0){
-                return true;
-            }
-        }
-        return false;
+  /**
+   * Check whether the specific template is activated on the given pattern tree.
+   *
+   * @return true if the template is activated on the given pattern tree, false otherwise.
+   * @throws MetadataException if any error occurs when checking the activation.
+   */
+  public static boolean checkDataNodeTemplateActivation(
+      ConfigManager configManager, PathPatternTree patternTree, Template template)
+      throws MetadataException {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      patternTree.serialize(dataOutputStream);
+    } catch (IOException ignored) {
     }
+    ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
 
+    Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
+        configManager.getRelatedSchemaRegionGroup(patternTree);
 
-    /**
-     * Check whether any template is activated on the given schema regions.
-     * @return true if the template is activated on the given pattern tree, false otherwise.
-     * @throws MetadataException if any error occurs when checking the activation.
-     */
-    public static boolean checkSchemaRegionUsingTemplate(ConfigManager configManager, Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup)
-    throws MetadataException{
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-        try {
-            patternTree.serialize(dataOutputStream);
-        } catch (IOException ignored) {
-        }
-        ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+    List<TCountPathsUsingTemplateResp> respList = new ArrayList<>();
+    final MetadataException[] exception = {null};
+    DataNodeRegionTaskExecutor<TCountPathsUsingTemplateReq, TCountPathsUsingTemplateResp>
+        regionTask =
+            new DataNodeRegionTaskExecutor<
+                TCountPathsUsingTemplateReq, TCountPathsUsingTemplateResp>(
+                configManager,
+                relatedSchemaRegionGroup,
+                false,
+                DataNodeRequestType.COUNT_PATHS_USING_TEMPLATE,
+                ((dataNodeLocation, consensusGroupIdList) ->
+                    new TCountPathsUsingTemplateReq(
+                        template.getId(), patternTreeBytes, consensusGroupIdList))) {
 
-        Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
-                configManager.getRelatedSchemaRegionGroup(patternTree);
+              @Override
+              protected List<TConsensusGroupId> processResponseOfOneDataNode(
+                  TDataNodeLocation dataNodeLocation,
+                  List<TConsensusGroupId> consensusGroupIdList,
+                  TCountPathsUsingTemplateResp response) {
+                respList.add(response);
+                List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+                if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  return failedRegionList;
+                }
 
-        List<TCountPathsUsingTemplateResp> respList = new ArrayList<>();
-        final MetadataException[] exception = {null};
-        DataNodeRegionTaskExecutor<TCountPathsUsingTemplateReq, TCountPathsUsingTemplateResp>
-                regionTask =
-                new DataNodeRegionTaskExecutor<
-                        TCountPathsUsingTemplateReq, TCountPathsUsingTemplateResp>(
-                        configManager,
-                        relatedSchemaRegionGroup,
-                        false,
-                        DataNodeRequestType.COUNT_PATHS_USING_TEMPLATE,
-                        ((dataNodeLocation, consensusGroupIdList) ->
-                                new TCountPathsUsingTemplateReq(
-                                        template.getId(), patternTreeBytes, consensusGroupIdList))) {
-
-                    @Override
-                    protected List<TConsensusGroupId> processResponseOfOneDataNode(
-                            TDataNodeLocation dataNodeLocation,
-                            List<TConsensusGroupId> consensusGroupIdList,
-                            TCountPathsUsingTemplateResp response) {
-                        respList.add(response);
-                        List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-                        if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                            return failedRegionList;
-                        }
-
-                        if (response.getStatus().getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-                            List<TSStatus> subStatus = response.getStatus().getSubStatus();
-                            for (int i = 0; i < subStatus.size(); i++) {
-                                if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                                    failedRegionList.add(consensusGroupIdList.get(i));
-                                }
-                            }
-                        } else {
-                            failedRegionList.addAll(consensusGroupIdList);
-                        }
-                        return failedRegionList;
+                if (response.getStatus().getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+                  List<TSStatus> subStatus = response.getStatus().getSubStatus();
+                  for (int i = 0; i < subStatus.size(); i++) {
+                    if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      failedRegionList.add(consensusGroupIdList.get(i));
                     }
+                  }
+                } else {
+                  failedRegionList.addAll(consensusGroupIdList);
+                }
+                return failedRegionList;
+              }
 
-                    @Override
-                    protected void onAllReplicasetFailure(
-                            TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {
-                        exception[0] = new MetadataException(
-                                                String.format(
-                                                        "all replicaset of schemaRegion %s failed. %s",
-                                                        consensusGroupId.id,
-                                                        dataNodeLocationSet));
-                        interruptTask();
-                    }
-                };
-        regionTask.execute();
-        if (exception[0]!=null) {
-            throw exception[0];
-        }
-        for (TCountPathsUsingTemplateResp resp : respList) {
-            if(resp.count>0){
-                return true;
-            }
-        }
-        return false;
+              @Override
+              protected void onAllReplicasetFailure(
+                  TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {
+                exception[0] =
+                    new MetadataException(
+                        String.format(
+                            "all replicaset of schemaRegion %s failed. %s",
+                            consensusGroupId.id, dataNodeLocationSet));
+                interruptTask();
+              }
+            };
+    regionTask.execute();
+    if (exception[0] != null) {
+      throw exception[0];
     }
+    for (TCountPathsUsingTemplateResp resp : respList) {
+      if (resp.count > 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Check whether any template is activated on the given schema regions.
+   *
+   * @return true if the template is activated on the given pattern tree, false otherwise.
+   * @throws MetadataException if any error occurs when checking the activation.
+   */
+  public static void checkSchemaRegionUsingTemplate(
+      ConfigManager configManager, List<PartialPath> deleteDatabasePatternPaths)
+      throws MetadataException {
+
+    PathPatternTree deleteDatabasePatternTree = new PathPatternTree();
+    for (PartialPath path : deleteDatabasePatternPaths) {
+      deleteDatabasePatternTree.appendPathPattern(path);
+    }
+    deleteDatabasePatternTree.constructTree();
+    Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
+        configManager.getRelatedSchemaRegionGroup(deleteDatabasePatternTree);
+    List<TCheckSchemaRegionUsingTemplateResp> respList = new ArrayList<>();
+    final MetadataException[] exception = {null};
+    DataNodeRegionTaskExecutor<
+            TCheckSchemaRegionUsingTemplateReq, TCheckSchemaRegionUsingTemplateResp>
+        regionTask =
+            new DataNodeRegionTaskExecutor<
+                TCheckSchemaRegionUsingTemplateReq, TCheckSchemaRegionUsingTemplateResp>(
+                configManager,
+                relatedSchemaRegionGroup,
+                false,
+                DataNodeRequestType.CHECK_SCHEMA_REGION_USING_TEMPLATE,
+                ((dataNodeLocation, consensusGroupIdList) ->
+                    new TCheckSchemaRegionUsingTemplateReq(consensusGroupIdList))) {
+
+              @Override
+              protected List<TConsensusGroupId> processResponseOfOneDataNode(
+                  TDataNodeLocation dataNodeLocation,
+                  List<TConsensusGroupId> consensusGroupIdList,
+                  TCheckSchemaRegionUsingTemplateResp response) {
+                respList.add(response);
+                List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+                if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  return failedRegionList;
+                }
+
+                if (response.getStatus().getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+                  List<TSStatus> subStatus = response.getStatus().getSubStatus();
+                  for (int i = 0; i < subStatus.size(); i++) {
+                    if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      failedRegionList.add(consensusGroupIdList.get(i));
+                    }
+                  }
+                } else {
+                  failedRegionList.addAll(consensusGroupIdList);
+                }
+                return failedRegionList;
+              }
+
+              @Override
+              protected void onAllReplicasetFailure(
+                  TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {
+                exception[0] =
+                    new MetadataException(
+                        String.format(
+                            "all replicaset of schemaRegion %s failed. %s",
+                            consensusGroupId.id, dataNodeLocationSet));
+                interruptTask();
+              }
+            };
+    regionTask.execute();
+    if (exception[0] != null) {
+      throw exception[0];
+    }
+    for (TCheckSchemaRegionUsingTemplateResp resp : respList) {
+      if (resp.result) {
+        throw new PathNotExistException(
+            deleteDatabasePatternPaths.stream()
+                .map(PartialPath::getFullPath)
+                .collect(Collectors.toList()),
+            false);
+      }
+    }
+  }
 }

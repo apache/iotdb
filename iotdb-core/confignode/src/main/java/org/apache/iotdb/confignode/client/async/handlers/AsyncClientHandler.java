@@ -30,8 +30,10 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackLis
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
@@ -197,6 +199,14 @@ public class AsyncClientHandler<Q, R> {
             targetDataNode,
             dataNodeLocationMap,
             (Map<Integer, TCountPathsUsingTemplateResp>) responseMap,
+            countDownLatch);
+      case CHECK_SCHEMA_REGION_USING_TEMPLATE:
+        return new CheckSchemaRegionUsingTemplateRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TCheckSchemaRegionUsingTemplateResp>) responseMap,
             countDownLatch);
       case CHECK_TIMESERIES_EXISTENCE:
         return new CheckTimeSeriesExistenceRPCHandler(

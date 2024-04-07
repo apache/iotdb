@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -42,8 +40,6 @@ import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
-import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -51,15 +47,11 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
@@ -185,16 +177,15 @@ public class UnsetTemplateProcedure
     patternTree.appendPathPattern(path);
     patternTree.appendPathPattern(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
     try {
-      return SchemaUtils.checkDataNodeTemplateActivation(env.getConfigManager(), patternTree, template);
-    }catch (MetadataException e) {
+      return SchemaUtils.checkDataNodeTemplateActivation(
+          env.getConfigManager(), patternTree, template);
+    } catch (MetadataException e) {
       setFailure(
-              new ProcedureException(
-                      new MetadataException(
-                              String.format(
-                                      "Unset template %s from %s failed when [check DataNode template activation] because %s",
-                                      template.getName(),
-                                      path,
-                                      e.getMessage()))));
+          new ProcedureException(
+              new MetadataException(
+                  String.format(
+                      "Unset template %s from %s failed when [check DataNode template activation] because %s",
+                      template.getName(), path, e.getMessage()))));
       return false;
     }
   }

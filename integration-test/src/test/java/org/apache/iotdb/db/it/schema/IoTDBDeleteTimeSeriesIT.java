@@ -410,6 +410,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
         Statement statement = connection.createStatement()) {
       try {
         statement.execute("delete timeseries root.**");
+        Assert.fail();
       } catch (SQLException e) {
         Assert.assertTrue(
             e.getMessage()
@@ -442,6 +443,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
 
       try {
         statement.execute("delete timeseries root.*.d1.s3");
+        Assert.fail();
       } catch (SQLException e) {
         Assert.assertTrue(
             e.getMessage()

@@ -1808,19 +1808,11 @@ public class ConfigManager implements IManager {
         return procedureManager.deleteTimeSeries(queryId, rawPatternTree, isGeneratedByPipe);
       }
       // check if the database is using template
-      PathPatternTree deleteDatabasePatternTree = new PathPatternTree();
-      for (PartialPath path : deleteDatabasePatternPaths) {
-        deleteDatabasePatternTree.appendPathPattern(path);
+      try {
+        SchemaUtils.checkSchemaRegionUsingTemplate(this, deleteDatabasePatternPaths);
+      } catch (MetadataException e) {
+        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
       }
-      deleteDatabasePatternTree.constructTree();
-      try{
-        if(SchemaUtils.checkSchemaRegionUsingTemplate(this, getRelatedSchemaRegionGroup(deleteDatabasePatternTree))){
-          // TODO return RpcUtils.getStatus(TSStatusCode.DATABASE_TEMPLATE_ACTIVATED);
-        }
-      }catch (MetadataException e){
-        // TODO
-      }
-
       if (!deleteTimeSeriesPatternPaths.isEmpty()) {
         // 1. delete time series that can not be optimized
         PathPatternTree deleteTimeSeriesPatternTree = new PathPatternTree();
