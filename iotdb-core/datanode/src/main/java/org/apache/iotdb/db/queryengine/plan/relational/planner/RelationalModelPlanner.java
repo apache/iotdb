@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
@@ -28,8 +29,10 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.IPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -39,6 +42,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 
 public class RelationalModelPlanner implements IPlanner {
+
+  private Metadata metadata;
 
   @Override
   public IAnalysis analyze(MPPQueryContext context) {
@@ -58,8 +63,12 @@ public class RelationalModelPlanner implements IPlanner {
   @Override
   public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
     // TODO need implemented by Beyyes
-
-    return null;
+      try {
+          new LogicalPlanner(context, metadata, null, null).plan((Analysis)analysis);
+      } catch (IoTDBException e) {
+          throw new RuntimeException(e);
+      }
+      return null;
   }
 
   @Override
