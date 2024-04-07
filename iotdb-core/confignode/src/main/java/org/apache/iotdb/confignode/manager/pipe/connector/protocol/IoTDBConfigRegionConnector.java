@@ -59,8 +59,10 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
       boolean useSSL,
       String trustStorePath,
       String trustStorePwd,
-      boolean useLeaderCache) {
-    return new IoTDBConfigNodeSyncClientManager(nodeUrls, useSSL, trustStorePath, trustStorePwd);
+      boolean useLeaderCache,
+      String loadBalanceStrategy) {
+    return new IoTDBConfigNodeSyncClientManager(
+        nodeUrls, useSSL, trustStorePath, trustStorePwd, loadBalanceStrategy);
   }
 
   @Override
