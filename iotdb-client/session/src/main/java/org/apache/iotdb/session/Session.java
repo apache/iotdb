@@ -172,6 +172,8 @@ public class Session implements ISession {
 
   protected long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
 
+  protected String sqlDialect = SessionConfig.SQL_DIALECT;
+
   private static final String REDIRECT_TWICE = "redirect twice";
 
   private static final String REDIRECT_TWICE_RETRY = "redirect twice, please try again.";
@@ -434,6 +436,7 @@ public class Session implements ISession {
     this.enableAutoFetch = builder.enableAutoFetch;
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
+    this.sqlDialect = builder.sqlDialect;
   }
 
   @Override
@@ -594,10 +597,10 @@ public class Session implements ISession {
       Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
     if (endpoint == null) {
       return new SessionConnection(
-          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
+          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect);
     }
     return new SessionConnection(
-        session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
+        session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect);
   }
 
   @Override
@@ -3805,6 +3808,8 @@ public class Session implements ISession {
 
     private long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
 
+    private String sqlDialect = SessionConfig.SQL_DIALECT;
+
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
       return this;
@@ -3899,6 +3904,11 @@ public class Session implements ISession {
 
     public Builder retryIntervalInMs(long retryIntervalInMs) {
       this.retryIntervalInMs = retryIntervalInMs;
+      return this;
+    }
+
+    public Builder sqlDialect(String sqlDialect) {
+      this.sqlDialect = sqlDialect;
       return this;
     }
 

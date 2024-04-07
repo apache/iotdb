@@ -105,11 +105,14 @@ public class SessionConnection {
 
   private final long retryIntervalInMs;
 
+  private final String sqlDialect;
+
   // TestOnly
   public SessionConnection() {
     availableNodes = Collections::emptyList;
     this.maxRetryCount = Math.max(0, SessionConfig.MAX_RETRY_COUNT);
     this.retryIntervalInMs = Math.max(0, SessionConfig.RETRY_INTERVAL_IN_MS);
+    this.sqlDialect = "tree";
   }
 
   public SessionConnection(
@@ -118,7 +121,8 @@ public class SessionConnection {
       ZoneId zoneId,
       Supplier<List<TEndPoint>> availableNodes,
       int maxRetryCount,
-      long retryIntervalInMs)
+      long retryIntervalInMs,
+      String sqlDialect)
       throws IoTDBConnectionException {
     this.session = session;
     this.endPoint = endPoint;
@@ -127,6 +131,7 @@ public class SessionConnection {
     this.availableNodes = availableNodes;
     this.maxRetryCount = Math.max(0, maxRetryCount);
     this.retryIntervalInMs = Math.max(0, retryIntervalInMs);
+    this.sqlDialect = sqlDialect;
     try {
       init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
     } catch (StatementExecutionException e) {
@@ -141,7 +146,8 @@ public class SessionConnection {
       ZoneId zoneId,
       Supplier<List<TEndPoint>> availableNodes,
       int maxRetryCount,
-      long retryIntervalInMs)
+      long retryIntervalInMs,
+      String sqlDialect)
       throws IoTDBConnectionException {
     this.session = session;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
@@ -149,6 +155,7 @@ public class SessionConnection {
     this.availableNodes = availableNodes;
     this.maxRetryCount = Math.max(0, maxRetryCount);
     this.retryIntervalInMs = Math.max(0, retryIntervalInMs);
+    this.sqlDialect = sqlDialect;
     initClusterConn();
   }
 
@@ -190,6 +197,7 @@ public class SessionConnection {
     openReq.setPassword(session.password);
     openReq.setZoneId(zoneId.toString());
     openReq.putToConfiguration("version", session.version.toString());
+    openReq.putToConfiguration("sql_dialect", sqlDialect);
 
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);

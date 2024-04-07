@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.common;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.relational.security.Identity;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -48,19 +49,22 @@ public class SessionInfo {
     this.databaseName = null;
   }
 
-  public SessionInfo(long sessionId, String userName, ZoneId zoneId, ClientVersion version) {
+  @TestOnly
+  public SessionInfo(
+      long sessionId, String userName, ZoneId zoneId, @Nullable String databaseName) {
+    this(sessionId, userName, zoneId, ClientVersion.V_1_0, databaseName);
+  }
+
+  public SessionInfo(
+      long sessionId,
+      String userName,
+      ZoneId zoneId,
+      ClientVersion version,
+      @Nullable String databaseName) {
     this.sessionId = sessionId;
     this.userName = userName;
     this.zoneId = zoneId;
     this.version = version;
-    this.databaseName = null;
-  }
-
-  public SessionInfo(
-      long sessionId, String userName, ZoneId zoneId, @Nullable String databaseName) {
-    this.sessionId = sessionId;
-    this.userName = userName;
-    this.zoneId = zoneId;
     this.databaseName = databaseName;
   }
 

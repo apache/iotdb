@@ -47,6 +47,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.jdbc.Config.SQL_DIALECT;
+
 public abstract class AbstractCli {
 
   static final String HOST_ARGS = "h";
@@ -136,6 +138,8 @@ public abstract class AbstractCli {
   private static boolean cursorBeforeFirst = true;
 
   static int lastProcessStatus = CODE_OK;
+
+  static String sqlDialect = "tree";
 
   static void init() {
     keywordSet.add("-" + HOST_ARGS);
@@ -238,6 +242,14 @@ public abstract class AbstractCli {
                     + "Using the configuration of server if it's not set (optional)")
             .build();
     options.addOption(queryTimeout);
+
+    Option sqlDialect =
+        Option.builder(SQL_DIALECT)
+            .argName(SQL_DIALECT)
+            .hasArg()
+            .desc("currently support tree and table, using tree if it's not set (optional)")
+            .build();
+    options.addOption(sqlDialect);
     return options;
   }
 
@@ -303,6 +315,10 @@ public abstract class AbstractCli {
     } else {
       queryTimeout = Integer.parseInt(timeoutString.trim());
     }
+  }
+
+  static void setSqlDialect(String sqlDialect) {
+    AbstractCli.sqlDialect = sqlDialect;
   }
 
   static String[] removePasswordArgs(String[] args) {

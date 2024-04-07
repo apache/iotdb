@@ -41,7 +41,7 @@ public class Analyzer {
 
   private final WarningCollector warningCollector;
 
-  Analyzer(
+  public Analyzer(
       SessionInfo session,
       StatementAnalyzerFactory statementAnalyzerFactory,
       List<Expression> parameters,

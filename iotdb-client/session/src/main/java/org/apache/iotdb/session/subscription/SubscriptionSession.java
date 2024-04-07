@@ -63,10 +63,10 @@ public class SubscriptionSession extends Session {
       Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
     if (endpoint == null) {
       return new SubscriptionSessionConnection(
-          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
+          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect);
     }
     return new SubscriptionSessionConnection(
-        session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
+        session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs, sqlDialect);
   }
 
   /////////////////////////////// topic ///////////////////////////////

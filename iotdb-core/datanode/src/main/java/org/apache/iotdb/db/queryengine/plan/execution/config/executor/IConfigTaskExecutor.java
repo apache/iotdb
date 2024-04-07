@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
@@ -73,6 +74,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.db.relational.sql.tree.CreateDB;
+import org.apache.iotdb.db.relational.sql.tree.CreateTable;
+import org.apache.iotdb.db.relational.sql.tree.DropDB;
+import org.apache.iotdb.db.relational.sql.tree.ShowDB;
+import org.apache.iotdb.db.relational.sql.tree.Use;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
@@ -237,4 +243,16 @@ public interface IConfigTaskExecutor {
   TThrottleQuotaResp getThrottleQuota();
 
   TPipeTransferResp handleTransferConfigPlan(TPipeTransferReq req);
+
+  // =============================== table syntax =========================================
+
+  SettableFuture<ConfigTaskResult> showDatabases(ShowDB showDB);
+
+  SettableFuture<ConfigTaskResult> useDatabase(Use useDB, IClientSession clientSession);
+
+  SettableFuture<ConfigTaskResult> dropDatabase(DropDB dropDB);
+
+  SettableFuture<ConfigTaskResult> createDatabase(CreateDB createDB);
+
+  SettableFuture<ConfigTaskResult> createTable(CreateTable createTable);
 }

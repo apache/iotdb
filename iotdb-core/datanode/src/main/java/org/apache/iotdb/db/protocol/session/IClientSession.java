@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
+import javax.annotation.Nullable;
+
 import java.time.ZoneId;
 import java.util.Set;
 import java.util.TimeZone;
@@ -42,6 +44,10 @@ public abstract class IClientSession {
   private boolean login = false;
 
   private long logInTime;
+
+  private SqlDialect sqlDialect = SqlDialect.TREE;
+
+  @Nullable private String databaseName;
 
   public abstract String getClientAddress();
 
@@ -135,11 +141,24 @@ public abstract class IClientSession {
 
   public abstract void removeQueryId(Long statementId, Long queryId);
 
-  public Model getModel() {
-    return Model.TABLE;
+  public SqlDialect getSqlDialect() {
+    return sqlDialect;
   }
 
-  public enum Model {
+  public void setSqlDialect(SqlDialect sqlDialect) {
+    this.sqlDialect = sqlDialect;
+  }
+
+  @Nullable
+  public String getDatabaseName() {
+    return databaseName;
+  }
+
+  public void setDatabaseName(@Nullable String databaseName) {
+    this.databaseName = databaseName;
+  }
+
+  public enum SqlDialect {
     TREE,
     TABLE
   }

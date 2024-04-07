@@ -114,6 +114,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -199,6 +200,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.db.relational.sql.tree.CreateDB;
+import org.apache.iotdb.db.relational.sql.tree.CreateTable;
+import org.apache.iotdb.db.relational.sql.tree.DropDB;
+import org.apache.iotdb.db.relational.sql.tree.ShowDB;
+import org.apache.iotdb.db.relational.sql.tree.Use;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
@@ -2667,5 +2673,34 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
               .setMessage(e.toString()));
     }
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showDatabases(ShowDB showDB) {
+    return null;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> useDatabase(Use useDB, IClientSession clientSession) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // TODO check whether the database exists
+    clientSession.setDatabaseName(useDB.getDatabase().getValue());
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropDatabase(DropDB dropDB) {
+    return null;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createDatabase(CreateDB createDB) {
+    return null;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createTable(CreateTable createTable) {
+    return null;
   }
 }
