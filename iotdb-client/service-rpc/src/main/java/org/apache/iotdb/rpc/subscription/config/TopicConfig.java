@@ -81,6 +81,15 @@ public class TopicConfig extends PipeParameters {
     return attributesWithTimeRange;
   }
 
+  public Map<String, String> getAttributesWithSourceRealtimeMode() {
+    if (TopicConstant.FORMAT_TS_FILE_READER_VALUE.equals(
+        attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))) {
+      return Collections.singletonMap("realtime.mode", "batch");
+    }
+
+    return Collections.singletonMap("realtime.mode", "hybrid");
+  }
+
   public Map<String, String> getAttributesWithProcessorPrefix() {
     Map<String, String> attributesWithProcessorPrefix = new HashMap<>();
     attributes.forEach(
@@ -90,5 +99,40 @@ public class TopicConfig extends PipeParameters {
           }
         });
     return attributesWithProcessorPrefix;
+  }
+
+  public boolean isValid() {
+    if (!TopicConstant.FORMAT_TS_FILE_READER_VALUE.equals(
+        attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))) {
+      return true;
+    }
+
+    // check processor
+    if (!getAttributesWithProcessorPrefix().isEmpty()) {
+      return false;
+    }
+
+    // check time range
+    final String startTime =
+        attributes.getOrDefault(TopicConstant.START_TIME_KEY, String.valueOf(Long.MIN_VALUE));
+    if (!String.valueOf(Long.MIN_VALUE).equals(startTime)) {
+      return false;
+    }
+    final String endTime =
+        attributes.getOrDefault(TopicConstant.END_TIME_KEY, String.valueOf(Long.MAX_VALUE));
+    if (!String.valueOf(Long.MAX_VALUE).equals(endTime)) {
+      return false;
+    }
+
+    // check path or pattern
+    if (!TopicConstant.PATH_DEFAULT_VALUE.equals(
+            attributes.getOrDefault(TopicConstant.PATH_KEY, TopicConstant.PATH_DEFAULT_VALUE))
+        || !TopicConstant.PATTERN_DEFAULT_VALUE.equals(
+            attributes.getOrDefault(
+                TopicConstant.PATTERN_KEY, TopicConstant.PATTERN_DEFAULT_VALUE))) {
+      return false;
+    }
+
+    return true;
   }
 }

@@ -214,6 +214,7 @@ import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.trigger.api.Trigger;
@@ -1671,7 +1672,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (createPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
-              "Failed to create pipe %s in config node, pipe name starting with \"%s\" are not allowed to be created",
+              "Failed to create pipe %s, pipe name starting with \"%s\" are not allowed to be created.",
               createPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
       LOGGER.warn(exceptionMessage);
       future.setException(
@@ -1726,7 +1727,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (alterPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
-              "Failed to alter pipe %s in config node, pipe name starting with \"%s\" are not allowed to be altered",
+              "Failed to alter pipe %s, pipe name starting with \"%s\" are not allowed to be altered.",
               alterPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
       LOGGER.warn(exceptionMessage);
       future.setException(
@@ -1782,7 +1783,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (startPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
-              "Failed to start pipe %s in config node, pipe name starting with \"%s\" are not allowed to be started",
+              "Failed to start pipe %s, pipe name starting with \"%s\" are not allowed to be started.",
               startPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
       LOGGER.warn(exceptionMessage);
       future.setException(
@@ -1814,7 +1815,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (dropPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
-              "Failed to drop pipe %s in config node, pipe name starting with \"%s\" are not allowed to be dropped",
+              "Failed to drop pipe %s, pipe name starting with \"%s\" are not allowed to be dropped.",
               dropPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
       LOGGER.warn(exceptionMessage);
       future.setException(
@@ -1846,7 +1847,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (stopPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
-              "Failed to stop pipe %s in config node, pipe name starting with \"%s\" are not allowed to be stopped",
+              "Failed to stop pipe %s, pipe name starting with \"%s\" are not allowed to be stopped.",
               stopPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
       LOGGER.warn(exceptionMessage);
       future.setException(
@@ -1928,18 +1929,29 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> createTopic(CreateTopicStatement createTopicStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    final String topicName = createTopicStatement.getTopicName();
+    final Map<String, String> topicAttributes = createTopicStatement.getTopicAttributes();
+
+    // Validate topic config
+    final TopicConfig topicConfig = new TopicConfig(topicAttributes);
+    if (!topicConfig.isValid()) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to create topic %s, topic config %s is invalid.", topicName, topicConfig);
+      LOGGER.warn(exceptionMessage);
+      future.setException(
+          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
+
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TCreateTopicReq req =
-          new TCreateTopicReq()
-              .setTopicName(createTopicStatement.getTopicName())
-              .setTopicAttributes(createTopicStatement.getTopicAttributes());
+          new TCreateTopicReq().setTopicName(topicName).setTopicAttributes(topicAttributes);
       final TSStatus tsStatus = configNodeClient.createTopic(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to create topic {} in config node, status is {}.",
-            createTopicStatement.getTopicName(),
-            tsStatus);
+        LOGGER.warn("Failed to create topic {} in config node, status is {}.", topicName, tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
