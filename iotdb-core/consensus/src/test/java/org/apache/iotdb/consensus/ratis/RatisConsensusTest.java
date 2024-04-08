@@ -123,10 +123,10 @@ public class RatisConsensusTest {
         () -> servers.get(0).createLocalPeer(group.getGroupId(), original));
 
     // add 2 members
-    servers.get(1).createLocalPeer(group.getGroupId(), peers.subList(0, 2));
+    servers.get(1).createLocalPeer(group.getGroupId(), peers.subList(1, 2));
     servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
 
-    servers.get(2).createLocalPeer(group.getGroupId(), peers.subList(0, 3));
+    servers.get(2).createLocalPeer(group.getGroupId(), peers.subList(2, 3));
     servers.get(0).addRemotePeer(group.getGroupId(), peers.get(2));
 
     miniCluster.waitUntilActiveLeaderElectedAndReady();
