@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.pipe.event;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.progress.committer.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -175,9 +175,9 @@ public abstract class EnrichedEvent implements Event {
 
   /**
    * Externally skip the report of the processing {@link ProgressIndex} of this {@link
-   * EnrichedEvent}.
+   * EnrichedEvent} when committed. Report by generated events are still allowed.
    */
-  public void skipReport() {
+  public void skipReportOnCommit() {
     shouldReportOnCommit = false;
   }
 

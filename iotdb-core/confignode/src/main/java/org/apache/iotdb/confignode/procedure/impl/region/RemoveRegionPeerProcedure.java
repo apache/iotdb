@@ -104,13 +104,13 @@ public class RemoveRegionPeerProcedure
           setKillPoint(state);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
             LOGGER.warn(
-                "DELETE_OLD_REGION_PEER task submitted failed, procedure will continue. You can manually delete region file.");
+                "DELETE_OLD_REGION_PEER task submitted failed, procedure will continue. You should manually delete region file.");
           } else {
             TRegionMigrateResult deleteOldRegionPeerResult =
                 handler.waitTaskFinish(this.getProcId(), targetDataNode);
             if (deleteOldRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
               LOGGER.warn(
-                  "DELETE_OLD_REGION_PEER executed failed, procedure will continue. You can manually delete region file.");
+                  "DELETE_OLD_REGION_PEER executed failed, procedure will continue. You should manually delete region file.");
             }
           }
           setNextState(REMOVE_REGION_LOCATION_CACHE);

@@ -384,27 +384,27 @@ public class IoTConsensusServerImpl {
     stateMachine.loadSnapshot(new File(storageDir, snapshotId));
   }
 
-  public void inactivePeer(Peer peer) throws ConsensusGroupModifyPeerException {
-    try (SyncIoTConsensusServiceClient client =
-        syncClientManager.borrowClient(peer.getEndpoint())) {
-      inactivePeer(peer, client::inactivatePeer);
-    } catch (ClientManagerException e) {
-      throw new ConsensusGroupModifyPeerException(e);
-    }
+  @FunctionalInterface
+  public interface ThrowableFunction<T, R, E extends Exception> {
+    R apply(T t) throws E;
   }
 
-  public void inactivePeerForDeletionPurpose(Peer peer) throws ConsensusGroupModifyPeerException {
+  public void inactivePeer(Peer peer, boolean forDeletionPurpose)
+      throws ConsensusGroupModifyPeerException {
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(peer.getEndpoint())) {
-      inactivePeer(peer, client::inactivatePeerForDeletionPurpose);
+      if (forDeletionPurpose) {
+        inactivePeer(peer, client::inactivatePeerForDeletionPurpose);
+      } else {
+        inactivePeer(peer, client::inactivatePeer);
+      }
     } catch (ClientManagerException e) {
       throw new ConsensusGroupModifyPeerException(e);
     }
   }
 
   public void inactivePeer(
-      Peer peer,
-      FunctionWithException<TInactivatePeerReq, TInactivatePeerRes, Exception> sendRequest)
+      Peer peer, ThrowableFunction<TInactivatePeerReq, TInactivatePeerRes, Exception> sendRequest)
       throws ConsensusGroupModifyPeerException {
     try {
       TInactivatePeerRes res =

@@ -511,6 +511,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_leader_cache_memory_usage_percentage",
                 String.valueOf(config.getPipeLeaderCacheMemoryUsagePercentage()))));
+    config.setPipeListeningQueueTransferSnapshotThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_listening_queue_transfer_snapshot_threshold",
+                String.valueOf(config.getPipeListeningQueueTransferSnapshotThreshold()))));
   }
 
   private void loadSubscriptionProps(Properties properties) {

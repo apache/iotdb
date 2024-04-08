@@ -34,6 +34,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -124,12 +127,12 @@ public class ConfigNodeInfo {
   private void storeConfigNode() throws IOException {
     Properties properties = new Properties();
     try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
-      properties.load(inputStream);
+      properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
     }
     properties.setProperty(
         CONFIG_NODE_LIST, NodeUrlUtils.convertTEndPointUrls(new ArrayList<>(onlineConfigNodes)));
     try (FileOutputStream fileOutputStream = new FileOutputStream(propertiesFileTmp)) {
-      properties.store(fileOutputStream, "");
+      properties.store(new OutputStreamWriter(fileOutputStream, StandardCharsets.UTF_8), "");
     }
     updatePropertiesFile();
   }
@@ -151,7 +154,7 @@ public class ConfigNodeInfo {
       configNodeInfoReadWriteLock.writeLock().lock();
       Properties properties = new Properties();
       try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
-        properties.load(inputStream);
+        properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
