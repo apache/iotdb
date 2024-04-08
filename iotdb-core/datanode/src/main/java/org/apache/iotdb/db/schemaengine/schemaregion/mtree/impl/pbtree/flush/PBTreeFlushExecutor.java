@@ -178,6 +178,7 @@ public class PBTreeFlushExecutor {
         while (volatileSubtreeIterator.hasNext()) {
           collectedVolatileSubtrees.add(volatileSubtreeIterator.next());
         }
+        memoryManager.updateSubtreeRootStatusAfterFlush(subtreeRoot);
       } catch (MetadataException | IOException e) {
         logger.warn(
             "Error occurred during MTree flush, current node is {}", subtreeRoot.getFullPath(), e);

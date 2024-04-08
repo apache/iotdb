@@ -166,7 +166,6 @@ public class MemoryManager implements IMemoryManager {
         return;
       }
       // the status change affects the subTre collect in nodeBuffer
-
       memoryStatistics.addVolatileNode();
       if (!cacheEntry.hasVolatileDescendant()) {
         nodeCache.removeFromNodeCache(cacheEntry);
@@ -265,23 +264,23 @@ public class MemoryManager implements IMemoryManager {
         if (!hasNext()) {
           throw new NoSuchElementException();
         }
-        return tryGetNext();
+        return nodeBufferIterator.next();
       }
 
-      private ICachedMNode tryGetNext() {
-        if (nodeBufferIterator.hasNext()) {
-          ICachedMNode node = nodeBufferIterator.next();
-
-          // prevent this node being added to nodeBuffer during flush
-          // unlock in PBTreeFlushExecutor
-
-          // if there's flush failure, such node and ancestors will be removed from cache again by
-          // #updateCacheStatusAfterFlushFailure
-          return node;
-        } else {
-          throw new NoSuchElementException();
-        }
-      }
+//      private ICachedMNode tryGetNext() {
+//        if (nodeBufferIterator.hasNext()) {
+//          ICachedMNode node = nodeBufferIterator.next();
+//
+//          // prevent this node being added to nodeBuffer during flush
+//          // unlock in PBTreeFlushExecutor
+//
+//          // if there's flush failure, such node and ancestors will be removed from cache again by
+//          // #updateCacheStatusAfterFlushFailure
+//          return node;
+//        } else {
+//          throw new NoSuchElementException();
+//        }
+//      }
     };
   }
 

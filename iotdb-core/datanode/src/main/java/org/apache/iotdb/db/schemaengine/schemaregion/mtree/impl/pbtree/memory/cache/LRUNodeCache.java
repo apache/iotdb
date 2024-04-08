@@ -22,6 +22,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.c
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -140,7 +141,12 @@ public class LRUNodeCache implements INodeCache {
 
     @Override
     public boolean equals(Object o) {
-      return this == o;
+      if (this == o) return true;
+      if (!(o instanceof LRUCacheEntry)) return false;
+      LRUCacheEntry that = (LRUCacheEntry) o;
+      return Objects.equals(node, that.node)
+              && Objects.equals(pre, that.pre)
+              && Objects.equals(next, that.next);
     }
 
     @Override
