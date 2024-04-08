@@ -384,8 +384,8 @@ public class IoTConsensusServerImpl {
   }
 
   @FunctionalInterface
-  public interface ThrowableFunction<T, R, E extends Exception> {
-    R apply(T t) throws E;
+  public interface ThrowableFunction<T, R> {
+    R apply(T t) throws Exception;
   }
 
   public void inactivePeer(Peer peer, boolean forDeletionPurpose)
@@ -403,7 +403,7 @@ public class IoTConsensusServerImpl {
   }
 
   public void inactivePeer(
-      Peer peer, ThrowableFunction<TInactivatePeerReq, TInactivatePeerRes, Exception> sendRequest)
+      Peer peer, ThrowableFunction<TInactivatePeerReq, TInactivatePeerRes> sendRequest)
       throws ConsensusGroupModifyPeerException {
     try {
       TInactivatePeerRes res =

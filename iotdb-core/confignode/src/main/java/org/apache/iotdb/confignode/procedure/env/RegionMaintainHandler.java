@@ -249,7 +249,7 @@ public class RegionMaintainHandler {
    * @param regionId region id
    * @return TSStatus
    */
-  public TSStatus addRegionPeer(
+  public TSStatus submitAddRegionPeerTask(
       long procedureId,
       TDataNodeLocation destDataNode,
       TConsensusGroupId regionId,

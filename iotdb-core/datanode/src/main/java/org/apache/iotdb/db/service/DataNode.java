@@ -459,21 +459,23 @@ public class DataNode implements DataNodeMBean {
         DataRegionConsensusImpl.getInstance().getAllConsensusGroupIdsFromDisk().stream()
             .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
             .collect(Collectors.toList());
-    logger.info("Remove invalid region directories... {}", invalidConsensusGroupIds);
-    for (ConsensusGroupId consensusGroupId : invalidConsensusGroupIds) {
-      File oldDir =
-          new File(
-              IoTConsensus.buildPeerDir(
-                  new File(config.getDataRegionConsensusDir()), consensusGroupId));
-      if (oldDir.exists()) {
-        try {
-          FileUtils.recursivelyDeleteFolder(oldDir.getPath());
-          logger.info("delete {} succeed.", oldDir.getAbsolutePath());
-        } catch (IOException e) {
-          logger.error("delete {} failed.", oldDir.getAbsolutePath());
+    if (!invalidConsensusGroupIds.isEmpty()) {
+      logger.info("Remove invalid region directories... {}", invalidConsensusGroupIds);
+      for (ConsensusGroupId consensusGroupId : invalidConsensusGroupIds) {
+        File oldDir =
+            new File(
+                IoTConsensus.buildPeerDir(
+                    new File(config.getDataRegionConsensusDir()), consensusGroupId));
+        if (oldDir.exists()) {
+          try {
+            FileUtils.recursivelyDeleteFolder(oldDir.getPath());
+            logger.info("delete {} succeed.", oldDir.getAbsolutePath());
+          } catch (IOException e) {
+            logger.error("delete {} failed.", oldDir.getAbsolutePath());
+          }
+        } else {
+          logger.info("delete {} failed, because it does not exist.", oldDir.getAbsolutePath());
         }
-      } else {
-        logger.info("delete {} failed, because it does not exist.", oldDir.getAbsolutePath());
       }
     }
   }

@@ -32,6 +32,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -70,18 +71,46 @@ import java.util.concurrent.ConcurrentHashMap.KeySetView;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class IoTDBRegionMigrateReliabilityITFramework {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBRegionMigrateReliabilityITFramework.class);
-  private static final String INSERTION =
-      "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(100, 10.1, 20.7)";
+  private static final String INSERTION1 =
+      "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(100, 1, 2)";
+  private static final String INSERTION2 =
+      "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(101, 3, 4)";
   private static final String SHOW_REGIONS = "show regions";
   private static final String SHOW_DATANODES = "show datanodes";
+  private static final String COUNT_TIMESERIES = "select count(*) from root.sg.**";
   private static final String REGION_MIGRATE_COMMAND_FORMAT = "migrate region %d from %d to %d";
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
   ExecutorService executorService = IoTDBThreadPoolFactory.newCachedThreadPool("regionMigrateIT");
+
+  public static Consumer<KillPointContext> actionOfKillNode =
+      context -> {
+        context.getNodeWrapper().stopForcibly();
+        LOGGER.info("Node {} stopped.", context.getNodeWrapper().getId());
+        Assert.assertFalse(context.getNodeWrapper().isAlive());
+        if (context.getNodeWrapper() instanceof ConfigNodeWrapper) {
+          context.getNodeWrapper().start();
+          LOGGER.info("Node {} restarted.", context.getNodeWrapper().getId());
+          Assert.assertTrue(context.getNodeWrapper().isAlive());
+        }
+      };
+
+  public static Consumer<KillPointContext> actionOfRestartCluster =
+      context -> {
+        context
+            .getEnv()
+            .getNodeWrapperList()
+            .parallelStream()
+            .forEach(AbstractNodeWrapper::stopForcibly);
+        LOGGER.info("Cluster has been stopped");
+        context.getEnv().getNodeWrapperList().parallelStream().forEach(AbstractNodeWrapper::start);
+        LOGGER.info("Cluster has been restarted");
+      };
 
   @Before
   public void setUp() throws Exception {
@@ -114,9 +143,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         dataNodeNum,
         killConfigNodeKeywords,
         killDataNodeKeywords,
-        true,
-        true,
-        0,
+        actionOfKillNode,
         true,
         killNode);
   }
@@ -137,11 +164,24 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         dataNodeNum,
         killConfigNodeKeywords,
         killDataNodeKeywords,
-        true,
-        true,
-        60,
+        actionOfKillNode,
         false,
         killNode);
+  }
+
+  public void killClusterTest(
+      KeySetView<String, Boolean> configNodeKeywords, boolean expectMigrateSuccess)
+      throws Exception {
+    generalTestWithAllOptions(
+        2,
+        3,
+        3,
+        3,
+        configNodeKeywords,
+        noKillPoints(),
+        actionOfRestartCluster,
+        expectMigrateSuccess,
+        KillNode.ALL_NODES);
   }
 
   // region general test
@@ -151,11 +191,9 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       final int schemaReplicationFactor,
       final int configNodeNum,
       final int dataNodeNum,
-      KeySetView<String, Boolean> killConfigNodeKeywords,
-      KeySetView<String, Boolean> killDataNodeKeywords,
-      final boolean checkOriginalRegionDirDeleted,
-      final boolean checkConfigurationFileDeleted,
-      final int restartTime,
+      KeySetView<String, Boolean> configNodeKeywords,
+      KeySetView<String, Boolean> dataNodeKeywords,
+      Consumer<KillPointContext> actionWhenDetectKeyWords,
       final boolean expectMigrateSuccess,
       KillNode killNode)
       throws Exception {
@@ -165,8 +203,8 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         .getCommonConfig()
         .setDataReplicationFactor(dataReplicateFactor)
         .setSchemaReplicationFactor(schemaReplicationFactor);
-    EnvFactory.getEnv().registerConfigNodeKillPoints(new ArrayList<>(killConfigNodeKeywords));
-    EnvFactory.getEnv().registerDataNodeKillPoints(new ArrayList<>(killDataNodeKeywords));
+    EnvFactory.getEnv().registerConfigNodeKillPoints(new ArrayList<>(configNodeKeywords));
+    EnvFactory.getEnv().registerDataNodeKillPoints(new ArrayList<>(dataNodeKeywords));
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
@@ -174,7 +212,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
-      statement.execute(INSERTION);
+      statement.execute(INSERTION1);
 
       ResultSet result = statement.executeQuery(SHOW_REGIONS);
       Map<Integer, Set<Integer>> regionMap = getRegionMap(result);
@@ -197,18 +235,22 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         setDataNodeKillPoints(
             Collections.singletonList(
                 EnvFactory.getEnv().dataNodeIdToWrapper(originalDataNode).get()),
-            killDataNodeKeywords,
-            restartTime);
+            dataNodeKeywords,
+            actionWhenDetectKeyWords);
       } else if (killNode == KillNode.DESTINATION_DATANODE) {
         setDataNodeKillPoints(
             Collections.singletonList(EnvFactory.getEnv().dataNodeIdToWrapper(destDataNode).get()),
-            killDataNodeKeywords,
-            restartTime);
+            dataNodeKeywords,
+            actionWhenDetectKeyWords);
       } else {
-        setConfigNodeKillPoints(killConfigNodeKeywords, restartTime);
+        setConfigNodeKillPoints(configNodeKeywords, actionWhenDetectKeyWords);
         setDataNodeKillPoints(
-            EnvFactory.getEnv().getDataNodeWrapperList(), killDataNodeKeywords, restartTime);
+            EnvFactory.getEnv().getDataNodeWrapperList(),
+            dataNodeKeywords,
+            actionWhenDetectKeyWords);
       }
+
+      LOGGER.info("DataNode set before migration: {}", regionMap.get(selectedRegion));
 
       System.out.println(
           "originalDataNode: "
@@ -218,7 +260,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
               + EnvFactory.getEnv().dataNodeIdToWrapper(destDataNode).get().getNodePath());
 
       // region migration start
-      statement.execute(regionMigrateCommand(selectedRegion, originalDataNode, destDataNode));
+      statement.execute(buildRegionMigrateCommand(selectedRegion, originalDataNode, destDataNode));
 
       boolean success = false;
       try {
@@ -236,25 +278,19 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       }
 
       // make sure all kill points have been triggered
-      checkKillPointsAllTriggered(killConfigNodeKeywords);
-      checkKillPointsAllTriggered(killDataNodeKeywords);
+      checkKillPointsAllTriggered(configNodeKeywords);
+      checkKillPointsAllTriggered(dataNodeKeywords);
 
-      // check if there is anything remain
-      if (checkOriginalRegionDirDeleted) {
-        if (success) {
-          checkRegionFileClearIfNodeAlive(originalDataNode);
-          checkRegionFileExistIfNodeAlive(destDataNode);
-        } else {
-          checkRegionFileClearIfNodeAlive(destDataNode);
-          checkRegionFileExistIfNodeAlive(originalDataNode);
-        }
-      }
-      if (checkConfigurationFileDeleted) {
-        if (success) {
-          checkPeersClearIfNodeAlive(allDataNodeId, originalDataNode, selectedRegion);
-        } else {
-          checkPeersClearIfNodeAlive(allDataNodeId, destDataNode, selectedRegion);
-        }
+      // check the remaining file
+      if (success) {
+        checkRegionFileClearIfNodeAlive(originalDataNode);
+        checkRegionFileExistIfNodeAlive(destDataNode);
+        checkPeersClearIfNodeAlive(allDataNodeId, originalDataNode, selectedRegion);
+        checkClusterStillWritable(statement);
+      } else {
+        checkRegionFileClearIfNodeAlive(destDataNode);
+        checkRegionFileExistIfNodeAlive(originalDataNode);
+        checkPeersClearIfNodeAlive(allDataNodeId, destDataNode, selectedRegion);
       }
     } catch (InconsistentDataException ignore) {
 
@@ -288,38 +324,38 @@ public class IoTDBRegionMigrateReliabilityITFramework {
   }
 
   private void setConfigNodeKillPoints(
-      KeySetView<String, Boolean> killConfigNodeKeywords, int nodeRestartTime) {
+      KeySetView<String, Boolean> killConfigNodeKeywords, Consumer<KillPointContext> action) {
     EnvFactory.getEnv()
         .getConfigNodeWrapperList()
         .forEach(
             configNodeWrapper ->
                 executorService.submit(
                     () ->
-                        nodeLogKillPoint(
-                            configNodeWrapper, killConfigNodeKeywords, nodeRestartTime)));
+                        doActionWhenDetectKeywords(
+                            configNodeWrapper, killConfigNodeKeywords, action)));
   }
 
   private void setDataNodeKillPoints(
       List<DataNodeWrapper> dataNodeWrappers,
       KeySetView<String, Boolean> killDataNodeKeywords,
-      int nodeRestartTime) {
+      Consumer<KillPointContext> action) {
     dataNodeWrappers.forEach(
         dataNodeWrapper ->
             executorService.submit(
-                () -> nodeLogKillPoint(dataNodeWrapper, killDataNodeKeywords, nodeRestartTime)));
+                () -> doActionWhenDetectKeywords(dataNodeWrapper, killDataNodeKeywords, action)));
   }
 
   /**
    * Monitor the node's log and kill it when detect specific log.
    *
    * @param nodeWrapper Easy to understand
-   * @param killNodeKeywords When detect these keywords in node's log, stop the node forcibly
+   * @param keywords When detect these keywords in node's log, stop the node forcibly
    */
-  private static void nodeLogKillPoint(
+  private static void doActionWhenDetectKeywords(
       AbstractNodeWrapper nodeWrapper,
-      KeySetView<String, Boolean> killNodeKeywords,
-      int restartTime) {
-    if (killNodeKeywords.isEmpty()) {
+      KeySetView<String, Boolean> keywords,
+      Consumer<KillPointContext> action) {
+    if (keywords.isEmpty()) {
       return;
     }
     final String logFileName;
@@ -362,38 +398,20 @@ public class IoTDBRegionMigrateReliabilityITFramework {
           // if trigger more than one keyword at a same time, test code may have mistakes
           Assert.assertTrue(
               line,
-              killNodeKeywords.stream()
-                      .map(KillPoint::addKillPointPrefix)
-                      .filter(line::contains)
-                      .count()
+              keywords.stream().map(KillPoint::addKillPointPrefix).filter(line::contains).count()
                   <= 1);
           String finalLine = line;
           Optional<String> detectedKeyword =
-              killNodeKeywords.stream()
+              keywords.stream()
                   .filter(keyword -> finalLine.contains(KillPoint.addKillPointPrefix(keyword)))
                   .findAny();
           if (detectedKeyword.isPresent()) {
             // each keyword only trigger once
-            killNodeKeywords.remove(detectedKeyword.get());
+            keywords.remove(detectedKeyword.get());
             LOGGER.info("Kill point triggered: {}", detectedKeyword.get());
-            // reboot the ConfigNode, for now we don't reboot DataNode
-            nodeWrapper.stopForcibly();
-            LOGGER.info("Node {} stopped.", nodeWrapper.getId());
-            Assert.assertFalse(nodeWrapper.isAlive());
-            if (nodeWrapper instanceof ConfigNodeWrapper) {
-              if (restartTime > 0) {
-                try {
-                  TimeUnit.SECONDS.sleep(restartTime);
-                } catch (InterruptedException e) {
-                  Thread.currentThread().interrupt();
-                }
-              }
-              nodeWrapper.start();
-              LOGGER.info("Node {} restarted.", nodeWrapper.getId());
-              Assert.assertTrue(nodeWrapper.isAlive());
-            }
+            action.accept(new KillPointContext(nodeWrapper, (AbstractEnv) EnvFactory.getEnv()));
           }
-          if (killNodeKeywords.isEmpty()) {
+          if (keywords.isEmpty()) {
             break;
           }
         }
@@ -413,7 +431,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     }
   }
 
-  private static String regionMigrateCommand(int who, int from, int to) {
+  private static String buildRegionMigrateCommand(int who, int from, int to) {
     String result = String.format(REGION_MIGRATE_COMMAND_FORMAT, who, from, to);
     LOGGER.info(result);
     return result;
@@ -515,6 +533,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       }
       throw e;
     }
+    LOGGER.info("DataNode set has been successfully changed to {}", lastTimeDataNodes.get());
   }
 
   private static void checkRegionFileExistIfNodeAlive(int dataNode) {
@@ -598,6 +617,20 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         "configuration file should be deleted, but it didn't: " + expectDeletedFile.getPath(),
         expectDeletedFile.exists());
     LOGGER.info("configuration file has been deleted: {}", expectDeletedFile.getPath());
+  }
+
+  private void checkClusterStillWritable(Statement statement) {
+    try {
+      statement.execute(INSERTION2);
+      ResultSet resultSet = statement.executeQuery(COUNT_TIMESERIES);
+      resultSet.next();
+      Assert.assertEquals(2, resultSet.getLong(1));
+      Assert.assertEquals(2, resultSet.getLong(2));
+      LOGGER.info("Region group is still writable");
+    } catch (SQLException e) {
+      LOGGER.error("Something wrong", e);
+      Assert.fail("Something wrong");
+    }
   }
 
   private static String buildRegionDirPath(int dataNode) {

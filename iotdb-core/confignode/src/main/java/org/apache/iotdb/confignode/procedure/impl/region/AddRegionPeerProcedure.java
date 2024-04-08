@@ -90,15 +90,16 @@ public class AddRegionPeerProcedure
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
-          TSStatus tsStatus =
-              handler.addRegionPeer(this.getProcId(), destDataNode, consensusGroupId, coordinator);
-          setKillPoint(state);
-          TRegionMigrateResult result;
-          if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
-            result = handler.waitTaskFinish(this.getProcId(), coordinator);
-          } else {
-            throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
+          if (!this.isDeserialized()) {
+            TSStatus tsStatus =
+                handler.submitAddRegionPeerTask(
+                    this.getProcId(), destDataNode, consensusGroupId, coordinator);
+            setKillPoint(state);
+            if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
+              throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
+            }
           }
+          TRegionMigrateResult result = handler.waitTaskFinish(this.getProcId(), coordinator);
           switch (result.getTaskStatus()) {
             case TASK_NOT_EXIST:
               // coordinator crashed and lost its task table

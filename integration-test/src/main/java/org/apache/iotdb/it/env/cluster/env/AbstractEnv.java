@@ -600,6 +600,12 @@ public abstract class AbstractEnv implements BaseEnv {
     return dataNodeWrapperList;
   }
 
+  public List<AbstractNodeWrapper> getNodeWrapperList() {
+    List<AbstractNodeWrapper> result = new ArrayList<>(configNodeWrapperList);
+    result.addAll(dataNodeWrapperList);
+    return result;
+  }
+
   /**
    * Get connection to ConfigNode-Leader in ClusterIT environment
    *
