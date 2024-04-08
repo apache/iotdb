@@ -578,26 +578,47 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (writingFileWriter != null) {
       try {
         writingFileWriter.close();
-        LOGGER.info("IoTDBFileReceiverV1#handleExit: writing file writer was closed.");
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "Handling exit (receiver id = {}): writing file writer was closed.",
+              receiverId.get());
+        }
       } catch (Exception e) {
-        LOGGER.warn("IoTDBFileReceiverV1#handleExit: close writing file writer error.", e);
+        LOGGER.warn(
+            "Handling exit (receiver id = {}): close writing file writer error.",
+            receiverId.get(),
+            e);
       }
       writingFileWriter = null;
     } else {
-      LOGGER.info("IoTDBFileReceiverV1#handleExit: writing file writer is null. No need to close.");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Handling exit (receiver id = {}): writing file writer is null. No need to close.",
+            receiverId.get());
+      }
     }
 
     if (writingFile != null) {
       try {
         Files.delete(writingFile.toPath());
         LOGGER.info(
-            "IoTDBFileReceiverV1#handleExit: writing file {} was deleted.", writingFile.getPath());
+            "Handling exit (receiver id = {}): writing file {} was deleted.",
+            receiverId.get(),
+            writingFile.getPath());
       } catch (Exception e) {
-        LOGGER.warn("IoTDBFileReceiverV1#handleExit: delete file {} error.", writingFile.getPath());
+        LOGGER.warn(
+            "Handling exit (receiver id = {}): delete file {} error.",
+            receiverId.get(),
+            writingFile.getPath(),
+            e);
       }
       writingFile = null;
     } else {
-      LOGGER.info("IoTDBFileReceiverV1#handleExit: writing file is null. No need to delete.");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Handling exit (receiver id = {}): writing file is null. No need to delete.",
+            receiverId.get());
+      }
     }
 
     // Clear the original receiver file dir if exists
@@ -606,24 +627,33 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         try {
           Files.delete(receiverFileDirWithIdSuffix.get().toPath());
           LOGGER.info(
-              "IoTDBFileReceiverV1#handleExit: original receiver file dir {} was deleted.",
+              "Handling exit (receiver id = {}): original receiver file dir {} was deleted.",
+              receiverId.get(),
               receiverFileDirWithIdSuffix.get().getPath());
         } catch (IOException e) {
           LOGGER.warn(
-              "IoTDBFileReceiverV1#handleExit: delete original receiver file dir {} error.",
-              receiverFileDirWithIdSuffix.get().getPath());
+              "Handling exit (receiver id = {}): delete original receiver file dir {} error.",
+              receiverId.get(),
+              receiverFileDirWithIdSuffix.get().getPath(),
+              e);
         }
       } else {
-        LOGGER.info(
-            "IoTDBFileReceiverV1#handleExit: original receiver file dir {} does not exist. No need to delete.",
-            receiverFileDirWithIdSuffix.get().getPath());
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "Handling exit (receiver id = {}): original receiver file dir {} does not exist. No need to delete.",
+              receiverId.get(),
+              receiverFileDirWithIdSuffix.get().getPath());
+        }
       }
       receiverFileDirWithIdSuffix.set(null);
     } else {
-      LOGGER.info(
-          "IoTDBFileReceiverV1#handleExit: original receiver file dir is null. No need to delete.");
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Handling exit (receiver id = {}): original receiver file dir is null. No need to delete.",
+            receiverId.get());
+      }
     }
 
-    LOGGER.info("IoTDBFileReceiverV1#handleExit: receiver exited.");
+    LOGGER.info("Handling exit (receiver id = {}): receiver exited.", receiverId.get());
   }
 }
