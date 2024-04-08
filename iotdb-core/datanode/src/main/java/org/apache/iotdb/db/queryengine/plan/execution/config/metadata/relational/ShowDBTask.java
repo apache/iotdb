@@ -65,12 +65,10 @@ public class ShowDBTask implements IConfigTask {
 
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
-      String storageGroup = entry.getKey();
+      String dbName = entry.getKey().substring(5);
       TDatabaseInfo storageGroupInfo = entry.getValue();
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder
-          .getColumnBuilder(0)
-          .writeBinary(new Binary(storageGroup, TSFileConfig.STRING_CHARSET));
+      builder.getColumnBuilder(0).writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
 
       builder.getColumnBuilder(1).writeInt(storageGroupInfo.getSchemaReplicationFactor());
       builder.getColumnBuilder(2).writeInt(storageGroupInfo.getDataReplicationFactor());
