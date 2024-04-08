@@ -1,6 +1,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
@@ -13,7 +16,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.tsfile.read.common.type.BinaryType;
-import org.apache.iotdb.tsfile.read.common.type.DoubleType;
+import org.apache.iotdb.tsfile.read.common.type.BooleanType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import org.mockito.Mockito;
@@ -45,8 +48,8 @@ public class TestMatadata implements Metadata {
   private static final ColumnMetadata TAG3_CM = new ColumnMetadata(TAG3, BinaryType.TEXT);
   private static final ColumnMetadata ATTR1_CM = new ColumnMetadata(ATTR1, BinaryType.TEXT);
   private static final ColumnMetadata ATTR2_CM = new ColumnMetadata(ATTR2, BinaryType.TEXT);
-  private static final ColumnMetadata S1_CM = new ColumnMetadata(S1, INT32);
-  private static final ColumnMetadata S2_CM = new ColumnMetadata(S2, DoubleType.DOUBLE);
+  private static final ColumnMetadata S1_CM = new ColumnMetadata(S1, INT64);
+  private static final ColumnMetadata S2_CM = new ColumnMetadata(S2, INT64);
 
   public static final String DB2 = "db2";
   public static final String TABLE2 = "table2";
@@ -82,7 +85,7 @@ public class TestMatadata implements Metadata {
 
   @Override
   public Optional<TableHandle> getTableHandle(SessionInfo session, QualifiedObjectName name) {
-    return Optional.empty();
+    return Optional.of(Mockito.mock(TableHandle.class));
   }
 
   @Override
@@ -104,6 +107,27 @@ public class TestMatadata implements Metadata {
   public ResolvedFunction resolveOperator(
       OperatorType operatorType, List<? extends Type> argumentTypes)
       throws OperatorNotFoundException {
-    return null;
+    if (operatorType == OperatorType.LESS_THAN) {
+      return new ResolvedFunction(
+          new BoundSignature("less_than", BooleanType.BOOLEAN, Arrays.asList(INT64, INT32)),
+          new FunctionId("less_than"),
+          FunctionKind.SCALAR,
+          true);
+    } else if (operatorType == OperatorType.ADD) {
+      return new ResolvedFunction(
+          new BoundSignature("add", INT64, Arrays.asList(INT64, INT32)),
+          new FunctionId("add"),
+          FunctionKind.SCALAR,
+          true);
+    } else if (operatorType == OperatorType.EQUAL) {
+      return new ResolvedFunction(
+          new BoundSignature(
+              "equals", BooleanType.BOOLEAN, Arrays.asList(BinaryType.TEXT, BinaryType.TEXT)),
+          new FunctionId("equals"),
+          FunctionKind.SCALAR,
+          true);
+    } else {
+      throw new OperatorNotFoundException(operatorType, argumentTypes, new RuntimeException());
+    }
   }
 }

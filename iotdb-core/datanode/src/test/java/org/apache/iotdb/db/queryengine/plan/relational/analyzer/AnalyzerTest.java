@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
@@ -34,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
@@ -122,33 +126,11 @@ public class AnalyzerTest {
   }
 
   @Test
-  public void testSingleTableQuery() throws OperatorNotFoundException {
+  public void testSingleTableQuery() throws IoTDBException {
     String sql =
-        "SELECT tag1 as tt, tag2, attribute1 as attr1, s1+1, s2 FROM table1 "
-            + "WHERE time>1 AND tag1=\"A\" and tag3=\"B\" AND s1=1 OR s3=3 ORDER BY time DESC OFFSET 10 LIMIT 5";
+        "SELECT tag1 as tt, tag2, attr1, s1+1 FROM table1 "
+            + "WHERE time>1 AND tag1='A' OR s2>3 ORDER BY time DESC OFFSET 10 LIMIT 5";
     Metadata metadata = new TestMatadata();
-
-    //    ResolvedFunction lLessThanI =
-    //        new ResolvedFunction(
-    //            new BoundSignature("l<i", BOOLEAN, Arrays.asList(INT64, INT32)),
-    //            new FunctionId("l<i"),
-    //            FunctionKind.SCALAR,
-    //            true);
-    //
-    //    ResolvedFunction iAddi =
-    //        new ResolvedFunction(
-    //            new BoundSignature("l+i", INT64, Arrays.asList(INT32, INT32)),
-    //            new FunctionId("l+i"),
-    //            FunctionKind.SCALAR,
-    //            true);
-    //
-    //    Mockito.when(
-    //            metadata.resolveOperator(eq(OperatorType.LESS_THAN), eq(Arrays.asList(INT64,
-    // INT32))))
-    //        .thenReturn(lLessThanI);
-    //    Mockito.when(metadata.resolveOperator(eq(OperatorType.ADD), eq(Arrays.asList(INT32,
-    // INT32))))
-    //        .thenReturn(iAddi);
 
     Analysis actualAnalysis = analyzeSQL(sql, metadata);
     assertNotNull(actualAnalysis);
@@ -156,8 +138,12 @@ public class AnalyzerTest {
 
     QueryId queryId = new QueryId("tmp_query");
     MPPQueryContext context = new MPPQueryContext(queryId);
-    // LogicalPlanner logicalPlanner = new LogicalPlanner(context, metadata);
-
+    SessionInfo sessionInfo = new SessionInfo(1L, "iotdb", ZoneId.systemDefault());
+    WarningCollector warningCollector = WarningCollector.NOOP;
+    LogicalPlanner logicalPlanner =
+        new LogicalPlanner(context, metadata, sessionInfo, warningCollector);
+    LogicalQueryPlan result = logicalPlanner.plan(actualAnalysis);
+    System.out.println(result);
   }
 
   private Analysis analyzeSQL(String sql, Metadata metadata) {

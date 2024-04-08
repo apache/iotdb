@@ -202,9 +202,9 @@ class QueryPlanner {
   private static List<Symbol> computeOutputs(
       PlanBuilder builder, List<Expression> outputExpressions) {
     ImmutableList.Builder<Symbol> outputSymbols = ImmutableList.builder();
-    //        for (Expression expression : outputExpressions) {
-    //            // outputSymbols.add(builder.translate(expression));
-    //        }
+    for (Expression expression : outputExpressions) {
+      outputSymbols.add(new Symbol(expression.toString()));
+    }
     return outputSymbols.build();
   }
 
@@ -259,7 +259,7 @@ class QueryPlanner {
     ImmutableList.Builder<Symbol> orderBySymbols = ImmutableList.builder();
     Map<Symbol, SortOrder> orderings = new HashMap<>();
     for (Expression fieldOrExpression : orderByExpressions) {
-      Symbol symbol = null;
+      Symbol symbol = new Symbol(fieldOrExpression.toString());
       // subPlan.translate(fieldOrExpression);
 
       SortItem sortItem = sortItems.next();

@@ -36,7 +36,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.RelationalDistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
@@ -105,19 +107,17 @@ public class RelationalModelPlanner implements IPlanner {
 
   @Override
   public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
-    // TODO need implemented by Beyyes
     try {
-      new LogicalPlanner(context, metadata, null, warningCollector).plan((Analysis) analysis);
+      return new LogicalPlanner(context, metadata, null, warningCollector)
+          .plan((Analysis) analysis);
     } catch (IoTDBException e) {
       throw new RuntimeException(e);
     }
-    return null;
   }
 
   @Override
   public DistributedQueryPlan doDistributionPlan(IAnalysis analysis, LogicalQueryPlan logicalPlan) {
-    // TODO
-    return null;
+    return new RelationalDistributionPlanner((Analysis) analysis, logicalPlan).planFragments();
   }
 
   @Override
@@ -126,7 +126,19 @@ public class RelationalModelPlanner implements IPlanner {
       DistributedQueryPlan distributedPlan,
       MPPQueryContext context,
       QueryStateMachine stateMachine) {
-    return null;
+    IScheduler scheduler =
+        new ClusterScheduler(
+            context,
+            stateMachine,
+            distributedPlan.getInstances(),
+            context.getQueryType(),
+            executor,
+            writeOperationExecutor,
+            scheduledExecutor,
+            syncInternalServiceClientManager,
+            asyncInternalServiceClientManager);
+    scheduler.start();
+    return scheduler;
   }
 
   @Override

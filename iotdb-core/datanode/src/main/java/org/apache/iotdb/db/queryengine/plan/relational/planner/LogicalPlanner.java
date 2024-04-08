@@ -17,6 +17,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
@@ -35,16 +36,8 @@ import static java.util.Objects.requireNonNull;
 
 public class LogicalPlanner {
   private static final Logger LOG = Logger.get(LogicalPlanner.class);
-
-  public enum Stage {
-    CREATED,
-    OPTIMIZED,
-    OPTIMIZED_AND_VALIDATED
-  }
-
   private final MPPQueryContext context;
-
-  private final SessionInfo session;
+  private final SessionInfo sessionInfo;
   private final SymbolAllocator symbolAllocator = new SymbolAllocator();
   private final Metadata metadata;
   private final WarningCollector warningCollector;
@@ -52,19 +45,19 @@ public class LogicalPlanner {
   public LogicalPlanner(
       MPPQueryContext context,
       Metadata metadata,
-      SessionInfo session,
+      SessionInfo sessionInfo,
       WarningCollector warningCollector) {
     this.context = context;
     this.metadata = metadata;
-    this.session = requireNonNull(session, "session is null");
+    this.sessionInfo = requireNonNull(sessionInfo, "session is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
   }
 
-  public PlanNode plan(Analysis analysis) throws IoTDBException {
-    return planStatement(analysis, analysis.getStatement());
+  public LogicalQueryPlan plan(Analysis analysis) throws IoTDBException {
+    return new LogicalQueryPlan(context, planStatement(analysis, analysis.getStatement()));
   }
 
-  public PlanNode planStatement(Analysis analysis, Statement statement) throws IoTDBException {
+  private PlanNode planStatement(Analysis analysis, Statement statement) throws IoTDBException {
     return createOutputPlan(planStatementWithoutOutput(analysis, statement), analysis);
   }
 
@@ -109,6 +102,12 @@ public class LogicalPlanner {
 
   private RelationPlanner getRelationPlanner(Analysis analysis) {
     return new RelationPlanner(
-        analysis, symbolAllocator, context.getQueryId(), session, ImmutableMap.of());
+        analysis, symbolAllocator, context.getQueryId(), sessionInfo, ImmutableMap.of());
+  }
+
+  private enum Stage {
+    CREATED,
+    OPTIMIZED,
+    OPTIMIZED_AND_VALIDATED
   }
 }
