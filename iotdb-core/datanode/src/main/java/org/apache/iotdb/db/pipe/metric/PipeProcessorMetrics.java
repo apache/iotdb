@@ -42,7 +42,7 @@ public class PipeProcessorMetrics implements IMetricSet {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorMetrics.class);
 
-  private AbstractMetricService metricService;
+  private volatile AbstractMetricService metricService;
 
   private final Map<String, PipeProcessorSubtask> processorMap = new HashMap<>();
 
@@ -57,10 +57,9 @@ public class PipeProcessorMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     this.metricService = metricService;
-    synchronized (this) {
-      for (String taskID : processorMap.keySet()) {
-        createMetrics(taskID);
-      }
+    ImmutableSet<String> taskIDs = ImmutableSet.copyOf(processorMap.keySet());
+    for (String taskID : taskIDs) {
+      createMetrics(taskID);
     }
   }
 
@@ -232,30 +231,29 @@ public class PipeProcessorMetrics implements IMetricSet {
 
   public void register(@NonNull PipeProcessorSubtask pipeProcessorSubtask) {
     String taskID = pipeProcessorSubtask.getTaskID();
-    synchronized (this) {
-      processorMap.putIfAbsent(taskID, pipeProcessorSubtask);
-      if (Objects.nonNull(metricService)) {
-        createMetrics(taskID);
-      }
+    processorMap.putIfAbsent(taskID, pipeProcessorSubtask);
+    if (Objects.nonNull(metricService)) {
+      createMetrics(taskID);
     }
   }
 
   public void deregister(String taskID) {
-    synchronized (this) {
-      if (!processorMap.containsKey(taskID)) {
-        LOGGER.warn(
-            "Failed to deregister pipe processor metrics, PipeProcessorSubtask({}) does not exist",
-            taskID);
-        return;
-      }
-      if (Objects.nonNull(metricService)) {
-        removeMetrics(taskID);
-      }
-      processorMap.remove(taskID);
+    if (!processorMap.containsKey(taskID)) {
+      LOGGER.warn(
+          "Failed to deregister pipe processor metrics, PipeProcessorSubtask({}) does not exist",
+          taskID);
+      return;
     }
+    if (Objects.nonNull(metricService)) {
+      removeMetrics(taskID);
+    }
+    processorMap.remove(taskID);
   }
 
   public void markTabletEvent(String taskID) {
+    if (Objects.isNull(metricService)) {
+      return;
+    }
     Rate rate = tabletRateMap.get(taskID);
     if (rate == null) {
       LOGGER.warn(
@@ -267,6 +265,9 @@ public class PipeProcessorMetrics implements IMetricSet {
   }
 
   public void markTsFileEvent(String taskID) {
+    if (Objects.isNull(metricService)) {
+      return;
+    }
     Rate rate = tsFileRateMap.get(taskID);
     if (rate == null) {
       LOGGER.warn(
@@ -278,6 +279,9 @@ public class PipeProcessorMetrics implements IMetricSet {
   }
 
   public void markPipeHeartbeatEvent(String taskID) {
+    if (Objects.isNull(metricService)) {
+      return;
+    }
     Rate rate = pipeHeartbeatRateMap.get(taskID);
     if (rate == null) {
       LOGGER.warn(
