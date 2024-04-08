@@ -21,7 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.UseDBTask;
 import org.apache.iotdb.db.relational.sql.tree.AstVisitor;
 import org.apache.iotdb.db.relational.sql.tree.CreateDB;
@@ -51,22 +55,26 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   @Override
   protected IConfigTask visitCreateDB(CreateDB node, MPPQueryContext context) {
-    return super.visitCreateDB(node, context);
+    context.setQueryType(QueryType.WRITE);
+    return new CreateDBTask(node);
   }
 
   @Override
   protected IConfigTask visitUse(Use node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
     return new UseDBTask(node, clientSession);
   }
 
   @Override
   protected IConfigTask visitDropDB(DropDB node, MPPQueryContext context) {
-    return super.visitDropDB(node, context);
+    context.setQueryType(QueryType.WRITE);
+    return new DropDBTask(node);
   }
 
   @Override
   protected IConfigTask visitShowDB(ShowDB node, MPPQueryContext context) {
-    return super.visitShowDB(node, context);
+    context.setQueryType(QueryType.READ);
+    return new ShowDBTask(node);
   }
 
   @Override
