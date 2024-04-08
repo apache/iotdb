@@ -182,11 +182,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TYPE_ERROR,
               String.format("Unknown PipeRequestType %s.", rawRequestType));
-      LOGGER.warn("Unknown PipeRequestType, response status = {}.", status);
+      LOGGER.warn(
+          "Receiver id = {}: Unknown PipeRequestType, response status = {}.",
+          receiverId.get(),
+          status);
       return new TPipeTransferResp(status);
     } catch (IOException e) {
-      String error = String.format("Serialization error during pipe receiving, %s", e);
-      LOGGER.warn(error);
+      final String error = String.format("Serialization error during pipe receiving, %s", e);
+      LOGGER.warn("Receiver id = {}: {}", receiverId.get(), error, e);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
   }
@@ -312,11 +315,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         return result;
       } else {
         LOGGER.warn(
-            "Failure status encountered while executing statement {}: {}", statement, result);
+            "Receiver id = {}: Failure status encountered while executing statement {}: {}",
+            receiverId.get(),
+            statement,
+            result);
         return statement.accept(statusVisitor, result);
       }
     } catch (Exception e) {
-      LOGGER.warn("Exception encountered while executing statement {}: ", statement, e);
+      LOGGER.warn(
+          "Receiver id = {}: Exception encountered while executing statement {}: ",
+          receiverId.get(),
+          statement,
+          e);
       return statement.accept(exceptionVisitor, e);
     }
   }
