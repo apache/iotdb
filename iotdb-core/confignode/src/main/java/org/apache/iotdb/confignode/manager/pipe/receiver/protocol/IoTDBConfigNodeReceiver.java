@@ -88,12 +88,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
   private static final AtomicInteger QUERY_ID_GENERATOR = new AtomicInteger(0);
 
-  private final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
-
-  private static final PipeConfigPhysicalPlanTSStatusVisitor statusVisitor =
+  private static final PipeConfigPhysicalPlanTSStatusVisitor STATUS_VISITOR =
       new PipeConfigPhysicalPlanTSStatusVisitor();
-  private static final PipeConfigPhysicalPlanExceptionVisitor exceptionVisitor =
+  private static final PipeConfigPhysicalPlanExceptionVisitor EXCEPTION_VISITOR =
       new PipeConfigPhysicalPlanExceptionVisitor();
+
+  private final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
 
   @Override
   public TPipeTransferResp receive(final TPipeTransferReq req) {
@@ -135,13 +135,16 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TYPE_ERROR,
               String.format("Unsupported PipeRequestType on ConfigNode %s.", rawRequestType));
-      LOGGER.warn("Unsupported PipeRequestType on ConfigNode, response status = {}.", status);
+      LOGGER.warn(
+          "Receiver id = {}: Unsupported PipeRequestType on ConfigNode, response status = {}.",
+          receiverId.get(),
+          status);
       return new TPipeTransferResp(status);
     } catch (Exception e) {
       final String error =
           "Exception encountered while handling pipe transfer request. Root cause: "
               + e.getMessage();
-      LOGGER.warn(error, e);
+      LOGGER.warn("Receiver id = {}: {}", receiverId.get(), error, e);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
   }
@@ -167,12 +170,20 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     try {
       result = executePlan(plan);
       if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn("Failure status encountered while executing plan {}: {}", plan, result);
-        result = statusVisitor.process(plan, result);
+        LOGGER.warn(
+            "Receiver id = {}: Failure status encountered while executing plan {}: {}",
+            receiverId.get(),
+            plan,
+            result);
+        result = STATUS_VISITOR.process(plan, result);
       }
     } catch (Exception e) {
-      LOGGER.warn("Exception encountered while executing plan {}: ", plan, e);
-      result = exceptionVisitor.process(plan, e);
+      LOGGER.warn(
+          "Receiver id = {}: Exception encountered while executing plan {}: ",
+          receiverId.get(),
+          plan,
+          e);
+      result = EXCEPTION_VISITOR.process(plan, e);
     }
     return result;
   }
