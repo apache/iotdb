@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover;
 
-import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -269,7 +267,6 @@ public class CompactionRecoverTask {
                 + "Set allowCompaction to false",
             fullStorageGroupName,
             targetFileIdentifier.getFilePath());
-        CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
         return false;
       }
     }

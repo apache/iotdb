@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
-import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
@@ -324,7 +322,6 @@ public abstract class AbstractCompactionTask {
         e);
     tsFileManager.setAllowCompaction(false);
     LOGGER.error("stop compaction because of exception during recovering");
-    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
   }
 
   protected void insertFilesToTsFileManager(List<TsFileResource> tsFiles) throws IOException {
