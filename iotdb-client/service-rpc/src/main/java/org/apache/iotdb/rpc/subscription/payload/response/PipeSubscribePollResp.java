@@ -26,12 +26,15 @@ import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -39,8 +42,14 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
   private transient List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
 
+  private transient Map<String, String> topicNameToTsFileNameMap = new HashMap<>();
+
   public List<EnrichedTablets> getEnrichedTabletsList() {
     return enrichedTabletsList;
+  }
+
+  public Map<String, String> getTopicNameToTsFileNameMap() {
+    return topicNameToTsFileNameMap;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -50,32 +59,26 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
    * server.
    */
   public static PipeSubscribePollResp toTPipeSubscribeResp(
-      TSStatus status, List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsWithByteBufferList) {
+      TSStatus status,
+      List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsWithByteBufferList,
+      Map<String, String> topicNameToTsFileNameMap) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
     resp.enrichedTabletsList =
         enrichedTabletsWithByteBufferList.stream().map(Pair::getRight).collect(Collectors.toList());
+    resp.topicNameToTsFileNameMap = topicNameToTsFileNameMap;
 
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
-    resp.type = PipeSubscribeResponseType.POLL_TABLETS.getType();
+    resp.type = PipeSubscribeResponseType.ACK.getType();
     try {
-      resp.body = serializeEnrichedTabletsWithByteBufferList(enrichedTabletsWithByteBufferList);
+      resp.body = new ArrayList<>();
+      resp.body.add(serializeTopicNameToTsFileNameMap(topicNameToTsFileNameMap));
+      resp.body.addAll(
+          serializeEnrichedTabletsWithByteBufferList(enrichedTabletsWithByteBufferList));
     } catch (IOException e) {
       resp.status = RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, e.getMessage());
     }
-
-    return resp;
-  }
-
-  public static PipeSubscribePollResp directToTPipeSubscribeResp(
-      TSStatus status, List<ByteBuffer> byteBuffers) {
-    final PipeSubscribePollResp resp = new PipeSubscribePollResp();
-
-    resp.status = status;
-    resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
-    resp.type = PipeSubscribeResponseType.POLL_TABLETS.getType();
-    resp.body = byteBuffers;
 
     return resp;
   }
@@ -84,10 +87,16 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
   public static PipeSubscribePollResp fromTPipeSubscribeResp(TPipeSubscribeResp pollResp) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
+    boolean isFirst = true;
     if (Objects.nonNull(pollResp.body)) {
-      for (ByteBuffer byteBuffer : pollResp.body) {
+      for (final ByteBuffer byteBuffer : pollResp.body) {
         if (Objects.nonNull(byteBuffer) && byteBuffer.hasRemaining()) {
-          resp.enrichedTabletsList.add(EnrichedTablets.deserialize(byteBuffer));
+          if (isFirst) {
+            resp.topicNameToTsFileNameMap = deserializeTopicNameToTsFileNameMap(byteBuffer);
+            isFirst = false;
+          } else {
+            resp.enrichedTabletsList.add(EnrichedTablets.deserialize(byteBuffer));
+          }
         }
       }
     }
@@ -101,15 +110,6 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
   }
 
   /////////////////////////////// Utility ///////////////////////////////
-
-  public static List<ByteBuffer> serializeEnrichedTabletsList(
-      List<EnrichedTablets> enrichedTabletsList) throws IOException {
-    List<ByteBuffer> byteBufferList = new ArrayList<>();
-    for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
-      byteBufferList.add(serializeEnrichedTablets(enrichedTablets));
-    }
-    return byteBufferList;
-  }
 
   public static List<ByteBuffer> serializeEnrichedTabletsWithByteBufferList(
       List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsWithByteBufferList)
@@ -135,6 +135,31 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
     }
   }
 
+  public static ByteBuffer serializeTopicNameToTsFileNameMap(
+      Map<String, String> topicNameToTsFileNameMap) throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(topicNameToTsFileNameMap.size(), outputStream);
+      for (final Map.Entry<String, String> topicNameToTsFileName :
+          topicNameToTsFileNameMap.entrySet()) {
+        ReadWriteIOUtils.write(topicNameToTsFileName.getKey(), outputStream);
+        ReadWriteIOUtils.write(topicNameToTsFileName.getValue(), outputStream);
+      }
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+  }
+
+  public static Map<String, String> deserializeTopicNameToTsFileNameMap(ByteBuffer buffer) {
+    final Map<String, String> topicNameToTsFileNameMap = new HashMap<>();
+    final int size = ReadWriteIOUtils.readInt(buffer);
+    for (int i = 0; i < size; i++) {
+      final String topicName = ReadWriteIOUtils.readString(buffer);
+      final String tsFileName = ReadWriteIOUtils.readString(buffer);
+      topicNameToTsFileNameMap.put(topicName, tsFileName);
+    }
+    return topicNameToTsFileNameMap;
+  }
+
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
@@ -147,6 +172,7 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
     }
     PipeSubscribePollResp that = (PipeSubscribePollResp) obj;
     return Objects.equals(this.enrichedTabletsList, that.enrichedTabletsList)
+        && Objects.equals(this.topicNameToTsFileNameMap, that.topicNameToTsFileNameMap)
         && Objects.equals(this.status, that.status)
         && this.version == that.version
         && this.type == that.type
@@ -155,6 +181,6 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
   @Override
   public int hashCode() {
-    return Objects.hash(enrichedTabletsList, status, version, type, body);
+    return Objects.hash(enrichedTabletsList, topicNameToTsFileNameMap, status, version, type, body);
   }
 }

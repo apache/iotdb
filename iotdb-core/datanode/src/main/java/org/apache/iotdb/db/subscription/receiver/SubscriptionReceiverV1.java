@@ -45,6 +45,7 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollTsFileReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestType;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestVersion;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
@@ -67,6 +68,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -119,6 +121,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
               PipeSubscribeUnsubscribeReq.fromTPipeSubscribeReq(req));
         case POLL:
           return handlePipeSubscribePoll(PipeSubscribePollReq.fromTPipeSubscribeReq(req));
+        case POLL_TS_FILE:
+          return handlePipeSubscribePollTsFile(
+              PipeSubscribePollTsFileReq.fromTPipeSubscribeReq(req));
         case COMMIT:
           return handlePipeSubscribeCommit(PipeSubscribeCommitReq.fromTPipeSubscribeReq(req));
         case CLOSE:
@@ -350,9 +355,28 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .collect(Collectors.toList());
     TPipeSubscribeResp resp =
         PipeSubscribePollResp.toTPipeSubscribeResp(
-            RpcUtils.SUCCESS_STATUS, enrichedTabletsWithByteBufferList);
+            RpcUtils.SUCCESS_STATUS, enrichedTabletsWithByteBufferList, new HashMap<>());
     events.forEach(SerializedEnrichedEvent::resetByteBuffer);
     return resp;
+  }
+
+  private TPipeSubscribeResp handlePipeSubscribePollTsFile(PipeSubscribePollTsFileReq req) {
+    try {
+      return handlePipeSubscribePollTsFileInternal(req);
+    } catch (SubscriptionException e) {
+      final String exceptionMessage =
+          String.format(
+              "Subscription: something unexpected happened when polling tsfile: %s, req: %s",
+              e.getMessage(), req);
+      LOGGER.warn(exceptionMessage);
+      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, exceptionMessage));
+    }
+  }
+
+  // TODO
+  private TPipeSubscribeResp handlePipeSubscribePollTsFileInternal(PipeSubscribePollTsFileReq req) {
+    return null;
   }
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(PipeSubscribeCommitReq req) {

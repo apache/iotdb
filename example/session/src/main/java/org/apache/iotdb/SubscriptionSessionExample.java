@@ -63,7 +63,8 @@ public class SubscriptionSessionExample {
     session.executeNonQueryStatement("flush");
 
     // Create topic
-    try (final SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
+    try (final SubscriptionSession subscriptionSession =
+        new SubscriptionSession(LOCAL_HOST, 6667)) {
       subscriptionSession.open();
       subscriptionSession.createTopic("topic1");
       subscriptionSession.createTopic("topic2");
@@ -83,7 +84,8 @@ public class SubscriptionSessionExample {
         break;
       }
       for (final SubscriptionMessage message : messages) {
-        final SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
+        final SubscriptionSessionDataSets payload =
+            (SubscriptionSessionDataSets) message.getPayload();
         for (final SubscriptionSessionDataSet dataSet : payload) {
           System.out.println(dataSet.getColumnNames());
           System.out.println(dataSet.getColumnTypes());
@@ -96,7 +98,8 @@ public class SubscriptionSessionExample {
     }
 
     // Show topics and subscriptions
-    try (final SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
+    try (final SubscriptionSession subscriptionSession =
+        new SubscriptionSession(LOCAL_HOST, 6667)) {
       subscriptionSession.open();
       subscriptionSession.getTopics().forEach((System.out::println));
       subscriptionSession.getSubscriptions().forEach((System.out::println));
@@ -121,7 +124,8 @@ public class SubscriptionSessionExample {
           break;
         }
         for (final SubscriptionMessage message : messages) {
-          final SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
+          final SubscriptionSessionDataSets payload =
+              (SubscriptionSessionDataSets) message.getPayload();
           for (final SubscriptionSessionDataSet dataSet : payload) {
             System.out.println(dataSet.getColumnNames());
             System.out.println(dataSet.getColumnTypes());
