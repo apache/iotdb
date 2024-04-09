@@ -155,9 +155,8 @@ public class IoTDBConnection implements Connection {
     TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
     try {
       getClient().closeSession(req);
-    } catch (TException e) {
-      throw new SQLException(
-          "Error occurs when closing session at server. Maybe server is down.", e);
+    } catch (TException ignore) {
+
     } finally {
       isClosed = true;
       if (transport != null) {

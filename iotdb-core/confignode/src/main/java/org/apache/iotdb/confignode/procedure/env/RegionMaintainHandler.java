@@ -413,7 +413,10 @@ public class RegionMaintainHandler {
 
     // Remove the RegionGroupCache of the regionId
     configManager.getLoadManager().removeRegionGroupCache(regionId);
-
+    // force balance region leader to skip waiting for leader election
+    configManager.getLoadManager().forceBalanceRegionLeader();
+    // Wait for leader election
+    configManager.getLoadManager().waitForLeaderElection(Collections.singletonList(regionId));
     // Broadcast the latest RegionRouteMap when Region migration finished
     configManager.getLoadManager().broadcastLatestRegionRouteMap();
   }
@@ -434,7 +437,10 @@ public class RegionMaintainHandler {
 
     // Remove the RegionGroupCache of the regionId
     configManager.getLoadManager().removeRegionGroupCache(regionId);
-
+    // force balance region leader to skip waiting for leader election
+    configManager.getLoadManager().forceBalanceRegionLeader();
+    // Wait for leader election
+    configManager.getLoadManager().waitForLeaderElection(Collections.singletonList(regionId));
     // Broadcast the latest RegionRouteMap when Region migration finished
     configManager.getLoadManager().broadcastLatestRegionRouteMap();
   }

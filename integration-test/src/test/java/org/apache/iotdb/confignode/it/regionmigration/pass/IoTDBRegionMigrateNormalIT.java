@@ -22,14 +22,11 @@ package org.apache.iotdb.confignode.it.regionmigration.pass;
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class})
 public class IoTDBRegionMigrateNormalIT extends IoTDBRegionMigrateReliabilityITFramework {
   @Test
   public void normal1C2DTest() throws Exception {

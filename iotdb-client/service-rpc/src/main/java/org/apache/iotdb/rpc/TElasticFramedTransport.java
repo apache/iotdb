@@ -103,7 +103,11 @@ public class TElasticFramedTransport extends TTransport {
 
   @Override
   public void close() {
-    underlying.close();
+    try {
+      underlying.close();
+    } catch (Exception ignore) {
+
+    }
   }
 
   @Override
@@ -178,8 +182,7 @@ public class TElasticFramedTransport extends TTransport {
   @Override
   public int getBytesRemainingInBuffer() {
     // return -1 can make the caller protocol to copy binary data from the underlying transport.
-    if (copyBinary) return -1;
-    return readBuffer.getBytesRemainingInBuffer();
+    return copyBinary ? -1 : readBuffer.getBytesRemainingInBuffer();
   }
 
   @Override

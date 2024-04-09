@@ -176,7 +176,7 @@ public class IoTDBStatement implements Statement {
     warningChain = null;
   }
 
-  private void closeClientOperation() throws SQLException {
+  private void closeClientOperation() {
     try {
       if (stmtId != -1) {
         TSCloseOperationReq closeReq = new TSCloseOperationReq(sessionId);
@@ -185,8 +185,8 @@ public class IoTDBStatement implements Statement {
         RpcUtils.verifySuccess(closeResp);
         stmtId = -1;
       }
-    } catch (Exception e) {
-      throw new SQLException("Error occurs when closing statement.", e);
+    } catch (Exception ignore) {
+
     }
   }
 

@@ -286,7 +286,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         checkRegionFileClearIfNodeAlive(originalDataNode);
         checkRegionFileExistIfNodeAlive(destDataNode);
         checkPeersClearIfNodeAlive(allDataNodeId, originalDataNode, selectedRegion);
-        checkClusterStillWritable(statement);
+        checkClusterStillWritable();
       } else {
         checkRegionFileClearIfNodeAlive(destDataNode);
         checkRegionFileExistIfNodeAlive(originalDataNode);
@@ -619,8 +619,9 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     LOGGER.info("configuration file has been deleted: {}", expectDeletedFile.getPath());
   }
 
-  private void checkClusterStillWritable(Statement statement) {
-    try {
+  private void checkClusterStillWritable() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
       statement.execute(INSERTION2);
       ResultSet resultSet = statement.executeQuery(COUNT_TIMESERIES);
       resultSet.next();
