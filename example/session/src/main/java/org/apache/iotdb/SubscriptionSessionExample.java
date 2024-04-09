@@ -39,7 +39,7 @@ public class SubscriptionSessionExample {
 
   private static final String LOCAL_HOST = "127.0.0.1";
 
-  public static void main(String[] args) throws Exception {
+  public static void main(final String[] args) throws Exception {
     session =
         new Session.Builder()
             .host(LOCAL_HOST)
@@ -51,7 +51,7 @@ public class SubscriptionSessionExample {
     session.open(false);
 
     // Insert some historical data
-    long currentTime = System.currentTimeMillis();
+    final long currentTime = System.currentTimeMillis();
     for (int i = 0; i < 100; ++i) {
       session.executeNonQueryStatement(
           String.format("insert into root.db.d1(time, s1, s2) values (%s, 1, 2)", i));
@@ -63,28 +63,28 @@ public class SubscriptionSessionExample {
     session.executeNonQueryStatement("flush");
 
     // Create topic
-    try (SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
+    try (final SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
       subscriptionSession.open();
       subscriptionSession.createTopic("topic1");
       subscriptionSession.createTopic("topic2");
     }
 
     // Subscription: property-style ctor
-    Properties config = new Properties();
-    config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
-    config.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-    SubscriptionPullConsumer consumer1 = new SubscriptionPullConsumer(config);
+    final Properties properties = new Properties();
+    properties.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
+    properties.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
+    final SubscriptionPullConsumer consumer1 = new SubscriptionPullConsumer(properties);
     consumer1.open();
     consumer1.subscribe("topic1");
     while (true) {
       Thread.sleep(1000); // Wait for some time
-      List<SubscriptionMessage> messages = consumer1.poll(Duration.ofMillis(10000));
+      final List<SubscriptionMessage> messages = consumer1.poll(Duration.ofMillis(10000));
       if (messages.isEmpty()) {
         break;
       }
-      for (SubscriptionMessage message : messages) {
-        SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
-        for (SubscriptionSessionDataSet dataSet : payload) {
+      for (final SubscriptionMessage message : messages) {
+        final SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
+        for (final SubscriptionSessionDataSet dataSet : payload) {
           System.out.println(dataSet.getColumnNames());
           System.out.println(dataSet.getColumnTypes());
           while (dataSet.hasNext()) {
@@ -96,7 +96,7 @@ public class SubscriptionSessionExample {
     }
 
     // Show topics and subscriptions
-    try (SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
+    try (final SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
       subscriptionSession.open();
       subscriptionSession.getTopics().forEach((System.out::println));
       subscriptionSession.getSubscriptions().forEach((System.out::println));
@@ -106,7 +106,7 @@ public class SubscriptionSessionExample {
     consumer1.close();
 
     // Subscription: builder-style ctor
-    try (SubscriptionPullConsumer consumer2 =
+    try (final SubscriptionPullConsumer consumer2 =
         new SubscriptionPullConsumer.Builder()
             .consumerId("c2")
             .consumerGroupId("cg2")
@@ -116,13 +116,13 @@ public class SubscriptionSessionExample {
       consumer2.subscribe("topic2");
       while (true) {
         Thread.sleep(1000); // wait some time
-        List<SubscriptionMessage> messages = consumer2.poll(Duration.ofMillis(10000));
+        final List<SubscriptionMessage> messages = consumer2.poll(Duration.ofMillis(10000));
         if (messages.isEmpty()) {
           break;
         }
-        for (SubscriptionMessage message : messages) {
-          SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
-          for (SubscriptionSessionDataSet dataSet : payload) {
+        for (final SubscriptionMessage message : messages) {
+          final SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
+          for (final SubscriptionSessionDataSet dataSet : payload) {
             System.out.println(dataSet.getColumnNames());
             System.out.println(dataSet.getColumnTypes());
             while (dataSet.hasNext()) {
@@ -136,7 +136,7 @@ public class SubscriptionSessionExample {
     }
 
     // Query
-    SessionDataSet dataSet = session.executeQueryStatement("select ** from root.**");
+    final SessionDataSet dataSet = session.executeQueryStatement("select ** from root.**");
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
     }
