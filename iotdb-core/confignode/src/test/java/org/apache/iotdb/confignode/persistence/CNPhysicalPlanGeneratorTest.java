@@ -316,7 +316,7 @@ public class CNPhysicalPlanGeneratorTest {
       if (plan.getType() == ConfigPhysicalPlanType.CreateDatabase) {
         Assert.assertTrue(answerSet.contains(plan.hashCode()));
       } else if (plan.getType() == ConfigPhysicalPlanType.SetTTL) {
-        final String[] database = ((SetTTLPlan) plan).getDatabasePathPattern();
+        final String[] database = ((SetTTLPlan) plan).getPathPattern();
         final PartialPath databasePath = new PartialPath(database);
         Assert.assertTrue(answerSet.contains(plan.hashCode()));
         clusterSchemaInfo.setTTL((SetTTLPlan) plan);
