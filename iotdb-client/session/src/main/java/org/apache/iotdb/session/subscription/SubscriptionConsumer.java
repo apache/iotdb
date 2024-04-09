@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -59,6 +60,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final long HEARTBEAT_INTERVAL = 5000; // unit: ms
   private ScheduledExecutorService heartbeatWorkerExecutor;
+
+  private ExecutorService asyncCommitExecutor;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
@@ -139,7 +142,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
     try {
       // shutdown heartbeat worker
-      shutdownHeartbeatWorker();
+      shutdownWorkers();
 
       // close subscription provider
       for (SubscriptionProvider provider : subscriptionProviders.values()) {
@@ -204,9 +207,14 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         new ConsumerHeartbeatWorker(this), 0, HEARTBEAT_INTERVAL, TimeUnit.MILLISECONDS);
   }
 
-  private void shutdownHeartbeatWorker() {
+  private void shutdownWorkers() {
     heartbeatWorkerExecutor.shutdown();
     heartbeatWorkerExecutor = null;
+
+    if (asyncCommitExecutor != null) {
+      asyncCommitExecutor.shutdown();
+      asyncCommitExecutor = null;
+    }
   }
 
   boolean isClosed() {
@@ -241,6 +249,50 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         dataNodeIdToTopicNameToSubscriptionCommitIds.entrySet()) {
       commitSyncInternal(entry.getKey(), entry.getValue());
     }
+  }
+
+  protected void commitAsync(Iterable<SubscriptionMessage> messages) {
+    commitAsync(messages, new AsyncCommitCallback() {});
+  }
+
+  protected void commitAsync(Iterable<SubscriptionMessage> messages, AsyncCommitCallback callback) {
+
+    // Initiate executor if needed
+    if (asyncCommitExecutor == null) {
+      synchronized (this) {
+        if (asyncCommitExecutor != null) {
+          return;
+        }
+
+        asyncCommitExecutor =
+            Executors.newSingleThreadExecutor(
+                r -> {
+                  Thread t =
+                      new Thread(
+                          Thread.currentThread().getThreadGroup(),
+                          r,
+                          "SubscriptionConsumerAsyncCommitWorker",
+                          0);
+                  if (!t.isDaemon()) {
+                    t.setDaemon(true);
+                  }
+                  if (t.getPriority() != Thread.NORM_PRIORITY) {
+                    t.setPriority(Thread.NORM_PRIORITY);
+                  }
+                  return t;
+                });
+      }
+    }
+
+    asyncCommitExecutor.submit(
+        () -> {
+          try {
+            commitSync(messages);
+            callback.onComplete();
+          } catch (Exception e) {
+            callback.onFailure(e);
+          }
+        });
   }
 
   /////////////////////////////// utility ///////////////////////////////

@@ -163,6 +163,22 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     super.commitSync(messages);
   }
 
+  public void commitAsync(SubscriptionMessage message) {
+    super.commitAsync(Collections.singletonList(message));
+  }
+
+  public void commitAsync(Iterable<SubscriptionMessage> messages) {
+    super.commitAsync(messages);
+  }
+
+  public void commitAsync(SubscriptionMessage message, AsyncCommitCallback callback) {
+    super.commitAsync(Collections.singletonList(message), callback);
+  }
+
+  public void commitAsync(Iterable<SubscriptionMessage> messages, AsyncCommitCallback callback) {
+    super.commitAsync(messages, callback);
+  }
+
   /////////////////////////////// auto commit ///////////////////////////////
 
   @SuppressWarnings("unsafeThreadSchedule")
