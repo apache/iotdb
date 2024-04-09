@@ -118,12 +118,7 @@ public class FastCompactionPerformer
                 : new FastInnerCompactionWriter(targetFiles.get(0))) {
       readModification(seqFiles);
       readModification(unseqFiles);
-      int finishedDeviceNum = 0;
       while (deviceIterator.hasNextDevice()) {
-        if (finishedDeviceNum % 1 == 0) {
-          logger.info("Finished Device num is " + finishedDeviceNum);
-        }
-        finishedDeviceNum++;
         checkThreadInterrupted();
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;

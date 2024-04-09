@@ -26,7 +26,9 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
@@ -166,29 +168,27 @@ public abstract class AbstractCompactionTask {
   }
 
   public boolean tryOccupyResourcesForRunning() {
-    return true;
-    //    if (!isDiskSpaceCheckPassed()) {
-    //      return false;
-    //    }
-    //    boolean blockUntilCanExecute = false;
-    //    long estimatedMemoryCost = getEstimatedMemoryCost();
-    //    try {
-    //      //      SystemInfo.getInstance()
-    //      //          .addCompactionMemoryCost(
-    //      //              getCompactionTaskType(), estimatedMemoryCost, blockUntilCanExecute);
-    //      memoryAcquired = true;
-    //      SystemInfo.getInstance().addCompactionFileNum(getProcessedFileNum(),
-    // blockUntilCanExecute);
-    //      fileHandleAcquired = true;
-    //    } catch (CompactionFileCountExceededException ignored) {
-    //    } catch (InterruptedException e) {
-    //      Thread.currentThread().interrupt();
-    //    } finally {
-    //      if (!memoryAcquired || !fileHandleAcquired) {
-    //        releaseOccupiedResources();
-    //      }
-    //    }
-    //    return memoryAcquired && fileHandleAcquired;
+    if (!isDiskSpaceCheckPassed()) {
+      return false;
+    }
+    boolean blockUntilCanExecute = false;
+    long estimatedMemoryCost = getEstimatedMemoryCost();
+    try {
+      SystemInfo.getInstance()
+          .addCompactionMemoryCost(
+              getCompactionTaskType(), estimatedMemoryCost, blockUntilCanExecute);
+      memoryAcquired = true;
+      SystemInfo.getInstance().addCompactionFileNum(getProcessedFileNum(), blockUntilCanExecute);
+      fileHandleAcquired = true;
+    } catch (CompactionMemoryNotEnoughException | CompactionFileCountExceededException ignored) {
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    } finally {
+      if (!memoryAcquired || !fileHandleAcquired) {
+        releaseOccupiedResources();
+      }
+    }
+    return memoryAcquired && fileHandleAcquired;
   }
 
   public void releaseOccupiedResources() {
