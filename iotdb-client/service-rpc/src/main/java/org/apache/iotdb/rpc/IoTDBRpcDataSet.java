@@ -280,7 +280,7 @@ public class IoTDBRpcDataSet {
   }
 
   public boolean next() throws StatementExecutionException, IoTDBConnectionException {
-    if(hasCachedRecord){
+    if (hasCachedRecord) {
       return true;
     }
     if (hasCachedBlock()) {
