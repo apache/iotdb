@@ -28,9 +28,12 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
+import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
+import org.apache.iotdb.confignode.persistence.schema.mnode.impl.TableNodeStatus;
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -68,6 +71,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 
 // Since the ConfigMTree is all stored in memory, thus it is not restricted to manage MNode through
 // MTreeStore.
@@ -621,6 +625,57 @@ public class ConfigMTree {
 
   // endregion
 
+  // region table management
+
+  public synchronized void preCreateTable(PartialPath database, TsTable table)
+      throws MetadataException {
+    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (databaseNode.hasChild(table.getTableName())) {
+      throw new MetadataException("Table already exists");
+    }
+    ConfigTableNode tableNode =
+        (ConfigTableNode)
+            databaseNode.addChild(
+                table.getTableName(), new ConfigTableNode(databaseNode, table.getTableName()));
+    tableNode.setTable(table);
+    tableNode.setStatus(TableNodeStatus.PRE_CREATE);
+  }
+
+  public void rollbackCreateTable(PartialPath database, String tableName) throws MetadataException {
+    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    databaseNode.deleteChild(tableName);
+  }
+
+  public void commitCreateTable(PartialPath database, String tableName) throws MetadataException {
+    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new MetadataException("Table not exists");
+    }
+    ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    if (!tableNode.getStatus().equals(TableNodeStatus.PRE_CREATE)) {
+      throw new IllegalStateException();
+    }
+    tableNode.setStatus(TableNodeStatus.USING);
+  }
+
+  public TsTable getTable(PartialPath database, String tableName) throws MetadataException {
+    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    return ((ConfigTableNode) databaseNode.getChild(tableName)).getTable();
+  }
+
+  public List<TsTable> getAllTables(PartialPath database) throws MetadataException {
+    List<TsTable> result = new ArrayList<>();
+    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    for (IConfigMNode child : databaseNode.getChildren().values()) {
+      if (child instanceof ConfigTableNode) {
+        result.add(((ConfigTableNode) child).getTable());
+      }
+    }
+    return result;
+  }
+
+  // endregion
+
   // region Serialization and Deserialization
 
   public void serialize(OutputStream outputStream) throws IOException {
@@ -641,6 +696,8 @@ public class ConfigMTree {
     for (IConfigMNode child : node.getChildren().values()) {
       if (child.isDatabase()) {
         serializeDatabaseNode(child.getAsDatabaseMNode(), outputStream);
+      } else if (node instanceof ConfigTableNode) {
+        serializeTableNode((ConfigTableNode) node, outputStream);
       } else {
         serializeConfigBasicMNode(child, outputStream);
       }
@@ -658,6 +715,14 @@ public class ConfigMTree {
         storageGroupNode.getAsMNode().getDatabaseSchema(), outputStream);
   }
 
+  private void serializeTableNode(ConfigTableNode tableNode, OutputStream outputStream)
+      throws IOException {
+    ReadWriteIOUtils.write(TABLE_MNODE_TYPE, outputStream);
+    ReadWriteIOUtils.write(tableNode.getName(), outputStream);
+    tableNode.getTable().serialize(outputStream);
+    tableNode.getStatus().serialize(outputStream);
+  }
+
   public void deserialize(InputStream inputStream) throws IOException {
     byte type = ReadWriteIOUtils.readByte(inputStream);
 
@@ -666,6 +731,7 @@ public class ConfigMTree {
     Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
     IConfigMNode databaseMNode;
     IConfigMNode internalMNode;
+    IConfigMNode tableNode;
 
     if (type == STORAGE_GROUP_MNODE_TYPE) {
       databaseMNode = deserializeDatabaseMNode(inputStream);
@@ -702,6 +768,11 @@ public class ConfigMTree {
           stack.push(new Pair<>(databaseMNode, true));
           name = databaseMNode.getName();
           break;
+        case TABLE_MNODE_TYPE:
+          tableNode = deserializeTableMNode(inputStream).getAsMNode();
+          stack.push(new Pair<>(tableNode, false));
+          name = tableNode.getName();
+          break;
         default:
           logger.error("Unrecognized node type. Cannot deserialize MTreeAboveSG from given buffer");
           return;
@@ -725,6 +796,13 @@ public class ConfigMTree {
         .getAsMNode()
         .setDatabaseSchema(ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(inputStream));
     return databaseMNode.getAsMNode();
+  }
+
+  private IConfigMNode deserializeTableMNode(InputStream inputStream) throws IOException {
+    ConfigTableNode tableNode = new ConfigTableNode(null, ReadWriteIOUtils.readString(inputStream));
+    tableNode.setTable(TsTable.deserialize(inputStream));
+    tableNode.setStatus(TableNodeStatus.deserialize(inputStream));
+    return tableNode;
   }
 
   // endregion

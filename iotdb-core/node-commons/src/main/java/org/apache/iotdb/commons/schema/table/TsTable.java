@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -57,6 +58,10 @@ public class TsTable {
 
   public void addColumnSchema(ColumnSchema columnSchema) {
     columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
+  }
+
+  public int getColumnNum() {
+    return columnSchemaMap.size();
   }
 
   public List<ColumnSchema> getColumnList() {
@@ -95,6 +100,17 @@ public class TsTable {
       ColumnSchemaUtil.serialize(columnSchema, stream);
     }
     ReadWriteIOUtils.write(props, stream);
+  }
+
+  public static TsTable deserialize(InputStream inputStream) throws IOException {
+    String name = ReadWriteIOUtils.readString(inputStream);
+    TsTable table = new TsTable(name);
+    int columnNum = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < columnNum; i++) {
+      table.addColumnSchema(ColumnSchemaUtil.deserialize(inputStream));
+    }
+    table.props = ReadWriteIOUtils.readMap(inputStream);
+    return table;
   }
 
   @Override
