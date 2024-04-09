@@ -67,6 +67,8 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   /** Mark whether this procedure is called by a pipe forwarded request. */
   protected boolean isGeneratedByPipe;
 
+  private boolean isDeserialized = false;
+
   protected StateMachineProcedure() {
     this(false);
   }
@@ -191,6 +193,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
 
       LOG.trace("{}", this);
       stateFlow = executeFromState(env, state);
+      setDeserialized(false);
       if (!hasMoreState()) {
         setNextState(EOF_STATE);
       }
@@ -334,5 +337,18 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     } else {
       states = null;
     }
+    this.setDeserialized(true);
+  }
+
+  /**
+   * The isDeserialized of a newly created procedure is always false. When a leader switch or
+   * ConfigNode restart occurs during the execution of the procedure, isDeserialized becomes true.
+   */
+  public boolean isDeserialized() {
+    return isDeserialized;
+  }
+
+  private void setDeserialized(boolean isDeserialized) {
+    this.isDeserialized = isDeserialized;
   }
 }

@@ -363,8 +363,11 @@ public class RegionMaintainHandler {
   // TODO: will use 'procedure yield' to refactor later
   public TRegionMigrateResult waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
     long lastTimeConnectDataNode = System.currentTimeMillis();
-    while (configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId())
-        != NodeStatus.Unknown) {
+    // In some cases the DataNode is still working, but its status is unknown.
+    int unconditionallyRetry = 0;
+    while (unconditionallyRetry < 6
+        || configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId())
+            != NodeStatus.Unknown) {
       try (SyncDataNodeInternalServiceClient dataNodeClient =
           dataNodeClientManager.borrowClient(dataNodeLocation.getInternalEndPoint())) {
         TRegionMigrateResult report = dataNodeClient.getRegionMaintainResult(taskId);
@@ -381,6 +384,7 @@ public class RegionMaintainHandler {
           Thread.currentThread().interrupt();
         }
       }
+      unconditionallyRetry++;
     }
     LOGGER.warn(
         "{} task {} cannot contact to DataNode {}",
