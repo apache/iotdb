@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -204,7 +205,7 @@ public class SettleSelectorImpl implements ISettleSelector {
     Collection<Modification> modifications = modFile.getModifications();
     for (IDeviceID device : deviceTimeIndex.getDevices()) {
       // check expired device by ttl
-      long deviceTTL = DataNodeTTLCache.getInstance().getTTL(device.toString());
+      long deviceTTL = DataNodeTTLCache.getInstance().getTTL(((PlainDeviceID) device).toStringID());
       boolean hasSetTTL = deviceTTL != Long.MAX_VALUE;
       boolean isDeleted =
           !deviceTimeIndex.isDeviceAlive(device, deviceTTL)

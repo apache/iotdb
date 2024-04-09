@@ -44,6 +44,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -133,7 +134,9 @@ public class FastCompactionPerformer
             x ->
                 x.definitelyNotContains(device)
                     || !x.isDeviceAlive(
-                        device, DataNodeTTLCache.getInstance().getTTL(device.toString())));
+                        device,
+                        DataNodeTTLCache.getInstance()
+                            .getTTL(((PlainDeviceID) device).toStringID())));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
 
         if (sortedSourceFiles.isEmpty()) {

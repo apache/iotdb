@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
@@ -586,10 +587,11 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                     List<Modification> list =
                         new LinkedList<>(ModificationFile.getNormalMods(r).getModifications());
                     // add outdated device mods by ttl
-                    for (String device : r.getDevices()) {
+                    for (IDeviceID device : r.getDevices()) {
                       long timeLowerBound =
                           CommonDateTimeUtils.currentTime()
-                              - DataNodeTTLCache.getInstance().getTTL(device);
+                              - DataNodeTTLCache.getInstance()
+                                  .getTTL(((PlainDeviceID) device).toStringID());
                       if (r.getStartTime(device) < timeLowerBound) {
                         list.add(
                             new Deletion(
