@@ -36,6 +36,8 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.count;
@@ -405,6 +407,37 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
   }
 
   @Test
+  public void deleteTemplateTimeSeriesTest() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.db");
+      statement.execute("CREATE DEVICE TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
+      statement.execute("SET DEVICE TEMPLATE t1 to root.db");
+      statement.execute("CREATE TIMESERIES USING DEVICE TEMPLATE ON root.db.d1");
+      try {
+        statement.execute("DELETE TIMESERIES root.**");
+        Assert.fail();
+      } catch (SQLException e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    TSStatusCode.PATH_NOT_EXIST.getStatusCode()
+                        + ": Timeseries [root.**] does not exist or is represented by device template"));
+      }
+      try {
+        statement.execute("DELETE TIMESERIES root.db.**");
+        Assert.fail();
+      } catch (SQLException e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    TSStatusCode.PATH_NOT_EXIST.getStatusCode()
+                        + ": Timeseries [root.db.**] does not exist or is represented by device template"));
+      }
+    }
+  }
+
+  @Test
   public void deleteTimeSeriesAndReturnPathNotExistsTest() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -429,6 +462,7 @@ public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
       }
 
       int cnt = 0;
+
       try (ResultSet resultSet = statement.executeQuery("select count(s1) from root.*.d1")) {
         while (resultSet.next()) {
           StringBuilder ans = new StringBuilder(resultSet.getString(TIMESTAMP_STR));
