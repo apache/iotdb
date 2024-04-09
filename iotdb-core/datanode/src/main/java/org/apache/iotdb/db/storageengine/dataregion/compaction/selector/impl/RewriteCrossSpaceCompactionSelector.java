@@ -258,41 +258,47 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       List<TsFileResource> seqFiles,
       long memoryCost)
       throws IOException {
-    if (memoryCost == -1) {
-      // there is file been deleted during selection
-      return false;
-    }
-    TsFileNameGenerator.TsFileName unseqFileName =
-        TsFileNameGenerator.getTsFileName(unseqFile.getTsFile().getName());
-    // we add a hard limit for cross compaction that selected unseqFile should reach a certain size
-    // or be compacted in inner
-    // space at least once. This is used to make to improve the priority of inner compaction and
-    // avoid too much cross compaction with small files.
-    if (unseqFile.getTsFileSize() < config.getTargetCompactionFileSize()
-        && unseqFileName.getInnerCompactionCnt() < config.getMinCrossCompactionUnseqFileLevel()) {
-      return false;
-    }
-
-    long totalFileSize = unseqFile.getTsFileSize();
-    for (TsFileResource f : seqFiles) {
-      if (f.getTsFileSize() >= config.getTargetCompactionFileSize() * 1.5) {
-        // to avoid serious write amplification caused by cross space compaction, we restrict that
-        // seq files are no longer be compacted when the size reaches the threshold.
-        return false;
-      }
-      totalFileSize += f.getTsFileSize();
-    }
-
-    // currently, we must allow at least one unseqFile be selected to handle the situation that
-    // an unseqFile has huge time range but few data points.
-    // IMPORTANT: this logic is opposite to previous level control
-    if (taskResource.getUnseqFiles().isEmpty()) {
-      return true;
-    }
-
-    return taskResource.getTotalFileNums() + 1 + seqFiles.size() <= maxCrossCompactionFileNum
-        && taskResource.getTotalFileSize() + totalFileSize <= maxCrossCompactionFileSize
-        && memoryCost < memoryBudget;
+    return true;
+    //    if (memoryCost == -1) {
+    //      // there is file been deleted during selection
+    //      return false;
+    //    }
+    //    TsFileNameGenerator.TsFileName unseqFileName =
+    //        TsFileNameGenerator.getTsFileName(unseqFile.getTsFile().getName());
+    //    // we add a hard limit for cross compaction that selected unseqFile should reach a certain
+    // size
+    //    // or be compacted in inner
+    //    // space at least once. This is used to make to improve the priority of inner compaction
+    // and
+    //    // avoid too much cross compaction with small files.
+    //    if (unseqFile.getTsFileSize() < config.getTargetCompactionFileSize()
+    //        && unseqFileName.getInnerCompactionCnt() <
+    // config.getMinCrossCompactionUnseqFileLevel()) {
+    //      return false;
+    //    }
+    //
+    //    long totalFileSize = unseqFile.getTsFileSize();
+    //    for (TsFileResource f : seqFiles) {
+    //      if (f.getTsFileSize() >= config.getTargetCompactionFileSize() * 1.5) {
+    //        // to avoid serious write amplification caused by cross space compaction, we restrict
+    // that
+    //        // seq files are no longer be compacted when the size reaches the threshold.
+    //        return false;
+    //      }
+    //      totalFileSize += f.getTsFileSize();
+    //    }
+    //
+    //    // currently, we must allow at least one unseqFile be selected to handle the situation
+    // that
+    //    // an unseqFile has huge time range but few data points.
+    //    // IMPORTANT: this logic is opposite to previous level control
+    //    if (taskResource.getUnseqFiles().isEmpty()) {
+    //      return true;
+    //    }
+    //
+    //    return taskResource.getTotalFileNums() + 1 + seqFiles.size() <= maxCrossCompactionFileNum
+    //        && taskResource.getTotalFileSize() + totalFileSize <= maxCrossCompactionFileSize
+    //        && memoryCost < memoryBudget;
   }
 
   private boolean canSubmitCrossTask(

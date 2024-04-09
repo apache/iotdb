@@ -62,10 +62,10 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
       if (task == null) {
         continue;
       }
-      if (!checkTaskValid(task)) {
-        dropCompactionTask(task);
-        continue;
-      }
+      //      if (!checkTaskValid(task)) {
+      //        dropCompactionTask(task);
+      //        continue;
+      //      }
       if (!task.tryOccupyResourcesForRunning()) {
         queue.add(task);
         return null;

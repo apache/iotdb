@@ -88,11 +88,13 @@ public class ChunkReader extends AbstractChunkReader {
         }
       }
 
-      if (pageDeleted(pageHeader)) {
-        skipCurrentPage(pageHeader);
-      } else {
-        pageReaderList.add(constructPageReader(pageHeader));
-      }
+      pageReaderList.add(constructPageReader(pageHeader));
+
+      //      if (pageDeleted(pageHeader)) {
+      //        skipCurrentPage(pageHeader);
+      //      } else {
+      //        pageReaderList.add(constructPageReader(pageHeader));
+      //      }
     }
   }
 

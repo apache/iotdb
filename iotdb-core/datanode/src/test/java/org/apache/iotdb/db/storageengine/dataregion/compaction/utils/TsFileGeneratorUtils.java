@@ -290,18 +290,19 @@ public class TsFileGeneratorUtils {
   public static List<TSEncoding> createEncodingType(int num) {
     List<TSEncoding> encodings = new ArrayList<>();
     for (int i = 0; i < num; i++) {
-      int j = i % 6;
-      switch (j) {
-        case 0: // boolean
-          encodings.add(TSEncoding.RLE);
-          break;
-        case 5: // TEXT
-          encodings.add(TSEncoding.DICTIONARY);
-          break;
-        default:
-          encodings.add(TSEncoding.GORILLA);
-          break;
-      }
+      encodings.add(TSEncoding.PLAIN);
+      //      int j = i % 6;
+      //      switch (j) {
+      //        case 0: // boolean
+      //          encodings.add(TSEncoding.RLE);
+      //          break;
+      //        case 5: // TEXT
+      //          encodings.add(TSEncoding.DICTIONARY);
+      //          break;
+      //        default:
+      //          encodings.add(TSEncoding.GORILLA);
+      //          break;
+      //      }
     }
     return encodings;
   }
@@ -309,70 +310,72 @@ public class TsFileGeneratorUtils {
   public static List<CompressionType> createCompressionType(int num) {
     List<CompressionType> compressionTypes = new ArrayList<>();
     for (int i = 0; i < num; i++) {
-      // compressionTypes.add(CompressionType.LZ4);
-      switch (i % 6) {
-        case 0:
-          compressionTypes.add(CompressionType.UNCOMPRESSED);
-          break;
-        case 1:
-          compressionTypes.add(CompressionType.SNAPPY);
-          break;
-        case 2:
-          compressionTypes.add(CompressionType.GZIP);
-          break;
-        case 3:
-          compressionTypes.add(CompressionType.LZ4);
-          break;
-        default:
-          compressionTypes.add(CompressionType.ZSTD);
-          break;
-      }
+      compressionTypes.add(CompressionType.GZIP);
+      //      switch (i % 6) {
+      //        case 0:
+      //          compressionTypes.add(CompressionType.UNCOMPRESSED);
+      //          break;
+      //        case 1:
+      //          compressionTypes.add(CompressionType.SNAPPY);
+      //          break;
+      //        case 2:
+      //          compressionTypes.add(CompressionType.GZIP);
+      //          break;
+      //        case 3:
+      //          compressionTypes.add(CompressionType.LZ4);
+      //          break;
+      //        default:
+      //          compressionTypes.add(CompressionType.ZSTD);
+      //          break;
+      //      }
     }
     return compressionTypes;
   }
 
   public static TSDataType getDataType(int num) {
-    switch (num % 6) {
-      case 0:
-        return TSDataType.BOOLEAN;
-      case 1:
-        return TSDataType.INT32;
-      case 2:
-        return TSDataType.INT64;
-      case 3:
-        return TSDataType.FLOAT;
-      case 4:
-        return TSDataType.DOUBLE;
-      case 5:
-        return TSDataType.TEXT;
-      default:
-        throw new IllegalArgumentException("Invalid input: " + num % 6);
-    }
+    return TSDataType.INT64;
+    //    switch (num % 6) {
+    //      case 0:
+    //        return TSDataType.BOOLEAN;
+    //      case 1:
+    //        return TSDataType.INT32;
+    //      case 2:
+    //        return TSDataType.INT64;
+    //      case 3:
+    //        return TSDataType.FLOAT;
+    //      case 4:
+    //        return TSDataType.DOUBLE;
+    //      case 5:
+    //        return TSDataType.TEXT;
+    //      default:
+    //        throw new IllegalArgumentException("Invalid input: " + num % 6);
+    //    }
   }
 
   public static List<TSDataType> createDataType(int num) {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < num; i++) {
-      switch (i % 6) {
-        case 0:
-          dataTypes.add(TSDataType.BOOLEAN);
-          break;
-        case 1:
-          dataTypes.add(TSDataType.INT32);
-          break;
-        case 2:
-          dataTypes.add(TSDataType.INT64);
-          break;
-        case 3:
-          dataTypes.add(TSDataType.FLOAT);
-          break;
-        case 4:
-          dataTypes.add(TSDataType.DOUBLE);
-          break;
-        case 5:
-          dataTypes.add(TSDataType.TEXT);
-          break;
-      }
+      dataTypes.add(TSDataType.INT64);
+      //      switch (i % 6) {
+      //        case 0:
+      //          dataTypes.add(TSDataType.BOOLEAN);
+      //          break;
+      //        case 1:
+      //          dataTypes.add(TSDataType.INT32);
+      //          break;
+      //        case 2:
+      //          dataTypes.add(TSDataType.INT64);
+      //          break;
+      //        case 3:
+      //          dataTypes.add(TSDataType.FLOAT);
+      //          break;
+      //        case 4:
+      //          dataTypes.add(TSDataType.DOUBLE);
+      //          break;
+      //        case 5:
+      //          dataTypes.add(TSDataType.TEXT);
+      //          break;
+      //      }
     }
     return dataTypes;
   }

@@ -41,6 +41,7 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -55,61 +56,132 @@ import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFi
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.writeNonAlignedChunk;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
+@Ignore
 public class GenerateFileTest extends AbstractCompactionTest {
   String COMPACTION_TEST_SG = "root.test.g_0";
 
+  @Test
+  public void test01() {
+    StringBuilder sb = new StringBuilder("");
+    for (int d = 0; d < 5; d++) {
+      for (int m = 0; m < 80; m++) {
+        sb.append(
+                "CREATE TIMESERIES "
+                    + COMPACTION_TEST_SG
+                    + PATH_SEPARATOR
+                    + "d_"
+                    + d
+                    + PATH_SEPARATOR
+                    + "s_"
+                    + m)
+            .append(" WITH DATATYPE=INT64, ENCODING=PLAIN, COMPRESSION=GZIP;\n");
+      }
+    }
+    System.out.println(sb);
+  }
+
   // startTime = 1704038400000
   @Test
-  public void test() throws IOException, IllegalPathException {
+  public void test() throws IOException, IllegalPathException, InterruptedException {
     // IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(512);
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(10000);
-    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(5000);
+    //    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(10000);
+    //    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(5000);
     // TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
+    Thread thread00 =
+        new Thread(
+            new Runnable() {
+              @Override
+              public void run() {
+                try {
+                  testFile6();
+                } catch (IOException | IllegalPathException e) {
+                  throw new RuntimeException(e);
+                }
+              }
+            });
+    Thread thread0 =
+        new Thread(
+            new Runnable() {
+              @Override
+              public void run() {
+                try {
+                  testFile7();
+                } catch (IOException | IllegalPathException e) {
+                  throw new RuntimeException(e);
+                }
+              }
+            });
+    Thread thread1 =
+        new Thread(
+            new Runnable() {
+              @Override
+              public void run() {
+                try {
+                  testFile0();
+                } catch (IOException | IllegalPathException e) {
+                  throw new RuntimeException(e);
+                }
+              }
+            });
+    Thread thread2 =
+        new Thread(
+            new Runnable() {
+              @Override
+              public void run() {
+                try {
+                  testFile1();
+                } catch (IOException | IllegalPathException e) {
+                  throw new RuntimeException(e);
+                }
+              }
+            });
+    //    Thread thread3 =
+    //        new Thread(
+    //            new Runnable() {
+    //              @Override
+    //              public void run() {
+    //                try {
+    //                  testFile3();
+    //                } catch (IOException | IllegalPathException e) {
+    //                  throw new RuntimeException(e);
+    //                }
+    //              }
+    //            });
+    //    Thread thread4 =
+    //        new Thread(
+    //            new Runnable() {
+    //              @Override
+    //              public void run() {
+    //                try {
+    //                  testFile4();
+    //                } catch (IOException | IllegalPathException e) {
+    //                  throw new RuntimeException(e);
+    //                }
+    //              }
+    //            });
 
-    Thread thread0=new Thread(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          testFile0();
-        } catch (IOException | IllegalPathException e) {
-          throw new RuntimeException(e);
-        }
-      }
-    });
-    Thread thread1=new Thread(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          testFile1();
-        } catch (IOException | IllegalPathException e) {
-          throw new RuntimeException(e);
-        }
-      }
-    });
-    Thread thread2=new Thread(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          testFile2();
-        } catch (IOException | IllegalPathException e) {
-          throw new RuntimeException(e);
-        }
-      }
-    });
-
+    thread00.start();
+    Thread.sleep(500);
     thread0.start();
+    Thread.sleep(500);
     thread1.start();
+    Thread.sleep(500);
     thread2.start();
+    //    Thread.sleep(500);
+    //    thread3.start();
+    //    Thread.sleep(500);
+    //    thread4.start();
 
     try {
       // 等待第一个子线程完成
+      thread00.join();
       thread0.join();
 
       // 等待第二个子线程完成
       thread1.join();
-
-      // 等待第三个子线程完成
       thread2.join();
+      // 等待第三个子线程完成
+
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
@@ -118,15 +190,16 @@ public class GenerateFileTest extends AbstractCompactionTest {
     System.out.println("所有子线程已完成");
   }
 
-  private void testFile0() throws IOException, IllegalPathException {
+  private void testFile6() throws IOException, IllegalPathException {
     // seq file 1
-    int deviceNum = 2000;
-    int measurementNum = 50;
+    int deviceNum = 5;
+    int measurementNum = 80;
     TsFileResource resource = createEmptyFileAndResource(true);
+    System.out.println("File7 is " + resource.getTsFile().getAbsolutePath());
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
       // write the data in device
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
-        if (deviceIndex % 100 == 0) System.out.println("File0 :"+deviceIndex);
+        System.out.println("File7 :" + deviceIndex);
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
@@ -137,28 +210,23 @@ public class GenerateFileTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, false);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, false);
 
         List<IChunkWriter> iChunkWriters =
-                createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, false);
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, false);
 
         // write chunk
-        for (int i = 0; i < 3; i++) {
-          // write page
-          List<TimeRange> pages = new ArrayList<>();
-          pages.add(new TimeRange(i* 30000L,i* 30000L +4999));
-          pages.add(new TimeRange(i* 30000L+5000,i* 30000L +5000+4999));
+        List<TimeRange> pages = new ArrayList<>();
+        pages.add(new TimeRange(0, 249999L));
+        // pages.add(new TimeRange(i * 30000L + 15000, i * 30000L + 15000 + 4999));
 
-          for (IChunkWriter iChunkWriter : iChunkWriters) {
-            writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
-          }
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
         }
 
         tsFileIOWriter.endChunkGroup();
-        resource.updateStartTime(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 0L);
-        resource.updateEndTime(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 69999L);
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 0);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 249999L);
 
         // generateModsFile(timeseriesPath, resource, 500, 600);
       }
@@ -166,18 +234,18 @@ public class GenerateFileTest extends AbstractCompactionTest {
     }
     resource.serialize();
     seqResources.add(resource);
-
   }
 
-  private void testFile1() throws IOException, IllegalPathException {
+  private void testFile7() throws IOException, IllegalPathException {
     // seq file 1
-    int deviceNum = 2000;
-    int measurementNum = 50;
+    int deviceNum = 5;
+    int measurementNum = 80;
     TsFileResource resource = createEmptyFileAndResource(true);
+    System.out.println("File7 is " + resource.getTsFile().getAbsolutePath());
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
       // write the data in device
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
-        if (deviceIndex % 100 == 0) System.out.println("File1 :"+deviceIndex);
+        System.out.println("File7 :" + deviceIndex);
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
@@ -188,28 +256,23 @@ public class GenerateFileTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, false);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, false);
 
         List<IChunkWriter> iChunkWriters =
-                createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, false);
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, false);
 
         // write chunk
-        for (int i = 0; i < 3; i++) {
-          // write page
-          List<TimeRange> pages = new ArrayList<>();
-          pages.add(new TimeRange(10000+i* 30000L,10000+i* 30000L +4999));
-          pages.add(new TimeRange(10000+i* 30000L+5000,10000+i* 30000L +5000+4999));
+        List<TimeRange> pages = new ArrayList<>();
+        pages.add(new TimeRange(250000, 499999));
+        // pages.add(new TimeRange(i * 30000L + 15000, i * 30000L + 15000 + 4999));
 
-          for (IChunkWriter iChunkWriter : iChunkWriters) {
-            writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
-          }
+        for (IChunkWriter iChunkWriter : iChunkWriters) {
+          writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
         }
 
         tsFileIOWriter.endChunkGroup();
-        resource.updateStartTime(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 10000L);
-        resource.updateEndTime(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 79999L);
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 250000L);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 499999L);
 
         // generateModsFile(timeseriesPath, resource, 500, 600);
       }
@@ -217,7 +280,104 @@ public class GenerateFileTest extends AbstractCompactionTest {
     }
     resource.serialize();
     seqResources.add(resource);
+  }
 
+  // PageNoneOverlap
+  private void testFile0() throws IOException, IllegalPathException {
+    // seq file 1
+    int deviceNum = 5;
+    int measurementNum = 80;
+    TsFileResource resource = createEmptyFileAndResource(true);
+    System.out.println("File0 is " + resource.getTsFile().getAbsolutePath());
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        System.out.println("File0 :" + deviceIndex);
+        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, false);
+
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, false);
+
+        // write chunk
+        for (int i = 0; i < 50; i++) {
+          // write page
+          List<TimeRange> pages = new ArrayList<>();
+          pages.add(new TimeRange(i * 5000L, i * 5000L + 4999));
+
+          for (IChunkWriter iChunkWriter : iChunkWriters) {
+            writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+          }
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 0L);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 249999L);
+
+        // generateModsFile(timeseriesPath, resource, 500, 600);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    seqResources.add(resource);
+  }
+
+  // 50% pageOverlap
+  private void testFile1() throws IOException, IllegalPathException {
+    // seq file 1
+    int deviceNum = 5;
+    int measurementNum = 80;
+    TsFileResource resource = createEmptyFileAndResource(true);
+    System.out.println("File1 is " + resource.getTsFile().getAbsolutePath());
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        System.out.println("File1 :" + deviceIndex);
+        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, false);
+
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, false);
+
+        // write chunk
+        for (int i = 0; i < 50; i++) {
+          // write page
+          List<TimeRange> pages = new ArrayList<>();
+          pages.add(new TimeRange(i * 5000L + 250000, i * 5000L + 250000 + 4999));
+
+          for (IChunkWriter iChunkWriter : iChunkWriters) {
+            writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+          }
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 250000L);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 499999L);
+
+        // generateModsFile(timeseriesPath, resource, 500, 600);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    seqResources.add(resource);
   }
 
   private void testFile2() throws IOException, IllegalPathException {
@@ -225,10 +385,11 @@ public class GenerateFileTest extends AbstractCompactionTest {
     int deviceNum = 2000;
     int measurementNum = 50;
     TsFileResource resource = createEmptyFileAndResource(true);
+    System.out.println("File2 is " + resource.getTsFile().getAbsolutePath());
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
       // write the data in device
       for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
-        if (deviceIndex % 100 == 0) System.out.println("File2 :"+deviceIndex);
+        if (deviceIndex % 100 == 0) System.out.println("File2 :" + deviceIndex);
         tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex);
 
         List<TSDataType> dataTypes = createDataType(measurementNum);
@@ -239,17 +400,17 @@ public class GenerateFileTest extends AbstractCompactionTest {
           measurementIndexes.add(i);
         }
         List<PartialPath> timeseriesPath =
-                createTimeseries(deviceIndex, measurementIndexes, dataTypes, false);
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, false);
 
         List<IChunkWriter> iChunkWriters =
-                createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, false);
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, false);
 
         // write chunk
         for (int i = 0; i < 3; i++) {
           // write page
           List<TimeRange> pages = new ArrayList<>();
-          pages.add(new TimeRange(20000+i* 30000L,20000+i* 30000L +4999));
-          pages.add(new TimeRange(20000+i* 30000L+5000,20000+i* 30000L +5000+4999));
+          pages.add(new TimeRange(5000 + i * 30000L, 5000 + i * 30000L + 4999));
+          pages.add(new TimeRange(5000 + i * 30000L + 15000, 5000 + i * 30000L + 15000 + 4999));
 
           for (IChunkWriter iChunkWriter : iChunkWriters) {
             writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
@@ -257,10 +418,8 @@ public class GenerateFileTest extends AbstractCompactionTest {
         }
 
         tsFileIOWriter.endChunkGroup();
-        resource.updateStartTime(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 20000L);
-        resource.updateEndTime(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 89999L);
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 5000L);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 84999L);
 
         // generateModsFile(timeseriesPath, resource, 500, 600);
       }
@@ -268,8 +427,259 @@ public class GenerateFileTest extends AbstractCompactionTest {
     }
     resource.serialize();
     seqResources.add(resource);
-
   }
+
+  // 75% pageOverlap
+  private void testFile3() throws IOException, IllegalPathException {
+    // seq file 1
+    int deviceNum = 2000;
+    int measurementNum = 50;
+    TsFileResource resource = createEmptyFileAndResource(true);
+    System.out.println("File1 is " + resource.getTsFile().getAbsolutePath());
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        if (deviceIndex % 100 == 0) System.out.println("File1 :" + deviceIndex);
+        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, false);
+
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, false);
+
+        // write chunk
+        for (int i = 0; i < 3; i++) {
+          // write page
+          List<TimeRange> pages = new ArrayList<>();
+          pages.add(new TimeRange(1250 + i * 30000L, 1250 + i * 30000L + 4999));
+          pages.add(new TimeRange(1250 + i * 30000L + 15000, 1250 + i * 30000L + 15000 + 4999));
+
+          for (IChunkWriter iChunkWriter : iChunkWriters) {
+            writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+          }
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 1250L);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 81249L);
+
+        // generateModsFile(timeseriesPath, resource, 500, 600);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    seqResources.add(resource);
+  }
+
+  private void testFile4() throws IOException, IllegalPathException {
+    // seq file 1
+    int deviceNum = 2000;
+    int measurementNum = 50;
+    TsFileResource resource = createEmptyFileAndResource(true);
+    System.out.println("File2 is " + resource.getTsFile().getAbsolutePath());
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+      // write the data in device
+      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+        if (deviceIndex % 100 == 0) System.out.println("File2 :" + deviceIndex);
+        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex);
+
+        List<TSDataType> dataTypes = createDataType(measurementNum);
+        List<TSEncoding> encodings = createEncodingType(measurementNum);
+        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
+        List<Integer> measurementIndexes = new ArrayList<>();
+        for (int i = 0; i < measurementNum; i++) {
+          measurementIndexes.add(i);
+        }
+        List<PartialPath> timeseriesPath =
+            createTimeseries(deviceIndex, measurementIndexes, dataTypes, false);
+
+        List<IChunkWriter> iChunkWriters =
+            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, false);
+
+        // write chunk
+        for (int i = 0; i < 3; i++) {
+          // write page
+          List<TimeRange> pages = new ArrayList<>();
+          pages.add(new TimeRange(2500 + i * 30000L, 2500 + i * 30000L + 4999));
+          pages.add(new TimeRange(2500 + i * 30000L + 15000, 2500 + i * 30000L + 15000 + 4999));
+
+          for (IChunkWriter iChunkWriter : iChunkWriters) {
+            writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+          }
+        }
+
+        tsFileIOWriter.endChunkGroup();
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 2500L);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 82499L);
+
+        // generateModsFile(timeseriesPath, resource, 500, 600);
+      }
+      tsFileIOWriter.endFile();
+    }
+    resource.serialize();
+    seqResources.add(resource);
+  }
+
+  // ChunkNoneOverlap
+  //  private void testFile0() throws IOException, IllegalPathException {
+  //    // seq file 1
+  //    int deviceNum = 2000;
+  //    int measurementNum = 50;
+  //    TsFileResource resource = createEmptyFileAndResource(true);
+  //    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+  //      // write the data in device
+  //      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+  //        if (deviceIndex % 100 == 0) System.out.println("File0 :" + deviceIndex);
+  //        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" +
+  // deviceIndex);
+  //
+  //        List<TSDataType> dataTypes = createDataType(measurementNum);
+  //        List<TSEncoding> encodings = createEncodingType(measurementNum);
+  //        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
+  //        List<Integer> measurementIndexes = new ArrayList<>();
+  //        for (int i = 0; i < measurementNum; i++) {
+  //          measurementIndexes.add(i);
+  //        }
+  //        List<PartialPath> timeseriesPath =
+  //            createTimeseries(deviceIndex, measurementIndexes, dataTypes, false);
+  //
+  //        List<IChunkWriter> iChunkWriters =
+  //            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, false);
+  //
+  //        // write chunk
+  //        for (int i = 0; i < 3; i++) {
+  //          // write page
+  //          List<TimeRange> pages = new ArrayList<>();
+  //          pages.add(new TimeRange(i * 30000L, i * 30000L + 4999));
+  //          pages.add(new TimeRange(i * 30000L + 5000, i * 30000L + 5000 + 4999));
+  //
+  //          for (IChunkWriter iChunkWriter : iChunkWriters) {
+  //            writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+  //          }
+  //        }
+  //
+  //        tsFileIOWriter.endChunkGroup();
+  //        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex, 0L);
+  //        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex,
+  // 69999L);
+  //
+  //        // generateModsFile(timeseriesPath, resource, 500, 600);
+  //      }
+  //      tsFileIOWriter.endFile();
+  //    }
+  //    resource.serialize();
+  //    seqResources.add(resource);
+  //  }
+  //
+  //  private void testFile1() throws IOException, IllegalPathException {
+  //    // seq file 1
+  //    int deviceNum = 2000;
+  //    int measurementNum = 50;
+  //    TsFileResource resource = createEmptyFileAndResource(true);
+  //    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+  //      // write the data in device
+  //      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+  //        if (deviceIndex % 100 == 0) System.out.println("File1 :" + deviceIndex);
+  //        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" +
+  // deviceIndex);
+  //
+  //        List<TSDataType> dataTypes = createDataType(measurementNum);
+  //        List<TSEncoding> encodings = createEncodingType(measurementNum);
+  //        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
+  //        List<Integer> measurementIndexes = new ArrayList<>();
+  //        for (int i = 0; i < measurementNum; i++) {
+  //          measurementIndexes.add(i);
+  //        }
+  //        List<PartialPath> timeseriesPath =
+  //            createTimeseries(deviceIndex, measurementIndexes, dataTypes, false);
+  //
+  //        List<IChunkWriter> iChunkWriters =
+  //            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, false);
+  //
+  //        // write chunk
+  //        for (int i = 0; i < 3; i++) {
+  //          // write page
+  //          List<TimeRange> pages = new ArrayList<>();
+  //          pages.add(new TimeRange(10000 + i * 30000L, 10000 + i * 30000L + 4999));
+  //          pages.add(new TimeRange(10000 + i * 30000L + 5000, 10000 + i * 30000L + 5000 + 4999));
+  //
+  //          for (IChunkWriter iChunkWriter : iChunkWriters) {
+  //            writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+  //          }
+  //        }
+  //
+  //        tsFileIOWriter.endChunkGroup();
+  //        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex,
+  // 10000L);
+  //        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex,
+  // 79999L);
+  //
+  //        // generateModsFile(timeseriesPath, resource, 500, 600);
+  //      }
+  //      tsFileIOWriter.endFile();
+  //    }
+  //    resource.serialize();
+  //    seqResources.add(resource);
+  //  }
+  //
+  //  private void testFile2() throws IOException, IllegalPathException {
+  //    // seq file 1
+  //    int deviceNum = 2000;
+  //    int measurementNum = 50;
+  //    TsFileResource resource = createEmptyFileAndResource(true);
+  //    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(resource.getTsFile())) {
+  //      // write the data in device
+  //      for (int deviceIndex = 0; deviceIndex < deviceNum; deviceIndex++) {
+  //        if (deviceIndex % 100 == 0) System.out.println("File2 :" + deviceIndex);
+  //        tsFileIOWriter.startChunkGroup(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" +
+  // deviceIndex);
+  //
+  //        List<TSDataType> dataTypes = createDataType(measurementNum);
+  //        List<TSEncoding> encodings = createEncodingType(measurementNum);
+  //        List<CompressionType> compressionTypes = createCompressionType(measurementNum);
+  //        List<Integer> measurementIndexes = new ArrayList<>();
+  //        for (int i = 0; i < measurementNum; i++) {
+  //          measurementIndexes.add(i);
+  //        }
+  //        List<PartialPath> timeseriesPath =
+  //            createTimeseries(deviceIndex, measurementIndexes, dataTypes, false);
+  //
+  //        List<IChunkWriter> iChunkWriters =
+  //            createChunkWriter(timeseriesPath, dataTypes, encodings, compressionTypes, false);
+  //
+  //        // write chunk
+  //        for (int i = 0; i < 3; i++) {
+  //          // write page
+  //          List<TimeRange> pages = new ArrayList<>();
+  //          pages.add(new TimeRange(20000 + i * 30000L, 20000 + i * 30000L + 4999));
+  //          pages.add(new TimeRange(20000 + i * 30000L + 5000, 20000 + i * 30000L + 5000 + 4999));
+  //
+  //          for (IChunkWriter iChunkWriter : iChunkWriters) {
+  //            writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
+  //          }
+  //        }
+  //
+  //        tsFileIOWriter.endChunkGroup();
+  //        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex,
+  // 20000L);
+  //        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d_" + deviceIndex,
+  // 89999L);
+  //
+  //        // generateModsFile(timeseriesPath, resource, 500, 600);
+  //      }
+  //      tsFileIOWriter.endFile();
+  //    }
+  //    resource.serialize();
+  //    seqResources.add(resource);
+  //  }
 
   @Test
   public void test1() throws IOException, MetadataException, WriteProcessException {

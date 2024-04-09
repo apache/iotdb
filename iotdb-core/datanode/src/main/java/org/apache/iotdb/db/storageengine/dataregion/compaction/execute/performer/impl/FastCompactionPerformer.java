@@ -120,7 +120,7 @@ public class FastCompactionPerformer
       readModification(unseqFiles);
       int finishedDeviceNum = 0;
       while (deviceIterator.hasNextDevice()) {
-        if (finishedDeviceNum % 100 == 0) {
+        if (finishedDeviceNum % 1 == 0) {
           logger.info("Finished Device num is " + finishedDeviceNum);
         }
         finishedDeviceNum++;

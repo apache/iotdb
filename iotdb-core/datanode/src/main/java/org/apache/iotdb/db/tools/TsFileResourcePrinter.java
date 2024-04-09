@@ -82,6 +82,6 @@ public class TsFileResourcePrinter {
           resource.getEndTime(device),
           DateTimeUtils.convertLongToDate(resource.getEndTime(device)));
     }
-    System.out.println("Device num is "+resource.getDevices().size());
+    System.out.println("Device num is " + resource.getDevices().size());
   }
 }

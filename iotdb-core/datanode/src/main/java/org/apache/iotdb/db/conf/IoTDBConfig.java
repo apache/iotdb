@@ -506,7 +506,7 @@ public class IoTDBConfig {
   private int minCrossCompactionUnseqFileLevel = 1;
 
   /** The interval of compaction task schedulation in each virtual database. The unit is ms. */
-  private long compactionScheduleIntervalInMs = 60_000L;
+  private long compactionScheduleIntervalInMs = 3_000L;
 
   /** The interval of ttl check task in each database. The unit is ms. Default is 2 hours. */
   private long ttlCheckInterval = 7_200_000L;
