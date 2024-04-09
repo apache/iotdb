@@ -147,9 +147,10 @@ public class LoadTsfileAnalyzer {
       return analysis;
     }
 
+    final List<File> failedFileList = new ArrayList<>();
     // analyze tsfile metadata file by file
-    for (int i = 0, tsfileNum = loadTsFileStatement.getTsFiles().size(); i < tsfileNum; i++) {
-      final File tsFile = loadTsFileStatement.getTsFiles().get(i);
+    for (int i = 0, tsfileNum = loadTsFileStatement.getTsFileList().size(); i < tsfileNum; i++) {
+      final File tsFile = loadTsFileStatement.getTsFileList().get(i);
 
       if (tsFile.length() == 0) {
         if (LOGGER.isWarnEnabled()) {
@@ -173,16 +174,18 @@ public class LoadTsfileAnalyzer {
       } catch (IllegalArgumentException e) {
         LOGGER.warn(
             "Parse file {} to resource error, this TsFile maybe empty.", tsFile.getPath(), e);
-        throw new SemanticException(
-            String.format("TsFile %s is empty or incomplete.", tsFile.getPath()));
+        failedFileList.add(tsFile);
       } catch (AuthException e) {
         return createFailAnalysisForAuthException(e);
       } catch (Exception e) {
         LOGGER.warn("Parse file {} to resource error.", tsFile.getPath(), e);
-        throw new SemanticException(
-            String.format(
-                "Parse file %s to resource error, because %s", tsFile.getPath(), e.getMessage()));
+        failedFileList.add(tsFile);
       }
+    }
+
+    for (File failedFile : failedFileList) {
+      loadTsFileStatement.removeTsFileAndTsFileResource(failedFile);
+      LOGGER.warn("Load - Analysis Stage: Failed to analyze tsfile: {}", failedFile.getPath());
     }
 
     try {
@@ -248,7 +251,7 @@ public class LoadTsfileAnalyzer {
       TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
 
-      loadTsFileStatement.addTsFileResource(tsFileResource);
+      loadTsFileStatement.addTsFileResource(tsFile, tsFileResource);
       loadTsFileStatement.addWritePointCount(writePointCount);
     }
   }

@@ -149,7 +149,7 @@ public class LoadTsFileScheduler implements IScheduler {
     try {
       stateMachine.transitionToRunning();
       int tsFileNodeListSize = tsFileNodeList.size();
-      boolean isLoadSuccess = true;
+      List<LoadSingleTsFileNode> failedTsFileNodes = new ArrayList<>();
 
       for (int i = 0; i < tsFileNodeListSize; ++i) {
         LoadSingleTsFileNode node = tsFileNodeList.get(i);
@@ -189,7 +189,7 @@ public class LoadTsFileScheduler implements IScheduler {
                 i + 1,
                 tsFileNodeListSize);
           } else {
-            isLoadSuccess = false;
+            failedTsFileNodes.add(node);
             LOGGER.warn(
                 "Can not Load TsFile {}, load process [{}/{}]",
                 node.getTsFileResource().getTsFilePath(),
@@ -197,15 +197,25 @@ public class LoadTsFileScheduler implements IScheduler {
                 tsFileNodeListSize);
           }
         } catch (Exception e) {
-          isLoadSuccess = false;
-          stateMachine.transitionToFailed(e);
+          failedTsFileNodes.add(node);
           LOGGER.warn(
               "LoadTsFileScheduler loads TsFile {} error",
               node.getTsFileResource().getTsFilePath(),
               e);
         }
       }
-      if (isLoadSuccess) {
+
+      // if all TsFiles failed to load, transition to failed
+      if (failedTsFileNodes.size() == tsFileNodeListSize) {
+        stateMachine.transitionToFailed();
+        LOGGER.warn("All TsFiles failed to load.");
+      } else {
+        for (LoadSingleTsFileNode node : failedTsFileNodes) {
+          LOGGER.warn(
+              "Load - Dispatch Stage: TsFile {} failed to load.",
+              node.getTsFileResource().getTsFilePath());
+        }
+
         stateMachine.transitionToFinished();
       }
 

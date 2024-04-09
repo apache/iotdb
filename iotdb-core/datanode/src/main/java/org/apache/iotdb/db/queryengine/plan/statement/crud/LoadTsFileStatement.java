@@ -34,7 +34,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class LoadTsFileStatement extends Statement {
 
@@ -43,9 +45,7 @@ public class LoadTsFileStatement extends Statement {
   private boolean verifySchema;
   private boolean deleteAfterLoad;
   private boolean autoCreateDatabase;
-
-  private final List<File> tsFiles;
-  private final List<TsFileResource> resources;
+  private final Map<File, TsFileResource> tsFilesToResources;
   private final List<Long> writePointCountList;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
@@ -54,13 +54,13 @@ public class LoadTsFileStatement extends Statement {
     this.verifySchema = true;
     this.deleteAfterLoad = true;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
-    this.tsFiles = new ArrayList<>();
-    this.resources = new ArrayList<>();
+    this.tsFilesToResources = new LinkedHashMap<>();
     this.writePointCountList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
 
+    final List<File> tsFileList = new ArrayList<>();
     if (file.isFile()) {
-      tsFiles.add(file);
+      tsFileList.add(file);
     } else {
       if (file.listFiles() == null) {
         throw new FileNotFoundException(
@@ -68,33 +68,25 @@ public class LoadTsFileStatement extends Statement {
                 "Can not find %s on this machine, notice that load can only handle files on this machine.",
                 filePath));
       }
-      findAllTsFile(file);
+      findAllTsFile(file, tsFileList);
     }
-    sortTsFiles(tsFiles);
+    sortTsFiles(tsFileList);
+
+    for (File tsFile : tsFileList) {
+      tsFilesToResources.put(tsFile, null);
+    }
   }
 
-  protected LoadTsFileStatement() {
-    this.file = null;
-    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
-    this.verifySchema = true;
-    this.deleteAfterLoad = true;
-    this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
-    this.tsFiles = new ArrayList<>();
-    this.resources = new ArrayList<>();
-    this.writePointCountList = new ArrayList<>();
-    this.statementType = StatementType.MULTI_BATCH_INSERT;
-  }
-
-  private void findAllTsFile(File file) {
+  private void findAllTsFile(File file, List<File> tsFileList) {
     final File[] files = file.listFiles();
     if (files == null) {
       return;
     }
     for (File nowFile : files) {
       if (nowFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
-        tsFiles.add(nowFile);
+        tsFileList.add(nowFile);
       } else if (nowFile.isDirectory()) {
-        findAllTsFile(nowFile);
+        findAllTsFile(nowFile, tsFileList);
       }
     }
   }
@@ -144,16 +136,20 @@ public class LoadTsFileStatement extends Statement {
     return databaseLevel;
   }
 
-  public List<File> getTsFiles() {
-    return tsFiles;
+  public List<File> getTsFileList() {
+    return new ArrayList<>(tsFilesToResources.keySet());
   }
 
-  public void addTsFileResource(TsFileResource resource) {
-    resources.add(resource);
+  public void removeTsFileAndTsFileResource(File file) {
+    tsFilesToResources.remove(file);
+  }
+
+  public void addTsFileResource(File file, TsFileResource resource) {
+    tsFilesToResources.put(file, resource);
   }
 
   public List<TsFileResource> getResources() {
-    return resources;
+    return new ArrayList<>(tsFilesToResources.values());
   }
 
   public void addWritePointCount(long writePointCount) {
@@ -192,7 +188,7 @@ public class LoadTsFileStatement extends Statement {
         + ", verifySchema="
         + verifySchema
         + ", tsFiles Size="
-        + tsFiles.size()
+        + tsFilesToResources.size()
         + '}';
   }
 }
