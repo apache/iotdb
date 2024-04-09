@@ -19,25 +19,22 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.tsfile.utils.FilePathUtils.splitTsFilePath;
 
 public class TsFileID {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileID.class);
-
   public final int regionId;
   public final long timePartitionId;
-  public long fileVersion = -1;
+  public final long fileVersion;
   // high 32 bit is compaction level, low 32 bit is merge count
-  public long compactionVersion = -1;
+  public final long compactionVersion;
 
   public TsFileID() {
     this.regionId = -1;
     this.timePartitionId = -1;
+    this.fileVersion = -1;
+    this.compactionVersion = -1;
   }
 
   public TsFileID(int regionId, long timePartitionId, long fileVersion, long compactionVersion) {
@@ -67,13 +64,14 @@ public class TsFileID {
     this.regionId = tmpRegionId;
     this.timePartitionId = tmpTimePartitionId;
 
+    long[] arr = null;
     try {
-      final long[] arr = splitAndGetVersionArray(pathSegments[pathLength - 1]);
-      this.fileVersion = arr[0];
-      this.compactionVersion = arr[1];
+      arr = splitAndGetVersionArray(pathSegments[pathLength - 1]);
     } catch (NumberFormatException e) {
       // ignore, load will get in here
     }
+    this.fileVersion = arr == null || arr.length != 2 ? -1 : arr[0];
+    this.compactionVersion = arr == null || arr.length != 2 ? -1 : arr[1];
   }
 
   /**
