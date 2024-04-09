@@ -33,15 +33,13 @@ public class TsFileID {
 
   public final int regionId;
   public final long timePartitionId;
-  public final long fileVersion;
+  public long fileVersion = -1;
   // high 32 bit is compaction level, low 32 bit is merge count
-  public final long compactionVersion;
+  public long compactionVersion = -1;
 
   public TsFileID() {
     this.regionId = -1;
     this.timePartitionId = -1;
-    this.fileVersion = -1;
-    this.compactionVersion = -1;
   }
 
   public TsFileID(int regionId, long timePartitionId, long fileVersion, long compactionVersion) {
@@ -68,12 +66,16 @@ public class TsFileID {
         // ignore, load will get in here
       }
     }
-
     this.regionId = tmpRegionId;
     this.timePartitionId = tmpTimePartitionId;
-    long[] arr = splitAndGetVersionArray(pathSegments[pathLength - 1]);
-    this.fileVersion = arr[0];
-    this.compactionVersion = arr[1];
+
+    try {
+      final long[] arr = splitAndGetVersionArray(pathSegments[pathLength - 1]);
+      this.fileVersion = arr[0];
+      this.compactionVersion = arr[1];
+    } catch (NumberFormatException e) {
+      // ignore, load will get in here
+    }
   }
 
   /**
