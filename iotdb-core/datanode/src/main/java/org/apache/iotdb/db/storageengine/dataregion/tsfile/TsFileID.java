@@ -22,8 +22,6 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.tsfile.utils.FilePathUtils.splitTsFilePath;
 
@@ -84,9 +82,7 @@ public class TsFileID {
    *     cross-space compaction count
    */
   private static long[] splitAndGetVersionArray(String tsFileName) {
-    LOGGER.error(tsFileName);
     String[] names = tsFileName.split(FILE_NAME_SEPARATOR);
-    LOGGER.error(Arrays.toString(names));
     long[] versionArray = new long[2];
     if (names.length != 4) {
       // ignore,  load will get in here
