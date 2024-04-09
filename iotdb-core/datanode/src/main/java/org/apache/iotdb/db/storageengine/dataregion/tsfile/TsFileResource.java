@@ -169,6 +169,7 @@ public class TsFileResource {
 
   /** for sealed TsFile, call setClosed to close TsFileResource */
   public TsFileResource(File file) {
+    LOGGER.error(file.getAbsolutePath());
     this.file = file;
     this.tsFileID = new TsFileID(file.getAbsolutePath());
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();

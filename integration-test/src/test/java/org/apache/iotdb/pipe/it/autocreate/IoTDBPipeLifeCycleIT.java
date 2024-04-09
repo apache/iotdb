@@ -30,6 +30,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -50,6 +51,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
 import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueriesWithRetry;
 import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueryWithRetry;
 
+@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {

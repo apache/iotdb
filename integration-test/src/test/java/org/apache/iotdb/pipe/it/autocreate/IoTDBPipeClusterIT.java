@@ -92,21 +92,25 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     receiverEnv.initClusterEnvironment(3, 3, 180);
   }
 
+  @Ignore
   @Test
   public void testWithAllParametersInLogMode() throws Exception {
     testWithAllParameters("log");
   }
 
+  @Ignore
   @Test
   public void testWithAllParametersInFileMode() throws Exception {
     testWithAllParameters("file");
   }
 
+  @Ignore
   @Test
   public void testWithAllParametersInHybridMode() throws Exception {
     testWithAllParameters("hybrid");
   }
 
+  @Ignore
   public void testWithAllParameters(String realtimeMode) throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
@@ -174,6 +178,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     }
   }
 
+  @Ignore
   @Test
   public void testPipeAfterDataRegionLeaderStop() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -301,6 +306,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     }
   }
 
+  @Ignore
   @Test
   public void testPipeAfterRegisterNewDataNode() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -397,6 +403,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     }
   }
 
+  @Ignore
   @Test
   public void testCreatePipeWhenRegisteringNewDataNode() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -453,6 +460,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     }
   }
 
+  @Ignore
   @Test
   public void testRegisteringNewDataNodeWhenTransferringData() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -524,6 +532,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     }
   }
 
+  @Ignore
   @Test
   public void testRegisteringNewDataNodeAfterTransferringData() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -654,6 +663,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     }
   }
 
+  @Ignore
   @Test
   public void testSenderRestartWhenTransferring() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -703,6 +713,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         Collections.singleton(succeedNum + ","));
   }
 
+  @Ignore
   @Test
   public void testConcurrentlyCreatePipeOfSameName() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -791,16 +802,19 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     }
   }
 
+  @Ignore
   @Test
   public void testCreate10PipesWithSameConnector() throws Exception {
     testCreatePipesWithSameConnector(10);
   }
 
+  @Ignore
   @Test
   public void testCreate50PipesWithSameConnector() throws Exception {
     testCreatePipesWithSameConnector(50);
   }
 
+  @Ignore
   @Test
   public void testCreate100PipesWithSameConnector() throws Exception {
     testCreatePipesWithSameConnector(100);

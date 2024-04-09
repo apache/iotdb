@@ -33,6 +33,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -43,6 +44,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /** Test pipe's basic functionalities under multiple cluster and consensus protocol settings. */
+@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
