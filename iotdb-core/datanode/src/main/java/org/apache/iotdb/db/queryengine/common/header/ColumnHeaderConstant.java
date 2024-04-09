@@ -489,4 +489,11 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showCurrentTimestampColumnHeaders =
       ImmutableList.of(new ColumnHeader(CURRENT_TIMESTAMP, TSDataType.INT64));
+
+  public static final List<ColumnHeader> showDBColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64));
 }

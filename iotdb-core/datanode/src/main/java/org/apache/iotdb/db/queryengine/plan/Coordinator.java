@@ -36,7 +36,6 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.QueryIdGenerator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -267,7 +266,6 @@ public class Coordinator {
         || statement instanceof DescribeTable
         || statement instanceof ShowTables
         || statement instanceof DropTable) {
-      queryContext.setQueryType(QueryType.WRITE);
       return new ConfigExecution(
           queryContext,
           null,

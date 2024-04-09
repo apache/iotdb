@@ -142,6 +142,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegion
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
@@ -253,7 +254,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR_CHAR;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
@@ -2677,26 +2682,106 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showDatabases(ShowDB showDB) {
-    return null;
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Construct request using statement
+    List<String> databasePathPattern = Arrays.asList(ALL_RESULT_NODES);
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      TGetDatabaseReq req = new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize());
+      TShowDatabaseResp resp = client.showDatabase(req);
+      // build TSBlock
+      ShowDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future);
+    } catch (IOException | ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
   }
 
   @Override
   public SettableFuture<ConfigTaskResult> useDatabase(Use useDB, IClientSession clientSession) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    // TODO check whether the database exists
-    clientSession.setDatabaseName(useDB.getDatabase().getValue());
-    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    // Construct request using statement
+    List<String> databasePathPattern = Arrays.asList(ROOT, useDB.getDatabase().getValue());
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      TGetDatabaseReq req = new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize());
+      TShowDatabaseResp resp = client.showDatabase(req);
+      if (!resp.getDatabaseInfoMap().isEmpty()) {
+        clientSession.setDatabaseName(useDB.getDatabase().getValue());
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        future.setException(
+            new IoTDBException(
+                String.format("Database %s doesn't exists.", useDB.getDatabase().getValue()),
+                TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
+      }
+    } catch (IOException | ClientManagerException | TException e) {
+      future.setException(e);
+    }
     return future;
+  }
+
+  private String transformDBName(String dbName) {
+    return ROOT + PATH_SEPARATOR_CHAR + dbName;
   }
 
   @Override
   public SettableFuture<ConfigTaskResult> dropDatabase(DropDB dropDB) {
-    return null;
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TDeleteDatabasesReq req =
+        new TDeleteDatabasesReq(
+            Collections.singletonList(transformDBName(dropDB.getDbName().getValue())));
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus = client.deleteDatabases(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.warn(
+            "Failed to execute delete database {} in config node, status is {}.",
+            dropDB.getDbName().getValue(),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.getCode()));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
   }
 
   @Override
   public SettableFuture<ConfigTaskResult> createDatabase(CreateDB createDB) {
-    return null;
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Construct request using statement
+    TDatabaseSchema databaseSchema = new TDatabaseSchema();
+    databaseSchema.setName(ROOT + PATH_SEPARATOR_CHAR + createDB.getDbName());
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
+      // Get response or throw exception
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        // If database already exists when loading, we do not throw exceptions to avoid printing too
+        // many logs
+        if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
+            && createDB.isSetIfNotExists()) {
+          future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        } else {
+          LOGGER.warn(
+              "Failed to execute create database {} in config node, status is {}.",
+              createDB.getDbName(),
+              tsStatus);
+          future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+        }
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
   }
 
   @Override

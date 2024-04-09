@@ -117,8 +117,8 @@ class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       plan = new RelationPlan(root, scope, outputSymbols);
     }
 
-    plan = addRowFilters(node, plan);
-    // TODO what's the meaning of addColumnMasks?
+    // TODO what's the meaning of RowFilters addColumnMasks?
+    // plan = addRowFilters(node, plan);
     // plan = addColumnMasks(node, plan);
 
     return plan;

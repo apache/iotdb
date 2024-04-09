@@ -30,9 +30,12 @@ import static java.util.Objects.requireNonNull;
  * the outputs of the plan.
  */
 class RelationPlan {
+
   private final PlanNode root;
-  private final List<Symbol>
-      fieldMappings; // for each field in the relation, the corresponding symbol from "root"
+
+  // for each field in the relation, the corresponding symbol from "root"
+  private final List<Symbol> fieldMappings;
+
   private final Scope scope;
 
   public RelationPlan(PlanNode root, Scope scope, List<Symbol> fieldMappings) {
