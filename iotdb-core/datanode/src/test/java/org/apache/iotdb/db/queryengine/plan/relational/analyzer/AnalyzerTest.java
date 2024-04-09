@@ -22,16 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -51,6 +47,7 @@ import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 import static org.apache.iotdb.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.iotdb.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.iotdb.tsfile.read.common.type.IntType.INT32;
 import static org.apache.iotdb.tsfile.read.common.type.LongType.INT64;
 import static org.junit.Assert.assertNotNull;
@@ -96,25 +93,35 @@ public class AnalyzerTest {
     Mockito.when(metadata.getTableSchema(Mockito.any(), eq(tableHandle))).thenReturn(tableSchema);
     Mockito.when(metadata.getColumnHandles(Mockito.any(), eq(tableHandle))).thenReturn(map);
 
-    ResolvedFunction lLessThanI =
-        new ResolvedFunction(
-            new BoundSignature("l<i", BOOLEAN, Arrays.asList(INT64, INT32)),
-            new FunctionId("l<i"),
-            FunctionKind.SCALAR,
-            true);
-
-    ResolvedFunction iAddi =
-        new ResolvedFunction(
-            new BoundSignature("l+i", INT64, Arrays.asList(INT32, INT32)),
-            new FunctionId("l+i"),
-            FunctionKind.SCALAR,
-            true);
+    //    ResolvedFunction lLessThanI =
+    //        new ResolvedFunction(
+    //            new BoundSignature("l<i", BOOLEAN, Arrays.asList(INT64, INT32)),
+    //            new FunctionId("l<i"),
+    //            FunctionKind.SCALAR,
+    //            true);
+    //
+    //    ResolvedFunction iAddi =
+    //        new ResolvedFunction(
+    //            new BoundSignature("l+i", INT64, Arrays.asList(INT32, INT32)),
+    //            new FunctionId("l+i"),
+    //            FunctionKind.SCALAR,
+    //            true);
+    //
+    //    Mockito.when(
+    //            metadata.resolveOperator(eq(OperatorType.LESS_THAN), eq(Arrays.asList(INT64,
+    // INT32))))
+    //        .thenReturn(lLessThanI);
+    //    Mockito.when(metadata.resolveOperator(eq(OperatorType.ADD), eq(Arrays.asList(INT32,
+    // INT32))))
+    //        .thenReturn(iAddi);
 
     Mockito.when(
-            metadata.resolveOperator(eq(OperatorType.LESS_THAN), eq(Arrays.asList(INT64, INT32))))
-        .thenReturn(lLessThanI);
-    Mockito.when(metadata.resolveOperator(eq(OperatorType.ADD), eq(Arrays.asList(INT32, INT32))))
-        .thenReturn(iAddi);
+            metadata.getOperatorReturnType(
+                eq(OperatorType.LESS_THAN), eq(Arrays.asList(INT64, INT32))))
+        .thenReturn(BOOLEAN);
+    Mockito.when(
+            metadata.getOperatorReturnType(eq(OperatorType.ADD), eq(Arrays.asList(INT32, INT32))))
+        .thenReturn(DOUBLE);
 
     Analysis actualAnalysis = analyzeSQL(sql, metadata);
     assertNotNull(actualAnalysis);
