@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 
 public class CompactionScheduleSummary {
   private int submitSeqInnerSpaceCompactionTaskNum = 0;
@@ -27,6 +29,12 @@ public class CompactionScheduleSummary {
   private int submitCrossSpaceCompactionTaskNum = 0;
   private int submitInsertionCrossSpaceCompactionTaskNum = 0;
   private int submitSettleCompactionTaskNum = 0;
+
+  // region TTL info
+  private int allDeletedFileNum = 0;
+
+  private int partialDeletedFileNum = 0;
+  // end region
 
   public void incrementSubmitTaskNum(CompactionTaskType taskType, int num) {
     switch (taskType) {
@@ -44,6 +52,26 @@ public class CompactionScheduleSummary {
         break;
       case SETTLE:
         submitSettleCompactionTaskNum += num;
+        break;
+      default:
+        break;
+    }
+  }
+
+  public void updateTTLInfo(AbstractCompactionTask task) {
+    switch (task.getCompactionTaskType()) {
+      case INNER_SEQ:
+        submitSeqInnerSpaceCompactionTaskNum += 1;
+        partialDeletedFileNum += task.getProcessedFileNum();
+        break;
+      case INNER_UNSEQ:
+        submitUnseqInnerSpaceCompactionTaskNum += 1;
+        partialDeletedFileNum += task.getProcessedFileNum();
+        break;
+      case SETTLE:
+        submitSettleCompactionTaskNum += 1;
+        partialDeletedFileNum += ((SettleCompactionTask) task).getPartialDeletedFiles().size();
+        allDeletedFileNum += ((SettleCompactionTask) task).getAllDeletedFiles().size();
         break;
       default:
         break;
@@ -77,5 +105,13 @@ public class CompactionScheduleSummary {
             + submitUnseqInnerSpaceCompactionTaskNum
             + submitSettleCompactionTaskNum
         > 0;
+  }
+
+  public int getAllDeletedFileNum() {
+    return allDeletedFileNum;
+  }
+
+  public int getPartialDeletedFileNum() {
+    return partialDeletedFileNum;
   }
 }

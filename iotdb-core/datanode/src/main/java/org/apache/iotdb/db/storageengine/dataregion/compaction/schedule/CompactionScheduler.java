@@ -29,7 +29,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Abst
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
@@ -330,23 +329,13 @@ public class CompactionScheduler {
             CompactionTaskType.SETTLE, System.currentTimeMillis() - startTime);
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
-    int trySubmitSeqInnerCount = 0;
-    int trySubmitUnseqInnerCount = 0;
-    int trySubmitSettleCount = 0;
+    int trySubmitCount = 0;
     for (AbstractCompactionTask task : taskList) {
       if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
-        if (task instanceof SettleCompactionTask) {
-          trySubmitSettleCount++;
-        } else if (((InnerSpaceCompactionTask) task).isSequence()) {
-          trySubmitSeqInnerCount++;
-        } else {
-          trySubmitUnseqInnerCount++;
-        }
+        summary.updateTTLInfo(task);
+        trySubmitCount++;
       }
     }
-    summary.incrementSubmitTaskNum(CompactionTaskType.SETTLE, trySubmitSettleCount);
-    summary.incrementSubmitTaskNum(CompactionTaskType.INNER_SEQ, trySubmitSeqInnerCount);
-    summary.incrementSubmitTaskNum(CompactionTaskType.INNER_UNSEQ, trySubmitUnseqInnerCount);
-    return trySubmitSettleCount + trySubmitSeqInnerCount + trySubmitUnseqInnerCount;
+    return trySubmitCount;
   }
 }

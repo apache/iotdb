@@ -519,6 +519,9 @@ public class IoTDBConfig {
   /** The interval of ttl check task in each database. The unit is ms. Default is 2 hours. */
   private long ttlCheckInterval = 7_200_000L;
 
+  /** The number of threads to be set up to check ttl. */
+  private int ttlCheckerNum = 1;
+
   /**
    * The max expired time of device set with ttl. If the expired time exceeds this value, then
    * expired data will be cleaned by compaction. The unit is ms. Default is 1 month.
@@ -2822,8 +2825,12 @@ public class IoTDBConfig {
     this.compactionScheduleIntervalInMs = compactionScheduleIntervalInMs;
   }
 
-  public long getTtlCheckInterval() {
+  public long getTTlCheckInterval() {
     return ttlCheckInterval;
+  }
+
+  public int getTTlCheckerNum() {
+    return ttlCheckerNum;
   }
 
   public void setTtlCheckInterval(long ttlCheckInterval) {

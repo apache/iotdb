@@ -280,10 +280,6 @@ public class DataRegion implements IDataRegionForQuery {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
-  private long ttlCheckInterval = 1;
-
-  private long scheduleCount = 0;
-
   /**
    * Construct a database processor.
    *
@@ -298,8 +294,6 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = dataRegionId;
     this.databaseName = databaseName;
     this.fileFlushPolicy = fileFlushPolicy;
-    ttlCheckInterval = config.getTtlCheckInterval() / config.getCompactionScheduleIntervalInMs();
-    ttlCheckInterval = ttlCheckInterval > 0 ? ttlCheckInterval : 1;
 
     storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
     this.tsFileManager =
@@ -2356,18 +2350,11 @@ public class DataRegion implements IDataRegionForQuery {
 
       CompactionScheduleSummary summary = new CompactionScheduleSummary();
 
-      // schedule settle compaction for ttl check
-      if (scheduleCount % ttlCheckInterval == 0) {
-        trySubmitCount += executeTTLCheck(timePartitions, summary);
-      }
-
       // schedule insert compaction
-      if (trySubmitCount == 0) {
-        trySubmitCount += executeInsertionCompaction(timePartitions);
-        summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
-      }
+      trySubmitCount += executeInsertionCompaction(timePartitions);
+      summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
 
-      // schedule inner and cross compaction
+      // schedule the other compactions
       if (trySubmitCount == 0) {
         // the name of this variable is trySubmitCount, because the task submitted to the queue
         // could be evicted due to the low priority of the task
@@ -2390,24 +2377,49 @@ public class DataRegion implements IDataRegionForQuery {
       logger.error("Meet error in compaction schedule.", e);
     } finally {
       isCompactionSelecting.set(false);
-      scheduleCount++;
     }
     return trySubmitCount;
   }
 
-  protected int executeTTLCheck(List<Long> timePartitions, CompactionScheduleSummary summary)
-      throws InterruptedException {
+  /** Schedule settle compaction for ttl check. */
+  public int executeTTLCheck() throws InterruptedException {
+    while (!isCompactionSelecting.compareAndSet(false, true)) {
+      // wait until success
+      Thread.sleep(500);
+    }
+    logger.info("[TTL] {}-{} Start ttl checking.", databaseName, dataRegionId);
     int trySubmitCount = 0;
+    try {
+      CompactionScheduleSummary summary = new CompactionScheduleSummary();
+      List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
+      // Sort the time partition from smallest to largest
+      Collections.sort(timePartitions);
 
-    for (long timePartition : timePartitions) {
-      CompactionScheduler.sharedLockCompactionSelection();
-      try {
-        trySubmitCount +=
-            CompactionScheduler.tryToSubmitSettleCompactionTask(
-                tsFileManager, timePartition, summary, true);
-      } finally {
-        CompactionScheduler.sharedUnlockCompactionSelection();
+      for (long timePartition : timePartitions) {
+        CompactionScheduler.sharedLockCompactionSelection();
+        try {
+          trySubmitCount +=
+              CompactionScheduler.tryToSubmitSettleCompactionTask(
+                  tsFileManager, timePartition, summary, true);
+        } finally {
+          CompactionScheduler.sharedUnlockCompactionSelection();
+        }
       }
+      if (summary.hasSubmitTask()) {
+        CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(summary);
+      }
+      logger.info(
+          "[TTL] {}-{} Totally select {} all-outdated files and {} partial-outdated files.",
+          databaseName,
+          dataRegionId,
+          summary.getAllDeletedFileNum(),
+          summary.getPartialDeletedFileNum());
+    } catch (InterruptedException e) {
+      throw e;
+    } catch (Throwable e) {
+      logger.error("Meet error in ttl check.", e);
+    } finally {
+      isCompactionSelecting.set(false);
     }
     return trySubmitCount;
   }
@@ -2434,7 +2446,7 @@ public class DataRegion implements IDataRegionForQuery {
     } catch (InterruptedException e) {
       throw e;
     } catch (Throwable e) {
-      logger.error("Meet error in compaction schedule.", e);
+      logger.error("Meet error in insertion compaction schedule.", e);
     } finally {
       CompactionScheduler.sharedUnlockCompactionSelection();
     }

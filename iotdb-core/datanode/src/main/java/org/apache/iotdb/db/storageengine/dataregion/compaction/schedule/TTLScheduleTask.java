@@ -28,51 +28,44 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-public class CompactionScheduleTaskWorker implements Callable<Void> {
-
+public class TTLScheduleTask implements Callable<Void> {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final List<DataRegion> dataRegionList;
   private final int workerId;
   private final int workerNum;
 
-  public CompactionScheduleTaskWorker(
-      List<DataRegion> dataRegionList, int workerId, int workerNum) {
+  private final long ttlCheckInterval =
+      IoTDBDescriptor.getInstance().getConfig().getTTlCheckInterval();
+
+  public TTLScheduleTask(List<DataRegion> dataRegionList, int workerId, int workerNum) {
     this.dataRegionList = dataRegionList;
     this.workerId = workerId;
     this.workerNum = workerNum;
   }
 
   @Override
-  public Void call() {
+  public Void call() throws Exception {
     while (true) {
       try {
-        Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs());
+        Thread.sleep(ttlCheckInterval);
         if (!StorageEngine.getInstance().isAllSgReady()) {
           continue;
         }
         List<DataRegion> dataRegionListSnapshot = new ArrayList<>(dataRegionList);
-        List<DataRegion> dataRegionsToScheduleCompaction = new ArrayList<>();
         for (int i = 0; i < dataRegionListSnapshot.size(); i++) {
-          if (i % workerNum != workerId) {
-            continue;
-          }
-          dataRegionsToScheduleCompaction.add(dataRegionListSnapshot.get(i));
-        }
-        Collections.shuffle(dataRegionsToScheduleCompaction);
-        for (DataRegion dataRegion : dataRegionsToScheduleCompaction) {
           if (Thread.interrupted()) {
             throw new InterruptedException();
           }
-          dataRegion.executeCompaction();
+          if (i % workerNum == workerId) {
+            dataRegionListSnapshot.get(i).executeTTLCheck();
+          }
         }
       } catch (InterruptedException ignored) {
-        logger.info(
-            "[CompactionScheduleTaskWorker-{}] compaction schedule is interrupted", workerId);
+        logger.info("[TTLCheckTask-{}] TTL checker is interrupted", workerId);
         return null;
       }
     }

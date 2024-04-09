@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -49,10 +50,14 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class CompactionScheduleTaskManager implements IService {
 
-  private int workerNum =
+  private int compactionSelectorNum =
       IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleThreadNum();
+
+  private final int ttlCheckerNum = IoTDBDescriptor.getInstance().getConfig().getTTlCheckerNum();
+
   private ExecutorService compactionScheduleTaskThreadPool;
-  private static final Logger logger = LoggerFactory.getLogger(CompactionScheduleTaskManager.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final CompactionScheduleTaskManager INSTANCE = new CompactionScheduleTaskManager();
   private static final List<DataRegion> dataRegionList = new Vector<>();
   private final RepairDataTaskManager REPAIR_TASK_MANAGER_INSTANCE = new RepairDataTaskManager();
@@ -102,10 +107,10 @@ public class CompactionScheduleTaskManager implements IService {
       }
       int workerNumInCurrentConfig =
           IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleThreadNum();
-      if (workerNum == workerNumInCurrentConfig) {
+      if (compactionSelectorNum == workerNumInCurrentConfig) {
         return;
       }
-      workerNum = workerNumInCurrentConfig;
+      compactionSelectorNum = workerNumInCurrentConfig;
       restartThreadPool();
     } finally {
       lock.unlock();
@@ -115,10 +120,18 @@ public class CompactionScheduleTaskManager implements IService {
   public void startScheduleTasks() {
     lock.lock();
     try {
-      for (int workerId = 0; workerId < workerNum; workerId++) {
+      // compaction selector
+      for (int workerId = 0; workerId < compactionSelectorNum; workerId++) {
         Future<Void> future =
             compactionScheduleTaskThreadPool.submit(
-                new CompactionScheduleTaskWorker(dataRegionList, workerId, workerNum));
+                new CompactionScheduleTaskWorker(dataRegionList, workerId, compactionSelectorNum));
+        submitCompactionScheduleTaskFutures.add(future);
+      }
+      // ttl checker
+      for (int workerId = 0; workerId < ttlCheckerNum; workerId++) {
+        Future<Void> future =
+            compactionScheduleTaskThreadPool.submit(
+                new TTLScheduleTask(dataRegionList, workerId, ttlCheckerNum));
         submitCompactionScheduleTaskFutures.add(future);
       }
     } finally {
@@ -167,7 +180,7 @@ public class CompactionScheduleTaskManager implements IService {
   private void initThreadPool() {
     this.compactionScheduleTaskThreadPool =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            workerNum, ThreadName.COMPACTION_SCHEDULE.getName());
+            compactionSelectorNum + ttlCheckerNum, ThreadName.COMPACTION_SCHEDULE.getName());
     init = true;
   }
 
@@ -177,7 +190,7 @@ public class CompactionScheduleTaskManager implements IService {
     waitForThreadPoolTerminated();
     compactionScheduleTaskThreadPool =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            workerNum, ThreadName.COMPACTION_SCHEDULE.getName());
+            compactionSelectorNum + ttlCheckerNum, ThreadName.COMPACTION_SCHEDULE.getName());
     startScheduleTasks();
   }
 

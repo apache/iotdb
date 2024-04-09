@@ -685,7 +685,7 @@ public class IoTDBDescriptor {
     conf.setTtlCheckInterval(
         Long.parseLong(
             properties.getProperty(
-                "ttl_check_interval", Long.toString(conf.getTtlCheckInterval()))));
+                "ttl_check_interval", Long.toString(conf.getTTlCheckInterval()))));
 
     conf.setMaxExpiredTime(
         Long.parseLong(
