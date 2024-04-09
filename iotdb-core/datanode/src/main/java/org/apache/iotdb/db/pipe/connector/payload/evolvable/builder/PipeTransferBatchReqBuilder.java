@@ -139,7 +139,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
-  public void onSuccess() {
+  public synchronized void onSuccess() {
     binaryBuffers.clear();
     insertNodeBuffers.clear();
     tabletBuffers.clear();
@@ -201,10 +201,10 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
     for (final Event event : events) {
       if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).decreaseReferenceCount(this.getClass().getName(), true);
+        ((EnrichedEvent) event).clearReferenceCount(this.getClass().getName());
       }
     }
     allocatedMemoryBlock.close();
