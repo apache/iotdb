@@ -23,13 +23,13 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.relational.sql.tree.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.relational.sql.tree.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.relational.sql.tree.BetweenPredicate;
@@ -103,6 +103,7 @@ import static java.lang.String.format;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.relational.sql.tree.DereferenceExpression.isQualifiedAllFieldsReference;
 import static org.apache.iotdb.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.iotdb.tsfile.read.common.type.BooleanType.BOOLEAN;
@@ -144,6 +145,10 @@ public class ExpressionAnalyzer {
   private final Function<Expression, Type> getPreanalyzedType;
 
   private final List<Field> sourceFields = new ArrayList<>();
+
+  // Record fields prefixed with labels in row pattern recognition context
+  private final Map<NodeRef<DereferenceExpression>, LabelPrefixedReference> labelDereferences =
+      new LinkedHashMap<>();
 
   private ExpressionAnalyzer(
       Metadata metadata,
@@ -615,10 +620,7 @@ public class ExpressionAnalyzer {
         case PLUS:
           Type type = process(node.getValue(), context);
 
-          if (!type.equals(DOUBLE)
-              && !type.equals(FLOAT)
-              && !type.equals(INT32)
-              && !type.equals(INT64)) {
+          if (!isNumericType(type)) {
             // TODO: figure out a type-agnostic way of dealing with this. Maybe add a special unary
             // operator
             // that types can chose to implement, or piggyback on the existence of the negation
@@ -731,106 +733,64 @@ public class ExpressionAnalyzer {
     @Override
     protected Type visitFunctionCall(
         FunctionCall node, StackableAstVisitorContext<Context> context) {
-      // TODO implememt function call
-      throw new SemanticException("FunctionCall is not implemented yet.");
-      //      boolean isAggregation = functionResolver.isAggregationFunction(session,
-      // node.getName(), accessControl);
-      //      // argument of the form `label.*` is only allowed for row pattern count function
-      //      node.getArguments().stream()
-      //          .filter(DereferenceExpression::isQualifiedAllFieldsReference)
-      //          .findAny()
-      //          .ifPresent(allRowsReference -> {
-      //            if (node.getArguments().size() > 1) {
-      //              throw new SemanticException(
-      //                  "label.* syntax is only supported as the only argument of row pattern
-      // count function");
-      //            }
-      //          });
-      //
-      //      if (node.isDistinct() && !isAggregation) {
-      //        throw new SemanticException("DISTINCT is not supported for non-aggregation
-      // functions");
-      //      }
-      //
-      //      List<TypeSignatureProvider> argumentTypes = getCallArgumentTypes(node.getArguments(),
-      // context);
-      //
-      //      ResolvedFunction function;
-      //      try {
-      //        function = functionResolver.resolveFunction(session, node.getName(), argumentTypes,
-      // accessControl);
-      //      } catch (TrinoException e) {
-      //        if (e.getLocation().isPresent()) {
-      //          // If analysis of any of the argument types (which is done lazily to deal with
-      // lambda
-      //          // expressions) fails, we want to report the original reason for the failure
-      //          throw e;
-      //        }
-      //
-      //        // otherwise, it must have failed due to a missing function or other reason, so we
-      // report an error at the
-      //        // current location
-      //
-      //        throw new TrinoException(e::getErrorCode, extractLocation(node), e.getMessage(), e);
-      //      }
-      //
-      //      if (node.getArguments().size() > 127) {
-      //        throw new SemanticException(String.format("Too many arguments for function call
-      // %s()",
-      //            function.getSignature().getName().getFunctionName()));
-      //      }
-      //
-      //      BoundSignature signature = function.getSignature();
-      //      for (int i = 0; i < argumentTypes.size(); i++) {
-      //        Expression expression = node.getArguments().get(i);
-      //        Type expectedType = signature.getArgumentTypes().get(i);
-      //        if (expectedType == null) {
-      //          throw new NullPointerException(format("Type '%s' not found",
-      // signature.getArgumentTypes().get(i)));
-      //        }
-      //        if (node.isDistinct() && !expectedType.isComparable()) {
-      //          throw new SemanticException(String.format("DISTINCT can only be applied to
-      // comparable types (actual: %s)",
-      //              expectedType));
-      //        }
-      //        Type actualType =
-      // plannerContext.getTypeManager().getType(argumentTypes.get(i).getTypeSignature());
-      //
-      //        coerceType(expression, actualType, expectedType, String.format("Function %s argument
-      // %d", function, i));
-      //      }
-      //      resolvedFunctions.put(NodeRef.of(node), function);
-      //
-      //      Type type = signature.getReturnType();
-      //      return setExpressionType(node, type);
+      String functionName = node.getName().getSuffix();
+      boolean isAggregation = metadata.isAggregationFunction(session, functionName, accessControl);
+      // argument of the form `label.*` is only allowed for row pattern count function
+      node.getArguments().stream()
+          .filter(DereferenceExpression::isQualifiedAllFieldsReference)
+          .findAny()
+          .ifPresent(
+              allRowsReference -> {
+                if (node.getArguments().size() > 1) {
+                  throw new SemanticException(
+                      "label.* syntax is only supported as the only argument of row pattern count function");
+                }
+              });
+
+      if (node.isDistinct() && !isAggregation) {
+        throw new SemanticException("DISTINCT is not supported for non-aggregation functions");
+      }
+
+      List<Type> argumentTypes = getCallArgumentTypes(node.getArguments(), context);
+
+      if (node.getArguments().size() > 127) {
+        throw new SemanticException(
+            String.format("Too many arguments for function call %s()", functionName));
+      }
+
+      for (Type argumentType : argumentTypes) {
+        if (node.isDistinct() && !argumentType.isComparable()) {
+          throw new SemanticException(
+              String.format(
+                  "DISTINCT can only be applied to comparable types (actual: %s)", argumentType));
+        }
+      }
+
+      Type type = metadata.getFunctionReturnType(functionName, argumentTypes);
+      return setExpressionType(node, type);
     }
 
-    //    public List<TypeSignatureProvider> getCallArgumentTypes(List<Expression> arguments,
-    //
-    // StackableAstVisitorContext<Context> context) {
-    //      ImmutableList.Builder<TypeSignatureProvider> argumentTypesBuilder =
-    // ImmutableList.builder();
-    //      for (Expression argument : arguments) {
-    //        if (isQualifiedAllFieldsReference(argument)) {
-    //          // to resolve `count(label.*)` correctly, we should skip the argument, like for
-    // `count(*)`
-    //          // process the argument but do not include it in the list
-    //          DereferenceExpression allRowsDereference = (DereferenceExpression) argument;
-    //          String label = label((Identifier) allRowsDereference.getBase());
-    //          if (!context.getContext().getLabels().contains(label)) {
-    //            throw semanticException(INVALID_FUNCTION_ARGUMENT, allRowsDereference.getBase(),
-    //                "%s is not a primary pattern variable or subset name", label);
-    //          }
-    //          labelDereferences.put(NodeRef.of(allRowsDereference), new
-    // LabelPrefixedReference(label));
-    //        } else {
-    //          argumentTypesBuilder.add(new TypeSignatureProvider(process(argument,
-    // context).getTypeSignature()));
-    //        }
-    //      }
-    //
-    //      return argumentTypesBuilder.build();
-    //    }
+    public List<Type> getCallArgumentTypes(
+        List<Expression> arguments, StackableAstVisitorContext<Context> context) {
+      ImmutableList.Builder<Type> argumentTypesBuilder = ImmutableList.builder();
+      for (Expression argument : arguments) {
+        if (isQualifiedAllFieldsReference(argument)) {
+          // to resolve `count(label.*)` correctly, we should skip the argument, like for `count(*)`
+          // process the argument but do not include it in the list
+          DereferenceExpression allRowsDereference = (DereferenceExpression) argument;
+          String label = label((Identifier) allRowsDereference.getBase());
+          if (!context.getContext().getLabels().contains(label)) {
+            throw new SemanticException(
+                String.format("%s is not a primary pattern variable or subset name", label));
+          }
+          labelDereferences.put(NodeRef.of(allRowsDereference), new LabelPrefixedReference(label));
+        } else {
+          argumentTypesBuilder.add(process(argument, context));
+        }
+      }
+
+      return argumentTypesBuilder.build();
+    }
 
     private String label(Identifier identifier) {
       return identifier.getCanonicalValue();
@@ -849,38 +809,17 @@ public class ExpressionAnalyzer {
 
     @Override
     protected Type visitTrim(Trim node, StackableAstVisitorContext<Context> context) {
-      // TODO implement TRIM
-      throw new SemanticException("Trim is not implemented yet");
-      //      ImmutableList.Builder<Type> argumentTypes = ImmutableList.builder();
-      //
-      //      argumentTypes.add(process(node.getTrimSource(), context));
-      //      node.getTrimCharacter().ifPresent(trimChar -> argumentTypes.add(process(trimChar,
-      // context)));
-      //      List<Type> actualTypes = argumentTypes.build();
-      //
-      //      String functionName = node.getSpecification().getFunctionName();
-      //      ResolvedFunction function =
-      //          plannerContext.getMetadata().resolveBuiltinFunction(functionName,
-      // fromTypes(actualTypes));
-      //
-      //      List<Type> expectedTypes = function.getSignature().getArgumentTypes();
-      //      checkState(expectedTypes.size() == actualTypes.size(), "wrong argument number in the
-      // resolved signature");
-      //
-      //      Type actualTrimSourceType = actualTypes.get(0);
-      //      Type expectedTrimSourceType = expectedTypes.get(0);
-      //      coerceType(node.getTrimSource(), actualTrimSourceType, expectedTrimSourceType,
-      //          "source argument of trim function");
-      //
-      //      if (node.getTrimCharacter().isPresent()) {
-      //        Type actualTrimCharType = actualTypes.get(1);
-      //        Type expectedTrimCharType = expectedTypes.get(1);
-      //        coerceType(node.getTrimCharacter().get(), actualTrimCharType, expectedTrimCharType,
-      //            "trim character argument of trim function");
-      //      }
-      //      resolvedFunctions.put(NodeRef.of(node), function);
-      //
-      //      return setExpressionType(node, function.getSignature().getReturnType());
+      ImmutableList.Builder<Type> argumentTypes = ImmutableList.builder();
+
+      argumentTypes.add(process(node.getTrimSource(), context));
+      node.getTrimCharacter().ifPresent(trimChar -> argumentTypes.add(process(trimChar, context)));
+      List<Type> actualTypes = argumentTypes.build();
+
+      String functionName = node.getSpecification().getFunctionName();
+
+      Type returnType = metadata.getFunctionReturnType(functionName, actualTypes);
+
+      return setExpressionType(node, returnType);
     }
 
     @Override
@@ -926,31 +865,26 @@ public class ExpressionAnalyzer {
 
     @Override
     public Type visitCast(Cast node, StackableAstVisitorContext<Context> context) {
-      // TODO implement cast
-      throw new SemanticException("Cast is not implemented yet");
-      //
-      //      Type type;
-      //      try {
-      //        type = plannerContext.getTypeManager().getType(toTypeSignature(node.getType()));
-      //      } catch (TypeNotFoundException e) {
-      //        throw semanticException(TYPE_MISMATCH, node, "Unknown type: %s", node.getType());
-      //      }
-      //
-      //      if (type.equals(UnknownType.UNKNOWN)) {
-      //        throw new SemanticException("UNKNOWN is not a valid type");
-      //      }
-      //
-      //      Type value = process(node.getExpression(), context);
-      //      if (!value.equals(UnknownType.UNKNOWN) && !node.isTypeOnly()) {
-      //        // TODO implement cast
-      //        try {
-      //          plannerContext.getMetadata().getCoercion(value, type);
-      //        } catch (OperatorNotFoundException e) {
-      //          throw semanticException(TYPE_MISMATCH, node, "Cannot cast %s to %s", value, type);
-      //        }
-      //      }
-      //
-      //      return setExpressionType(node, type);
+
+      Type type;
+      try {
+        type = metadata.getType(toTypeSignature(node.getType()));
+      } catch (TypeNotFoundException e) {
+        throw new SemanticException(String.format("Unknown type: %s", node.getType()));
+      }
+
+      if (type.equals(UnknownType.UNKNOWN)) {
+        throw new SemanticException("UNKNOWN is not a valid type");
+      }
+
+      Type value = process(node.getExpression(), context);
+      if (!value.equals(UnknownType.UNKNOWN)
+          && !node.isTypeOnly()
+          && (!metadata.canCoerce(value, type))) {
+        throw new SemanticException(String.format("Cannot cast %s to %s", value, type));
+      }
+
+      return setExpressionType(node, type);
     }
 
     @Override
@@ -1158,25 +1092,13 @@ public class ExpressionAnalyzer {
         argumentTypes.add(process(expression, context));
       }
 
-      BoundSignature operatorSignature;
+      Type type;
       try {
-        operatorSignature =
-            metadata.resolveOperator(operatorType, argumentTypes.build()).getSignature();
+        type = metadata.getOperatorReturnType(operatorType, argumentTypes.build());
       } catch (OperatorNotFoundException e) {
         throw new SemanticException(e.getMessage());
       }
 
-      for (int i = 0; i < arguments.length; i++) {
-        Expression expression = arguments[i];
-        Type type = operatorSignature.getArgumentTypes().get(i);
-        coerceType(
-            context,
-            expression,
-            type,
-            String.format("Operator %s argument %d", operatorSignature, i));
-      }
-
-      Type type = operatorSignature.getReturnType();
       return setExpressionType(node, type);
     }
 
@@ -1382,10 +1304,9 @@ public class ExpressionAnalyzer {
       return functionInputTypes;
     }
 
-    //    public Set<String> getLabels() {
-    //      checkState(isPatternRecognition());
-    //      return labels;
-    //    }
+    public Set<String> getLabels() {
+      return labels;
+    }
 
     public CorrelationSupport getCorrelationSupport() {
       return correlationSupport;

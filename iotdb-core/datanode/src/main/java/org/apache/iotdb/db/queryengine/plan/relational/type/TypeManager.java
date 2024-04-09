@@ -17,22 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.common.type;
+package org.apache.iotdb.db.queryengine.plan.relational.type;
 
-public enum TypeEnum {
-  INT32,
+import org.apache.iotdb.tsfile.read.common.type.Type;
 
-  INT64,
+public interface TypeManager {
+  /**
+   * Gets the type with the specified signature.
+   *
+   * @throws TypeNotFoundException if not found
+   */
+  Type getType(TypeSignature signature) throws TypeNotFoundException;
 
-  FLOAT,
+  /** Gets a type given it's SQL representation */
+  Type fromSqlType(String type);
 
-  DOUBLE,
-
-  BOOLEAN,
-
-  TEXT,
-
-  ROW,
-
-  UNKNOWN
+  /** Gets the type with the give (opaque) id */
+  Type getType(TypeId id);
 }

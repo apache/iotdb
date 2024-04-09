@@ -17,22 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.common.type;
+package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
-public enum TypeEnum {
-  INT32,
-
-  INT64,
-
-  FLOAT,
-
-  DOUBLE,
-
-  BOOLEAN,
-
-  TEXT,
-
-  ROW,
-
-  UNKNOWN
-}
+public class BuiltinFunctionResolver {}

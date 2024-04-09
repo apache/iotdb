@@ -17,22 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.common.type;
+package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-public enum TypeEnum {
-  INT32,
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 
-  INT64,
+/**
+ * A carrier of core, global, non-derived services for planner and analyzer. This is used to ease
+ * the addition of new services in the future without having to modify large portions the planner
+ * and analyzer just to pass around the service.
+ */
+public class PlannerContext {
 
-  FLOAT,
+  private final Metadata metadata;
 
-  DOUBLE,
+  private final TypeManager typeManager;
 
-  BOOLEAN,
-
-  TEXT,
-
-  ROW,
-
-  UNKNOWN
+  public PlannerContext(Metadata metadata, TypeManager typeManager) {
+    this.metadata = metadata;
+    this.typeManager = typeManager;
+  }
 }

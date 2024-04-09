@@ -54,9 +54,9 @@ public abstract class CompareTernaryColumnTransformer extends TernaryColumnTrans
     if (firstColumnTransformer.isReturnTypeNumeric()
             && secondColumnTransformer.isReturnTypeNumeric()
             && thirdColumnTransformer.isReturnTypeNumeric()
-        || firstColumnTransformer.typeEquals(TypeEnum.BINARY)
-            && secondColumnTransformer.typeEquals(TypeEnum.BINARY)
-            && thirdColumnTransformer.typeEquals(TypeEnum.BINARY)) {
+        || firstColumnTransformer.typeEquals(TypeEnum.TEXT)
+            && secondColumnTransformer.typeEquals(TypeEnum.TEXT)
+            && thirdColumnTransformer.typeEquals(TypeEnum.TEXT)) {
       return;
     }
 

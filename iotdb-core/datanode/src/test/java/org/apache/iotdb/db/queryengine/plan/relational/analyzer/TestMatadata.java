@@ -12,6 +12,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.tsfile.read.common.type.BinaryType;
 import org.apache.iotdb.tsfile.read.common.type.DoubleType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
@@ -105,5 +108,32 @@ public class TestMatadata implements Metadata {
       OperatorType operatorType, List<? extends Type> argumentTypes)
       throws OperatorNotFoundException {
     return null;
+  }
+
+  @Override
+  public Type getOperatorReturnType(OperatorType operatorType, List<? extends Type> argumentTypes)
+      throws OperatorNotFoundException {
+    return null;
+  }
+
+  @Override
+  public Type getFunctionReturnType(String functionName, List<? extends Type> argumentTypes) {
+    return null;
+  }
+
+  @Override
+  public boolean isAggregationFunction(
+      SessionInfo session, String functionName, AccessControl accessControl) {
+    return false;
+  }
+
+  @Override
+  public Type getType(TypeSignature signature) throws TypeNotFoundException {
+    return null;
+  }
+
+  @Override
+  public boolean canCoerce(Type from, Type to) {
+    return false;
   }
 }

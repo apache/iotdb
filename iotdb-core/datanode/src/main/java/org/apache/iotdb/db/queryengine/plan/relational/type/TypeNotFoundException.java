@@ -17,22 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.common.type;
+package org.apache.iotdb.db.queryengine.plan.relational.type;
 
-public enum TypeEnum {
-  INT32,
+import org.apache.iotdb.commons.exception.IoTDBException;
 
-  INT64,
+import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.rpc.TSStatusCode.TYPE_NOT_FOUND;
 
-  FLOAT,
+public class TypeNotFoundException extends IoTDBException {
 
-  DOUBLE,
+  private final TypeSignature type;
 
-  BOOLEAN,
+  public TypeNotFoundException(TypeSignature type) {
+    this(type, null);
+  }
 
-  TEXT,
+  public TypeNotFoundException(TypeSignature type, Throwable cause) {
+    super("Unknown type: " + type, cause, TYPE_NOT_FOUND.getStatusCode());
+    this.type = requireNonNull(type, "type is null");
+  }
 
-  ROW,
-
-  UNKNOWN
+  public TypeSignature getType() {
+    return type;
+  }
 }

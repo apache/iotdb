@@ -21,6 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import java.util.List;
@@ -61,4 +64,16 @@ public interface Metadata {
 
   ResolvedFunction resolveOperator(OperatorType operatorType, List<? extends Type> argumentTypes)
       throws OperatorNotFoundException;
+
+  Type getOperatorReturnType(OperatorType operatorType, List<? extends Type> argumentTypes)
+      throws OperatorNotFoundException;
+
+  Type getFunctionReturnType(String functionName, List<? extends Type> argumentTypes);
+
+  boolean isAggregationFunction(
+      SessionInfo session, String functionName, AccessControl accessControl);
+
+  Type getType(TypeSignature signature) throws TypeNotFoundException;
+
+  boolean canCoerce(Type from, Type to);
 }

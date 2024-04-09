@@ -59,7 +59,7 @@ public class TypeFactory {
         return DoubleType.getInstance();
       case BOOLEAN:
         return BooleanType.getInstance();
-      case BINARY:
+      case TEXT:
         return BinaryType.getInstance();
       case UNKNOWN:
         return UnknownType.getInstance();

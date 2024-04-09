@@ -60,7 +60,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
           case BOOLEAN:
             cast(columnBuilder, childType.getBoolean(column, i));
             break;
-          case BINARY:
+          case TEXT:
             cast(columnBuilder, childType.getBinary(column, i));
             break;
           default:
@@ -92,7 +92,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, value != 0);
         break;
-      case BINARY:
+      case TEXT:
         returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(value)));
         break;
       default:
@@ -117,7 +117,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, value != 0L);
         break;
-      case BINARY:
+      case TEXT:
         returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(value)));
         break;
       default:
@@ -142,7 +142,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, value != 0.0f);
         break;
-      case BINARY:
+      case TEXT:
         returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(value)));
         break;
       default:
@@ -167,7 +167,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, value != 0.0);
         break;
-      case BINARY:
+      case TEXT:
         returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(value)));
         break;
       default:
@@ -192,7 +192,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, value);
         break;
-      case BINARY:
+      case TEXT:
         returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(value)));
         break;
       default:
@@ -218,7 +218,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, CastFunctionHelper.castTextToBoolean(stringValue));
         break;
-      case BINARY:
+      case TEXT:
         returnType.writeBinary(columnBuilder, value);
         break;
       default:

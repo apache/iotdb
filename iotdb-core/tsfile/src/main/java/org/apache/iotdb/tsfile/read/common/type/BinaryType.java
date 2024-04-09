@@ -49,7 +49,7 @@ public class BinaryType implements Type {
 
   @Override
   public TypeEnum getTypeEnum() {
-    return TypeEnum.BINARY;
+    return TypeEnum.TEXT;
   }
 
   @Override
