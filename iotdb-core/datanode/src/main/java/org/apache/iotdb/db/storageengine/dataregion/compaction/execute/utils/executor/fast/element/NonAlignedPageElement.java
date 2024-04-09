@@ -52,7 +52,6 @@ public class NonAlignedPageElement extends PageElement {
   public void deserializePage() throws IOException {
     TsBlock batchData = chunkReader.readPageData(pageHeader, pageData);
     this.pointReader = batchData.getTsBlockSingleColumnIterator();
-    pageHeader = null;
     pageData = null;
   }
 
