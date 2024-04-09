@@ -54,6 +54,7 @@ public enum ConfigPhysicalPlanType {
   CreateRegionGroups((short) 300),
   DeleteRegionGroups((short) 301),
   GetRegionInfoList((short) 302),
+  @Deprecated
   UpdateRegionLocation((short) 303),
   OfferRegionMaintainTasks((short) 304),
   PollRegionMaintainTask((short) 305),
@@ -61,8 +62,9 @@ public enum ConfigPhysicalPlanType {
   GetSeriesSlotList((short) 307),
   GetTimeSlotList((short) 308),
   PollSpecificRegionMaintainTask((short) 309),
-
   CountTimeSlotList((short) 310),
+  AddRegionLocation((short) 311),
+  RemoveRegionLocation((short) 312),
 
   /** Partition. */
   GetSchemaPartition((short) 400),
@@ -199,6 +201,7 @@ public enum ConfigPhysicalPlanType {
   DropPipeV2((short) 1502),
   ShowPipeV2((short) 1503),
   AlterPipeV2((short) 1504),
+  OperateMultiplePipesV2((short) 1505),
 
   /** Pipe Runtime. */
   PipeHandleLeaderChange((short) 1600),
@@ -210,6 +213,22 @@ public enum ConfigPhysicalPlanType {
   PipeDeleteTimeSeries((short) 1702),
   PipeDeleteLogicalView((short) 1703),
   PipeDeactivateTemplate((short) 1704),
+
+  /** Subscription */
+  CreateTopic((short) 1800),
+  DropTopic((short) 1801),
+  ShowTopic((short) 1802),
+  AlterTopic((short) 1803),
+  AlterMultipleTopics((short) 1804),
+  TopicHandleMetaChange((short) 1805),
+
+  AlterConsumerGroup((short) 1900),
+  ConsumerGroupHandleMetaChange((short) 1901),
+
+  ShowSubscription((short) 2000),
+
+  /** Test Only. */
+  TestOnly((short) 30000),
   ;
 
   private final short planType;

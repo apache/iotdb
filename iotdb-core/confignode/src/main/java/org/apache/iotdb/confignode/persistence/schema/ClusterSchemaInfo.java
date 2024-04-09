@@ -534,6 +534,29 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /**
+   * Only leader use this interface. Get the matched DatabaseSchemas.
+   *
+   * @param prefix prefix path such as root.a
+   * @return All DatabaseSchemas that matches to the prefix path such as root.a.db1, root.a.db2
+   */
+  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByPrefix(PartialPath prefix) {
+    Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
+    databaseReadWriteLock.readLock().lock();
+    try {
+      List<PartialPath> matchedPaths = mTree.getMatchedDatabases(prefix, ALL_MATCH_SCOPE, true);
+      for (PartialPath path : matchedPaths) {
+        schemaMap.put(
+            path.getFullPath(), mTree.getDatabaseNodeByPath(path).getAsMNode().getDatabaseSchema());
+      }
+    } catch (MetadataException e) {
+      LOGGER.warn(ERROR_NAME, e);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+    return schemaMap;
+  }
+
+  /**
    * Only leader use this interface. Get the maxRegionGroupNum of specified Database.
    *
    * @param database DatabaseName

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.pipe.it.autocreate;
 
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
@@ -36,8 +37,23 @@ abstract class AbstractPipeDualAutoIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
-    senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+    // TODO: delete ratis configurations
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+
+    // 10 min, assert that the operations will not time out
+    senderEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();

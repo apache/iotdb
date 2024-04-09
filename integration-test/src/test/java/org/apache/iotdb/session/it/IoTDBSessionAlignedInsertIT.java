@@ -148,7 +148,7 @@ public class IoTDBSessionAlignedInsertIT {
       long time = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
-        assertEquals(time * 10 + 3, rowRecord.getFields().get(0).getFloatV(), DELTA_DOUBLE);
+        assertEquals(time * 10 + 3, rowRecord.getFields().get(0).getDoubleV(), DELTA_DOUBLE);
         time += 1;
       }
       assertEquals(100, time);
@@ -172,7 +172,7 @@ public class IoTDBSessionAlignedInsertIT {
       long time = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
-        assertEquals(time * 10 + 3, rowRecord.getFields().get(0).getFloatV(), DELTA_DOUBLE);
+        assertEquals(time * 10 + 3, rowRecord.getFields().get(0).getDoubleV(), DELTA_DOUBLE);
         time += 1;
       }
       assertEquals(100, time);

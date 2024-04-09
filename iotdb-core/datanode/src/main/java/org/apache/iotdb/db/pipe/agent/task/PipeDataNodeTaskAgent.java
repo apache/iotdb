@@ -88,7 +88,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected Map<Integer, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromConfigNode) {
+  protected Map<Integer, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromConfigNode)
+      throws IllegalPathException {
     return new PipeDataNodeBuilder(pipeMetaFromConfigNode).build();
   }
 

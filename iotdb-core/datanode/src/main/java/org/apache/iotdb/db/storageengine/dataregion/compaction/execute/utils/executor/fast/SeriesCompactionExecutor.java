@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -82,7 +83,7 @@ public abstract class SeriesCompactionExecutor {
 
   private final PointPriorityReader pointPriorityReader;
 
-  protected String deviceId;
+  protected IDeviceID deviceId;
 
   // Pages in this list will be sequentially judged whether there is a real overlap to choose
   // whether to put them in the point priority reader to deserialize or directly flush to chunk
@@ -102,7 +103,7 @@ public abstract class SeriesCompactionExecutor {
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
       Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
           modificationCacheMap,
-      String deviceId,
+      IDeviceID deviceId,
       boolean isAligned,
       int subTaskId,
       FastCompactionTaskSummary summary) {

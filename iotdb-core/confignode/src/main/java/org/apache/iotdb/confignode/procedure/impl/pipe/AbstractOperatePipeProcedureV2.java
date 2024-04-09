@@ -185,18 +185,17 @@ public abstract class AbstractOperatePipeProcedureV2
    *     pipe without runtime exception)
    * @throws PipeException if validation for pipe parameters failed
    */
-  protected abstract boolean executeFromValidateTask(ConfigNodeProcedureEnv env)
-      throws PipeException;
+  public abstract boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException;
 
   /** Execute at state {@link OperatePipeTaskState#CALCULATE_INFO_FOR_TASK}. */
-  protected abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
+  public abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
 
   /**
-   * Execute at state {@link OperatePipeTaskState#WRITE_CONFIG_NODE_CONSENSUS}.
+   * Execute at state {@link OperatePipeTaskState#WRITE_CONFIG_NODE_CONSENSUS}.‘
    *
    * @throws PipeException if configNode consensus write failed
    */
-  protected abstract void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
+  public abstract void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
       throws PipeException;
 
   /**
@@ -205,7 +204,7 @@ public abstract class AbstractOperatePipeProcedureV2
    * @throws PipeException if push pipe metas to dataNodes failed
    * @throws IOException Exception when Serializing to byte buffer
    */
-  protected abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+  public abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeException, IOException;
 
   @Override
@@ -344,13 +343,13 @@ public abstract class AbstractOperatePipeProcedureV2
     }
   }
 
-  protected abstract void rollbackFromValidateTask(ConfigNodeProcedureEnv env);
+  public abstract void rollbackFromValidateTask(ConfigNodeProcedureEnv env);
 
-  protected abstract void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
+  public abstract void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
 
-  protected abstract void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env);
+  public abstract void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env);
 
-  protected abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+  public abstract void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws IOException;
 
   @Override
@@ -386,13 +385,31 @@ public abstract class AbstractOperatePipeProcedureV2
   }
 
   /**
+   * Pushing all the pipeMeta's to all the dataNodes, forcing an update to the pipe's runtime state.
+   *
+   * @param env ConfigNodeProcedureEnv
+   * @param pipeTaskInfo PipeTaskInfo managed outside this procedure
+   * @return The responseMap after pushing pipe meta
+   * @throws IOException Exception when Serializing to byte buffer
+   */
+  public static Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(
+      ConfigNodeProcedureEnv env, AtomicReference<PipeTaskInfo> pipeTaskInfo) throws IOException {
+    final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    for (PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
+      pipeMetaBinaryList.add(pipeMeta.serialize());
+    }
+
+    return env.pushAllPipeMetaToDataNodes(pipeMetaBinaryList);
+  }
+
+  /**
    * Parsing the given pipe's or all pipes' pushPipeMeta exceptions to string.
    *
    * @param pipeName The given pipe's pipe name, {@code null} if report all pipes' exceptions.
    * @param respMap The responseMap after pushing pipe meta
    * @return Error messages for the given pipe after pushing pipe meta
    */
-  protected String parsePushPipeMetaExceptionForPipe(
+  public static String parsePushPipeMetaExceptionForPipe(
       String pipeName, Map<Integer, TPushPipeMetaResp> respMap) {
     final StringBuilder exceptionMessageBuilder = new StringBuilder();
 

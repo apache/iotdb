@@ -32,6 +32,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -241,7 +242,7 @@ public class CompactionUtils {
   }
 
   public static void updateResource(
-      TsFileResource resource, TsFileIOWriter tsFileIoWriter, String deviceId) {
+      TsFileResource resource, TsFileIOWriter tsFileIoWriter, IDeviceID deviceId) {
     List<ChunkMetadata> chunkMetadatasOfCurrentDevice =
         tsFileIoWriter.getChunkMetadataListOfCurrentDeviceInMemory();
     if (chunkMetadatasOfCurrentDevice != null) {

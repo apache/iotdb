@@ -29,13 +29,9 @@ import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 
-import java.nio.ByteBuffer;
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -46,8 +42,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class IoTDBStatement implements Statement {
 
@@ -269,7 +263,6 @@ public class IoTDBStatement implements Statement {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
 
-    deepCopyResp(execResp);
     if (execResp.isSetColumns()) {
       queryId = execResp.getQueryId();
       if (execResp.queryResult == null) {
@@ -418,9 +411,6 @@ public class IoTDBStatement implements Statement {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
 
-    // Because different result sets share the TTransport and buffer, if the previous result set was
-    // not consumed timely, the byte buffer will be overwritten by the incoming result set
-    deepCopyResp(execResp);
     BitSet aliasColumn = null;
     if (execResp.getAliasColumns() != null && !execResp.getAliasColumns().isEmpty()) {
       aliasColumn = listToBitSet(execResp.getAliasColumns());
@@ -473,61 +463,6 @@ public class IoTDBStatement implements Statement {
       byteAlias[i] = listAlias.get(i);
     }
     return BitSet.valueOf(byteAlias);
-  }
-
-  private void deepCopyResp(TSExecuteStatementResp queryRes) {
-    final TSQueryDataSet tsQueryDataSet = queryRes.getQueryDataSet();
-    final TSQueryNonAlignDataSet nonAlignDataSet = queryRes.getNonAlignQueryDataSet();
-
-    if (Objects.nonNull(tsQueryDataSet)) {
-      deepCopyTsQueryDataSet(tsQueryDataSet);
-    } else if (Objects.nonNull(nonAlignDataSet)) {
-      deepCopyNonAlignQueryDataSet(nonAlignDataSet);
-    } else {
-      deepCopyQueryResult(queryRes);
-    }
-  }
-
-  private void deepCopyQueryResult(TSExecuteStatementResp queryRes) {
-    List<ByteBuffer> queryResult = queryRes.getQueryResult();
-    if (queryResult == null) {
-      return;
-    }
-    final List<ByteBuffer> queryResultCopy =
-        queryResult.stream().map(ReadWriteIOUtils::clone).collect(Collectors.toList());
-    queryRes.setQueryResult(queryResultCopy);
-  }
-
-  private void deepCopyNonAlignQueryDataSet(TSQueryNonAlignDataSet nonAlignDataSet) {
-    if (Objects.isNull(nonAlignDataSet)) {
-      return;
-    }
-
-    final List<ByteBuffer> valueList =
-        nonAlignDataSet.valueList.stream()
-            .map(ReadWriteIOUtils::clone)
-            .collect(Collectors.toList());
-
-    final List<ByteBuffer> timeList =
-        nonAlignDataSet.timeList.stream().map(ReadWriteIOUtils::clone).collect(Collectors.toList());
-
-    nonAlignDataSet.setTimeList(timeList);
-    nonAlignDataSet.setValueList(valueList);
-  }
-
-  private void deepCopyTsQueryDataSet(TSQueryDataSet tsQueryDataSet) {
-    final ByteBuffer time = ReadWriteIOUtils.clone(tsQueryDataSet.time);
-    final List<ByteBuffer> valueList =
-        tsQueryDataSet.valueList.stream().map(ReadWriteIOUtils::clone).collect(Collectors.toList());
-
-    final List<ByteBuffer> bitmapList =
-        tsQueryDataSet.bitmapList.stream()
-            .map(ReadWriteIOUtils::clone)
-            .collect(Collectors.toList());
-
-    tsQueryDataSet.setBitmapList(bitmapList);
-    tsQueryDataSet.setValueList(valueList);
-    tsQueryDataSet.setTime(time);
   }
 
   @Override

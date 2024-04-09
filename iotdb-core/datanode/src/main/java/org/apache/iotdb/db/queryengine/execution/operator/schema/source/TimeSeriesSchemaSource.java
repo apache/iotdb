@@ -123,14 +123,16 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
 
   @Override
   public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
-    return pathPattern.equals(ALL_MATCH_PATTERN)
+    return (pathPattern.equals(ALL_MATCH_PATTERN)
+            || pathPattern.include(
+                new PartialPath((schemaRegion.getDatabaseFullPath() + ".**").split("\\."))))
         && (schemaFilter == null)
         && scope.equals(SchemaConstant.ALL_MATCH_SCOPE);
   }
 
   @Override
   public long getSchemaStatistic(ISchemaRegion schemaRegion) {
-    return schemaRegion.getSchemaRegionStatistics().getSeriesNumber();
+    return schemaRegion.getSchemaRegionStatistics().getSeriesNumber(true);
   }
 
   private String mapToString(Map<String, String> map) {

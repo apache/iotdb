@@ -107,7 +107,7 @@ class RatisConsensus implements IConsensus {
 
   private static final Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
 
-  /** the unique net communication endpoint */
+  /** The unique net communication endpoint */
   private final RaftPeer myself;
 
   private final RaftServer server;
@@ -224,7 +224,7 @@ class RatisConsensus implements IConsensus {
     }
   }
 
-  /** launch a consensus write with retry mechanism */
+  /** Launch a consensus write with retry mechanism */
   private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
       throws IOException {
     RaftClientReply reply = null;
@@ -537,6 +537,23 @@ class RatisConsensus implements IConsensus {
     sendReconfiguration(RaftGroup.valueOf(raftGroupId, newConfig));
   }
 
+  @Override
+  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
+    final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    final RaftGroup group = getGroupInfo(raftGroupId);
+
+    // pre-conditions: group exists and myself in this group
+    if (group == null || !group.getPeers().contains(myself)) {
+      throw new ConsensusGroupNotExistException(groupId);
+    }
+
+    final List<RaftPeer> newGroupPeers =
+        Utils.fromPeersAndPriorityToRaftPeers(peers, DEFAULT_PRIORITY);
+    final RaftGroup newGroup = RaftGroup.valueOf(raftGroupId, newGroupPeers);
+
+    sendReconfiguration(newGroup);
+  }
+
   /** NOTICE: transferLeader *does not guarantee* the leader be transferred to newLeader. */
   @Override
   public void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException {
@@ -671,19 +688,23 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
-  public void triggerSnapshot(ConsensusGroupId groupId) throws ConsensusException {
-    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
-    RaftGroup groupInfo = getGroupInfo(raftGroupId);
+  public void triggerSnapshot(ConsensusGroupId groupId, boolean force) throws ConsensusException {
+    final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    final RaftGroup groupInfo = getGroupInfo(raftGroupId);
     if (groupInfo == null || !groupInfo.getPeers().contains(myself)) {
       throw new ConsensusGroupNotExistException(groupId);
     }
 
-    // TODO tuning snapshot create timeout
-    SnapshotManagementRequest request =
+    final SnapshotManagementRequest request =
         SnapshotManagementRequest.newCreate(
-            localFakeId, myself.getId(), raftGroupId, localFakeCallId.incrementAndGet(), 30000);
+            localFakeId,
+            myself.getId(),
+            raftGroupId,
+            localFakeCallId.incrementAndGet(),
+            300000,
+            force ? 1 : 0);
 
-    RaftClientReply reply;
+    final RaftClientReply reply;
     try {
       reply = server.snapshotManagement(request);
       if (!reply.isSuccess()) {

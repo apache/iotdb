@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProper
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import org.slf4j.Logger;
@@ -30,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class CommonConfig {
@@ -227,6 +229,17 @@ public class CommonConfig {
   private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = (long) 2 * 1024 * 1024; // 2MB
   private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
+  private long pipeListeningQueueTransferSnapshotThreshold = 1000;
+
+  private int subscriptionSubtaskExecutorMaxThreadNum =
+      Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+  private int subscriptionMaxTabletsPerPrefetching = 16;
+  private int subscriptionPollMaxBlockingTimeMs = 500;
+  private int subscriptionSerializeMaxBlockingTimeMs = 100;
+  private long subscriptionLaunchRetryIntervalMs = 1000;
+  private int subscriptionRecycleUncommittedEventIntervalMs = 240000; // 240s
+  private long subscriptionDefaultPollTimeoutMs = 30000;
+  private long subscriptionMinPollTimeoutMs = 500;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -248,6 +261,12 @@ public class CommonConfig {
 
   // time in nanosecond precision when starting up
   private final long startUpNanosecond = System.nanoTime();
+
+  private final boolean isIntegrationTest =
+      System.getProperties().containsKey(IoTDBConstant.INTEGRATION_TEST_KILL_POINTS);
+
+  private final Set<String> enabledKillPoints =
+      KillPoint.parseKillPoints(System.getProperty(IoTDBConstant.INTEGRATION_TEST_KILL_POINTS));
 
   CommonConfig() {
     // Empty constructor
@@ -944,6 +963,86 @@ public class CommonConfig {
     this.pipeLeaderCacheMemoryUsagePercentage = pipeLeaderCacheMemoryUsagePercentage;
   }
 
+  public long getPipeListeningQueueTransferSnapshotThreshold() {
+    return pipeListeningQueueTransferSnapshotThreshold;
+  }
+
+  public void setPipeListeningQueueTransferSnapshotThreshold(
+      long pipeListeningQueueTransferSnapshotThreshold) {
+    this.pipeListeningQueueTransferSnapshotThreshold = pipeListeningQueueTransferSnapshotThreshold;
+  }
+
+  public int getSubscriptionSubtaskExecutorMaxThreadNum() {
+    return subscriptionSubtaskExecutorMaxThreadNum;
+  }
+
+  public void setSubscriptionSubtaskExecutorMaxThreadNum(
+      int subscriptionSubtaskExecutorMaxThreadNum) {
+    this.subscriptionSubtaskExecutorMaxThreadNum =
+        Math.min(
+            subscriptionSubtaskExecutorMaxThreadNum,
+            Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+  }
+
+  public int getSubscriptionMaxTabletsPerPrefetching() {
+    return subscriptionMaxTabletsPerPrefetching;
+  }
+
+  public void setSubscriptionMaxTabletsPerPrefetching(int subscriptionMaxTabletsPerPrefetching) {
+    this.subscriptionMaxTabletsPerPrefetching = subscriptionMaxTabletsPerPrefetching;
+  }
+
+  public int getSubscriptionPollMaxBlockingTimeMs() {
+    return subscriptionPollMaxBlockingTimeMs;
+  }
+
+  public void setSubscriptionPollMaxBlockingTimeMs(int subscriptionPollMaxBlockingTimeMs) {
+    this.subscriptionPollMaxBlockingTimeMs = subscriptionPollMaxBlockingTimeMs;
+  }
+
+  public int getSubscriptionSerializeMaxBlockingTimeMs() {
+    return subscriptionSerializeMaxBlockingTimeMs;
+  }
+
+  public void setSubscriptionSerializeMaxBlockingTimeMs(
+      int subscriptionSerializeMaxBlockingTimeMs) {
+    this.subscriptionSerializeMaxBlockingTimeMs = subscriptionSerializeMaxBlockingTimeMs;
+  }
+
+  public long getSubscriptionLaunchRetryIntervalMs() {
+    return subscriptionLaunchRetryIntervalMs;
+  }
+
+  public void setSubscriptionLaunchRetryIntervalMs(long subscriptionLaunchRetryIntervalMs) {
+    this.subscriptionLaunchRetryIntervalMs = subscriptionLaunchRetryIntervalMs;
+  }
+
+  public int getSubscriptionRecycleUncommittedEventIntervalMs() {
+    return subscriptionRecycleUncommittedEventIntervalMs;
+  }
+
+  public void setSubscriptionRecycleUncommittedEventIntervalMs(
+      int subscriptionRecycleUncommittedEventIntervalMs) {
+    this.subscriptionRecycleUncommittedEventIntervalMs =
+        subscriptionRecycleUncommittedEventIntervalMs;
+  }
+
+  public long getSubscriptionDefaultPollTimeoutMs() {
+    return subscriptionDefaultPollTimeoutMs;
+  }
+
+  public void setSubscriptionDefaultPollTimeoutMs(long subscriptionDefaultPollTimeoutMs) {
+    this.subscriptionDefaultPollTimeoutMs = subscriptionDefaultPollTimeoutMs;
+  }
+
+  public long getSubscriptionMinPollTimeoutMs() {
+    return subscriptionMinPollTimeoutMs;
+  }
+
+  public void setSubscriptionMinPollTimeoutMs(long subscriptionMinPollTimeoutMs) {
+    this.subscriptionMinPollTimeoutMs = subscriptionMinPollTimeoutMs;
+  }
+
   public String getSchemaEngineMode() {
     return schemaEngineMode;
   }
@@ -1002,5 +1101,13 @@ public class CommonConfig {
 
   public long getStartUpNanosecond() {
     return startUpNanosecond;
+  }
+
+  public boolean isIntegrationTest() {
+    return isIntegrationTest;
+  }
+
+  public Set<String> getEnabledKillPoints() {
+    return enabledKillPoints;
   }
 }

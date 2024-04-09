@@ -53,7 +53,8 @@ import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.NodeType;
-import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
+import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -67,8 +68,10 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -162,7 +165,7 @@ public class IoTDBDescriptor {
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
         LOGGER.info("Start to read config file {}", url);
-        commonProperties.load(inputStream);
+        commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
       } catch (FileNotFoundException e) {
         LOGGER.error("Fail to find config file {}, reject DataNode startup.", url, e);
         System.exit(-1);
@@ -183,7 +186,7 @@ public class IoTDBDescriptor {
       try (InputStream inputStream = url.openStream()) {
         LOGGER.info("Start to read config file {}", url);
         Properties properties = new Properties();
-        properties.load(inputStream);
+        properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
         commonProperties.putAll(properties);
         loadProperties(commonProperties);
       } catch (FileNotFoundException e) {
@@ -285,13 +288,13 @@ public class IoTDBDescriptor {
                 .getProperty("flush_proportion", Double.toString(conf.getFlushProportion()))
                 .trim()));
 
-    double rejectProportion =
+    final double rejectProportion =
         Double.parseDouble(
             properties
                 .getProperty("reject_proportion", Double.toString(conf.getRejectProportion()))
                 .trim());
 
-    double devicePathCacheProportion =
+    final double devicePathCacheProportion =
         Double.parseDouble(
             properties
                 .getProperty(
@@ -552,6 +555,12 @@ public class IoTDBDescriptor {
       conf.setDegreeOfParallelism(Runtime.getRuntime().availableProcessors() / 2);
     }
 
+    conf.setMergeThresholdOfExplainAnalyze(
+        Integer.parseInt(
+            properties.getProperty(
+                "merge_threshold_of_explain_analyze",
+                Integer.toString(conf.getMergeThresholdOfExplainAnalyze()))));
+
     conf.setModeMapSizeThreshold(
         Integer.parseInt(
             properties.getProperty(
@@ -760,7 +769,7 @@ public class IoTDBDescriptor {
     conf.setKerberosPrincipal(
         properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
 
-    // the default fill interval in LinearFill and PreviousFill
+    // The default fill interval in LinearFill and PreviousFill
     conf.setDefaultFillInterval(
         Integer.parseInt(
             properties.getProperty(
@@ -972,26 +981,27 @@ public class IoTDBDescriptor {
                 "coordinator_write_executor_size",
                 Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
 
-    // commons
+    // Commons
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());
 
-    // timed flush memtable
+    // Timed flush memtable
     loadTimedService(properties);
 
-    // set tsfile-format config
+    // Set tsfile-format config
     loadTsFileProps(properties);
 
-    // make RPCTransportFactory taking effect.
-    RpcTransportFactory.reInit();
+    // Make RPCTransportFactory taking effect.
+    ZeroCopyRpcTransportFactory.reInit();
+    DeepCopyRpcTransportFactory.reInit();
 
     // UDF
     loadUDFProps(properties);
 
-    // thrift ssl
+    // Thrift ssl
     initThriftSSL(properties);
 
-    // trigger
+    // Trigger
     loadTriggerProps(properties);
 
     // CQ
@@ -1000,20 +1010,20 @@ public class IoTDBDescriptor {
     // Pipe
     loadPipeProps(properties);
 
-    // cluster
+    // Cluster
     loadClusterProps(properties);
 
-    // shuffle
+    // Shuffle
     loadShuffleProps(properties);
 
-    // author cache
+    // Author cache
     loadAuthorCache(properties);
 
     conf.setQuotaEnable(
         Boolean.parseBoolean(
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
 
-    // the buffer for sort operator to calculate
+    // The buffer for sort operator to calculate
     conf.setSortBufferSize(
         Long.parseLong(
             properties
@@ -1304,10 +1314,6 @@ public class IoTDBDescriptor {
         TSDataType.valueOf(
             properties.getProperty(
                 "integer_string_infer_type", conf.getIntegerStringInferType().toString())));
-    conf.setLongStringInferType(
-        TSDataType.valueOf(
-            properties.getProperty(
-                "long_string_infer_type", conf.getLongStringInferType().toString())));
     conf.setFloatingStringInferType(
         TSDataType.valueOf(
             properties.getProperty(
@@ -1569,7 +1575,7 @@ public class IoTDBDescriptor {
       // update timed flush & close conf
       loadTimedService(properties);
       StorageEngine.getInstance().rebootTimedService();
-      // update params of creating schemaengine automatically
+      // update params of creating schema automatically
       loadAutoCreateSchemaProps(properties);
 
       // update tsfile-format config
@@ -1627,6 +1633,14 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "load_clean_up_task_execution_delay_time_seconds",
                   String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
+
+      // update merge_threshold_of_explain_analyze
+      conf.setMergeThresholdOfExplainAnalyze(
+          Integer.parseInt(
+              properties.getProperty(
+                  "merge_threshold_of_explain_analyze",
+                  String.valueOf(conf.getMergeThresholdOfExplainAnalyze()))));
+
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
@@ -1642,7 +1656,7 @@ public class IoTDBDescriptor {
     Properties commonProperties = new Properties();
     try (InputStream inputStream = url.openStream()) {
       LOGGER.info("Start to reload config file {}", url);
-      commonProperties.load(inputStream);
+      commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
     } catch (Exception e) {
       LOGGER.warn("Fail to reload config file {}", url, e);
       throw new QueryProcessException(
@@ -1657,7 +1671,7 @@ public class IoTDBDescriptor {
     try (InputStream inputStream = url.openStream()) {
       LOGGER.info("Start to reload config file {}", url);
       Properties properties = new Properties();
-      properties.load(inputStream);
+      properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
       commonProperties.putAll(properties);
       loadHotModifiedProps(commonProperties);
     } catch (Exception e) {

@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -196,14 +197,14 @@ public class SettleSelectorImpl implements ISettleSelector {
         resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE
             ? resource.buildDeviceTimeIndex()
             : (DeviceTimeIndex) resource.getTimeIndex();
-    Set<String> deletedDevices = new HashSet<>();
+    Set<IDeviceID> deletedDevices = new HashSet<>();
     boolean hasExpiredTooLong = false;
     long currentTime = CommonDateTimeUtils.currentTime();
 
     Collection<Modification> modifications = modFile.getModifications();
-    for (String device : deviceTimeIndex.getDevices()) {
+    for (IDeviceID device : deviceTimeIndex.getDevices()) {
       // check expired device by ttl
-      long deviceTTL = DataNodeTTLCache.getInstance().getTTL(device);
+      long deviceTTL = DataNodeTTLCache.getInstance().getTTL(device.toString());
       boolean hasSetTTL = deviceTTL != Long.MAX_VALUE;
       boolean isDeleted =
           !deviceTimeIndex.isDeviceAlive(device, deviceTTL)
@@ -247,7 +248,7 @@ public class SettleSelectorImpl implements ISettleSelector {
 
   /** Check whether the device is completely deleted by mods or not. */
   private boolean isDeviceDeletedByMods(
-      Collection<Modification> modifications, String device, long startTime, long endTime)
+      Collection<Modification> modifications, IDeviceID device, long startTime, long endTime)
       throws IllegalPathException {
     for (Modification modification : modifications) {
       PartialPath path = modification.getPath();

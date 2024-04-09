@@ -78,6 +78,10 @@ public class PipeStaticMeta {
     return connectorParameters;
   }
 
+  public PipeType getPipeType() {
+    return PipeType.getPipeType(pipeName);
+  }
+
   public ByteBuffer serialize() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
@@ -206,5 +210,14 @@ public class PipeStaticMeta {
         + ", connectorParameters="
         + connectorParameters
         + "}";
+  }
+
+  /////////////////////////////////  Pipe Name  /////////////////////////////////
+
+  public static final String SYSTEM_PIPE_PREFIX = "__";
+  public static final String SUBSCRIPTION_PIPE_PREFIX = SYSTEM_PIPE_PREFIX + "subscription.";
+
+  public static String generateSubscriptionPipeName(String topicName, String consumerGroupId) {
+    return SUBSCRIPTION_PIPE_PREFIX + topicName + "_" + consumerGroupId;
   }
 }

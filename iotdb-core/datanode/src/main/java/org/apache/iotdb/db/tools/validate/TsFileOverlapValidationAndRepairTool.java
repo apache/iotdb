@@ -23,6 +23,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 
 import java.io.File;
 import java.io.IOException;
@@ -166,13 +168,13 @@ public class TsFileOverlapValidationAndRepairTool {
 
   public static int checkTimePartitionHasOverlap(List<TsFileResource> resources) {
     int overlapTsFileNum = 0;
-    Map<String, Long> deviceEndTimeMap = new HashMap<>();
-    Map<String, TsFileResource> deviceLastExistTsFileMap = new HashMap<>();
+    Map<IDeviceID, Long> deviceEndTimeMap = new HashMap<>();
+    Map<IDeviceID, TsFileResource> deviceLastExistTsFileMap = new HashMap<>();
     for (TsFileResource resource : resources) {
-      Set<String> devices = resource.getDevices();
+      Set<IDeviceID> devices = resource.getDevices();
       boolean fileHasOverlap = false;
       // check overlap
-      for (String device : devices) {
+      for (IDeviceID device : devices) {
         long deviceStartTimeInCurrentFile = resource.getStartTime(device);
         if (deviceStartTimeInCurrentFile > resource.getEndTime(device)) {
           continue;
@@ -187,7 +189,7 @@ public class TsFileOverlapValidationAndRepairTool {
                   + " device in current file start time is %d\n",
               deviceLastExistTsFileMap.get(device).getTsFilePath(),
               resource.getTsFilePath(),
-              device,
+              ((PlainDeviceID) device).toStringID(),
               deviceEndTimeInPreviousFile,
               deviceStartTimeInCurrentFile);
           fileHasOverlap = true;
@@ -198,7 +200,7 @@ public class TsFileOverlapValidationAndRepairTool {
       }
       // update end time map
       if (!fileHasOverlap) {
-        for (String device : devices) {
+        for (IDeviceID device : devices) {
           deviceEndTimeMap.put(device, resource.getEndTime(device));
           deviceLastExistTsFileMap.put(device, resource);
         }

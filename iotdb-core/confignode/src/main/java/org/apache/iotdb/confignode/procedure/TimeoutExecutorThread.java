@@ -68,7 +68,7 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
         queue.add(delayTask);
       } else {
         if (procedure.setTimeoutFailure(executor.getEnvironment())) {
-          long rootProcId = executor.getRootProcId(procedure);
+          long rootProcId = executor.getRootProcedureId(procedure);
           RootProcedureStack<Env> rollbackStack = executor.getRollbackStack(rootProcId);
           rollbackStack.abort();
           executor.getStore().update(procedure);

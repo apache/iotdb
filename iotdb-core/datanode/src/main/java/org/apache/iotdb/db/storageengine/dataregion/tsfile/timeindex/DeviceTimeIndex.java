@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
@@ -70,7 +72,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   private long maxEndTime = Long.MIN_VALUE;
 
   /** device -> index of start times array and end times array */
-  protected Map<String, Integer> deviceToIndex;
+  protected Map<IDeviceID, Integer> deviceToIndex;
 
   public DeviceTimeIndex() {
     this.deviceToIndex = new ConcurrentHashMap<>();
@@ -80,7 +82,8 @@ public class DeviceTimeIndex implements ITimeIndex {
     initTimes(endTimes, Long.MIN_VALUE);
   }
 
-  public DeviceTimeIndex(Map<String, Integer> deviceToIndex, long[] startTimes, long[] endTimes) {
+  public DeviceTimeIndex(
+      Map<IDeviceID, Integer> deviceToIndex, long[] startTimes, long[] endTimes) {
     this.startTimes = startTimes;
     this.endTimes = endTimes;
     this.deviceToIndex = deviceToIndex;
@@ -97,10 +100,10 @@ public class DeviceTimeIndex implements ITimeIndex {
       ReadWriteIOUtils.write(endTimes[i], outputStream);
     }
 
-    for (Entry<String, Integer> stringIntegerEntry : deviceToIndex.entrySet()) {
-      String deviceName = stringIntegerEntry.getKey();
+    for (Entry<IDeviceID, Integer> stringIntegerEntry : deviceToIndex.entrySet()) {
+      IDeviceID device = stringIntegerEntry.getKey();
       int index = stringIntegerEntry.getValue();
-      ReadWriteIOUtils.write(deviceName, outputStream);
+      ReadWriteIOUtils.write(((PlainDeviceID) device).toStringID(), outputStream);
       ReadWriteIOUtils.write(index, outputStream);
     }
   }
@@ -124,7 +127,7 @@ public class DeviceTimeIndex implements ITimeIndex {
           DataNodeDevicePathCache.getInstance()
               .getDeviceId(ReadWriteIOUtils.readString(inputStream));
       int index = ReadWriteIOUtils.readInt(inputStream);
-      deviceToIndex.put(path, index);
+      deviceToIndex.put(new PlainDeviceID(path), index);
     }
     return this;
   }
@@ -146,7 +149,7 @@ public class DeviceTimeIndex implements ITimeIndex {
       String path =
           DataNodeDevicePathCache.getInstance().getDeviceId(ReadWriteIOUtils.readString(buffer));
       int index = buffer.getInt();
-      deviceToIndex.put(path, index);
+      deviceToIndex.put(new PlainDeviceID(path), index);
     }
     return this;
   }
@@ -157,12 +160,12 @@ public class DeviceTimeIndex implements ITimeIndex {
     endTimes = Arrays.copyOfRange(endTimes, 0, deviceToIndex.size());
   }
 
-  public Set<String> getDevices() {
+  public Set<IDeviceID> getDevices() {
     return deviceToIndex.keySet();
   }
 
   @Override
-  public Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource) {
+  public Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource) {
     return deviceToIndex.keySet();
   }
 
@@ -172,16 +175,16 @@ public class DeviceTimeIndex implements ITimeIndex {
    * @param inputStream inputStream
    * @return device name
    */
-  public static Set<String> getDevices(InputStream inputStream) throws IOException {
+  public static Set<IDeviceID> getDevices(InputStream inputStream) throws IOException {
     int deviceNum = ReadWriteIOUtils.readInt(inputStream);
     ReadWriteIOUtils.skip(inputStream, 2L * deviceNum * ReadWriteIOUtils.LONG_LEN);
-    Set<String> devices = new HashSet<>();
+    Set<IDeviceID> devices = new HashSet<>();
     for (int i = 0; i < deviceNum; i++) {
       String path =
           DataNodeDevicePathCache.getInstance()
               .getDeviceId(ReadWriteIOUtils.readString(inputStream));
       ReadWriteIOUtils.skip(inputStream, ReadWriteIOUtils.INT_LEN);
-      devices.add(path);
+      devices.add(new PlainDeviceID(path));
     }
     return devices;
   }
@@ -219,13 +222,13 @@ public class DeviceTimeIndex implements ITimeIndex {
         + RamUsageEstimator.sizeOf(endTimes);
   }
 
-  private int getDeviceIndex(String deviceId) {
+  private int getDeviceIndex(IDeviceID deviceId) {
     int index;
     if (deviceToIndex.containsKey(deviceId)) {
       index = deviceToIndex.get(deviceId);
     } else {
       index = deviceToIndex.size();
-      deviceToIndex.put(DataNodeDevicePathCache.getInstance().getDeviceId(deviceId), index);
+      deviceToIndex.put(deviceId, index);
       if (startTimes.length <= index) {
         startTimes = enLargeArray(startTimes, Long.MAX_VALUE);
         endTimes = enLargeArray(endTimes, Long.MIN_VALUE);
@@ -296,7 +299,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public void updateStartTime(String deviceId, long time) {
+  public void updateStartTime(IDeviceID deviceId, long time) {
     long startTime = getStartTime(deviceId);
     if (time < startTime) {
       int index = getDeviceIndex(deviceId);
@@ -306,7 +309,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public void updateEndTime(String deviceId, long time) {
+  public void updateEndTime(IDeviceID deviceId, long time) {
     long endTime = getEndTime(deviceId);
     if (time > endTime) {
       int index = getDeviceIndex(deviceId);
@@ -316,21 +319,21 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public void putStartTime(String deviceId, long time) {
+  public void putStartTime(IDeviceID deviceId, long time) {
     int index = getDeviceIndex(deviceId);
     startTimes[index] = time;
     minStartTime = Math.min(minStartTime, time);
   }
 
   @Override
-  public void putEndTime(String deviceId, long time) {
+  public void putEndTime(IDeviceID deviceId, long time) {
     int index = getDeviceIndex(deviceId);
     endTimes[index] = time;
     maxEndTime = Math.max(maxEndTime, time);
   }
 
   @Override
-  public long getStartTime(String deviceId) {
+  public long getStartTime(IDeviceID deviceId) {
     if (!deviceToIndex.containsKey(deviceId)) {
       return Long.MAX_VALUE;
     }
@@ -338,7 +341,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getEndTime(String deviceId) {
+  public long getEndTime(IDeviceID deviceId) {
     if (!deviceToIndex.containsKey(deviceId)) {
       return Long.MIN_VALUE;
     }
@@ -346,7 +349,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean checkDeviceIdExist(String deviceId) {
+  public boolean checkDeviceIdExist(IDeviceID deviceId) {
     return deviceToIndex.containsKey(deviceId);
   }
 
@@ -373,17 +376,17 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean definitelyNotContains(String device) {
+  public boolean definitelyNotContains(IDeviceID device) {
     return !deviceToIndex.containsKey(device);
   }
 
   @Override
-  public boolean isDeviceAlive(String device, long ttl) {
+  public boolean isDeviceAlive(IDeviceID device, long ttl) {
     return endTimes[deviceToIndex.get(device)] >= CommonDateTimeUtils.currentTime() - ttl;
   }
 
   @Override
-  public long[] getStartAndEndTime(String deviceId) {
+  public long[] getStartAndEndTime(IDeviceID deviceId) {
     Integer index = deviceToIndex.get(deviceId);
     if (index == null) {
       return null;
@@ -395,11 +398,11 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   @Override
   public Pair<Long, Long> getPossibleStartTimeAndEndTime(
-      PartialPath devicePattern, Set<String> deviceMatchInfo) {
+      PartialPath devicePattern, Set<IDeviceID> deviceMatchInfo) {
     boolean hasMatchedDevice = false;
     long startTime = Long.MAX_VALUE;
     long endTime = Long.MIN_VALUE;
-    for (Entry<String, Integer> entry : deviceToIndex.entrySet()) {
+    for (Entry<IDeviceID, Integer> entry : deviceToIndex.entrySet()) {
       try {
         if (deviceMatchInfo.contains(entry.getKey())) {
           hasMatchedDevice = true;
@@ -411,7 +414,8 @@ public class DeviceTimeIndex implements ITimeIndex {
           }
         } else {
           if (devicePattern.matchFullPath(
-              DataNodeDevicePathCache.getInstance().getPartialPath(entry.getKey()))) {
+              DataNodeDevicePathCache.getInstance()
+                  .getPartialPath(((PlainDeviceID) entry.getKey()).toStringID()))) {
             deviceMatchInfo.add(entry.getKey());
             hasMatchedDevice = true;
             if (startTimes[entry.getValue()] < startTime) {

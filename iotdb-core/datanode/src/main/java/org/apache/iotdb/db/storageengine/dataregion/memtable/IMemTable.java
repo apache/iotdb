@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -174,7 +175,7 @@ public interface IMemTable extends WALEntryValue {
 
   void setFlushStatus(FlushStatus flushStatus);
 
-  Map<String, Long> getMaxTime();
+  Map<IDeviceID, Long> getMaxTime();
 
   String getDatabase();
 

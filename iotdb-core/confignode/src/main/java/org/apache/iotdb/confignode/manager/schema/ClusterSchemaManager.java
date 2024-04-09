@@ -510,7 +510,7 @@ public class ClusterSchemaManager {
     // Get all StorageGroupSchemas
     Map<String, TDatabaseSchema> databaseSchemaMap =
         getMatchedDatabaseSchemasByName(getDatabaseNames());
-    if (databaseSchemaMap.size() == 0) {
+    if (databaseSchemaMap.isEmpty()) {
       // Skip when there are no StorageGroups
       return;
     }
@@ -679,6 +679,25 @@ public class ClusterSchemaManager {
     Map<String, TDatabaseSchema> result = new ConcurrentHashMap<>();
     clusterSchemaInfo
         .getMatchedDatabaseSchemasByName(rawPathList)
+        .forEach(
+            (database, databaseSchema) -> {
+              if (isDatabaseExist(database)) {
+                result.put(database, databaseSchema);
+              }
+            });
+    return result;
+  }
+
+  /**
+   * Only leader use this interface. Get the specified Databases' schemaengine
+   *
+   * @param prefix prefix full path
+   * @return the matched DatabaseSchemas
+   */
+  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByPrefix(PartialPath prefix) {
+    Map<String, TDatabaseSchema> result = new ConcurrentHashMap<>();
+    clusterSchemaInfo
+        .getMatchedDatabaseSchemasByPrefix(prefix)
         .forEach(
             (database, databaseSchema) -> {
               if (isDatabaseExist(database)) {

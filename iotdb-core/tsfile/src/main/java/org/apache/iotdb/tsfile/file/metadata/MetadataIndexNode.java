@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.IMetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
@@ -35,9 +36,9 @@ import java.util.List;
 
 public class MetadataIndexNode {
 
-  private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
-  private final List<MetadataIndexEntry> children;
-  private long endOffset;
+  protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+  protected final List<IMetadataIndexEntry> children;
+  protected long endOffset;
 
   /** type of the child node at offset. */
   private final MetadataIndexNodeType nodeType;
@@ -49,13 +50,13 @@ public class MetadataIndexNode {
   }
 
   public MetadataIndexNode(
-      List<MetadataIndexEntry> children, long endOffset, MetadataIndexNodeType nodeType) {
+      List<IMetadataIndexEntry> children, long endOffset, MetadataIndexNodeType nodeType) {
     this.children = children;
     this.endOffset = endOffset;
     this.nodeType = nodeType;
   }
 
-  public List<MetadataIndexEntry> getChildren() {
+  public List<IMetadataIndexEntry> getChildren() {
     return children;
   }
 
@@ -71,7 +72,7 @@ public class MetadataIndexNode {
     return nodeType;
   }
 
-  public void addEntry(MetadataIndexEntry metadataIndexEntry) {
+  public void addEntry(IMetadataIndexEntry metadataIndexEntry) {
     this.children.add(metadataIndexEntry);
   }
 
@@ -79,7 +80,7 @@ public class MetadataIndexNode {
     return children.size() >= config.getMaxDegreeOfIndexNode();
   }
 
-  MetadataIndexEntry peek() {
+  IMetadataIndexEntry peek() {
     if (children.isEmpty()) {
       return null;
     }
@@ -89,7 +90,7 @@ public class MetadataIndexNode {
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(children.size(), outputStream);
-    for (MetadataIndexEntry metadataIndexEntry : children) {
+    for (IMetadataIndexEntry metadataIndexEntry : children) {
       byteLen += metadataIndexEntry.serializeTo(outputStream);
     }
     byteLen += ReadWriteIOUtils.write(endOffset, outputStream);
@@ -97,11 +98,15 @@ public class MetadataIndexNode {
     return byteLen;
   }
 
-  public static MetadataIndexNode deserializeFrom(ByteBuffer buffer) {
-    List<MetadataIndexEntry> children = new ArrayList<>();
+  public static MetadataIndexNode deserializeFrom(ByteBuffer buffer, boolean isDeviceLevel) {
+    List<IMetadataIndexEntry> children = new ArrayList<>();
     int size = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     for (int i = 0; i < size; i++) {
-      children.add(MetadataIndexEntry.deserializeFrom(buffer));
+      if (isDeviceLevel) {
+        children.add(DeviceMetadataIndexEntry.deserializeFrom(buffer));
+      } else {
+        children.add(MeasurementMetadataIndexEntry.deserializeFrom(buffer));
+      }
     }
     long offset = ReadWriteIOUtils.readLong(buffer);
     MetadataIndexNodeType nodeType =
@@ -109,11 +114,16 @@ public class MetadataIndexNode {
     return new MetadataIndexNode(children, offset, nodeType);
   }
 
-  public static MetadataIndexNode deserializeFrom(InputStream inputStream) throws IOException {
-    List<MetadataIndexEntry> children = new ArrayList<>();
+  public static MetadataIndexNode deserializeFrom(InputStream inputStream, boolean isDeviceLevel)
+      throws IOException {
+    List<IMetadataIndexEntry> children = new ArrayList<>();
     int size = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
     for (int i = 0; i < size; i++) {
-      children.add(MetadataIndexEntry.deserializeFrom(inputStream));
+      if (isDeviceLevel) {
+        children.add(DeviceMetadataIndexEntry.deserializeFrom(inputStream));
+      } else {
+        children.add(MeasurementMetadataIndexEntry.deserializeFrom(inputStream));
+      }
     }
     long offset = ReadWriteIOUtils.readLong(inputStream);
     MetadataIndexNodeType nodeType =
@@ -121,7 +131,7 @@ public class MetadataIndexNode {
     return new MetadataIndexNode(children, offset, nodeType);
   }
 
-  public Pair<MetadataIndexEntry, Long> getChildIndexEntry(String key, boolean exactSearch) {
+  public Pair<IMetadataIndexEntry, Long> getChildIndexEntry(Comparable key, boolean exactSearch) {
     int index = binarySearchInChildren(key, exactSearch);
     if (index == -1) {
       return null;
@@ -135,14 +145,14 @@ public class MetadataIndexNode {
     return new Pair<>(children.get(index), childEndOffset);
   }
 
-  int binarySearchInChildren(String key, boolean exactSearch) {
+  int binarySearchInChildren(Comparable key, boolean exactSearch) {
     int low = 0;
     int high = children.size() - 1;
 
     while (low <= high) {
       int mid = (low + high) >>> 1;
-      MetadataIndexEntry midVal = children.get(mid);
-      int cmp = midVal.getName().compareTo(key);
+      IMetadataIndexEntry midVal = children.get(mid);
+      int cmp = midVal.getCompareKey().compareTo(key);
 
       if (cmp < 0) {
         low = mid + 1;
@@ -159,5 +169,10 @@ public class MetadataIndexNode {
     } else {
       return low == 0 ? low : low - 1;
     }
+  }
+
+  public boolean isDeviceLevel() {
+    return this.nodeType == MetadataIndexNodeType.INTERNAL_DEVICE
+        || this.nodeType == MetadataIndexNodeType.LEAF_DEVICE;
   }
 }

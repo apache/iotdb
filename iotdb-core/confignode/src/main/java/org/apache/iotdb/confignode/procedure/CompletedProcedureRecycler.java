@@ -32,12 +32,12 @@ import java.util.concurrent.TimeUnit;
 public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
   private static final Logger LOG = LoggerFactory.getLogger(CompletedProcedureRecycler.class);
   private static final int DEFAULT_BATCH_SIZE = 32;
-  private long evictTTL;
+  private final long evictTTL;
   private final Map<Long, CompletedProcedureContainer<Env>> completed;
-  private final IProcedureStore store;
+  private final IProcedureStore<Env> store;
 
   public CompletedProcedureRecycler(
-      IProcedureStore store,
+      IProcedureStore<Env> store,
       Map<Long, CompletedProcedureContainer<Env>> completedMap,
       long cleanTimeInterval,
       long evictTTL) {

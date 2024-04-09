@@ -134,6 +134,8 @@ public enum ThreadName {
   PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR("Pipe-Runtime-Periodical-Job-Executor"),
   PIPE_ASYNC_CONNECTOR_CLIENT_POOL("Pipe-Async-Connector-Client-Pool"),
   PIPE_RECEIVER_AIR_GAP_AGENT("Pipe-Receiver-Air-Gap-Agent"),
+  SUBSCRIPTION_EXECUTOR_POOL("Subscription-Executor-Pool"),
+  SUBSCRIPTION_RUNTIME_META_SYNCER("Subscription-Runtime-Meta-Syncer"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   STATEFUL_TRIGGER_INFORMATION_UPDATER("Stateful-Trigger-Information-Updater"),
   // -------------------------- JVM --------------------------
@@ -269,6 +271,7 @@ public enum ThreadName {
               PIPE_RUNTIME_PERIODICAL_JOB_EXECUTOR,
               PIPE_ASYNC_CONNECTOR_CLIENT_POOL,
               PIPE_RECEIVER_AIR_GAP_AGENT,
+              SUBSCRIPTION_EXECUTOR_POOL,
               WINDOW_EVALUATION_SERVICE,
               STATEFUL_TRIGGER_INFORMATION_UPDATER));
 

@@ -492,6 +492,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           return -1;
         }
         innerSpaceEstimator.cleanup();
+        // This exception may be caused by drop database
+        if (!tsFileManager.isAllowCompaction()) {
+          return -1;
+        }
         LOGGER.error("Meet error when estimate inner compaction memory", e);
         return -1;
       }

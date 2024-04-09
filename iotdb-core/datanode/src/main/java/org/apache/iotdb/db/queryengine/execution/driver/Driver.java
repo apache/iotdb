@@ -445,7 +445,7 @@ public abstract class Driver implements IDriver {
     if (!tmpPipeLineDir.exists()) {
       return;
     }
-    FileUtils.deleteDirectory(tmpPipeLineDir);
+    FileUtils.deleteFileOrDirectory(tmpPipeLineDir);
   }
 
   private static Throwable addSuppressedException(

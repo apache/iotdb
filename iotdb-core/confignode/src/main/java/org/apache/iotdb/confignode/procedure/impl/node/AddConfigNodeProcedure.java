@@ -85,7 +85,6 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
         case REGISTER_SUCCESS:
           env.notifyRegisterSuccess(tConfigNodeLocation);
           env.applyConfigNode(tConfigNodeLocation, versionInfo);
-          env.broadCastTheLatestConfigNodeGroup();
           env.getConfigManager()
               .getLoadManager()
               .forceUpdateNodeCache(

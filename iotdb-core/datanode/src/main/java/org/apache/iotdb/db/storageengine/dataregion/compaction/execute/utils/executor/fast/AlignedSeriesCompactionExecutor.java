@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -74,7 +75,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
           modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
-      String deviceId,
+      IDeviceID deviceId,
       int subTaskId,
       List<IMeasurementSchema> measurementSchemas,
       FastCompactionTaskSummary summary) {
@@ -170,11 +171,16 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
             valueChunkMetadatas.add(null);
           } else {
             // current file contains this aligned timeseries
-            valueChunkMetadatas.add(
+            List<IChunkMetadata> valueColumnChunkMetadataList =
                 readerCacheMap
                     .get(resource)
                     .getChunkMetadataListByTimeseriesMetadataOffset(
-                        timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right));
+                        timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right);
+            if (isValueChunkDataTypeMatchSchema(valueColumnChunkMetadataList)) {
+              valueChunkMetadatas.add(valueColumnChunkMetadataList);
+            } else {
+              valueChunkMetadatas.add(null);
+            }
           }
         }
       }
@@ -238,6 +244,19 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
                 fileElement));
       }
     }
+  }
+
+  private boolean isValueChunkDataTypeMatchSchema(
+      List<IChunkMetadata> chunkMetadataListOfOneValueColumn) {
+    for (IChunkMetadata chunkMetadata : chunkMetadataListOfOneValueColumn) {
+      if (chunkMetadata == null) {
+        continue;
+      }
+      String measurement = chunkMetadata.getMeasurementUid();
+      IMeasurementSchema schema = measurementSchemaMap.get(measurement);
+      return schema.getType() == chunkMetadata.getDataType();
+    }
+    return true;
   }
 
   /**

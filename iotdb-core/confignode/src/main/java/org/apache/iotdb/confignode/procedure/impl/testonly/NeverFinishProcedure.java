@@ -33,6 +33,12 @@ import java.io.IOException;
 /** This procedure will never finish. */
 @TestOnly
 public class NeverFinishProcedure extends StateMachineProcedure<ConfigNodeProcedureEnv, Integer> {
+  public NeverFinishProcedure() {}
+
+  public NeverFinishProcedure(long procId) {
+    this.setProcId(procId);
+  }
+
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, Integer state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
@@ -64,5 +70,16 @@ public class NeverFinishProcedure extends StateMachineProcedure<ConfigNodeProced
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.NEVER_FINISH_PROCEDURE.getTypeCode());
     super.serialize(stream);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    return getProcId() == ((NeverFinishProcedure) o).getProcId();
   }
 }

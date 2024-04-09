@@ -648,7 +648,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
         Collections.singletonList(targetResource),
         CompactionTaskType.INNER_SEQ,
         COMPACTION_TEST_SG);
-    Assert.assertEquals(8, summary.getDirectlyFlushChunkNum());
+    Assert.assertEquals(16, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDirectlyFlushPageCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(

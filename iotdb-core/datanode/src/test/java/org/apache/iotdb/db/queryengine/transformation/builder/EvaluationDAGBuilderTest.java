@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.transformation.builder;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -67,6 +68,7 @@ public class EvaluationDAGBuilderTest {
     String sql =
         "select s1 + 1, s1 * 2, s1 - 2, s1 / 3, sin(s1), m4(s1,'windowSize'='10') from root.sg.d1;";
     try {
+      IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
       Operator operator = generateOperatorTree(sql);
       Assert.assertNotNull(operator);
       TransformOperator transformOperator =
