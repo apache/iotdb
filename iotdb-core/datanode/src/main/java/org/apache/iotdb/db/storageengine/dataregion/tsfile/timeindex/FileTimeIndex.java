@@ -142,28 +142,22 @@ public class FileTimeIndex implements ITimeIndex {
     }
   }
 
-  private long getTimePartitionWithCheck() {
-    long startPartitionId = TimePartitionUtils.getTimePartitionId(startTime);
-    long endPartitionId = TimePartitionUtils.getTimePartitionId(endTime);
+  @Override
+  public long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException {
+    final long startPartitionId = TimePartitionUtils.getTimePartitionId(startTime);
+    final long endPartitionId = TimePartitionUtils.getTimePartitionId(endTime);
+
     if (startPartitionId == endPartitionId) {
       return startPartitionId;
     }
-    return SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
-  }
 
-  @Override
-  public long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException {
-    long partitionId = getTimePartitionWithCheck();
-    if (partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID) {
-      throw new PartitionViolationException(tsFilePath);
-    }
-    return partitionId;
+    throw new PartitionViolationException(tsFilePath);
   }
 
   @Override
   public boolean isSpanMultiTimePartitions() {
-    long partitionId = getTimePartitionWithCheck();
-    return partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
+    return TimePartitionUtils.getTimePartitionId(startTime)
+        != TimePartitionUtils.getTimePartitionId(endTime);
   }
 
   @Override
