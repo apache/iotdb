@@ -163,4 +163,12 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   public boolean isLogicalView() {
     return this.iMeasurementSchema.isLogicalView();
   }
+
+  public int invalidateLastCache() {
+    if (this.lastCacheContainer == null || this.lastCacheContainer.getCachedLast() == null) {
+      return 0;
+    }
+
+    return this.lastCacheContainer.invalidateLastCache();
+  }
 }

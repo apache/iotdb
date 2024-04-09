@@ -65,4 +65,11 @@ public class DataNodeLastCacheManager {
     }
     return entry.updateLastCache(timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
+
+  public static int invalidateLastCache(SchemaCacheEntry entry) {
+    if (!CACHE_ENABLED || null == entry) {
+      return 0;
+    }
+    return entry.invalidateLastCache();
+  }
 }

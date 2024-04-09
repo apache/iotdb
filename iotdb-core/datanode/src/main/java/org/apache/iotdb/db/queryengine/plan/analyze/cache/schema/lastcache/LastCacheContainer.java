@@ -70,6 +70,13 @@ public class LastCacheContainer implements ILastCacheContainer {
     return 0;
   }
 
+  @Override
+  public int invalidateLastCache() {
+    int size = lastCacheValue.estimateSize();
+    lastCacheValue = null;
+    return size;
+  }
+
   private int getDiffSize(TsPrimitiveType oldValue, TsPrimitiveType newValue) {
     if (oldValue == null) {
       return newValue == null ? 0 : newValue.getSize();

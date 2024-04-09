@@ -393,6 +393,38 @@ public class TimeSeriesSchemaCache {
     dualKeyCache.invalidate(database);
   }
 
+  public void invalidateLastCache(PartialPath path) {
+    if (!path.hasWildcard()) {
+      SchemaCacheEntry entry = dualKeyCache.get(path.getDevicePath(), path.getMeasurement());
+      if (null == entry) {
+        return;
+      }
+      dualKeyCache.update(
+          new IDualKeyCacheUpdating<PartialPath, String, SchemaCacheEntry>() {
+            @Override
+            public PartialPath getFirstKey() {
+              return path.getDevicePath();
+            }
+
+            @Override
+            public String[] getSecondKeyList() {
+              return new String[] {path.getMeasurement()};
+            }
+
+            @Override
+            public int updateValue(int index, SchemaCacheEntry value) {
+              return DataNodeLastCacheManager.invalidateLastCache(value);
+            }
+          });
+    } else {
+      dualKeyCache.invalidateLastCache(path);
+    }
+  }
+
+  public void invalidateDataRegionLastCache(String database) {
+    dualKeyCache.invalidateDataRegionLastCache(database);
+  }
+
   public void invalidate(List<PartialPath> partialPathList) {
     dualKeyCache.invalidate(partialPathList);
   }
