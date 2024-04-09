@@ -280,9 +280,6 @@ public class IoTDBRpcDataSet {
   }
 
   public boolean next() throws StatementExecutionException, IoTDBConnectionException {
-    if (hasCachedRecord) {
-      return true;
-    }
     if (hasCachedBlock()) {
       lastReadWasNull = false;
       constructOneRow();
