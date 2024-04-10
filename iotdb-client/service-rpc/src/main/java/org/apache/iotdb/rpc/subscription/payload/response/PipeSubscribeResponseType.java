@@ -25,6 +25,10 @@ import java.util.Map;
 
 public enum PipeSubscribeResponseType {
   ACK((short) 0),
+
+  POLL((short) 1),
+  POLL_TS_FILE_PIECE((short) 1),
+  POLL_TS_FILE_SEAL((short) 1),
   ;
 
   private final short type;

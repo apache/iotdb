@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.db.subscription.event.SerializableEnrichedTabletsSubscriptionEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -52,14 +53,15 @@ public class SubscriptionBroker {
 
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
 
-  public List<SerializedEnrichedEvent> poll(Set<String> topicNames, SubscriptionPollTimer timer) {
-    List<SerializedEnrichedEvent> events = new ArrayList<>();
+  public List<SerializableEnrichedTabletsSubscriptionEvent> poll(
+      Set<String> topicNames, SubscriptionPollTimer timer) {
+    List<SerializableEnrichedTabletsSubscriptionEvent> events = new ArrayList<>();
     for (Map.Entry<String, SubscriptionPrefetchingQueue> entry :
         topicNameToPrefetchingQueue.entrySet()) {
       String topicName = entry.getKey();
       SubscriptionPrefetchingQueue prefetchingQueue = entry.getValue();
       if (topicNames.contains(topicName)) {
-        SerializedEnrichedEvent event = prefetchingQueue.poll(timer);
+        SerializableEnrichedTabletsSubscriptionEvent event = prefetchingQueue.poll(timer);
         if (Objects.nonNull(event)) {
           events.add(event);
         }

@@ -64,7 +64,7 @@ public class PipeSubscribePollTsFilePieceResp extends TPipeSubscribeResp {
 
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
-    resp.type = PipeSubscribeResponseType.ACK.getType();
+    resp.type = PipeSubscribeResponseType.POLL_TS_FILE_PIECE.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(fileName, outputStream);

@@ -33,7 +33,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
-import org.apache.iotdb.db.subscription.broker.SerializedEnrichedEvent;
+import org.apache.iotdb.db.subscription.event.SerializableEnrichedTabletsSubscriptionEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -330,11 +330,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                 : Math.max(
                     req.getTimeoutMs(),
                     SubscriptionConfig.getInstance().getSubscriptionMinPollTimeoutMs()));
-    List<SerializedEnrichedEvent> events =
+    List<SerializableEnrichedTabletsSubscriptionEvent> events =
         SubscriptionAgent.broker().poll(consumerConfig, topicNames, timer);
     List<String> subscriptionCommitIds =
         events.stream()
-            .map(SerializedEnrichedEvent::getSubscriptionCommitId)
+            .map(SerializableEnrichedTabletsSubscriptionEvent::getSubscriptionCommitId)
             .collect(Collectors.toList());
 
     if (timer.isExpired()) {
@@ -356,7 +356,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     TPipeSubscribeResp resp =
         PipeSubscribePollResp.toTPipeSubscribeResp(
             RpcUtils.SUCCESS_STATUS, enrichedTabletsWithByteBufferList, new HashMap<>());
-    events.forEach(SerializedEnrichedEvent::resetByteBuffer);
+    events.forEach(SerializableEnrichedTabletsSubscriptionEvent::resetByteBuffer);
     return resp;
   }
 

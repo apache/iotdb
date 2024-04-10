@@ -36,6 +36,7 @@ public class PipeSubscribePollTsFileSealResp extends TPipeSubscribeResp {
 
   private transient String fileName;
   private transient long fileLength;
+  private transient String subscriptionCommitId;
 
   public final String getFileName() {
     return fileName;
@@ -45,22 +46,28 @@ public class PipeSubscribePollTsFileSealResp extends TPipeSubscribeResp {
     return fileLength;
   }
 
+  public String getSubscriptionCommitId() {
+    return subscriptionCommitId;
+  }
+
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeSubscribePollTsFileSealResp toTPipeSubscribeResp(
-      TSStatus status, String fileName, long fileLength) {
+      TSStatus status, String fileName, long fileLength, String subscriptionCommitId) {
     final PipeSubscribePollTsFileSealResp resp = new PipeSubscribePollTsFileSealResp();
 
     resp.fileName = fileName;
     resp.fileLength = fileLength;
+    resp.subscriptionCommitId = subscriptionCommitId;
 
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
-    resp.type = PipeSubscribeResponseType.ACK.getType();
+    resp.type = PipeSubscribeResponseType.POLL_TS_FILE_SEAL.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(fileName, outputStream);
       ReadWriteIOUtils.write(fileLength, outputStream);
+      ReadWriteIOUtils.write(subscriptionCommitId, outputStream);
       resp.body =
           Collections.singletonList(
               ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
@@ -81,6 +88,7 @@ public class PipeSubscribePollTsFileSealResp extends TPipeSubscribeResp {
         if (Objects.nonNull(byteBuffer) && byteBuffer.hasRemaining()) {
           resp.fileName = ReadWriteIOUtils.readString(byteBuffer);
           resp.fileLength = ReadWriteIOUtils.readLong(byteBuffer);
+          resp.subscriptionCommitId = ReadWriteIOUtils.readString(byteBuffer);
         }
       }
     }
@@ -105,6 +113,7 @@ public class PipeSubscribePollTsFileSealResp extends TPipeSubscribeResp {
     final PipeSubscribePollTsFileSealResp that = (PipeSubscribePollTsFileSealResp) obj;
     return Objects.equals(this.fileName, that.fileName)
         && fileLength == that.fileLength
+        && Objects.equals(this.subscriptionCommitId, that.subscriptionCommitId)
         && Objects.equals(this.status, that.status)
         && this.version == that.version
         && this.type == that.type
@@ -113,6 +122,6 @@ public class PipeSubscribePollTsFileSealResp extends TPipeSubscribeResp {
 
   @Override
   public int hashCode() {
-    return Objects.hash(fileName, fileLength, status, version, type, body);
+    return Objects.hash(fileName, fileLength, subscriptionCommitId, status, version, type, body);
   }
 }

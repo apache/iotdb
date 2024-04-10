@@ -28,6 +28,8 @@ import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.subscription.event.SerializableEnrichedTabletsSubscriptionEvent;
+import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -46,16 +48,16 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class SubscriptionPrefetchingQueue {
+public abstract class SubscriptionPrefetchingQueue {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionBroker.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPrefetchingQueue.class);
 
   private final String brokerId; // consumer group id
   private final String topicName;
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
 
-  private final Map<String, SerializedEnrichedEvent> uncommittedEvents;
-  private final LinkedBlockingQueue<SerializedEnrichedEvent> prefetchingQueue;
+  private final Map<String, SubscriptionEvent> uncommittedEvents;
+  private final LinkedBlockingQueue<SerializableEnrichedTabletsSubscriptionEvent> prefetchingQueue;
 
   private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
 
@@ -70,13 +72,13 @@ public class SubscriptionPrefetchingQueue {
 
   /////////////////////////////// provided for SubscriptionBroker ///////////////////////////////
 
-  public SerializedEnrichedEvent poll(SubscriptionPollTimer timer) {
+  public SerializableEnrichedTabletsSubscriptionEvent poll(SubscriptionPollTimer timer) {
     if (prefetchingQueue.isEmpty()) {
       prefetchOnce(SubscriptionConfig.getInstance().getSubscriptionMaxTabletsPerPrefetching());
       // without serializeOnce here
     }
 
-    SerializedEnrichedEvent currentEvent;
+    SerializableEnrichedTabletsSubscriptionEvent currentEvent;
     try {
       while (Objects.nonNull(
           currentEvent =
@@ -109,7 +111,7 @@ public class SubscriptionPrefetchingQueue {
 
   public void commit(List<String> subscriptionCommitIds) {
     for (String subscriptionCommitId : subscriptionCommitIds) {
-      SerializedEnrichedEvent event = uncommittedEvents.get(subscriptionCommitId);
+      SubscriptionEvent event = uncommittedEvents.get(subscriptionCommitId);
       if (Objects.isNull(event)) {
         LOGGER.warn(
             "Subscription: subscription commit id [{}] does not exist, it may have been committed or something unexpected happened",
@@ -177,8 +179,8 @@ public class SubscriptionPrefetchingQueue {
 
     if (!tablets.isEmpty()) {
       String subscriptionCommitId = generateSubscriptionCommitId();
-      SerializedEnrichedEvent enrichedEvent =
-          new SerializedEnrichedEvent(
+      SerializableEnrichedTabletsSubscriptionEvent enrichedEvent =
+          new SerializableEnrichedTabletsSubscriptionEvent(
               new EnrichedTablets(topicName, tablets, subscriptionCommitId), enrichedEvents);
       uncommittedEvents.put(subscriptionCommitId, enrichedEvent); // before enqueuing the event
       prefetchingQueue.add(enrichedEvent);
@@ -189,7 +191,7 @@ public class SubscriptionPrefetchingQueue {
     long size = prefetchingQueue.size();
     long count = 0;
 
-    SerializedEnrichedEvent currentEvent;
+    SerializableEnrichedTabletsSubscriptionEvent currentEvent;
     try {
       while (Objects.nonNull(
           currentEvent =

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
-import org.apache.iotdb.db.subscription.broker.SerializedEnrichedEvent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
+import org.apache.iotdb.db.subscription.event.SerializableEnrichedTabletsSubscriptionEvent;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtask;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
@@ -44,7 +44,7 @@ public class SubscriptionBrokerAgent {
 
   //////////////////////////// provided for subscription agent ////////////////////////////
 
-  public List<SerializedEnrichedEvent> poll(
+  public List<SerializableEnrichedTabletsSubscriptionEvent> poll(
       ConsumerConfig consumerConfig, Set<String> topicNames, SubscriptionPollTimer timer) {
     String consumerGroupId = consumerConfig.getConsumerGroupId();
     SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);

@@ -70,7 +70,7 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
-    resp.type = PipeSubscribeResponseType.ACK.getType();
+    resp.type = PipeSubscribeResponseType.POLL.getType();
     try {
       resp.body = new ArrayList<>();
       resp.body.add(serializeTopicNameToTsFileNameMap(topicNameToTsFileNameMap));

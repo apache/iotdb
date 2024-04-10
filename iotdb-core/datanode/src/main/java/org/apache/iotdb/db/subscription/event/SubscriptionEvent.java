@@ -17,86 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.subscription.broker;
+package org.apache.iotdb.db.subscription.event;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
-import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
-import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Objects;
 
-public class SerializedEnrichedEvent {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(SerializedEnrichedEvent.class);
+public abstract class SubscriptionEvent {
 
   private static final long INVALID_TIMESTAMP = -1;
 
-  private final EnrichedTablets enrichedTablets;
   private final List<EnrichedEvent> enrichedEvents;
+  private final String subscriptionCommitId;
 
   private long lastPolledTimestamp;
   private long committedTimestamp;
 
-  private ByteBuffer byteBuffer; // serialized EnrichedTablets
-
-  public SerializedEnrichedEvent(
-      EnrichedTablets enrichedTablets, List<EnrichedEvent> enrichedEvents) {
-    this.enrichedTablets = enrichedTablets;
+  public SubscriptionEvent(List<EnrichedEvent> enrichedEvents, String subscriptionCommitId) {
     this.enrichedEvents = enrichedEvents;
+    this.subscriptionCommitId = subscriptionCommitId;
+
     this.lastPolledTimestamp = INVALID_TIMESTAMP;
     this.committedTimestamp = INVALID_TIMESTAMP;
   }
 
-  //////////////////////////// serialization ////////////////////////////
-
-  public EnrichedTablets getEnrichedTablets() {
-    return enrichedTablets;
-  }
-
-  /** @return true -> byte buffer is not null */
-  public boolean serialize() {
-    if (Objects.isNull(byteBuffer)) {
-      try {
-        byteBuffer = PipeSubscribePollResp.serializeEnrichedTablets(enrichedTablets);
-        return true;
-      } catch (IOException e) {
-        LOGGER.warn(
-            "Subscription: something unexpected happened when serializing EnrichedTablets {}, exception is {}",
-            byteBuffer,
-            e.getMessage());
-      }
-      return false;
-    }
-    return true;
-  }
-
-  public ByteBuffer getByteBuffer() {
-    return byteBuffer;
-  }
-
-  public void resetByteBuffer() {
-    // maybe friendly for gc
-    byteBuffer = null;
-  }
-
   //////////////////////////// commit ////////////////////////////
-
-  public String getSubscriptionCommitId() {
-    return enrichedTablets.getSubscriptionCommitId();
-  }
-
-  public void decreaseReferenceCount() {
-    for (EnrichedEvent enrichedEvent : enrichedEvents) {
-      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
-    }
-  }
 
   public void recordCommittedTimestamp() {
     committedTimestamp = System.currentTimeMillis();
@@ -104,6 +50,16 @@ public class SerializedEnrichedEvent {
 
   public boolean isCommitted() {
     return committedTimestamp != INVALID_TIMESTAMP;
+  }
+
+  public String getSubscriptionCommitId() {
+    return subscriptionCommitId;
+  }
+
+  public void decreaseReferenceCount() {
+    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
+      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+    }
   }
 
   //////////////////////////// pollable ////////////////////////////
