@@ -46,6 +46,7 @@ public class LoadTsFileStatement extends Statement {
   private boolean deleteAfterLoad;
   private boolean autoCreateDatabase;
   private final Map<File, TsFileResource> tsFilesToResources;
+  private final List<File> failedTsFiles;
   private final List<Long> writePointCountList;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
@@ -56,6 +57,7 @@ public class LoadTsFileStatement extends Statement {
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFilesToResources = new LinkedHashMap<>();
     this.writePointCountList = new ArrayList<>();
+    this.failedTsFiles = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
 
     final List<File> tsFileList = new ArrayList<>();
@@ -150,6 +152,14 @@ public class LoadTsFileStatement extends Statement {
 
   public List<TsFileResource> getResources() {
     return new ArrayList<>(tsFilesToResources.values());
+  }
+
+  public void addFailedTsFile(File file) {
+    failedTsFiles.add(file);
+  }
+
+  public List<File> getFailedTsFiles() {
+    return failedTsFiles;
   }
 
   public void addWritePointCount(long writePointCount) {

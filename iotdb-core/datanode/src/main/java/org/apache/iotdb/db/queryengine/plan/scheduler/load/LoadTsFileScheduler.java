@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.LoadFailedException;
 import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
@@ -153,6 +154,10 @@ public class LoadTsFileScheduler implements IScheduler {
 
       for (int i = 0; i < tsFileNodeListSize; ++i) {
         LoadSingleTsFileNode node = tsFileNodeList.get(i);
+        if (!node.isAnalysisSuccess()) {
+          failedTsFileNodes.add(node);
+          continue;
+        }
         boolean isLoadSingleTsFileSuccess = true;
         try {
           if (node.isTsFileEmpty()) {
@@ -205,17 +210,14 @@ public class LoadTsFileScheduler implements IScheduler {
         }
       }
 
-      // if all TsFiles failed to load, transition to failed
-      if (failedTsFileNodes.size() == tsFileNodeListSize) {
-        stateMachine.transitionToFailed();
-        LOGGER.warn("All TsFiles failed to load.");
-      } else {
+      if (!failedTsFileNodes.isEmpty()) {
+        LOGGER.warn("Load - Dispatch Stage: {} TsFiles failed to load.", failedTsFileNodes.size());
         for (LoadSingleTsFileNode node : failedTsFileNodes) {
           LOGGER.warn(
-              "Load - Dispatch Stage: TsFile {} failed to load.",
-              node.getTsFileResource().getTsFilePath());
+              "Load - Dispatch Stage: TsFile {} failed to load.", node.getTsFile().getPath());
         }
-
+        stateMachine.transitionToFailed(new LoadFailedException());
+      } else {
         stateMachine.transitionToFinished();
       }
 

@@ -103,6 +103,11 @@ public class LoadTsFileNode extends WritePlanNode {
               statement.isDeleteAfterLoad(),
               statement.getWritePointCount(i)));
     }
+
+    for (int i = 0; i < statement.getFailedTsFiles().size(); i++) {
+      res.add(
+          new LoadSingleTsFileNode(getPlanNodeId(), statement.getFailedTsFiles().get(i), false));
+    }
     return res;
   }
 

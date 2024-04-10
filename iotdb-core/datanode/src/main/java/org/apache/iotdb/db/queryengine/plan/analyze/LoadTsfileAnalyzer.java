@@ -147,7 +147,6 @@ public class LoadTsfileAnalyzer {
       return analysis;
     }
 
-    final List<File> failedFileList = new ArrayList<>();
     // analyze tsfile metadata file by file
     for (int i = 0, tsfileNum = loadTsFileStatement.getTsFileList().size(); i < tsfileNum; i++) {
       final File tsFile = loadTsFileStatement.getTsFileList().get(i);
@@ -161,6 +160,7 @@ public class LoadTsfileAnalyzer {
               "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
               i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
         }
+        loadTsFileStatement.addFailedTsFile(tsFile);
         continue;
       }
 
@@ -171,27 +171,27 @@ public class LoadTsfileAnalyzer {
               "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
               i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
         }
+
+        schemaAutoCreatorAndVerifier.flush();
       } catch (IllegalArgumentException e) {
         LOGGER.warn(
             "Parse file {} to resource error, this TsFile maybe empty.", tsFile.getPath(), e);
-        failedFileList.add(tsFile);
+        loadTsFileStatement.addFailedTsFile(tsFile);
       } catch (AuthException e) {
         return createFailAnalysisForAuthException(e);
       } catch (Exception e) {
         LOGGER.warn("Parse file {} to resource error.", tsFile.getPath(), e);
-        failedFileList.add(tsFile);
+        loadTsFileStatement.addFailedTsFile(tsFile);
       }
     }
 
-    for (File failedFile : failedFileList) {
+    LOGGER.info(
+        "Load - Analysis Stage: there are {} tsfiles failed to analyze.",
+        loadTsFileStatement.getFailedTsFiles().size());
+
+    for (File failedFile : loadTsFileStatement.getFailedTsFiles()) {
       loadTsFileStatement.removeTsFileAndTsFileResource(failedFile);
       LOGGER.warn("Load - Analysis Stage: Failed to analyze tsfile: {}", failedFile.getPath());
-    }
-
-    try {
-      schemaAutoCreatorAndVerifier.flush();
-    } catch (AuthException e) {
-      return createFailAnalysisForAuthException(e);
     }
 
     LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
@@ -230,6 +230,7 @@ public class LoadTsfileAnalyzer {
         // check if the tsfile is empty
         if (!timeseriesMetadataIterator.hasNext()) {
           LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
+          loadTsFileStatement.addFailedTsFile(tsFile);
           return;
         }
 
@@ -350,17 +351,18 @@ public class LoadTsfileAnalyzer {
      * This can only be invoked after all timeseries in the current tsfile have been processed.
      * Otherwise, the isAligned status may be wrong.
      */
-    public void flushAndClearDeviceIsAlignedCacheIfNecessary()
-        throws SemanticException, AuthException {
+    public void flushAndClearDeviceIsAlignedCacheIfNecessary() throws SemanticException {
       // avoid OOM when loading a tsfile with too many timeseries
       // or loading too many tsfiles at the same time
       schemaCache.clearDeviceIsAlignedCacheIfNecessary();
     }
 
     public void flush() throws AuthException {
-      doAutoCreateAndVerify();
-
-      schemaCache.clearTimeSeries();
+      try {
+        doAutoCreateAndVerify();
+      } finally {
+        schemaCache.clearTimeSeries();
+      }
     }
 
     private void doAutoCreateAndVerify() throws SemanticException, AuthException {

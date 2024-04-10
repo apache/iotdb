@@ -59,6 +59,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private final boolean deleteAfterLoad;
   private final long writePointCount;
   private boolean needDecodeTsFile;
+  private boolean isAnalysisSuccess;
 
   private TRegionReplicaSet localRegionReplicaSet;
 
@@ -69,6 +70,16 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     this.resource = resource;
     this.deleteAfterLoad = deleteAfterLoad;
     this.writePointCount = writePointCount;
+    this.isAnalysisSuccess = true;
+  }
+
+  public LoadSingleTsFileNode(PlanNodeId id, File tsFile, boolean isAnalysisSuccess) {
+    super(id);
+    this.tsFile = tsFile;
+    this.resource = null;
+    this.deleteAfterLoad = false;
+    this.writePointCount = 0L;
+    this.isAnalysisSuccess = isAnalysisSuccess;
   }
 
   public boolean isTsFileEmpty() {
@@ -134,6 +145,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     return writePointCount;
   }
 
+  public boolean isAnalysisSuccess() {
+    return isAnalysisSuccess;
+  }
+
   /**
    * only used for load locally.
    *
@@ -145,6 +160,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public TsFileResource getTsFileResource() {
     return resource;
+  }
+
+  public File getTsFile() {
+    return tsFile;
   }
 
   @Override
