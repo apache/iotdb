@@ -320,6 +320,11 @@ public abstract class AbstractCompactionTask {
         dataRegionId,
         this,
         e);
+    // Do not set allow compaction to false here. To keep the error environment, mark all source
+    // files in memory to avoid compaction.
+    for (TsFileResource sourceTsFileResource : getAllSourceTsFiles()) {
+      sourceTsFileResource.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
+    }
   }
 
   protected void insertFilesToTsFileManager(List<TsFileResource> tsFiles) throws IOException {
