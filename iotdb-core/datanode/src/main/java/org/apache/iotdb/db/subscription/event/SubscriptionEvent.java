@@ -34,7 +34,8 @@ public abstract class SubscriptionEvent {
   private long lastPolledTimestamp;
   private long committedTimestamp;
 
-  public SubscriptionEvent(List<EnrichedEvent> enrichedEvents, String subscriptionCommitId) {
+  public SubscriptionEvent(
+      final List<EnrichedEvent> enrichedEvents, final String subscriptionCommitId) {
     this.enrichedEvents = enrichedEvents;
     this.subscriptionCommitId = subscriptionCommitId;
 

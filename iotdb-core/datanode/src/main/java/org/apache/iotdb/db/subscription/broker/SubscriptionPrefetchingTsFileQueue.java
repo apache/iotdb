@@ -20,12 +20,71 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.db.subscription.event.TsFileSubscriptionEvent;
+import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SubscriptionPrefetchingTsFileQueue.class);
+
+  private final AtomicReference<PipeTsFileInsertionEvent> tsFileInsertionEventRef;
+
   public SubscriptionPrefetchingTsFileQueue(
-      String brokerId, String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {
+      final String brokerId,
+      final String topicName,
+      final BoundedBlockingPendingQueue<Event> inputPendingQueue) {
     super(brokerId, topicName, inputPendingQueue);
+
+    this.tsFileInsertionEventRef = new AtomicReference<>();
+  }
+
+  @Override
+  public SubscriptionEvent poll(final SubscriptionPollTimer timer) {
+    if (Objects.nonNull(tsFileInsertionEventRef.get())) {
+      return null;
+    }
+
+    Event event;
+    while (Objects.nonNull(
+        event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll()))) {
+      if (!(event instanceof PipeTsFileInsertionEvent)) {
+        LOGGER.warn(
+            "Subscription: SubscriptionPrefetchingTsFileQueue only support poll PipeTsFileInsertionEvent. Ignore {}.",
+            event);
+        continue;
+      }
+
+      final PipeTsFileInsertionEvent tsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
+      tsFileInsertionEventRef.set(tsFileInsertionEvent);
+
+      final String subscriptionCommitId = generateSubscriptionCommitId();
+      final TsFileSubscriptionEvent tsFileSubscriptionEvent =
+          new TsFileSubscriptionEvent(
+              Collections.singletonList((PipeTsFileInsertionEvent) event),
+              subscriptionCommitId,
+              topicName,
+              tsFileInsertionEvent.getTsFile().getName());
+      uncommittedEvents.put(subscriptionCommitId, tsFileSubscriptionEvent);
+      return tsFileSubscriptionEvent;
+    }
+
+    return null;
+  }
+
+  @Override
+  public void executePrefetch() {
+    // do nothing now
   }
 }

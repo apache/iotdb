@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
-import org.apache.iotdb.db.subscription.event.SerializableEnrichedTabletsSubscriptionEvent;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +44,7 @@ public class SubscriptionBroker {
 
   private final Map<String, SubscriptionPrefetchingQueue> topicNameToPrefetchingQueue;
 
-  public SubscriptionBroker(String brokerId) {
+  public SubscriptionBroker(final String brokerId) {
     this.brokerId = brokerId;
     this.topicNameToPrefetchingQueue = new ConcurrentHashMap<>();
   }
@@ -53,15 +55,15 @@ public class SubscriptionBroker {
 
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
 
-  public List<SerializableEnrichedTabletsSubscriptionEvent> poll(
-      Set<String> topicNames, SubscriptionPollTimer timer) {
-    List<SerializableEnrichedTabletsSubscriptionEvent> events = new ArrayList<>();
-    for (Map.Entry<String, SubscriptionPrefetchingQueue> entry :
+  public List<SubscriptionEvent> poll(
+      final Set<String> topicNames, final SubscriptionPollTimer timer) {
+    final List<SubscriptionEvent> events = new ArrayList<>();
+    for (final Map.Entry<String, SubscriptionPrefetchingQueue> entry :
         topicNameToPrefetchingQueue.entrySet()) {
-      String topicName = entry.getKey();
-      SubscriptionPrefetchingQueue prefetchingQueue = entry.getValue();
+      final String topicName = entry.getKey();
+      final SubscriptionPrefetchingQueue prefetchingQueue = entry.getValue();
       if (topicNames.contains(topicName)) {
-        SerializableEnrichedTabletsSubscriptionEvent event = prefetchingQueue.poll(timer);
+        final SubscriptionEvent event = prefetchingQueue.poll(timer);
         if (Objects.nonNull(event)) {
           events.add(event);
         }
@@ -74,8 +76,9 @@ public class SubscriptionBroker {
     return events;
   }
 
-  public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) {
-    for (Map.Entry<String, List<String>> entry : topicNameToSubscriptionCommitIds.entrySet()) {
+  public void commit(final Map<String, List<String>> topicNameToSubscriptionCommitIds) {
+    for (final Map.Entry<String, List<String>> entry :
+        topicNameToSubscriptionCommitIds.entrySet()) {
       final String topicName = entry.getKey();
       final SubscriptionPrefetchingQueue prefetchingQueue =
           topicNameToPrefetchingQueue.get(topicName);
@@ -91,7 +94,7 @@ public class SubscriptionBroker {
   /////////////////////////////// prefetching queue ///////////////////////////////
 
   public void bindPrefetchingQueue(
-      String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {
+      final String topicName, final BoundedBlockingPendingQueue<Event> inputPendingQueue) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.nonNull(prefetchingQueue)) {
@@ -99,11 +102,19 @@ public class SubscriptionBroker {
           "Subscription: prefetching queue bound to topic [{}] has already existed", topicName);
       return;
     }
-    topicNameToPrefetchingQueue.put(
-        topicName, new SubscriptionPrefetchingQueue(brokerId, topicName, inputPendingQueue));
+    final String topicFormat = SubscriptionAgent.topic().getTopicFormat(topicName);
+    if (TopicConstant.FORMAT_TS_FILE_READER_VALUE.equals(topicFormat)) {
+      topicNameToPrefetchingQueue.put(
+          topicName,
+          new SubscriptionPrefetchingTsFileQueue(brokerId, topicName, inputPendingQueue));
+    } else {
+      topicNameToPrefetchingQueue.put(
+          topicName,
+          new SubscriptionPrefetchingEnrichedTabletsQueue(brokerId, topicName, inputPendingQueue));
+    }
   }
 
-  public void unbindPrefetchingQueue(String topicName) {
+  public void unbindPrefetchingQueue(final String topicName) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
@@ -114,7 +125,7 @@ public class SubscriptionBroker {
     topicNameToPrefetchingQueue.remove(topicName);
   }
 
-  public void executePrefetch(String topicName) {
+  public void executePrefetch(final String topicName) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {

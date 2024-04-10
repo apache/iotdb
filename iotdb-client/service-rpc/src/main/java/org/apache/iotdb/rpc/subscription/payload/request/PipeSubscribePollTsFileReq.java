@@ -30,8 +30,6 @@ import java.util.Objects;
 
 public class PipeSubscribePollTsFileReq extends TPipeSubscribeReq {
 
-  public static final long ERROR_END_OFFSET = -1;
-
   private transient String topicName;
 
   private transient String fileName;

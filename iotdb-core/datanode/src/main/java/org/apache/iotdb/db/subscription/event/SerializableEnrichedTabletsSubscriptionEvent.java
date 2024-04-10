@@ -41,7 +41,7 @@ public class SerializableEnrichedTabletsSubscriptionEvent extends SubscriptionEv
   private ByteBuffer byteBuffer; // serialized EnrichedTablets
 
   public SerializableEnrichedTabletsSubscriptionEvent(
-      EnrichedTablets enrichedTablets, List<EnrichedEvent> enrichedEvents) {
+      final List<EnrichedEvent> enrichedEvents, final EnrichedTablets enrichedTablets) {
     super(enrichedEvents, enrichedTablets.getSubscriptionCommitId());
     this.enrichedTablets = enrichedTablets;
   }
@@ -58,7 +58,7 @@ public class SerializableEnrichedTabletsSubscriptionEvent extends SubscriptionEv
       try {
         byteBuffer = PipeSubscribePollResp.serializeEnrichedTablets(enrichedTablets);
         return true;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         LOGGER.warn(
             "Subscription: something unexpected happened when serializing EnrichedTablets {}, exception is {}",
             byteBuffer,
