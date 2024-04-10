@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -382,17 +383,23 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   protected List<SubscriptionMessage> poll(Set<String> topicNames, long timeoutMs)
       throws TException, IOException, StatementExecutionException {
-    // TODO: network timeout
     List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
-    for (SubscriptionSessionConnection connection : getSessionConnections()) {
-      enrichedTabletsList.addAll(connection.poll(topicNames, timeoutMs));
+
+    acquireReadLock();
+    try {
+      for (final SubscriptionProvider provider : getAllAvailableProviders()) {
+        // TODO: network timeout
+        enrichedTabletsList.addAll(provider.getSessionConnection().poll(topicNames, timeoutMs));
+      }
+    } finally {
+      releaseReadLock();
     }
 
     return enrichedTabletsList.stream().map(SubscriptionMessage::new).collect(Collectors.toList());
   }
 
   protected void commitSync(Iterable<SubscriptionMessage> messages)
-      throws TException, IOException, StatementExecutionException {
+      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     Map<Integer, Map<String, List<String>>> dataNodeIdToTopicNameToSubscriptionCommitIds =
         new HashMap<>();
     for (SubscriptionMessage message : messages) {
@@ -456,12 +463,20 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private void commitSyncInternal(
       int dataNodeId, Map<String, List<String>> topicNameToSubscriptionCommitIds)
-      throws TException, IOException, StatementExecutionException {
-    getSessionConnection(dataNodeId).commitSync(topicNameToSubscriptionCommitIds);
-  }
-
-  private SubscriptionSessionConnection getDefaultSessionConnection() {
-    return defaultSubscriptionProvider.getSessionConnection();
+      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+    acquireReadLock();
+    try {
+      final SubscriptionProvider provider = getProvider(dataNodeId);
+      if (Objects.isNull(provider) || !provider.isAvailable()) {
+        throw new IoTDBConnectionException(
+            String.format(
+                "something unexpected happened when commit messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                dataNodeId));
+      }
+      provider.getSessionConnection().commitSync(topicNameToSubscriptionCommitIds);
+    } finally {
+      releaseReadLock();
+    }
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
