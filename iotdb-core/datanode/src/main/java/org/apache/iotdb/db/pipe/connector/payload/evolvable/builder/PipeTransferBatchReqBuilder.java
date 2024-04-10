@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_KEY;
@@ -69,6 +70,8 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
   // limit in buffer size
   protected final PipeMemoryBlock allocatedMemoryBlock;
   protected long totalBufferSize = 0;
+
+  private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
   protected PipeTransferBatchReqBuilder(PipeParameters parameters) {
     maxDelayInMs =
@@ -104,6 +107,8 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
           requestMaxBatchSizeInBytes,
           getMaxBatchSizeInBytes());
     }
+
+    isClosed.set(false);
   }
 
   /**
@@ -209,5 +214,11 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
       }
     }
     allocatedMemoryBlock.close();
+
+    isClosed.set(true);
+  }
+
+  public boolean isClosed() {
+    return isClosed.get();
   }
 }
