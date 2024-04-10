@@ -448,15 +448,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       }
     }
 
-    asyncCommitExecutor.submit(
-        () -> {
-          try {
-            commitSync(messages);
-            callback.onComplete();
-          } catch (Exception e) {
-            callback.onFailure(e);
-          }
-        });
+    asyncCommitExecutor.submit(new AsyncCommitWorker(messages, callback));
   }
 
   /////////////////////////////// utility ///////////////////////////////
@@ -662,5 +654,29 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     public abstract SubscriptionPullConsumer buildPullConsumer();
 
     public abstract SubscriptionPushConsumer buildPushConsumer();
+  }
+
+  class AsyncCommitWorker implements Runnable {
+    private final Iterable<SubscriptionMessage> messages;
+    private final AsyncCommitCallback callback;
+
+    public AsyncCommitWorker(Iterable<SubscriptionMessage> messages, AsyncCommitCallback callback) {
+      this.messages = messages;
+      this.callback = callback;
+    }
+
+    @Override
+    public void run() {
+      if (isClosed()) {
+        return;
+      }
+
+      try {
+        commitSync(messages);
+        callback.onComplete();
+      } catch (Exception e) {
+        callback.onFailure(e);
+      }
+    }
   }
 }
