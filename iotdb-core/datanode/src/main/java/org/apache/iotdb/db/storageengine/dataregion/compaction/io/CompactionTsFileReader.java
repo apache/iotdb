@@ -251,6 +251,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
   }
 
   private void acquireReadDataSizeWithCompactionReadRateLimiter(long readDataSize) {
+
     while (readDataSize > 0) {
       if (readDataSize > Integer.MAX_VALUE) {
         CompactionTaskManager.getInstance()

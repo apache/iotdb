@@ -82,8 +82,15 @@ public class CompactionTaskManager implements IService {
       storageGroupTasks = new ConcurrentHashMap<>();
   private final AtomicInteger finishedTaskNum = new AtomicInteger(0);
 
-  private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
-  private final RateLimiter compactionReadRateLimiter = RateLimiter.create(Double.MAX_VALUE);
+  private final RateLimiter mergeWriteRateLimiter =
+      RateLimiter.create(
+          IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec());
+  private final RateLimiter compactionReadOPSRateLimiter =
+      RateLimiter.create(
+          IoTDBDescriptor.getInstance().getConfig().getCompactionReadOperationPerSec());
+  private final RateLimiter compactionReadThroughputRateLimiter =
+      RateLimiter.create(
+          IoTDBDescriptor.getInstance().getConfig().getCompactionReadThroughputMbPerSec());
 
   private volatile boolean init = false;
 
@@ -244,36 +251,32 @@ public class CompactionTaskManager implements IService {
   }
 
   public RateLimiter getMergeWriteRateLimiter() {
-    setWriteMergeRate(
-        IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec());
     return mergeWriteRateLimiter;
   }
 
   public RateLimiter getCompactionReadRateLimiter() {
-    setCompactionReadRate(
-        IoTDBDescriptor.getInstance().getConfig().getCompactionReadThroughputMbPerSec());
-    return compactionReadRateLimiter;
+    return compactionReadThroughputRateLimiter;
   }
 
-  private void setWriteMergeRate(final double throughoutMbPerSec) {
-    double throughout = throughoutMbPerSec * 1024.0 * 1024.0;
-    // if throughout = 0, disable rate limiting
-    if (throughout <= 0) {
-      throughout = Double.MAX_VALUE;
-    }
-    if (mergeWriteRateLimiter.getRate() != throughout) {
-      mergeWriteRateLimiter.setRate(throughout);
-    }
+  public void setWriteMergeRate(final double throughoutMbPerSec) {
+    setRate(mergeWriteRateLimiter, throughoutMbPerSec * 1024.0 * 1024.0);
   }
 
-  private void setCompactionReadRate(final double throughoutMbPerSec) {
-    double throughout = throughoutMbPerSec * 1024.0 * 1024.0;
+  public void setCompactionReadOperationRate(final double readOperationPerSec) {
+    setRate(compactionReadOPSRateLimiter, readOperationPerSec);
+  }
+
+  public void setCompactionReadThroughputRate(final double throughputMbPerSec) {
+    setRate(compactionReadThroughputRateLimiter, throughputMbPerSec * 1024.0 * 1024.0);
+  }
+
+  private void setRate(RateLimiter rateLimiter, double rate) {
     // if throughout = 0, disable rate limiting
-    if (throughout <= 0) {
-      throughout = Double.MAX_VALUE;
+    if (rate <= 0) {
+      rate = Double.MAX_VALUE;
     }
-    if (compactionReadRateLimiter.getRate() != throughout) {
-      compactionReadRateLimiter.setRate(throughout);
+    if (rateLimiter.getRate() != rate) {
+      rateLimiter.setRate(rate);
     }
   }
 
