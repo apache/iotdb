@@ -112,7 +112,8 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
    * @param event the given {@link Event}
    * @return {@link true} if the batch can be transferred
    */
-  public boolean onEvent(TabletInsertionEvent event) throws IOException, WALPipeException {
+  public synchronized boolean onEvent(TabletInsertionEvent event)
+      throws IOException, WALPipeException {
     if (!(event instanceof EnrichedEvent)) {
       return false;
     }
