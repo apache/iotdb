@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.pipe.progress.SimpleConsensusProgressIndexAssigner;
@@ -136,7 +137,11 @@ public class PipeDataNodeRuntimeAgent implements IService {
   }
 
   public boolean isSchemaLeaderReady(SchemaRegionId schemaRegionId) {
-    return regionListenerManager.isLeaderReady(schemaRegionId);
+    // Sometimes when the leader is electing in ratis, the elder leader may have not seen the
+    // "NotifyLeaderChange" but is no longer the leader now, thus the "isLeader" need
+    // to be combined with the leader flag in the consensus module.
+    return regionListenerManager.isLeaderReady(schemaRegionId)
+        && SchemaRegionConsensusImpl.getInstance().isLeaderReady(schemaRegionId);
   }
 
   ////////////////////// SimpleConsensus ProgressIndex Assigner //////////////////////
