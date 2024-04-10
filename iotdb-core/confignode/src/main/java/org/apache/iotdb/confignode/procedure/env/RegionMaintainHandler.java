@@ -284,7 +284,7 @@ public class RegionMaintainHandler {
    * @param regionId region id
    * @return TSStatus
    */
-  public TSStatus removeRegionPeer(
+  public TSStatus submitRemoveRegionPeerTask(
       long procedureId,
       TDataNodeLocation originalDataNode,
       TConsensusGroupId regionId,
@@ -318,7 +318,7 @@ public class RegionMaintainHandler {
    * @param regionId region id
    * @return TSStatus
    */
-  public TSStatus deleteOldRegionPeer(
+  public TSStatus submitDeleteOldRegionPeerTask(
       long procedureId, TDataNodeLocation originalDataNode, TConsensusGroupId regionId) {
 
     TSStatus status;
@@ -362,8 +362,9 @@ public class RegionMaintainHandler {
 
   // TODO: will use 'procedure yield' to refactor later
   public TRegionMigrateResult waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
-    long lastTimeConnectDataNode = System.currentTimeMillis();
     // In some cases the DataNode is still working, but its status is unknown.
+    // In order to make task continue under this circumstance, some unconditional retries are
+    // performed here.
     int unconditionallyRetry = 0;
     while (unconditionallyRetry < 6
         || configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId())
@@ -371,7 +372,6 @@ public class RegionMaintainHandler {
       try (SyncDataNodeInternalServiceClient dataNodeClient =
           dataNodeClientManager.borrowClient(dataNodeLocation.getInternalEndPoint())) {
         TRegionMigrateResult report = dataNodeClient.getRegionMaintainResult(taskId);
-        lastTimeConnectDataNode = System.currentTimeMillis();
         if (report.getTaskStatus() != TRegionMaintainTaskStatus.PROCESSING) {
           return report;
         }
@@ -399,10 +399,6 @@ public class RegionMaintainHandler {
   }
 
   public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {
-    LOGGER.info(
-        "AddRegionLocation started, add region {} to {}",
-        regionId,
-        getIdWithRpcEndpoint(newLocation));
     AddRegionLocationPlan req = new AddRegionLocationPlan(regionId, newLocation);
     TSStatus status = configManager.getPartitionManager().addRegionLocation(req);
     LOGGER.info(
@@ -410,31 +406,22 @@ public class RegionMaintainHandler {
         regionId,
         getIdWithRpcEndpoint(newLocation),
         status);
-
-    // Remove the RegionGroupCache of the regionId
-    configManager.getLoadManager().removeRegionGroupCache(regionId);
-    // force balance region leader to skip waiting for leader election
-    configManager.getLoadManager().forceBalanceRegionLeader();
-    // Wait for leader election
-    configManager.getLoadManager().waitForLeaderElection(Collections.singletonList(regionId));
-    // Broadcast the latest RegionRouteMap when Region migration finished
-    configManager.getLoadManager().broadcastLatestRegionRouteMap();
+    updateRegionLocation(regionId);
   }
 
   public void removeRegionLocation(
       TConsensusGroupId regionId, TDataNodeLocation deprecatedLocation) {
-    LOGGER.info(
-        "RemoveRegionLocation started, remove region {} from DataNode {}",
-        regionId,
-        getIdWithRpcEndpoint(deprecatedLocation));
     RemoveRegionLocationPlan req = new RemoveRegionLocationPlan(regionId, deprecatedLocation);
     TSStatus status = configManager.getPartitionManager().removeRegionLocation(req);
     LOGGER.info(
-        "RemoveRegionLocation finished, remove region {} from DataNode {}, result is {}",
+        "RemoveRegionLocation remove region {} from DataNode {}, result is {}",
         regionId,
         getIdWithRpcEndpoint(deprecatedLocation),
         status);
+    updateRegionLocation(regionId);
+  }
 
+  private void updateRegionLocation(TConsensusGroupId regionId) {
     // Remove the RegionGroupCache of the regionId
     configManager.getLoadManager().removeRegionGroupCache(regionId);
     // force balance region leader to skip waiting for leader election

@@ -48,13 +48,13 @@ public class CreateManyDatabasesProcedure
   public static final String DATABASE_NAME_PREFIX = "root.test_";
   public static final long SLEEP_FOREVER = Long.MAX_VALUE;
   private boolean createFailedOnce = false;
-  private boolean de = false;
+  private boolean isDeserialized = false;
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv configNodeProcedureEnv, Integer state)
       throws InterruptedException {
     if (state < MAX_STATE) {
-      if (state == MAX_STATE - 1 && !de) {
+      if (state == MAX_STATE - 1 && !isDeserialized) {
         Thread.sleep(SLEEP_FOREVER);
       }
       try {
@@ -112,6 +112,6 @@ public class CreateManyDatabasesProcedure
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    de = true;
+    isDeserialized = true;
   }
 }
