@@ -81,6 +81,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(100, 1, 2)";
   private static final String INSERTION2 =
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(101, 3, 4)";
+  private static final String FLUSH_COMMAND = "flush";
   private static final String SHOW_REGIONS = "show regions";
   private static final String SHOW_DATANODES = "show datanodes";
   private static final String COUNT_TIMESERIES = "select count(*) from root.sg.**";
@@ -229,6 +230,13 @@ public class IoTDBRegionMigrateReliabilityITFramework {
 
       checkRegionFileExist(originalDataNode);
       checkPeersExist(regionMap.get(selectedRegion), originalDataNode, selectedRegion);
+
+      try {
+        awaitUntilFlush(statement, originalDataNode);
+      } catch (ConditionTimeoutException e) {
+        LOGGER.error("Flush timeout:", e);
+        Assert.fail();
+      }
 
       // set kill points
       if (killNode == KillNode.ORIGINAL_DATANODE) {
@@ -408,8 +416,8 @@ public class IoTDBRegionMigrateReliabilityITFramework {
           if (detectedKeyword.isPresent()) {
             // each keyword only trigger once
             keywords.remove(detectedKeyword.get());
-            LOGGER.info("Kill point triggered: {}", detectedKeyword.get());
             action.accept(new KillPointContext(nodeWrapper, (AbstractEnv) EnvFactory.getEnv()));
+            LOGGER.info("Kill point triggered: {}", detectedKeyword.get());
           }
           if (keywords.isEmpty()) {
             break;
@@ -480,6 +488,29 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         .filter(dataNodeId -> !regionMap.get(selectedRegion).contains(dataNodeId))
         .findAny()
         .orElseThrow(() -> new RuntimeException("cannot find dest DataNode"));
+  }
+
+  private static void awaitUntilFlush(Statement statement, int originalDataNode) {
+    long startTime = System.currentTimeMillis();
+    File sequence = new File(buildDataPath(originalDataNode, true));
+    File unsequence = new File(buildDataPath(originalDataNode, false));
+    Awaitility.await()
+        .atMost(1, TimeUnit.MINUTES)
+        .pollDelay(2, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              statement.execute(FLUSH_COMMAND);
+              int fileNum = 0;
+              if (sequence.exists() && sequence.listFiles() != null) {
+                fileNum += Objects.requireNonNull(sequence.listFiles()).length;
+              }
+              if (unsequence.exists() && unsequence.listFiles() != null) {
+                fileNum += Objects.requireNonNull(unsequence.listFiles()).length;
+              }
+              return fileNum > 0;
+            });
+    LOGGER.info("DataNode {} has been flushed", originalDataNode);
+    LOGGER.info("Flush cost time: {}ms", System.currentTimeMillis() - startTime);
   }
 
   private static void awaitUntilSuccess(
@@ -645,6 +676,19 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         + IoTDBConstant.CONSENSUS_FOLDER_NAME
         + File.separator
         + IoTDBConstant.DATA_REGION_FOLDER_NAME;
+  }
+
+  private static String buildDataPath(int dataNode, boolean isSequence) {
+    String nodePath = EnvFactory.getEnv().dataNodeIdToWrapper(dataNode).get().getNodePath();
+    return nodePath
+        + File.separator
+        + IoTDBConstant.DATA_FOLDER_NAME
+        + File.separator
+        + "datanode"
+        + File.separator
+        + IoTDBConstant.DATA_FOLDER_NAME
+        + File.separator
+        + (isSequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME);
   }
 
   private static String buildConfigurationDataFilePath(
