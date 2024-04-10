@@ -85,7 +85,7 @@ public class CompactionTaskManager implements IService {
   private final RateLimiter mergeWriteRateLimiter =
       RateLimiter.create(
           IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec());
-  private final RateLimiter compactionReadOPSRateLimiter =
+  private final RateLimiter compactionReadOperationRateLimiter =
       RateLimiter.create(
           IoTDBDescriptor.getInstance().getConfig().getCompactionReadOperationPerSec());
   private final RateLimiter compactionReadThroughputRateLimiter =
@@ -258,12 +258,16 @@ public class CompactionTaskManager implements IService {
     return compactionReadThroughputRateLimiter;
   }
 
+  public RateLimiter getCompactionReadOperationRateLimiter() {
+    return compactionReadOperationRateLimiter;
+  }
+
   public void setWriteMergeRate(final double throughoutMbPerSec) {
     setRate(mergeWriteRateLimiter, throughoutMbPerSec * 1024.0 * 1024.0);
   }
 
   public void setCompactionReadOperationRate(final double readOperationPerSec) {
-    setRate(compactionReadOPSRateLimiter, readOperationPerSec);
+    setRate(compactionReadOperationRateLimiter, readOperationPerSec);
   }
 
   public void setCompactionReadThroughputRate(final double throughputMbPerSec) {
