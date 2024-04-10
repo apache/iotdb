@@ -20,7 +20,6 @@
 package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -70,16 +69,6 @@ public class SubscriptionSessionConnection extends SessionConnection {
     super(session, endPoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
   }
 
-  public SubscriptionSessionConnection(
-      Session session,
-      ZoneId zoneId,
-      Supplier<List<TEndPoint>> availableNodes,
-      int maxRetryCount,
-      long retryIntervalInMs)
-      throws IoTDBConnectionException {
-    super(session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
-  }
-
   // from org.apache.iotdb.session.NodesSupplier.updateDataNodeList
   public Map<Integer, TEndPoint> fetchAllEndPoints()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -93,10 +82,6 @@ public class SubscriptionSessionConnection extends SessionConnection {
       }
       String ip = iterator.getString(IP_COLUMN_NAME);
       String port = iterator.getString(PORT_COLUMN_NAME);
-      // TODO: check logic
-      if ("0.0.0.0".equals(ip)) {
-        ip = SessionConfig.DEFAULT_HOST;
-      }
       if (ip != null && port != null) {
         endPoints.put(
             iterator.getInt(NODE_ID_COLUMN_NAME), new TEndPoint(ip, Integer.parseInt(port)));

@@ -17,27 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.exception.subscription;
-
-import org.apache.iotdb.pipe.api.exception.PipeException;
+package org.apache.iotdb.rpc.subscription.exception;
 
 import java.util.Objects;
 
-public class SubscriptionException extends PipeException {
+public class SubscriptionPollTimeOutException extends SubscriptionException {
 
-  public SubscriptionException(String message) {
+  public SubscriptionPollTimeOutException(String message) {
     super(message);
   }
 
-  protected SubscriptionException(String message, long timeStamp) {
+  protected SubscriptionPollTimeOutException(String message, long timeStamp) {
     super(message, timeStamp);
   }
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof SubscriptionException
-        && Objects.equals(getMessage(), ((SubscriptionException) obj).getMessage())
-        && Objects.equals(getTimeStamp(), ((SubscriptionException) obj).getTimeStamp());
+    return obj instanceof SubscriptionPollTimeOutException
+        && Objects.equals(getMessage(), ((SubscriptionPollTimeOutException) obj).getMessage())
+        && Objects.equals(getTimeStamp(), ((SubscriptionPollTimeOutException) obj).getTimeStamp());
   }
 
   @Override
