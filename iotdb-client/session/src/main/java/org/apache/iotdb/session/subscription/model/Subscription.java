@@ -21,9 +21,9 @@ package org.apache.iotdb.session.subscription.model;
 
 public class Subscription {
 
-  private String topicName;
-  private String consumerGroupId;
-  private String consumerIds;
+  private final String topicName;
+  private final String consumerGroupId;
+  private final String consumerIds;
 
   public Subscription(String topicName, String consumerGroupId, String consumerIds) {
     this.topicName = topicName;
