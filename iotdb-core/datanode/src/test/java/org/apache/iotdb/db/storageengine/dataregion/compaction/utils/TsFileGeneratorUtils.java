@@ -49,6 +49,7 @@ import java.util.List;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TIME_COLUMN_ID;
+import static org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils.getDataType;
 
 public class TsFileGeneratorUtils {
   public static final String testStorageGroup = "root.testsg";
@@ -328,25 +329,6 @@ public class TsFileGeneratorUtils {
       }
     }
     return compressionTypes;
-  }
-
-  public static TSDataType getDataType(int num) {
-    switch (num % 6) {
-      case 0:
-        return TSDataType.BOOLEAN;
-      case 1:
-        return TSDataType.INT32;
-      case 2:
-        return TSDataType.INT64;
-      case 3:
-        return TSDataType.FLOAT;
-      case 4:
-        return TSDataType.DOUBLE;
-      case 5:
-        return TSDataType.TEXT;
-      default:
-        throw new IllegalArgumentException("Invalid input: " + num % 6);
-    }
   }
 
   public static List<TSDataType> createDataType(int num) {

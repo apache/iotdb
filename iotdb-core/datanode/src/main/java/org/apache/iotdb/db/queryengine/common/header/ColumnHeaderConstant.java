@@ -226,7 +226,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATABASE, TSDataType.TEXT),
           new ColumnHeader(IS_ALIGNED, TSDataType.TEXT),
           new ColumnHeader(TEMPLATE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TTL, TSDataType.INT64));
+          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesColumnHeaders =
       ImmutableList.of(
