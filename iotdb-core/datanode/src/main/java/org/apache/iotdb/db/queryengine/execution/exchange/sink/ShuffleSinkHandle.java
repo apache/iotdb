@@ -188,7 +188,6 @@ public class ShuffleSinkHandle implements ISinkHandle {
     if (aborted || closed) {
       return;
     }
-    aborted = true;
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[StartAbortShuffleSinkHandle]");
     }
@@ -208,6 +207,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       LOGGER.warn("Error occurred when try to abort channel.", firstException);
     }
     sinkListener.onAborted(this);
+    aborted = true;
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[EndAbortShuffleSinkHandle]");
     }
@@ -222,7 +222,6 @@ public class ShuffleSinkHandle implements ISinkHandle {
     if (closed || aborted) {
       return;
     }
-    closed = true;
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[StartCloseShuffleSinkHandle]");
     }
@@ -242,6 +241,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       LOGGER.warn("Error occurred when try to close channel.", firstException);
     }
     sinkListener.onFinish(this);
+    closed = true;
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("[EndCloseShuffleSinkHandle]");
     }
