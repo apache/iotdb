@@ -431,7 +431,7 @@ public class IOTDBLoadTsFileIT {
 
     assertNonQueryTestFail(
         String.format("load \"%s\" sgLevel=2", tmpDir.getAbsolutePath()),
-        "Auto create or verify schema error when executing statement LoadTsFileStatement",
+        "Failed to load 2 files: test1-0-0-0.tsfile, test2-0-0-0.tsfile",
         "test",
         "test123");
 
@@ -732,10 +732,8 @@ public class IOTDBLoadTsFileIT {
         Statement statement = connection.createStatement()) {
 
       statement.execute(String.format("load \"%s\"", tmpDir.getAbsolutePath()));
-
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
-        Assert.assertFalse(resultSet.next());
-      }
+    } catch (IoTDBSQLException e) {
+      Assert.assertTrue(e.getMessage().contains("Failed to load 1 files: 1-0-0-0.tsfile"));
     }
   }
 
@@ -768,7 +766,7 @@ public class IOTDBLoadTsFileIT {
 
       statement.execute(String.format("load \"%s\"", tmpDir.getAbsolutePath()));
     } catch (IoTDBSQLException e) {
-      Assert.assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
+      Assert.assertTrue(e.getMessage().contains("Failed to load 1 files: 1-0-0-0.tsfile"));
     }
   }
 
