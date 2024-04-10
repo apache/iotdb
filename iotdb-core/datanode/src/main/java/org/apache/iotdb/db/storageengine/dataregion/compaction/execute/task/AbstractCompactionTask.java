@@ -320,8 +320,6 @@ public abstract class AbstractCompactionTask {
         dataRegionId,
         this,
         e);
-    tsFileManager.setAllowCompaction(false);
-    LOGGER.error("stop compaction because of exception during recovering");
   }
 
   protected void insertFilesToTsFileManager(List<TsFileResource> tsFiles) throws IOException {
