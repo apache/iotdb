@@ -639,6 +639,13 @@ public interface IManager {
    */
   TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req);
 
+  /**
+   * Execute the config req received from pipe.
+   *
+   * @return The result of handling.
+   */
+  TSStatus handleClientExit(String clientId);
+
   /** Create Topic. */
   TSStatus createTopic(TCreateTopicReq topic);
 

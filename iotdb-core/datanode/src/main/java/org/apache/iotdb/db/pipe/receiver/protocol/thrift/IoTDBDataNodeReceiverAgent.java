@@ -20,13 +20,31 @@
 package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiver;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 
 public class IoTDBDataNodeReceiverAgent extends IoTDBReceiverAgent {
+
+  private final ThreadLocal<IoTDBReceiver> receiverThreadLocal = new ThreadLocal<>();
 
   @Override
   protected void initConstructors() {
     RECEIVER_CONSTRUCTORS.put(
         IoTDBConnectorRequestVersion.VERSION_1.getVersion(), IoTDBDataNodeReceiver::new);
+  }
+
+  @Override
+  protected IoTDBReceiver getReceiverWithSpecifiedClient(final String ignore) {
+    return receiverThreadLocal.get();
+  }
+
+  @Override
+  protected void setReceiverWithSpecifiedClient(final String ignore, final IoTDBReceiver receiver) {
+    receiverThreadLocal.set(receiver);
+  }
+
+  @Override
+  protected void removeReceiverWithSpecifiedClient(final String ignore) {
+    receiverThreadLocal.remove();
   }
 }

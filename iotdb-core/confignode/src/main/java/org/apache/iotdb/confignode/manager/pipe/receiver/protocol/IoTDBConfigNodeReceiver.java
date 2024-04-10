@@ -149,8 +149,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     }
   }
 
-  // This indicates that the client from DataNode to ConfigNode is newly created and
-  // thus the sender needs to re-handshake to notify its configurations.
+  // This indicates that the client from DataNode to ConfigNode is newly created,
+  // mainly because the receiver has changed its leader, and thus the sender needs to re-handshake
+  // to notify its configurations.
   // Note that the sender needs not to reconstruct its client because the client
   // is directly linked to the preceding DataNode and has not broken.
   private boolean needHandshake(PipeRequestType type) {

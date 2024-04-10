@@ -981,9 +981,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
-      throws TException {
+  public TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req) {
     return configManager.handleTransferConfigPlan(req);
+  }
+
+  @Override
+  public TSStatus handlePipeConfigClientExit(String clientId) {
+    return configManager.handleClientExit(clientId);
   }
 
   @Override

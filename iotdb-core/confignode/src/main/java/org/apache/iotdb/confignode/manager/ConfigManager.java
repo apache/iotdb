@@ -2009,6 +2009,7 @@ public class ConfigManager implements IManager {
     TPipeTransferResp result =
         PipeConfigNodeAgent.receiver()
             .receive(
+                req.getClientId(),
                 req.isAirGap
                     ? new AirGapPseudoTPipeTransferRequest()
                         .setVersion(req.version)
@@ -2016,6 +2017,16 @@ public class ConfigManager implements IManager {
                         .setBody(req.body)
                     : new TPipeTransferReq(req.version, req.type, req.body));
     return new TPipeConfigTransferResp(result.status).setBody(result.body);
+  }
+
+  @Override
+  public TSStatus handleClientExit(String clientId) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    PipeConfigNodeAgent.receiver().handleClientExit(clientId);
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

@@ -20,18 +20,39 @@
 package org.apache.iotdb.confignode.manager.pipe.agent.receiver;
 
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiver;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.pipe.receiver.protocol.IoTDBConfigNodeReceiver;
 
 import java.io.File;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class IoTDBConfigNodeReceiverAgent extends IoTDBReceiverAgent {
+
+  private final ConcurrentMap<String, IoTDBReceiver> clientKey2ReceiverMap =
+      new ConcurrentHashMap<>();
 
   @Override
   protected void initConstructors() {
     RECEIVER_CONSTRUCTORS.put(
         IoTDBConnectorRequestVersion.VERSION_1.getVersion(), IoTDBConfigNodeReceiver::new);
+  }
+
+  @Override
+  protected IoTDBReceiver getReceiverWithSpecifiedClient(String key) {
+    return clientKey2ReceiverMap.get(key);
+  }
+
+  @Override
+  protected void setReceiverWithSpecifiedClient(String key, IoTDBReceiver receiver) {
+    clientKey2ReceiverMap.put(key, receiver);
+  }
+
+  @Override
+  protected void removeReceiverWithSpecifiedClient(String key) {
+    clientKey2ReceiverMap.remove(key);
   }
 
   public void cleanPipeReceiverDir() {
