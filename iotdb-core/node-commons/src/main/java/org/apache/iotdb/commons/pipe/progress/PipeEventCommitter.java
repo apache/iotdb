@@ -66,9 +66,10 @@ public class PipeEventCommitter {
 
       if (e.getCommitId() <= lastCommitId.get()) {
         LOGGER.warn(
-            "commit id must be monotonically increasing, lastCommitId: {}, event: {}, stack trace: {}",
+            "commit id must be monotonically increasing, current commit id: {}, last commit id: {}, event: {}, stack trace: {}",
+            e.getCommitId(),
             lastCommitId.get(),
-            e,
+            e.coreReportMessage(),
             Thread.currentThread().getStackTrace());
         commitQueue.poll();
         continue;

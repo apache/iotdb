@@ -208,14 +208,14 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   @Override
   public synchronized void close() {
+    isClosed.set(true);
+
     for (final Event event : events) {
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event).clearReferenceCount(this.getClass().getName());
       }
     }
     allocatedMemoryBlock.close();
-
-    isClosed.set(true);
   }
 
   public boolean isClosed() {

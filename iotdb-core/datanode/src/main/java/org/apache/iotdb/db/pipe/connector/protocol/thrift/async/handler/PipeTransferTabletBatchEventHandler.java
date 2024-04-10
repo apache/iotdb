@@ -85,9 +85,13 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
             .statusHandler()
             .handle(status, response.getStatus().getMessage(), events.toString());
       }
-      if (!batchReqBuilder.isClosed()) {
-        for (final Event event : events) {
-          if (event instanceof EnrichedEvent) {
+      final boolean isClosed = batchReqBuilder.isClosed();
+      for (final Event event : events) {
+        if (event instanceof EnrichedEvent) {
+          if (isClosed) {
+            ((EnrichedEvent) event)
+                .clearReferenceCount(PipeTransferTabletBatchEventHandler.class.getName());
+          } else {
             ((EnrichedEvent) event)
                 .decreaseReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
           }
