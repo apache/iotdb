@@ -30,7 +30,7 @@ public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatc
   }
 
   @Override
-  public void onSuccess() {
+  public synchronized void onSuccess() {
     for (final Event event : events) {
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event)

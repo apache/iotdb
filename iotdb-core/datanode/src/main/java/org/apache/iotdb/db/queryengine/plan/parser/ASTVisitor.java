@@ -3634,7 +3634,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     final AlterPipeStatement alterPipeStatement = new AlterPipeStatement(StatementType.ALTER_PIPE);
 
     if (ctx.pipeName != null) {
-      alterPipeStatement.setPipeName(ctx.pipeName.getText());
+      alterPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     } else {
       throw new SemanticException(
           "Not support for this sql in ALTER PIPE, please enter pipe name.");
