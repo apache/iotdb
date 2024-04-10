@@ -70,6 +70,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 
@@ -669,6 +670,44 @@ public class ConfigMTree {
     for (IConfigMNode child : databaseNode.getChildren().values()) {
       if (child instanceof ConfigTableNode) {
         result.add(((ConfigTableNode) child).getTable());
+      }
+    }
+    return result;
+  }
+
+  public Map<String, List<TsTable>> getAllUsingTables() throws MetadataException {
+    Map<String, List<TsTable>> result = new HashMap<>();
+    List<PartialPath> databaseList = getAllDatabasePaths();
+    for (PartialPath databasePath : databaseList) {
+      String database = databasePath.getFullPath().substring(ROOT.length());
+      IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
+      for (IConfigMNode child : databaseNode.getChildren().values()) {
+        if (child instanceof ConfigTableNode) {
+          ConfigTableNode tableNode = (ConfigTableNode) child;
+          if (!tableNode.getStatus().equals(TableNodeStatus.USING)) {
+            continue;
+          }
+          result.computeIfAbsent(database, k -> new ArrayList<>()).add(tableNode.getTable());
+        }
+      }
+    }
+    return result;
+  }
+
+  public Map<String, List<TsTable>> getAllPreCreateTables() throws MetadataException {
+    Map<String, List<TsTable>> result = new HashMap<>();
+    List<PartialPath> databaseList = getAllDatabasePaths();
+    for (PartialPath databasePath : databaseList) {
+      String database = databasePath.getFullPath().substring(ROOT.length());
+      IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
+      for (IConfigMNode child : databaseNode.getChildren().values()) {
+        if (child instanceof ConfigTableNode) {
+          ConfigTableNode tableNode = (ConfigTableNode) child;
+          if (!tableNode.getStatus().equals(TableNodeStatus.PRE_CREATE)) {
+            continue;
+          }
+          result.computeIfAbsent(database, k -> new ArrayList<>()).add(tableNode.getTable());
+        }
       }
     }
     return result;

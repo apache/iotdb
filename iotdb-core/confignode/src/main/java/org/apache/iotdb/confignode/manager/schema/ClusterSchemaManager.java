@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.TsTableRPCUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -1128,6 +1129,15 @@ public class ClusterSchemaManager {
               intersectionMeasurements, template.getName()));
     }
   }
+
+  // region table management
+
+  public byte[] getAllTableInfoForDataNodeActivation() {
+    return TsTableRPCUtil.serializeTableInitializationInfo(
+        clusterSchemaInfo.getAllUsingTables(), clusterSchemaInfo.getAllPreCreateTables());
+  }
+
+  // endregion
 
   /**
    * Only leader use this interface. Get the remain schema quota of specified schema region.

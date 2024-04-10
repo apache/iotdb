@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -1038,6 +1039,44 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
     return schemaMap;
   }
+
+  // region table management
+
+  public void preCreateTable() {}
+
+  public void rollbackCreateTable() {}
+
+  public void commitCreateTable() {}
+
+  public void getTable() {}
+
+  public void getAllTables() {}
+
+  public Map<String, List<TsTable>> getAllUsingTables() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return mTree.getAllUsingTables();
+    } catch (MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      throw new RuntimeException(e);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public Map<String, List<TsTable>> getAllPreCreateTables() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return mTree.getAllPreCreateTables();
+    } catch (MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      throw new RuntimeException(e);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  // endregion
 
   @TestOnly
   public void clear() {
