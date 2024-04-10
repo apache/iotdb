@@ -216,7 +216,7 @@ public class LoadTsFileScheduler implements IScheduler {
           LOGGER.warn(
               "Load - Dispatch Stage: TsFile {} failed to load.", node.getTsFile().getPath());
         }
-        stateMachine.transitionToFailed(new LoadFailedException());
+        stateMachine.transitionToFailed(new LoadFailedException(failedTsFileNodes));
       } else {
         stateMachine.transitionToFinished();
       }

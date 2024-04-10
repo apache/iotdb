@@ -20,13 +20,28 @@
 package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class LoadFailedException extends IoTDBException {
-  public static final String MESSAGE =
-      "Failed to load some files. Please check the log for more details.";
+import java.util.List;
 
-  public LoadFailedException() {
-    super(MESSAGE, TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+public class LoadFailedException extends IoTDBException {
+
+  public LoadFailedException(List<LoadSingleTsFileNode> failedNodes) {
+    super(buildErrorMessage(failedNodes), TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+  }
+
+  private static String buildErrorMessage(List<LoadSingleTsFileNode> failedNodes) {
+    final StringBuilder fileNames = new StringBuilder();
+    final int failedNodeSize = failedNodes.size();
+    for (LoadSingleTsFileNode node : failedNodes) {
+      fileNames.append(node.getTsFile().getName()).append(", ");
+    }
+
+    if (fileNames.length() > 0) {
+      fileNames.setLength(fileNames.length() - 2);
+    }
+
+    return "Failed to load " + failedNodeSize + " files: " + fileNames;
   }
 }
