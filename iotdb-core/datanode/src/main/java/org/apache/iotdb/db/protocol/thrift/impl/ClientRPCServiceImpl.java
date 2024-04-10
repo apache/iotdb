@@ -2577,7 +2577,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TPipeTransferResp pipeTransfer(final TPipeTransferReq req) {
-    return PipeAgent.receiver().thrift().receive(null, req);
+    return PipeAgent.receiver().thrift().receive(req);
   }
 
   @Override
@@ -2722,7 +2722,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSCloseSessionReq req = new TSCloseSessionReq();
       closeSession(req);
     }
-    PipeAgent.receiver().thrift().handleClientExit(null);
+    PipeAgent.receiver().thrift().handleClientExit();
     PipeAgent.receiver().legacy().handleClientExit();
     SubscriptionAgent.receiver().handleClientExit();
   }

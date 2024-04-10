@@ -117,7 +117,6 @@ public class WriteBackConnector implements PipeConnector {
           PipeAgent.receiver()
               .thrift()
               .receive(
-                  null,
                   PipeTransferTabletBinaryReq.toTPipeTransferReq(
                       pipeInsertNodeTabletInsertionEvent.getByteBuffer()))
               .getStatus();
