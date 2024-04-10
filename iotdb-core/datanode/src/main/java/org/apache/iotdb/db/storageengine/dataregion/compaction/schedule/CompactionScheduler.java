@@ -196,12 +196,6 @@ public class CompactionScheduler {
           "Compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
       return false;
     }
-    // check task memory cost
-    long allocatedTotalCompactionMemory = SystemInfo.getInstance().getMemorySizeForCompaction();
-    long estimatedTaskMemoryCost = task.getEstimatedMemoryCost();
-    if (estimatedTaskMemoryCost < 0 || estimatedTaskMemoryCost > allocatedTotalCompactionMemory) {
-      return false;
-    }
     return true;
   }
 
