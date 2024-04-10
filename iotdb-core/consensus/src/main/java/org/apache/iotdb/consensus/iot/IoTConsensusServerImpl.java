@@ -73,10 +73,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -321,15 +321,10 @@ public class IoTConsensusServerImpl {
       if (!Files.exists(parentDir)) {
         Files.createDirectories(parentDir);
       }
-      final int actualFileChunkLength = fileChunk.limit() - fileChunk.position();
-      byte[] actualFileChunk = new byte[actualFileChunkLength];
-      System.arraycopy(
-          fileChunk.array(), fileChunk.position(), actualFileChunk, 0, actualFileChunkLength);
-      Files.write(
-          Paths.get(targetFile.getAbsolutePath()),
-          actualFileChunk,
-          StandardOpenOption.CREATE,
-          StandardOpenOption.APPEND);
+      try (FileOutputStream fos = new FileOutputStream(targetFile.getAbsolutePath(), true);
+          FileChannel channel = fos.getChannel()) {
+        channel.write(fileChunk.slice());
+      }
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException(
           String.format("error when receiving snapshot %s", snapshotId), e);

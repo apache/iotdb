@@ -90,7 +90,7 @@ public class AddRegionPeerProcedure
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
-          if (!this.isDeserialized()) {
+          if (!this.isStateDeserialized()) {
             TSStatus tsStatus =
                 handler.submitAddRegionPeerTask(
                     this.getProcId(), destDataNode, consensusGroupId, coordinator);
