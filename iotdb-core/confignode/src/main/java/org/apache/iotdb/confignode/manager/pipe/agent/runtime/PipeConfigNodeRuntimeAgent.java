@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningQueue;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeCopiedFileDirStartupCleaner;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.slf4j.Logger;
@@ -115,7 +116,11 @@ public class PipeConfigNodeRuntimeAgent implements IService {
    * @return true if the leader is ready to allow pipe operations
    */
   public boolean isLeaderReady() {
-    return regionListener.isLeaderReady();
+    // Sometimes when the leader is electing in ratis, the elder leader may have not seen the
+    // "NotifyLeaderChange" but is no longer the leader now, thus the "isLeader" need
+    // to be combined with the leader flag in the consensus module.
+    return regionListener.isLeaderReady()
+        && ConfigNode.getInstance().getConfigManager().getConsensusManager().isLeaderReady();
   }
 
   //////////////////////////// Runtime Exception Handlers ////////////////////////////
