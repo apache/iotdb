@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.session.subscription;
 
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.SubscriptionException;

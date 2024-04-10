@@ -236,7 +236,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 consumer.unsubscribe("topic1");
               } catch (final Exception e) {
                 e.printStackTrace();
-                // Avoid fail
+                // Avoid failure
               } finally {
                 LOGGER.info("consumer exiting...");
               }
@@ -338,7 +338,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 consumer.unsubscribe("topic1");
               } catch (final Exception e) {
                 e.printStackTrace();
-                // Avoid fail
+                // Avoid failure
               } finally {
                 LOGGER.info("consumer exiting...");
               }

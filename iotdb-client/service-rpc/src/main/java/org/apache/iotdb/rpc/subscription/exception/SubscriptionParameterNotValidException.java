@@ -17,15 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.exception.subscription;
+package org.apache.iotdb.rpc.subscription.exception;
 
-public class SubscriptionPollTimeOutException extends SubscriptionException {
+import java.util.Objects;
 
-  public SubscriptionPollTimeOutException(String message) {
+public class SubscriptionParameterNotValidException extends SubscriptionException {
+
+  public SubscriptionParameterNotValidException(String message) {
     super(message);
   }
 
-  protected SubscriptionPollTimeOutException(String message, long timeStamp) {
+  protected SubscriptionParameterNotValidException(String message, long timeStamp) {
     super(message, timeStamp);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    return obj instanceof SubscriptionParameterNotValidException
+        && Objects.equals(getMessage(), ((SubscriptionParameterNotValidException) obj).getMessage())
+        && Objects.equals(
+            getTimeStamp(), ((SubscriptionParameterNotValidException) obj).getTimeStamp());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getMessage(), getTimeStamp());
   }
 }

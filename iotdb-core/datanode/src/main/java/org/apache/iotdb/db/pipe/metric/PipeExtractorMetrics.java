@@ -43,7 +43,7 @@ public class PipeExtractorMetrics implements IMetricSet {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeExtractorMetrics.class);
 
-  private AbstractMetricService metricService;
+  private volatile AbstractMetricService metricService;
 
   private final Map<String, IoTDBDataRegionExtractor> extractorMap = new ConcurrentHashMap<>();
 
@@ -64,10 +64,9 @@ public class PipeExtractorMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     this.metricService = metricService;
-    synchronized (this) {
-      for (String taskID : extractorMap.keySet()) {
-        createMetrics(taskID);
-      }
+    ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
+    for (String taskID : taskIDs) {
+      createMetrics(taskID);
     }
   }
 
@@ -291,30 +290,29 @@ public class PipeExtractorMetrics implements IMetricSet {
 
   public void register(@NonNull IoTDBDataRegionExtractor extractor) {
     String taskID = extractor.getTaskID();
-    synchronized (this) {
-      extractorMap.putIfAbsent(taskID, extractor);
-      if (Objects.nonNull(metricService)) {
-        createMetrics(taskID);
-      }
+    extractorMap.putIfAbsent(taskID, extractor);
+    if (Objects.nonNull(metricService)) {
+      createMetrics(taskID);
     }
   }
 
   public void deregister(String taskID) {
-    synchronized (this) {
-      if (!extractorMap.containsKey(taskID)) {
-        LOGGER.warn(
-            "Failed to deregister pipe extractor metrics, IoTDBDataRegionExtractor({}) does not exist",
-            taskID);
-        return;
-      }
-      if (Objects.nonNull(metricService)) {
-        removeMetrics(taskID);
-      }
-      extractorMap.remove(taskID);
+    if (!extractorMap.containsKey(taskID)) {
+      LOGGER.warn(
+          "Failed to deregister pipe extractor metrics, IoTDBDataRegionExtractor({}) does not exist",
+          taskID);
+      return;
     }
+    if (Objects.nonNull(metricService)) {
+      removeMetrics(taskID);
+    }
+    extractorMap.remove(taskID);
   }
 
   public void markTabletEvent(String taskID) {
+    if (Objects.isNull(metricService)) {
+      return;
+    }
     Rate rate = tabletRateMap.get(taskID);
     if (rate == null) {
       LOGGER.warn(
@@ -326,6 +324,9 @@ public class PipeExtractorMetrics implements IMetricSet {
   }
 
   public void markTsFileEvent(String taskID) {
+    if (Objects.isNull(metricService)) {
+      return;
+    }
     Rate rate = tsFileRateMap.get(taskID);
     if (rate == null) {
       LOGGER.warn(
@@ -337,6 +338,9 @@ public class PipeExtractorMetrics implements IMetricSet {
   }
 
   public void markPipeHeartbeatEvent(String taskID) {
+    if (Objects.isNull(metricService)) {
+      return;
+    }
     Rate rate = pipeHeartbeatRateMap.get(taskID);
     if (rate == null) {
       LOGGER.warn(
@@ -348,6 +352,9 @@ public class PipeExtractorMetrics implements IMetricSet {
   }
 
   public void setRecentProcessedTsFileEpochState(String taskID, TsFileEpoch.State state) {
+    if (Objects.isNull(metricService)) {
+      return;
+    }
     Gauge gauge = recentProcessedTsFileEpochStateMap.get(taskID);
     if (gauge == null) {
       LOGGER.warn(

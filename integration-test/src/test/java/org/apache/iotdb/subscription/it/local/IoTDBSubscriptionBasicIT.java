@@ -22,7 +22,6 @@ package org.apache.iotdb.subscription.it.local;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.session.subscription.AckStrategy;
 import org.apache.iotdb.session.subscription.AsyncCommitCallback;
@@ -53,7 +52,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+@Category({LocalStandaloneIT.class})
 public class IoTDBSubscriptionBasicIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionBasicIT.class);
@@ -135,7 +134,7 @@ public class IoTDBSubscriptionBasicIT {
                 consumer.unsubscribe("topic1");
               } catch (final Exception e) {
                 e.printStackTrace();
-                // avoid fail
+                // Avoid failure
               } finally {
                 LOGGER.info("consumer exiting...");
               }
