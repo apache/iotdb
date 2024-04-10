@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -75,7 +76,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuota
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.relational.sql.tree.CreateDB;
-import org.apache.iotdb.db.relational.sql.tree.CreateTable;
 import org.apache.iotdb.db.relational.sql.tree.DropDB;
 import org.apache.iotdb.db.relational.sql.tree.ShowDB;
 import org.apache.iotdb.db.relational.sql.tree.Use;
@@ -254,5 +254,5 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> createDatabase(CreateDB createDB);
 
-  SettableFuture<ConfigTaskResult> createTable(CreateTable createTable);
+  SettableFuture<ConfigTaskResult> createTable(TsTable table, String database);
 }

@@ -1105,4 +1105,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TThrottleQuotaResp getThrottleQuota() {
     return configManager.getThrottleQuota();
   }
+
+  @Override
+  public TSStatus createTable(ByteBuffer tableInfo) throws TException {
+    return configManager.createTable(tableInfo);
+  }
 }

@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.Map;
 
 public class MeasurementColumnSchema extends ColumnSchema {
@@ -86,6 +87,15 @@ public class MeasurementColumnSchema extends ColumnSchema {
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(stream);
     CompressionType compressor = ReadWriteIOUtils.readCompressionType(stream);
     Map<String, String> props = ReadWriteIOUtils.readMap(stream);
+    return new MeasurementColumnSchema(columnName, dataType, encoding, compressor, props);
+  }
+
+  static MeasurementColumnSchema deserialize(ByteBuffer buffer) {
+    String columnName = ReadWriteIOUtils.readString(buffer);
+    TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
+    TSEncoding encoding = ReadWriteIOUtils.readEncoding(buffer);
+    CompressionType compressor = ReadWriteIOUtils.readCompressionType(buffer);
+    Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
     return new MeasurementColumnSchema(columnName, dataType, encoding, compressor, props);
   }
 }

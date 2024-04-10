@@ -17,57 +17,48 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema.table.column;
+package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public enum ColumnCategory {
-  ID((byte) 0),
-  ATTRIBUTE((byte) 1),
-  TIME((byte) 2),
-  MEASUREMENT((byte) 3);
+public enum TsTableInternalRPCType {
+  PRE_CREATE_TABLE((byte) 0),
+  ROLLBACK_CREATE_TABLE((byte) 1),
+  COMMIT_CREATE_TABLE((byte) 2);
 
-  private final byte category;
+  private final byte operationType;
 
-  private ColumnCategory(byte category) {
-    this.category = category;
+  TsTableInternalRPCType(byte operationType) {
+    this.operationType = operationType;
   }
 
-  byte getValue() {
-    return category;
+  public byte toByte() {
+    return operationType;
   }
 
   public void serialize(OutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(category, stream);
+    ReadWriteIOUtils.write(operationType, stream);
   }
 
-  public static ColumnCategory deserialize(InputStream stream) throws IOException {
-    byte category = (byte) stream.read();
-    return deserialize(category);
+  public static TsTableInternalRPCType deserialize(ByteBuffer buffer) {
+    byte type = ReadWriteIOUtils.readByte(buffer);
+    return getType(type);
   }
 
-  public static ColumnCategory deserialize(ByteBuffer stream) {
-    byte category = stream.get();
-    return deserialize(category);
-  }
-
-  private static ColumnCategory deserialize(byte category) {
-    switch (category) {
+  public static TsTableInternalRPCType getType(byte type) {
+    switch (type) {
       case 0:
-        return ID;
+        return PRE_CREATE_TABLE;
       case 1:
-        return ATTRIBUTE;
+        return ROLLBACK_CREATE_TABLE;
       case 2:
-        return TIME;
-      case 3:
-        return MEASUREMENT;
+        return COMMIT_CREATE_TABLE;
       default:
-        throw new IllegalArgumentException();
+        throw new IllegalArgumentException("Unknown template update operation type" + type);
     }
   }
 }

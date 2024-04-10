@@ -270,7 +270,7 @@ public class Coordinator {
           queryContext,
           null,
           executor,
-          statement.accept(new TableConfigTaskVisitor(clientSession), queryContext));
+          statement.accept(new TableConfigTaskVisitor(clientSession, metadata), queryContext));
     }
     RelationalModelPlanner treeModelPlanner =
         new RelationalModelPlanner(

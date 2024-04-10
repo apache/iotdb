@@ -27,6 +27,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -110,6 +111,17 @@ public class TsTable {
       table.addColumnSchema(ColumnSchemaUtil.deserialize(inputStream));
     }
     table.props = ReadWriteIOUtils.readMap(inputStream);
+    return table;
+  }
+
+  public static TsTable deserialize(ByteBuffer buffer) {
+    String name = ReadWriteIOUtils.readString(buffer);
+    TsTable table = new TsTable(name);
+    int columnNum = ReadWriteIOUtils.readInt(buffer);
+    for (int i = 0; i < columnNum; i++) {
+      table.addColumnSchema(ColumnSchemaUtil.deserialize(buffer));
+    }
+    table.props = ReadWriteIOUtils.readMap(buffer);
     return table;
   }
 

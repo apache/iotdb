@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.util.Map;
 
 public class TimeColumnSchema extends ColumnSchema {
@@ -44,6 +45,13 @@ public class TimeColumnSchema extends ColumnSchema {
     String columnName = ReadWriteIOUtils.readString(stream);
     TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
     Map<String, String> props = ReadWriteIOUtils.readMap(stream);
+    return new TimeColumnSchema(columnName, dataType, props);
+  }
+
+  static TimeColumnSchema deserialize(ByteBuffer buffer) {
+    String columnName = ReadWriteIOUtils.readString(buffer);
+    TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
+    Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
     return new TimeColumnSchema(columnName, dataType, props);
   }
 }

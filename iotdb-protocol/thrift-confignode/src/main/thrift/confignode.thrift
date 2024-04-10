@@ -897,6 +897,7 @@ struct TShowThrottleReq {
   1: optional string userName;
 }
 
+
 // ====================================================
 // Activation
 // ====================================================
@@ -1554,5 +1555,11 @@ service IConfigNodeRPCService {
 
   /** Get throttle quota information */
   TThrottleQuotaResp getThrottleQuota()
+
+  // ======================================================
+  // Table
+  // ======================================================
+
+  common.TSStatus createTable(binary tableInfo)
 }
 

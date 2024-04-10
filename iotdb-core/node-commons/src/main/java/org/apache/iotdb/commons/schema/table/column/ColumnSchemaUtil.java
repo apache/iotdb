@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 public class ColumnSchemaUtil {
 
@@ -52,6 +53,25 @@ public class ColumnSchemaUtil {
         return TimeColumnSchema.deserialize(stream);
       case MEASUREMENT:
         return MeasurementColumnSchema.deserialize(stream);
+      default:
+        throw new IllegalArgumentException();
+    }
+  }
+
+  public static ColumnSchema deserialize(ByteBuffer buffer) {
+    return deserialize(ColumnCategory.deserialize(buffer), buffer);
+  }
+
+  private static ColumnSchema deserialize(ColumnCategory category, ByteBuffer buffer) {
+    switch (category) {
+      case ID:
+        return IdColumnSchema.deserialize(buffer);
+      case ATTRIBUTE:
+        return AttributeColumnSchema.deserialize(buffer);
+      case TIME:
+        return TimeColumnSchema.deserialize(buffer);
+      case MEASUREMENT:
+        return MeasurementColumnSchema.deserialize(buffer);
       default:
         throw new IllegalArgumentException();
     }
