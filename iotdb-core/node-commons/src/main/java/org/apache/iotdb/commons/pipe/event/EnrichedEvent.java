@@ -129,6 +129,8 @@ public abstract class EnrichedEvent implements Event {
       final int newReferenceCount = referenceCount.decrementAndGet();
       if (newReferenceCount < 0) {
         LOGGER.warn("reference count is decreased to {}.", newReferenceCount);
+        // dump stack for tracing bug...
+        Thread.dumpStack();
       }
     }
     return isSuccessful;
