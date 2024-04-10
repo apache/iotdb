@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.subscription.meta.consumer;
 
-import org.apache.iotdb.commons.exception.subscription.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.impl.subscription;
 
-import org.apache.iotdb.commons.exception.subscription.SubscriptionException;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
@@ -35,6 +34,7 @@ import org.apache.iotdb.confignode.procedure.state.subscription.OperateSubscript
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

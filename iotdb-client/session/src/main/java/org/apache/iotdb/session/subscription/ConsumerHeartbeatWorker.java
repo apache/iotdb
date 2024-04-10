@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.StatementExecutionException;
-
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,12 +38,25 @@ public class ConsumerHeartbeatWorker implements Runnable {
       return;
     }
 
-    for (SubscriptionSessionConnection connection : consumer.getSessionConnections()) {
+    consumer.acquireWriteLock();
+    try {
+      heartbeatInternal();
+    } finally {
+      consumer.releaseWriteLock();
+    }
+  }
+
+  private void heartbeatInternal() {
+    for (final SubscriptionProvider provider : consumer.getAllProviders()) {
       try {
-        connection.heartbeat();
-      } catch (TException | StatementExecutionException e) {
-        // TODO: handle exception
-        LOGGER.warn("something unexpected happened when heartbeat...", e);
+        provider.getSessionConnection().heartbeat();
+        provider.setAvailable();
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "something unexpected happened when sending heartbeat to subscription provider {}, exception: {}, set subscription provider unavailable",
+            provider,
+            e.getMessage());
+        provider.setUnavailable();
       }
     }
   }
