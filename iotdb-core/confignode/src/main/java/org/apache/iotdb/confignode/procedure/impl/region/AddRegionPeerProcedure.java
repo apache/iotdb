@@ -41,7 +41,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
@@ -90,6 +92,7 @@ public class AddRegionPeerProcedure
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
+          // We don't want to re-submit AddRegionPeerTask when leader change or ConfigNode reboot
           if (!this.isStateDeserialized()) {
             TSStatus tsStatus =
                 handler.submitAddRegionPeerTask(
@@ -105,7 +108,10 @@ public class AddRegionPeerProcedure
               // coordinator crashed and lost its task table
             case FAIL:
               // maybe some DataNode crash
-              LOGGER.warn("result is {}, resetPeerList", result.getTaskStatus());
+              LOGGER.warn(
+                  "{} result is {}, procedure failed. Will try to reset peer list automatically...",
+                  state,
+                  result.getTaskStatus());
               rollback(env, handler);
               return Flow.NO_MORE_STATE;
             case PROCESSING:
@@ -155,34 +161,37 @@ public class AddRegionPeerProcedure
             .toString();
     List<TDataNodeLocation> relatedDataNodeLocations = new ArrayList<>(correctDataNodeLocations);
     relatedDataNodeLocations.add(destDataNode);
+    Map<Integer, TDataNodeLocation> relatedDataNodeLocationMap = new HashMap<>();
+    relatedDataNodeLocations.forEach(
+        location -> relatedDataNodeLocationMap.put(location.dataNodeId, location));
     LOGGER.info(
         "Will reset peer list of consensus group {} on DataNode {}",
         consensusGroupId,
         relatedDataNodeLocations.stream()
             .map(TDataNodeLocation::getDataNodeId)
             .collect(Collectors.toList()));
-    relatedDataNodeLocations
-        .parallelStream()
-        .forEach(
-            correctDataNodeLocation -> {
-              TSStatus resetResult =
-                  handler.resetPeerList(
-                      consensusGroupId, correctDataNodeLocations, correctDataNodeLocation);
-              if (resetResult.getCode() == SUCCESS_STATUS.getStatusCode()) {
-                LOGGER.info(
-                    "peer list of consensus group {} on DataNode {} has been successfully reset to {}",
-                    consensusGroupId,
-                    correctDataNodeLocation.getDataNodeId(),
-                    correctStr);
-              } else {
-                // TODO: more precise
-                LOGGER.warn(
-                    "peer list of consensus group {} on DataNode {} failed to reset to {}, you may manually reset it",
-                    consensusGroupId,
-                    correctDataNodeLocation.getDataNodeId(),
-                    correctStr);
-              }
-            });
+
+    Map<Integer, TSStatus> resultMap =
+        handler.resetPeerList(
+            consensusGroupId, correctDataNodeLocations, relatedDataNodeLocationMap);
+
+    resultMap.forEach(
+        (dataNodeId, resetResult) -> {
+          if (resetResult.getCode() == SUCCESS_STATUS.getStatusCode()) {
+            LOGGER.info(
+                "reset peer list: peer list of consensus group {} on DataNode {} has been successfully to {}",
+                consensusGroupId,
+                dataNodeId,
+                correctStr);
+          } else {
+            // TODO: more precise
+            LOGGER.warn(
+                "reset peer list: peer list of consensus group {} on DataNode {} failed to reset to {}, you may manually reset it",
+                consensusGroupId,
+                dataNodeId,
+                correctStr);
+          }
+        });
   }
 
   @Override

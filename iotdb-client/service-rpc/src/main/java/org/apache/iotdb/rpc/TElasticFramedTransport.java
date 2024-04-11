@@ -103,11 +103,7 @@ public class TElasticFramedTransport extends TTransport {
 
   @Override
   public void close() {
-    try {
-      underlying.close();
-    } catch (Exception ignore) {
-
-    }
+    underlying.close();
   }
 
   @Override

@@ -34,6 +34,8 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -60,6 +62,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -358,6 +361,19 @@ public class RegionMaintainHandler {
                 new TResetPeerListReq(regionId, correctDataNodeLocations),
                 DataNodeRequestType.RESET_PEER_LIST);
     return status;
+  }
+
+  public Map<Integer, TSStatus> resetPeerList(
+      TConsensusGroupId regionId,
+      List<TDataNodeLocation> correctDataNodeLocations,
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+    AsyncClientHandler<TResetPeerListReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.RESET_PEER_LIST,
+            new TResetPeerListReq(regionId, correctDataNodeLocations),
+            dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseMap();
   }
 
   // TODO: will use 'procedure yield' to refactor later

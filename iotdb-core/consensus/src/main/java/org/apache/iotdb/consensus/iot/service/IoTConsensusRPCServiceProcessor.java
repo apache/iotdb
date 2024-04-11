@@ -140,6 +140,9 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
   public void inactivatePeer(
       TInactivatePeerReq req, AsyncMethodCallback<TInactivatePeerRes> resultHandler)
       throws TException {
+    if (req.isForDeletionPurpose()) {
+      KillPoint.setKillPoint(IoTConsensusInactivatePeerKillPoints.BEFORE_INACTIVATE);
+    }
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
@@ -155,15 +158,9 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
     impl.setActive(false);
     resultHandler.onComplete(
         new TInactivatePeerRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
-  }
-
-  @Override
-  public void inactivatePeerForDeletionPurpose(
-      TInactivatePeerReq req, AsyncMethodCallback<TInactivatePeerRes> resultHandler)
-      throws TException {
-    KillPoint.setKillPoint(IoTConsensusInactivatePeerKillPoints.BEFORE_INACTIVATE);
-    inactivatePeer(req, resultHandler);
-    KillPoint.setKillPoint(IoTConsensusInactivatePeerKillPoints.AFTER_INACTIVATE);
+    if (req.isForDeletionPurpose()) {
+      KillPoint.setKillPoint(IoTConsensusInactivatePeerKillPoints.AFTER_INACTIVATE);
+    }
   }
 
   @Override

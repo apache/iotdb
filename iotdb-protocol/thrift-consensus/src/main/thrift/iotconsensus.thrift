@@ -41,6 +41,7 @@ struct TSyncLogEntriesRes {
 
 struct TInactivatePeerReq {
   1: required common.TConsensusGroupId consensusGroupId
+  2: optional bool forDeletionPurpose
 }
 
 struct TInactivatePeerRes {
@@ -118,7 +119,6 @@ struct TCleanupTransferredSnapshotRes {
 service IoTConsensusIService {
   TSyncLogEntriesRes syncLogEntries(TSyncLogEntriesReq req)
   TInactivatePeerRes inactivatePeer(TInactivatePeerReq req)
-  TInactivatePeerRes inactivatePeerForDeletionPurpose(TInactivatePeerReq req)
   TActivatePeerRes activatePeer(TActivatePeerReq req)
   TBuildSyncLogChannelRes buildSyncLogChannel(TBuildSyncLogChannelReq req)
   TRemoveSyncLogChannelRes removeSyncLogChannel(TRemoveSyncLogChannelReq req)

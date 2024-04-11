@@ -391,29 +391,21 @@ public class IoTConsensusServerImpl {
       throws ConsensusGroupModifyPeerException {
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(peer.getEndpoint())) {
-      if (forDeletionPurpose) {
-        inactivePeer(peer, client::inactivatePeerForDeletionPurpose);
-      } else {
-        inactivePeer(peer, client::inactivatePeer);
+      try {
+        TInactivatePeerRes res =
+            client.inactivatePeer(
+                new TInactivatePeerReq(peer.getGroupId().convertToTConsensusGroupId())
+                    .setForDeletionPurpose(forDeletionPurpose));
+        if (!isSuccess(res.status)) {
+          throw new ConsensusGroupModifyPeerException(
+              String.format("error when inactivating %s. %s", peer, res.getStatus()));
+        }
+      } catch (Exception e) {
+        throw new ConsensusGroupModifyPeerException(
+            String.format("error when inactivating %s", peer), e);
       }
     } catch (ClientManagerException e) {
       throw new ConsensusGroupModifyPeerException(e);
-    }
-  }
-
-  public void inactivePeer(
-      Peer peer, ThrowableFunction<TInactivatePeerReq, TInactivatePeerRes> sendRequest)
-      throws ConsensusGroupModifyPeerException {
-    try {
-      TInactivatePeerRes res =
-          sendRequest.apply(new TInactivatePeerReq(peer.getGroupId().convertToTConsensusGroupId()));
-      if (!isSuccess(res.status)) {
-        throw new ConsensusGroupModifyPeerException(
-            String.format("error when inactivating %s. %s", peer, res.getStatus()));
-      }
-    } catch (Exception e) {
-      throw new ConsensusGroupModifyPeerException(
-          String.format("error when inactivating %s", peer), e);
     }
   }
 
