@@ -712,6 +712,12 @@ public class RegionMaintainHandler {
    */
   public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
       TConsensusGroupId regionId, TDataNodeLocation filterLocation) {
+    return filterDataNodeWithOtherRegionReplica(
+        regionId, filterLocation, NodeStatus.Running, NodeStatus.ReadOnly);
+  }
+
+  public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
+      TConsensusGroupId regionId, TDataNodeLocation filterLocation, NodeStatus... allowingStatus) {
     List<TDataNodeLocation> regionLocations = findRegionLocations(regionId);
     if (regionLocations.isEmpty()) {
       LOGGER.warn("Cannot find DataNodes contain the given region: {}", regionId);
@@ -721,14 +727,9 @@ public class RegionMaintainHandler {
     // Choosing the RUNNING DataNodes to execute firstly
     // If all DataNodes are not RUNNING, then choose the REMOVING DataNodes secondly
     List<TDataNodeLocation> aliveDataNodes =
-        configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
+        configManager.getNodeManager().filterDataNodeThroughStatus(allowingStatus).stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
-
-    aliveDataNodes.addAll(
-        configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Removing).stream()
-            .map(TDataNodeConfiguration::getLocation)
-            .collect(Collectors.toList()));
 
     // TODO return the node which has lowest load.
     for (TDataNodeLocation aliveDataNode : aliveDataNodes) {
