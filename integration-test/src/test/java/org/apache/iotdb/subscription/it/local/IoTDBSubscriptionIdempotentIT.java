@@ -58,6 +58,7 @@ public class IoTDBSubscriptionIdempotentIT {
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
     // Subscribe non-existed topic
+    final String topicName = "topic1";
     try (final SubscriptionPullConsumer consumer =
         new SubscriptionPullConsumer.Builder()
             .host(host)
@@ -67,7 +68,7 @@ public class IoTDBSubscriptionIdempotentIT {
             .autoCommit(false)
             .buildPullConsumer()) {
       consumer.open();
-      consumer.subscribe("topic1");
+      consumer.subscribe(topicName);
       fail();
     } catch (final Exception ignored) {
     } finally {
@@ -84,7 +85,7 @@ public class IoTDBSubscriptionIdempotentIT {
             .autoCommit(false)
             .buildPullConsumer()) {
       consumer.open();
-      consumer.unsubscribe("topic1");
+      consumer.unsubscribe(topicName);
       fail();
     } catch (final Exception ignored) {
     } finally {
@@ -98,9 +99,10 @@ public class IoTDBSubscriptionIdempotentIT {
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
     // Create topic
+    final String topicName = "topic2";
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
-      session.createTopic("topic1");
+      session.createTopic(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());
@@ -115,9 +117,9 @@ public class IoTDBSubscriptionIdempotentIT {
             .autoCommit(false)
             .buildPullConsumer()) {
       consumer.open();
-      consumer.subscribe("topic1");
+      consumer.subscribe(topicName);
       // Subscribe existed subscribed topic
-      consumer.subscribe("topic1");
+      consumer.subscribe(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());
@@ -132,9 +134,10 @@ public class IoTDBSubscriptionIdempotentIT {
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
     // Create topic
+    final String topicName = "topic3";
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
-      session.createTopic("topic1");
+      session.createTopic(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());
@@ -150,7 +153,7 @@ public class IoTDBSubscriptionIdempotentIT {
             .buildPullConsumer()) {
       consumer.open();
       // Unsubscribe existed non-subscribed topic
-      consumer.unsubscribe("topic1");
+      consumer.unsubscribe(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());
