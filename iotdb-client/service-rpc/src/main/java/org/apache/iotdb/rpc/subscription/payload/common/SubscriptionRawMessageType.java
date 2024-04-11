@@ -7,7 +7,7 @@ import java.util.Map;
 public enum SubscriptionRawMessageType {
   TABLETS((short) 0),
 
-  TS_FILE_PREPARE((short) 1),
+  TS_FILE_INFO((short) 1),
   TS_FILE_PIECE((short) 2),
   TS_FILE_SEAL((short) 3),
   ;
@@ -26,8 +26,7 @@ public enum SubscriptionRawMessageType {
       Arrays.stream(SubscriptionRawMessageType.values())
           .collect(
               HashMap::new,
-              (typeMap, messageType) -> typeMap.put(messageType.getType(),
-                  messageType),
+              (typeMap, messageType) -> typeMap.put(messageType.getType(), messageType),
               HashMap::putAll);
 
   public static boolean isValidatedMessageType(short type) {

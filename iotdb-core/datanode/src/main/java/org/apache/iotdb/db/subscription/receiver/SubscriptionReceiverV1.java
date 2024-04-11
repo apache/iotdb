@@ -33,15 +33,16 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
-import org.apache.iotdb.db.subscription.event.SerializableEnrichedTabletsSubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.TsFileSubscriptionEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
-import org.apache.iotdb.rpc.subscription.payload.common.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessageType;
+import org.apache.iotdb.rpc.subscription.payload.common.TabletsMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -63,15 +64,12 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribe
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -338,32 +336,13 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     final List<SubscriptionEvent> events =
         SubscriptionAgent.broker().poll(consumerConfig, topicNames, timer);
 
-    // filter SerializableEnrichedTabletsSubscriptionEvent
-    final List<SerializableEnrichedTabletsSubscriptionEvent> enrichedTabletsSubscriptionEvents =
-        events.stream()
-            .filter(event -> event instanceof SerializableEnrichedTabletsSubscriptionEvent)
-            .map(event -> (SerializableEnrichedTabletsSubscriptionEvent) event)
-            .collect(Collectors.toList());
+    final List<SubscriptionRawMessage> rawMessages =
+        events.stream().map(SubscriptionEvent::getMessage).collect(Collectors.toList());
 
-    // get enriched tablets with byte buffer from SerializableEnrichedTabletsSubscriptionEvent
-    final List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsWithByteBufferList =
-        enrichedTabletsSubscriptionEvents.stream()
-            .map(event -> new Pair<>(event.getByteBuffer(), event.getEnrichedTablets()))
+    final List<SubscriptionCommitContext> commitContexts =
+        rawMessages.stream()
+            .map(SubscriptionRawMessage::getCommitContext)
             .collect(Collectors.toList());
-
-    // filter TsFileSubscriptionEvent
-    final List<TsFileSubscriptionEvent> tsFileSubscriptionEvents =
-        events.stream()
-            .filter(event -> event instanceof TsFileSubscriptionEvent)
-            .map(event -> (TsFileSubscriptionEvent) event)
-            .collect(Collectors.toList());
-
-    // generate topicNameToTsFileNameMap
-    final Map<String, String> topicNameToTsFileNameMap =
-        tsFileSubscriptionEvents.stream()
-            .collect(
-                Collectors.toMap(
-                    TsFileSubscriptionEvent::getTopicName, TsFileSubscriptionEvent::getFileName));
 
     // check timer
     if (timer.isExpired()) {
@@ -374,18 +353,27 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     LOGGER.info(
-        "Subscription: consumer {} poll topics {} successfully",
+        "Subscription: consumer {} poll topics {} successfully, commit contexts: {}",
         consumerConfig,
-        topicNames);
+        topicNames,
+        commitContexts);
+
+    // serialize byte buffer
+    rawMessages.stream()
+        .filter(
+            (message -> message.getMessageType() == SubscriptionRawMessageType.TABLETS.getType()))
+        .forEach(message -> ((TabletsMessagePayload) message.getMessagePayload()).trySerialize());
 
     // generate response
     final TPipeSubscribeResp resp =
-        PipeSubscribePollResp.toTPipeSubscribeResp(
-            RpcUtils.SUCCESS_STATUS, enrichedTabletsWithByteBufferList, topicNameToTsFileNameMap);
+        PipeSubscribePollResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, rawMessages);
 
     // reset byte buffer
-    enrichedTabletsSubscriptionEvents.forEach(
-        SerializableEnrichedTabletsSubscriptionEvent::resetByteBuffer);
+    rawMessages.stream()
+        .filter(
+            (message -> message.getMessageType() == SubscriptionRawMessageType.TABLETS.getType()))
+        .forEach(
+            message -> ((TabletsMessagePayload) message.getMessagePayload()).resetByteBuffer());
     return resp;
   }
 
@@ -433,14 +421,13 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     // commit
-    final Map<String, List<String>> topicNameToSubscriptionCommitIds =
-        req.getTopicNameToSubscriptionCommitIds();
-    SubscriptionAgent.broker().commit(consumerConfig, topicNameToSubscriptionCommitIds);
+    final List<SubscriptionCommitContext> commitContexts = req.getCommitContexts();
+    SubscriptionAgent.broker().commit(consumerConfig, commitContexts);
 
     LOGGER.info(
-        "Subscription: consumer commit {} successfully, commit ids: {}",
+        "Subscription: consumer commit {} successfully, commit contexts: {}",
         consumerConfig,
-        topicNameToSubscriptionCommitIds);
+        commitContexts);
     return PipeSubscribeCommitResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 

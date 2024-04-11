@@ -25,6 +25,7 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,10 +77,9 @@ public class SubscriptionBroker {
     return events;
   }
 
-  public void commit(final Map<String, List<String>> topicNameToSubscriptionCommitIds) {
-    for (final Map.Entry<String, List<String>> entry :
-        topicNameToSubscriptionCommitIds.entrySet()) {
-      final String topicName = entry.getKey();
+  public void commit(final List<SubscriptionCommitContext> commitContexts) {
+    for (final SubscriptionCommitContext commitContext : commitContexts) {
+      final String topicName = commitContext.getTopicName();
       final SubscriptionPrefetchingQueue prefetchingQueue =
           topicNameToPrefetchingQueue.get(topicName);
       if (Objects.isNull(prefetchingQueue)) {
@@ -87,7 +87,7 @@ public class SubscriptionBroker {
             "Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
         continue;
       }
-      prefetchingQueue.commit(entry.getValue());
+      prefetchingQueue.commit(commitContext);
     }
   }
 
@@ -110,7 +110,7 @@ public class SubscriptionBroker {
     } else {
       topicNameToPrefetchingQueue.put(
           topicName,
-          new SubscriptionPrefetchingEnrichedTabletsQueue(brokerId, topicName, inputPendingQueue));
+          new SubscriptionPrefetchingTabletsQueue(brokerId, topicName, inputPendingQueue));
     }
   }
 

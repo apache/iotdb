@@ -37,9 +37,7 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     this.subscriptionCommitId = tablets.getSubscriptionCommitId();
   }
 
-  public SubscriptionMessage(String topicName, String fileName) {
-
-  }
+  public SubscriptionMessage(String topicName, String fileName) {}
 
   public String getTopicName() {
     return topicName;

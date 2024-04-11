@@ -21,27 +21,31 @@ package org.apache.iotdb.db.subscription.event;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
 
 import java.util.List;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 
-public abstract class SubscriptionEvent {
+public class SubscriptionEvent {
 
   private static final long INVALID_TIMESTAMP = -1;
 
   private final List<EnrichedEvent> enrichedEvents;
-  private final SubscriptionCommitContext commitContext;
+  private final SubscriptionRawMessage message;
 
   private long lastPolledTimestamp;
   private long committedTimestamp;
 
   public SubscriptionEvent(
-      final List<EnrichedEvent> enrichedEvents, final SubscriptionCommitContext commitContext) {
+      final List<EnrichedEvent> enrichedEvents, final SubscriptionRawMessage message) {
     this.enrichedEvents = enrichedEvents;
-    this.commitContext = commitContext;
+    this.message = message;
 
     this.lastPolledTimestamp = INVALID_TIMESTAMP;
     this.committedTimestamp = INVALID_TIMESTAMP;
+  }
+
+  public SubscriptionRawMessage getMessage() {
+    return message;
   }
 
   //////////////////////////// commit ////////////////////////////

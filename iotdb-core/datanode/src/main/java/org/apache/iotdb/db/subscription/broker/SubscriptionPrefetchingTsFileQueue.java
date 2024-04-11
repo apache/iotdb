@@ -23,9 +23,12 @@ import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.TsFileSubscriptionEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessageType;
+import org.apache.iotdb.rpc.subscription.payload.common.TsFileInfoMessagePayload;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +42,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPrefetchingTsFileQueue.class);
 
-  private final AtomicReference<TsFileSubscriptionEvent> eventRef;
+  private final AtomicReference<SubscriptionEvent> eventRef;
 
   public SubscriptionPrefetchingTsFileQueue(
       final String brokerId,
@@ -67,15 +70,17 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       }
 
       final PipeTsFileInsertionEvent tsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
-      final String subscriptionCommitId = generateSubscriptionCommitContext();
-      final TsFileSubscriptionEvent subscriptionEvent =
-          new TsFileSubscriptionEvent(
+      final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
+
+      final SubscriptionEvent subscriptionEvent =
+          new SubscriptionEvent(
               Collections.singletonList(tsFileInsertionEvent),
-              subscriptionCommitId,
-              topicName,
-              tsFileInsertionEvent.getTsFile().getName());
+              new SubscriptionRawMessage(
+                  SubscriptionRawMessageType.TS_FILE_INFO.getType(),
+                  new TsFileInfoMessagePayload(tsFileInsertionEvent.getTsFile().getName()),
+                  commitContext));
       eventRef.set(subscriptionEvent);
-      uncommittedEvents.put(subscriptionCommitId, subscriptionEvent);
+      uncommittedEvents.put(commitContext, subscriptionEvent);
       return subscriptionEvent;
     }
 

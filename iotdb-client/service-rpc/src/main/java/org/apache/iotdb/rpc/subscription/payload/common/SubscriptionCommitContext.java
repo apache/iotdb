@@ -19,26 +19,31 @@
 
 package org.apache.iotdb.rpc.subscription.payload.common;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class SubscriptionCommitContext {
 
   private final int dataNodeId;
-  
+
   private final int rebootTimes;
-  
+
   private final String topicName;
-  
+
   private final String consumerGroupId;
-  
+
   private final long commitId;
 
-  public SubscriptionCommitContext(final int dataNodeId, final int rebootTimes, final String topicName,
-      final String consumerGroupId, final long commitId) {
+  public SubscriptionCommitContext(
+      final int dataNodeId,
+      final int rebootTimes,
+      final String topicName,
+      final String consumerGroupId,
+      final long commitId) {
     this.dataNodeId = dataNodeId;
     this.rebootTimes = rebootTimes;
     this.topicName = topicName;
@@ -82,7 +87,8 @@ public class SubscriptionCommitContext {
     final String topicName = ReadWriteIOUtils.readString(buffer);
     final String consumerGroupId = ReadWriteIOUtils.readString(buffer);
     final long commitId = ReadWriteIOUtils.readLong(buffer);
-    return new SubscriptionCommitContext(dataNodeId, rebootTimes, topicName, consumerGroupId, commitId);
+    return new SubscriptionCommitContext(
+        dataNodeId, rebootTimes, topicName, consumerGroupId, commitId);
   }
 
   /////////////////////////////// Object ///////////////////////////////
@@ -96,10 +102,9 @@ public class SubscriptionCommitContext {
       return false;
     }
     final SubscriptionCommitContext that = (SubscriptionCommitContext) obj;
-    return 
-        this.dataNodeId == that.dataNodeId &&
-            this.rebootTimes == that.rebootTimes &&
-        Objects.equals(this.topicName, that.topicName)
+    return this.dataNodeId == that.dataNodeId
+        && this.rebootTimes == that.rebootTimes
+        && Objects.equals(this.topicName, that.topicName)
         && Objects.equals(this.consumerGroupId, that.consumerGroupId)
         && Objects.equals(this.commitId, that.commitId);
   }
@@ -108,14 +113,14 @@ public class SubscriptionCommitContext {
   public int hashCode() {
     return Objects.hash(dataNodeId, rebootTimes, topicName, consumerGroupId, commitId);
   }
-  
+
   @Override
   public String toString() {
     return "SubscriptionCommitContext{dataNodeId="
         + dataNodeId
         + ", rebootTimes="
         + rebootTimes
-        + ", topicName=" 
+        + ", topicName="
         + topicName
         + ", consumerGroupId="
         + consumerGroupId

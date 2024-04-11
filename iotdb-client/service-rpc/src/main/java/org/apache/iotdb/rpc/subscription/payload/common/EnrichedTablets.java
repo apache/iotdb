@@ -38,7 +38,8 @@ public class EnrichedTablets {
     return tablets;
   }
 
-  public EnrichedTablets(final SubscriptionCommitContext commitContext, final List<Tablet> tablets) {
+  public EnrichedTablets(
+      final SubscriptionCommitContext commitContext, final List<Tablet> tablets) {
     this.commitContext = commitContext;
     this.tablets = tablets;
   }

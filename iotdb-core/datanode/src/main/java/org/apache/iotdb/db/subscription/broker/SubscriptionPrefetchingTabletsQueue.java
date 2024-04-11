@@ -7,13 +7,14 @@ import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.subscription.event.SerializableEnrichedTabletsSubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.rpc.subscription.payload.common.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessageType;
+import org.apache.iotdb.rpc.subscription.payload.common.TabletsMessagePayload;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.slf4j.Logger;
@@ -25,14 +26,14 @@ import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class SubscriptionPrefetchingEnrichedTabletsQueue extends SubscriptionPrefetchingQueue {
+public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetchingQueue {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(SubscriptionPrefetchingEnrichedTabletsQueue.class);
+      LoggerFactory.getLogger(SubscriptionPrefetchingTabletsQueue.class);
 
-  private final LinkedBlockingQueue<SerializableEnrichedTabletsSubscriptionEvent> prefetchingQueue;
+  private final LinkedBlockingQueue<SubscriptionEvent> prefetchingQueue;
 
-  public SubscriptionPrefetchingEnrichedTabletsQueue(
+  public SubscriptionPrefetchingTabletsQueue(
       final String brokerId,
       final String topicName,
       final BoundedBlockingPendingQueue<Event> inputPendingQueue) {
@@ -48,7 +49,7 @@ public class SubscriptionPrefetchingEnrichedTabletsQueue extends SubscriptionPre
       // without serializeOnce here
     }
 
-    SerializableEnrichedTabletsSubscriptionEvent currentEvent;
+    SubscriptionEvent currentEvent;
     try {
       while (Objects.nonNull(
           currentEvent =
@@ -133,11 +134,15 @@ public class SubscriptionPrefetchingEnrichedTabletsQueue extends SubscriptionPre
 
     if (!tablets.isEmpty()) {
       final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
-      final SerializableEnrichedTabletsSubscriptionEvent enrichedEvent =
-          new SerializableEnrichedTabletsSubscriptionEvent(
-              enrichedEvents, commitContext, new EnrichedTablets(commitContext, tablets));
-      uncommittedEvents.put(commitContext, enrichedEvent); // before enqueuing the event
-      prefetchingQueue.add(enrichedEvent);
+      final SubscriptionEvent subscriptionEvent =
+          new SubscriptionEvent(
+              enrichedEvents,
+              new SubscriptionRawMessage(
+                  SubscriptionRawMessageType.TABLETS.getType(),
+                  new TabletsMessagePayload(tablets),
+                  commitContext));
+      uncommittedEvents.put(commitContext, subscriptionEvent); // before enqueuing the event
+      prefetchingQueue.add(subscriptionEvent);
     }
   }
 
@@ -145,7 +150,7 @@ public class SubscriptionPrefetchingEnrichedTabletsQueue extends SubscriptionPre
     final long size = prefetchingQueue.size();
     long count = 0;
 
-    SerializableEnrichedTabletsSubscriptionEvent currentEvent;
+    SubscriptionEvent currentEvent;
     try {
       while (Objects.nonNull(
           currentEvent =
@@ -165,7 +170,7 @@ public class SubscriptionPrefetchingEnrichedTabletsQueue extends SubscriptionPre
         // Serialize the uncommitted and pollable event.
         if (currentEvent.pollable()) {
           // No need to concern whether serialization is successful.
-          currentEvent.serialize();
+          ((TabletsMessagePayload) currentEvent.getMessage().getMessagePayload()).trySerialize();
         }
       }
     } catch (final InterruptedException e) {

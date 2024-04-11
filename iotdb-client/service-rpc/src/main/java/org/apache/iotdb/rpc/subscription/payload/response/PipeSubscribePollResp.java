@@ -27,21 +27,21 @@ import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
   private transient List<SubscriptionRawMessage> messages = new ArrayList<>();
+
+  public List<SubscriptionRawMessage> getMessages() {
+    return messages;
+  }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
@@ -60,7 +60,7 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
     resp.type = PipeSubscribeResponseType.ACK.getType();
     try {
       resp.body = new ArrayList<>();
-      for (final SubscriptionRawMessage message: messages) {
+      for (final SubscriptionRawMessage message : messages) {
         resp.body.add(SubscriptionRawMessage.serialize(message));
       }
     } catch (IOException e) {
@@ -127,8 +127,7 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
       return false;
     }
     PipeSubscribePollResp that = (PipeSubscribePollResp) obj;
-    return Objects.equals(this.enrichedTabletsList, that.enrichedTabletsList)
-        && Objects.equals(this.topicNameToTsFileNameMap, that.topicNameToTsFileNameMap)
+    return Objects.equals(this.messages, that.messages)
         && Objects.equals(this.status, that.status)
         && this.version == that.version
         && this.type == that.type
@@ -137,6 +136,6 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
   @Override
   public int hashCode() {
-    return Objects.hash(enrichedTabletsList, topicNameToTsFileNameMap, status, version, type, body);
+    return Objects.hash(messages, status, version, type, body);
   }
 }

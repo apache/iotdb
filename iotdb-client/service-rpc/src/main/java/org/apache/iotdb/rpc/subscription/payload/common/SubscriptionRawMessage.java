@@ -1,13 +1,11 @@
 package org.apache.iotdb.rpc.subscription.payload.common;
 
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
 public class SubscriptionRawMessage {
 
@@ -24,6 +22,18 @@ public class SubscriptionRawMessage {
     this.messageType = messageType;
     this.messagePayload = messagePayload;
     this.commitContext = commitContext;
+  }
+
+  public short getMessageType() {
+    return messageType;
+  }
+
+  public SubscriptionRawMessagePayload getMessagePayload() {
+    return messagePayload;
+  }
+
+  public SubscriptionCommitContext getCommitContext() {
+    return commitContext;
   }
 
   /////////////////////////////// de/ser ///////////////////////////////
@@ -49,6 +59,9 @@ public class SubscriptionRawMessage {
       switch (SubscriptionRawMessageType.valueOf(messageType)) {
         case TABLETS:
           messagePayload = new TabletsMessagePayload().deserialize(buffer);
+          break;
+        case TS_FILE_INFO:
+          messagePayload = new TsFileInfoMessagePayload().deserialize(buffer);
           break;
         default:
           messagePayload = null;

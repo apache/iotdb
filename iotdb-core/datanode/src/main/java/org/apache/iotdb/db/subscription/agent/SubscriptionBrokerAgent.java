@@ -24,6 +24,7 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtask;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,8 +61,7 @@ public class SubscriptionBrokerAgent {
   }
 
   public void commit(
-      final ConsumerConfig consumerConfig,
-      final Map<String, List<String>> topicNameToSubscriptionCommitIds) {
+      final ConsumerConfig consumerConfig, final List<SubscriptionCommitContext> commitContexts) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
@@ -69,7 +69,7 @@ public class SubscriptionBrokerAgent {
           "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
       return;
     }
-    broker.commit(topicNameToSubscriptionCommitIds);
+    broker.commit(commitContexts);
   }
 
   /////////////////////////////// broker ///////////////////////////////

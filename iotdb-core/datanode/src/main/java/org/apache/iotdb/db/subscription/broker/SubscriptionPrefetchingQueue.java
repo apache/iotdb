@@ -25,12 +25,11 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
-
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,19 +63,16 @@ public abstract class SubscriptionPrefetchingQueue {
 
   /////////////////////////////// commit ///////////////////////////////
 
-  public void commit(final List<String> subscriptionCommitIds) {
-    for (final String subscriptionCommitId : subscriptionCommitIds) {
-      final SubscriptionEvent event = uncommittedEvents.get(subscriptionCommitId);
-      if (Objects.isNull(event)) {
-        LOGGER.warn(
-            "Subscription: subscription commit id [{}] does not exist, it may have been committed or something unexpected happened",
-            subscriptionCommitId);
-        continue;
-      }
-      event.decreaseReferenceCount();
-      event.recordCommittedTimestamp();
-      uncommittedEvents.remove(subscriptionCommitId);
+  public void commit(final SubscriptionCommitContext commitContext) {
+    final SubscriptionEvent event = uncommittedEvents.get(commitContext);
+    if (Objects.isNull(event)) {
+      LOGGER.warn(
+          "Subscription: subscription commit context [{}] does not exist, it may have been committed or something unexpected happened",
+          commitContext);
     }
+    event.decreaseReferenceCount();
+    event.recordCommittedTimestamp();
+    uncommittedEvents.remove(commitContext);
   }
 
   protected SubscriptionCommitContext generateSubscriptionCommitContext() {
@@ -87,7 +83,6 @@ public abstract class SubscriptionPrefetchingQueue {
         PipeAgent.runtime().getRebootTimes(),
         topicName,
         brokerId,
-        subscriptionCommitIdGenerator.getAndIncrement()
-    );
+        subscriptionCommitIdGenerator.getAndIncrement());
   }
 }
