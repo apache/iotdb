@@ -208,7 +208,6 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             ConfigNodeDescriptor.getInstance().getConf().getDefaultDataRegionGroupNumPerDatabase());
         schema.setMaxSchemaRegionGroupNum(schema.getMinSchemaRegionGroupNum());
         schema.setMaxDataRegionGroupNum(schema.getMinDataRegionGroupNum());
-        schema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
         return configManager.getClusterSchemaManager().setDatabase((DatabaseSchemaPlan) plan, true);
       case AlterDatabase:
         return configManager

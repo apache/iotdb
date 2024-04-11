@@ -378,7 +378,7 @@ public class MemMTreeSnapshotUtil {
     public IMemMNode deserializeStorageGroupEntityMNode(InputStream inputStream)
         throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
-      IMemMNode node = nodeFactory.createDatabaseDeviceMNode(null, name, 0);
+      IMemMNode node = nodeFactory.createDatabaseDeviceMNode(null, name);
       node.getAsDeviceMNode().setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.getAsDeviceMNode().setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
       node.getAsDeviceMNode().setAligned(ReadWriteIOUtils.readBoolObject(inputStream));

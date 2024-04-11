@@ -36,16 +36,6 @@ public class ConfigDatabaseInfo implements IDatabaseInfo<IConfigMNode> {
     newMNode.getAsMNode().setDatabaseSchema(schema);
   }
 
-  @Override
-  public long getDataTTL() {
-    return schema.getTTL();
-  }
-
-  @Override
-  public void setDataTTL(long dataTTL) {
-    schema.setTTL(dataTTL);
-  }
-
   public TDatabaseSchema getSchema() {
     return schema;
   }

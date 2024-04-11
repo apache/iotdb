@@ -157,16 +157,6 @@ public abstract class AbstractDatabaseMNode<N extends IMNode<N>, BasicNode exten
     return visitor.visitDatabaseMNode(this, context);
   }
 
-  @Override
-  public long getDataTTL() {
-    return databaseInfo.getDataTTL();
-  }
-
-  @Override
-  public void setDataTTL(long dataTTL) {
-    databaseInfo.setDataTTL(dataTTL);
-  }
-
   /**
    * The basic memory occupied by any AbstractDatabaseMNode object
    *

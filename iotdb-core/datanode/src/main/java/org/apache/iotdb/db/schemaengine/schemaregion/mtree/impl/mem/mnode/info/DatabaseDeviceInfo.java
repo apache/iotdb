@@ -26,23 +26,13 @@ public class DatabaseDeviceInfo<N extends IMNode<N>> extends DeviceInfo<N>
     implements IDatabaseDeviceInfo<N> {
   /**
    * when the data file in a database is older than dataTTL, it is considered invalid and will be
-   * eventually deleted.
+   * eventually deleted. TODO: database ttl is useless here, which can be removed.
    */
-  private long dataTTL;
+  private long dataTTL = Long.MAX_VALUE;
 
   @Override
   public void moveDataToNewMNode(IDatabaseMNode<N> newMNode) {
-    newMNode.setDataTTL(dataTTL);
-  }
-
-  @Override
-  public long getDataTTL() {
-    return dataTTL;
-  }
-
-  @Override
-  public void setDataTTL(long dataTTL) {
-    this.dataTTL = dataTTL;
+    // Do nothing
   }
 
   /**

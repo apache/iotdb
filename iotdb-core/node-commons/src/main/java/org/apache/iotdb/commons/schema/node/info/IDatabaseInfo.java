@@ -25,9 +25,5 @@ public interface IDatabaseInfo<N extends IMNode<N>> {
 
   void moveDataToNewMNode(IDatabaseMNode<N> newMNode);
 
-  long getDataTTL();
-
-  void setDataTTL(long dataTTL);
-
   int estimateSize();
 }

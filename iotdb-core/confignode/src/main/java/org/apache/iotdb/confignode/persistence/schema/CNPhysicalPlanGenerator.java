@@ -30,7 +30,6 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
@@ -52,7 +51,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -387,11 +385,6 @@ public class CNPhysicalPlanGenerator
     databaseMNode
         .getAsMNode()
         .setDatabaseSchema(ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(inputStream));
-    long databaseTTL = -1L;
-    if (databaseMNode.getAsMNode().getDatabaseSchema().isSetTTL()) {
-      databaseTTL = databaseMNode.getAsMNode().getDatabaseSchema().getTTL();
-      databaseMNode.getAsMNode().getDatabaseSchema().unsetTTL();
-    }
 
     if (databaseMNode.getAsMNode().getSchemaTemplateId() >= 0 && !templateTable.isEmpty()) {
       templateNodeList.add((IConfigMNode) databaseMNode);
@@ -401,13 +394,6 @@ public class CNPhysicalPlanGenerator
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.CreateDatabase, databaseMNode.getAsMNode().getDatabaseSchema());
     planDeque.add(createDBPlan);
-    if (databaseTTL != -1L) {
-      final SetTTLPlan setTTLPlan =
-          new SetTTLPlan(
-              Arrays.asList(databaseMNode.getAsMNode().getDatabaseSchema().getName().split("\\.")),
-              databaseTTL);
-      planDeque.add(setTTLPlan);
-    }
     return databaseMNode.getAsMNode();
   }
 

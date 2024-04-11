@@ -87,7 +87,7 @@ public class SchemaFileLogTest {
     SchemaFile sf =
         (SchemaFile) SchemaFile.initSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
     IDatabaseMNode<ICachedMNode> newSGNode =
-        nodeFactory.createDatabaseDeviceMNode(null, "newSG", 10000L).getAsDatabaseMNode();
+        nodeFactory.createDatabaseDeviceMNode(null, "newSG").getAsDatabaseMNode();
     sf.updateDatabaseNode(newSGNode);
 
     ICachedMNode root = virtualTriangleMTree(5, "root.test");

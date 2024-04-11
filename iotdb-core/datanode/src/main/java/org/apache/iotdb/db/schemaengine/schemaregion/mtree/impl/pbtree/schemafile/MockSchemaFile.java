@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
@@ -54,11 +53,7 @@ public class MockSchemaFile implements ISchemaFile {
 
   @Override
   public ICachedMNode init() {
-    storageGroupMNode =
-        nodeFactory.createDatabaseMNode(
-            null,
-            storageGroupPath.getTailNode(),
-            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+    storageGroupMNode = nodeFactory.createDatabaseMNode(null, storageGroupPath.getTailNode());
     ICachedMNodeContainer container = getCachedMNodeContainer(storageGroupMNode.getAsMNode());
     container.transferAllBufferReceivingToFlushing();
     writeMNode(storageGroupMNode.getAsMNode());
@@ -191,9 +186,7 @@ public class MockSchemaFile implements ISchemaFile {
       result.getAsMeasurementMNode().setPreDeleted(measurementMNode.isPreDeleted());
       return result;
     } else if (node.isDatabase() && node.isDevice()) {
-      ICachedMNode result =
-          nodeFactory.createDatabaseDeviceMNode(
-              null, node.getName(), node.getAsDatabaseMNode().getDataTTL());
+      ICachedMNode result = nodeFactory.createDatabaseDeviceMNode(null, node.getName());
       result.getAsDeviceMNode().setAligned(node.getAsDeviceMNode().isAlignedNullable());
       cloneInternalMNodeData(node, result);
       return result;
@@ -207,10 +200,7 @@ public class MockSchemaFile implements ISchemaFile {
       cloneInternalMNodeData(node, result);
       return result;
     } else if (node.isDatabase()) {
-      ICachedMNode result =
-          nodeFactory
-              .createDatabaseMNode(null, node.getName(), node.getAsDatabaseMNode().getDataTTL())
-              .getAsMNode();
+      ICachedMNode result = nodeFactory.createDatabaseMNode(null, node.getName()).getAsMNode();
       cloneInternalMNodeData(node, result);
       return result;
     } else {

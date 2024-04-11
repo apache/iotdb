@@ -38,7 +38,6 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
   private final DatabaseSchemaStatementType subType;
 
   private PartialPath databasePath;
-  private Long ttl = null;
   private Integer schemaReplicationFactor = null;
   private Integer dataReplicationFactor = null;
   private Long timePartitionInterval = null;
@@ -62,14 +61,6 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
 
   public void setDatabasePath(PartialPath databasePath) {
     this.databasePath = databasePath;
-  }
-
-  public Long getTtl() {
-    return ttl;
-  }
-
-  public void setTtl(Long ttl) {
-    this.ttl = ttl;
   }
 
   public Integer getSchemaReplicationFactor() {
@@ -156,8 +147,6 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     return "SetStorageGroupStatement{"
         + "storageGroupPath="
         + databasePath
-        + ", ttl="
-        + ttl
         + ", schemaReplicationFactor="
         + schemaReplicationFactor
         + ", dataReplicationFactor="

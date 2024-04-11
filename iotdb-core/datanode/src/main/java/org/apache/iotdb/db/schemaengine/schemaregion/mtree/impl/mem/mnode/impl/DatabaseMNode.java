@@ -31,12 +31,6 @@ public class DatabaseMNode extends AbstractDatabaseMNode<IMemMNode, BasicInterna
     super(new BasicInternalMNode(parent, name), new DatabaseInfo<>());
   }
 
-  // TODO: @yukun, remove this constructor
-  public DatabaseMNode(IMemMNode parent, String name, long dataTTL) {
-    this(parent, name);
-    setDataTTL(dataTTL);
-  }
-
   @Override
   public IMemMNode getAsMNode() {
     return this;

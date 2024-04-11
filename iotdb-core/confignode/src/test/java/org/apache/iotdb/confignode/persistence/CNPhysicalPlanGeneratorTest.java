@@ -285,17 +285,12 @@ public class CNPhysicalPlanGeneratorTest {
     for (String path : storageGroupPathList) {
       final TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
       tDatabaseSchema.setName(path);
-      tDatabaseSchema.setTTL(i);
       tDatabaseSchema.setDataReplicationFactor(i);
       tDatabaseSchema.setSchemaReplicationFactor(i);
       tDatabaseSchema.setTimePartitionInterval(i);
       clusterSchemaInfo.createDatabase(
           new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, tDatabaseSchema));
-      final SetTTLPlan plan =
-          new SetTTLPlan(Arrays.asList(path.split("\\.")), tDatabaseSchema.getTTL());
-      answerSet.add(plan.hashCode());
       TDatabaseSchema tDatabaseSchemaBak = new TDatabaseSchema(tDatabaseSchema);
-      tDatabaseSchemaBak.unsetTTL();
       DatabaseSchemaPlan databaseSchemaPlan =
           new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, tDatabaseSchemaBak);
       answerSet.add(databaseSchemaPlan.hashCode());
@@ -319,7 +314,7 @@ public class CNPhysicalPlanGeneratorTest {
         final String[] database = ((SetTTLPlan) plan).getPathPattern();
         final PartialPath databasePath = new PartialPath(database);
         Assert.assertTrue(answerSet.contains(plan.hashCode()));
-        clusterSchemaInfo.setTTL((SetTTLPlan) plan);
+        // clusterSchemaInfo.setTTL((SetTTLPlan) plan);
       }
       count++;
     }
@@ -385,17 +380,12 @@ public class CNPhysicalPlanGeneratorTest {
     for (String path : storageGroupPathList) {
       final TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
       tDatabaseSchema.setName(path);
-      tDatabaseSchema.setTTL(i);
       tDatabaseSchema.setDataReplicationFactor(i);
       tDatabaseSchema.setSchemaReplicationFactor(i);
       tDatabaseSchema.setTimePartitionInterval(i);
       clusterSchemaInfo.createDatabase(
           new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, tDatabaseSchema));
-      final SetTTLPlan plan =
-          new SetTTLPlan(Arrays.asList(path.split("\\.")), tDatabaseSchema.getTTL());
-      answerSet.add(plan.hashCode());
       final TDatabaseSchema tDatabaseSchemaBak = new TDatabaseSchema(tDatabaseSchema);
-      tDatabaseSchemaBak.unsetTTL();
       final DatabaseSchemaPlan databaseSchemaPlan =
           new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, tDatabaseSchemaBak);
       answerSet.add(databaseSchemaPlan.hashCode());

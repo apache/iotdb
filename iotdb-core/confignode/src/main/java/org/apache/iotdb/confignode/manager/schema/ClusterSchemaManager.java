@@ -357,7 +357,6 @@ public class ClusterSchemaManager {
       String database = databaseSchema.getName();
       TDatabaseInfo databaseInfo = new TDatabaseInfo();
       databaseInfo.setName(database);
-      databaseInfo.setTTL(databaseSchema.getTTL());
       databaseInfo.setSchemaReplicationFactor(databaseSchema.getSchemaReplicationFactor());
       databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
       databaseInfo.setTimePartitionInterval(databaseSchema.getTimePartitionInterval());
@@ -387,19 +386,6 @@ public class ClusterSchemaManager {
     }
 
     return new TShowDatabaseResp().setDatabaseInfoMap(infoMap).setStatus(StatusUtils.OK);
-  }
-
-  public Map<String, Long> getAllTTLInfo() {
-    List<String> databases = getDatabaseNames();
-    Map<String, Long> infoMap = new ConcurrentHashMap<>();
-    for (String database : databases) {
-      try {
-        infoMap.put(database, getTTL(database));
-      } catch (DatabaseNotExistsException e) {
-        LOGGER.warn("Database: {} doesn't exist", databases, e);
-      }
-    }
-    return infoMap;
   }
 
   /**
@@ -705,16 +691,6 @@ public class ClusterSchemaManager {
               }
             });
     return result;
-  }
-
-  /**
-   * Only leader use this interface. Get the TTL of specified Database
-   *
-   * @param database DatabaseName
-   * @throws DatabaseNotExistsException When the specified Database doesn't exist
-   */
-  public long getTTL(String database) throws DatabaseNotExistsException {
-    return getDatabaseSchemaByName(database).getTTL();
   }
 
   /**

@@ -154,7 +154,7 @@ public class PBTreeFileSketchTest {
   private ICachedMNode getFlatTree(int flatSize, String id) {
     ICachedMNode root = nodeFactory.createInternalMNode(null, "root");
     ICachedMNode test = nodeFactory.createInternalMNode(root, "test");
-    ICachedMNode internalNode = nodeFactory.createDatabaseDeviceMNode(null, "vRoot1", 0L);
+    ICachedMNode internalNode = nodeFactory.createDatabaseDeviceMNode(null, "vRoot1");
 
     for (int idx = 0; idx < flatSize; idx++) {
       String measurementId = id + idx;

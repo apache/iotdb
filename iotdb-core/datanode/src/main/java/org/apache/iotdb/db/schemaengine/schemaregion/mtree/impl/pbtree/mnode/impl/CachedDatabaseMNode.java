@@ -34,12 +34,6 @@ public class CachedDatabaseMNode
     super(new CachedBasicInternalMNode(parent, name), new DatabaseInfo<>());
   }
 
-  // TODO: @yukun, remove this constructor
-  public CachedDatabaseMNode(ICachedMNode parent, String name, long dataTTL) {
-    this(parent, name);
-    setDataTTL(dataTTL);
-  }
-
   @Override
   public CacheEntry getCacheEntry() {
     return basicMNode.getCacheEntry();
