@@ -100,7 +100,7 @@ public class PipeEventCommitManager {
   }
 
   private static String generateCommitterKey(String pipeName, long creationTime, int regionId) {
-    return String.format("%s_%s_%s", pipeName, creationTime, regionId);
+    return String.format("%s_%s_%s", pipeName, regionId, creationTime);
   }
 
   private PipeEventCommitManager() {
