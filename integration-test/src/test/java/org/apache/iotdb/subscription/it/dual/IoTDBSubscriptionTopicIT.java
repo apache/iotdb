@@ -389,6 +389,10 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
       }
+      for (int i = 200; i < 300; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
+      }
       session.executeNonQueryStatement("flush");
     } catch (final Exception e) {
       e.printStackTrace();
@@ -397,7 +401,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
     // Create topic on sender
     final String topic1 = "`topic1`";
-    final String topic2 = "``topic2``";
+    final String topic2 = "`'topic2'`";
+    final String topic3 = "`\"topic3\"`";
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
@@ -414,6 +419,12 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         config.put(TopicConstant.END_TIME_KEY, 199);
         session.createTopic(topic2, config);
       }
+      {
+        final Properties config = new Properties();
+        config.put(TopicConstant.START_TIME_KEY, 200);
+        config.put(TopicConstant.END_TIME_KEY, 299);
+        session.createTopic(topic3, config);
+      }
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -423,6 +434,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final Set<String> topics = new HashSet<>();
     topics.add(topic1);
     topics.add(topic2);
+    topics.add(topic3);
     final AtomicBoolean isClosed = new AtomicBoolean(false);
     final Thread thread =
         new Thread(
@@ -484,7 +496,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                         TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
                         new HashMap<String, String>() {
                           {
-                            put("count(root.db.d1.s)", "200");
+                            put("count(root.db.d1.s)", "300");
                           }
                         }));
       }
