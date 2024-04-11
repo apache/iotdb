@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.payload.common.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -40,19 +41,7 @@ import java.util.stream.Collectors;
 
 public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
-  private transient List<>
-
-  private transient List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
-
-  private transient Map<String, String> topicNameToTsFileNameMap = new HashMap<>();
-
-  public List<EnrichedTablets> getEnrichedTabletsList() {
-    return enrichedTabletsList;
-  }
-
-  public Map<String, String> getTopicNameToTsFileNameMap() {
-    return topicNameToTsFileNameMap;
-  }
+  private transient List<SubscriptionRawMessage> messages = new ArrayList<>();
 
   /////////////////////////////// Thrift ///////////////////////////////
 
@@ -61,23 +50,19 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
    * server.
    */
   public static PipeSubscribePollResp toTPipeSubscribeResp(
-      TSStatus status,
-      List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsWithByteBufferList,
-      Map<String, String> topicNameToTsFileNameMap) {
+      TSStatus status, List<SubscriptionRawMessage> messages) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
-    resp.enrichedTabletsList =
-        enrichedTabletsWithByteBufferList.stream().map(Pair::getRight).collect(Collectors.toList());
-    resp.topicNameToTsFileNameMap = topicNameToTsFileNameMap;
+    resp.messages = messages;
 
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
-    resp.type = PipeSubscribeResponseType.POLL.getType();
+    resp.type = PipeSubscribeResponseType.ACK.getType();
     try {
       resp.body = new ArrayList<>();
-      resp.body.add(serializeTopicNameToTsFileNameMap(topicNameToTsFileNameMap));
-      resp.body.addAll(
-          serializeEnrichedTabletsWithByteBufferList(enrichedTabletsWithByteBufferList));
+      for (final SubscriptionRawMessage message: messages) {
+        resp.body.add(SubscriptionRawMessage.serialize(message));
+      }
     } catch (IOException e) {
       resp.status = RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, e.getMessage());
     }
@@ -89,16 +74,10 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
   public static PipeSubscribePollResp fromTPipeSubscribeResp(TPipeSubscribeResp pollResp) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
-    boolean isFirst = true;
     if (Objects.nonNull(pollResp.body)) {
       for (final ByteBuffer byteBuffer : pollResp.body) {
         if (Objects.nonNull(byteBuffer) && byteBuffer.hasRemaining()) {
-          if (isFirst) {
-            resp.topicNameToTsFileNameMap = deserializeTopicNameToTsFileNameMap(byteBuffer);
-            isFirst = false;
-          } else {
-            resp.enrichedTabletsList.add(EnrichedTablets.deserialize(byteBuffer));
-          }
+          resp.messages.add(SubscriptionRawMessage.deserialize(byteBuffer));
         }
       }
     }
@@ -135,31 +114,6 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
       enrichedTablets.serialize(outputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
-  }
-
-  public static ByteBuffer serializeTopicNameToTsFileNameMap(
-      Map<String, String> topicNameToTsFileNameMap) throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(topicNameToTsFileNameMap.size(), outputStream);
-      for (final Map.Entry<String, String> topicNameToTsFileName :
-          topicNameToTsFileNameMap.entrySet()) {
-        ReadWriteIOUtils.write(topicNameToTsFileName.getKey(), outputStream);
-        ReadWriteIOUtils.write(topicNameToTsFileName.getValue(), outputStream);
-      }
-      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    }
-  }
-
-  public static Map<String, String> deserializeTopicNameToTsFileNameMap(ByteBuffer buffer) {
-    final Map<String, String> topicNameToTsFileNameMap = new HashMap<>();
-    final int size = ReadWriteIOUtils.readInt(buffer);
-    for (int i = 0; i < size; i++) {
-      final String topicName = ReadWriteIOUtils.readString(buffer);
-      final String tsFileName = ReadWriteIOUtils.readString(buffer);
-      topicNameToTsFileNameMap.put(topicName, tsFileName);
-    }
-    return topicNameToTsFileNameMap;
   }
 
   /////////////////////////////// Object ///////////////////////////////

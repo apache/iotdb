@@ -48,7 +48,7 @@ public enum PipeSubscribeRequestType {
       Arrays.stream(PipeSubscribeRequestType.values())
           .collect(
               HashMap::new,
-              (typeMap, pipeRequestType) -> typeMap.put(pipeRequestType.getType(), pipeRequestType),
+              (typeMap, requestType) -> typeMap.put(requestType.getType(), requestType),
               HashMap::putAll);
 
   public static boolean isValidatedRequestType(short type) {
