@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -49,7 +50,9 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
   }
 
   public InsertBaseStatement constructStatement() {
-    if (!(insertNode instanceof InsertRowNode || insertNode instanceof InsertTabletNode)) {
+    if (!(insertNode instanceof InsertRowNode
+        || insertNode instanceof InsertTabletNode
+        || insertNode instanceof InsertRowsNode)) {
       throw new UnsupportedOperationException(
           String.format(
               "Unknown InsertNode type %s when constructing statement from insert node.",
