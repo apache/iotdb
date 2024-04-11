@@ -17,20 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
+package org.apache.iotdb.db.pipe.processor.twostage.state;
 
-public enum IoTDBConnectorRequestVersion {
-  VERSION_1((byte) 1),
-  VERSION_2((byte) 2),
-  ;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
-  private final byte version;
+public interface State {
 
-  IoTDBConnectorRequestVersion(byte type) {
-    this.version = type;
-  }
+  void serialize(OutputStream outputStream) throws IOException;
 
-  public byte getVersion() {
-    return version;
-  }
+  void deserialize(ByteBuffer byteBuffer);
 }

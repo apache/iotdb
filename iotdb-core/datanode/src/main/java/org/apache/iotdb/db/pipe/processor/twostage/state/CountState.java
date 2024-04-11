@@ -17,20 +17,37 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
+package org.apache.iotdb.db.pipe.processor.twostage.state;
 
-public enum IoTDBConnectorRequestVersion {
-  VERSION_1((byte) 1),
-  VERSION_2((byte) 2),
-  ;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-  private final byte version;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
-  IoTDBConnectorRequestVersion(byte type) {
-    this.version = type;
+public class CountState implements State {
+
+  private long count;
+
+  CountState() {
+    count = 0;
   }
 
-  public byte getVersion() {
-    return version;
+  public void accumulate(int value) {
+    count += value;
+  }
+
+  public long getCount() {
+    return count;
+  }
+
+  @Override
+  public void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(count, outputStream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    count = ReadWriteIOUtils.readLong(byteBuffer);
   }
 }

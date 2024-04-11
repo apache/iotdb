@@ -17,20 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
+package org.apache.iotdb.db.pipe.processor.twostage.operator;
 
-public enum IoTDBConnectorRequestVersion {
-  VERSION_1((byte) 1),
-  VERSION_2((byte) 2),
-  ;
+import org.apache.iotdb.db.pipe.processor.twostage.state.CountState;
+import org.apache.iotdb.db.pipe.processor.twostage.state.State;
 
-  private final byte version;
+public class CountOperator implements Operator {
 
-  IoTDBConnectorRequestVersion(byte type) {
-    this.version = type;
+  private long count = 0;
+
+  @Override
+  public void combine(State state) {
+    final CountState countState = (CountState) state;
+    count += countState.getCount();
   }
 
-  public byte getVersion() {
-    return version;
+  @Override
+  public void onComplete() {
+    // output to queue
   }
 }

@@ -17,20 +17,39 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
+package org.apache.iotdb.db.pipe.processor.twostage.exchange.payload;
 
-public enum IoTDBConnectorRequestVersion {
-  VERSION_1((byte) 1),
-  VERSION_2((byte) 2),
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
+public enum RequestType {
+  COMBINE((short) 0),
+  FETCH_COMBINE_RESULT((short) 1),
   ;
 
-  private final byte version;
+  private final short type;
 
-  IoTDBConnectorRequestVersion(byte type) {
-    this.version = type;
+  RequestType(short type) {
+    this.type = type;
   }
 
-  public byte getVersion() {
-    return version;
+  public short getType() {
+    return type;
+  }
+
+  private static final Map<Short, RequestType> TYPE_MAP =
+      Arrays.stream(RequestType.values())
+          .collect(
+              HashMap::new,
+              (typeMap, pipeRequestType) -> typeMap.put(pipeRequestType.getType(), pipeRequestType),
+              HashMap::putAll);
+
+  public static boolean isValidatedRequestType(short type) {
+    return TYPE_MAP.containsKey(type);
+  }
+
+  public static RequestType valueOf(short type) {
+    return TYPE_MAP.get(type);
   }
 }
