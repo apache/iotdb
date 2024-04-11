@@ -77,6 +77,7 @@ public class PipeDataNodeTaskBuilder {
             connectorExecutor);
 
     // The processor connects the extractor and connector.
+    // 在这里把 connector 的 pending 队列作为引用传给 pipeEventConnector，从而 offer
     final PipeTaskProcessorStage processorStage =
         new PipeTaskProcessorStage(
             pipeStaticMeta.getPipeName(),
