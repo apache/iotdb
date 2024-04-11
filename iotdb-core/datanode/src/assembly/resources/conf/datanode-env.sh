@@ -98,9 +98,6 @@ calculate_memory_sizes()
         system_cpu_cores="1"
     fi
 
-    # suggest using memory, system memory 1 / 2
-    suggest_using_memory_in_mb=`expr $system_memory_in_mb / 2`
-
     if [ -n "$MEMORY_SIZE" ]
     then
         if [ "${MEMORY_SIZE%"G"}" != "$MEMORY_SIZE" ] || [ "${MEMORY_SIZE%"M"}" != "$MEMORY_SIZE" ]
@@ -116,7 +113,15 @@ calculate_memory_sizes()
             exit 1
         fi
     else
-        memory_size_in_mb=$suggest_using_memory_in_mb
+        # if user doesn't specify MEMORY_SIZE, we will apply safety-first memory allocation strategy:
+        # when system_memory_in_mb is less than 32 * 1024, we will set memory_size_in_mb to system_memory_in_mb - 2 * 1024(reserved for OS) - 8 * system_cpu_cores * 64(reserved for other)
+        # when system_memory_in_mb is greater or equal than 32 * 1024, we will set memory_size_in_mb to system_memory_in_mb - 4 * 1024(reserved for OS) - 8 * system_cpu_cores * 64(reserved for other)
+        if [ "$system_memory_in_mb" -lt "32768" ]
+        then
+          memory_size_in_mb=`expr $system_memory_in_mb - 2048 - 8 \* $system_cpu_cores \* 64`
+        else
+          memory_size_in_mb=`expr $system_memory_in_mb - 4096 - 8 \* $system_cpu_cores \* 64`
+        fi
     fi
 
     # set on heap memory size

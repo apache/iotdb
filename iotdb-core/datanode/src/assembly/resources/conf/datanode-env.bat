@@ -31,7 +31,7 @@ set JMX_PORT="31999"
 @REM  0.0.0.0 is not allowed
 set JMX_IP="127.0.0.1"
 
-if %JMX_LOCAL% == "false" (
+if "%JMX_LOCAL%" == "false" (
   echo "setting remote JMX..."
   @REM you may have no permission to run chmod. If so, contact your system administrator.
   set IOTDB_JMX_OPTS=-Dcom.sun.management.jmxremote^
@@ -53,7 +53,7 @@ for /f %%b in ('wmic cpu get numberofcores ^| findstr "[0-9]"') do (
 	set system_cpu_cores=%%b
 )
 
-if %system_cpu_cores% LSS 1 set system_cpu_cores=1
+if "%system_cpu_cores%" LSS 1 set system_cpu_cores=1
 
 for /f  %%b in ('wmic ComputerSystem get TotalPhysicalMemory ^| findstr "[0-9]"') do (
 	set system_memory=%%b
@@ -64,10 +64,15 @@ for /f "tokens=*" %%a in ('cscript //nologo %IOTDB_HOME%\sbin\tmp.vbs') do set s
 del %IOTDB_HOME%\sbin\tmp.vbs
 set system_memory_in_mb=%system_memory_in_mb:,=%
 
-set /a suggest_=%system_memory_in_mb%/2
-
 if "%MEMORY_SIZE%"=="" (
-  set /a memory_size_in_mb=%suggest_%
+    @REM if user doesn't specify MEMORY_SIZE, we will apply safety-first memory allocation strategy:
+    @REM when system_memory_in_mb is less than 32 * 1024, we will set memory_size_in_mb to system_memory_in_mb - 2 * 1024(reserved for OS) - 8 * system_cpu_cores * 64(reserved for other)
+    @REM when system_memory_in_mb is greater or equal than 32 * 1024, we will set memory_size_in_mb to system_memory_in_mb - 4 * 1024(reserved for OS) - 8 * system_cpu_cores * 64(reserved for other)
+    if "%system_memory_in_mb%" LSS 32768 (
+        set /a memory_size_in_mb=%system_memory_in_mb% - 2048 - 8 * %system_cpu_cores% * 64
+    ) else (
+        set /a memory_size_in_mb=%system_memory_in_mb% - 4096 - 8 * %system_cpu_cores% * 64
+    )
 ) else (
   if "%MEMORY_SIZE:~-1%"=="M" (
     set /a memory_size_in_mb=%MEMORY_SIZE:~0,-1%
@@ -84,11 +89,11 @@ if "%MEMORY_SIZE%"=="" (
 @REM when memory_size_in_mb is greater than 4 * 1024 and less than 16 * 1024, we will set on heap memory size to memory_size_in_mb / 5 * 4
 @REM when memory_size_in_mb is greater than 16 * 1024 and less than 128 * 1024, we will set on heap memory size to memory_size_in_mb / 8 * 7
 @REM when memory_size_in_mb is greater than 128 * 1024, we will set on heap memory size to memory_size_in_mb - 16 * 1024
-if %memory_size_in_mb% LSS 4096 (
+if "%memory_size_in_mb%" LSS 4096 (
   set /a on_heap_memory_size_in_mb=%memory_size_in_mb%/4*3
-) else if %memory_size_in_mb% LSS 16384 (
+) else if "%memory_size_in_mb%" LSS 16384 (
   set /a on_heap_memory_size_in_mb=%memory_size_in_mb%/5*4
-) else if %memory_size_in_mb% LSS 131072 (
+) else if "%memory_size_in_mb%" LSS 131072 (
   set /a on_heap_memory_size_in_mb=%memory_size_in_mb%/8*7
 ) else (
   set /a on_heap_memory_size_in_mb=%memory_size_in_mb%-16384
