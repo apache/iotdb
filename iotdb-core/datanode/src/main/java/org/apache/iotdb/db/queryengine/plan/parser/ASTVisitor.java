@@ -1106,7 +1106,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitAlterLogicalView(IoTDBSqlParser.AlterLogicalViewContext ctx) {
     if (ctx.alterClause() == null) {
-      AlterLogicalViewStatement alterLogicalViewStatement = new AlterLogicalViewStatement();
+      final AlterLogicalViewStatement alterLogicalViewStatement = new AlterLogicalViewStatement();
       // parse target
       parseViewTargetPaths(
           ctx.viewTargetPaths(),
@@ -1127,7 +1127,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
       return alterLogicalViewStatement;
     } else {
-      AlterTimeSeriesStatement alterTimeSeriesStatement = new AlterTimeSeriesStatement(true);
+      final AlterTimeSeriesStatement alterTimeSeriesStatement = new AlterTimeSeriesStatement(true);
       alterTimeSeriesStatement.setPath(parseFullPath(ctx.fullPath()));
       parseAlterClause(ctx.alterClause(), alterTimeSeriesStatement);
       if (alterTimeSeriesStatement.getAlias() != null) {
@@ -1137,10 +1137,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  // parse suffix paths in logical view with into item
+  // Parse suffix paths in logical view with into item
   private PartialPath parseViewPrefixPathWithInto(IoTDBSqlParser.PrefixPathContext ctx) {
-    List<IoTDBSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
-    String[] path = new String[nodeNames.size() + 1];
+    final List<IoTDBSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
+    final String[] path = new String[nodeNames.size() + 1];
     path[0] = ctx.ROOT().getText();
     for (int i = 0; i < nodeNames.size(); i++) {
       path[i + 1] = parseNodeStringInIntoPath(nodeNames.get(i).getText());
@@ -1149,9 +1149,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private PartialPath parseViewSuffixPatWithInto(IoTDBSqlParser.ViewSuffixPathsContext ctx) {
-    List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
+    final List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
         ctx.nodeNameWithoutWildcard();
-    String[] nodeList = new String[nodeNamesWithoutStar.size()];
+    final String[] nodeList = new String[nodeNamesWithoutStar.size()];
     for (int i = 0; i < nodeNamesWithoutStar.size(); i++) {
       nodeList[i] = parseNodeStringInIntoPath(nodeNamesWithoutStar.get(i).getText());
     }
@@ -1159,9 +1159,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private PartialPath parseViewSuffixPath(IoTDBSqlParser.ViewSuffixPathsContext ctx) {
-    List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
+    final List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
         ctx.nodeNameWithoutWildcard();
-    String[] nodeList = new String[nodeNamesWithoutStar.size()];
+    final String[] nodeList = new String[nodeNamesWithoutStar.size()];
     for (int i = 0; i < nodeNamesWithoutStar.size(); i++) {
       nodeList[i] = parseNodeNameWithoutWildCard(nodeNamesWithoutStar.get(i));
     }
@@ -1174,22 +1174,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       Consumer<List<PartialPath>> setTargetFullPaths,
       BiConsumer<PartialPath, List<PartialPath>> setTargetPathsGroup,
       Consumer<IntoItem> setTargetIntoItem) {
-    // full paths
+    // Full paths
     if (ctx.fullPath() != null && !ctx.fullPath().isEmpty()) {
-      List<IoTDBSqlParser.FullPathContext> fullPathContextList = ctx.fullPath();
-      List<PartialPath> pathList = new ArrayList<>();
+      final List<IoTDBSqlParser.FullPathContext> fullPathContextList = ctx.fullPath();
+      final List<PartialPath> pathList = new ArrayList<>();
       for (IoTDBSqlParser.FullPathContext pathContext : fullPathContextList) {
         pathList.add(parseFullPath(pathContext));
       }
       setTargetFullPaths.accept(pathList);
     }
-    // prefix path and suffix paths
+    // Prefix path and suffix paths
     if (ctx.prefixPath() != null
         && ctx.viewSuffixPaths() != null
         && !ctx.viewSuffixPaths().isEmpty()) {
-      IoTDBSqlParser.PrefixPathContext prefixPathContext = ctx.prefixPath();
-      List<IoTDBSqlParser.ViewSuffixPathsContext> suffixPathContextList = ctx.viewSuffixPaths();
-      List<PartialPath> suffixPathList = new ArrayList<>();
+      final IoTDBSqlParser.PrefixPathContext prefixPathContext = ctx.prefixPath();
+      final List<IoTDBSqlParser.ViewSuffixPathsContext> suffixPathContextList =
+          ctx.viewSuffixPaths();
+      final List<PartialPath> suffixPathList = new ArrayList<>();
       PartialPath prefixPath = null;
       boolean isMultipleCreating = false;
       try {
@@ -1198,7 +1199,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           suffixPathList.add(parseViewSuffixPath(suffixPathContext));
         }
       } catch (SemanticException e) {
-        // there is '$', '{', '}' in this statement
+        // There is '$', '{', '}' in this statement
         isMultipleCreating = true;
         suffixPathList.clear();
       }
@@ -1206,26 +1207,27 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         setTargetPathsGroup.accept(prefixPath, suffixPathList);
       } else {
         prefixPath = parseViewPrefixPathWithInto(prefixPathContext);
-        for (IoTDBSqlParser.ViewSuffixPathsContext suffixPathContext : suffixPathContextList) {
+        for (final IoTDBSqlParser.ViewSuffixPathsContext suffixPathContext :
+            suffixPathContextList) {
           suffixPathList.add(parseViewSuffixPatWithInto(suffixPathContext));
         }
-        List<String> intoMeasurementList = new ArrayList<>();
+        final List<String> intoMeasurementList = new ArrayList<>();
         for (PartialPath path : suffixPathList) {
           intoMeasurementList.add(path.toString());
         }
-        IntoItem intoItem = new IntoItem(prefixPath, intoMeasurementList, false);
+        final IntoItem intoItem = new IntoItem(prefixPath, intoMeasurementList, false);
         setTargetIntoItem.accept(intoItem);
       }
     }
   }
 
-  // parse source paths in CreateLogicalView statement
+  // Parse source paths in CreateLogicalView statement
   private void parseViewSourcePaths(
       IoTDBSqlParser.ViewSourcePathsContext ctx,
       Consumer<List<PartialPath>> setSourceFullPaths,
       BiConsumer<PartialPath, List<PartialPath>> setSourcePathsGroup,
       Consumer<QueryStatement> setSourceQueryStatement) {
-    // full paths
+    // Full paths
     if (ctx.fullPath() != null && !ctx.fullPath().isEmpty()) {
       List<IoTDBSqlParser.FullPathContext> fullPathContextList = ctx.fullPath();
       List<PartialPath> pathList = new ArrayList<>();
@@ -1238,17 +1240,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.prefixPath() != null
         && ctx.viewSuffixPaths() != null
         && !ctx.viewSuffixPaths().isEmpty()) {
-      IoTDBSqlParser.PrefixPathContext prefixPathContext = ctx.prefixPath();
-      PartialPath prefixPath = parsePrefixPath(prefixPathContext);
-      List<IoTDBSqlParser.ViewSuffixPathsContext> suffixPathContextList = ctx.viewSuffixPaths();
-      List<PartialPath> suffixPathList = new ArrayList<>();
-      for (IoTDBSqlParser.ViewSuffixPathsContext suffixPathContext : suffixPathContextList) {
+      final IoTDBSqlParser.PrefixPathContext prefixPathContext = ctx.prefixPath();
+      final PartialPath prefixPath = parsePrefixPath(prefixPathContext);
+      final List<IoTDBSqlParser.ViewSuffixPathsContext> suffixPathContextList =
+          ctx.viewSuffixPaths();
+      final List<PartialPath> suffixPathList = new ArrayList<>();
+      for (final IoTDBSqlParser.ViewSuffixPathsContext suffixPathContext : suffixPathContextList) {
         suffixPathList.add(parseViewSuffixPath(suffixPathContext));
       }
       setSourcePathsGroup.accept(prefixPath, suffixPathList);
     }
     if (ctx.selectClause() != null && ctx.fromClause() != null) {
-      QueryStatement queryStatement = new QueryStatement();
+      final QueryStatement queryStatement = new QueryStatement();
       queryStatement.setSelectComponent(parseSelectClause(ctx.selectClause(), queryStatement));
       queryStatement.setFromComponent(parseFromClause(ctx.fromClause()));
       setSourceQueryStatement.accept(queryStatement);
@@ -3166,9 +3169,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.boolean_literal() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.boolean_literal().getText()));
     }
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException("FLUSH ON CLUSTER is not supported in standalone mode");
-    }
     flushStatement.setOnCluster(ctx.LOCAL() == null);
     if (ctx.prefixPath(0) != null) {
       storageGroups = new ArrayList<>();
@@ -3185,9 +3185,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitClearCache(IoTDBSqlParser.ClearCacheContext ctx) {
     ClearCacheStatement clearCacheStatement = new ClearCacheStatement(StatementType.CLEAR_CACHE);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException("CLEAR CACHE ON CLUSTER is not supported in standalone mode");
-    }
     clearCacheStatement.setOnCluster(ctx.LOCAL() == null);
     return clearCacheStatement;
   }
@@ -3198,10 +3195,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitStartRepairData(IoTDBSqlParser.StartRepairDataContext ctx) {
     StartRepairDataStatement startRepairDataStatement =
         new StartRepairDataStatement(StatementType.START_REPAIR_DATA);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException(
-          "START REPAIR DATA ON CLUSTER is not supported in standalone mode");
-    }
     startRepairDataStatement.setOnCluster(ctx.LOCAL() == null);
     return startRepairDataStatement;
   }
@@ -3212,10 +3205,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitStopRepairData(IoTDBSqlParser.StopRepairDataContext ctx) {
     StopRepairDataStatement stopRepairDataStatement =
         new StopRepairDataStatement(StatementType.STOP_REPAIR_DATA);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException(
-          "STOP REPAIR DATA ON CLUSTER is not supported in standalone mode");
-    }
     stopRepairDataStatement.setOnCluster(ctx.LOCAL() == null);
     return stopRepairDataStatement;
   }
@@ -3226,10 +3215,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitLoadConfiguration(IoTDBSqlParser.LoadConfigurationContext ctx) {
     LoadConfigurationStatement loadConfigurationStatement =
         new LoadConfigurationStatement(StatementType.LOAD_CONFIGURATION);
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException(
-          "LOAD CONFIGURATION ON CLUSTER is not supported in standalone mode");
-    }
     loadConfigurationStatement.setOnCluster(ctx.LOCAL() == null);
     return loadConfigurationStatement;
   }
@@ -3239,10 +3224,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitSetSystemStatus(IoTDBSqlParser.SetSystemStatusContext ctx) {
     SetSystemStatusStatement setSystemStatusStatement = new SetSystemStatusStatement();
-    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new SemanticException(
-          "SET SYSTEM STATUS ON CLUSTER is not supported in standalone mode");
-    }
     setSystemStatusStatement.setOnCluster(ctx.LOCAL() == null);
     if (ctx.RUNNING() != null) {
       setSystemStatusStatement.setStatus(NodeStatus.Running);
@@ -3653,7 +3634,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     final AlterPipeStatement alterPipeStatement = new AlterPipeStatement(StatementType.ALTER_PIPE);
 
     if (ctx.pipeName != null) {
-      alterPipeStatement.setPipeName(ctx.pipeName.getText());
+      alterPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     } else {
       throw new SemanticException(
           "Not support for this sql in ALTER PIPE, please enter pipe name.");

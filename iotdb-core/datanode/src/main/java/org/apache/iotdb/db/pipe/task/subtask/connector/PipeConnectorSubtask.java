@@ -46,7 +46,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 
   // For input
-  private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
+  protected final BoundedBlockingPendingQueue<Event> inputPendingQueue;
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   private final String attributeSortedString;
@@ -144,7 +144,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     return true;
   }
 
-  private void transferHeartbeatEvent(PipeHeartbeatEvent event) throws Exception {
+  private void transferHeartbeatEvent(PipeHeartbeatEvent event) {
     try {
       outputPipeConnector.heartbeat();
       outputPipeConnector.transfer(event);

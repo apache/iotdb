@@ -225,8 +225,7 @@ public class Coordinator {
 
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
-    int coordinatorReadExecutorSize =
-        CONFIG.isClusterMode() ? CONFIG.getCoordinatorReadExecutorSize() : 1;
+    int coordinatorReadExecutorSize = CONFIG.getCoordinatorReadExecutorSize();
     return IoTDBThreadPoolFactory.newFixedThreadPool(
         coordinatorReadExecutorSize, ThreadName.MPP_COORDINATOR_EXECUTOR_POOL.getName());
   }

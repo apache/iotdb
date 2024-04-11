@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -44,8 +45,8 @@ public class TsFileStatisticReader implements Closeable {
         reader.getAllDevicesIteratorWithIsAligned();
     List<ChunkGroupStatistics> chunkGroupStatisticsList = new ArrayList<>();
     while (allDevicesIteratorWithIsAligned.hasNext()) {
-      Pair<String, Boolean> deviceWithIsAligned = allDevicesIteratorWithIsAligned.next();
-      String deviceId = deviceWithIsAligned.left;
+      Pair<IDeviceID, Boolean> deviceWithIsAligned = allDevicesIteratorWithIsAligned.next();
+      IDeviceID deviceId = deviceWithIsAligned.left;
 
       ChunkGroupStatistics chunkGroupStatistics = new ChunkGroupStatistics(deviceId);
       Iterator<Map<String, List<ChunkMetadata>>> measurementChunkMetadataListMapIterator =
@@ -72,16 +73,16 @@ public class TsFileStatisticReader implements Closeable {
   }
 
   public static class ChunkGroupStatistics {
-    private final String deviceID;
+    private final IDeviceID deviceID;
     private final List<ChunkMetadata> chunkMetadataList;
     private int totalChunkNum = 0;
 
-    private ChunkGroupStatistics(String deviceId) {
+    private ChunkGroupStatistics(IDeviceID deviceId) {
       this.deviceID = deviceId;
       this.chunkMetadataList = new ArrayList<>();
     }
 
-    public String getDeviceID() {
+    public IDeviceID getDeviceID() {
       return deviceID;
     }
 

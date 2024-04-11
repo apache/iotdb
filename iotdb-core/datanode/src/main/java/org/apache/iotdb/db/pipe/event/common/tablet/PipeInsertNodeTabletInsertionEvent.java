@@ -51,11 +51,12 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
 
   private final WALEntryHandler walEntryHandler;
-  private final ProgressIndex progressIndex;
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
 
   private TabletInsertionDataContainer dataContainer;
+
+  private ProgressIndex progressIndex;
 
   public PipeInsertNodeTabletInsertionEvent(
       WALEntryHandler walEntryHandler,
@@ -142,6 +143,11 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   @Override
+  public void bindProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
+  }
+
+  @Override
   public ProgressIndex getProgressIndex() {
     return progressIndex == null ? MinimumProgressIndex.INSTANCE : progressIndex;
   }
@@ -173,12 +179,12 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     try {
-      InsertNode insertNode = getInsertNode();
+      final InsertNode insertNode = getInsertNode();
       if (insertNode instanceof InsertRowNode) {
-        long timestamp = ((InsertRowNode) insertNode).getTime();
+        final long timestamp = ((InsertRowNode) insertNode).getTime();
         return startTime <= timestamp && timestamp <= endTime;
       } else if (insertNode instanceof InsertTabletNode) {
-        long[] timestamps = ((InsertTabletNode) insertNode).getTimes();
+        final long[] timestamps = ((InsertTabletNode) insertNode).getTimes();
         if (Objects.isNull(timestamps) || timestamps.length == 0) {
           return false;
         }

@@ -21,12 +21,13 @@ package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 
 import org.slf4j.Logger;
@@ -37,7 +38,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 
-public class ConfigProcedureStore implements IProcedureStore {
+public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedureEnv> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ConfigProcedureStore.class);
 
@@ -57,10 +58,6 @@ public class ConfigProcedureStore implements IProcedureStore {
     }
   }
 
-  public ConsensusManager getConsensusManager() {
-    return configManager.getConsensusManager();
-  }
-
   @Override
   public boolean isRunning() {
     return isRunning;
@@ -72,16 +69,31 @@ public class ConfigProcedureStore implements IProcedureStore {
   }
 
   @Override
-  public void load(List<Procedure> procedureList) {
-    procedureInfo.load(procedureList);
+  public List<Procedure<ConfigNodeProcedureEnv>> load() {
+    return procedureInfo.oldLoad();
   }
 
   @Override
-  public void update(Procedure procedure) {
+  public List<Procedure<ConfigNodeProcedureEnv>> getProcedures() {
+    return procedureInfo.getProcedures();
+  }
+
+  @Override
+  public ProcedureInfo getProcedureInfo() {
+    return procedureInfo;
+  }
+
+  @Override
+  public long getNextProcId() {
+    return procedureInfo.getNextProcId();
+  }
+
+  @Override
+  public void update(Procedure<ConfigNodeProcedureEnv> procedure) {
     Objects.requireNonNull(ProcedureFactory.getProcedureType(procedure), "Procedure type is null");
     final UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan(procedure);
     try {
-      getConsensusManager().write(updateProcedurePlan);
+      configManager.getConsensusManager().write(updateProcedurePlan);
     } catch (ConsensusException e) {
       LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
     }
@@ -99,7 +111,7 @@ public class ConfigProcedureStore implements IProcedureStore {
     DeleteProcedurePlan deleteProcedurePlan = new DeleteProcedurePlan();
     deleteProcedurePlan.setProcId(procId);
     try {
-      getConsensusManager().write(deleteProcedurePlan);
+      configManager.getConsensusManager().write(deleteProcedurePlan);
     } catch (ConsensusException e) {
       LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
     }
@@ -138,6 +150,11 @@ public class ConfigProcedureStore implements IProcedureStore {
   private void checkProcWalDir(String procedureWalDir) throws IOException {
     File dir = new File(procedureWalDir);
     checkOldProcWalDir(dir);
+  }
+
+  @TestOnly
+  public static void createOldProcWalDir() throws IOException {
+    File dir = new File(CommonDescriptor.getInstance().getConfig().getProcedureWalFolder());
     if (!dir.exists()) {
       if (dir.mkdirs()) {
         LOG.info("Make procedure wal dir: {}", dir);
@@ -155,5 +172,10 @@ public class ConfigProcedureStore implements IProcedureStore {
     if (oldDir.exists()) {
       FileUtils.moveFileSafe(oldDir, newDir);
     }
+  }
+
+  @Override
+  public boolean isOldVersionProcedureStore() {
+    return procedureInfo.isOldVersion();
   }
 }

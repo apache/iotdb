@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimat
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -56,8 +57,8 @@ public class CompactionEstimateUtils {
       int deviceChunkNum = 0;
       int alignedSeriesNumInDevice = 0;
 
-      Pair<String, Boolean> deviceWithIsAlignedPair = deviceIterator.next();
-      String device = deviceWithIsAlignedPair.left;
+      Pair<IDeviceID, Boolean> deviceWithIsAlignedPair = deviceIterator.next();
+      IDeviceID device = deviceWithIsAlignedPair.left;
       boolean isAlignedDevice = deviceWithIsAlignedPair.right;
 
       Iterator<Map<String, List<ChunkMetadata>>> measurementChunkMetadataListMapIterator =

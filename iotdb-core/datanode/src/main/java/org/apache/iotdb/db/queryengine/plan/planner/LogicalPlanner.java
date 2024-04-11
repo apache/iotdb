@@ -46,7 +46,7 @@ public class LogicalPlanner {
     PlanNode rootNode = new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
 
     // optimize the query logical plan
-    if (analysis.getStatement().isQuery()) {
+    if (analysis.isQuery()) {
 
       long planFinishTime = System.nanoTime();
       QueryPlanCostMetricSet.getInstance()

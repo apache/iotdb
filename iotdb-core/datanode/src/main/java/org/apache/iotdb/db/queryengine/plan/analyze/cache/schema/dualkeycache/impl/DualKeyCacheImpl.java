@@ -22,10 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheComputation;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheStats;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheUpdating;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.DataNodeLastCacheManager;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -237,6 +239,63 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
             });
       }
       return evictedSize.get();
+    }
+  }
+
+  @Override
+  public void invalidateLastCache(PartialPath path) {
+    String measurement = path.getMeasurement();
+    PartialPath devicePath = path.getDevicePath();
+    Function<FK, Boolean> deviceFilter = null;
+    Function<SK, Boolean> measurementFilter = null;
+
+    if (PathPatternUtil.hasWildcard(devicePath.getFullPath())) {
+      deviceFilter = d -> devicePath.matchFullPath((PartialPath) d);
+    }
+    if (PathPatternUtil.isMultiLevelMatchWildcard(measurement)) {
+      measurementFilter = m -> true;
+    }
+    if (deviceFilter == null) {
+      deviceFilter = d -> ((PartialPath) d).equals(devicePath);
+    }
+
+    if (measurementFilter == null) {
+      measurementFilter = m -> PathPatternUtil.isNodeMatch(measurement, m.toString());
+    }
+
+    for (FK device : firstKeyMap.getAllKeys()) {
+      if (Boolean.TRUE.equals(deviceFilter.apply(device))) {
+        ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(device);
+        for (Iterator<Map.Entry<SK, T>> it = entryGroup.getAllCacheEntries(); it.hasNext(); ) {
+          Map.Entry<SK, T> entry = it.next();
+          if (Boolean.TRUE.equals(measurementFilter.apply(entry.getKey()))) {
+            T cacheEntry = entry.getValue();
+            synchronized (cacheEntry) {
+              SchemaCacheEntry schemaCacheEntry = (SchemaCacheEntry) cacheEntry.getValue();
+              cacheStats.decreaseMemoryUsage(
+                  DataNodeLastCacheManager.invalidateLastCache(schemaCacheEntry));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  @Override
+  public void invalidateDataRegionLastCache(String database) {
+    for (FK device : firstKeyMap.getAllKeys()) {
+      if (device.toString().startsWith(database)) {
+        ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(device);
+        for (Iterator<Map.Entry<SK, T>> it = entryGroup.getAllCacheEntries(); it.hasNext(); ) {
+          Map.Entry<SK, T> entry = it.next();
+          T cacheEntry = entry.getValue();
+          synchronized (cacheEntry) {
+            SchemaCacheEntry schemaCacheEntry = (SchemaCacheEntry) cacheEntry.getValue();
+            cacheStats.decreaseMemoryUsage(
+                DataNodeLastCacheManager.invalidateLastCache(schemaCacheEntry));
+          }
+        }
+      }
     }
   }
 

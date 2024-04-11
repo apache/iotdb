@@ -56,14 +56,13 @@ public class SubscriptionCoordinator {
   private final PipeTaskCoordinatorLock coordinatorLock;
   private AtomicReference<SubscriptionInfo> subscriptionInfoHolder;
 
+  private final SubscriptionMetaSyncer subscriptionMetaSyncer;
+
   public SubscriptionCoordinator(ConfigManager configManager, SubscriptionInfo subscriptionInfo) {
     this.configManager = configManager;
     this.subscriptionInfo = subscriptionInfo;
-
-    // TODO: check if
-    // Subscription related procedures also manage pipe tasks, so we use the same lock.
-    this.coordinatorLock =
-        configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskCoordinatorLock();
+    this.coordinatorLock = new PipeTaskCoordinatorLock();
+    this.subscriptionMetaSyncer = new SubscriptionMetaSyncer(configManager);
   }
 
   public SubscriptionInfo getSubscriptionInfo() {
@@ -95,6 +94,29 @@ public class SubscriptionCoordinator {
       LOGGER.warn("This thread is not holding the lock.");
       return false;
     }
+  }
+
+  public boolean isLocked() {
+    return coordinatorLock.isLocked();
+  }
+
+  /////////////////////////////// Meta sync ///////////////////////////////
+
+  public void startSubscriptionMetaSync() {
+    subscriptionMetaSyncer.start();
+  }
+
+  public void stopSubscriptionMetaSync() {
+    subscriptionMetaSyncer.stop();
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #tryLock}. */
+  public void updateLastSyncedVersion() {
+    subscriptionInfo.updateLastSyncedVersion();
+  }
+
+  public boolean canSkipNextSync() {
+    return subscriptionInfo.canSkipNextSync();
   }
 
   /////////////////////////////// Operate ///////////////////////////////
@@ -207,6 +229,7 @@ public class SubscriptionCoordinator {
       return new SubscriptionTableResp(
               new TSStatus(TSStatusCode.SHOW_SUBSCRIPTION_ERROR.getStatusCode())
                   .setMessage(e.getMessage()),
+              Collections.emptyList(),
               Collections.emptyList())
           .convertToTShowSubscriptionResp();
     }

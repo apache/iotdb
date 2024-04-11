@@ -34,8 +34,10 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.region.AddRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
@@ -46,11 +48,13 @@ import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.CreateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.DropSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.CreateTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.DropTopicProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.runtime.TopicMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
@@ -98,6 +102,12 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case REGION_MIGRATE_PROCEDURE:
         procedure = new RegionMigrateProcedure();
+        break;
+      case ADD_REGION_PEER_PROCEDURE:
+        procedure = new AddRegionPeerProcedure();
+        break;
+      case REMOVE_REGION_PEER_PROCEDURE:
+        procedure = new RemoveRegionPeerProcedure();
         break;
       case CREATE_REGION_GROUPS:
         procedure = new CreateRegionGroupsProcedure();
@@ -215,6 +225,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case ALTER_TOPIC_PROCEDURE:
         procedure = new AlterTopicProcedure();
         break;
+      case TOPIC_META_SYNC_PROCEDURE:
+        procedure = new TopicMetaSyncProcedure();
+        break;
       case CREATE_SUBSCRIPTION_PROCEDURE:
         procedure = new CreateSubscriptionProcedure();
         break;
@@ -229,6 +242,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case ALTER_CONSUMER_GROUP_PROCEDURE:
         procedure = new AlterConsumerGroupProcedure();
+        break;
+      case CONSUMER_GROUP_META_SYNC_PROCEDURE:
+        procedure = new ConsumerGroupMetaSyncProcedure();
         break;
       case CREATE_MANY_DATABASES_PROCEDURE:
         procedure = new CreateManyDatabasesProcedure();
@@ -258,6 +274,10 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.REMOVE_DATA_NODE_PROCEDURE;
     } else if (procedure instanceof RegionMigrateProcedure) {
       return ProcedureType.REGION_MIGRATE_PROCEDURE;
+    } else if (procedure instanceof AddRegionPeerProcedure) {
+      return ProcedureType.ADD_REGION_PEER_PROCEDURE;
+    } else if (procedure instanceof RemoveRegionPeerProcedure) {
+      return ProcedureType.REMOVE_REGION_PEER_PROCEDURE;
     } else if (procedure instanceof CreateRegionGroupsProcedure) {
       return ProcedureType.CREATE_REGION_GROUPS;
     } else if (procedure instanceof DeleteTimeSeriesProcedure) {
@@ -308,6 +328,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_TOPIC_PROCEDURE;
     } else if (procedure instanceof AlterTopicProcedure) {
       return ProcedureType.ALTER_TOPIC_PROCEDURE;
+    } else if (procedure instanceof TopicMetaSyncProcedure) {
+      return ProcedureType.TOPIC_META_SYNC_PROCEDURE;
     } else if (procedure instanceof CreateSubscriptionProcedure) {
       return ProcedureType.CREATE_SUBSCRIPTION_PROCEDURE;
     } else if (procedure instanceof DropSubscriptionProcedure) {
@@ -318,6 +340,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_CONSUMER_PROCEDURE;
     } else if (procedure instanceof AlterConsumerGroupProcedure) {
       return ProcedureType.ALTER_CONSUMER_GROUP_PROCEDURE;
+    } else if (procedure instanceof ConsumerGroupMetaSyncProcedure) {
+      return ProcedureType.CONSUMER_GROUP_META_SYNC_PROCEDURE;
     } else if (procedure instanceof DeleteLogicalViewProcedure) {
       return ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE;
     } else if (procedure instanceof AlterLogicalViewProcedure) {

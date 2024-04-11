@@ -40,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.PageException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -113,8 +114,8 @@ public class FastCompactionPerformer
                 : new FastInnerCompactionWriter(targetFiles.get(0))) {
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted();
-        Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
-        String device = deviceInfo.left;
+        Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
+        IDeviceID device = deviceInfo.left;
         // sort the resources by the start time of current device from old to new, and remove
         // resource that does not contain the current device. Notice: when the level of time index
         // is file, there will be a false positive judgment problem, that is, the device does not
@@ -152,7 +153,7 @@ public class FastCompactionPerformer
   }
 
   private void compactAlignedSeries(
-      String deviceId,
+      IDeviceID deviceId,
       MultiTsFileDeviceIterator deviceIterator,
       AbstractCompactionWriter fastCrossCompactionWriter)
       throws PageException, IOException, WriteProcessException, IllegalPathException {
@@ -190,7 +191,7 @@ public class FastCompactionPerformer
   }
 
   private void compactNonAlignedSeries(
-      String deviceID,
+      IDeviceID deviceID,
       MultiTsFileDeviceIterator deviceIterator,
       AbstractCompactionWriter fastCrossCompactionWriter)
       throws IOException, InterruptedException {

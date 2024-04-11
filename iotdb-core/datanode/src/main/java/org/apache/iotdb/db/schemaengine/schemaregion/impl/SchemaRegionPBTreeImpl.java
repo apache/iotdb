@@ -205,10 +205,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               regionStatistics,
               metric);
 
-      if (!(config.isClusterMode()
-          && config
-              .getSchemaRegionConsensusProtocolClass()
-              .equals(ConsensusFactory.RATIS_CONSENSUS))) {
+      if (!config
+          .getSchemaRegionConsensusProtocolClass()
+          .equals(ConsensusFactory.RATIS_CONSENSUS)) {
         usingMLog = true;
         initMLog();
       } else {
@@ -227,7 +226,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   private Consumer<IMeasurementMNode<ICachedMNode>> measurementInitProcess() {
     return measurementMNode -> {
-      regionStatistics.addTimeseries(1L);
+      regionStatistics.addMeasurement(1L);
       if (measurementMNode.getOffset() == -1) {
         return;
       }
@@ -350,7 +349,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
             schemaRegionDirPath + File.separator + SchemaConstant.METADATA_LOG_DESCRIPTION);
 
     long time = System.currentTimeMillis();
-    // init the metadata from the operation log
+    // Init the metadata from the operation log
     if (logFile.exists()) {
       long mLogOffset = 0;
       try {
@@ -411,7 +410,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     }
   }
 
-  /** function for clearing metadata components of one schema region */
+  /** Function for clearing metadata components of one schema region */
   @Override
   public synchronized void clear() {
     isClearing = true;
@@ -607,7 +606,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
       try {
         // update statistics and schemaDataTypeNumMap
-        regionStatistics.addTimeseries(1L);
+        regionStatistics.addMeasurement(1L);
 
         // update tag index
         if (offset != -1 && isRecovering) {
@@ -664,7 +663,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   /**
-   * create aligned timeseries
+   * Create aligned timeseries
    *
    * @param plan CreateAlignedTimeSeriesPlan
    */
@@ -688,7 +687,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
         SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
       }
 
-      // create time series in MTree
+      // Create time series in MTree
       measurementMNodeList =
           mtree.createAlignedTimeseries(
               prefixPath,
@@ -700,8 +699,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
       try {
 
-        // update statistics and schemaDataTypeNumMap
-        regionStatistics.addTimeseries(seriesCount);
+        // Update statistics and schemaDataTypeNumMap
+        regionStatistics.addMeasurement(seriesCount);
 
         List<Long> tagOffsets = plan.getTagOffsets();
         for (int i = 0; i < measurements.size(); i++) {
@@ -712,14 +711,14 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
             }
           } else if (tagsList != null && !tagsList.isEmpty()) {
             if (tagsList.get(i) != null) {
-              // tag key, tag value
+              // Tag key, tag value
               tagManager.addIndex(tagsList.get(i), measurementMNodeList.get(i));
               mtree.pinMNode(measurementMNodeList.get(i).getAsMNode());
             }
           }
         }
 
-        // write log
+        // Write log
         tagOffsets = new ArrayList<>();
         if (!isRecovering) {
           if ((tagsList != null && !tagsList.isEmpty())
@@ -856,11 +855,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       for (PartialPath path : pathList) {
         ViewExpression viewExpression = viewPathToSourceMap.get(path);
         mtree.createLogicalView(path, viewExpression);
-        // write log
+        // Write log
         if (!isRecovering) {
           writeToMLog(SchemaRegionWritePlanFactory.getCreateLogicalViewPlan(path, viewExpression));
         }
-        regionStatistics.addTimeseries(1L);
+        regionStatistics.addView(1L);
       }
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -920,7 +919,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       throws MetadataException {
     mtree.alterLogicalView(
         alterLogicalViewPlan.getViewPath(), alterLogicalViewPlan.getSourceExpression());
-    // write log
+    // Write log
     if (!isRecovering) {
       try {
         writeToMLog(alterLogicalViewPlan);
@@ -934,8 +933,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       throws MetadataException, IOException {
     IMeasurementMNode<ICachedMNode> measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
-
-    regionStatistics.deleteTimeseries(1L);
+    if (measurementMNode.isLogicalView()) {
+      regionStatistics.deleteView(1L);
+    } else {
+      regionStatistics.deleteMeasurement(1L);
+    }
   }
 
   private void recoverRollbackPreDeleteTimeseries(PartialPath path) throws MetadataException {
@@ -947,14 +949,17 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       throws MetadataException, IOException {
     IMeasurementMNode<ICachedMNode> measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
-
-    regionStatistics.deleteTimeseries(1L);
+    if (measurementMNode.isLogicalView()) {
+      regionStatistics.deleteView(1L);
+    } else {
+      regionStatistics.deleteMeasurement(1L);
+    }
   }
   // endregion
 
   // region Interfaces for get and auto create device
   /**
-   * get device node, if the schema region is not set, create it when autoCreateSchema is true
+   * Get device node, if the schema region is not set, create it when autoCreateSchema is true
    *
    * <p>(we develop this method as we need to get the node's lock after we get the lock.writeLock())
    *

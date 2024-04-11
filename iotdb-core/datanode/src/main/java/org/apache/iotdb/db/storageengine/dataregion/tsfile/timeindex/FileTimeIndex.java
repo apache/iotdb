@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -84,7 +85,7 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource) {
+  public Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource) {
     tsFileResource.readLock();
     try (InputStream inputStream =
         FSFactoryProducer.getFSFactory()
@@ -141,56 +142,50 @@ public class FileTimeIndex implements ITimeIndex {
     }
   }
 
-  private long getTimePartitionWithCheck() {
-    long startPartitionId = TimePartitionUtils.getTimePartitionId(startTime);
-    long endPartitionId = TimePartitionUtils.getTimePartitionId(endTime);
+  @Override
+  public long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException {
+    final long startPartitionId = TimePartitionUtils.getTimePartitionId(startTime);
+    final long endPartitionId = TimePartitionUtils.getTimePartitionId(endTime);
+
     if (startPartitionId == endPartitionId) {
       return startPartitionId;
     }
-    return SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
-  }
 
-  @Override
-  public long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException {
-    long partitionId = getTimePartitionWithCheck();
-    if (partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID) {
-      throw new PartitionViolationException(tsFilePath);
-    }
-    return partitionId;
+    throw new PartitionViolationException(tsFilePath);
   }
 
   @Override
   public boolean isSpanMultiTimePartitions() {
-    long partitionId = getTimePartitionWithCheck();
-    return partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
+    return TimePartitionUtils.getTimePartitionId(startTime)
+        != TimePartitionUtils.getTimePartitionId(endTime);
   }
 
   @Override
-  public void updateStartTime(String deviceId, long time) {
+  public void updateStartTime(IDeviceID deviceId, long time) {
     if (this.startTime > time) {
       this.startTime = time;
     }
   }
 
   @Override
-  public void updateEndTime(String deviceId, long time) {
+  public void updateEndTime(IDeviceID deviceId, long time) {
     if (this.endTime < time) {
       this.endTime = time;
     }
   }
 
   @Override
-  public void putStartTime(String deviceId, long time) {
+  public void putStartTime(IDeviceID deviceId, long time) {
     this.startTime = time;
   }
 
   @Override
-  public void putEndTime(String deviceId, long time) {
+  public void putEndTime(IDeviceID deviceId, long time) {
     this.endTime = time;
   }
 
   @Override
-  public long getStartTime(String deviceId) {
+  public long getStartTime(IDeviceID deviceId) {
     return startTime;
   }
 
@@ -200,7 +195,7 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getEndTime(String deviceId) {
+  public long getEndTime(IDeviceID deviceId) {
     return endTime;
   }
 
@@ -210,7 +205,7 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean checkDeviceIdExist(String deviceId) {
+  public boolean checkDeviceIdExist(IDeviceID deviceId) {
     return true;
   }
 
@@ -227,18 +222,18 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean definitelyNotContains(String device) {
+  public boolean definitelyNotContains(IDeviceID device) {
     return false;
   }
 
   @Override
-  public long[] getStartAndEndTime(String deviceId) {
+  public long[] getStartAndEndTime(IDeviceID deviceId) {
     return new long[] {startTime, endTime};
   }
 
   @Override
   public Pair<Long, Long> getPossibleStartTimeAndEndTime(
-      PartialPath devicePattern, Set<String> deviceMatchInfo) {
+      PartialPath devicePattern, Set<IDeviceID> deviceMatchInfo) {
     return new Pair<>(startTime, endTime);
   }
 

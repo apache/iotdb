@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -60,7 +62,8 @@ public class TypeInferenceUtilsTest {
   }
 
   @Test
-  public void testInferType() {
+  public void testInferType() throws QueryProcessException {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     Object[] values = {
       123,
       "abc",
@@ -76,26 +79,32 @@ public class TypeInferenceUtilsTest {
       "16777217", // 2^24 + 1
       "16777216", // 2^24
       "271840880000000000000000",
+      "4.9387406015404442E17",
+      "4E5",
+      "1.0",
     };
-    TSDataType[] encodings = {
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
+    TSDataType[] inferredTypes = {
+      TSDataType.INT32,
       TSDataType.TEXT,
-      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
+      TSDataType.DOUBLE,
       TSDataType.BOOLEAN,
       TSDataType.FLOAT,
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
-      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
+      config.getIntegerStringInferType(),
+      config.getFloatingStringInferType(),
+      config.getIntegerStringInferType(),
+      config.getBooleanStringInferType(),
+      config.getIntegerStringInferType(),
+      config.getIntegerStringInferType(),
+      config.getIntegerStringInferType(),
+      config.getIntegerStringInferType(),
+      config.getFloatingStringInferType(),
+      config.getFloatingStringInferType(),
+      config.getFloatingStringInferType(),
+      config.getFloatingStringInferType()
     };
 
     for (int i = 0; i < values.length; i++) {
-      assertEquals(encodings[i], TypeInferenceUtils.getPredictedDataType(values[i], true));
+      assertEquals(inferredTypes[i], TypeInferenceUtils.getPredictedDataType(values[i], true));
     }
   }
 

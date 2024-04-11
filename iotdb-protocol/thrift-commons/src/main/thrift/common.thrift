@@ -95,7 +95,15 @@ enum TRegionMigrateFailedType {
   RemovePeerFailed,
   RemoveConsensusGroupFailed,
   DeleteRegionFailed,
-  CreateRegionFailed
+  CreateRegionFailed,
+  Disconnect,
+}
+
+enum TRegionMaintainTaskStatus {
+  TASK_NOT_EXIST,
+  PROCESSING,
+  SUCCESS,
+  FAIL,
 }
 
 struct TFlushReq {

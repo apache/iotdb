@@ -328,9 +328,14 @@ public class IoTDBConfig {
   /** Consensus directory. */
   private String consensusDir = IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + "consensus";
 
-  private String dataRegionConsensusDir = consensusDir + File.separator + "data_region";
+  private String dataRegionConsensusDir =
+      consensusDir + File.separator + IoTDBConstant.DATA_REGION_FOLDER_NAME;
 
-  private String schemaRegionConsensusDir = consensusDir + File.separator + "schema_region";
+  private String invalidDataRegionConsensusDir =
+      consensusDir + File.separator + IoTDBConstant.INVALID_DATA_REGION_FOLDER_NAME;
+
+  private String schemaRegionConsensusDir =
+      consensusDir + File.separator + IoTDBConstant.SCHEMA_REGION_FOLDER_NAME;
 
   /** temp result directory for sortOperator */
   private String sortTmpDir =
@@ -600,9 +605,6 @@ public class IoTDBConfig {
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = ClientRPCServiceImpl.class.getName();
 
-  /** indicate whether current mode is cluster */
-  private boolean isClusterMode = false;
-
   /**
    * The cluster name that this DataNode joined in the cluster mode. The default value
    * "defaultCluster" will be changed after join cluster
@@ -630,17 +632,14 @@ public class IoTDBConfig {
   /** Register time series as which type when receiving boolean string "true" or "false" */
   private TSDataType booleanStringInferType = TSDataType.BOOLEAN;
 
-  /** Register time series as which type when receiving an integer string "67" */
-  private TSDataType integerStringInferType = TSDataType.FLOAT;
-
   /**
    * register time series as which type when receiving an integer string and using float may lose
-   * precision num > 2 ^ 24
+   * precision
    */
-  private TSDataType longStringInferType = TSDataType.DOUBLE;
+  private TSDataType integerStringInferType = TSDataType.DOUBLE;
 
   /** register time series as which type when receiving a floating number string "6.7" */
-  private TSDataType floatingStringInferType = TSDataType.FLOAT;
+  private TSDataType floatingStringInferType = TSDataType.DOUBLE;
 
   /**
    * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT
@@ -1451,8 +1450,12 @@ public class IoTDBConfig {
 
   public void setConsensusDir(String consensusDir) {
     this.consensusDir = consensusDir;
-    setDataRegionConsensusDir(consensusDir + File.separator + "data_region");
-    setSchemaRegionConsensusDir(consensusDir + File.separator + "schema_region");
+    setDataRegionConsensusDir(
+        consensusDir + File.separator + IoTDBConstant.DATA_REGION_FOLDER_NAME);
+    setSchemaRegionConsensusDir(
+        consensusDir + File.separator + IoTDBConstant.SCHEMA_REGION_FOLDER_NAME);
+    setInvalidDataRegionConsensusDir(
+        consensusDir + File.separator + IoTDBConstant.INVALID_DATA_REGION_FOLDER_NAME);
   }
 
   public String getDataRegionConsensusDir() {
@@ -1461,6 +1464,14 @@ public class IoTDBConfig {
 
   public void setDataRegionConsensusDir(String dataRegionConsensusDir) {
     this.dataRegionConsensusDir = dataRegionConsensusDir;
+  }
+
+  public String getInvalidDataRegionConsensusDir() {
+    return invalidDataRegionConsensusDir;
+  }
+
+  public void setInvalidDataRegionConsensusDir(String invalidDataRegionConsensusDir) {
+    this.invalidDataRegionConsensusDir = invalidDataRegionConsensusDir;
   }
 
   public String getSchemaRegionConsensusDir() {
@@ -1547,21 +1558,20 @@ public class IoTDBConfig {
   }
 
   public void checkMultiDirStrategyClassName() {
-    if (isClusterMode) {
-      for (String multiDirStrategy : CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES) {
-        // If the multiDirStrategyClassName is one of cluster allowed strategy, the check is passed.
-        if (multiDirStrategyClassName.equals(multiDirStrategy)
-            || multiDirStrategyClassName.equals(MULTI_DIR_STRATEGY_PREFIX + multiDirStrategy)) {
-          return;
-        }
+    confirmMultiDirStrategy();
+    for (String multiDirStrategy : CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES) {
+      // If the multiDirStrategyClassName is one of cluster allowed strategy, the check is passed.
+      if (multiDirStrategyClassName.equals(multiDirStrategy)
+          || multiDirStrategyClassName.equals(MULTI_DIR_STRATEGY_PREFIX + multiDirStrategy)) {
+        return;
       }
-      String msg =
-          String.format(
-              "Cannot set multi_dir_strategy to %s, because cluster mode only allows %s.",
-              multiDirStrategyClassName, Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
-      logger.error(msg);
-      throw new RuntimeException(msg);
     }
+    String msg =
+        String.format(
+            "Cannot set multi_dir_strategy to %s, because cluster mode only allows %s.",
+            multiDirStrategyClassName, Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
+    logger.error(msg);
+    throw new RuntimeException(msg);
   }
 
   public int getBatchSize() {
@@ -2201,6 +2211,12 @@ public class IoTDBConfig {
   }
 
   public void setBooleanStringInferType(TSDataType booleanStringInferType) {
+    if (booleanStringInferType != TSDataType.BOOLEAN && booleanStringInferType != TSDataType.TEXT) {
+      logger.warn(
+          "Config Property boolean_string_infer_type can only be BOOLEAN or TEXT but is {}",
+          booleanStringInferType);
+      return;
+    }
     this.booleanStringInferType = booleanStringInferType;
   }
 
@@ -2212,19 +2228,19 @@ public class IoTDBConfig {
     this.integerStringInferType = integerStringInferType;
   }
 
-  public void setLongStringInferType(TSDataType longStringInferType) {
-    this.longStringInferType = longStringInferType;
-  }
-
-  public TSDataType getLongStringInferType() {
-    return longStringInferType;
-  }
-
   public TSDataType getFloatingStringInferType() {
     return floatingStringInferType;
   }
 
   public void setFloatingStringInferType(TSDataType floatingNumberStringInferType) {
+    if (floatingNumberStringInferType != TSDataType.DOUBLE
+        && floatingNumberStringInferType != TSDataType.FLOAT
+        && floatingNumberStringInferType != TSDataType.TEXT) {
+      logger.warn(
+          "Config Property floating_string_infer_type can only be FLOAT, DOUBLE or TEXT but is {}",
+          floatingNumberStringInferType);
+      return;
+    }
     this.floatingStringInferType = floatingNumberStringInferType;
   }
 
@@ -2236,9 +2252,10 @@ public class IoTDBConfig {
     if (nanStringInferType != TSDataType.DOUBLE
         && nanStringInferType != TSDataType.FLOAT
         && nanStringInferType != TSDataType.TEXT) {
-      throw new IllegalArgumentException(
-          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is "
-              + nanStringInferType);
+      logger.warn(
+          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is {}",
+          nanStringInferType);
+      return;
     }
     this.nanStringInferType = nanStringInferType;
   }
@@ -3025,15 +3042,6 @@ public class IoTDBConfig {
 
   public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
     this.selectorNumOfClientManager = selectorNumOfClientManager;
-  }
-
-  public boolean isClusterMode() {
-    return isClusterMode;
-  }
-
-  public void setClusterMode(boolean isClusterMode) {
-    this.isClusterMode = isClusterMode;
-    checkMultiDirStrategyClassName();
   }
 
   public String getClusterName() {

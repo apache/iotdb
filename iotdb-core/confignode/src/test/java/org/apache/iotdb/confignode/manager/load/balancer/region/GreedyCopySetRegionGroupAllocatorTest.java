@@ -38,6 +38,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 public class GreedyCopySetRegionGroupAllocatorTest {
 
@@ -49,6 +51,8 @@ public class GreedyCopySetRegionGroupAllocatorTest {
   private static final GreedyCopySetRegionGroupAllocator GREEDY_COPY_SET_ALLOCATOR =
       new GreedyCopySetRegionGroupAllocator();
 
+  private static final Random RANDOM = new Random();
+  private static final int TEST_DATABASE_NUM = 3;
   private static final int TEST_DATA_NODE_NUM = 21;
   private static final int DATA_REGION_PER_DATA_NODE =
       (int) ConfigNodeDescriptor.getInstance().getConf().getDataRegionPerDataNode();
@@ -78,45 +82,81 @@ public class GreedyCopySetRegionGroupAllocatorTest {
   }
 
   private void testRegionDistributionAndScatterWidth(int replicationFactor) {
-    final int dataRegionGroupNum =
+    final int dataRegionGroupAllotment =
         DATA_REGION_PER_DATA_NODE * TEST_DATA_NODE_NUM / replicationFactor;
+    final int dataRegionGroupPerDatabase = dataRegionGroupAllotment / TEST_DATABASE_NUM;
 
     /* Allocate DataRegionGroups */
     List<TRegionReplicaSet> greedyResult = new ArrayList<>();
     List<TRegionReplicaSet> greedyCopySetResult = new ArrayList<>();
-    for (int index = 0; index < dataRegionGroupNum; index++) {
-      greedyResult.add(
+    Map<Integer, List<TRegionReplicaSet>> greedyCopySetDatabaseResult = new TreeMap<>();
+    // Map<DataNodeId, RegionGroup Count> for greedy algorithm
+    Map<Integer, Integer> greedyRegionCounter = new TreeMap<>();
+    // Map<DataNodeId, RegionGroup Count> for greedy-copy-set algorithm
+    Map<Integer, Integer> greedyCopySetRegionCounter = new TreeMap<>();
+    // Map<DatabaseId, Map<DataNodeId, RegionGroup Count>>
+    Map<Integer, Map<Integer, Integer>> greedyCopySetDatabaseRegionCounter = new TreeMap<>();
+    for (int i = 0; i < TEST_DATABASE_NUM; i++) {
+      greedyCopySetDatabaseResult.put(i, new ArrayList<>());
+    }
+    for (int index = 0; index < dataRegionGroupPerDatabase * TEST_DATABASE_NUM; index++) {
+      TRegionReplicaSet greedyRegionGroup =
           GREEDY_ALLOCATOR.generateOptimalRegionReplicasDistribution(
               AVAILABLE_DATA_NODE_MAP,
               FREE_SPACE_MAP,
               greedyResult,
+              greedyResult,
               replicationFactor,
-              new TConsensusGroupId(TConsensusGroupType.DataRegion, index)));
-      greedyCopySetResult.add(
+              new TConsensusGroupId(TConsensusGroupType.DataRegion, index));
+      greedyResult.add(greedyRegionGroup);
+      greedyRegionGroup
+          .getDataNodeLocations()
+          .forEach(
+              dataNodeLocation ->
+                  greedyRegionCounter.merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum));
+      int databaseId = RANDOM.nextInt(TEST_DATABASE_NUM);
+      TRegionReplicaSet greedyCopySetRegionGroup =
           GREEDY_COPY_SET_ALLOCATOR.generateOptimalRegionReplicasDistribution(
               AVAILABLE_DATA_NODE_MAP,
               FREE_SPACE_MAP,
               greedyCopySetResult,
+              greedyCopySetDatabaseResult.get(databaseId),
               replicationFactor,
-              new TConsensusGroupId(TConsensusGroupType.DataRegion, index)));
+              new TConsensusGroupId(TConsensusGroupType.DataRegion, index));
+      greedyCopySetResult.add(greedyCopySetRegionGroup);
+      greedyCopySetDatabaseResult.get(databaseId).add(greedyCopySetRegionGroup);
+      greedyCopySetRegionGroup
+          .getDataNodeLocations()
+          .forEach(
+              dataNodeLocation -> {
+                greedyCopySetRegionCounter.merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum);
+                greedyCopySetDatabaseRegionCounter
+                    .computeIfAbsent(databaseId, empty -> new TreeMap<>())
+                    .merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum);
+              });
+      LOGGER.info(
+          "After allocate RegionGroup: {}, Database: {}, plan: {}",
+          index,
+          databaseId,
+          greedyCopySetRegionGroup.getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toList()));
+      for (int i = 0; i < TEST_DATABASE_NUM; i++) {
+        LOGGER.info("Database {}: {}", i, greedyCopySetDatabaseRegionCounter.get(i));
+      }
+      LOGGER.info("Cluster   : {}", greedyCopySetRegionCounter);
+      for (int i = 1; i <= TEST_DATA_NODE_NUM; i++) {
+        Assert.assertTrue(
+            greedyCopySetRegionCounter.getOrDefault(i, 0) <= DATA_REGION_PER_DATA_NODE);
+      }
     }
 
     /* Statistics result */
-    // Map<DataNodeId, RegionGroup Count> for greedy algorithm
-    Map<Integer, Integer> greedyRegionCounter = new HashMap<>();
-    greedyResult.forEach(
-        regionReplicaSet ->
-            regionReplicaSet
-                .getDataNodeLocations()
-                .forEach(
-                    dataNodeLocation ->
-                        greedyRegionCounter.merge(
-                            dataNodeLocation.getDataNodeId(), 1, Integer::sum)));
     // Map<DataNodeId, ScatterWidth> for greedy algorithm
     // where a true in the bitset denotes the corresponding DataNode can help the DataNode in
     // Map-Key to share the RegionGroup-leader and restore data when restarting.
     // The more true in the bitset, the more safety the cluster DataNode in Map-Key is.
-    Map<Integer, BitSet> greedyScatterWidth = new HashMap<>();
+    Map<Integer, BitSet> greedyScatterWidth = new TreeMap<>();
     for (TRegionReplicaSet replicaSet : greedyResult) {
       for (int i = 0; i < replicationFactor; i++) {
         for (int j = i + 1; j < replicationFactor; j++) {
@@ -127,19 +167,8 @@ public class GreedyCopySetRegionGroupAllocatorTest {
         }
       }
     }
-
-    // Map<DataNodeId, RegionGroup Count> for greedy-copy-set algorithm
-    Map<Integer, Integer> greedyCopySetRegionCounter = new HashMap<>();
-    greedyCopySetResult.forEach(
-        regionReplicaSet ->
-            regionReplicaSet
-                .getDataNodeLocations()
-                .forEach(
-                    dataNodeLocation ->
-                        greedyCopySetRegionCounter.merge(
-                            dataNodeLocation.getDataNodeId(), 1, Integer::sum)));
     // Map<DataNodeId, ScatterWidth> for greedy-copy-set algorithm, ditto
-    Map<Integer, BitSet> greedyCopySetScatterWidth = new HashMap<>();
+    Map<Integer, BitSet> greedyCopySetScatterWidth = new TreeMap<>();
     for (TRegionReplicaSet replicaSet : greedyCopySetResult) {
       for (int i = 0; i < replicationFactor; i++) {
         for (int j = i + 1; j < replicationFactor; j++) {
@@ -162,9 +191,15 @@ public class GreedyCopySetRegionGroupAllocatorTest {
     int greedyCopySetScatterWidthSum = 0;
     int greedyCopySetMinScatterWidth = Integer.MAX_VALUE;
     int greedyCopySetMaxScatterWidth = Integer.MIN_VALUE;
+    int greedyCopySetMaxRegionCount = 0;
+    int greedyCopySetMinRegionCount = Integer.MAX_VALUE;
     for (int i = 1; i <= TEST_DATA_NODE_NUM; i++) {
       Assert.assertTrue(greedyRegionCounter.get(i) <= DATA_REGION_PER_DATA_NODE);
       Assert.assertTrue(greedyCopySetRegionCounter.get(i) <= DATA_REGION_PER_DATA_NODE);
+      greedyCopySetMinRegionCount =
+          Math.min(greedyCopySetMinRegionCount, greedyCopySetRegionCounter.get(i));
+      greedyCopySetMaxRegionCount =
+          Math.max(greedyCopySetMaxRegionCount, greedyCopySetRegionCounter.get(i));
 
       int scatterWidth = greedyScatterWidth.get(i).cardinality();
       greedyScatterWidthSum += scatterWidth;
@@ -175,6 +210,28 @@ public class GreedyCopySetRegionGroupAllocatorTest {
       greedyCopySetScatterWidthSum += scatterWidth;
       greedyCopySetMinScatterWidth = Math.min(greedyCopySetMinScatterWidth, scatterWidth);
       greedyCopySetMaxScatterWidth = Math.max(greedyCopySetMaxScatterWidth, scatterWidth);
+    }
+    // The maximal Region count - minimal Region count should be less than or equal to 1
+    Assert.assertTrue(greedyCopySetMaxRegionCount - greedyCopySetMinRegionCount <= 1);
+    for (int i = 0; i < TEST_DATABASE_NUM; i++) {
+      greedyCopySetMaxRegionCount = 0;
+      greedyCopySetMinRegionCount = Integer.MAX_VALUE;
+      if (greedyCopySetDatabaseRegionCounter.containsKey(i)) {
+        continue;
+      }
+      for (int j = 1; j <= TEST_DATA_NODE_NUM; j++) {
+        if (greedyCopySetDatabaseRegionCounter.get(i).containsKey(j)) {
+          greedyCopySetMinRegionCount =
+              Math.min(
+                  greedyCopySetMinRegionCount, greedyCopySetDatabaseRegionCounter.get(i).get(j));
+          greedyCopySetMaxRegionCount =
+              Math.max(
+                  greedyCopySetMaxRegionCount, greedyCopySetDatabaseRegionCounter.get(i).get(j));
+        }
+      }
+      // The maximal Region count - minimal Region count should be less than or equal to 1 for each
+      // database
+      Assert.assertTrue(greedyCopySetMaxRegionCount - greedyCopySetMinRegionCount <= 1);
     }
 
     LOGGER.info(

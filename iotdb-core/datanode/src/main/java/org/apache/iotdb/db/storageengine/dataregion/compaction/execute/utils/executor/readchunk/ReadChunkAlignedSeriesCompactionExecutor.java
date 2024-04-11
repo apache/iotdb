@@ -38,6 +38,8 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -65,7 +67,7 @@ import java.util.stream.Collectors;
 
 public class ReadChunkAlignedSeriesCompactionExecutor {
 
-  private final String device;
+  private final IDeviceID device;
   private final LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
       readerAndChunkMetadataList;
   private final TsFileResource targetResource;
@@ -81,7 +83,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   private long lastWriteTimestamp = Long.MIN_VALUE;
 
   public ReadChunkAlignedSeriesCompactionExecutor(
-      String device,
+      IDeviceID device,
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
       CompactionTsFileWriter writer,
@@ -101,8 +103,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
   private void collectValueColumnSchemaList() throws IOException {
     Map<String, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
-    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair :
-        this.readerAndChunkMetadataList) {
+    for (int i = this.readerAndChunkMetadataList.size() - 1; i >= 0; i--) {
+      Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair =
+          this.readerAndChunkMetadataList.get(i);
       CompactionTsFileReader reader = (CompactionTsFileReader) pair.getLeft();
       List<AlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
       for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
@@ -182,7 +185,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     Collections.fill(valueChunks, getChunkLoader(reader, null));
     long pointNum = 0;
     for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      if (chunkMetadata == null) {
+      if (chunkMetadata == null || !isValueChunkDataTypeMatchSchema(chunkMetadata)) {
         continue;
       }
       pointNum += chunkMetadata.getStatistics().getCount();
@@ -197,6 +200,12 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     } else {
       compactAlignedChunkByDeserialize(timeChunk, valueChunks);
     }
+  }
+
+  private boolean isValueChunkDataTypeMatchSchema(IChunkMetadata valueChunkMetadata) {
+    String measurement = valueChunkMetadata.getMeasurementUid();
+    IMeasurementSchema schema = schemaList.get(measurementSchemaListIndexMap.get(measurement));
+    return schema.getType() == valueChunkMetadata.getDataType();
   }
 
   private ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
@@ -359,7 +368,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   private void checkAndUpdatePreviousTimestamp(long currentWritingTimestamp) {
     if (currentWritingTimestamp <= lastWriteTimestamp) {
       throw new CompactionLastTimeCheckFailedException(
-          device, currentWritingTimestamp, lastWriteTimestamp);
+          ((PlainDeviceID) device).toStringID(), currentWritingTimestamp, lastWriteTimestamp);
     } else {
       lastWriteTimestamp = currentWritingTimestamp;
     }

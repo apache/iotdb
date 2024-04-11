@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -35,8 +36,6 @@ public interface ITimeIndex {
 
   byte DEVICE_TIME_INDEX_TYPE = 1;
   byte FILE_TIME_INDEX_TYPE = 2;
-
-  int SPANS_MULTI_TIME_PARTITIONS_FLAG_ID = -1;
 
   /**
    * serialize to outputStream
@@ -69,7 +68,7 @@ public interface ITimeIndex {
    *
    * @return device names
    */
-  Set<String> getDevices(String tsFilePath, TsFileResource tsFileResource);
+  Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource);
 
   /** @return whether end time is empty (Long.MIN_VALUE) */
   boolean endTimeEmpty();
@@ -110,26 +109,26 @@ public interface ITimeIndex {
   /**
    * update start time
    *
-   * @param deviceId device name
+   * @param deviceId device id
    * @param time start time
    */
-  void updateStartTime(String deviceId, long time);
+  void updateStartTime(IDeviceID deviceId, long time);
 
   /**
    * update end time
    *
-   * @param deviceId device name
+   * @param deviceId device id
    * @param time end time
    */
-  void updateEndTime(String deviceId, long time);
+  void updateEndTime(IDeviceID deviceId, long time);
 
   /**
    * put start time
    *
-   * @param deviceId device name
+   * @param deviceId device id
    * @param time start time
    */
-  void putStartTime(String deviceId, long time);
+  void putStartTime(IDeviceID deviceId, long time);
 
   /**
    * put end time
@@ -137,7 +136,7 @@ public interface ITimeIndex {
    * @param deviceId device name
    * @param time end time
    */
-  void putEndTime(String deviceId, long time);
+  void putEndTime(IDeviceID deviceId, long time);
 
   /**
    * get start time of device
@@ -145,7 +144,7 @@ public interface ITimeIndex {
    * @param deviceId device name
    * @return start time
    */
-  long getStartTime(String deviceId);
+  long getStartTime(IDeviceID deviceId);
 
   /**
    * get end time of device
@@ -153,7 +152,7 @@ public interface ITimeIndex {
    * @param deviceId device name
    * @return end time
    */
-  long getEndTime(String deviceId);
+  long getEndTime(IDeviceID deviceId);
 
   /**
    * check whether deviceId exists in TsFile
@@ -161,7 +160,7 @@ public interface ITimeIndex {
    * @param deviceId device name
    * @return true if the deviceId may exist in TsFile, otherwise false.
    */
-  boolean checkDeviceIdExist(String deviceId);
+  boolean checkDeviceIdExist(IDeviceID deviceId);
 
   /**
    * get min start time of device
@@ -192,15 +191,15 @@ public interface ITimeIndex {
    * device, if false, it may or may not contain this device Notice: using method be CAREFULLY and
    * you really understand the meaning!!!!!
    */
-  boolean definitelyNotContains(String device);
+  boolean definitelyNotContains(IDeviceID device);
 
   /**
    * @return null if the deviceId doesn't exist, otherwise index 0 is startTime, index 1 is endTime
    */
-  long[] getStartAndEndTime(String deviceId);
+  long[] getStartAndEndTime(IDeviceID deviceId);
 
   Pair<Long, Long> getPossibleStartTimeAndEndTime(
-      PartialPath devicePattern, Set<String> deviceMatchInfo);
+      PartialPath devicePattern, Set<IDeviceID> deviceMatchInfo);
 
   /**
    * Get TimeIndex Type

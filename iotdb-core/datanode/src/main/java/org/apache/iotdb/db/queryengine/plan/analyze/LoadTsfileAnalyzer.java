@@ -65,6 +65,8 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -229,7 +231,7 @@ public class LoadTsfileAnalyzer {
         }
 
         while (timeseriesMetadataIterator.hasNext()) {
-          Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata =
+          Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
               timeseriesMetadataIterator.next();
 
           schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, device2TimeseriesMetadata);
@@ -251,7 +253,8 @@ public class LoadTsfileAnalyzer {
     }
   }
 
-  private long getWritePointCount(Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadata) {
+  private long getWritePointCount(
+      Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata) {
     return device2TimeseriesMetadata.values().stream()
         .flatMap(List::stream)
         .mapToLong(t -> t.getStatistics().getCount())
@@ -274,11 +277,11 @@ public class LoadTsfileAnalyzer {
 
     public void autoCreateAndVerify(
         TsFileSequenceReader reader,
-        Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
+        Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
         throws IOException, AuthException {
-      for (final Map.Entry<String, List<TimeseriesMetadata>> entry :
+      for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
           device2TimeseriesMetadataList.entrySet()) {
-        final String device = entry.getKey();
+        final IDeviceID device = entry.getKey();
 
         for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
           final TSDataType dataType = timeseriesMetadata.getTsDataType();
@@ -390,9 +393,9 @@ public class LoadTsfileAnalyzer {
     }
 
     private void makeSureNoDuplicatedMeasurementsInDevices() throws VerifyMetadataException {
-      for (final Map.Entry<String, Set<MeasurementSchema>> entry :
+      for (final Map.Entry<IDeviceID, Set<MeasurementSchema>> entry :
           schemaCache.getDevice2TimeSeries().entrySet()) {
-        final String device = entry.getKey();
+        final IDeviceID device = entry.getKey();
         final Map<String, MeasurementSchema> measurement2Schema = new HashMap<>();
         for (final MeasurementSchema timeseriesSchema : entry.getValue()) {
           final String measurement = timeseriesSchema.getMeasurementId();
@@ -410,7 +413,7 @@ public class LoadTsfileAnalyzer {
       final int databasePrefixNodesLength = loadTsFileStatement.getDatabaseLevel() + 1;
       final Set<PartialPath> databasesNeededToBeSet = new HashSet<>();
 
-      for (final String device : schemaCache.getDevice2TimeSeries().keySet()) {
+      for (final IDeviceID device : schemaCache.getDevice2TimeSeries().keySet()) {
         final PartialPath devicePath = new PartialPath(device);
 
         final String[] devicePrefixNodes = devicePath.getNodes();
@@ -502,7 +505,7 @@ public class LoadTsfileAnalyzer {
       final List<CompressionType[]> compressionTypesList = new ArrayList<>();
       final List<Boolean> isAlignedList = new ArrayList<>();
 
-      for (final Map.Entry<String, Set<MeasurementSchema>> entry :
+      for (final Map.Entry<IDeviceID, Set<MeasurementSchema>> entry :
           schemaCache.getDevice2TimeSeries().entrySet()) {
         final int measurementSize = entry.getValue().size();
         final String[] measurements = new String[measurementSize];
@@ -539,9 +542,9 @@ public class LoadTsfileAnalyzer {
 
     private void verifySchema(ISchemaTree schemaTree)
         throws VerifyMetadataException, IllegalPathException {
-      for (final Map.Entry<String, Set<MeasurementSchema>> entry :
+      for (final Map.Entry<IDeviceID, Set<MeasurementSchema>> entry :
           schemaCache.getDevice2TimeSeries().entrySet()) {
-        final String device = entry.getKey();
+        final IDeviceID device = entry.getKey();
         final List<MeasurementSchema> tsfileTimeseriesSchemas = new ArrayList<>(entry.getValue());
         final DeviceSchemaInfo iotdbDeviceSchemaInfo =
             schemaTree.searchDeviceSchemaInfo(
@@ -636,8 +639,8 @@ public class LoadTsfileAnalyzer {
 
     private final LoadTsFileAnalyzeSchemaMemoryBlock block;
 
-    private Map<String, Set<MeasurementSchema>> currentBatchDevice2TimeSeriesSchemas;
-    private Map<String, Boolean> tsFileDevice2IsAligned;
+    private Map<IDeviceID, Set<MeasurementSchema>> currentBatchDevice2TimeSeriesSchemas;
+    private Map<IDeviceID, Boolean> tsFileDevice2IsAligned;
     private Set<PartialPath> alreadySetDatabases;
 
     private long batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes = 0;
@@ -655,11 +658,11 @@ public class LoadTsfileAnalyzer {
       this.alreadySetDatabases = new HashSet<>();
     }
 
-    public Map<String, Set<MeasurementSchema>> getDevice2TimeSeries() {
+    public Map<IDeviceID, Set<MeasurementSchema>> getDevice2TimeSeries() {
       return currentBatchDevice2TimeSeriesSchemas;
     }
 
-    public boolean getDeviceIsAligned(String device) {
+    public boolean getDeviceIsAligned(IDeviceID device) {
       if (!tsFileDevice2IsAligned.containsKey(device)) {
         LOGGER.warn(
             "Device {} is not in the tsFileDevice2IsAligned cache {}.",
@@ -673,10 +676,10 @@ public class LoadTsfileAnalyzer {
       return alreadySetDatabases;
     }
 
-    public void addTimeSeries(String device, MeasurementSchema measurementSchema) {
+    public void addTimeSeries(IDeviceID device, MeasurementSchema measurementSchema) {
       long memoryUsageSizeInBytes = 0;
       if (!currentBatchDevice2TimeSeriesSchemas.containsKey(device)) {
-        memoryUsageSizeInBytes += estimateStringSize(device);
+        memoryUsageSizeInBytes += estimateStringSize(((PlainDeviceID) device).toStringID());
       }
       if (currentBatchDevice2TimeSeriesSchemas
           .computeIfAbsent(device, k -> new HashSet<>())
@@ -691,10 +694,10 @@ public class LoadTsfileAnalyzer {
       }
     }
 
-    public void addIsAlignedCache(String device, boolean isAligned, boolean addIfAbsent) {
+    public void addIsAlignedCache(IDeviceID device, boolean isAligned, boolean addIfAbsent) {
       long memoryUsageSizeInBytes = 0;
       if (!tsFileDevice2IsAligned.containsKey(device)) {
-        memoryUsageSizeInBytes += estimateStringSize(device);
+        memoryUsageSizeInBytes += estimateStringSize(((PlainDeviceID) device).toStringID());
       }
       if (addIfAbsent
           ? (tsFileDevice2IsAligned.putIfAbsent(device, isAligned) == null)
@@ -749,13 +752,15 @@ public class LoadTsfileAnalyzer {
       }
 
       long releaseMemoryInBytes = 0;
-      final Set<String> timeSeriesCacheKeySet =
+      final Set<IDeviceID> timeSeriesCacheKeySet =
           new HashSet<>(currentBatchDevice2TimeSeriesSchemas.keySet());
-      Iterator<Map.Entry<String, Boolean>> iterator = tsFileDevice2IsAligned.entrySet().iterator();
+      Iterator<Map.Entry<IDeviceID, Boolean>> iterator =
+          tsFileDevice2IsAligned.entrySet().iterator();
       while (iterator.hasNext()) {
-        Map.Entry<String, Boolean> entry = iterator.next();
+        Map.Entry<IDeviceID, Boolean> entry = iterator.next();
         if (!timeSeriesCacheKeySet.contains(entry.getKey())) {
-          releaseMemoryInBytes += estimateStringSize(entry.getKey()) + Byte.BYTES;
+          releaseMemoryInBytes +=
+              estimateStringSize(((PlainDeviceID) entry.getKey()).toStringID()) + Byte.BYTES;
           iterator.remove();
         }
       }

@@ -35,8 +35,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * FileReaderManager is a singleton, which is used to manage all file readers(opened file streams)
- * to ensure that each file is opened at most once.
+ * {@link FileReaderManager} is a singleton, which is used to manage all file readers(opened file
+ * streams) to ensure that each file is opened at most once.
  */
 public class FileReaderManager {
 

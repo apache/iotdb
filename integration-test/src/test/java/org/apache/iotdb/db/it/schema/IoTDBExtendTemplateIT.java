@@ -156,16 +156,16 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
                 Arrays.asList(
                     "root.db.d1.s1,null,root.db,INT64,PLAIN,LZ4,null,null,null,null,BASE,",
                     "root.db.d1.s2,null,root.db,DOUBLE,RLE,LZ4,null,null,null,null,BASE,",
-                    "root.db.d1.s3,null,root.db,FLOAT,GORILLA,LZ4,null,null,null,null,BASE,",
-                    "root.db.d1.s4,null,root.db,FLOAT,GORILLA,LZ4,null,null,null,null,BASE,",
-                    "root.db.d1.s5,null,root.db,FLOAT,GORILLA,LZ4,null,null,null,null,BASE,",
+                    "root.db.d1.s3,null,root.db,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
+                    "root.db.d1.s4,null,root.db,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
+                    "root.db.d1.s5,null,root.db,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
                     "root.db.d2.s1,null,root.db,INT64,PLAIN,LZ4,null,null,null,null,BASE,",
                     "root.db.d2.s2,null,root.db,DOUBLE,RLE,LZ4,null,null,null,null,BASE,",
-                    "root.db.d2.s3,null,root.db,FLOAT,GORILLA,LZ4,null,null,null,null,BASE,",
-                    "root.db.d2.s4,null,root.db,FLOAT,GORILLA,LZ4,null,null,null,null,BASE,",
-                    "root.db.d2.s5,null,root.db,FLOAT,GORILLA,LZ4,null,null,null,null,BASE,",
-                    "root.db1.d1.s2,null,root.db1,FLOAT,GORILLA,LZ4,null,null,null,null,BASE,",
-                    "root.db1.d1.s3,null,root.db1,FLOAT,GORILLA,LZ4,null,null,null,null,BASE,"))
+                    "root.db.d2.s3,null,root.db,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
+                    "root.db.d2.s4,null,root.db,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
+                    "root.db.d2.s5,null,root.db,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
+                    "root.db1.d1.s2,null,root.db1,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,",
+                    "root.db1.d1.s3,null,root.db1,DOUBLE,GORILLA,LZ4,null,null,null,null,BASE,"))
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -29,6 +30,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -44,6 +46,7 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
@@ -54,6 +57,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -90,6 +94,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.service.TriggerInformationUpdater;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
@@ -107,6 +112,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -237,8 +245,6 @@ public class DataNode implements DataNodeMBean {
   /** Prepare cluster IoTDB-DataNode */
   private boolean prepareDataNode() throws StartupException, IOException {
     long startTime = System.currentTimeMillis();
-    // Set cluster mode
-    config.setClusterMode(true);
 
     // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
     IoTDBStartCheck.getInstance().checkOldSystemConfig();
@@ -451,6 +457,57 @@ public class DataNode implements DataNodeMBean {
     }
   }
 
+  // TODO: Implement in IConsensus, not in DataNode
+  private List<ConsensusGroupId> getConsensusGroupId() {
+    List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
+    String dataRegionConsensusDir = config.getDataRegionConsensusDir();
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      return consensusGroupIds;
+    }
+    try (DirectoryStream<Path> stream =
+        Files.newDirectoryStream(new File(dataRegionConsensusDir).toPath())) {
+      for (Path path : stream) {
+        String[] items = path.getFileName().toString().split("_");
+        ConsensusGroupId consensusGroupId =
+            ConsensusGroupId.Factory.create(Integer.parseInt(items[0]), Integer.parseInt(items[1]));
+        consensusGroupIds.add(consensusGroupId);
+      }
+    } catch (IOException e) {
+      logger.error("Cannot get consensus group id from {}", dataRegionConsensusDir, e);
+    }
+    return consensusGroupIds;
+  }
+
+  // TODO: remove for current version, add todo for rename
+  private void renameInvalidRegionDirs(List<ConsensusGroupId> invalidConsensusGroupIds) {
+    for (ConsensusGroupId consensusGroupId : invalidConsensusGroupIds) {
+      File oldDir =
+          new File(
+              IoTConsensus.buildPeerDir(
+                  new File(config.getDataRegionConsensusDir()), consensusGroupId));
+      File newDir =
+          new File(
+              IoTConsensus.buildPeerDir(
+                  new File(config.getInvalidDataRegionConsensusDir()), consensusGroupId));
+      if (oldDir.exists() && !FileUtils.moveFileSafe(oldDir, newDir)) {
+        logger.error("move {} to {} failed.", oldDir.getAbsolutePath(), newDir.getAbsolutePath());
+        try {
+          FileUtils.recursivelyDeleteFolder(oldDir.getPath());
+        } catch (IOException e) {
+          logger.error("delete {} failed.", oldDir.getAbsolutePath());
+        }
+      }
+    }
+  }
+
+  private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
+    List<ConsensusGroupId> invalidConsensusGroupIds =
+        getConsensusGroupId().stream()
+            .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
+            .collect(Collectors.toList());
+    renameInvalidRegionDirs(invalidConsensusGroupIds);
+  }
+
   private void sendRestartRequestToConfigNode() throws StartupException {
     logger.info("Sending restart request to ConfigNode-leader...");
     long startTime = System.currentTimeMillis();
@@ -474,7 +531,7 @@ public class DataNode implements DataNodeMBean {
       }
 
       try {
-        // wait to start the next try
+        // Wait to start the next try
         Thread.sleep(DEFAULT_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -501,6 +558,14 @@ public class DataNode implements DataNodeMBean {
           "Restart request to cluster: {} is accepted, which takes {} ms.",
           config.getClusterName(),
           (endTime - startTime));
+
+      List<TConsensusGroupId> consensusGroupIds = dataNodeRestartResp.getConsensusGroupIds();
+      List<ConsensusGroupId> dataNodeConsensusGroupIds =
+          consensusGroupIds.stream()
+              .map(ConsensusGroupId.Factory::createFromTConsensusGroupId)
+              .collect(Collectors.toList());
+
+      removeInvalidRegions(dataNodeConsensusGroupIds);
     } else {
       /* Throw exception when restart is rejected */
       throw new StartupException(dataNodeRestartResp.getStatus().getMessage());
@@ -572,8 +637,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(CacheHitRatioMonitor.getInstance());
 
     // Close wal when using ratis consensus
-    if (config.isClusterMode()
-        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       config.setWalMode(WALMode.DISABLE);
     }
     registerManager.register(WALManager.getInstance());
@@ -610,6 +674,8 @@ public class DataNode implements DataNodeMBean {
 
     registerManager.register(CompactionTaskManager.getInstance());
 
+    // Register subscription agent before pipe agent
+    registerManager.register(SubscriptionAgent.runtime());
     registerManager.register(PipeAgent.runtime());
   }
 
