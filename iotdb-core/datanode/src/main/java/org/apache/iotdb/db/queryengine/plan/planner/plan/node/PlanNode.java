@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.RelationalPlanVisitor;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -124,6 +125,10 @@ public abstract class PlanNode implements IConsensusRequest {
   public abstract List<String> getOutputColumnNames();
 
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitPlan(this, context);
+  }
+
+  public <R, C> R accept(RelationalPlanVisitor<R, C> visitor, C context) {
     return visitor.visitPlan(this, context);
   }
 

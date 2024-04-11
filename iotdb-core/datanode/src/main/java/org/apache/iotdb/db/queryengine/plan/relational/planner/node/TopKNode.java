@@ -21,26 +21,24 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
-import org.apache.iotdb.db.relational.sql.tree.Expression;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class FilterNode extends SingleChildProcessNode {
-  private Expression predicate;
+public class TopKNode extends MultiChildProcessNode {
 
-  public FilterNode(PlanNodeId id, PlanNode child, Expression predicate) {
-    super(id, child);
-    this.predicate = predicate;
-  }
+  private final OrderingScheme orderingScheme;
 
-  @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitFilter(this, context);
+  private final long count;
+
+  public TopKNode(PlanNodeId id, OrderingScheme scheme, long count) {
+    super(id);
+    this.orderingScheme = scheme;
+    this.count = count;
   }
 
   @Override
@@ -58,12 +56,4 @@ public class FilterNode extends SingleChildProcessNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
-
-  public Expression getPredicate() {
-    return predicate;
-  }
-
-  public void setPredicate(Expression predicate) {
-    this.predicate = predicate;
-  }
 }

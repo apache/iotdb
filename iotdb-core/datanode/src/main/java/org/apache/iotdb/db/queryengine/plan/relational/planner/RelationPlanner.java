@@ -22,11 +22,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.relational.sql.tree.AliasedRelation;
 import org.apache.iotdb.db.relational.sql.tree.AstVisitor;
-import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.relational.sql.tree.Node;
 import org.apache.iotdb.db.relational.sql.tree.Query;
 import org.apache.iotdb.db.relational.sql.tree.QuerySpecification;
@@ -39,11 +37,8 @@ import com.google.common.collect.ImmutableMap;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerceIfNecessary;
 
 class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   private final Analysis analysis;
@@ -124,36 +119,36 @@ class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     return plan;
   }
 
-  private RelationPlan addRowFilters(Table node, RelationPlan plan) {
-    return addRowFilters(node, plan, Function.identity());
-  }
+  //  private RelationPlan addRowFilters(Table node, RelationPlan plan) {
+  //    return addRowFilters(node, plan, Function.identity());
+  //  }
 
-  public RelationPlan addRowFilters(
-      Table node, RelationPlan plan, Function<Expression, Expression> predicateTransformation) {
-    List<Expression> filters = null;
-    // analysis.getRowFilters(node);
-
-    if (filters.isEmpty()) {
-      return plan;
-    }
-
-    // The fields in the access control scope has the same layout as those for the table scope
-    PlanBuilder planBuilder = newPlanBuilder(plan, analysis, session);
-    // .withScope(accessControlScope.apply(node), plan.getFieldMappings());
-
-    for (Expression filter : filters) {
-      // planBuilder = subqueryPlanner.handleSubqueries(planBuilder, filter,
-      // analysis.getSubqueries(filter));
-
-      Expression predicate = coerceIfNecessary(analysis, filter, filter);
-      predicate = predicateTransformation.apply(predicate);
-      planBuilder =
-          planBuilder.withNewRoot(
-              new FilterNode(idAllocator.genPlanNodeId(), planBuilder.getRoot(), predicate));
-    }
-
-    return new RelationPlan(planBuilder.getRoot(), plan.getScope(), plan.getFieldMappings());
-  }
+  //  public RelationPlan addRowFilters(
+  //      Table node, RelationPlan plan, Function<Expression, Expression> predicateTransformation) {
+  //    List<Expression> filters = null;
+  //    // analysis.getRowFilters(node);
+  //
+  //    if (filters.isEmpty()) {
+  //      return plan;
+  //    }
+  //
+  //    // The fields in the access control scope has the same layout as those for the table scope
+  //    PlanBuilder planBuilder = newPlanBuilder(plan, analysis, session);
+  //    // .withScope(accessControlScope.apply(node), plan.getFieldMappings());
+  //
+  //    for (Expression filter : filters) {
+  //      // planBuilder = subqueryPlanner.handleSubqueries(planBuilder, filter,
+  //      // analysis.getSubqueries(filter));
+  //
+  //      Expression predicate = coerceIfNecessary(analysis, filter, filter);
+  //      predicate = predicateTransformation.apply(predicate);
+  //      planBuilder =
+  //          planBuilder.withNewRoot(
+  //              new FilterNode(idAllocator.genPlanNodeId(), planBuilder.getRoot(), predicate));
+  //    }
+  //
+  //    return new RelationPlan(planBuilder.getRoot(), plan.getScope(), plan.getFieldMappings());
+  //  }
 
   //    private RelationPlan addColumnMasks(Table table, RelationPlan plan) {
   //        Map<String, Expression> columnMasks = analysis.getColumnMasks(table);
