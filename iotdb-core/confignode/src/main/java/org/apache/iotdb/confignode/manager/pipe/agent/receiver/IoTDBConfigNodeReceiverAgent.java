@@ -41,17 +41,17 @@ public class IoTDBConfigNodeReceiverAgent extends IoTDBReceiverAgent {
   }
 
   @Override
-  protected IoTDBReceiver getReceiverWithSpecifiedClient(String key) {
+  protected IoTDBReceiver getReceiverWithSpecifiedClient(final String key) {
     return clientKey2ReceiverMap.get(key);
   }
 
   @Override
-  protected void setReceiverWithSpecifiedClient(String key, IoTDBReceiver receiver) {
+  protected void setReceiverWithSpecifiedClient(final String key, final IoTDBReceiver receiver) {
     clientKey2ReceiverMap.put(key, receiver);
   }
 
   @Override
-  protected void removeReceiverWithSpecifiedClient(String key) {
+  protected void removeReceiverWithSpecifiedClient(final String key) {
     clientKey2ReceiverMap.remove(key);
   }
 
