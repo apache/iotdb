@@ -169,7 +169,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     recoverMemoryStatus = true;
     LOGGER.info(
         "{}-{} [Compaction] {} InnerSpaceCompaction task starts with {} files, "
-            + "total file size is {} MB, memory cost is {} MB",
+            + "total file size is {} MB, estimated memory cost is {} MB",
         storageGroupName,
         dataRegionId,
         sequence ? "Sequence" : "Unsequence",

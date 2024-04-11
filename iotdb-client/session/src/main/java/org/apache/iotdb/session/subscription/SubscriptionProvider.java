@@ -38,6 +38,10 @@ final class SubscriptionProvider extends SubscriptionSession {
   private final String consumerGroupId;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
+  private final AtomicBoolean isAvailable = new AtomicBoolean(false);
+
+  private final TEndPoint endPoint;
+  private int dataNodeId;
 
   SubscriptionProvider(
       TEndPoint endPoint,
@@ -47,6 +51,7 @@ final class SubscriptionProvider extends SubscriptionSession {
       String consumerGroupId) {
     super(endPoint.ip, endPoint.port, username, password);
 
+    this.endPoint = endPoint;
     this.consumerId = consumerId;
     this.consumerGroupId = consumerGroupId;
   }
@@ -59,12 +64,13 @@ final class SubscriptionProvider extends SubscriptionSession {
 
     super.open();
 
-    Map<String, String> consumerAttributes = new HashMap<>();
+    final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
-    int dataNodeId = getSessionConnection().handshake(new ConsumerConfig(consumerAttributes));
+    dataNodeId = getSessionConnection().handshake(new ConsumerConfig(consumerAttributes));
 
     isClosed.set(false);
+    setAvailable();
     return dataNodeId;
   }
 
@@ -81,11 +87,49 @@ final class SubscriptionProvider extends SubscriptionSession {
       throw new IoTDBConnectionException(e);
     } finally {
       super.close();
+      setUnavailable();
       isClosed.set(true);
     }
   }
 
   SubscriptionSessionConnection getSessionConnection() {
     return (SubscriptionSessionConnection) defaultSessionConnection;
+  }
+
+  boolean isAvailable() {
+    return isAvailable.get();
+  }
+
+  void setAvailable() {
+    isAvailable.set(true);
+  }
+
+  void setUnavailable() {
+    isAvailable.set(false);
+  }
+
+  int getDataNodeId() {
+    return dataNodeId;
+  }
+
+  TEndPoint getEndPoint() {
+    return endPoint;
+  }
+
+  @Override
+  public String toString() {
+    return "SubscriptionProvider{endPoint="
+        + endPoint
+        + ", dataNodeId="
+        + dataNodeId
+        + ", consumerId="
+        + consumerId
+        + ", consumerGroupId="
+        + consumerGroupId
+        + ", isAvailable="
+        + isAvailable
+        + ", isClosed="
+        + isClosed
+        + "}";
   }
 }

@@ -112,7 +112,8 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
    * @param event the given {@link Event}
    * @return {@link true} if the batch can be transferred
    */
-  public boolean onEvent(TabletInsertionEvent event) throws IOException, WALPipeException {
+  public synchronized boolean onEvent(TabletInsertionEvent event)
+      throws IOException, WALPipeException {
     if (!(event instanceof EnrichedEvent)) {
       return false;
     }
@@ -139,7 +140,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
-  public void onSuccess() {
+  public synchronized void onSuccess() {
     binaryBuffers.clear();
     insertNodeBuffers.clear();
     tabletBuffers.clear();
@@ -201,7 +202,12 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
+    for (final Event event : events) {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).clearReferenceCount(this.getClass().getName());
+      }
+    }
     allocatedMemoryBlock.close();
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -216,6 +217,30 @@ public class DataNodeSchemaCache {
 
   public TimeValuePair getLastCache(PartialPath seriesPath) {
     return timeSeriesSchemaCache.getLastCache(seriesPath);
+  }
+
+  public void invalidateLastCache(PartialPath path) {
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+      return;
+    }
+    takeReadLock();
+    try {
+      timeSeriesSchemaCache.invalidateLastCache(path);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public void invalidateLastCacheInDataRegion(String database) {
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+      return;
+    }
+    takeReadLock();
+    try {
+      timeSeriesSchemaCache.invalidateDataRegionLastCache(database);
+    } finally {
+      releaseReadLock();
+    }
   }
 
   /** get SchemaCacheEntry and update last cache */

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.subscription.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 // TODO
 public class SubscriptionPushConsumer extends SubscriptionConsumer {

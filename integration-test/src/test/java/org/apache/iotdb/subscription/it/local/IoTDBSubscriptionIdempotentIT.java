@@ -21,7 +21,6 @@ package org.apache.iotdb.subscription.it.local;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
@@ -38,7 +37,7 @@ import org.slf4j.LoggerFactory;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+@Category({LocalStandaloneIT.class})
 public class IoTDBSubscriptionIdempotentIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionIdempotentIT.class);
@@ -150,7 +149,7 @@ public class IoTDBSubscriptionIdempotentIT {
             .autoCommit(false)
             .buildPullConsumer()) {
       consumer.open();
-      // unsubscribe existed non-subscribed topic
+      // Unsubscribe existed non-subscribed topic
       consumer.unsubscribe("topic1");
     } catch (final Exception e) {
       e.printStackTrace();
