@@ -196,7 +196,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         // We assume that `timestamps` is ordered.
         return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
       } else if (insertNode instanceof InsertRowsNode) {
-        for (InsertRowNode node : ((InsertRowsNode) insertNode).getInsertRowNodeList()) {
+        for (final InsertRowNode node : ((InsertRowsNode) insertNode).getInsertRowNodeList()) {
           final long timestamp = node.getTime();
           if (startTime <= timestamp && timestamp <= endTime) {
             return true;
@@ -255,7 +255,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       if (!dataContainers.isEmpty()) {
         return dataContainers;
       }
-      InsertNode node = getInsertNode();
+      final InsertNode node = getInsertNode();
       switch (node.getType()) {
         case INSERT_ROW:
         case INSERT_TABLET:
@@ -263,7 +263,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
               new TabletInsertionDataContainer(pipeTaskMeta, this, node, pipePattern));
           break;
         case INSERT_ROWS:
-          for (InsertRowNode insertRowNode : ((InsertRowsNode) node).getInsertRowNodeList()) {
+          for (final InsertRowNode insertRowNode : ((InsertRowsNode) node).getInsertRowNodeList()) {
             dataContainers.add(
                 new TabletInsertionDataContainer(pipeTaskMeta, this, insertRowNode, pipePattern));
           }
