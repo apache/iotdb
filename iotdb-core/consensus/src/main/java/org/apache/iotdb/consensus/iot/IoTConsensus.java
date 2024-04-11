@@ -418,19 +418,35 @@ public class IoTConsensus implements IConsensus {
   }
 
   @Override
-  public List<ConsensusGroupId> getAllConsensusGroupIdsFromDisk() {
+  public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
+    return getConsensusGroupIdsFromDir(storageDir, logger);
+  }
+
+  public static List<ConsensusGroupId> getConsensusGroupIdsFromDir(File storageDir, Logger logger) {
     List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
     try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
       for (Path path : stream) {
-        String[] items = path.getFileName().toString().split("_");
-        ConsensusGroupId consensusGroupId =
-            ConsensusGroupId.Factory.create(Integer.parseInt(items[0]), Integer.parseInt(items[1]));
-        consensusGroupIds.add(consensusGroupId);
+        try {
+          String[] items = path.getFileName().toString().split("_");
+          ConsensusGroupId consensusGroupId =
+              ConsensusGroupId.Factory.create(
+                  Integer.parseInt(items[0]), Integer.parseInt(items[1]));
+          consensusGroupIds.add(consensusGroupId);
+        } catch (Exception e) {
+          logger.info(
+              "The directory {} is not a group directory;" + " ignoring it. ",
+              path.getFileName().toString());
+        }
       }
     } catch (IOException e) {
       logger.error("Failed to get all consensus group ids from disk", e);
     }
     return consensusGroupIds;
+  }
+
+  @Override
+  public String getRegionDirFromConsensusGroupId(ConsensusGroupId groupId) {
+    return buildPeerDir(storageDir, groupId);
   }
 
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)

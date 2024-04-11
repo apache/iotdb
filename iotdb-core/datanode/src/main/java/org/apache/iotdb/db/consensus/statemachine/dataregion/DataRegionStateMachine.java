@@ -287,7 +287,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public File getSnapshotRoot() {
-    String snapshotDir = "null";
+    String snapshotDir = "";
     try {
       snapshotDir =
           IoTDBDescriptor.getInstance().getConfig().getRatisDataRegionSnapshotDir()

@@ -38,6 +38,7 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
+import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -49,7 +50,6 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -245,9 +245,13 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
-  public List<ConsensusGroupId> getAllConsensusGroupIdsFromDisk() {
-    logger.warn("SimpleConsensus does not support getAllConsensusGroupIdsFromDisk");
-    return Collections.emptyList();
+  public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
+    return IoTConsensus.getConsensusGroupIdsFromDir(storageDir, logger);
+  }
+
+  @Override
+  public String getRegionDirFromConsensusGroupId(ConsensusGroupId groupId) {
+    return buildPeerDir(groupId);
   }
 
   @Override

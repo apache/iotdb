@@ -57,7 +57,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -456,7 +455,7 @@ public class DataNode implements DataNodeMBean {
 
   private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
     List<ConsensusGroupId> invalidConsensusGroupIds =
-        DataRegionConsensusImpl.getInstance().getAllConsensusGroupIdsFromDisk().stream()
+        DataRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
             .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
             .collect(Collectors.toList());
     if (!invalidConsensusGroupIds.isEmpty()) {
@@ -464,8 +463,8 @@ public class DataNode implements DataNodeMBean {
       for (ConsensusGroupId consensusGroupId : invalidConsensusGroupIds) {
         File oldDir =
             new File(
-                IoTConsensus.buildPeerDir(
-                    new File(config.getDataRegionConsensusDir()), consensusGroupId));
+                DataRegionConsensusImpl.getInstance()
+                    .getRegionDirFromConsensusGroupId(consensusGroupId));
         if (oldDir.exists()) {
           try {
             FileUtils.recursivelyDeleteFolder(oldDir.getPath());
