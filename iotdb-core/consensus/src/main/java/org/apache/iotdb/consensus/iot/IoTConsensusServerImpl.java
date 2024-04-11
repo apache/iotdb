@@ -90,6 +90,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class IoTConsensusServerImpl {
@@ -608,10 +609,9 @@ public class IoTConsensusServerImpl {
 
   public void persistConfiguration() {
     try {
-      serializeConfigurationAndFsyncToDisk(CONFIGURATION_TMP_FILE_NAME);
-      deleteConfiguration(CONFIGURATION_FILE_NAME);
-      serializeConfigurationAndFsyncToDisk(CONFIGURATION_FILE_NAME);
-      deleteConfiguration(CONFIGURATION_TMP_FILE_NAME);
+      serializeConfigurationAndFsyncToDisk();
+      deleteConfiguration();
+      renameTmpConfigurationFileToRemoveSuffix();
     } catch (IOException e) {
       // TODO: (xingtanzjr) need to handle the IOException because the IoTConsensus won't
       // work expectedly
@@ -874,9 +874,10 @@ public class IoTConsensusServerImpl {
     return consensusGroupId;
   }
 
-  private void serializeConfigurationAndFsyncToDisk(String suffix) throws IOException {
+  private void serializeConfigurationAndFsyncToDisk() throws IOException {
     for (Peer peer : configuration) {
-      String peerConfigurationFileName = generateConfigurationDatFileName(peer.getNodeId(), suffix);
+      String peerConfigurationFileName =
+          generateConfigurationDatFileName(peer.getNodeId(), CONFIGURATION_TMP_FILE_NAME);
       FileOutputStream fileOutputStream =
           new FileOutputStream(new File(storageDir, peerConfigurationFileName));
       try (DataOutputStream outputStream = new DataOutputStream(fileOutputStream)) {
@@ -892,17 +893,39 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  private void deleteConfiguration(String suffix) throws IOException {
+  private void renameTmpConfigurationFileToRemoveSuffix() throws IOException {
+    try (Stream<Path> stream = Files.walk(Paths.get(storageDir))) {
+      List<Path> paths =
+          stream
+              .filter(Files::isRegularFile)
+              .filter(
+                  filePath ->
+                      filePath.getFileName().toString().endsWith(CONFIGURATION_TMP_FILE_NAME))
+              .collect(Collectors.toList());
+      for (Path filePath : paths) {
+        String formalPath =
+            filePath.toString().replace(CONFIGURATION_TMP_FILE_NAME, CONFIGURATION_FILE_NAME);
+        if (!filePath.toFile().renameTo(new File(formalPath))) {
+          logger.error("Unexpected error occurs when rename file: {} -> {}", filePath, formalPath);
+        }
+      }
+    }
+  }
+
+  private void deleteConfiguration() throws IOException {
     try (Stream<Path> stream = Files.walk(Paths.get(storageDir))) {
       stream
           .filter(Files::isRegularFile)
-          .filter(filePath -> filePath.getFileName().toString().contains(suffix))
+          .filter(filePath -> filePath.getFileName().toString().endsWith(CONFIGURATION_FILE_NAME))
           .forEach(
               filePath -> {
                 try {
                   Files.delete(filePath);
                 } catch (IOException e) {
-                  logger.error("Unexpected error occurs when deleting old configuration file", e);
+                  logger.error(
+                      "Unexpected error occurs when deleting old configuration file {}",
+                      filePath,
+                      e);
                 }
               });
     }
