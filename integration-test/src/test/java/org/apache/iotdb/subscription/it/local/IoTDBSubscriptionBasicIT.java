@@ -78,11 +78,12 @@ public class IoTDBSubscriptionBasicIT {
     }
 
     // Create topic
+    final String topicName = "topic1";
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
-      session.createTopic("topic1");
+      session.createTopic(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -103,7 +104,7 @@ public class IoTDBSubscriptionBasicIT {
                       .autoCommit(false)
                       .buildPullConsumer()) {
                 consumer.open();
-                consumer.subscribe("topic1");
+                consumer.subscribe(topicName);
                 while (!isClosed.get()) {
                   try {
                     Thread.sleep(1000); // wait some time
@@ -127,7 +128,7 @@ public class IoTDBSubscriptionBasicIT {
                   }
                   consumer.commitSync(messages);
                 }
-                consumer.unsubscribe("topic1");
+                consumer.unsubscribe(topicName);
               } catch (final Exception e) {
                 e.printStackTrace();
                 // Avoid failure
