@@ -94,7 +94,7 @@ public class WebSocketConnector implements PipeConnector {
   }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) {
+  public void transfer(final TabletInsertionEvent tabletInsertionEvent) {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
@@ -108,7 +108,7 @@ public class WebSocketConnector implements PipeConnector {
       final PipeInsertNodeTabletInsertionEvent event =
           (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
       event.skipReportOnCommit();
-      for (PipeRawTabletInsertionEvent rawTabletInsertionEvent :
+      for (final PipeRawTabletInsertionEvent rawTabletInsertionEvent :
           event.toRawTabletInsertionEvents()) {
         // Transfer raw tablet insertion event to make sure one event binds
         // to only one tablet in the server
