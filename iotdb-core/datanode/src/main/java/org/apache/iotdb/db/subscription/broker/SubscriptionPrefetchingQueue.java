@@ -26,6 +26,7 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +44,7 @@ public abstract class SubscriptionPrefetchingQueue {
   protected final String topicName;
   protected final BoundedBlockingPendingQueue<Event> inputPendingQueue;
 
-  protected final Map<String, SubscriptionEvent> uncommittedEvents;
+  protected final Map<SubscriptionCommitContext, SubscriptionEvent> uncommittedEvents;
   private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
 
   public SubscriptionPrefetchingQueue(
@@ -78,18 +79,15 @@ public abstract class SubscriptionPrefetchingQueue {
     }
   }
 
-  protected String generateSubscriptionCommitId() {
-    // subscription commit id format: {DataNodeId}#{RebootTimes}#{TopicName}_{BrokerId}#{Id}
+  protected SubscriptionCommitContext generateSubscriptionCommitContext() {
     // Recording data node ID and reboot times to address potential stale commit IDs caused by
     // leader transfers or restarts.
-    return IoTDBDescriptor.getInstance().getConfig().getDataNodeId()
-        + "#"
-        + PipeAgent.runtime().getRebootTimes()
-        + "#"
-        + topicName
-        + "_"
-        + brokerId
-        + "#"
-        + subscriptionCommitIdGenerator.getAndIncrement();
+    return new SubscriptionCommitContext(
+        IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
+        PipeAgent.runtime().getRebootTimes(),
+        topicName,
+        brokerId,
+        subscriptionCommitIdGenerator.getAndIncrement()
+    );
   }
 }

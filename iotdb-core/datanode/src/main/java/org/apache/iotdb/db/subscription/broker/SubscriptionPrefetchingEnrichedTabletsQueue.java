@@ -12,7 +12,8 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.payload.common.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.slf4j.Logger;
@@ -131,11 +132,11 @@ public class SubscriptionPrefetchingEnrichedTabletsQueue extends SubscriptionPre
     }
 
     if (!tablets.isEmpty()) {
-      final String subscriptionCommitId = generateSubscriptionCommitId();
+      final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
       final SerializableEnrichedTabletsSubscriptionEvent enrichedEvent =
           new SerializableEnrichedTabletsSubscriptionEvent(
-              enrichedEvents, new EnrichedTablets(topicName, tablets, subscriptionCommitId));
-      uncommittedEvents.put(subscriptionCommitId, enrichedEvent); // before enqueuing the event
+              enrichedEvents, commitContext, new EnrichedTablets(commitContext, tablets));
+      uncommittedEvents.put(commitContext, enrichedEvent); // before enqueuing the event
       prefetchingQueue.add(enrichedEvent);
     }
   }

@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.subscription.event;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.payload.common.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 
 import org.slf4j.Logger;
@@ -41,8 +42,11 @@ public class SerializableEnrichedTabletsSubscriptionEvent extends SubscriptionEv
   private ByteBuffer byteBuffer; // serialized EnrichedTablets
 
   public SerializableEnrichedTabletsSubscriptionEvent(
-      final List<EnrichedEvent> enrichedEvents, final EnrichedTablets enrichedTablets) {
-    super(enrichedEvents, enrichedTablets.getSubscriptionCommitId());
+      final List<EnrichedEvent> enrichedEvents, 
+      final SubscriptionCommitContext commitContext,
+      final EnrichedTablets enrichedTablets) {
+    super(enrichedEvents);
+
     this.enrichedTablets = enrichedTablets;
   }
 

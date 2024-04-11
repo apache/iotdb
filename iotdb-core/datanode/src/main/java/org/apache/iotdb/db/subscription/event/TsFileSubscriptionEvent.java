@@ -35,4 +35,16 @@ public class TsFileSubscriptionEvent extends SubscriptionEvent {
   public String getFileName() {
     return fileName;
   }
+
+  public long getFileLength() {
+    return fileLength;
+  }
+
+  public long getStartWritingOffset() {
+    return startWritingOffset;
+  }
+
+  public byte[] getFilePiece() {
+    return filePiece;
+  }
 }

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.payload.common.EnrichedTablets;
 
 import java.util.Objects;
 
@@ -35,6 +35,10 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     this.payload = new SubscriptionSessionDataSets(tablets.getTablets());
     this.topicName = tablets.getTopicName();
     this.subscriptionCommitId = tablets.getSubscriptionCommitId();
+  }
+
+  public SubscriptionMessage(String topicName, String fileName) {
+
   }
 
   public String getTopicName() {

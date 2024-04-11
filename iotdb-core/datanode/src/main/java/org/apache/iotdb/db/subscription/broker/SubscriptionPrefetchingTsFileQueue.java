@@ -39,7 +39,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPrefetchingTsFileQueue.class);
 
-  private final AtomicReference<PipeTsFileInsertionEvent> tsFileInsertionEventRef;
+  private final AtomicReference<TsFileSubscriptionEvent> eventRef;
 
   public SubscriptionPrefetchingTsFileQueue(
       final String brokerId,
@@ -47,12 +47,12 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       final BoundedBlockingPendingQueue<Event> inputPendingQueue) {
     super(brokerId, topicName, inputPendingQueue);
 
-    this.tsFileInsertionEventRef = new AtomicReference<>();
+    this.eventRef = new AtomicReference<>();
   }
 
   @Override
   public SubscriptionEvent poll(final SubscriptionPollTimer timer) {
-    if (Objects.nonNull(tsFileInsertionEventRef.get())) {
+    if (Objects.nonNull(eventRef.get())) {
       return null;
     }
 
@@ -67,17 +67,16 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       }
 
       final PipeTsFileInsertionEvent tsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
-      tsFileInsertionEventRef.set(tsFileInsertionEvent);
-
-      final String subscriptionCommitId = generateSubscriptionCommitId();
-      final TsFileSubscriptionEvent tsFileSubscriptionEvent =
+      final String subscriptionCommitId = generateSubscriptionCommitContext();
+      final TsFileSubscriptionEvent subscriptionEvent =
           new TsFileSubscriptionEvent(
-              Collections.singletonList((PipeTsFileInsertionEvent) event),
+              Collections.singletonList(tsFileInsertionEvent),
               subscriptionCommitId,
               topicName,
               tsFileInsertionEvent.getTsFile().getName());
-      uncommittedEvents.put(subscriptionCommitId, tsFileSubscriptionEvent);
-      return tsFileSubscriptionEvent;
+      eventRef.set(subscriptionEvent);
+      uncommittedEvents.put(subscriptionCommitId, subscriptionEvent);
+      return subscriptionEvent;
     }
 
     return null;

@@ -41,7 +41,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
-import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.payload.common.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -345,13 +345,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .map(event -> (SerializableEnrichedTabletsSubscriptionEvent) event)
             .collect(Collectors.toList());
 
-    // get subscriptionCommitIds from SerializableEnrichedTabletsSubscriptionEvent
-    final List<String> subscriptionCommitIds =
-        enrichedTabletsSubscriptionEvents.stream()
-            .map(SubscriptionEvent::getSubscriptionCommitId)
-            .collect(Collectors.toList());
-
-    // get enrichedTablets with byte buffer from SerializableEnrichedTabletsSubscriptionEvent
+    // get enriched tablets with byte buffer from SerializableEnrichedTabletsSubscriptionEvent
     final List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsWithByteBufferList =
         enrichedTabletsSubscriptionEvents.stream()
             .map(event -> new Pair<>(event.getByteBuffer(), event.getEnrichedTablets()))
@@ -364,20 +358,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
             .map(event -> (TsFileSubscriptionEvent) event)
             .collect(Collectors.toList());
 
+    // generate topicNameToTsFileNameMap
     final Map<String, String> topicNameToTsFileNameMap =
         tsFileSubscriptionEvents.stream()
             .collect(
                 Collectors.toMap(
                     TsFileSubscriptionEvent::getTopicName, TsFileSubscriptionEvent::getFileName));
-
-    // generate response
-    final TPipeSubscribeResp resp =
-        PipeSubscribePollResp.toTPipeSubscribeResp(
-            RpcUtils.SUCCESS_STATUS, enrichedTabletsWithByteBufferList, topicNameToTsFileNameMap);
-
-    // reset byte buffer
-    enrichedTabletsSubscriptionEvents.forEach(
-        SerializableEnrichedTabletsSubscriptionEvent::resetByteBuffer);
 
     // check timer
     if (timer.isExpired()) {
@@ -388,10 +374,18 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     LOGGER.info(
-        "Subscription: consumer {} poll topics {} successfully, commit ids: {}",
+        "Subscription: consumer {} poll topics {} successfully",
         consumerConfig,
-        topicNames,
-        subscriptionCommitIds);
+        topicNames);
+
+    // generate response
+    final TPipeSubscribeResp resp =
+        PipeSubscribePollResp.toTPipeSubscribeResp(
+            RpcUtils.SUCCESS_STATUS, enrichedTabletsWithByteBufferList, topicNameToTsFileNameMap);
+
+    // reset byte buffer
+    enrichedTabletsSubscriptionEvents.forEach(
+        SerializableEnrichedTabletsSubscriptionEvent::resetByteBuffer);
     return resp;
   }
 

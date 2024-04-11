@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
-import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.payload.common.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -124,13 +124,8 @@ public class SubscriptionSessionConnection extends SessionConnection {
     RpcUtils.verifySuccess(resp.status);
   }
 
-  public List<EnrichedTablets> poll(Set<String> topicNames)
-      throws TException, IOException, StatementExecutionException {
-    TPipeSubscribeResp resp =
-        client.pipeSubscribe(PipeSubscribePollReq.toTPipeSubscribeReq(topicNames, 0));
-    RpcUtils.verifySuccess(resp.status);
-    PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
-    return pollResp.getEnrichedTabletsList();
+  public List<EnrichedTablets> poll(Set<String> topicNames) throws TException, IOException, StatementExecutionException {
+    return poll(topicNames, 0);
   }
 
   public List<EnrichedTablets> poll(Set<String> topicNames, long timeoutMs)

@@ -23,21 +23,22 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 
 import java.util.List;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 
 public abstract class SubscriptionEvent {
 
   private static final long INVALID_TIMESTAMP = -1;
 
   private final List<EnrichedEvent> enrichedEvents;
-  private final String subscriptionCommitId;
+  private final SubscriptionCommitContext commitContext;
 
   private long lastPolledTimestamp;
   private long committedTimestamp;
 
   public SubscriptionEvent(
-      final List<EnrichedEvent> enrichedEvents, final String subscriptionCommitId) {
+      final List<EnrichedEvent> enrichedEvents, final SubscriptionCommitContext commitContext) {
     this.enrichedEvents = enrichedEvents;
-    this.subscriptionCommitId = subscriptionCommitId;
+    this.commitContext = commitContext;
 
     this.lastPolledTimestamp = INVALID_TIMESTAMP;
     this.committedTimestamp = INVALID_TIMESTAMP;
@@ -51,10 +52,6 @@ public abstract class SubscriptionEvent {
 
   public boolean isCommitted() {
     return committedTimestamp != INVALID_TIMESTAMP;
-  }
-
-  public String getSubscriptionCommitId() {
-    return subscriptionCommitId;
   }
 
   public void decreaseReferenceCount() {

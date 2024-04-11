@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload;
+package org.apache.iotdb.rpc.subscription.payload.common;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -31,67 +31,49 @@ import java.util.Objects;
 
 public class EnrichedTablets {
 
-  private transient String topicName;
-  private transient String subscriptionCommitId;
-  private transient List<Tablet> tablets;
-
-  public String getTopicName() {
-    return topicName;
-  }
-
-  public String getSubscriptionCommitId() {
-    return subscriptionCommitId;
-  }
+  private final transient SubscriptionCommitContext commitContext;
+  private final transient List<Tablet> tablets;
 
   public List<Tablet> getTablets() {
     return tablets;
   }
 
-  public EnrichedTablets() {
-    this.tablets = new ArrayList<>();
-  }
-
-  public EnrichedTablets(String topicName, List<Tablet> tablets, String subscriptionCommitId) {
-    this.topicName = topicName;
+  public EnrichedTablets(final SubscriptionCommitContext commitContext, final List<Tablet> tablets) {
+    this.commitContext = commitContext;
     this.tablets = tablets;
-    this.subscriptionCommitId = subscriptionCommitId;
   }
 
   /////////////////////////////// de/ser ///////////////////////////////
 
-  public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(topicName, stream);
-    ReadWriteIOUtils.write(subscriptionCommitId, stream);
+  public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(tablets.size(), stream);
-    for (Tablet tablet : tablets) {
+    for (final Tablet tablet : tablets) {
       tablet.serialize(stream);
     }
   }
 
-  public static EnrichedTablets deserialize(ByteBuffer buffer) {
-    final EnrichedTablets enrichedTablets = new EnrichedTablets();
-    enrichedTablets.topicName = ReadWriteIOUtils.readString(buffer);
-    enrichedTablets.subscriptionCommitId = ReadWriteIOUtils.readString(buffer);
-    int size = ReadWriteIOUtils.readInt(buffer);
+  public static EnrichedTablets deserialize(final ByteBuffer buffer) {
+    final SubscriptionCommitContext commitContext = SubscriptionCommitContext.deserialize(buffer);
+    final List<Tablet> tablets = new ArrayList<>();
+    final int size = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < size; ++i) {
-      enrichedTablets.tablets.add(Tablet.deserialize(buffer));
+      tablets.add(Tablet.deserialize(buffer));
     }
-    return enrichedTablets;
+    return new EnrichedTablets(commitContext, tablets);
   }
 
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    EnrichedTablets that = (EnrichedTablets) obj;
-    return Objects.equals(this.topicName, that.topicName)
-        && Objects.equals(this.subscriptionCommitId, that.subscriptionCommitId)
+    final EnrichedTablets that = (EnrichedTablets) obj;
+    return Objects.equals(this.commitContext, that.commitContext)
         && Objects.equals(this.tablets, that.tablets);
   }
 
@@ -99,6 +81,6 @@ public class EnrichedTablets {
   public int hashCode() {
     // Considering that the Tablet class has not implemented the hashCode method, the tablets member
     // should not be included when calculating the hashCode of EnrichedTablets.
-    return Objects.hash(topicName, subscriptionCommitId);
+    return Objects.hash(commitContext);
   }
 }
