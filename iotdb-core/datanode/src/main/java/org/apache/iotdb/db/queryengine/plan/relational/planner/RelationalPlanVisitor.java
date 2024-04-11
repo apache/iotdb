@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 
+/** If it's needed to use RelationalPlanVisitor? */
 public abstract class RelationalPlanVisitor<R, C> {
 
   public abstract R visitPlan(PlanNode node, C context);

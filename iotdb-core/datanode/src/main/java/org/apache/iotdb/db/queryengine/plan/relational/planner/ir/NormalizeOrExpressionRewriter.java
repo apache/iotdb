@@ -40,8 +40,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils
 import static org.apache.iotdb.db.relational.sql.tree.ComparisonExpression.Operator.EQUAL;
 import static org.apache.iotdb.db.relational.sql.tree.LogicalExpression.Operator.AND;
 
-/** Transfer to conjunction normal form. */
 public final class NormalizeOrExpressionRewriter {
+
   public static Expression normalizeOrExpression(Expression expression) {
     return ExpressionTreeRewriter.rewriteWith(new Visitor(), expression);
   }

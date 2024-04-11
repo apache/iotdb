@@ -25,8 +25,10 @@ import org.apache.iotdb.db.relational.sql.tree.CoalesceExpression;
 import org.apache.iotdb.db.relational.sql.tree.ComparisonExpression;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.relational.sql.tree.FunctionCall;
+import org.apache.iotdb.db.relational.sql.tree.Identifier;
 import org.apache.iotdb.db.relational.sql.tree.InPredicate;
 import org.apache.iotdb.db.relational.sql.tree.IsNullPredicate;
+import org.apache.iotdb.db.relational.sql.tree.Literal;
 import org.apache.iotdb.db.relational.sql.tree.LogicalExpression;
 import org.apache.iotdb.db.relational.sql.tree.NotExpression;
 import org.apache.iotdb.db.relational.sql.tree.NullIfExpression;
@@ -510,6 +512,16 @@ public final class ExpressionTreeRewriter<C> {
         }
       }
 
+      return node;
+    }
+
+    @Override
+    protected Expression visitIdentifier(Identifier node, Context<C> context) {
+      return node;
+    }
+
+    @Override
+    protected Expression visitLiteral(Literal node, Context<C> context) {
       return node;
     }
   }
