@@ -363,7 +363,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           "{} [{}] Total source files: {} seqFiles, {} unseqFiles. "
               + "Candidate source files: {} seqFiles, {} unseqFiles. "
               + "Selected source files: {} seqFiles, "
-              + "{} unseqFiles, total memory cost {} MB, "
+              + "{} unseqFiles, estimated memory cost {} MB, "
               + "total selected file size is {} MB, "
               + "total selected seq file size is {} MB, "
               + "total selected unseq file size is {} MB, "
