@@ -32,6 +32,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
@@ -248,7 +249,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     // subscribe topics
-    final Set<String> topicNames = req.getTopicNames();
+    Set<String> topicNames = req.getTopicNames();
+    topicNames = topicNames.stream().map(ASTVisitor::parseIdentifier).collect(Collectors.toSet());
     subscribe(consumerConfig, topicNames);
 
     LOGGER.info("Subscription: consumer {} subscribe {} successfully", consumerConfig, topicNames);
@@ -281,7 +283,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     // unsubscribe topics
-    final Set<String> topicNames = req.getTopicNames();
+    Set<String> topicNames = req.getTopicNames();
+    topicNames = topicNames.stream().map(ASTVisitor::parseIdentifier).collect(Collectors.toSet());
     unsubscribe(consumerConfig, topicNames);
 
     LOGGER.info(
@@ -320,6 +323,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           SubscriptionAgent.consumer()
               .getTopicsSubscribedByConsumer(
                   consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+    } else {
+      topicNames = topicNames.stream().map(ASTVisitor::parseIdentifier).collect(Collectors.toSet());
     }
 
     // poll
