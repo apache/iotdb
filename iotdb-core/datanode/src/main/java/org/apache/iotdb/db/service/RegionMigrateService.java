@@ -38,6 +38,7 @@ import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.rescon.memory.AbstractPoolManager;
@@ -524,9 +525,9 @@ public class RegionMigrateService implements IService {
       ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tRegionId);
       try {
         if (regionId instanceof DataRegionId) {
-          StorageEngine.getInstance().deleteDataRegion((DataRegionId) regionId);
+          DataNodeRegionManager.getInstance().deleteDataRegion((DataRegionId)regionId);
         } else {
-          SchemaEngine.getInstance().deleteSchemaRegion((SchemaRegionId) regionId);
+          DataNodeRegionManager.getInstance().deleteSchemaRegion((SchemaRegionId)regionId);
         }
       } catch (Exception e) {
         taskLogger.error("{}, deleteRegion {} error", REGION_MIGRATE_PROCESS, regionId, e);
