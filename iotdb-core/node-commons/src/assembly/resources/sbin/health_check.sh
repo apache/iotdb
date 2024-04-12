@@ -129,6 +129,7 @@ remote_ports_check() {
                unreachable_ports+="$port "
              else
                echo "$nc_output"
+               unreachable_ports+="$port "
              fi
            fi
       done
