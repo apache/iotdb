@@ -84,13 +84,17 @@ public class CompactionTaskManager implements IService {
 
   private final RateLimiter mergeWriteRateLimiter =
       RateLimiter.create(
-          IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec());
+          IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec()
+              * 1024.0
+              * 1024.0);
   private final RateLimiter compactionReadOperationRateLimiter =
       RateLimiter.create(
           IoTDBDescriptor.getInstance().getConfig().getCompactionReadOperationPerSec());
   private final RateLimiter compactionReadThroughputRateLimiter =
       RateLimiter.create(
-          IoTDBDescriptor.getInstance().getConfig().getCompactionReadThroughputMbPerSec());
+          IoTDBDescriptor.getInstance().getConfig().getCompactionReadThroughputMbPerSec()
+              * 1024.0
+              * 1024.0);
 
   private volatile boolean init = false;
 
