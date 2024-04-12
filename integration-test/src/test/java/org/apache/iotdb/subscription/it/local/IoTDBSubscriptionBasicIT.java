@@ -22,7 +22,6 @@ package org.apache.iotdb.subscription.it.local;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
@@ -49,7 +48,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+@Category({LocalStandaloneIT.class})
 public class IoTDBSubscriptionBasicIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionBasicIT.class);
@@ -79,11 +78,12 @@ public class IoTDBSubscriptionBasicIT {
     }
 
     // Create topic
+    final String topicName = "topic1";
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
-      session.createTopic("topic1");
+      session.createTopic(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -104,7 +104,7 @@ public class IoTDBSubscriptionBasicIT {
                       .autoCommit(false)
                       .buildPullConsumer()) {
                 consumer.open();
-                consumer.subscribe("topic1");
+                consumer.subscribe(topicName);
                 while (!isClosed.get()) {
                   try {
                     Thread.sleep(1000); // wait some time
@@ -128,10 +128,10 @@ public class IoTDBSubscriptionBasicIT {
                   }
                   consumer.commitSync(messages);
                 }
-                consumer.unsubscribe("topic1");
+                consumer.unsubscribe(topicName);
               } catch (final Exception e) {
                 e.printStackTrace();
-                // avoid fail
+                // Avoid failure
               } finally {
                 LOGGER.info("consumer exiting...");
               }
