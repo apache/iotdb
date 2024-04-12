@@ -401,17 +401,19 @@ public class ConfigNodeProcedureEnv {
             NodeType.DataNode,
             dataNodeLocation.getDataNodeId(),
             new NodeHeartbeatSample(currentTime, NodeStatus.Removing));
+    Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> removingHeartbeatSampleMap =
+        new TreeMap<>();
     // Force update RegionStatus to Removing
     getPartitionManager()
         .getAllReplicaSets(dataNodeLocation.getDataNodeId())
         .forEach(
             replicaSet ->
-                getLoadManager()
-                    .forceUpdateRegionGroupCache(
-                        replicaSet.getRegionId(),
-                        Collections.singletonMap(
-                            dataNodeLocation.getDataNodeId(),
-                            new RegionHeartbeatSample(currentTime, RegionStatus.Removing))));
+                removingHeartbeatSampleMap.put(
+                    replicaSet.getRegionId(),
+                    Collections.singletonMap(
+                        dataNodeLocation.getDataNodeId(),
+                        new RegionHeartbeatSample(currentTime, RegionStatus.Removing))));
+    getLoadManager().forceUpdateRegionGroupCache(removingHeartbeatSampleMap);
   }
 
   /**
@@ -563,8 +565,6 @@ public class ConfigNodeProcedureEnv {
   public void activateRegionGroup(
       Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> activateRegionGroupMap) {
     getLoadManager().forceUpdateRegionGroupCache(activateRegionGroupMap);
-    // force balance region leader to skip waiting for leader election
-    getLoadManager().forceBalanceRegionLeader();
     // Wait for leader election
     getLoadManager().waitForLeaderElection(new ArrayList<>(activateRegionGroupMap.keySet()));
   }

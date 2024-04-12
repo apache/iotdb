@@ -29,34 +29,13 @@ import org.junit.Test;
 public class NodeCacheTest {
 
   @Test
-  public void forceUpdateTest() {
-    DataNodeHeartbeatCache dataNodeHeartbeatCache = new DataNodeHeartbeatCache(1);
-
-    // Test default
-    Assert.assertEquals(NodeStatus.Unknown, dataNodeHeartbeatCache.getNodeStatus());
-    Assert.assertEquals(Long.MAX_VALUE, dataNodeHeartbeatCache.getLoadScore());
-
-    // Test force update to RunningStatus
-    long currentTime = System.nanoTime() - 2_000_000;
-    dataNodeHeartbeatCache.forceUpdate(new NodeHeartbeatSample(currentTime, NodeStatus.Running));
-    Assert.assertEquals(NodeStatus.Running, dataNodeHeartbeatCache.getNodeStatus());
-    Assert.assertEquals(0, dataNodeHeartbeatCache.getLoadScore());
-
-    // Test force update to ReadOnlyStatus
-    currentTime += 2000;
-    dataNodeHeartbeatCache.forceUpdate(new NodeHeartbeatSample(currentTime, NodeStatus.ReadOnly));
-    Assert.assertEquals(NodeStatus.ReadOnly, dataNodeHeartbeatCache.getNodeStatus());
-    Assert.assertEquals(Long.MAX_VALUE, dataNodeHeartbeatCache.getLoadScore());
-  }
-
-  @Test
-  public void periodicUpdateTest() {
+  public void updateStatisticsTest() {
     // Test DataNode heartbeat cache
     DataNodeHeartbeatCache dataNodeHeartbeatCache = new DataNodeHeartbeatCache(1);
     long currentTime = System.nanoTime();
     dataNodeHeartbeatCache.cacheHeartbeatSample(
         new NodeHeartbeatSample(currentTime, NodeStatus.Running));
-    Assert.assertTrue(dataNodeHeartbeatCache.periodicUpdate());
+    dataNodeHeartbeatCache.updateCurrentStatistics();
     Assert.assertEquals(NodeStatus.Running, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(0, dataNodeHeartbeatCache.getLoadScore());
 
@@ -65,7 +44,7 @@ public class NodeCacheTest {
     currentTime = System.nanoTime();
     configNodeHeartbeatCache.cacheHeartbeatSample(
         new NodeHeartbeatSample(currentTime, NodeStatus.Running));
-    Assert.assertTrue(configNodeHeartbeatCache.periodicUpdate());
+    configNodeHeartbeatCache.updateCurrentStatistics();
     Assert.assertEquals(NodeStatus.Running, configNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(0, configNodeHeartbeatCache.getLoadScore());
   }

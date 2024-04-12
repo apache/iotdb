@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
+import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
+import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
 
 import javax.validation.constraints.NotNull;
 
@@ -66,6 +68,16 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
 
   public synchronized void onConfigRegionGroupLeaderChanged() {
     pipeLeaderChangeHandler.onConfigRegionGroupLeaderChanged();
+  }
+
+  @Override
+  public void onNodeStatisticsChanged(NodeStatisticsChangeEvent event) {
+    // Do nothing
+  }
+
+  @Override
+  public void onRegionGroupStatisticsChanged(RegionGroupStatisticsChangeEvent event) {
+    // Do nothing
   }
 
   @Override

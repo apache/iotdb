@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
-import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatResp;
 
@@ -31,22 +31,24 @@ import org.apache.thrift.async.AsyncMethodCallback;
 public class ConfigNodeHeartbeatHandler implements AsyncMethodCallback<TConfigNodeHeartbeatResp> {
 
   private final int nodeId;
-  private final LoadCache loadCache;
+  private final LoadManager loadManager;
 
-  public ConfigNodeHeartbeatHandler(int nodeId, LoadCache loadCache) {
+  public ConfigNodeHeartbeatHandler(int nodeId, LoadManager loadManager) {
     this.nodeId = nodeId;
-    this.loadCache = loadCache;
+    this.loadManager = loadManager;
   }
 
   @Override
   public void onComplete(TConfigNodeHeartbeatResp resp) {
-    loadCache.cacheConfigNodeHeartbeatSample(nodeId, new NodeHeartbeatSample(resp));
+    loadManager
+        .getLoadCache()
+        .cacheConfigNodeHeartbeatSample(nodeId, new NodeHeartbeatSample(resp));
   }
 
   @Override
   public void onError(Exception e) {
     if (ThriftClient.isConnectionBroken(e)) {
-      loadCache.forceUpdateNodeCache(
+      loadManager.forceUpdateNodeCache(
           NodeType.ConfigNode, nodeId, new NodeHeartbeatSample(NodeStatus.Unknown));
     }
   }

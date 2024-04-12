@@ -19,20 +19,22 @@
 
 package org.apache.iotdb.confignode.manager.load.subscriber;
 
-import com.google.common.eventbus.AllowConcurrentEvents;
-import com.google.common.eventbus.Subscribe;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
+import org.apache.iotdb.tsfile.utils.Pair;
 
-public interface IClusterStatusSubscriber {
+import java.util.Map;
 
-  @Subscribe
-  @AllowConcurrentEvents
-  void onNodeStatisticsChanged(NodeStatisticsChangeEvent event);
+public class NodeStatisticsChangeEvent {
 
-  @Subscribe
-  @AllowConcurrentEvents
-  void onRegionGroupStatisticsChanged(RegionGroupStatisticsChangeEvent event);
+  // Map<NodeId, Pair<old NodeStatistics, new NodeStatistics>>
+  private final Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap;
 
-  @Subscribe
-  @AllowConcurrentEvents
-  void onConsensusStatisticsChanged(ConsensusStatisticsChangeEvent event);
+  public NodeStatisticsChangeEvent(
+      Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap) {
+    this.differentNodeStatisticsMap = differentNodeStatisticsMap;
+  }
+
+  public Map<Integer, Pair<NodeStatistics, NodeStatistics>> getDifferentNodeStatisticsMap() {
+    return differentNodeStatisticsMap;
+  }
 }

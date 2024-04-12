@@ -19,20 +19,25 @@
 
 package org.apache.iotdb.confignode.manager.load.subscriber;
 
-import com.google.common.eventbus.AllowConcurrentEvents;
-import com.google.common.eventbus.Subscribe;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
+import org.apache.iotdb.tsfile.utils.Pair;
 
-public interface IClusterStatusSubscriber {
+import java.util.Map;
 
-  @Subscribe
-  @AllowConcurrentEvents
-  void onNodeStatisticsChanged(NodeStatisticsChangeEvent event);
+public class RegionGroupStatisticsChangeEvent {
 
-  @Subscribe
-  @AllowConcurrentEvents
-  void onRegionGroupStatisticsChanged(RegionGroupStatisticsChangeEvent event);
+  private final Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
+      differentRegionGroupStatisticsMap;
 
-  @Subscribe
-  @AllowConcurrentEvents
-  void onConsensusStatisticsChanged(ConsensusStatisticsChangeEvent event);
+  public RegionGroupStatisticsChangeEvent(
+      Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
+          differentRegionGroupStatisticsMap) {
+    this.differentRegionGroupStatisticsMap = differentRegionGroupStatisticsMap;
+  }
+
+  public Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
+      getDifferentRegionGroupStatisticsMap() {
+    return differentRegionGroupStatisticsMap;
+  }
 }

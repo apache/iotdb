@@ -41,14 +41,12 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupCache;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -142,7 +140,7 @@ public class LoadCache {
         regionReplicaSet -> {
           TConsensusGroupId consensusGroupId = regionReplicaSet.getRegionId();
           regionGroupCacheMap.put(consensusGroupId, new RegionGroupCache());
-          consensusCacheMap.put(consensusGroupId, new ConsensusCache(consensusGroupId));
+          consensusCacheMap.put(consensusGroupId, new ConsensusCache());
         });
   }
 
@@ -214,8 +212,8 @@ public class LoadCache {
   public void cacheConsensusSample(
       TConsensusGroupId regionGroupId, ConsensusHeartbeatSample sample) {
     consensusCacheMap
-        .computeIfAbsent(regionGroupId, empty -> new ConsensusCache(regionGroupId))
-        .cacheConsensusSample(sample);
+        .computeIfAbsent(regionGroupId, empty -> new ConsensusCache())
+        .cacheHeartbeatSample(sample);
   }
 
   /** Update the NodeStatistics of all Nodes. */
@@ -233,20 +231,6 @@ public class LoadCache {
     consensusCacheMap.values().forEach(ConsensusCache::updateCurrentStatistics);
   }
 
-  public Map<TConsensusGroupId, Pair<Integer, Integer>> updateRegionGroupLeader() {
-    Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionGroupLeaderMap = new HashMap<>();
-    consensusCacheMap.forEach(
-        (regionGroupId, consensusCache) -> {
-          int prevLeader = consensusCache.getLeaderId();
-          if (consensusCache.periodicUpdate()) {
-            // Update and record the changed RegionGroupStatistics
-            differentRegionGroupLeaderMap.put(
-                regionGroupId, new Pair<>(prevLeader, consensusCache.getLeaderId()));
-          }
-        });
-    return differentRegionGroupLeaderMap;
-  }
-
   /**
    * Get the NodeStatistics of all Nodes.
    *
@@ -255,7 +239,8 @@ public class LoadCache {
   public Map<Integer, NodeStatistics> getCurrentNodeStatisticsMap() {
     Map<Integer, NodeStatistics> nodeStatisticsMap = new TreeMap<>();
     nodeCacheMap.forEach(
-        (nodeId, nodeCache) -> nodeStatisticsMap.put(nodeId, nodeCache.getStatistics()));
+        (nodeId, nodeCache) ->
+            nodeStatisticsMap.put(nodeId, (NodeStatistics) nodeCache.getCurrentStatistics()));
     return nodeStatisticsMap;
   }
 
@@ -505,6 +490,7 @@ public class LoadCache {
   /** Remove the specified RegionGroup's cache. */
   public void removeRegionGroupCache(TConsensusGroupId consensusGroupId) {
     regionGroupCacheMap.remove(consensusGroupId);
+    consensusCacheMap.remove(consensusGroupId);
   }
 
   /**
@@ -521,22 +507,6 @@ public class LoadCache {
   }
 
   /**
-   * Safely get the latest RegionPriorityMap.
-   *
-   * @return Map<RegionGroupId, RegionPriority>
-   */
-  public Map<TConsensusGroupId, TRegionReplicaSet> getRegionPriorityMap() {
-    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap = new ConcurrentHashMap<>();
-    consensusCacheMap.forEach(
-        (regionGroupId, consensusCache) -> {
-          if (!ConsensusCache.UN_READY_REGION_PRIORITY.equals(consensusCache.getRegionPriority())) {
-            regionPriorityMap.put(regionGroupId, consensusCache.getRegionPriority());
-          }
-        });
-    return regionPriorityMap;
-  }
-
-  /**
    * Wait for the specified RegionGroups to finish leader election.
    *
    * @param regionGroupIds Specified RegionGroupIds
@@ -549,7 +519,7 @@ public class LoadCache {
       regionGroupIds.forEach(
           regionGroupId -> {
             if (!consensusCacheMap.containsKey(regionGroupId)
-                || consensusCacheMap.get(regionGroupId).isRegionGroupUnready()) {
+                || consensusCacheMap.get(regionGroupId).isLeaderUnSelected()) {
               allRegionLeaderElected.set(false);
             }
           });
@@ -569,44 +539,6 @@ public class LoadCache {
     LOGGER.warn(
         "[RegionElection] The leader or priority of RegionGroups: {} is not determined after 10 heartbeat interval. Some function might fail.",
         regionGroupIds);
-  }
-
-  /**
-   * Force update the specified RegionGroup's leader.
-   *
-   * @param regionGroupId Specified RegionGroupId
-   * @param leaderId Leader DataNodeId
-   */
-  public void forceUpdateRegionLeader(TConsensusGroupId regionGroupId, int leaderId) {
-    consensusCacheMap
-        .computeIfAbsent(regionGroupId, empty -> new ConsensusCache(regionGroupId))
-        .forceUpdateRegionLeader(leaderId);
-  }
-
-  /**
-   * Force update the specified RegionGroup's priority.
-   *
-   * @param regionGroupId Specified RegionGroupId
-   * @param regionPriority Region route priority
-   */
-  public void forceUpdateRegionPriority(
-      TConsensusGroupId regionGroupId, TRegionReplicaSet regionPriority) {
-    consensusCacheMap
-        .computeIfAbsent(regionGroupId, empty -> new ConsensusCache(regionGroupId))
-        .forceUpdateRegionPriority(regionPriority);
-  }
-
-  /**
-   * Remove the specified RegionGroup's route cache.
-   *
-   * @param regionGroupId Specified RegionGroupId
-   */
-  public void removeRegionRouteCache(TConsensusGroupId regionGroupId) {
-    consensusCacheMap.remove(regionGroupId);
-  }
-
-  public boolean existUnreadyRegionGroup() {
-    return consensusCacheMap.values().stream().anyMatch(ConsensusCache::isRegionGroupUnready);
   }
 
   public void updateConfirmedConfigNodeEndPoints(

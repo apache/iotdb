@@ -66,7 +66,7 @@ public class GreedyPriorityTest {
       nodeCacheMap.put(i, new DataNodeHeartbeatCache(i));
       nodeCacheMap.get(i).cacheHeartbeatSample(new NodeHeartbeatSample(currentTimeNs, statuses[i]));
     }
-    nodeCacheMap.values().forEach(BaseNodeCache::periodicUpdate);
+    nodeCacheMap.values().forEach(BaseNodeCache::updateCurrentStatistics);
 
     /* Get the loadScoreMap */
     Map<Integer, Long> loadScoreMap = new ConcurrentHashMap<>();

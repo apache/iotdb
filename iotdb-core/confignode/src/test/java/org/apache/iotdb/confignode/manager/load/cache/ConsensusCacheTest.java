@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.confignode.manager.load.cache;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusCache;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusHeartbeatSample;
 
@@ -30,11 +28,10 @@ public class ConsensusCacheTest {
 
   @Test
   public void periodicUpdateTest() {
-    ConsensusCache consensusCache =
-        new ConsensusCache(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
+    ConsensusCache consensusCache = new ConsensusCache();
     ConsensusHeartbeatSample sample = new ConsensusHeartbeatSample(1L, 1);
-    consensusCache.cacheConsensusSample(sample);
-    Assert.assertTrue(consensusCache.periodicUpdate());
+    consensusCache.cacheHeartbeatSample(sample);
+    consensusCache.updateCurrentStatistics();
     Assert.assertEquals(1, consensusCache.getLeaderId());
   }
 }

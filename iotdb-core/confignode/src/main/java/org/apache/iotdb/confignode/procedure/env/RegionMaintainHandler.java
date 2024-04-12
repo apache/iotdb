@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLo
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
@@ -409,9 +410,6 @@ public class RegionMaintainHandler {
 
     // Remove the RegionGroupCache of the regionId
     configManager.getLoadManager().removeRegionGroupCache(regionId);
-
-    // Broadcast the latest RegionRouteMap when Region migration finished
-    configManager.getLoadManager().broadcastLatestRegionRouteMap();
   }
 
   public void removeRegionLocation(
@@ -430,9 +428,6 @@ public class RegionMaintainHandler {
 
     // Remove the RegionGroupCache of the regionId
     configManager.getLoadManager().removeRegionGroupCache(regionId);
-
-    // Broadcast the latest RegionRouteMap when Region migration finished
-    configManager.getLoadManager().broadcastLatestRegionRouteMap();
   }
 
   /**
@@ -659,8 +654,11 @@ public class RegionMaintainHandler {
       if (newLeaderNode.isPresent()) {
         configManager
             .getLoadManager()
-            .forceUpdateRegionLeader(regionId, newLeaderNode.get().getDataNodeId());
-
+            .forceUpdateConsensusCache(
+                Collections.singletonMap(
+                    regionId,
+                    new ConsensusHeartbeatSample(
+                        System.nanoTime(), newLeaderNode.get().getDataNodeId())));
         LOGGER.info(
             "{}, Change region leader finished for IOT_CONSENSUS, regionId: {}, newLeaderNode: {}",
             REGION_MIGRATE_PROCESS,

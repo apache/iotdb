@@ -195,7 +195,8 @@ public class HeartbeatService {
         // Skip itself and the ConfigNode that is processing heartbeat
         continue;
       }
-      ConfigNodeHeartbeatHandler handler = new ConfigNodeHeartbeatHandler(configNodeId, loadCache);
+      ConfigNodeHeartbeatHandler handler =
+          new ConfigNodeHeartbeatHandler(configNodeId, configManager.getLoadManager());
       AsyncConfigNodeHeartbeatClientPool.getInstance()
           .getConfigNodeHeartBeat(configNodeLocation.getInternalEndPoint(), heartbeatReq, handler);
     }
@@ -218,7 +219,7 @@ public class HeartbeatService {
       DataNodeHeartbeatHandler handler =
           new DataNodeHeartbeatHandler(
               dataNodeId,
-              loadCache,
+              configManager.getLoadManager(),
               configManager.getClusterQuotaManager().getDeviceNum(),
               configManager.getClusterQuotaManager().getTimeSeriesNum(),
               configManager.getClusterQuotaManager().getRegionDisk(),

@@ -25,15 +25,13 @@ import org.apache.iotdb.confignode.manager.load.cache.AbstractLoadCache;
 /** All the statistic interfaces that provided by HeartbeatCache. */
 public abstract class BaseNodeCache extends AbstractLoadCache {
 
-  // When the response time of heartbeat is more than 20s, the Node is considered as down
-  public static final long HEARTBEAT_TIMEOUT_TIME_IN_NS = 20_000_000_000L;
-
   protected final int nodeId;
 
   /** Constructor for NodeCache with default NodeStatistics. */
   protected BaseNodeCache(int nodeId) {
     super();
     this.nodeId = nodeId;
+    this.currentStatistics.set(NodeStatistics.generateDefaultNodeStatistics());
   }
 
   public int getNodeId() {

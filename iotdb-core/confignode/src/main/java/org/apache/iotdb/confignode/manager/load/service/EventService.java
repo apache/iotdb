@@ -20,16 +20,9 @@
 package org.apache.iotdb.confignode.manager.load.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
@@ -37,7 +30,6 @@ import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusStatist
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusStatisticsChangeEvent;
-import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.eventbus.AsyncEventBus;
@@ -49,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -265,26 +256,5 @@ public class EventService {
             consensusStatisticsEntry.getValue().getRight());
       }
     }
-  }
-
-  private void broadcastLatestRegionRouteMap() {
-    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap =
-        getLoadManager().getRegionPriorityMap();
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-    // Broadcast the RegionRouteMap to all DataNodes except the unknown ones
-    getNodeManager()
-        .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Removing, NodeStatus.ReadOnly)
-        .forEach(
-            onlineDataNode ->
-                dataNodeLocationMap.put(
-                    onlineDataNode.getLocation().getDataNodeId(), onlineDataNode.getLocation()));
-
-    long broadcastTime = System.currentTimeMillis();
-    AsyncClientHandler<TRegionRouteReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
-            new TRegionRouteReq(broadcastTime, regionPriorityMap),
-            dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
   }
 }
