@@ -264,6 +264,7 @@ public class AsyncClientHandler<Q, R> {
       case UPDATE_REGION_ROUTE_MAP:
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
       case UPDATE_TEMPLATE:
+      case UPDATE_TABLE:
       case CHANGE_REGION_LEADER:
       case KILL_QUERY_INSTANCE:
       default:

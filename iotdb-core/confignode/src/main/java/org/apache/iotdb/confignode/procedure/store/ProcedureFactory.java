@@ -39,13 +39,13 @@ import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProce
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
-import org.apache.iotdb.confignode.procedure.impl.schema.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;

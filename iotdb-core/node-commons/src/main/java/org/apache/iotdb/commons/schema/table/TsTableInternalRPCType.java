@@ -26,17 +26,17 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public enum TsTableInternalRPCType {
-  PRE_CREATE_TABLE((byte) 0),
-  ROLLBACK_CREATE_TABLE((byte) 1),
-  COMMIT_CREATE_TABLE((byte) 2);
+  PRE_CREATE((byte) 0),
+  ROLLBACK_CREATE((byte) 1),
+  COMMIT_CREATE((byte) 2);
 
   private final byte operationType;
 
-  TsTableInternalRPCType(byte operationType) {
+  private TsTableInternalRPCType(byte operationType) {
     this.operationType = operationType;
   }
 
-  public byte toByte() {
+  public byte getOperationType() {
     return operationType;
   }
 
@@ -52,13 +52,13 @@ public enum TsTableInternalRPCType {
   public static TsTableInternalRPCType getType(byte type) {
     switch (type) {
       case 0:
-        return PRE_CREATE_TABLE;
+        return PRE_CREATE;
       case 1:
-        return ROLLBACK_CREATE_TABLE;
+        return ROLLBACK_CREATE;
       case 2:
-        return COMMIT_CREATE_TABLE;
+        return COMMIT_CREATE;
       default:
-        throw new IllegalArgumentException("Unknown template update operation type" + type);
+        throw new IllegalArgumentException("Unknown table update operation type" + type);
     }
   }
 }

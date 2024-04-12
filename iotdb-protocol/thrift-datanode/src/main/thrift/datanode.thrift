@@ -325,6 +325,11 @@ struct TUpdateTemplateReq {
   2: required binary templateInfo
 }
 
+struct TUpdateTableReq {
+  1: required byte type
+  2: required binary tableInfo
+}
+
 struct TTsFilePieceReq {
     1: required binary body
     2: required string uuid
@@ -974,6 +979,11 @@ service IDataNodeRPCService {
   * Fetch fragment instance statistics for EXPLAIN ANALYZE
   */
   TFetchFragmentInstanceStatisticsResp fetchFragmentInstanceStatistics(TFetchFragmentInstanceStatisticsReq req)
+
+  /**
+  * Update Table Cache
+  */
+  common.TSStatus updateTable(TUpdateTableReq req)
 }
 
 service MPPDataExchangeService {

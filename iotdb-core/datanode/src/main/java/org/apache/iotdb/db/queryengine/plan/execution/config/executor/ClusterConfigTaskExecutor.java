@@ -43,7 +43,7 @@ import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.TsTableRPCUtil;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
@@ -2796,7 +2796,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         try {
           tsStatus =
               configNodeClient.createTable(
-                  ByteBuffer.wrap(TsTableRPCUtil.serializeSingleTsTable(database, table)));
+                  ByteBuffer.wrap(TsTableInternalRPCUtil.serializeSingleTsTable(database, table)));
         } catch (TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {

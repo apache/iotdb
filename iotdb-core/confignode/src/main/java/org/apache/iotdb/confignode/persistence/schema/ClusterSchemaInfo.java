@@ -45,6 +45,9 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -93,6 +96,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE_PATTERN;
 
 /**
@@ -1042,11 +1046,47 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   // region table management
 
-  public void preCreateTable() {}
+  public TSStatus preCreateTable(PreCreateTablePlan preCreateTablePlan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.preCreateTable(
+          new PartialPath(new String[] {ROOT, preCreateTablePlan.getDatabase()}),
+          preCreateTablePlan.getTable());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
 
-  public void rollbackCreateTable() {}
+  public TSStatus rollbackCreateTable(RollbackCreateTablePlan rollbackCreateTablePlan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.rollbackCreateTable(
+          new PartialPath(new String[] {ROOT, rollbackCreateTablePlan.getDatabase()}),
+          rollbackCreateTablePlan.getTableName());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
 
-  public void commitCreateTable() {}
+  public TSStatus commitCreateTable(CommitCreateTablePlan commitCreateTablePlan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.commitCreateTable(
+          new PartialPath(new String[] {ROOT, commitCreateTablePlan.getDatabase()}),
+          commitCreateTablePlan.getTableName());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
 
   public void getTable() {}
 

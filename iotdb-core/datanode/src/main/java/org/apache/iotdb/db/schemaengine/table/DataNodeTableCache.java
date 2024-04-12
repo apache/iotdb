@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.TsTableRPCUtil;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -63,7 +63,7 @@ public class DataNodeTableCache implements ITableCache {
         return;
       }
       Pair<Map<String, List<TsTable>>, Map<String, List<TsTable>>> tableInfo =
-          TsTableRPCUtil.deserializeTableInitializationInfo(tableInitializationBytes);
+          TsTableInternalRPCUtil.deserializeTableInitializationInfo(tableInitializationBytes);
       Map<String, List<TsTable>> usingMap = tableInfo.left;
       Map<String, List<TsTable>> preCreateMap = tableInfo.right;
       saveUpdatedTableInfo(usingMap, databaseTableMap);

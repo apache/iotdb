@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.table.TsTableRPCUtil;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -1133,7 +1133,7 @@ public class ClusterSchemaManager {
   // region table management
 
   public byte[] getAllTableInfoForDataNodeActivation() {
-    return TsTableRPCUtil.serializeTableInitializationInfo(
+    return TsTableInternalRPCUtil.serializeTableInitializationInfo(
         clusterSchemaInfo.getAllUsingTables(), clusterSchemaInfo.getAllPreCreateTables());
   }
 
