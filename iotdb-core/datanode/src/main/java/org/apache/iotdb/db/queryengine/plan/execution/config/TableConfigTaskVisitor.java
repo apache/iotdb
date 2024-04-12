@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -113,6 +112,10 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     for (ColumnDefinition columnDefinition : node.getElements()) {
       ColumnDefinition.ColumnCategory category = columnDefinition.getColumnCategory();
       String columnName = columnDefinition.getName().getValue();
+      if (table.getColumnSchema(columnName) != null) {
+        throw new SemanticException(
+            String.format("Columns in table shall not share the same name %s.", columnName));
+      }
       TSDataType dataType = getDataType(columnDefinition.getType());
       switch (category) {
         case ID:
@@ -122,7 +125,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           table.addColumnSchema(new AttributeColumnSchema(columnName, dataType));
           break;
         case TIME:
-          table.addColumnSchema(new TimeColumnSchema(columnName, dataType));
           break;
         case MEASUREMENT:
           table.addColumnSchema(

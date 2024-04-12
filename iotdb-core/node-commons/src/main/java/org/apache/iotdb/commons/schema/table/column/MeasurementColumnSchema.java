@@ -31,7 +31,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-public class MeasurementColumnSchema extends ColumnSchema {
+public class MeasurementColumnSchema extends TsTableColumnSchema {
 
   private final TSEncoding encoding;
 
@@ -56,8 +56,8 @@ public class MeasurementColumnSchema extends ColumnSchema {
   }
 
   @Override
-  public ColumnCategory getColumnCategory() {
-    return ColumnCategory.MEASUREMENT;
+  public TsTableColumnCategory getColumnCategory() {
+    return TsTableColumnCategory.MEASUREMENT;
   }
 
   public TSEncoding getEncoding() {

@@ -27,7 +27,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-public class AttributeColumnSchema extends ColumnSchema {
+public class AttributeColumnSchema extends TsTableColumnSchema {
   public AttributeColumnSchema(String columnName, TSDataType dataType) {
     super(columnName, dataType);
   }
@@ -37,8 +37,8 @@ public class AttributeColumnSchema extends ColumnSchema {
   }
 
   @Override
-  public ColumnCategory getColumnCategory() {
-    return ColumnCategory.ATTRIBUTE;
+  public TsTableColumnCategory getColumnCategory() {
+    return TsTableColumnCategory.ATTRIBUTE;
   }
 
   static AttributeColumnSchema deserialize(InputStream stream) throws IOException {

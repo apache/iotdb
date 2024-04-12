@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.commons.schema.table;
 
-import org.apache.iotdb.commons.schema.table.column.ColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.ColumnSchemaUtil;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
@@ -38,26 +40,31 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class TsTable {
 
+  private static final String TIME_COLUMN_NAME = "Time";
+  private static final TimeColumnSchema TIME_COLUMN_SCHEMA =
+      new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.INT64);
+
   private final String tableName;
 
-  private final Map<String, ColumnSchema> columnSchemaMap =
+  private final Map<String, TsTableColumnSchema> columnSchemaMap =
       Collections.synchronizedMap(new LinkedHashMap<>());
 
   private Map<String, String> props = null;
 
   public TsTable(String tableName) {
     this.tableName = tableName;
+    columnSchemaMap.put(TIME_COLUMN_NAME, TIME_COLUMN_SCHEMA);
   }
 
   public String getTableName() {
     return tableName;
   }
 
-  public ColumnSchema getColumnSchema(String columnName) {
+  public TsTableColumnSchema getColumnSchema(String columnName) {
     return columnSchemaMap.get(columnName);
   }
 
-  public void addColumnSchema(ColumnSchema columnSchema) {
+  public void addColumnSchema(TsTableColumnSchema columnSchema) {
     columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
   }
 
@@ -65,7 +72,7 @@ public class TsTable {
     return columnSchemaMap.size();
   }
 
-  public List<ColumnSchema> getColumnList() {
+  public List<TsTableColumnSchema> getColumnList() {
     return new ArrayList<>(columnSchemaMap.values());
   }
 
@@ -97,8 +104,8 @@ public class TsTable {
   public void serialize(OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(tableName, stream);
     ReadWriteIOUtils.write(columnSchemaMap.size(), stream);
-    for (ColumnSchema columnSchema : columnSchemaMap.values()) {
-      ColumnSchemaUtil.serialize(columnSchema, stream);
+    for (TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
+      TsTableColumnSchemaUtil.serialize(columnSchema, stream);
     }
     ReadWriteIOUtils.write(props, stream);
   }
@@ -108,7 +115,7 @@ public class TsTable {
     TsTable table = new TsTable(name);
     int columnNum = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < columnNum; i++) {
-      table.addColumnSchema(ColumnSchemaUtil.deserialize(inputStream));
+      table.addColumnSchema(TsTableColumnSchemaUtil.deserialize(inputStream));
     }
     table.props = ReadWriteIOUtils.readMap(inputStream);
     return table;
@@ -119,7 +126,7 @@ public class TsTable {
     TsTable table = new TsTable(name);
     int columnNum = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < columnNum; i++) {
-      table.addColumnSchema(ColumnSchemaUtil.deserialize(buffer));
+      table.addColumnSchema(TsTableColumnSchemaUtil.deserialize(buffer));
     }
     table.props = ReadWriteIOUtils.readMap(buffer);
     return table;

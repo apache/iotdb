@@ -27,7 +27,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-public class TimeColumnSchema extends ColumnSchema {
+public class TimeColumnSchema extends TsTableColumnSchema {
   public TimeColumnSchema(String columnName, TSDataType dataType) {
     super(columnName, dataType);
   }
@@ -37,8 +37,8 @@ public class TimeColumnSchema extends ColumnSchema {
   }
 
   @Override
-  public ColumnCategory getColumnCategory() {
-    return ColumnCategory.TIME;
+  public TsTableColumnCategory getColumnCategory() {
+    return TsTableColumnCategory.TIME;
   }
 
   static TimeColumnSchema deserialize(InputStream stream) throws IOException {

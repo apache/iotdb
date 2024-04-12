@@ -26,23 +26,23 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public class ColumnSchemaUtil {
+public class TsTableColumnSchemaUtil {
 
-  private ColumnSchemaUtil() {
+  private TsTableColumnSchemaUtil() {
     // do nothing
   }
 
-  public static void serialize(ColumnSchema columnSchema, OutputStream outputStream)
+  public static void serialize(TsTableColumnSchema columnSchema, OutputStream outputStream)
       throws IOException {
     ReadWriteIOUtils.write(columnSchema.getColumnCategory().getValue(), outputStream);
     columnSchema.serialize(outputStream);
   }
 
-  public static ColumnSchema deserialize(InputStream inputStream) throws IOException {
-    return deserialize(ColumnCategory.deserialize(inputStream), inputStream);
+  public static TsTableColumnSchema deserialize(InputStream inputStream) throws IOException {
+    return deserialize(TsTableColumnCategory.deserialize(inputStream), inputStream);
   }
 
-  private static ColumnSchema deserialize(ColumnCategory category, InputStream stream)
+  private static TsTableColumnSchema deserialize(TsTableColumnCategory category, InputStream stream)
       throws IOException {
     switch (category) {
       case ID:
@@ -58,11 +58,12 @@ public class ColumnSchemaUtil {
     }
   }
 
-  public static ColumnSchema deserialize(ByteBuffer buffer) {
-    return deserialize(ColumnCategory.deserialize(buffer), buffer);
+  public static TsTableColumnSchema deserialize(ByteBuffer buffer) {
+    return deserialize(TsTableColumnCategory.deserialize(buffer), buffer);
   }
 
-  private static ColumnSchema deserialize(ColumnCategory category, ByteBuffer buffer) {
+  private static TsTableColumnSchema deserialize(
+      TsTableColumnCategory category, ByteBuffer buffer) {
     switch (category) {
       case ID:
         return IdColumnSchema.deserialize(buffer);

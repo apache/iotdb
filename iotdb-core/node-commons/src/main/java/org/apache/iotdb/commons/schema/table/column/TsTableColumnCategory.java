@@ -26,7 +26,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public enum ColumnCategory {
+public enum TsTableColumnCategory {
   ID((byte) 0),
   ATTRIBUTE((byte) 1),
   TIME((byte) 2),
@@ -34,7 +34,7 @@ public enum ColumnCategory {
 
   private final byte category;
 
-  private ColumnCategory(byte category) {
+  private TsTableColumnCategory(byte category) {
     this.category = category;
   }
 
@@ -46,17 +46,17 @@ public enum ColumnCategory {
     ReadWriteIOUtils.write(category, stream);
   }
 
-  public static ColumnCategory deserialize(InputStream stream) throws IOException {
+  public static TsTableColumnCategory deserialize(InputStream stream) throws IOException {
     byte category = (byte) stream.read();
     return deserialize(category);
   }
 
-  public static ColumnCategory deserialize(ByteBuffer stream) {
+  public static TsTableColumnCategory deserialize(ByteBuffer stream) {
     byte category = stream.get();
     return deserialize(category);
   }
 
-  private static ColumnCategory deserialize(byte category) {
+  private static TsTableColumnCategory deserialize(byte category) {
     switch (category) {
       case 0:
         return ID;

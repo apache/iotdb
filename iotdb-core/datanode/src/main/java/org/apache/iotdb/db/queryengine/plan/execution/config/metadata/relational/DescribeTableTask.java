@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.ColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -64,7 +64,7 @@ public class DescribeTableTask implements IConfigTask {
             .collect(Collectors.toList());
 
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (ColumnSchema columnSchema : table.getColumnList()) {
+    for (TsTableColumnSchema columnSchema : table.getColumnList()) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder
           .getColumnBuilder(0)

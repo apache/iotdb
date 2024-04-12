@@ -27,7 +27,7 @@ import java.io.OutputStream;
 import java.util.Map;
 import java.util.Objects;
 
-public abstract class ColumnSchema {
+public abstract class TsTableColumnSchema {
 
   protected String columnName;
 
@@ -35,12 +35,12 @@ public abstract class ColumnSchema {
 
   protected Map<String, String> props = null;
 
-  ColumnSchema(String columnName, TSDataType dataType) {
+  TsTableColumnSchema(String columnName, TSDataType dataType) {
     this.columnName = columnName;
     this.dataType = dataType;
   }
 
-  ColumnSchema(String columnName, TSDataType dataType, Map<String, String> props) {
+  TsTableColumnSchema(String columnName, TSDataType dataType, Map<String, String> props) {
     this.columnName = columnName;
     this.dataType = dataType;
     this.props = props;
@@ -54,7 +54,7 @@ public abstract class ColumnSchema {
     return dataType;
   }
 
-  public abstract ColumnCategory getColumnCategory();
+  public abstract TsTableColumnCategory getColumnCategory();
 
   void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(columnName, outputStream);

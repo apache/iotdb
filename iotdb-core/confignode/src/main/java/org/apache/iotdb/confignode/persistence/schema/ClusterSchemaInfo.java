@@ -1088,10 +1088,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  public void getTable() {}
-
-  public void getAllTables() {}
-
   public Map<String, List<TsTable>> getAllUsingTables() {
     databaseReadWriteLock.readLock().lock();
     try {

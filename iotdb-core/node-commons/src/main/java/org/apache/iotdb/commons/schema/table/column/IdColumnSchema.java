@@ -27,7 +27,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-public class IdColumnSchema extends ColumnSchema {
+public class IdColumnSchema extends TsTableColumnSchema {
   public IdColumnSchema(String columnName, TSDataType dataType) {
     super(columnName, dataType);
   }
@@ -37,8 +37,8 @@ public class IdColumnSchema extends ColumnSchema {
   }
 
   @Override
-  public ColumnCategory getColumnCategory() {
-    return ColumnCategory.ID;
+  public TsTableColumnCategory getColumnCategory() {
+    return TsTableColumnCategory.ID;
   }
 
   static IdColumnSchema deserialize(InputStream stream) throws IOException {

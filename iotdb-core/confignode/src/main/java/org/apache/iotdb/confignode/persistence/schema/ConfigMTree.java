@@ -630,8 +630,7 @@ public class ConfigMTree {
 
   // region table management
 
-  public synchronized void preCreateTable(PartialPath database, TsTable table)
-      throws MetadataException {
+  public void preCreateTable(PartialPath database, TsTable table) throws MetadataException {
     IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
     if (databaseNode.hasChild(table.getTableName())) {
       throw new TableAlreadyExistsException(
