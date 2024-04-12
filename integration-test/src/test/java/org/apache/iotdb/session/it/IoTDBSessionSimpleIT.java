@@ -407,6 +407,7 @@ public class IoTDBSessionSimpleIT {
       SessionDataSet dataSet = session.executeQueryStatement("select * from root.存储组1.*");
       int count = 0;
       while (dataSet.hasNext()) {
+        dataSet.next();
         count++;
       }
       assertEquals(10, count);
