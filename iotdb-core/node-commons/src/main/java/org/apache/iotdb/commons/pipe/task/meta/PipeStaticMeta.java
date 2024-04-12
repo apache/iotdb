@@ -46,11 +46,11 @@ public class PipeStaticMeta {
   }
 
   public PipeStaticMeta(
-      String pipeName,
-      long creationTime,
-      Map<String, String> extractorAttributes,
-      Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes) {
+      final String pipeName,
+      final long creationTime,
+      final Map<String, String> extractorAttributes,
+      final Map<String, String> processorAttributes,
+      final Map<String, String> connectorAttributes) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     extractorParameters = new PipeParameters(extractorAttributes);
@@ -89,7 +89,7 @@ public class PipeStaticMeta {
     return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
   }
 
-  public void serialize(OutputStream outputStream) throws IOException {
+  public void serialize(final OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(pipeName, outputStream);
     ReadWriteIOUtils.write(creationTime, outputStream);
 
@@ -110,7 +110,7 @@ public class PipeStaticMeta {
     }
   }
 
-  public static PipeStaticMeta deserialize(InputStream inputStream) throws IOException {
+  public static PipeStaticMeta deserialize(final InputStream inputStream) throws IOException {
     final PipeStaticMeta pipeStaticMeta = new PipeStaticMeta();
 
     pipeStaticMeta.pipeName = ReadWriteIOUtils.readString(inputStream);
@@ -142,7 +142,7 @@ public class PipeStaticMeta {
     return pipeStaticMeta;
   }
 
-  public static PipeStaticMeta deserialize(ByteBuffer byteBuffer) {
+  public static PipeStaticMeta deserialize(final ByteBuffer byteBuffer) {
     final PipeStaticMeta pipeStaticMeta = new PipeStaticMeta();
 
     pipeStaticMeta.pipeName = ReadWriteIOUtils.readString(byteBuffer);
@@ -175,7 +175,7 @@ public class PipeStaticMeta {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
