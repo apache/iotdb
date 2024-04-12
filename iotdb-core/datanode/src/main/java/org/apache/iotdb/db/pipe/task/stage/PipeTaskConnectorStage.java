@@ -79,7 +79,8 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
 
   @Override
   public void dropSubtask() throws PipeException {
-    PipeConnectorSubtaskManager.instance().deregister(pipeName, regionId, connectorSubtaskId);
+    PipeConnectorSubtaskManager.instance()
+        .deregister(pipeName, creationTime, regionId, connectorSubtaskId);
   }
 
   public BoundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue() {

@@ -91,8 +91,6 @@ public class PipeTransferTsFileInsertionEventHandler
             : new RandomAccessFile(tsFile, "r");
 
     isSealSignalSent = new AtomicBoolean(false);
-
-    event.increaseReferenceCount(PipeTransferTsFileInsertionEventHandler.class.getName());
   }
 
   public void transfer(AsyncPipeDataTransferServiceClient client) throws TException, IOException {
