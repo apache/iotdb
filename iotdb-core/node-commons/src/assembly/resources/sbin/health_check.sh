@@ -28,7 +28,7 @@ fi
 
 source "${IOTDB_HOME}/sbin/iotdb-common.sh"
 
-HELP="Usage: $0 [-ips <ip1> <port1> <port2>,<ip2> <port3> <port4>] [-o <all/local/remotes>]"
+HELP="Usage: $0 [-ips <ip1> <port1> <port2>,<ip2> <port3> <port4>] [-o <all/local/remote>]"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
