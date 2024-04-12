@@ -2790,7 +2790,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createTable(TsTable table, String database) {
+  public SettableFuture<ConfigTaskResult> createTable(
+      TsTable table, String database, boolean ifNotExists) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -2813,15 +2814,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         // Keep waiting until task ends
       } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
 
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || (TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
+              && ifNotExists)) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
         LOGGER.warn(
             "Failed to create table {}.{} in config node, status is {}.",
             database,
             table.getTableName(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (ClientManagerException | TException e) {
       future.setException(e);

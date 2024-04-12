@@ -106,6 +106,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     if (node.getName().getPrefix().isPresent()) {
       database = node.getName().getPrefix().get().toString();
     }
+    if (database == null) {
+      throw new SemanticException("unknown database");
+    }
     TsTable table = new TsTable(node.getName().getSuffix());
     for (ColumnDefinition columnDefinition : node.getElements()) {
       ColumnDefinition.ColumnCategory category = columnDefinition.getColumnCategory();
@@ -133,7 +136,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           throw new IllegalArgumentException();
       }
     }
-    return new CreateTableTask(table, database);
+    return new CreateTableTask(table, database, node.isIfNotExists());
   }
 
   private TSDataType getDataType(DataType dataType) {
@@ -173,6 +176,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     if (node.getDbName().isPresent()) {
       database = node.getDbName().get().toString();
     }
+    if (database == null) {
+      throw new SemanticException("unknown database");
+    }
     return new ShowTablesTask(database);
   }
 
@@ -182,6 +188,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     String database = clientSession.getDatabaseName();
     if (node.getTable().getPrefix().isPresent()) {
       database = node.getTable().getPrefix().get().toString();
+    }
+    if (database == null) {
+      throw new SemanticException("unknown database");
     }
     return new DescribeTableTask(database, node.getTable().getSuffix());
   }

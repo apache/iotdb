@@ -37,6 +37,8 @@ import org.apache.iotdb.confignode.persistence.schema.mnode.impl.TableNodeStatus
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.table.TableAlreadyExistsException;
+import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.DatabaseCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeAboveDBCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeCollector;
@@ -632,7 +634,8 @@ public class ConfigMTree {
       throws MetadataException {
     IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
     if (databaseNode.hasChild(table.getTableName())) {
-      throw new MetadataException("Table already exists");
+      throw new TableAlreadyExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), table.getTableName());
     }
     ConfigTableNode tableNode =
         (ConfigTableNode)
@@ -650,7 +653,8 @@ public class ConfigMTree {
   public void commitCreateTable(PartialPath database, String tableName) throws MetadataException {
     IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
     if (!databaseNode.hasChild(tableName)) {
-      throw new MetadataException("Table not exists");
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
     }
     ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
     if (!tableNode.getStatus().equals(TableNodeStatus.PRE_CREATE)) {
@@ -659,27 +663,11 @@ public class ConfigMTree {
     tableNode.setStatus(TableNodeStatus.USING);
   }
 
-  public TsTable getTable(PartialPath database, String tableName) throws MetadataException {
-    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
-    return ((ConfigTableNode) databaseNode.getChild(tableName)).getTable();
-  }
-
-  public List<TsTable> getAllTables(PartialPath database) throws MetadataException {
-    List<TsTable> result = new ArrayList<>();
-    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
-    for (IConfigMNode child : databaseNode.getChildren().values()) {
-      if (child instanceof ConfigTableNode) {
-        result.add(((ConfigTableNode) child).getTable());
-      }
-    }
-    return result;
-  }
-
   public Map<String, List<TsTable>> getAllUsingTables() throws MetadataException {
     Map<String, List<TsTable>> result = new HashMap<>();
     List<PartialPath> databaseList = getAllDatabasePaths();
     for (PartialPath databasePath : databaseList) {
-      String database = databasePath.getFullPath().substring(ROOT.length());
+      String database = databasePath.getFullPath().substring(ROOT.length() + 1);
       IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
       for (IConfigMNode child : databaseNode.getChildren().values()) {
         if (child instanceof ConfigTableNode) {
@@ -698,7 +686,7 @@ public class ConfigMTree {
     Map<String, List<TsTable>> result = new HashMap<>();
     List<PartialPath> databaseList = getAllDatabasePaths();
     for (PartialPath databasePath : databaseList) {
-      String database = databasePath.getFullPath().substring(ROOT.length());
+      String database = databasePath.getFullPath().substring(ROOT.length() + 1);
       IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
       for (IConfigMNode child : databaseNode.getChildren().values()) {
         if (child instanceof ConfigTableNode) {

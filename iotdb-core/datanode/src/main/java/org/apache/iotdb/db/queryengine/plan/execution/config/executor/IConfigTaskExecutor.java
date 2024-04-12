@@ -254,7 +254,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> createDatabase(CreateDB createDB);
 
-  SettableFuture<ConfigTaskResult> createTable(TsTable table, String database);
+  SettableFuture<ConfigTaskResult> createTable(TsTable table, String database, boolean ifNotExists);
 
   SettableFuture<ConfigTaskResult> describeTable(String database, String tableName);
 

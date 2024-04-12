@@ -70,6 +70,7 @@ public class DataNodeTableCache implements ITableCache {
       Map<String, List<TsTable>> preCreateMap = tableInfo.right;
       saveUpdatedTableInfo(usingMap, databaseTableMap);
       saveUpdatedTableInfo(preCreateMap, preCreateTableMap);
+      LOGGER.info("Init DataNodeTableCache successfully");
     } finally {
       readWriteLock.writeLock().unlock();
     }
