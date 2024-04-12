@@ -108,6 +108,14 @@ pushd %~dp0..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
 popd
 
+pushd %~dp0..
+if NOT DEFINED CONFIGNODE_HOME set CONFIGNODE_HOME=%cd%
+popd
+
+pushd %~dp0..
+if NOT DEFINED DATANODE_HOME set DATANODE_HOME=%cd%
+popd
+
 if defined operate (
     if !operate! == all (
      if not defined ips (
@@ -166,18 +174,22 @@ IF EXIST "%IOTDB_CONF%\datanode-env.bat" (
   echo Can't find datanode-env.bat
 )
 
-set datanode_mem= %MEMORY_SIZE%
+set datanode_mem= %memory_size_in_mb%
 
 
 IF EXIST "%IOTDB_CONF%\confignode-env.bat" (
   CALL "%IOTDB_CONF%\confignode-env.bat" > nul 2>&1
-)
+) ELSE (
+   echo Can't find datanode-env.bat
+ )
 
-set confignode_mem= %MEMORY_SIZE%
+set confignode_mem= %memory_size_in_mb%
 
 set datanode_mem=%datanode_mem%
 set confignode_mem=%confignode_mem%
 
+set /A datanode_mem=!datanode_mem! / 1024
+set /A confignode_mem=!confignode_mem! / 1024
 echo Check: Installation Environment(Memory)
 echo Requirement: Allocate sufficient memory for IoTDB
 
@@ -196,13 +208,13 @@ if "%confignode_mem%" == "" (
     if "%datanode_mem%" == "" (
         echo Result: Total Memory %totalMemory% GB
     ) else  (
-        echo Result: Total Memory %totalMemory% GB, %datanode_mem% allocated to IoTDB DataNode
+        echo Result: Total Memory %totalMemory% GB, %datanode_mem%GB allocated to IoTDB DataNode
     )
 ) else (
     if "%datanode_mem%" == "" (
-        echo Result: Total Memory %totalMemory% GB, %confignode_mem% allocated to IoTDB ConfigNode
+        echo Result: Total Memory %totalMemory% GB, %confignode_mem%GB allocated to IoTDB ConfigNode
     ) else  (
-        echo Result: Total Memory %totalMemory% GB, %confignode_mem% allocated to IoTDB ConfigNode, %datanode_mem% allocated to IoTDB DataNode
+        echo Result: Total Memory %totalMemory% GB, %confignode_mem%GB allocated to IoTDB ConfigNode, %datanode_mem% GB allocated to IoTDB DataNode
 
     )
 )
@@ -422,7 +434,7 @@ for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
          if !dn_rpc_port_occupied!==0 (
            set spid=%%k
            call :checkIfIOTDBProcess !spid! is_iotdb
-           if %is_iotdb%==1 (
+           if !is_iotdb!==1 (
              set local_iotdb_occupied_ports=%dn_rpc_port% !local_iotdb_occupied_ports!
            ) else (
              set local_other_occupied_ports=%dn_rpc_port% !local_other_occupied_ports!
@@ -433,7 +445,7 @@ for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
          if !dn_internal_port_occupied!==0 (
              set spid=%%k
              call :checkIfIOTDBProcess !spid! is_iotdb
-             if %is_iotdb%==1 (
+             if !is_iotdb!==1 (
                 set local_iotdb_occupied_ports=%dn_internal_port% !local_iotdb_occupied_ports!
              ) else (
                 set local_other_occupied_ports=%dn_internal_port% !local_other_occupied_ports!
@@ -444,7 +456,7 @@ for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
          if !dn_mpp_data_exchange_port_occupied!==0 (
             set spid=%%k
             call :checkIfIOTDBProcess !spid! is_iotdb
-            if %is_iotdb%==1 (
+            if !is_iotdb!==1 (
                 set local_iotdb_occupied_ports=%dn_mpp_data_exchange_port% !local_iotdb_occupied_ports!
             ) else (
                 set local_other_occupied_ports=%dn_mpp_data_exchange_port% !local_other_occupied_ports!
@@ -455,7 +467,7 @@ for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
          if !dn_schema_region_consensus_port_occupied!==0 (
             set spid=%%k
             call :checkIfIOTDBProcess !spid! is_iotdb
-            if %is_iotdb%==1 (
+            if !is_iotdb!==1 (
               set local_iotdb_occupied_ports=%dn_schema_region_consensus_port% !local_iotdb_occupied_ports!
             ) else (
               set local_other_occupied_ports=%dn_schema_region_consensus_port% !local_other_occupied_ports!
@@ -466,7 +478,7 @@ for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
          if !dn_data_region_consensus_port_occupied!==0 (
            set spid=%%k
            call :checkIfIOTDBProcess !spid! is_iotdb
-           if %is_iotdb%==1 (
+           if !is_iotdb!==1 (
               set local_iotdb_occupied_ports=%dn_data_region_consensus_port% !local_iotdb_occupied_ports!
 
            ) else (
@@ -478,7 +490,7 @@ for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
          if !cn_internal_port_occupied!==0 (
              set spid=%%k
              call :checkIfIOTDBProcess !spid! is_iotdb
-             if %is_iotdb%==1 (
+             if !is_iotdb!==1 (
               set local_iotdb_occupied_ports=%cn_internal_port% !local_iotdb_occupied_ports!
              ) else (
               set local_other_occupied_ports=%cn_internal_port% !local_other_occupied_ports!
@@ -489,7 +501,7 @@ for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
          if !cn_consensus_port_occupied!==0 (
            set spid=%%k
            call :checkIfIOTDBProcess !spid! is_iotdb
-           if %is_iotdb%==1 (
+           if !is_iotdb!==1 (
                set local_iotdb_occupied_ports=%cn_consensus_port% !local_iotdb_occupied_ports!
            ) else (
                set local_other_occupied_ports=%cn_consensus_port% !local_other_occupied_ports!

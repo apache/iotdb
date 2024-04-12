@@ -321,17 +321,17 @@ local_mem_check() {
   source "${IOTDB_HOME}/conf/confignode-env.sh" >/dev/null 2>&1
 
   total_memory=$(free -h | awk '/Mem:/ {print $2}')
-  confignode_memory=$MEMORY_SIZE
+  confignode_memory=$(echo "scale=2; $memory_size_in_mb / 1024" | bc)
 
   source "${IOTDB_HOME}/conf/datanode-env.sh" >/dev/null 2>&1
-  datanode_memory=$MEMORY_SIZE
+  datanode_memory=$(echo "scale=2; $memory_size_in_mb / 1024" | bc)
 
   if [ -n "$confignode_memory" ] && [ -n "$datanode_memory" ]; then
-    echo "Result: Total Memory ${total_memory}, ${confignode_memory} allocated to IoTDB ConfigNode, ${datanode_memory} allocated to IoTDB DataNode"
+    echo "Result: Total Memory ${total_memory}, ${confignode_memory} G allocated to IoTDB ConfigNode, ${datanode_memory} G allocated to IoTDB DataNode"
   elif [ -n "$confignode_memory" ]; then
-    echo "Result: Total Memory ${total_memory}, ${confignode_memory} allocated to IoTDB ConfigNode"
+    echo "Result: Total Memory ${total_memory}, ${confignode_memory} G allocated to IoTDB ConfigNode"
   elif [ -n "$datanode_memory" ]; then
-    echo "Result: Total Memory ${total_memory}, ${datanode_memory} allocated to IoTDB DataNode"
+    echo "Result: Total Memory ${total_memory}, ${datanode_memory} G allocated to IoTDB DataNode"
   else
     echo "Result: Total Memory ${total_memory}."
   fi
