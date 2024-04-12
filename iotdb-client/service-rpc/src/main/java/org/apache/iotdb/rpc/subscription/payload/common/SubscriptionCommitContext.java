@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class SubscriptionCommitContext {
+public class SubscriptionCommitContext implements Comparable<SubscriptionCommitContext> {
 
   private final int dataNodeId;
 
@@ -127,5 +127,10 @@ public class SubscriptionCommitContext {
         + ", commitId="
         + commitId
         + "}";
+  }
+
+  @Override
+  public int compareTo(SubscriptionCommitContext commitContext) {
+    return 0;
   }
 }

@@ -22,13 +22,9 @@ package org.apache.iotdb.rpc.subscription.payload.response;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.rpc.subscription.payload.common.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -61,7 +57,11 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
     try {
       resp.body = new ArrayList<>();
       for (final SubscriptionRawMessage message : messages) {
-        resp.body.add(SubscriptionRawMessage.serialize(message));
+        if (Objects.nonNull(message.getByteBuffer())) {
+          resp.body.add(message.getByteBuffer());
+        } else {
+          resp.body.add(SubscriptionRawMessage.serialize(message));
+        }
       }
     } catch (IOException e) {
       resp.status = RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, e.getMessage());
@@ -88,32 +88,6 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
     resp.body = pollResp.body;
 
     return resp;
-  }
-
-  /////////////////////////////// Utility ///////////////////////////////
-
-  public static List<ByteBuffer> serializeEnrichedTabletsWithByteBufferList(
-      List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsWithByteBufferList)
-      throws IOException {
-    List<ByteBuffer> byteBufferList = new ArrayList<>();
-    for (Pair<ByteBuffer, EnrichedTablets> enrichedTabletsWithByteBuffer :
-        enrichedTabletsWithByteBufferList) {
-      if (Objects.nonNull(enrichedTabletsWithByteBuffer.getLeft())) {
-        byteBufferList.add(enrichedTabletsWithByteBuffer.getLeft());
-      } else {
-        byteBufferList.add(serializeEnrichedTablets(enrichedTabletsWithByteBuffer.getRight()));
-      }
-    }
-    return byteBufferList;
-  }
-
-  public static ByteBuffer serializeEnrichedTablets(EnrichedTablets enrichedTablets)
-      throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      enrichedTablets.serialize(outputStream);
-      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    }
   }
 
   /////////////////////////////// Object ///////////////////////////////

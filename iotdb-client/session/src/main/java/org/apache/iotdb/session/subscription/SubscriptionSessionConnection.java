@@ -25,6 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
@@ -138,11 +139,11 @@ public class SubscriptionSessionConnection extends SessionConnection {
     return pollResp.getMessages();
   }
 
-  public void commitSync(Map<String, List<String>> topicNameToSubscriptionCommitIds)
+  public void commitSync(List<SubscriptionCommitContext> subscriptionCommitContexts)
       throws TException, IOException, StatementExecutionException {
     TPipeSubscribeResp resp =
         client.pipeSubscribe(
-            PipeSubscribeCommitReq.toTPipeSubscribeReq(topicNameToSubscriptionCommitIds));
+            PipeSubscribeCommitReq.toTPipeSubscribeReq(subscriptionCommitContexts));
     RpcUtils.verifySuccess(resp.status);
   }
 }

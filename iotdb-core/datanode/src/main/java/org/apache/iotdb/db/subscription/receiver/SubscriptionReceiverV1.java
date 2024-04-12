@@ -41,8 +41,6 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessageType;
-import org.apache.iotdb.rpc.subscription.payload.common.TabletsMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -358,23 +356,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         topicNames,
         commitContexts);
 
-    // serialize byte buffer
-    rawMessages.stream()
-        .filter(
-            (message -> message.getMessageType() == SubscriptionRawMessageType.TABLETS.getType()))
-        .forEach(message -> ((TabletsMessagePayload) message.getMessagePayload()).trySerialize());
-
     // generate response
-    final TPipeSubscribeResp resp =
-        PipeSubscribePollResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, rawMessages);
-
-    // reset byte buffer
-    rawMessages.stream()
-        .filter(
-            (message -> message.getMessageType() == SubscriptionRawMessageType.TABLETS.getType()))
-        .forEach(
-            message -> ((TabletsMessagePayload) message.getMessagePayload()).resetByteBuffer());
-    return resp;
+    return PipeSubscribePollResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, rawMessages);
   }
 
   private TPipeSubscribeResp handlePipeSubscribePollTsFile(final PipeSubscribePollTsFileReq req) {

@@ -23,7 +23,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
-import org.apache.iotdb.rpc.subscription.payload.common.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -147,20 +148,20 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   public List<SubscriptionMessage> poll(Set<String> topicNames, long timeoutMs)
       throws TException, IOException, StatementExecutionException {
-    List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
+    List<SubscriptionRawMessage> rawMessages = new ArrayList<>();
 
     acquireReadLock();
     try {
       for (final SubscriptionProvider provider : getAllAvailableProviders()) {
         // TODO: network timeout
-        enrichedTabletsList.addAll(provider.getSessionConnection().poll(topicNames, timeoutMs));
+        rawMessages.addAll(provider.getSessionConnection().poll(topicNames, timeoutMs));
       }
     } finally {
       releaseReadLock();
     }
 
     List<SubscriptionMessage> messages =
-        enrichedTabletsList.stream().map(SubscriptionMessage::new).collect(Collectors.toList());
+        rawMessages.stream().map(SubscriptionRawMessageParser::parse).collect(Collectors.toList());
 
     if (autoCommit) {
       long currentTimestamp = System.currentTimeMillis();
@@ -183,17 +184,15 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   public void commitSync(Iterable<SubscriptionMessage> messages)
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
-    Map<Integer, Map<String, List<String>>> dataNodeIdToTopicNameToSubscriptionCommitIds =
+    Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
         new HashMap<>();
     for (SubscriptionMessage message : messages) {
-      dataNodeIdToTopicNameToSubscriptionCommitIds
-          .computeIfAbsent(
-              message.parseDataNodeIdFromSubscriptionCommitId(), (id) -> new HashMap<>())
-          .computeIfAbsent(message.getTopicName(), (topicName) -> new ArrayList<>())
-          .add(message.getSubscriptionCommitId());
+      dataNodeIdToSubscriptionCommitContexts
+          .computeIfAbsent(message.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
+          .add(message.getCommitContext());
     }
-    for (Map.Entry<Integer, Map<String, List<String>>> entry :
-        dataNodeIdToTopicNameToSubscriptionCommitIds.entrySet()) {
+    for (Map.Entry<Integer, List<SubscriptionCommitContext>> entry :
+        dataNodeIdToSubscriptionCommitContexts.entrySet()) {
       commitSyncInternal(entry.getKey(), entry.getValue());
     }
   }
@@ -201,7 +200,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   /////////////////////////////// utility ///////////////////////////////
 
   private void commitSyncInternal(
-      int dataNodeId, Map<String, List<String>> topicNameToSubscriptionCommitIds)
+      int dataNodeId, List<SubscriptionCommitContext> subscriptionCommitContexts)
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     acquireReadLock();
     try {
@@ -212,7 +211,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
                 "something unexpected happened when commit messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
                 dataNodeId));
       }
-      provider.getSessionConnection().commitSync(topicNameToSubscriptionCommitIds);
+      provider.getSessionConnection().commitSync(subscriptionCommitContexts);
     } finally {
       releaseReadLock();
     }

@@ -19,42 +19,30 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.subscription.payload.common.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
+import java.util.List;
 import java.util.Objects;
 
 public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
+  private final SubscriptionCommitContext commitContext;
+
   // TODO: support more data format
   private final SubscriptionMessagePayload payload;
 
-  private final String topicName;
-  private final String subscriptionCommitId;
-
-  public SubscriptionMessage(EnrichedTablets tablets) {
-    this.payload = new SubscriptionSessionDataSets(tablets.getTablets());
-    this.topicName = tablets.getTopicName();
-    this.subscriptionCommitId = tablets.getSubscriptionCommitId();
+  public SubscriptionMessage(SubscriptionCommitContext commitContext, List<Tablet> tablets) {
+    this.commitContext = commitContext;
+    this.payload = new SubscriptionSessionDataSets(tablets);
   }
 
-  public SubscriptionMessage(String topicName, String fileName) {}
-
-  public String getTopicName() {
-    return topicName;
+  public SubscriptionCommitContext getCommitContext() {
+    return commitContext;
   }
 
   public SubscriptionMessagePayload getPayload() {
     return payload;
-  }
-
-  String getSubscriptionCommitId() {
-    // make it package-private
-    return subscriptionCommitId;
-  }
-
-  int parseDataNodeIdFromSubscriptionCommitId() {
-    // make it package-private
-    return Integer.parseInt(subscriptionCommitId.split("#")[0]);
   }
 
   /////////////////////////////// override ///////////////////////////////
@@ -68,20 +56,17 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
       return false;
     }
     SubscriptionMessage that = (SubscriptionMessage) obj;
-    return Objects.equals(this.topicName, that.topicName)
-        && Objects.equals(this.subscriptionCommitId, that.subscriptionCommitId);
+    return Objects.equals(this.payload, that.payload)
+        && Objects.equals(this.commitContext, that.commitContext);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicName, subscriptionCommitId);
+    return Objects.hash(payload, commitContext);
   }
 
   @Override
   public int compareTo(SubscriptionMessage that) {
-    if (this.topicName.compareTo(that.topicName) == 0) {
-      return this.subscriptionCommitId.compareTo(that.subscriptionCommitId);
-    }
-    return this.topicName.compareTo(that.topicName);
+    return this.commitContext.compareTo(that.commitContext);
   }
 }

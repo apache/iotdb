@@ -170,7 +170,7 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
         // Serialize the uncommitted and pollable event.
         if (currentEvent.pollable()) {
           // No need to concern whether serialization is successful.
-          ((TabletsMessagePayload) currentEvent.getMessage().getMessagePayload()).trySerialize();
+          currentEvent.getMessage().trySerialize();
         }
       }
     } catch (final InterruptedException e) {
