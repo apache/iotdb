@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProper
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import org.slf4j.Logger;
@@ -30,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class CommonConfig {
@@ -224,6 +226,7 @@ public class CommonConfig {
   private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = (long) 2 * 1024 * 1024; // 2MB
   private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
+  private long pipeListeningQueueTransferSnapshotThreshold = 1000;
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
@@ -255,6 +258,12 @@ public class CommonConfig {
 
   // time in nanosecond precision when starting up
   private final long startUpNanosecond = System.nanoTime();
+
+  private final boolean isIntegrationTest =
+      System.getProperties().containsKey(IoTDBConstant.INTEGRATION_TEST_KILL_POINTS);
+
+  private final Set<String> enabledKillPoints =
+      KillPoint.parseKillPoints(System.getProperty(IoTDBConstant.INTEGRATION_TEST_KILL_POINTS));
 
   CommonConfig() {
     // Empty constructor
@@ -943,6 +952,15 @@ public class CommonConfig {
     this.pipeLeaderCacheMemoryUsagePercentage = pipeLeaderCacheMemoryUsagePercentage;
   }
 
+  public long getPipeListeningQueueTransferSnapshotThreshold() {
+    return pipeListeningQueueTransferSnapshotThreshold;
+  }
+
+  public void setPipeListeningQueueTransferSnapshotThreshold(
+      long pipeListeningQueueTransferSnapshotThreshold) {
+    this.pipeListeningQueueTransferSnapshotThreshold = pipeListeningQueueTransferSnapshotThreshold;
+  }
+
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {
     return subscriptionSubtaskExecutorMaxThreadNum;
   }
@@ -1072,5 +1090,13 @@ public class CommonConfig {
 
   public long getStartUpNanosecond() {
     return startUpNanosecond;
+  }
+
+  public boolean isIntegrationTest() {
+    return isIntegrationTest;
+  }
+
+  public Set<String> getEnabledKillPoints() {
+    return enabledKillPoints;
   }
 }

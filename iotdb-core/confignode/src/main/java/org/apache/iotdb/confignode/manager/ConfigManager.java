@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -90,8 +91,8 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.node.NodeMetrics;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
+import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
-import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.manager.subscription.SubscriptionManager;
@@ -217,7 +218,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /** Entry of all management, AssignPartitionManager, AssignRegionManager. */
@@ -1788,7 +1788,7 @@ public class ConfigManager implements IManager {
       HashSet<TDatabaseSchema> deleteDatabaseSchemas = new HashSet<>();
       List<PartialPath> deleteTimeSeriesPatternPaths = new ArrayList<>();
       for (PartialPath path : rawPatternTree.getAllPathPatterns()) {
-        if (path.getFullPath().endsWith(MULTI_LEVEL_PATH_WILDCARD)
+        if (PathPatternUtil.isMultiLevelMatchWildcard(path.getMeasurement())
             && !path.getDevicePath().hasWildcard()) {
           Map<String, TDatabaseSchema> databaseSchemaMap =
               getClusterSchemaManager().getMatchedDatabaseSchemasByPrefix(path.getDevicePath());
@@ -2009,6 +2009,7 @@ public class ConfigManager implements IManager {
     TPipeTransferResp result =
         PipeConfigNodeAgent.receiver()
             .receive(
+                req.getClientId(),
                 req.isAirGap
                     ? new AirGapPseudoTPipeTransferRequest()
                         .setVersion(req.version)
@@ -2016,6 +2017,16 @@ public class ConfigManager implements IManager {
                         .setBody(req.body)
                     : new TPipeTransferReq(req.version, req.type, req.body));
     return new TPipeConfigTransferResp(result.status).setBody(result.body);
+  }
+
+  @Override
+  public TSStatus handleClientExit(String clientId) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    PipeConfigNodeAgent.receiver().handleClientExit(clientId);
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

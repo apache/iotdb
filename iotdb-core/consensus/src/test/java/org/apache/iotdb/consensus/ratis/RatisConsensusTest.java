@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -123,10 +124,10 @@ public class RatisConsensusTest {
         () -> servers.get(0).createLocalPeer(group.getGroupId(), original));
 
     // add 2 members
-    servers.get(1).createLocalPeer(group.getGroupId(), peers.subList(1, 2));
+    servers.get(1).createLocalPeer(group.getGroupId(), Collections.emptyList());
     servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
 
-    servers.get(2).createLocalPeer(group.getGroupId(), peers.subList(2, 3));
+    servers.get(2).createLocalPeer(group.getGroupId(), Collections.emptyList());
     servers.get(0).addRemotePeer(group.getGroupId(), peers.get(2));
 
     miniCluster.waitUntilActiveLeaderElectedAndReady();
@@ -173,7 +174,7 @@ public class RatisConsensusTest {
     servers.get(0).createLocalPeer(group.getGroupId(), peers.subList(0, 1));
     doConsensus(0, 10, 10);
 
-    servers.get(1).createLocalPeer(group.getGroupId(), peers.subList(1, 2));
+    servers.get(1).createLocalPeer(group.getGroupId(), Collections.emptyList());
     servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
     Assert.assertThrows(
         PeerAlreadyInConsensusGroupException.class,

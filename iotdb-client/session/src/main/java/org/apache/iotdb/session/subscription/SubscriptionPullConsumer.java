@@ -21,8 +21,8 @@ package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.subscription.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 
 import org.apache.thrift.TException;
@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
@@ -52,7 +53,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPullConsumer.class);
 
   private final boolean autoCommit;
-  private final int autoCommitInterval;
+  private final long autoCommitIntervalMs;
 
   private ScheduledExecutorService autoCommitWorkerExecutor;
   private SortedMap<Long, Set<SubscriptionMessage>> uncommittedMessages;
@@ -65,26 +66,29 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     super(builder);
 
     this.autoCommit = builder.autoCommit;
-    this.autoCommitInterval = builder.autoCommitInterval;
+    this.autoCommitIntervalMs = builder.autoCommitIntervalMs;
   }
 
-  public SubscriptionPullConsumer(Properties config) {
+  public SubscriptionPullConsumer(Properties properties) {
     this(
-        config,
+        properties,
         (Boolean)
-            config.getOrDefault(
+            properties.getOrDefault(
                 ConsumerConstant.AUTO_COMMIT_KEY, ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE),
-        (Integer)
-            config.getOrDefault(
-                ConsumerConstant.AUTO_COMMIT_INTERVAL_KEY,
-                ConsumerConstant.AUTO_COMMIT_INTERVAL_DEFAULT_VALUE));
+        (Long)
+            properties.getOrDefault(
+                ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_KEY,
+                ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE));
   }
 
-  private SubscriptionPullConsumer(Properties config, boolean autoCommit, int autoCommitInterval) {
-    super(new Builder().autoCommit(autoCommit).autoCommitInterval(autoCommitInterval), config);
+  private SubscriptionPullConsumer(
+      Properties properties, boolean autoCommit, long autoCommitIntervalMs) {
+    super(
+        new Builder().autoCommit(autoCommit).autoCommitIntervalMs(autoCommitIntervalMs),
+        properties);
 
     this.autoCommit = autoCommit;
-    this.autoCommitInterval = autoCommitInterval;
+    this.autoCommitIntervalMs = autoCommitIntervalMs;
   }
 
   /////////////////////////////// open & close ///////////////////////////////
@@ -143,34 +147,42 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   public List<SubscriptionMessage> poll(Set<String> topicNames, long timeoutMs)
       throws TException, IOException, StatementExecutionException {
-    // TODO: network timeout
     List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
-    for (SubscriptionSessionConnection connection : getSessionConnections()) {
-      enrichedTabletsList.addAll(connection.poll(topicNames, timeoutMs));
+
+    acquireReadLock();
+    try {
+      for (final SubscriptionProvider provider : getAllAvailableProviders()) {
+        // TODO: network timeout
+        enrichedTabletsList.addAll(provider.getSessionConnection().poll(topicNames, timeoutMs));
+      }
+    } finally {
+      releaseReadLock();
     }
 
     List<SubscriptionMessage> messages =
         enrichedTabletsList.stream().map(SubscriptionMessage::new).collect(Collectors.toList());
+
     if (autoCommit) {
       long currentTimestamp = System.currentTimeMillis();
-      long index = currentTimestamp / autoCommitInterval;
-      if (currentTimestamp % autoCommitInterval == 0) {
+      long index = currentTimestamp / autoCommitIntervalMs;
+      if (currentTimestamp % autoCommitIntervalMs == 0) {
         index -= 1;
       }
       uncommittedMessages
           .computeIfAbsent(index, o -> new ConcurrentSkipListSet<>())
           .addAll(messages);
     }
+
     return messages;
   }
 
   public void commitSync(SubscriptionMessage message)
-      throws TException, IOException, StatementExecutionException {
+      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     commitSync(Collections.singletonList(message));
   }
 
   public void commitSync(Iterable<SubscriptionMessage> messages)
-      throws TException, IOException, StatementExecutionException {
+      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     Map<Integer, Map<String, List<String>>> dataNodeIdToTopicNameToSubscriptionCommitIds =
         new HashMap<>();
     for (SubscriptionMessage message : messages) {
@@ -190,8 +202,20 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   private void commitSyncInternal(
       int dataNodeId, Map<String, List<String>> topicNameToSubscriptionCommitIds)
-      throws TException, IOException, StatementExecutionException {
-    getSessionConnection(dataNodeId).commitSync(topicNameToSubscriptionCommitIds);
+      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+    acquireReadLock();
+    try {
+      final SubscriptionProvider provider = getProvider(dataNodeId);
+      if (Objects.isNull(provider) || !provider.isAvailable()) {
+        throw new IoTDBConnectionException(
+            String.format(
+                "something unexpected happened when commit messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                dataNodeId));
+      }
+      provider.getSessionConnection().commitSync(topicNameToSubscriptionCommitIds);
+    } finally {
+      releaseReadLock();
+    }
   }
 
   /////////////////////////////// auto commit ///////////////////////////////
@@ -217,7 +241,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
               return t;
             });
     autoCommitWorkerExecutor.scheduleAtFixedRate(
-        new PullConsumerAutoCommitWorker(this), 0, autoCommitInterval, TimeUnit.MILLISECONDS);
+        new PullConsumerAutoCommitWorker(this), 0, autoCommitIntervalMs, TimeUnit.MILLISECONDS);
   }
 
   private void shutdownAutoCommitWorker() {
@@ -230,7 +254,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       try {
         commitSync(entry.getValue());
         uncommittedMessages.remove(entry.getKey());
-      } catch (TException | IOException | StatementExecutionException e) {
+      } catch (final Exception e) {
         LOGGER.warn("something unexpected happened when commit messages during close", e);
       }
     }
@@ -240,8 +264,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     return isClosed.get();
   }
 
-  int getAutoCommitInterval() {
-    return autoCommitInterval;
+  long getAutoCommitIntervalMs() {
+    return autoCommitIntervalMs;
   }
 
   SortedMap<Long, Set<SubscriptionMessage>> getUncommittedMessages() {
@@ -253,7 +277,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   public static class Builder extends SubscriptionConsumer.Builder {
 
     private boolean autoCommit = ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE;
-    private int autoCommitInterval = ConsumerConstant.AUTO_COMMIT_INTERVAL_DEFAULT_VALUE;
+    private long autoCommitIntervalMs = ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE;
 
     public Builder host(String host) {
       super.host(host);
@@ -262,6 +286,11 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
     public Builder port(int port) {
       super.port(port);
+      return this;
+    }
+
+    public Builder nodeUrls(List<String> nodeUrls) {
+      super.nodeUrls(nodeUrls);
       return this;
     }
 
@@ -285,14 +314,24 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       return this;
     }
 
+    public Builder heartbeatIntervalMs(long heartbeatIntervalMs) {
+      super.heartbeatIntervalMs(heartbeatIntervalMs);
+      return this;
+    }
+
+    public Builder endpointsSyncIntervalMs(long endpointsSyncIntervalMs) {
+      super.endpointsSyncIntervalMs(endpointsSyncIntervalMs);
+      return this;
+    }
+
     public Builder autoCommit(boolean autoCommit) {
       this.autoCommit = autoCommit;
       return this;
     }
 
-    public Builder autoCommitInterval(int autoCommitInterval) {
-      this.autoCommitInterval =
-          Math.max(autoCommitInterval, ConsumerConstant.AUTO_COMMIT_INTERVAL_MIN_VALUE);
+    public Builder autoCommitIntervalMs(long autoCommitIntervalMs) {
+      this.autoCommitIntervalMs =
+          Math.max(autoCommitIntervalMs, ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_MIN_VALUE);
       return this;
     }
 
