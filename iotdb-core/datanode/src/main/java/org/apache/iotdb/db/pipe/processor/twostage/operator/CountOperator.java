@@ -21,19 +21,31 @@ package org.apache.iotdb.db.pipe.processor.twostage.operator;
 
 import org.apache.iotdb.db.pipe.processor.twostage.state.CountState;
 import org.apache.iotdb.db.pipe.processor.twostage.state.State;
+import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.util.Queue;
 
 public class CountOperator implements Operator {
 
-  private long count = 0;
+  private final long onCompletionTimestamp;
+  private long globalCount;
+
+  private final Queue<Pair<Long, Long>> globalCountQueue;
+
+  public CountOperator(String combineId, Queue<Pair<Long, Long>> globalCountQueue) {
+    onCompletionTimestamp = Long.parseLong(combineId);
+    globalCount = 0;
+
+    this.globalCountQueue = globalCountQueue;
+  }
 
   @Override
   public void combine(State state) {
-    final CountState countState = (CountState) state;
-    count += countState.getCount();
+    globalCount += ((CountState) state).getCount();
   }
 
   @Override
   public void onComplete() {
-    // output to queue
+    globalCountQueue.add(new Pair<>(onCompletionTimestamp, globalCount));
   }
 }

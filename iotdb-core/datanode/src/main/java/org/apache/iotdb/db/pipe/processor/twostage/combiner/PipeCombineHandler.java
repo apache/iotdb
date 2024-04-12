@@ -32,23 +32,25 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 
 public class PipeCombineHandler {
 
   private final String pipeName;
   private final long creationTime;
 
-  private final Operator operator;
+  private final Function<String, Operator> /* <combineId, operator> */ operatorConstructor;
 
   private final Set<Integer> expectedRegionIdSet;
 
   private final ConcurrentMap<String, Combiner> combineId2Combiner;
 
-  public PipeCombineHandler(String pipeName, long creationTime, Operator operator) {
+  public PipeCombineHandler(
+      String pipeName, long creationTime, Function<String, Operator> operatorConstructor) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
 
-    this.operator = operator;
+    this.operatorConstructor = operatorConstructor;
 
     expectedRegionIdSet = new HashSet<>();
     fetchExpectedRegionIdSet();
@@ -66,7 +68,9 @@ public class PipeCombineHandler {
 
   public synchronized void combine(int regionId, String combineId, State state) {
     combineId2Combiner
-        .computeIfAbsent(combineId, id -> new Combiner(operator, expectedRegionIdSet))
+        .computeIfAbsent(
+            combineId,
+            id -> new Combiner(operatorConstructor.apply(combineId), expectedRegionIdSet))
         .combine(regionId, state);
   }
 

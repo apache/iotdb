@@ -39,6 +39,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 public class PipeCombineHandlerManager {
 
@@ -49,11 +50,12 @@ public class PipeCombineHandlerManager {
   private final ConcurrentMap<String, AtomicInteger> pipeId2ReferenceCount =
       new ConcurrentHashMap<>();
 
-  public synchronized void register(String pipeName, long creationTime, Operator operator) {
+  public synchronized void register(
+      String pipeName, long creationTime, Function<String, Operator> operatorConstructor) {
     final String pipeId = generatePipeId(pipeName, creationTime);
 
     pipeId2CombineHandler.putIfAbsent(
-        pipeId, new PipeCombineHandler(pipeName, creationTime, operator));
+        pipeId, new PipeCombineHandler(pipeName, creationTime, operatorConstructor));
     pipeId2ReferenceCount.putIfAbsent(pipeId, new AtomicInteger(0));
 
     pipeId2ReferenceCount.get(pipeId).incrementAndGet();
@@ -73,20 +75,6 @@ public class PipeCombineHandlerManager {
     }
   }
 
-  public FetchCombineResultResponse handle(FetchCombineResultRequest fetchCombineResultRequest)
-      throws IOException {
-    final String pipeId =
-        generatePipeId(
-            fetchCombineResultRequest.getPipeName(), fetchCombineResultRequest.getCreationTime());
-
-    final PipeCombineHandler handler = pipeId2CombineHandler.get(pipeId);
-    if (Objects.isNull(handler)) {
-      throw new PipeException("CombineHandler not found for pipeId = " + pipeId);
-    }
-
-    return handler.fetchCombineResult(fetchCombineResultRequest.getCombineIdList());
-  }
-
   public TPipeTransferResp handle(CombineRequest combineRequest) {
     final String pipeId =
         generatePipeId(combineRequest.getPipeName(), combineRequest.getCreationTime());
@@ -99,6 +87,20 @@ public class PipeCombineHandlerManager {
     handler.combine(
         combineRequest.getRegionId(), combineRequest.getCombineId(), combineRequest.getState());
     return new TPipeTransferResp().setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+  }
+
+  public FetchCombineResultResponse handle(FetchCombineResultRequest fetchCombineResultRequest)
+      throws IOException {
+    final String pipeId =
+        generatePipeId(
+            fetchCombineResultRequest.getPipeName(), fetchCombineResultRequest.getCreationTime());
+
+    final PipeCombineHandler handler = pipeId2CombineHandler.get(pipeId);
+    if (Objects.isNull(handler)) {
+      throw new PipeException("CombineHandler not found for pipeId = " + pipeId);
+    }
+
+    return handler.fetchCombineResult(fetchCombineResultRequest.getCombineIdList());
   }
 
   public void fetchExpectedRegionIdSetAndCleanOutdatedCombiner() {

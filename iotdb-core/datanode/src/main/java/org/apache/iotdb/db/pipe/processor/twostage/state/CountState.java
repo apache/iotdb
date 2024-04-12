@@ -29,12 +29,8 @@ public class CountState implements State {
 
   private long count;
 
-  CountState() {
-    count = 0;
-  }
-
-  public void accumulate(int value) {
-    count += value;
+  public CountState(long count) {
+    this.count = count;
   }
 
   public long getCount() {

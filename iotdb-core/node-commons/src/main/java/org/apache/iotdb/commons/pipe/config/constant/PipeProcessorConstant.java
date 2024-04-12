@@ -66,6 +66,8 @@ public class PipeProcessorConstant {
       "processor.sdt.max-time-interval";
   public static final long PROCESSOR_SDT_MAX_TIME_INTERVAL_DEFAULT_VALUE = Long.MAX_VALUE;
 
+  public static final String PROCESSOR_OUTPUT_SERIES_KEY = "processor.output-series";
+
   private PipeProcessorConstant() {
     throw new IllegalStateException("Utility class");
   }
