@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
 import java.util.Optional;
+import java.util.Properties;
 
 public class ConsensusConfig {
 
@@ -32,6 +33,8 @@ public class ConsensusConfig {
   private final TConsensusGroupType consensusGroupType;
   private final RatisConfig ratisConfig;
   private final IoTConsensusConfig iotConsensusConfig;
+  private final RPCConfig rpcConfig;
+  private final Properties properties;
 
   private ConsensusConfig(
       TEndPoint thisNode,
@@ -39,13 +42,30 @@ public class ConsensusConfig {
       String storageDir,
       TConsensusGroupType consensusGroupType,
       RatisConfig ratisConfig,
-      IoTConsensusConfig iotConsensusConfig) {
+      IoTConsensusConfig iotConsensusConfig,
+      Properties properties,
+      TEndPoint clientRPCEndPoint) {
     this.thisNodeEndPoint = thisNode;
     this.thisNodeId = thisNodeId;
     this.storageDir = storageDir;
     this.consensusGroupType = consensusGroupType;
     this.ratisConfig = ratisConfig;
     this.iotConsensusConfig = iotConsensusConfig;
+    // TODO-Raft: unify rpc config for all protocols
+    this.rpcConfig =
+        RPCConfig.newBuilder()
+            .setSelectorNumOfClientManager(
+                iotConsensusConfig.getRpc().getSelectorNumOfClientManager())
+            .setRpcSelectorThreadNum(iotConsensusConfig.getRpc().getRpcSelectorThreadNum())
+            .setRpcMinConcurrentClientNum(
+                iotConsensusConfig.getRpc().getRpcMinConcurrentClientNum())
+            .setRpcMaxConcurrentClientNum(
+                iotConsensusConfig.getRpc().getRpcMaxConcurrentClientNum())
+            .setThriftMaxFrameSize(iotConsensusConfig.getRpc().getThriftMaxFrameSize())
+            .setMaxClientNumForEachNode(iotConsensusConfig.getRpc().getMaxClientNumForEachNode())
+            .setClientRPCEndPoint(clientRPCEndPoint)
+            .build();
+    this.properties = properties;
   }
 
   public TEndPoint getThisNodeEndPoint() {
@@ -76,6 +96,14 @@ public class ConsensusConfig {
     return new ConsensusConfig.Builder();
   }
 
+  public RPCConfig getRPCConfig() {
+    return rpcConfig;
+  }
+
+  public Properties getProperties() {
+    return properties;
+  }
+
   public static class Builder {
 
     private TEndPoint thisNode;
@@ -84,6 +112,8 @@ public class ConsensusConfig {
     private TConsensusGroupType consensusGroupType;
     private RatisConfig ratisConfig;
     private IoTConsensusConfig iotConsensusConfig;
+    private Properties properties = new Properties();
+    private TEndPoint clientRPCEndPoint;
 
     public ConsensusConfig build() {
       return new ConsensusConfig(
@@ -93,7 +123,9 @@ public class ConsensusConfig {
           consensusGroupType,
           Optional.ofNullable(ratisConfig).orElseGet(() -> RatisConfig.newBuilder().build()),
           Optional.ofNullable(iotConsensusConfig)
-              .orElseGet(() -> IoTConsensusConfig.newBuilder().build()));
+              .orElseGet(() -> IoTConsensusConfig.newBuilder().build()),
+          properties,
+          clientRPCEndPoint);
     }
 
     public Builder setThisNode(TEndPoint thisNode) {
@@ -123,6 +155,16 @@ public class ConsensusConfig {
 
     public Builder setIoTConsensusConfig(IoTConsensusConfig iotConsensusConfig) {
       this.iotConsensusConfig = iotConsensusConfig;
+      return this;
+    }
+
+    public Builder setProperties(Properties properties) {
+      this.properties = properties;
+      return this;
+    }
+
+    public Builder setClientRPCEndPoint(TEndPoint clientRPCEndPoint) {
+      this.clientRPCEndPoint = clientRPCEndPoint;
       return this;
     }
   }

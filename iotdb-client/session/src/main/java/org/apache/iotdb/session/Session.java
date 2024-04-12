@@ -164,6 +164,7 @@ public class Session implements ISession {
 
   // The version number of the client which used for compatibility in the server
   protected Version version;
+  protected CompressionType compressionType = CompressionType.SNAPPY;
 
   // default enable
   protected boolean enableAutoFetch = true;
@@ -1258,6 +1259,7 @@ public class Session implements ISession {
 
   private void handleRedirection(String deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
+      logger.info("Redirect to {}", endpoint);
       // no need to redirection
       if (endpoint.ip.equals("0.0.0.0")) {
         return;
@@ -2658,9 +2660,19 @@ public class Session implements ISession {
 
     request.setPrefixPath(tablet.deviceId);
     request.setIsAligned(isAligned);
-    request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
-    request.setValues(SessionUtils.getValueBuffer(tablet));
-    request.setSize(tablet.rowSize);
+    try {
+      request.setTimestamps(SessionUtils.getTimeBuffer(tablet, compressionType));
+      request.setValues(SessionUtils.getValueBuffer(tablet, compressionType));
+      request.setSize(tablet.rowSize);
+      if (compressionType != CompressionType.UNCOMPRESSED) {
+        request.setCompression(compressionType.toString());
+      }
+    } catch (IOException e) {
+      request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
+      request.setValues(SessionUtils.getValueBuffer(tablet));
+      request.setSize(tablet.rowSize);
+    }
+
     return request;
   }
 

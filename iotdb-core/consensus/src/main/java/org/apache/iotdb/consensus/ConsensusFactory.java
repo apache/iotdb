@@ -35,6 +35,7 @@ public class ConsensusFactory {
   public static final String SIMPLE_CONSENSUS = "org.apache.iotdb.consensus.simple.SimpleConsensus";
   public static final String RATIS_CONSENSUS = "org.apache.iotdb.consensus.ratis.RatisConsensus";
   public static final String IOT_CONSENSUS = "org.apache.iotdb.consensus.iot.IoTConsensus";
+  public static final String RAFT_CONSENSUS = "org.apache.iotdb.consensus.natraft.RaftConsensus";
 
   private static final Logger logger = LoggerFactory.getLogger(ConsensusFactory.class);
 

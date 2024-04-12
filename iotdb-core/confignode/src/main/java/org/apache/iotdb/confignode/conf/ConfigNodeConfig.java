@@ -32,6 +32,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.Properties;
 
 public class ConfigNodeConfig {
 
@@ -299,6 +300,7 @@ public class ConfigNodeConfig {
   private boolean isEnablePrintingNewlyCreatedPartition = false;
 
   private long forceWalPeriodForConfigNodeSimpleInMs = 100;
+  private Properties otherProperties = new Properties();
 
   public ConfigNodeConfig() {
     // empty constructor
@@ -1177,6 +1179,14 @@ public class ConfigNodeConfig {
 
   public void setForceWalPeriodForConfigNodeSimpleInMs(long forceWalPeriodForConfigNodeSimpleInMs) {
     this.forceWalPeriodForConfigNodeSimpleInMs = forceWalPeriodForConfigNodeSimpleInMs;
+  }
+
+  public Properties getOtherProperties() {
+    return otherProperties;
+  }
+
+  public void setOtherProperties(Properties otherProperties) {
+    this.otherProperties = otherProperties;
   }
 
   public String getConfigMessage() {

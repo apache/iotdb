@@ -212,7 +212,10 @@ public class ConfigNodeProcedureEnv {
 
   public boolean verifySucceed(TSStatus... status) {
     return Arrays.stream(status)
-        .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        .allMatch(
+            tsStatus ->
+                tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                    || tsStatus.getCode() == TSStatusCode.WEAKLY_ACCEPTED.getStatusCode());
   }
 
   public boolean checkEnoughDataNodeAfterRemoving(TDataNodeLocation removedDatanode) {

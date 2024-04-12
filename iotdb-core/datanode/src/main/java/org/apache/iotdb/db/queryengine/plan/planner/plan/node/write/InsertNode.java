@@ -307,4 +307,19 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
     result = 31 * result + Arrays.hashCode(dataTypes);
     return result;
   }
+
+  @Override
+  public PartialPath conflictKey() {
+    return devicePath;
+  }
+
+  @Override
+  public long estimateSize() {
+    long size = 0;
+    size += devicePath.getFullPath().length() * 2L;
+    for (String measurement : measurements) {
+      size += measurement.length() * 2L;
+    }
+    return size;
+  }
 }

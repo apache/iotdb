@@ -186,6 +186,11 @@ public abstract class PlanNode implements IConsensusRequest {
     }
   }
 
+  @Override
+  public void serializeTo(DataOutputStream outputStream) throws IOException {
+    serialize(outputStream);
+  }
+
   protected abstract void serializeAttributes(ByteBuffer byteBuffer);
 
   protected abstract void serializeAttributes(DataOutputStream stream) throws IOException;

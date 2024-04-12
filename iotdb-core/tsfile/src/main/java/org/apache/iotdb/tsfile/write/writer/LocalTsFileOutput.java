@@ -36,7 +36,7 @@ public class LocalTsFileOutput extends OutputStream implements TsFileOutput {
 
   public LocalTsFileOutput(FileOutputStream outputStream) {
     this.outputStream = outputStream;
-    this.bufferedStream = new BufferedOutputStream(outputStream);
+    this.bufferedStream = new BufferedOutputStream(outputStream, 16 * 1024 * 1024);
     position = 0;
   }
 

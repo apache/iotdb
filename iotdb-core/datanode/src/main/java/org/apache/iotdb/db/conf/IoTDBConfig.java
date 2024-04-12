@@ -1105,6 +1105,25 @@ public class IoTDBConfig {
    */
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
+  /** The minimum/maximum number of subtask threads of each stage when flushing one MemTable. */
+  private int flushMemTableMinSubThread = 1;
+
+  private int flushMemTableMaxSubThread = 16;
+  /**
+   * If the idle ratio of a DynamicThread is below this value, it will try to add a new thread in
+   * its group if there are fewer threads than flushMemTableMaxSubThread.
+   */
+  private double dynamicThreadMinIdleRatio = 0.1;
+  /**
+   * If the idle ratio of a DynamicThread is over this value, it will try to exit if there are more
+   * threads than flushMemTableMinSubThread.
+   */
+  private double dynamicThreadMaxIdleRatio = 0.5;
+  /** A DynamicThread will not automatically exit unless its running time exceeds the value. */
+  private long dynamicThreadMinRunningTimeNS = 10_000_000_000L;
+
+  private boolean ignoreStateMachine = false;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -3784,6 +3803,46 @@ public class IoTDBConfig {
     RateLimiterType = rateLimiterType;
   }
 
+  public int getFlushMemTableMinSubThread() {
+    return flushMemTableMinSubThread;
+  }
+
+  public void setFlushMemTableMinSubThread(int flushMemTableMinSubThread) {
+    this.flushMemTableMinSubThread = flushMemTableMinSubThread;
+  }
+
+  public int getFlushMemTableMaxSubThread() {
+    return flushMemTableMaxSubThread;
+  }
+
+  public void setFlushMemTableMaxSubThread(int flushMemTableMaxSubThread) {
+    this.flushMemTableMaxSubThread = flushMemTableMaxSubThread;
+  }
+
+  public double getDynamicThreadMinIdleRatio() {
+    return dynamicThreadMinIdleRatio;
+  }
+
+  public void setDynamicThreadMinIdleRatio(double dynamicThreadMinIdleRatio) {
+    this.dynamicThreadMinIdleRatio = dynamicThreadMinIdleRatio;
+  }
+
+  public double getDynamicThreadMaxIdleRatio() {
+    return dynamicThreadMaxIdleRatio;
+  }
+
+  public void setDynamicThreadMaxIdleRatio(double dynamicThreadMaxIdleRatio) {
+    this.dynamicThreadMaxIdleRatio = dynamicThreadMaxIdleRatio;
+  }
+
+  public long getDynamicThreadMinRunningTimeNS() {
+    return dynamicThreadMinRunningTimeNS;
+  }
+
+  public void setDynamicThreadMinRunningTimeNS(long dynamicThreadMinRunningTimeNS) {
+    this.dynamicThreadMinRunningTimeNS = dynamicThreadMinRunningTimeNS;
+  }
+
   public void setSortBufferSize(long sortBufferSize) {
     this.sortBufferSize = sortBufferSize;
   }
@@ -3798,6 +3857,14 @@ public class IoTDBConfig {
 
   public String getSortTmpDir() {
     return sortTmpDir;
+  }
+
+  public boolean isIgnoreStateMachine() {
+    return ignoreStateMachine;
+  }
+
+  public void setIgnoreStateMachine(boolean ignoreStateMachine) {
+    this.ignoreStateMachine = ignoreStateMachine;
   }
 
   public String getObjectStorageBucket() {

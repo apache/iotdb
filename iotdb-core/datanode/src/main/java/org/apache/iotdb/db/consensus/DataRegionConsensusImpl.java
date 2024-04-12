@@ -208,6 +208,7 @@ public class DataRegionConsensusImpl {
                                               TimeUnit.MILLISECONDS))
                                       .build())
                               .build())
+                      .setProperties(CONF.getCustomizedProperties())
                       .build(),
                   DataRegionConsensusImplHolder::createDataRegionStateMachine)
               .orElseThrow(

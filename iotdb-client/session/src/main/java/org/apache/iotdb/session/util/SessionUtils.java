@@ -23,7 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.UrlUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -32,6 +34,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -259,6 +262,41 @@ public class SessionUtils {
       endPointsList.add(endPoint);
     }
     return endPointsList;
+  }
+
+  private static TEndPoint parseNodeUrl(String nodeUrl) {
+    TEndPoint endPoint = new TEndPoint();
+    String[] split = nodeUrl.split(":");
+    if (split.length != 2) {
+      throw new NumberFormatException("NodeUrl Incorrect format");
+    }
+    String ip = split[0];
+    try {
+      int rpcPort = Integer.parseInt(split[1]);
+      return endPoint.setIp(ip).setPort(rpcPort);
+    } catch (Exception e) {
+      throw new NumberFormatException("NodeUrl Incorrect format");
+    }
+  }
+
+  public static byte[] getTimeBuffer(Tablet tablet, CompressionType compressionType)
+      throws IOException {
+    ByteBuffer timeBuffer = getTimeBuffer(tablet);
+    ICompressor compressor = ICompressor.getCompressor(compressionType);
+    return compressor.compress(
+        timeBuffer.array(),
+        timeBuffer.arrayOffset() + timeBuffer.position(),
+        timeBuffer.remaining());
+  }
+
+  public static byte[] getValueBuffer(Tablet tablet, CompressionType compressionType)
+      throws IOException {
+    ByteBuffer timeBuffer = getValueBuffer(tablet);
+    ICompressor compressor = ICompressor.getCompressor(compressionType);
+    return compressor.compress(
+        timeBuffer.array(),
+        timeBuffer.arrayOffset() + timeBuffer.position(),
+        timeBuffer.remaining());
   }
 
   private SessionUtils() {}

@@ -24,6 +24,7 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
@@ -86,6 +87,10 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
           subStatus.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
         }
         return new TSStatus().setSubStatus(subStatus);
+      } else if (request instanceof TestEntry) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } else if (request instanceof ByteBufferConsensusRequest) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
         logger.error("Unknown request: {}", request);
         return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);

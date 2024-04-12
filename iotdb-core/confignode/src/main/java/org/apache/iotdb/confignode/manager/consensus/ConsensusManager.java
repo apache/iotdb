@@ -118,6 +118,7 @@ public class ConsensusManager {
                           new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
                       .setStorageDir(CONF.getConsensusDir())
                       .setConsensusGroupType(TConsensusGroupType.ConfigRegion)
+                      .setProperties(CONF.getOtherProperties())
                       .build(),
                   gid -> stateMachine)
               .orElseThrow(
@@ -225,6 +226,7 @@ public class ConsensusManager {
                                       .build())
                               .build())
                       .setStorageDir(CONF.getConsensusDir())
+                      .setProperties(CONF.getOtherProperties())
                       .build(),
                   gid -> stateMachine)
               .orElseThrow(

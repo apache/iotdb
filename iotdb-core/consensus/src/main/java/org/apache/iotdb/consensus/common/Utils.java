@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.consensus.common;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,9 +34,14 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class Utils {
   private static final Logger logger = LoggerFactory.getLogger(Utils.class);
+
+  public static String buildPeerDir(File storageDir, ConsensusGroupId groupId) {
+    return storageDir + File.separator + groupId.getType().getValue() + "_" + groupId.getId();
+  }
 
   private Utils() {}
 
@@ -72,5 +80,41 @@ public class Utils {
       return Collections.emptyList();
     }
     return allFiles;
+  }
+
+  public static long getLatestSnapshotIndex(
+      String storageDir, String snapshotDirName, Pattern snapshotIndexPattern) {
+    long snapShotIndex = 0;
+    File directory = new File(storageDir);
+    File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(snapshotDirName));
+    if (versionFiles == null || versionFiles.length == 0) {
+      return snapShotIndex;
+    }
+    for (File file : versionFiles) {
+      snapShotIndex =
+          Math.max(
+              snapShotIndex,
+              Long.parseLong(snapshotIndexPattern.matcher(file.getName()).replaceAll("")));
+    }
+    return snapShotIndex;
+  }
+
+  public static void clearOldSnapshot(
+      String storageDir, String snapshotDirName, String newSnapshotDirName) {
+    File directory = new File(storageDir);
+    File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(snapshotDirName));
+    if (versionFiles == null || versionFiles.length == 0) {
+      logger.error("Can not find any snapshot dir after build a new snapshot");
+      return;
+    }
+    for (File file : versionFiles) {
+      if (!file.getName().equals(newSnapshotDirName)) {
+        try {
+          FileUtils.deleteDirectory(file);
+        } catch (IOException e) {
+          logger.error("Delete old snapshot dir {} failed", file.getAbsolutePath(), e);
+        }
+      }
+    }
   }
 }

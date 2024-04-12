@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.Utils;
 import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
@@ -339,39 +340,11 @@ public class IoTConsensusServerImpl {
   }
 
   private long getLatestSnapshotIndex() {
-    long snapShotIndex = 0;
-    File directory = new File(storageDir);
-    File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(SNAPSHOT_DIR_NAME));
-    if (versionFiles == null || versionFiles.length == 0) {
-      return snapShotIndex;
-    }
-    for (File file : versionFiles) {
-      snapShotIndex =
-          Math.max(
-              snapShotIndex,
-              Long.parseLong(SNAPSHOT_INDEX_PATTEN.matcher(file.getName()).replaceAll("")));
-    }
-    return snapShotIndex;
+    return Utils.getLatestSnapshotIndex(storageDir, SNAPSHOT_DIR_NAME, SNAPSHOT_INDEX_PATTEN);
   }
 
   private void clearOldSnapshot() {
-    File directory = new File(storageDir);
-    File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(SNAPSHOT_DIR_NAME));
-    if (versionFiles == null || versionFiles.length == 0) {
-      logger.error(
-          "Can not find any snapshot dir after build a new snapshot for group {}",
-          thisNode.getGroupId());
-      return;
-    }
-    for (File file : versionFiles) {
-      if (!file.getName().equals(newSnapshotDirName)) {
-        try {
-          FileUtils.deleteDirectory(file);
-        } catch (IOException e) {
-          logger.error("Delete old snapshot dir {} failed", file.getAbsolutePath(), e);
-        }
-      }
-    }
+    Utils.clearOldSnapshot(storageDir, SNAPSHOT_DIR_NAME, newSnapshotDirName);
   }
 
   public void loadSnapshot(String snapshotId) {

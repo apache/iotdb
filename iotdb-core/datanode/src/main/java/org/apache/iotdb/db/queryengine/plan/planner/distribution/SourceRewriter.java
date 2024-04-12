@@ -83,6 +83,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -1089,7 +1090,12 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     // and make the new TimeJoinNode as the child of current TimeJoinNode
     // TODO: (xingtanzjr) optimize the procedure here to remove duplicated TimeJoinNode
     boolean addParent = false;
-    for (Map.Entry<TRegionReplicaSet, List<SourceNode>> entry : sourceGroup.entrySet()) {
+    // Fields in TRegionReplicaSet may change and this changes the order in the map.
+    // To avoid the order change, use a fixed ordering.
+    List<Entry<TRegionReplicaSet, List<SourceNode>>> sourceGroupList =
+        new ArrayList<>(sourceGroup.entrySet());
+    sourceGroupList.sort(Comparator.comparing(entry -> entry.getKey().getRegionId()));
+    for (Map.Entry<TRegionReplicaSet, List<SourceNode>> entry : sourceGroupList) {
       TRegionReplicaSet region = entry.getKey();
       List<SourceNode> seriesScanNodes = entry.getValue();
       if (seriesScanNodes.size() == 1 && (!context.isForceAddParent() || isTimeJoin)) {

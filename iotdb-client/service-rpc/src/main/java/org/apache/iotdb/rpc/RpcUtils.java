@@ -83,7 +83,8 @@ public class RpcUtils {
     if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       return;
     }
-    if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.code != TSStatusCode.WEAKLY_ACCEPTED.getStatusCode()) {
       throw new StatementExecutionException(status);
     }
   }
@@ -118,6 +119,7 @@ public class RpcUtils {
         new StringBuilder().append(TSStatusCode.MULTIPLE_ERROR.getStatusCode()).append(": ");
     for (TSStatus status : statuses) {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && status.getCode() != TSStatusCode.WEAKLY_ACCEPTED.getStatusCode()
           && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         errMsgs.append(status.getMessage()).append("; ");
       }

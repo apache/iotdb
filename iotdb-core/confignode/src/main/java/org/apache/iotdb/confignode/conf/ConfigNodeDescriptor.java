@@ -845,6 +845,7 @@ public class ConfigNodeDescriptor {
                     "force_wal_period_for_confignode_simple_in_ms",
                     String.valueOf(conf.getForceWalPeriodForConfigNodeSimpleInMs()))
                 .trim()));
+    conf.setOtherProperties(properties);
   }
 
   private void loadCQConfig(Properties properties) {

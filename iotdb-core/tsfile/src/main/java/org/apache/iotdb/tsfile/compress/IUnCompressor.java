@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tsfile.compress;
 
+import org.apache.iotdb.tsfile.compress.auto.AutoUncompressor;
+import org.apache.iotdb.tsfile.compress.btrblocks.BtrBlkUncompressor;
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
@@ -58,6 +60,10 @@ public interface IUnCompressor {
         return new ZstdUnCompressor();
       case LZMA2:
         return new LZMA2UnCompressor();
+      case AUTO:
+        return new AutoUncompressor();
+      case BTRBLK:
+        return new BtrBlkUncompressor();
       default:
         throw new CompressionTypeNotSupportedException(name.toString());
     }
@@ -128,7 +134,9 @@ public interface IUnCompressor {
 
     @Override
     public int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
-      throw new IOException("NoUnCompressor does not support this method.");
+      int initPos = uncompressed.position();
+      uncompressed.put(compressed);
+      return uncompressed.position() - initPos;
     }
 
     @Override
@@ -336,8 +344,7 @@ public interface IUnCompressor {
     public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
         throws IOException {
       return (int)
-          Zstd.decompressByteArray(
-              output, outOffset, output.length, byteArray, offset, byteArray.length);
+          Zstd.decompressByteArray(output, outOffset, output.length, byteArray, offset, length);
     }
 
     /**
