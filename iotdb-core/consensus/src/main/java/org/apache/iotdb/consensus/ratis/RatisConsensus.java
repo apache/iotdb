@@ -90,11 +90,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -109,6 +113,8 @@ class RatisConsensus implements IConsensus {
 
   /** The unique net communication endpoint */
   private final RaftPeer myself;
+
+  private final File storageDir;
 
   private final RaftServer server;
 
@@ -143,9 +149,9 @@ class RatisConsensus implements IConsensus {
     myself =
         Utils.fromNodeInfoAndPriorityToRaftPeer(
             config.getThisNodeId(), config.getThisNodeEndPoint(), DEFAULT_PRIORITY);
+    this.storageDir = new File(config.getStorageDir());
 
-    RaftServerConfigKeys.setStorageDir(
-        properties, Collections.singletonList(new File(config.getStorageDir())));
+    RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(storageDir));
     GrpcConfigKeys.Server.setPort(properties, config.getThisNodeEndPoint().getPort());
 
     Utils.initRatisConfig(properties, config.getRatisConfig());
@@ -686,6 +692,33 @@ class RatisConsensus implements IConsensus {
         .getGroupIds()
         .forEach(groupId -> ids.add(Utils.fromRaftGroupIdToConsensusGroupId(groupId)));
     return ids;
+  }
+
+  @Override
+  public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
+    List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
+    try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
+      for (Path path : stream) {
+        try {
+          RaftGroupId raftGroupId =
+              RaftGroupId.valueOf(UUID.fromString(path.getFileName().toString()));
+          consensusGroupIds.add(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
+        } catch (Exception e) {
+          logger.info(
+              "The directory {} is not a group directory;" + " ignoring it. ",
+              path.getFileName().toString());
+        }
+      }
+    } catch (IOException e) {
+      logger.error("Failed to get all consensus group ids from disk", e);
+    }
+    return consensusGroupIds;
+  }
+
+  @Override
+  public String getRegionDirFromConsensusGroupId(ConsensusGroupId consensusGroupId) {
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(consensusGroupId);
+    return storageDir + File.separator + raftGroupId.getUuid().toString();
   }
 
   @Override

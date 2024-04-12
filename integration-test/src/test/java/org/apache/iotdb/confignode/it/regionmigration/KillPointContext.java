@@ -17,19 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.exception;
+package org.apache.iotdb.confignode.it.regionmigration;
 
-public class ConsensusException extends Exception {
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
+import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 
-  public ConsensusException(String message) {
-    super(message);
+public class KillPointContext {
+  AbstractNodeWrapper nodeWrapper;
+  AbstractEnv env;
+
+  public KillPointContext(AbstractNodeWrapper nodeWrapper, AbstractEnv env) {
+    this.nodeWrapper = nodeWrapper;
+    this.env = env;
   }
 
-  public ConsensusException(String message, Throwable cause) {
-    super(message, cause);
+  public AbstractNodeWrapper getNodeWrapper() {
+    return nodeWrapper;
   }
 
-  public ConsensusException(Exception e) {
-    super(e);
+  public AbstractEnv getEnv() {
+    return env;
   }
 }
