@@ -269,11 +269,12 @@ public class RegionMaintainHandler {
                 maintainPeerReq,
                 DataNodeRequestType.ADD_REGION_PEER);
     LOGGER.info(
-        "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}",
+        "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}, status: {}",
         REGION_MIGRATE_PROCESS,
         regionId,
         getIdWithRpcEndpoint(coordinator),
-        getIdWithRpcEndpoint(destDataNode));
+        getIdWithRpcEndpoint(destDataNode),
+        status);
     return status;
   }
 
