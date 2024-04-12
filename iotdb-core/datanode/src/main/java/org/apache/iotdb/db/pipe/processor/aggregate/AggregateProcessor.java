@@ -129,7 +129,7 @@ public class AggregateProcessor implements PipeProcessor {
   private String[] columnNameStringList;
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     final PipeParameters parameters = validator.getParameters();
     validator
         .validate(
@@ -163,7 +163,7 @@ public class AggregateProcessor implements PipeProcessor {
                 PROCESSOR_OUTPUT_MEASUREMENTS_KEY, PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE));
   }
 
-  private boolean isLegalMeasurement(String measurement) {
+  private boolean isLegalMeasurement(final String measurement) {
     try {
       PathUtils.isLegalPath("root." + measurement);
     } catch (IllegalPathException e) {
@@ -173,7 +173,8 @@ public class AggregateProcessor implements PipeProcessor {
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeProcessorRuntimeConfiguration configuration)
       throws Exception {
     pipeName = configuration.getRuntimeEnvironment().getPipeName();
     pipeName2referenceCountMap.compute(
@@ -240,7 +241,7 @@ public class AggregateProcessor implements PipeProcessor {
     // logic.
     final Set<String> declaredIntermediateResultSet = new HashSet<>();
     final PipeDataRegionPluginAgent agent = PipeAgent.plugin().dataRegion();
-    for (String pipePluginName :
+    for (final String pipePluginName :
         agent.getSubProcessorNamesWithSpecifiedParent(AbstractOperatorProcessor.class)) {
       // Children are allowed to validate and configure the computational logic
       // from the same parameters other than processor name
@@ -353,7 +354,8 @@ public class AggregateProcessor implements PipeProcessor {
   }
 
   @Override
-  public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
+  public void process(
+      final TabletInsertionEvent tabletInsertionEvent, final EventCollector eventCollector)
       throws Exception {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
@@ -390,7 +392,7 @@ public class AggregateProcessor implements PipeProcessor {
   }
 
   private Map<String, Pair<Long, ByteBuffer>> processRow(
-      Row row, RowCollector rowCollector, AtomicReference<Exception> exception) {
+      final Row row, final RowCollector rowCollector, final AtomicReference<Exception> exception) {
     final Map<String, Pair<Long, ByteBuffer>> resultMap = new HashMap<>();
 
     final long timestamp = row.getTime();
@@ -470,7 +472,8 @@ public class AggregateProcessor implements PipeProcessor {
   }
 
   @Override
-  public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
+  public void process(
+      final TsFileInsertionEvent tsFileInsertionEvent, final EventCollector eventCollector)
       throws Exception {
     try {
       for (final TabletInsertionEvent tabletInsertionEvent :
@@ -488,7 +491,7 @@ public class AggregateProcessor implements PipeProcessor {
   }
 
   @Override
-  public void process(Event event, EventCollector eventCollector) throws Exception {
+  public void process(final Event event, final EventCollector eventCollector) throws Exception {
     if (System.currentTimeMillis() - lastValueReceiveTime.get() > outputMaxDelayMilliseconds) {
       final AtomicReference<Exception> exception = new AtomicReference<>();
 
@@ -500,15 +503,15 @@ public class AggregateProcessor implements PipeProcessor {
                 final AtomicReference<TimeSeriesRuntimeState> stateReference =
                     pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).get(timeSeries);
                 synchronized (stateReference) {
-                  PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, null);
+                  final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, null);
                   try {
                     collectWindowOutputs(
                         stateReference.get().forceOutput(), timeSeries, rowCollector);
-                  } catch (IOException e) {
+                  } catch (final IOException e) {
                     exception.set(e);
                   }
                   rowCollector
-                      .convertToTabletInsertionEvents()
+                      .convertToTabletInsertionEvents(false)
                       .forEach(
                           tabletEvent -> {
                             try {
@@ -539,7 +542,8 @@ public class AggregateProcessor implements PipeProcessor {
    * @param collector {@link RowCollector}
    */
   public void collectWindowOutputs(
-      List<WindowOutput> outputs, String timeSeries, RowCollector collector) throws IOException {
+      final List<WindowOutput> outputs, final String timeSeries, final RowCollector collector)
+      throws IOException {
     if (Objects.isNull(outputs) || outputs.isEmpty()) {
       return;
     }
