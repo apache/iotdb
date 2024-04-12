@@ -176,9 +176,6 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     return true;
   }
 
-  // synchronized for close() and releaseLastEvent(). make sure that the lastEvent
-  // will not be updated after pipeProcessor.close() to avoid resource leak
-  // because of the lastEvent is not released.
   @Override
   public void close() {
     isClosed.set(true);

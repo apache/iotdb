@@ -146,9 +146,6 @@ public abstract class PipeSubtask
     return !shouldStopSubmittingSelf.get();
   }
 
-  // synchronized for close() and releaseLastEvent(). make sure that the lastEvent
-  // will not be updated after pipeProcessor.close() to avoid resource leak
-  // because of the lastEvent is not released.
   @Override
   public void close() {
     clearReferenceCountAndReleaseLastEvent();
