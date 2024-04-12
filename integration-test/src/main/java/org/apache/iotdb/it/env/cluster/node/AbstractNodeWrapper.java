@@ -503,6 +503,11 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   }
 
   @Override
+  public boolean isAlive() {
+    return this.instance != null && this.instance.isAlive();
+  }
+
+  @Override
   public final String getIp() {
     return this.nodeAddress;
   }

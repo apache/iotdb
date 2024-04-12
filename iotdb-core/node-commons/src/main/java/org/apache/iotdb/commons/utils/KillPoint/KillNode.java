@@ -17,19 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.exception;
+package org.apache.iotdb.commons.utils.KillPoint;
 
-public class ConsensusException extends Exception {
-
-  public ConsensusException(String message) {
-    super(message);
-  }
-
-  public ConsensusException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public ConsensusException(Exception e) {
-    super(e);
-  }
+public enum KillNode {
+  ALL_NODES,
+  CONFIG_NODE,
+  ORIGINAL_DATANODE,
+  DESTINATION_DATANODE,
+  COORDINATOR_DATANODE,
 }

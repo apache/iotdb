@@ -57,7 +57,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -112,9 +111,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -457,55 +453,30 @@ public class DataNode implements DataNodeMBean {
     }
   }
 
-  // TODO: Implement in IConsensus, not in DataNode
-  private List<ConsensusGroupId> getConsensusGroupId() {
-    List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
-    String dataRegionConsensusDir = config.getDataRegionConsensusDir();
-    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
-      return consensusGroupIds;
-    }
-    try (DirectoryStream<Path> stream =
-        Files.newDirectoryStream(new File(dataRegionConsensusDir).toPath())) {
-      for (Path path : stream) {
-        String[] items = path.getFileName().toString().split("_");
-        ConsensusGroupId consensusGroupId =
-            ConsensusGroupId.Factory.create(Integer.parseInt(items[0]), Integer.parseInt(items[1]));
-        consensusGroupIds.add(consensusGroupId);
-      }
-    } catch (IOException e) {
-      logger.error("Cannot get consensus group id from {}", dataRegionConsensusDir, e);
-    }
-    return consensusGroupIds;
-  }
-
-  // TODO: remove for current version, add todo for rename
-  private void renameInvalidRegionDirs(List<ConsensusGroupId> invalidConsensusGroupIds) {
-    for (ConsensusGroupId consensusGroupId : invalidConsensusGroupIds) {
-      File oldDir =
-          new File(
-              IoTConsensus.buildPeerDir(
-                  new File(config.getDataRegionConsensusDir()), consensusGroupId));
-      File newDir =
-          new File(
-              IoTConsensus.buildPeerDir(
-                  new File(config.getInvalidDataRegionConsensusDir()), consensusGroupId));
-      if (oldDir.exists() && !FileUtils.moveFileSafe(oldDir, newDir)) {
-        logger.error("move {} to {} failed.", oldDir.getAbsolutePath(), newDir.getAbsolutePath());
-        try {
-          FileUtils.recursivelyDeleteFolder(oldDir.getPath());
-        } catch (IOException e) {
-          logger.error("delete {} failed.", oldDir.getAbsolutePath());
+  private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
+    List<ConsensusGroupId> invalidConsensusGroupIds =
+        DataRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
+            .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
+            .collect(Collectors.toList());
+    if (!invalidConsensusGroupIds.isEmpty()) {
+      logger.info("Remove invalid region directories... {}", invalidConsensusGroupIds);
+      for (ConsensusGroupId consensusGroupId : invalidConsensusGroupIds) {
+        File oldDir =
+            new File(
+                DataRegionConsensusImpl.getInstance()
+                    .getRegionDirFromConsensusGroupId(consensusGroupId));
+        if (oldDir.exists()) {
+          try {
+            FileUtils.recursivelyDeleteFolder(oldDir.getPath());
+            logger.info("delete {} succeed.", oldDir.getAbsolutePath());
+          } catch (IOException e) {
+            logger.error("delete {} failed.", oldDir.getAbsolutePath());
+          }
+        } else {
+          logger.info("delete {} failed, because it does not exist.", oldDir.getAbsolutePath());
         }
       }
     }
-  }
-
-  private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
-    List<ConsensusGroupId> invalidConsensusGroupIds =
-        getConsensusGroupId().stream()
-            .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
-            .collect(Collectors.toList());
-    renameInvalidRegionDirs(invalidConsensusGroupIds);
   }
 
   private void sendRestartRequestToConfigNode() throws StartupException {

@@ -80,30 +80,41 @@ public class RemoveRegionPeerProcedure
       switch (state) {
         case REMOVE_REGION_PEER:
           tsStatus =
-              handler.removeRegionPeer(
+              handler.submitRemoveRegionPeerTask(
                   this.getProcId(), targetDataNode, consensusGroupId, coordinator);
           setKillPoint(state);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
-            throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
+            LOGGER.warn(
+                "{} task submitted failed, procedure will continue. You should manually clear peer list.",
+                state);
+            setNextState(DELETE_OLD_REGION_PEER);
+            break;
           }
           TRegionMigrateResult removeRegionPeerResult =
               handler.waitTaskFinish(this.getProcId(), coordinator);
           if (removeRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
-            throw new ProcedureException("REMOVE_REGION_PEER executed failed in DataNode");
+            LOGGER.warn(
+                "{} executed failed, procedure will continue. You should manually clear peer list.",
+                state);
           }
           setNextState(DELETE_OLD_REGION_PEER);
           break;
         case DELETE_OLD_REGION_PEER:
           tsStatus =
-              handler.deleteOldRegionPeer(this.getProcId(), targetDataNode, consensusGroupId);
+              handler.submitDeleteOldRegionPeerTask(
+                  this.getProcId(), targetDataNode, consensusGroupId);
           setKillPoint(state);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
-            throw new ProcedureException("DELETE_OLD_REGION_PEER executed failed in DataNode");
+            LOGGER.warn(
+                "DELETE_OLD_REGION_PEER task submitted failed, procedure will continue. You should manually delete region file.");
+            setNextState(REMOVE_REGION_LOCATION_CACHE);
+            break;
           }
           TRegionMigrateResult deleteOldRegionPeerResult =
               handler.waitTaskFinish(this.getProcId(), targetDataNode);
           if (deleteOldRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
-            throw new ProcedureException("DELETE_OLD_REGION_PEER executed failed in DataNode");
+            LOGGER.warn(
+                "DELETE_OLD_REGION_PEER executed failed, procedure will continue. You should manually delete region file.");
           }
           setNextState(REMOVE_REGION_LOCATION_CACHE);
           break;

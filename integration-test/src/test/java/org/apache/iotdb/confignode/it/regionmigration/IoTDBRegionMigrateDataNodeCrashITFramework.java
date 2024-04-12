@@ -17,19 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.exception;
+package org.apache.iotdb.confignode.it.regionmigration;
 
-public class ConsensusException extends Exception {
+import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 
-  public ConsensusException(String message) {
-    super(message);
-  }
-
-  public ConsensusException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public ConsensusException(Exception e) {
-    super(e);
+public class IoTDBRegionMigrateDataNodeCrashITFramework
+    extends IoTDBRegionMigrateReliabilityITFramework {
+  @SafeVarargs
+  public final <T extends Enum<T>> void success(T... dataNodeKillPoints) throws Exception {
+    successTest(1, 1, 1, 2, noKillPoints(), buildSet(dataNodeKillPoints), KillNode.ALL_NODES);
   }
 }

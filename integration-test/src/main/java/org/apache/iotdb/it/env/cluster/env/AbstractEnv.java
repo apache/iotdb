@@ -468,7 +468,8 @@ public abstract class AbstractEnv implements BaseEnv {
       dataNode = this.dataNodeWrapperList.get(0);
     }
 
-    return getWriteConnectionWithSpecifiedDataNode(dataNode, version, username, password);
+    return getWriteConnectionFromDataNodeList(
+        this.dataNodeWrapperList, version, username, password);
   }
 
   protected NodeConnection getWriteConnectionWithSpecifiedDataNode(
@@ -485,6 +486,26 @@ public abstract class AbstractEnv implements BaseEnv {
         NodeConnection.NodeRole.DATA_NODE,
         NodeConnection.ConnectionRole.WRITE,
         writeConnection);
+  }
+
+  protected NodeConnection getWriteConnectionFromDataNodeList(
+      List<DataNodeWrapper> dataNodeList,
+      Constant.Version version,
+      String username,
+      String password)
+      throws SQLException {
+    List<DataNodeWrapper> dataNodeWrapperListCopy = new ArrayList<>(dataNodeList);
+    Collections.shuffle(dataNodeWrapperListCopy);
+    SQLException lastException = null;
+    for (DataNodeWrapper dataNode : dataNodeWrapperListCopy) {
+      try {
+        return getWriteConnectionWithSpecifiedDataNode(dataNode, version, username, password);
+      } catch (SQLException e) {
+        lastException = e;
+      }
+    }
+    logger.error("Failed to get connection from any DataNode, last exception is ", lastException);
+    throw lastException;
   }
 
   protected List<NodeConnection> getReadConnections(
@@ -598,6 +619,12 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public List<DataNodeWrapper> getDataNodeWrapperList() {
     return dataNodeWrapperList;
+  }
+
+  public List<AbstractNodeWrapper> getNodeWrapperList() {
+    List<AbstractNodeWrapper> result = new ArrayList<>(configNodeWrapperList);
+    result.addAll(dataNodeWrapperList);
+    return result;
   }
 
   /**

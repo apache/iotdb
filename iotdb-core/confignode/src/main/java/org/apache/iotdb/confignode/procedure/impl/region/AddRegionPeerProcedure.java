@@ -40,6 +40,11 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
 import static org.apache.iotdb.confignode.procedure.state.AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE;
@@ -79,39 +84,35 @@ public class AddRegionPeerProcedure
       outerSwitch:
       switch (state) {
         case CREATE_NEW_REGION_PEER:
-          handler.createNewRegionPeer(consensusGroupId, destDataNode);
+          TSStatus status = handler.createNewRegionPeer(consensusGroupId, destDataNode);
           setKillPoint(state);
+          if (status.getCode() != SUCCESS_STATUS.getStatusCode()) {
+            rollback(env, handler);
+          }
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
-          TSStatus tsStatus =
-              handler.addRegionPeer(this.getProcId(), destDataNode, consensusGroupId, coordinator);
-          setKillPoint(state);
-          TRegionMigrateResult result;
-          if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
-            result = handler.waitTaskFinish(this.getProcId(), coordinator);
-          } else {
-            throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
+          // We don't want to re-submit AddRegionPeerTask when leader change or ConfigNode reboot
+          if (!this.isStateDeserialized()) {
+            TSStatus tsStatus =
+                handler.submitAddRegionPeerTask(
+                    this.getProcId(), destDataNode, consensusGroupId, coordinator);
+            setKillPoint(state);
+            if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
+              throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
+            }
           }
+          TRegionMigrateResult result = handler.waitTaskFinish(this.getProcId(), coordinator);
           switch (result.getTaskStatus()) {
             case TASK_NOT_EXIST:
               // coordinator crashed and lost its task table
             case FAIL:
               // maybe some DataNode crash
               LOGGER.warn(
-                  "result is {}, will use resetPeerList to clean in the future",
+                  "{} result is {}, procedure failed. Will try to reset peer list automatically...",
+                  state,
                   result.getTaskStatus());
-              //              List<TDataNodeLocation> correctDataNodeLocations =
-              //
-              // env.getConfigManager().getPartitionManager().getAllReplicaSets().stream()
-              //                      .filter(
-              //                          tRegionReplicaSet ->
-              //
-              // tRegionReplicaSet.getRegionId().equals(consensusGroupId))
-              //                      .findAny()
-              //                      .get()
-              //                      .getDataNodeLocations();
-              //              handler.resetPeerList(consensusGroupId, correctDataNodeLocations);
+              rollback(env, handler);
               return Flow.NO_MORE_STATE;
             case PROCESSING:
               // should never happen
@@ -143,6 +144,54 @@ public class AddRegionPeerProcedure
     }
     LOGGER.info("AddRegionPeer state {} complete", state);
     return Flow.HAS_MORE_STATE;
+  }
+
+  private void rollback(ConfigNodeProcedureEnv env, RegionMaintainHandler handler) {
+    List<TDataNodeLocation> correctDataNodeLocations =
+        env.getConfigManager().getPartitionManager().getAllReplicaSets().stream()
+            .filter(tRegionReplicaSet -> tRegionReplicaSet.getRegionId().equals(consensusGroupId))
+            .findAny()
+            .get()
+            .getDataNodeLocations();
+
+    String correctStr =
+        correctDataNodeLocations.stream()
+            .map(TDataNodeLocation::getDataNodeId)
+            .collect(Collectors.toList())
+            .toString();
+    List<TDataNodeLocation> relatedDataNodeLocations = new ArrayList<>(correctDataNodeLocations);
+    relatedDataNodeLocations.add(destDataNode);
+    Map<Integer, TDataNodeLocation> relatedDataNodeLocationMap = new HashMap<>();
+    relatedDataNodeLocations.forEach(
+        location -> relatedDataNodeLocationMap.put(location.dataNodeId, location));
+    LOGGER.info(
+        "Will reset peer list of consensus group {} on DataNode {}",
+        consensusGroupId,
+        relatedDataNodeLocations.stream()
+            .map(TDataNodeLocation::getDataNodeId)
+            .collect(Collectors.toList()));
+
+    Map<Integer, TSStatus> resultMap =
+        handler.resetPeerList(
+            consensusGroupId, correctDataNodeLocations, relatedDataNodeLocationMap);
+
+    resultMap.forEach(
+        (dataNodeId, resetResult) -> {
+          if (resetResult.getCode() == SUCCESS_STATUS.getStatusCode()) {
+            LOGGER.info(
+                "reset peer list: peer list of consensus group {} on DataNode {} has been successfully to {}",
+                consensusGroupId,
+                dataNodeId,
+                correctStr);
+          } else {
+            // TODO: more precise
+            LOGGER.warn(
+                "reset peer list: peer list of consensus group {} on DataNode {} failed to reset to {}, you may manually reset it",
+                consensusGroupId,
+                dataNodeId,
+                correctStr);
+          }
+        });
   }
 
   @Override
