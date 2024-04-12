@@ -123,7 +123,7 @@ public class SubscriptionRawMessage {
         return true;
       } catch (final IOException e) {
         LOGGER.warn(
-            "Subscription: something unexpected happened when serializing Tablets, exception is {}",
+            "Subscription: something unexpected happened when serializing SubscriptionRawMessage, exception is {}",
             e.getMessage());
       }
       return false;
