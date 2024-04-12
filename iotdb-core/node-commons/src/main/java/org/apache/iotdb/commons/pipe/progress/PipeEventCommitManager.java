@@ -35,25 +35,25 @@ public class PipeEventCommitManager {
   // key: pipeName_dataRegionId
   private final Map<String, PipeEventCommitter> eventCommitterMap = new ConcurrentHashMap<>();
 
-  public void register(String pipeName, int regionId, String pipePluginName) {
+  public void register(String pipeName, long creationTime, int regionId, String pipePluginName) {
     if (pipeName == null || pipePluginName == null) {
       return;
     }
 
-    final String committerKey = generateCommitterKey(pipeName, regionId);
+    final String committerKey = generateCommitterKey(pipeName, creationTime, regionId);
     if (eventCommitterMap.containsKey(committerKey)) {
       LOGGER.warn(
           "Pipe with same name is already registered on this data region, overwriting: {}",
           committerKey);
     }
-    PipeEventCommitter eventCommitter = new PipeEventCommitter(pipeName, regionId);
+    PipeEventCommitter eventCommitter = new PipeEventCommitter(pipeName, creationTime, regionId);
     eventCommitterMap.put(committerKey, eventCommitter);
     PipeEventCommitMetrics.getInstance().register(eventCommitter, committerKey);
     LOGGER.info("Pipe committer registered for pipe on data region: {}", committerKey);
   }
 
-  public void deregister(String pipeName, int regionId) {
-    final String committerKey = generateCommitterKey(pipeName, regionId);
+  public void deregister(String pipeName, long creationTime, int regionId) {
+    final String committerKey = generateCommitterKey(pipeName, creationTime, regionId);
     eventCommitterMap.remove(committerKey);
     PipeEventCommitMetrics.getInstance().deregister(committerKey);
     LOGGER.info("Pipe committer deregistered for pipe on data region: {}", committerKey);
@@ -63,12 +63,13 @@ public class PipeEventCommitManager {
    * Assign a commit id and a key for commit. Make sure {@code EnrichedEvent.pipeName} is set before
    * calling this.
    */
-  public void enrichWithCommitterKeyAndCommitId(EnrichedEvent event, int regionId) {
+  public void enrichWithCommitterKeyAndCommitId(
+      EnrichedEvent event, long creationTime, int regionId) {
     if (event == null || event.getPipeName() == null || !event.needToCommit()) {
       return;
     }
 
-    final String committerKey = generateCommitterKey(event.getPipeName(), regionId);
+    final String committerKey = generateCommitterKey(event.getPipeName(), creationTime, regionId);
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
     if (committer == null) {
       return;
@@ -86,13 +87,20 @@ public class PipeEventCommitManager {
 
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
     if (committer == null) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "missing PipeEventCommitter({}) when commit event: {}, stack trace: {}",
+            committerKey,
+            event.coreReportMessage(),
+            Thread.currentThread().getStackTrace());
+      }
       return;
     }
     committer.commit(event);
   }
 
-  private static String generateCommitterKey(String pipeName, int regionId) {
-    return String.format("%s_%s", pipeName, regionId);
+  private static String generateCommitterKey(String pipeName, long creationTime, int regionId) {
+    return String.format("%s_%s_%s", pipeName, regionId, creationTime);
   }
 
   private PipeEventCommitManager() {

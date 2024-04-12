@@ -98,7 +98,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     // old one, so we need creationTime to make their hash code different in the map.
     final String taskId = pipeName + "_" + regionId + "_" + creationTime;
     final PipeEventCollector pipeConnectorOutputEventCollector =
-        new PipeEventCollector(pipeConnectorOutputPendingQueue, regionId);
+        new PipeEventCollector(pipeConnectorOutputPendingQueue, creationTime, regionId);
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,

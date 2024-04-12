@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_KEY;
@@ -69,6 +70,8 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
   // limit in buffer size
   protected final PipeMemoryBlock allocatedMemoryBlock;
   protected long totalBufferSize = 0;
+
+  private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
   protected PipeTransferBatchReqBuilder(PipeParameters parameters) {
     maxDelayInMs =
@@ -104,6 +107,8 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
           requestMaxBatchSizeInBytes,
           getMaxBatchSizeInBytes());
     }
+
+    isClosed.set(false);
   }
 
   /**
@@ -123,17 +128,23 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
     // The deduplication logic here is to avoid the accumulation of the same event in a batch when
     // retrying.
     if ((events.isEmpty() || !events.get(events.size() - 1).equals(event))) {
-      events.add(event);
-      requestCommitIds.add(requestCommitId);
-      final int bufferSize = buildTabletInsertionBuffer(event);
+      // We increase the reference count for this event to determine if the event may be released.
+      if (((EnrichedEvent) event)
+          .increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName())) {
+        events.add(event);
+        requestCommitIds.add(requestCommitId);
 
-      ((EnrichedEvent) event).increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName());
+        final int bufferSize = buildTabletInsertionBuffer(event);
+        totalBufferSize += bufferSize;
 
-      if (firstEventProcessingTime == Long.MIN_VALUE) {
-        firstEventProcessingTime = System.currentTimeMillis();
+        if (firstEventProcessingTime == Long.MIN_VALUE) {
+          firstEventProcessingTime = System.currentTimeMillis();
+        }
+      } else {
+        LOGGER.error(
+            "TabletInsertionEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
+            ((EnrichedEvent) event).coreReportMessage());
       }
-
-      totalBufferSize += bufferSize;
     }
 
     return totalBufferSize >= getMaxBatchSizeInBytes()
@@ -203,11 +214,17 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   @Override
   public synchronized void close() {
+    isClosed.set(true);
+
     for (final Event event : events) {
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event).clearReferenceCount(this.getClass().getName());
       }
     }
     allocatedMemoryBlock.close();
+  }
+
+  public boolean isClosed() {
+    return isClosed.get();
   }
 }
