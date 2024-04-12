@@ -609,6 +609,7 @@ public class IoTConsensusServerImpl {
 
   public void persistConfiguration() {
     try {
+      renameTmpConfigurationFileToRemoveSuffix();
       serializeConfigurationAndFsyncToDisk();
       deleteConfiguration();
       renameTmpConfigurationFileToRemoveSuffix();
@@ -903,10 +904,18 @@ public class IoTConsensusServerImpl {
                       filePath.getFileName().toString().endsWith(CONFIGURATION_TMP_FILE_NAME))
               .collect(Collectors.toList());
       for (Path filePath : paths) {
-        String formalPath =
+        String targetPath =
             filePath.toString().replace(CONFIGURATION_TMP_FILE_NAME, CONFIGURATION_FILE_NAME);
-        if (!filePath.toFile().renameTo(new File(formalPath))) {
-          logger.error("Unexpected error occurs when rename file: {} -> {}", filePath, formalPath);
+        File targetFile = new File(targetPath);
+        if (targetFile.exists()) {
+          try {
+            Files.delete(targetFile.toPath());
+          } catch (IOException e) {
+            logger.error("Unexpected error occurs when delete file: {}", targetPath);
+          }
+        }
+        if (!filePath.toFile().renameTo(targetFile)) {
+          logger.error("Unexpected error occurs when rename file: {} -> {}", filePath, targetPath);
         }
       }
     }
