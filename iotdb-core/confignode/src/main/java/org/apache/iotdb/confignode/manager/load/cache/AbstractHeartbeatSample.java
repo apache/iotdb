@@ -17,14 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.load.subscriber;
+package org.apache.iotdb.confignode.manager.load.cache;
 
-import com.google.common.eventbus.AllowConcurrentEvents;
-import com.google.common.eventbus.Subscribe;
+public abstract class AbstractHeartbeatSample {
 
-public interface IClusterStatusSubscriber {
+  // Equals to the consensus group's logical timestamp for consensus heartbeat sample
+  // Term for strong consistency consensus protocol such as Ratis
+  // Log index for weak consistency consensus protocol such as IoT
+  // 0 for no consensus such as Simple
+  // Equals to the nano timestamp when the heartbeat request is sent for other heartbeat samples
+  private final long sampleLogicalTimestamp;
 
-  @Subscribe
-  @AllowConcurrentEvents
-  void onConsensusStatisticsChanged(ConsensusStatisticsChangeEvent event);
+  protected AbstractHeartbeatSample(long sampleLogicalTimestamp) {
+    this.sampleLogicalTimestamp = sampleLogicalTimestamp;
+  }
+
+  public long getSampleLogicalTimestamp() {
+    return sampleLogicalTimestamp;
+  }
 }

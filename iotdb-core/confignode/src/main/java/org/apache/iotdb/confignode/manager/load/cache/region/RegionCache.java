@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache.HEARTBEAT_TIMEOUT_TIME_IN_NS;
 import static org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache.MAXIMUM_WINDOW_SIZE;
@@ -31,17 +32,21 @@ import static org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache.
 public class RegionCache {
 
   private final List<RegionHeartbeatSample> slidingWindow;
+  private final AtomicReference<RegionStatistics> currentStatistics;
 
   public RegionCache() {
     this.slidingWindow = Collections.synchronizedList(new LinkedList<>());
+    this.currentStatistics =
+        new AtomicReference<>(RegionStatistics.generateDefaultRegionStatistics());
   }
 
   public void cacheHeartbeatSample(RegionHeartbeatSample newHeartbeatSample) {
     synchronized (slidingWindow) {
       // Only sequential HeartbeatSamples are accepted.
       // And un-sequential HeartbeatSamples will be discarded.
-      if (slidingWindow.isEmpty()
-          || getLastSample().getSendTimestamp() < newHeartbeatSample.getSendTimestamp()) {
+      if (getLastSample() == null
+          || getLastSample().getSampleNanoTimestamp()
+              < newHeartbeatSample.getSampleNanoTimestamp()) {
         slidingWindow.add(newHeartbeatSample);
       }
 
@@ -51,26 +56,31 @@ public class RegionCache {
     }
   }
 
-  public RegionStatistics getRegionStatistics() {
+  public void updateCurrentStatistics() {
     RegionHeartbeatSample lastSample;
     synchronized (slidingWindow) {
       lastSample = getLastSample();
     }
 
-    // TODO: Optimize judge logic
     RegionStatus status;
-    if (RegionStatus.Removing.equals(lastSample.getStatus())) {
-      status = RegionStatus.Removing;
-    } else if (System.nanoTime() - lastSample.getSendTimestamp() > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
+    long currentNanoTime = System.nanoTime();
+    if (lastSample == null) {
+      status = RegionStatus.Unknown;
+    } else if (currentNanoTime - lastSample.getSampleNanoTimestamp()
+        > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
+      // TODO: Optimize Unknown judge logic
       status = RegionStatus.Unknown;
     } else {
       status = lastSample.getStatus();
     }
+    this.currentStatistics.set(new RegionStatistics(currentNanoTime, status));
+  }
 
-    return new RegionStatistics(status);
+  public RegionStatistics getCurrentStatistics() {
+    return currentStatistics.get();
   }
 
   private RegionHeartbeatSample getLastSample() {
-    return slidingWindow.get(slidingWindow.size() - 1);
+    return slidingWindow.isEmpty() ? null : slidingWindow.get(slidingWindow.size() - 1);
   }
 }

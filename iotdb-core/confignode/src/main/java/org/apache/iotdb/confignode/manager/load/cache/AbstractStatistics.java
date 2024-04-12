@@ -16,26 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.load.cache;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.confignode.manager.load.cache.route.RegionRouteCache;
-import org.apache.iotdb.tsfile.utils.Pair;
+public abstract class AbstractStatistics {
 
-import org.junit.Assert;
-import org.junit.Test;
+  // The nano timestamp when the statistics is generated
+  private final long statisticsNanoTimestamp;
 
-public class LoadCacheTest {
+  protected AbstractStatistics(long statisticsNanoTimestamp) {
+    this.statisticsNanoTimestamp = statisticsNanoTimestamp;
+  }
 
-  @Test
-  public void periodicUpdateTest() {
-    RegionRouteCache regionRouteCache =
-        new RegionRouteCache(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
-    long currentTime = System.nanoTime();
-    Pair<Long, Integer> leaderSample = new Pair<>(currentTime, 1);
-    regionRouteCache.cacheLeaderSample(leaderSample);
-    Assert.assertTrue(regionRouteCache.periodicUpdate());
-    Assert.assertEquals(1, regionRouteCache.getLeaderId());
+  public long getStatisticsNanoTimestamp() {
+    return statisticsNanoTimestamp;
+  }
+
+  /**
+   * Compare if this statistics is newer than the given one.
+   *
+   * @param o The given statistics.
+   * @return True if the logical timestamp of this statistics is newer than the given one, False
+   *     otherwise.
+   */
+  public boolean isNewerThan(AbstractStatistics o) {
+    return statisticsNanoTimestamp > o.getStatisticsNanoTimestamp();
   }
 }

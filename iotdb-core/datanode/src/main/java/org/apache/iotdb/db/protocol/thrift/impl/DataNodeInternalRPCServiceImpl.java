@@ -1397,8 +1397,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     // Judging leader if necessary
     if (req.isNeedJudgeLeader()) {
-      resp.setJudgedLeaders(getJudgedLeaders());
+      // Always get logical clock before judging leader
+      // to ensure that the leader is up-to-date
       resp.setConsensusLogicalTimeMap(getLogicalClockMap());
+      resp.setJudgedLeaders(getJudgedLeaders());
     }
 
     // Sampling load if necessary

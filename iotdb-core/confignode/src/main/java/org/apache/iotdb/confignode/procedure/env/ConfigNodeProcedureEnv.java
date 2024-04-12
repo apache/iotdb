@@ -97,6 +97,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -393,12 +394,13 @@ public class ConfigNodeProcedureEnv {
               DataNodeRequestType.SET_SYSTEM_STATUS);
     }
 
+    long currentTime = System.nanoTime();
     // Force updating NodeStatus to Removing
     getLoadManager()
         .forceUpdateNodeCache(
             NodeType.DataNode,
             dataNodeLocation.getDataNodeId(),
-            NodeHeartbeatSample.generateDefaultSample(NodeStatus.Removing));
+            new NodeHeartbeatSample(currentTime, NodeStatus.Removing));
     // Force update RegionStatus to Removing
     getPartitionManager()
         .getAllReplicaSets(dataNodeLocation.getDataNodeId())
@@ -409,7 +411,7 @@ public class ConfigNodeProcedureEnv {
                         replicaSet.getRegionId(),
                         Collections.singletonMap(
                             dataNodeLocation.getDataNodeId(),
-                            RegionHeartbeatSample.generateDefaultSample(RegionStatus.Removing))));
+                            new RegionHeartbeatSample(currentTime, RegionStatus.Removing))));
   }
 
   /**
@@ -554,24 +556,17 @@ public class ConfigNodeProcedureEnv {
 
   /**
    * Force activating RegionGroup by setting status to Running, therefore the ConfigNode-leader can
-   * use this RegionGroup to allocate new Partitions
+   * select leader for it and use it to allocate new Partitions
    *
-   * @param regionGroupId Specified RegionGroup
-   * @param regionStatusMap Map<DataNodeId, RegionStatus>
+   * @param activateRegionGroupMap Map<RegionGroupId, Map<DataNodeId, activate heartbeat sample>>
    */
   public void activateRegionGroup(
-      TConsensusGroupId regionGroupId, Map<Integer, RegionStatus> regionStatusMap) {
-    long currentTime = System.nanoTime();
-    Map<Integer, RegionHeartbeatSample> heartbeatSampleMap = new HashMap<>();
-    regionStatusMap.forEach(
-        (dataNodeId, regionStatus) ->
-            heartbeatSampleMap.put(
-                dataNodeId, new RegionHeartbeatSample(currentTime, currentTime, regionStatus)));
-    getLoadManager().forceUpdateRegionGroupCache(regionGroupId, heartbeatSampleMap);
+      Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> activateRegionGroupMap) {
+    getLoadManager().forceUpdateRegionGroupCache(activateRegionGroupMap);
     // force balance region leader to skip waiting for leader election
     getLoadManager().forceBalanceRegionLeader();
     // Wait for leader election
-    getLoadManager().waitForLeaderElection(Collections.singletonList(regionGroupId));
+    getLoadManager().waitForLeaderElection(new ArrayList<>(activateRegionGroupMap.keySet()));
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {

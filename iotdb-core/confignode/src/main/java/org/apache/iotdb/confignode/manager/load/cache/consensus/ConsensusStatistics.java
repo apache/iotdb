@@ -17,28 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.load.cache.region;
+package org.apache.iotdb.confignode.manager.load.cache.consensus;
 
-import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractStatistics;
 
 import java.util.Objects;
 
-public class RegionStatistics extends AbstractStatistics {
+public class ConsensusStatistics extends AbstractStatistics {
 
-  private final RegionStatus regionStatus;
+  private final int leaderId;
 
-  public RegionStatistics(long statisticsNanoTimestamp, RegionStatus regionStatus) {
+  public ConsensusStatistics(long statisticsNanoTimestamp, int leaderId) {
     super(statisticsNanoTimestamp);
-    this.regionStatus = regionStatus;
+    this.leaderId = leaderId;
   }
 
-  public static RegionStatistics generateDefaultRegionStatistics() {
-    return new RegionStatistics(0, RegionStatus.Unknown);
+  public static ConsensusStatistics generateDefaultConsensusStatistics() {
+    return new ConsensusStatistics(0, ConsensusCache.UN_READY_LEADER_ID);
   }
 
-  public RegionStatus getRegionStatus() {
-    return regionStatus;
+  public int getLeaderId() {
+    return leaderId;
   }
 
   @Override
@@ -49,17 +48,17 @@ public class RegionStatistics extends AbstractStatistics {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    RegionStatistics that = (RegionStatistics) o;
-    return regionStatus == that.regionStatus;
+    ConsensusStatistics that = (ConsensusStatistics) o;
+    return leaderId == that.leaderId;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(regionStatus);
+    return Objects.hash(leaderId);
   }
 
   @Override
   public String toString() {
-    return "RegionStatistics{" + "regionStatus=" + regionStatus + '}';
+    return "ConsensusStatistics{" + "leaderId=" + leaderId + '}';
   }
 }

@@ -24,11 +24,11 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.PipeRuntimeCoordinator;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 
@@ -72,11 +72,8 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
 
   @Override
   public void onComplete(TDataNodeHeartbeatResp heartbeatResp) {
-    long receiveTime = System.nanoTime();
-
     // Update NodeCache
-    loadCache.cacheDataNodeHeartbeatSample(
-        nodeId, new NodeHeartbeatSample(heartbeatResp, receiveTime));
+    loadCache.cacheDataNodeHeartbeatSample(nodeId, new NodeHeartbeatSample(heartbeatResp));
 
     heartbeatResp
         .getJudgedLeaders()
@@ -88,14 +85,15 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
                   nodeId,
                   new RegionHeartbeatSample(
                       heartbeatResp.getHeartbeatTimestamp(),
-                      receiveTime,
                       // Region will inherit DataNode's status
                       RegionStatus.parse(heartbeatResp.getStatus())));
 
               if (Boolean.TRUE.equals(isLeader)) {
-                // Update leaderCache
-                loadCache.cacheLeaderSample(
-                    regionGroupId, new Pair<>(heartbeatResp.getHeartbeatTimestamp(), nodeId));
+                // Update RegionRouteCache
+                loadCache.cacheConsensusSample(
+                    regionGroupId,
+                    new ConsensusHeartbeatSample(
+                        heartbeatResp.getConsensusLogicalTimeMap().get(regionGroupId), nodeId));
               }
             });
 
@@ -123,7 +121,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
   public void onError(Exception e) {
     if (ThriftClient.isConnectionBroken(e)) {
       loadCache.forceUpdateNodeCache(
-          NodeType.DataNode, nodeId, NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+          NodeType.DataNode, nodeId, new NodeHeartbeatSample(NodeStatus.Unknown));
     }
   }
 }

@@ -17,14 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.load.subscriber;
+package org.apache.iotdb.confignode.manager.load.cache.consensus;
 
-import com.google.common.eventbus.AllowConcurrentEvents;
-import com.google.common.eventbus.Subscribe;
+import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 
-public interface IClusterStatusSubscriber {
+public class ConsensusHeartbeatSample extends AbstractHeartbeatSample {
 
-  @Subscribe
-  @AllowConcurrentEvents
-  void onConsensusStatisticsChanged(ConsensusStatisticsChangeEvent event);
+  private final int leaderId;
+
+  public ConsensusHeartbeatSample(long sampleLogicalTimestamp, int leaderId) {
+    super(sampleLogicalTimestamp);
+    this.leaderId = leaderId;
+  }
+
+  public int getLeaderId() {
+    return leaderId;
+  }
 }

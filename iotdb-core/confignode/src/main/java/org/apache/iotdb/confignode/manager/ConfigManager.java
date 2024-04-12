@@ -431,7 +431,7 @@ public class ConfigManager implements IManager {
           .forceUpdateNodeCache(
               NodeType.DataNode,
               dataNodeLocation.getDataNodeId(),
-              NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+              new NodeHeartbeatSample(NodeStatus.Unknown));
       LOGGER.info(
           "[ShutdownHook] The DataNode-{} will be shutdown soon, mark it as Unknown",
           dataNodeLocation.getDataNodeId());
@@ -1301,7 +1301,7 @@ public class ConfigManager implements IManager {
           .forceUpdateNodeCache(
               NodeType.ConfigNode,
               configNodeLocation.getConfigNodeId(),
-              NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+              new NodeHeartbeatSample(NodeStatus.Unknown));
       LOGGER.info(
           "[ShutdownHook] The ConfigNode-{} will be shutdown soon, mark it as Unknown",
           configNodeLocation.getConfigNodeId());

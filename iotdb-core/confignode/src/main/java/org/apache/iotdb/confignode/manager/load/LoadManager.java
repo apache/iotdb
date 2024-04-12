@@ -26,8 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -41,14 +39,12 @@ import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.service.EventService;
 import org.apache.iotdb.confignode.manager.load.service.HeartbeatService;
 import org.apache.iotdb.confignode.manager.load.service.StatisticsService;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.tsfile.utils.Pair;
-
-import com.google.common.eventbus.AsyncEventBus;
-import com.google.common.eventbus.EventBus;
 
 import java.util.List;
 import java.util.Map;
@@ -73,12 +69,7 @@ public class LoadManager {
 
   private final HeartbeatService heartbeatService;
   private final StatisticsService statisticsService;
-
-  private final EventBus loadPublisher =
-      new AsyncEventBus(
-          ThreadName.CONFIG_NODE_LOAD_PUBLISHER.getName(),
-          IoTDBThreadPoolFactory.newFixedThreadPool(
-              5, ThreadName.CONFIG_NODE_LOAD_PUBLISHER.getName()));
+  private final EventService eventService;
 
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
@@ -89,11 +80,8 @@ public class LoadManager {
 
     this.loadCache = new LoadCache();
     this.heartbeatService = new HeartbeatService(configManager, loadCache);
-    this.statisticsService =
-        new StatisticsService(configManager, routeBalancer, loadCache, loadPublisher);
-
-    loadPublisher.register(statisticsService);
-    loadPublisher.register(configManager.getPipeManager().getPipeRuntimeCoordinator());
+    this.statisticsService = new StatisticsService(configManager, routeBalancer, loadCache);
+    this.eventService = new EventService(configManager, loadCache);
   }
 
   /**
@@ -152,12 +140,14 @@ public class LoadManager {
     loadCache.initHeartbeatCache(configManager);
     heartbeatService.startHeartbeatService();
     statisticsService.startLoadStatisticsService();
+    eventService.startEventService();
     partitionBalancer.setupPartitionBalancer();
   }
 
   public void stopLoadServices() {
     heartbeatService.stopHeartbeatService();
     statisticsService.stopLoadStatisticsService();
+    eventService.stopEventService();
     loadCache.clearHeartbeatCache();
     partitionBalancer.clearPartitionBalancer();
   }
@@ -254,7 +244,8 @@ public class LoadManager {
   }
 
   /**
-   * Force update the specified Node's cache.
+   * Force update the specified Node's cache, update statistics and broadcast statistics change
+   * event if necessary.
    *
    * @param nodeType Specified NodeType
    * @param nodeId Specified NodeId
@@ -262,7 +253,17 @@ public class LoadManager {
    */
   public void forceUpdateNodeCache(
       NodeType nodeType, int nodeId, NodeHeartbeatSample heartbeatSample) {
-    loadCache.forceUpdateNodeCache(nodeType, nodeId, heartbeatSample);
+    switch (nodeType) {
+      case ConfigNode:
+        loadCache.cacheConfigNodeHeartbeatSample(nodeId, heartbeatSample);
+        break;
+      case DataNode:
+      default:
+        loadCache.cacheDataNodeHeartbeatSample(nodeId, heartbeatSample);
+        break;
+    }
+    loadCache.updateNodeStatistics();
+    eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
   }
 
   /** Remove the specified Node's cache. */
@@ -324,14 +325,18 @@ public class LoadManager {
   }
 
   /**
-   * Force update the specified RegionGroup's cache.
+   * Force update the specified RegionGroups' cache.
    *
    * @param regionGroupId Specified RegionGroupId
    * @param heartbeatSampleMap Specified RegionHeartbeatSampleMap
    */
   public void forceUpdateRegionGroupCache(
-      TConsensusGroupId regionGroupId, Map<Integer, RegionHeartbeatSample> heartbeatSampleMap) {
-    loadCache.forceUpdateRegionGroupCache(regionGroupId, heartbeatSampleMap);
+    Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> heartbeatSampleMap) {
+    heartbeatSampleMap.forEach(
+        (regionGroupId, regionHeartbeatSampleMap) -> regionHeartbeatSampleMap.forEach((dataNodeId, regionHeartbeatSample) ->
+          loadCache.cacheRegionHeartbeatSample(regionGroupId, dataNodeId, regionHeartbeatSample)));
+    loadCache.updateRegionGroupStatistics();
+    eventService.checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
   }
 
   /** Remove the specified RegionGroup's cache. */

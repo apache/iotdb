@@ -189,14 +189,13 @@ public class HeartbeatService {
       TConfigNodeHeartbeatReq heartbeatReq, List<TConfigNodeLocation> registeredConfigNodes) {
     // Send heartbeat requests
     for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
-      if (configNodeLocation.getConfigNodeId() == ConfigNodeHeartbeatCache.CURRENT_NODE_ID) {
-        // Skip itself
+      int configNodeId = configNodeLocation.getConfigNodeId();
+      if (configNodeId == ConfigNodeHeartbeatCache.CURRENT_NODE_ID
+          || loadCache.checkAndSetHeartbeatProcessing(configNodeId)) {
+        // Skip itself and the ConfigNode that is processing heartbeat
         continue;
       }
-
-      ConfigNodeHeartbeatHandler handler =
-          new ConfigNodeHeartbeatHandler(
-              configManager, configNodeLocation.getConfigNodeId(), loadCache);
+      ConfigNodeHeartbeatHandler handler = new ConfigNodeHeartbeatHandler(configNodeId, loadCache);
       AsyncConfigNodeHeartbeatClientPool.getInstance()
           .getConfigNodeHeartBeat(configNodeLocation.getInternalEndPoint(), heartbeatReq, handler);
     }
@@ -211,9 +210,14 @@ public class HeartbeatService {
       TDataNodeHeartbeatReq heartbeatReq, List<TDataNodeConfiguration> registeredDataNodes) {
     // Send heartbeat requests
     for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
+      int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
+      if (loadCache.checkAndSetHeartbeatProcessing(dataNodeId)) {
+        // Skip the DataNode that is processing heartbeat
+        continue;
+      }
       DataNodeHeartbeatHandler handler =
           new DataNodeHeartbeatHandler(
-              dataNodeInfo.getLocation().getDataNodeId(),
+              dataNodeId,
               loadCache,
               configManager.getClusterQuotaManager().getDeviceNum(),
               configManager.getClusterQuotaManager().getTimeSeriesNum(),
@@ -222,7 +226,7 @@ public class HeartbeatService {
               configManager.getClusterSchemaManager()::updateDeviceUsage,
               configManager.getPipeManager().getPipeRuntimeCoordinator());
       configManager.getClusterQuotaManager().updateSpaceQuotaUsage();
-      addConfigNodeLocationsToReq(dataNodeInfo.getLocation().getDataNodeId(), heartbeatReq);
+      addConfigNodeLocationsToReq(dataNodeId, heartbeatReq);
       AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);

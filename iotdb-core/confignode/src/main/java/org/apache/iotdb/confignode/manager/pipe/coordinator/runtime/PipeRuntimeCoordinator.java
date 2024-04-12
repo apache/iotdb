@@ -22,9 +22,8 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
-import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
-import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent;
 
 import javax.validation.constraints.NotNull;
 
@@ -65,18 +64,13 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
     return procedureSubmitter;
   }
 
-  @Override
-  public synchronized void onClusterStatisticsChanged(StatisticsChangeEvent event) {
-    pipeLeaderChangeHandler.onClusterStatisticsChanged(event);
-  }
-
   public synchronized void onConfigRegionGroupLeaderChanged() {
     pipeLeaderChangeHandler.onConfigRegionGroupLeaderChanged();
   }
 
   @Override
-  public synchronized void onRegionGroupLeaderChanged(RouteChangeEvent event) {
-    pipeLeaderChangeHandler.onRegionGroupLeaderChanged(event);
+  public synchronized void onConsensusStatisticsChanged(ConsensusStatisticsChangeEvent event) {
+    pipeLeaderChangeHandler.onConsensusStatisticsChanged(event);
   }
 
   public void startPipeMetaSync() {
