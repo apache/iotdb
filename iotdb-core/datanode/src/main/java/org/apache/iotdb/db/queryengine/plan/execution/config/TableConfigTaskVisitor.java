@@ -30,8 +30,10 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.UseDBTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
@@ -166,12 +168,22 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   @Override
   protected IConfigTask visitShowTables(ShowTables node, MPPQueryContext context) {
-    return super.visitShowTables(node, context);
+    context.setQueryType(QueryType.READ);
+    String database = clientSession.getDatabaseName();
+    if (node.getDbName().isPresent()) {
+      database = node.getDbName().toString();
+    }
+    return new ShowTablesTask(database);
   }
 
   @Override
   protected IConfigTask visitDescribeTable(DescribeTable node, MPPQueryContext context) {
-    return super.visitDescribeTable(node, context);
+    context.setQueryType(QueryType.READ);
+    String database = clientSession.getDatabaseName();
+    if (node.getTable().getPrefix().isPresent()) {
+      database = node.getTable().getPrefix().toString();
+    }
+    return new DescribeTableTask(database, node.getTable().getSuffix());
   }
 
   @Override

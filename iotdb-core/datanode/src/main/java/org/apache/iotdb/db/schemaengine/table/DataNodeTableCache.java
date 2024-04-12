@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -136,6 +138,30 @@ public class DataNodeTableCache implements ITableCache {
       LOGGER.info("Commit-create table {}.{} successfully", database, tableName);
     } finally {
       readWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TsTable getTable(String database, String tableName) {
+    readWriteLock.readLock().lock();
+    try {
+      if (databaseTableMap.containsKey(database)) {
+        return databaseTableMap.get(database).get(tableName);
+      }
+      return null;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  public List<TsTable> getTables(String database) {
+    readWriteLock.readLock().lock();
+    try {
+      if (databaseTableMap.containsKey(database)) {
+        return new ArrayList<>(databaseTableMap.get(database).values());
+      }
+      return Collections.emptyList();
+    } finally {
+      readWriteLock.readLock().unlock();
     }
   }
 }
