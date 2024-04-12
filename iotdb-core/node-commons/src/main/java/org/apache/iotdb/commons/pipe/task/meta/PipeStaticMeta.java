@@ -94,17 +94,17 @@ public class PipeStaticMeta {
     ReadWriteIOUtils.write(creationTime, outputStream);
 
     ReadWriteIOUtils.write(extractorParameters.getAttribute().size(), outputStream);
-    for (Map.Entry<String, String> entry : extractorParameters.getAttribute().entrySet()) {
+    for (final Map.Entry<String, String> entry : extractorParameters.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
     ReadWriteIOUtils.write(processorParameters.getAttribute().size(), outputStream);
-    for (Map.Entry<String, String> entry : processorParameters.getAttribute().entrySet()) {
+    for (final Map.Entry<String, String> entry : processorParameters.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
     ReadWriteIOUtils.write(connectorParameters.getAttribute().size(), outputStream);
-    for (Map.Entry<String, String> entry : connectorParameters.getAttribute().entrySet()) {
+    for (final Map.Entry<String, String> entry : connectorParameters.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
@@ -182,7 +182,7 @@ public class PipeStaticMeta {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeStaticMeta that = (PipeStaticMeta) obj;
+    final PipeStaticMeta that = (PipeStaticMeta) obj;
     return pipeName.equals(that.pipeName)
         && creationTime == that.creationTime
         && extractorParameters.equals(that.extractorParameters)
@@ -217,7 +217,8 @@ public class PipeStaticMeta {
   public static final String SYSTEM_PIPE_PREFIX = "__";
   public static final String SUBSCRIPTION_PIPE_PREFIX = SYSTEM_PIPE_PREFIX + "subscription.";
 
-  public static String generateSubscriptionPipeName(String topicName, String consumerGroupId) {
+  public static String generateSubscriptionPipeName(
+      final String topicName, final String consumerGroupId) {
     return SUBSCRIPTION_PIPE_PREFIX + topicName + "_" + consumerGroupId;
   }
 }
