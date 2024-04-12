@@ -171,7 +171,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.READ);
     String database = clientSession.getDatabaseName();
     if (node.getDbName().isPresent()) {
-      database = node.getDbName().toString();
+      database = node.getDbName().get().toString();
     }
     return new ShowTablesTask(database);
   }
@@ -181,7 +181,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.READ);
     String database = clientSession.getDatabaseName();
     if (node.getTable().getPrefix().isPresent()) {
-      database = node.getTable().getPrefix().toString();
+      database = node.getTable().getPrefix().get().toString();
     }
     return new DescribeTableTask(database, node.getTable().getSuffix());
   }

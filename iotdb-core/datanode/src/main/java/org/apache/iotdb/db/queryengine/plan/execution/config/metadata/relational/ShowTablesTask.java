@@ -67,7 +67,7 @@ public class ShowTablesTask implements IConfigTask {
       builder
           .getColumnBuilder(0)
           .writeBinary(new Binary(table.getTableName(), TSFileConfig.STRING_CHARSET));
-      builder.getColumnBuilder(1).writeLong(Long.MAX_VALUE);
+      builder.getColumnBuilder(1).appendNull();
       builder.declarePosition();
     }
 

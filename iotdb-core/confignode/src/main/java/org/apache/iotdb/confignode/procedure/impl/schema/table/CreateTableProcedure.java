@@ -113,7 +113,7 @@ public class CreateTableProcedure
         case COMMIT_RELEASE:
           LOGGER.info("Commit release table {}.{}", database, table.getTableName());
           commitReleaseTable(env);
-          break;
+          return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized CreateTableState " + state));
           return Flow.NO_MORE_STATE;
