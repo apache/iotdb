@@ -195,7 +195,7 @@ local_ports_check() {
           process_command=$(echo "$listening" | awk '{print $2}')
           iotdb_check=$(ps -p "$process_command" -o args= | grep "iotdb")
           if [ -n "$iotdb_check" ]; then
-            unlistening_ports+=("$port ")
+            iotdb_listening_ports+=("$port ")
           else
             listening_ports+=("$port ")
           fi
