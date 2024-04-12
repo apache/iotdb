@@ -103,6 +103,7 @@ IFS=',' read -ra ips_ports <<< "$formatted_ips"
 
 unreachable_combinations=()
 listening_ports=()
+iotdb_listening_ports=()
 unlistening_ports=()
 ip_port_list=""
 
@@ -207,11 +208,10 @@ local_ports_check() {
           process_command=$(echo "$listening" | awk '{print $2}')
           iotdb_check=$(ps -p "$process_command" -o args= | grep "iotdb")
           if [ -n "$iotdb_check" ]; then
-            :
+            iotdb_listening_ports+=("$port ")
           else
-            :
+             listening_ports+=("$port ")
           fi
-          listening_ports+=("$port ")
         else
           unlistening_ports+=("$port ")
         fi
@@ -225,7 +225,11 @@ local_ports_check() {
   echo "Result: "
   # Print the occupied ports
   if [ ${#listening_ports[@]} -gt 0 ]; then
-      echo "Port" "${listening_ports[@]}" "is occupied"
+      echo "Port" "${listening_ports[@]}" "occupied by other programs"
+  fi
+
+  if [ ${#iotdb_listening_ports[@]} -gt 0 ]; then
+      echo "Port" "${iotdb_listening_ports[@]}" "is occupied by IoTDB"
   fi
 
   if [ ${#unlistening_ports[@]} -gt 0 ]; then
