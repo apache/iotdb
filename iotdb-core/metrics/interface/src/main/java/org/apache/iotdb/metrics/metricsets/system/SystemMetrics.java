@@ -52,8 +52,8 @@ public class SystemMetrics implements IMetricSet {
   private static final Logger logger = LoggerFactory.getLogger(SystemMetrics.class);
   private static final MetricConfig CONFIG = MetricConfigDescriptor.getInstance().getMetricConfig();
   private final Runtime runtime = Runtime.getRuntime();
-  private final String[] getSystemMemoryCommand = new String[] {"free"};
-  private static final String SYSTEM = "system";
+  private final String[] getSystemMemoryCommand = new String[] {"/bin/sh", "-c", "free"};
+  static final String SYSTEM = "system";
   private final com.sun.management.OperatingSystemMXBean osMxBean;
   private final Set<FileStore> fileStores = new HashSet<>();
   private final AtomicReference<List<String>> diskDirs =
@@ -198,6 +198,7 @@ public class SystemMetrics implements IMetricSet {
           result.append(line);
         }
       }
+      logger.error(result.toString());
       String[] lines = result.toString().split("\n");
       String[] memParts = lines[1].trim().split("\\s+");
       count = memParts.length;
