@@ -195,7 +195,7 @@ public class SystemMetrics implements IMetricSet {
           new BufferedReader(new InputStreamReader(process.getInputStream()))) {
         String line;
         while ((line = input.readLine()) != null) {
-          result.append(line + "\n");
+          result.append(line).append("\n");
         }
       }
       logger.error(result.toString());
@@ -209,7 +209,7 @@ public class SystemMetrics implements IMetricSet {
                 MetricLevel.CORE,
                 SystemTag.NAME.toString(),
                 linuxMemoryTitles[i - 1])
-            .set(Long.parseLong(memParts[i]));
+            .set(Long.parseLong(memParts[i]) * 1024);
       }
     } catch (IOException e) {
       logger.warn("Failed to get memory, because ", e);
