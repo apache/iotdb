@@ -195,7 +195,7 @@ public class LocalExecutionPlanner {
    *
    * <p>retainedSize + N * totalSizeOfDriver / driverNum
    */
-  private long calculateEstimatedMemorySize(
+  public long calculateEstimatedMemorySize(
       final List<PipelineDriverFactory> pipelineDriverFactories) {
     long retainedSize =
         pipelineDriverFactories.stream()

@@ -121,6 +121,27 @@ public class FEPlanUtil {
     return deviceViewNode;
   }
 
+  /**
+   * This method will init a DeviceViewNode with @childNum SeriesScanNode as children.
+   *
+   * @param childNum the number of children
+   * @return a DeviceViewNode with @childNum alignedSeriesScanNode as children
+   */
+  protected static DeviceViewNode initDeviceViewNodeWithSeriesScanAsChildren(
+      final TypeProvider typeProvider, final int childNum) throws IllegalPathException {
+    DeviceViewNode deviceViewNode =
+        new DeviceViewNode(
+            new PlanNodeId("DeviceViewNode"), null, Collections.EMPTY_LIST, Collections.EMPTY_MAP);
+    for (int i = 0; i < childNum; i++) {
+      SeriesScanNode alignedSeriesScanNode =
+          new SeriesScanNode(
+              new PlanNodeId(String.format("AlignedSeriesScanNode%d", i)),
+              new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
+      deviceViewNode.addChild(alignedSeriesScanNode);
+    }
+    return deviceViewNode;
+  }
+
   protected static LeftOuterTimeJoinNode initLeftOuterTimeJoinNode(TypeProvider typeProvider)
       throws IllegalPathException {
     LeftOuterTimeJoinNode leftOuterTimeJoinNode =

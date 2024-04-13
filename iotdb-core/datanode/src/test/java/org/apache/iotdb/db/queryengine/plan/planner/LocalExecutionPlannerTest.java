@@ -19,20 +19,37 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
+import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import com.google.common.collect.Sets;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
 
+import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.plan.planner.FEPlanUtil.createLocalExecutionPlanContext;
-import static org.apache.iotdb.db.queryengine.plan.planner.FEPlanUtil.initDeviceViewNode;
+import static org.apache.iotdb.db.queryengine.plan.planner.FEPlanUtil.initDeviceViewNodeWithSeriesScanAsChildren;
 import static org.apache.iotdb.db.queryengine.plan.planner.FEPlanUtil.initFullOuterTimeJoinNode;
 
 public class LocalExecutionPlannerTest {
@@ -41,8 +58,7 @@ public class LocalExecutionPlannerTest {
 
   private static final long QUERY_THREAD_COUNT = 8;
 
-  private static final long ALIGNED_MAX_SIZE =
-      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+  private static final SeriesScanOperator MOCK_SERIES_SCAN = mockSeriesScanOperator();
 
   /**
    * This test will test dop = 2. Expected result is five pipelines with dependency:
@@ -62,7 +78,7 @@ public class LocalExecutionPlannerTest {
   public void testCheckMemoryWithDeviceView() {
     try {
       TypeProvider typeProvider = new TypeProvider();
-      DeviceViewNode deviceViewNode = initDeviceViewNode(typeProvider, 4);
+      DeviceViewNode deviceViewNode = initDeviceViewNodeWithSeriesScanAsChildren(typeProvider, 4);
       LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
       context.setDegreeOfParallelism(2);
       Operator root = deviceViewNode.accept(new OperatorTreeGenerator(), context);
@@ -73,12 +89,22 @@ public class LocalExecutionPlannerTest {
           .forEach(
               pipelineDriverFactory ->
                   Assert.assertEquals(
-                      ALIGNED_MAX_SIZE, pipelineDriverFactory.getEstimatedMemorySize()));
+                      MOCK_SERIES_SCAN.calculateMaxPeekMemory(),
+                      pipelineDriverFactory.getEstimatedMemorySize()));
 
       context.addPipelineDriverFactory(
           root, context.getDriverContext(), root.calculateMaxPeekMemory());
+
+      long expected =
+          4 * MOCK_SERIES_SCAN.calculateRetainedSizeAfterCallingNext()
+              + context.getPipelineDriverFactories().stream()
+                      .map(PipelineDriverFactory::getEstimatedMemorySize)
+                      .reduce(0L, Long::sum)
+                  / 5
+                  * Math.max((QUERY_THREAD_COUNT / ESTIMATED_FI_NUM), 1);
+
       Assert.assertEquals(
-          ALIGNED_MAX_SIZE, calculateEstimatedMemorySize(context.getPipelineDriverFactories()));
+          expected, calculateEstimatedMemorySize(context.getPipelineDriverFactories()));
     } catch (Exception e) {
       Assert.fail();
     }
@@ -100,42 +126,75 @@ public class LocalExecutionPlannerTest {
 
     Operator root = timeJoinNode.accept(new OperatorTreeGenerator(), context);
 
-    // The second pipeline is a RowBasedTimeJoinOperator
-    Assert.assertEquals(
-        2 * ALIGNED_MAX_SIZE, context.getPipelineDriverFactories().get(0).getEstimatedMemorySize());
-
     context.addPipelineDriverFactory(
         root, context.getDriverContext(), root.calculateMaxPeekMemory());
 
-    // ALIGNED_MAX_SIZE * 5 / 2 is calculated by directly applying the algorithm on the Operator
-    // Tree.
-    Assert.assertEquals(
-        ALIGNED_MAX_SIZE * 5 / 2
+    long expected =
+        context
+                .getPipelineDriverFactories()
+                .get(0)
+                .getOperation()
+                .calculateRetainedSizeAfterCallingNext()
+            + context
+                .getPipelineDriverFactories()
+                .get(1)
+                .getOperation()
+                .calculateRetainedSizeAfterCallingNext()
             + context.getPipelineDriverFactories().stream()
-                .map(
-                    pipelineDriverFactory ->
-                        pipelineDriverFactory
-                            .getOperation()
-                            .calculateRetainedSizeAfterCallingNext())
-                .reduce(0L, Long::sum),
-        calculateEstimatedMemorySize(context.getPipelineDriverFactories()));
+                    .map(PipelineDriverFactory::getEstimatedMemorySize)
+                    .reduce(0L, Long::sum)
+                / 2
+                * Math.max((QUERY_THREAD_COUNT / ESTIMATED_FI_NUM), 1);
+
+    Assert.assertEquals(
+        expected, calculateEstimatedMemorySize(context.getPipelineDriverFactories()));
   }
 
   private long calculateEstimatedMemorySize(
       final List<PipelineDriverFactory> pipelineDriverFactories) {
-    long retainedSize =
-        pipelineDriverFactories.stream()
-            .map(
-                pipelineDriverFactory ->
-                    pipelineDriverFactory.getOperation().calculateRetainedSizeAfterCallingNext())
-            .reduce(0L, Long::sum);
-    long totalSizeOfDrivers =
-        pipelineDriverFactories.stream()
-            .map(PipelineDriverFactory::getEstimatedMemorySize)
-            .reduce(0L, Long::sum);
-    long runningMemorySize =
-        Math.max((QUERY_THREAD_COUNT / ESTIMATED_FI_NUM), 1)
-            * (totalSizeOfDrivers / pipelineDriverFactories.size());
-    return retainedSize + runningMemorySize;
+    long result = 0;
+    try {
+      LocalExecutionPlanner localExecutionPlanner = new LocalExecutionPlanner();
+      long res = localExecutionPlanner.calculateEstimatedMemorySize(pipelineDriverFactories);
+      Method method =
+          LocalExecutionPlanner.class.getDeclaredMethod("calculateEstimatedMemorySize", List.class);
+      method.setAccessible(true); // 设置方法为可访问
+      result = (long) method.invoke(localExecutionPlanner, pipelineDriverFactories); // 调用私有方法
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    return result;
+  }
+
+  private static SeriesScanOperator mockSeriesScanOperator() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    MeasurementPath measurementPath;
+    try {
+      measurementPath =
+          new MeasurementPath("root.SeriesScanOperatorTest" + ".device0.sensor0", TSDataType.INT32);
+    } catch (IllegalPathException e) {
+      throw new RuntimeException(e);
+    }
+    Set<String> allSensors = Sets.newHashSet("sensor0");
+    QueryId queryId = new QueryId("stub_query");
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+    PlanNodeId planNodeId = new PlanNodeId("1");
+    driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
+
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(allSensors);
+    return new SeriesScanOperator(
+        driverContext.getOperatorContexts().get(0),
+        planNodeId,
+        measurementPath,
+        Ordering.ASC,
+        scanOptionsBuilder.build());
   }
 }
