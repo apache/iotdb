@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TabletsMessagePayload implements SubscriptionRawMessagePayload {
+public class TabletsMessagePayload implements SubscriptionMessagePayload {
 
   protected transient List<Tablet> tablets = new ArrayList<>();
 
@@ -51,7 +51,7 @@ public class TabletsMessagePayload implements SubscriptionRawMessagePayload {
   }
 
   @Override
-  public SubscriptionRawMessagePayload deserialize(ByteBuffer buffer) {
+  public SubscriptionMessagePayload deserialize(ByteBuffer buffer) {
     final List<Tablet> tablets = new ArrayList<>();
     final int size = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < size; ++i) {

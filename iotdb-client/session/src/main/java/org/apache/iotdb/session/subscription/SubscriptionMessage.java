@@ -37,6 +37,11 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     this.payload = new SubscriptionSessionDataSets(tablets);
   }
 
+  public SubscriptionMessage(SubscriptionCommitContext commitContext, String fileName) {
+    this.commitContext = commitContext;
+    this.payload = new SubscriptionTsFileReader(fileName);
+  }
+
   public SubscriptionCommitContext getCommitContext() {
     return commitContext;
   }

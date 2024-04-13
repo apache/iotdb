@@ -26,7 +26,8 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessage;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -125,15 +126,10 @@ public class SubscriptionSessionConnection extends SessionConnection {
     RpcUtils.verifySuccess(resp.status);
   }
 
-  public List<SubscriptionRawMessage> poll(Set<String> topicNames)
-      throws TException, IOException, StatementExecutionException {
-    return poll(topicNames, 0);
-  }
-
-  public List<SubscriptionRawMessage> poll(Set<String> topicNames, long timeoutMs)
+  public List<SubscriptionPolledMessage> poll(SubscriptionPollMessage pollMessage)
       throws TException, IOException, StatementExecutionException {
     TPipeSubscribeResp resp =
-        client.pipeSubscribe(PipeSubscribePollReq.toTPipeSubscribeReq(topicNames, timeoutMs));
+        client.pipeSubscribe(PipeSubscribePollReq.toTPipeSubscribeReq(pollMessage));
     RpcUtils.verifySuccess(resp.status);
     PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
     return pollResp.getMessages();

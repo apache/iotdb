@@ -21,11 +21,8 @@ package org.apache.iotdb.rpc.subscription.payload.request;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
@@ -50,11 +47,7 @@ public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
 
     req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();
     req.type = PipeSubscribeRequestType.HANDSHAKE.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      consumerConfig.serialize(outputStream);
-      req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    }
+    req.body = ConsumerConfig.serialize(consumerConfig);
 
     return req;
   }

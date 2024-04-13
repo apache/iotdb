@@ -31,8 +31,8 @@ import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessageType;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessageType;
 import org.apache.iotdb.rpc.subscription.payload.common.TabletsMessagePayload;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
@@ -156,8 +156,8 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
       final SubscriptionEvent subscriptionEvent =
           new SubscriptionEvent(
               enrichedEvents,
-              new SubscriptionRawMessage(
-                  SubscriptionRawMessageType.TABLETS.getType(),
+              new SubscriptionPolledMessage(
+                  SubscriptionPolledMessageType.TABLETS.getType(),
                   new TabletsMessagePayload(tablets),
                   commitContext));
       uncommittedEvents.put(commitContext, subscriptionEvent); // before enqueuing the event

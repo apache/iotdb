@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessageType;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessageType;
 import org.apache.iotdb.rpc.subscription.payload.common.TabletsMessagePayload;
 
 public class SubscriptionRawMessageParser {
 
   private SubscriptionRawMessageParser() {}
 
-  public static SubscriptionMessage parse(SubscriptionRawMessage rawMessage) {
+  public static SubscriptionMessage parse(SubscriptionPolledMessage rawMessage) {
     short messageType = rawMessage.getMessageType();
-    if (SubscriptionRawMessageType.isValidatedMessageType(messageType)) {
-      switch (SubscriptionRawMessageType.valueOf(messageType)) {
+    if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
+      switch (SubscriptionPolledMessageType.valueOf(messageType)) {
         case TABLETS:
           return new SubscriptionMessage(
               rawMessage.getCommitContext(),

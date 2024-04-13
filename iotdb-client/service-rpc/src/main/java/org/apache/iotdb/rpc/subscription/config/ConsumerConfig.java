@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc.subscription.config;
 
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -40,7 +41,15 @@ public class ConsumerConfig extends PipeParameters {
 
   /////////////////////////////// de/ser ///////////////////////////////
 
-  public void serialize(DataOutputStream stream) throws IOException {
+  public static ByteBuffer serialize(ConsumerConfig consumerConfig) throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      consumerConfig.serialize(outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+  }
+
+  private void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(attributes, stream);
   }
 

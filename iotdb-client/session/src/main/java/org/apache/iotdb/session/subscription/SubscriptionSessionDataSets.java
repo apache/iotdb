@@ -30,18 +30,21 @@ public class SubscriptionSessionDataSets
 
   private final List<SubscriptionSessionDataSet> dataSetList;
 
+  private final List<Tablet> tablets;
+
   public SubscriptionSessionDataSets(List<Tablet> tablets) {
     this.dataSetList = new ArrayList<>();
-    tablets.forEach((tablet -> this.dataSetList.add(new SubscriptionSessionDataSet(tablet))));
+    this.tablets = tablets;
   }
 
   @Override
   public Iterator<SubscriptionSessionDataSet> iterator() {
+    tablets.forEach((tablet -> this.dataSetList.add(new SubscriptionSessionDataSet(tablet))));
     return dataSetList.iterator();
   }
 
   public Iterator<Tablet> tabletIterator() {
-    return dataSetList.stream().map((SubscriptionSessionDataSet::getTablet)).iterator();
+    return tablets.iterator();
   }
 
   @Override

@@ -22,7 +22,7 @@ package org.apache.iotdb.rpc.subscription.payload.response;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
 import java.io.IOException;
@@ -33,9 +33,9 @@ import java.util.Objects;
 
 public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
-  private transient List<SubscriptionRawMessage> messages = new ArrayList<>();
+  private transient List<SubscriptionPolledMessage> messages = new ArrayList<>();
 
-  public List<SubscriptionRawMessage> getMessages() {
+  public List<SubscriptionPolledMessage> getMessages() {
     return messages;
   }
 
@@ -46,7 +46,7 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
    * server.
    */
   public static PipeSubscribePollResp toTPipeSubscribeResp(
-      TSStatus status, List<SubscriptionRawMessage> messages) {
+      TSStatus status, List<SubscriptionPolledMessage> messages) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
     resp.messages = messages;
@@ -56,11 +56,11 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
     resp.type = PipeSubscribeResponseType.ACK.getType();
     try {
       resp.body = new ArrayList<>();
-      for (final SubscriptionRawMessage message : messages) {
+      for (final SubscriptionPolledMessage message : messages) {
         if (Objects.nonNull(message.getByteBuffer())) {
           resp.body.add(message.getByteBuffer());
         } else {
-          resp.body.add(SubscriptionRawMessage.serialize(message));
+          resp.body.add(SubscriptionPolledMessage.serialize(message));
         }
       }
     } catch (IOException e) {
@@ -77,7 +77,7 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
     if (Objects.nonNull(pollResp.body)) {
       for (final ByteBuffer byteBuffer : pollResp.body) {
         if (Objects.nonNull(byteBuffer) && byteBuffer.hasRemaining()) {
-          resp.messages.add(SubscriptionRawMessage.deserialize(byteBuffer));
+          resp.messages.add(SubscriptionPolledMessage.deserialize(byteBuffer));
         }
       }
     }

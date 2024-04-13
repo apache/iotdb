@@ -34,7 +34,6 @@ import java.util.Objects;
 
 public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
 
-  // dataNodeId -> clientRpcEndPoint
   private transient int dataNodeId;
 
   public int getDataNodeId() {
@@ -79,10 +78,12 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
       TPipeSubscribeResp handshakeResp) {
     final PipeSubscribeHandshakeResp resp = new PipeSubscribeHandshakeResp();
 
-    if (Objects.nonNull(handshakeResp.body) && !handshakeResp.body.isEmpty()) {
-      ByteBuffer byteBuffer = handshakeResp.body.get(0);
-      if (byteBuffer.hasRemaining()) {
-        resp.dataNodeId = ReadWriteIOUtils.readInt(byteBuffer);
+    if (Objects.nonNull(handshakeResp.body)) {
+      for (final ByteBuffer byteBuffer : handshakeResp.body) {
+        if (Objects.nonNull(byteBuffer) && byteBuffer.hasRemaining()) {
+          resp.dataNodeId = ReadWriteIOUtils.readInt(byteBuffer);
+          break;
+        }
       }
     }
 

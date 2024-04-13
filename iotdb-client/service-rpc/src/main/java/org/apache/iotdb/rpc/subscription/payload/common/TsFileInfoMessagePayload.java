@@ -25,7 +25,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class TsFileInfoMessagePayload implements SubscriptionRawMessagePayload {
+public class TsFileInfoMessagePayload implements SubscriptionMessagePayload {
 
   protected transient String fileName;
 
@@ -41,7 +41,7 @@ public class TsFileInfoMessagePayload implements SubscriptionRawMessagePayload {
   }
 
   @Override
-  public SubscriptionRawMessagePayload deserialize(ByteBuffer buffer) {
+  public SubscriptionMessagePayload deserialize(ByteBuffer buffer) {
     this.fileName = ReadWriteIOUtils.readString(buffer);
     return this;
   }

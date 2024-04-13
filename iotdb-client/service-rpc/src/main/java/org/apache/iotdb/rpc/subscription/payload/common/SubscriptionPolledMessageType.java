@@ -23,7 +23,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public enum SubscriptionRawMessageType {
+public enum SubscriptionPolledMessageType {
   TABLETS((short) 0),
 
   TS_FILE_INFO((short) 1),
@@ -33,7 +33,7 @@ public enum SubscriptionRawMessageType {
 
   private final short type;
 
-  SubscriptionRawMessageType(short type) {
+  SubscriptionPolledMessageType(short type) {
     this.type = type;
   }
 
@@ -41,8 +41,8 @@ public enum SubscriptionRawMessageType {
     return type;
   }
 
-  private static final Map<Short, SubscriptionRawMessageType> TYPE_MAP =
-      Arrays.stream(SubscriptionRawMessageType.values())
+  private static final Map<Short, SubscriptionPolledMessageType> TYPE_MAP =
+      Arrays.stream(SubscriptionPolledMessageType.values())
           .collect(
               HashMap::new,
               (typeMap, messageType) -> typeMap.put(messageType.getType(), messageType),
@@ -52,7 +52,7 @@ public enum SubscriptionRawMessageType {
     return TYPE_MAP.containsKey(type);
   }
 
-  public static SubscriptionRawMessageType valueOf(short type) {
+  public static SubscriptionPolledMessageType valueOf(short type) {
     return TYPE_MAP.get(type);
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.rpc.subscription.payload.common;
 
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -72,6 +73,14 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
   }
 
   /////////////////////////////// de/ser ///////////////////////////////
+
+  public static ByteBuffer serialize(SubscriptionCommitContext commitContext) throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      commitContext.serialize(outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+  }
 
   public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(dataNodeId, stream);
@@ -131,6 +140,7 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
 
   @Override
   public int compareTo(SubscriptionCommitContext commitContext) {
+    // TODO
     return 0;
   }
 }

@@ -31,7 +31,6 @@ public enum PipeSubscribeRequestType {
   CLOSE((short) 4),
   SUBSCRIBE((short) 5),
   UNSUBSCRIBE((short) 6),
-  POLL_TS_FILE((short) 7),
   ;
 
   private final short type;

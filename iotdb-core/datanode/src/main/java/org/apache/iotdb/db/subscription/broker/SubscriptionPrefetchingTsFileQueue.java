@@ -26,8 +26,8 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessageType;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessageType;
 import org.apache.iotdb.rpc.subscription.payload.common.TsFileInfoMessagePayload;
 
 import org.slf4j.Logger;
@@ -75,8 +75,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       final SubscriptionEvent subscriptionEvent =
           new SubscriptionEvent(
               Collections.singletonList(tsFileInsertionEvent),
-              new SubscriptionRawMessage(
-                  SubscriptionRawMessageType.TS_FILE_INFO.getType(),
+              new SubscriptionPolledMessage(
+                  SubscriptionPolledMessageType.TS_FILE_INFO.getType(),
                   new TsFileInfoMessagePayload(tsFileInsertionEvent.getTsFile().getName()),
                   commitContext));
       eventRef.set(subscriptionEvent);

@@ -40,14 +40,17 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.payload.common.PollMessagePayload;
+import org.apache.iotdb.rpc.subscription.payload.common.PollTsFileMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessage;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessageType;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
-import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollTsFileReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestType;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestVersion;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
@@ -119,9 +122,6 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
               PipeSubscribeUnsubscribeReq.fromTPipeSubscribeReq(req));
         case POLL:
           return handlePipeSubscribePoll(PipeSubscribePollReq.fromTPipeSubscribeReq(req));
-        case POLL_TS_FILE:
-          return handlePipeSubscribePollTsFile(
-              PipeSubscribePollTsFileReq.fromTPipeSubscribeReq(req));
         case COMMIT:
           return handlePipeSubscribeCommit(PipeSubscribeCommitReq.fromTPipeSubscribeReq(req));
         case CLOSE:
@@ -293,8 +293,31 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private TPipeSubscribeResp handlePipeSubscribePoll(final PipeSubscribePollReq req) {
+    final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
+    if (Objects.isNull(consumerConfig)) {
+      LOGGER.warn(
+          "Subscription: missing consumer config when handling PipeSubscribePollReq: {}", req);
+      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
+    }
+
     try {
-      return handlePipeSubscribePollInternal(req);
+      SubscriptionPollMessage pollMessage = req.getPollMessage();
+      short messageType = pollMessage.getMessageType();
+      if (SubscriptionPollMessageType.isValidatedMessageType(messageType)) {
+        switch (SubscriptionPollMessageType.valueOf(messageType)) {
+          case POLL:
+            return handlePipeSubscribePollInternal(
+                consumerConfig,
+                (PollMessagePayload) pollMessage.getMessagePayload(),
+                pollMessage.getTimeoutMs());
+          case POLL_TS_FILE:
+            return handlePipeSubscribePollTsFileInternal(
+                consumerConfig,
+                (PollTsFileMessagePayload) pollMessage.getMessagePayload(),
+                pollMessage.getTimeoutMs());
+        }
+      }
+      throw new SubscriptionException("...");
     } catch (final SubscriptionException e) {
       final String exceptionMessage =
           String.format(
@@ -306,17 +329,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
   }
 
-  private TPipeSubscribeResp handlePipeSubscribePollInternal(final PipeSubscribePollReq req) {
-    // check consumer config thread local
-    final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
-    if (Objects.isNull(consumerConfig)) {
-      LOGGER.warn(
-          "Subscription: missing consumer config when handling PipeSubscribePollReq: {}", req);
-      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
-    }
-
-    // get topic names
-    Set<String> topicNames = req.getTopicNames();
+  private TPipeSubscribeResp handlePipeSubscribePollInternal(
+      ConsumerConfig consumerConfig, PollMessagePayload messagePayload, long timeoutMs) {
+    Set<String> topicNames = messagePayload.getTopicNames();
     if (topicNames.isEmpty()) {
       // poll all subscribed topics
       topicNames =
@@ -331,20 +346,19 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     final SubscriptionPollTimer timer =
         new SubscriptionPollTimer(
             System.currentTimeMillis(),
-            req.getTimeoutMs() == 0
+            timeoutMs == 0
                 ? SubscriptionConfig.getInstance().getSubscriptionDefaultPollTimeoutMs()
                 : Math.max(
-                    req.getTimeoutMs(),
-                    SubscriptionConfig.getInstance().getSubscriptionMinPollTimeoutMs()));
+                    timeoutMs, SubscriptionConfig.getInstance().getSubscriptionMinPollTimeoutMs()));
     final List<SubscriptionEvent> events =
         SubscriptionAgent.broker().poll(consumerConfig, topicNames, timer);
 
-    final List<SubscriptionRawMessage> rawMessages =
+    final List<SubscriptionPolledMessage> rawMessages =
         events.stream().map(SubscriptionEvent::getMessage).collect(Collectors.toList());
 
     final List<SubscriptionCommitContext> commitContexts =
         rawMessages.stream()
-            .map(SubscriptionRawMessage::getCommitContext)
+            .map(SubscriptionPolledMessage::getCommitContext)
             .collect(Collectors.toList());
 
     // check timer
@@ -365,23 +379,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     return PipeSubscribePollResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, rawMessages);
   }
 
-  private TPipeSubscribeResp handlePipeSubscribePollTsFile(final PipeSubscribePollTsFileReq req) {
-    try {
-      return handlePipeSubscribePollTsFileInternal(req);
-    } catch (final SubscriptionException e) {
-      final String exceptionMessage =
-          String.format(
-              "Subscription: something unexpected happened when polling tsfile: %s, req: %s",
-              e.getMessage(), req);
-      LOGGER.warn(exceptionMessage);
-      return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
-          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, exceptionMessage));
-    }
-  }
-
   // TODO
   private TPipeSubscribeResp handlePipeSubscribePollTsFileInternal(
-      final PipeSubscribePollTsFileReq req) {
+      ConsumerConfig consumerConfig, PollTsFileMessagePayload messagePayload, long timeoutMs) {
     return null;
   }
 

@@ -23,8 +23,11 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.payload.common.PollMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessage;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessageType;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -148,13 +151,20 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   public List<SubscriptionMessage> poll(Set<String> topicNames, long timeoutMs)
       throws TException, IOException, StatementExecutionException {
-    List<SubscriptionRawMessage> rawMessages = new ArrayList<>();
+    List<SubscriptionPolledMessage> rawMessages = new ArrayList<>();
 
     acquireReadLock();
     try {
       for (final SubscriptionProvider provider : getAllAvailableProviders()) {
         // TODO: network timeout
-        rawMessages.addAll(provider.getSessionConnection().poll(topicNames, timeoutMs));
+        rawMessages.addAll(
+            provider
+                .getSessionConnection()
+                .poll(
+                    new SubscriptionPollMessage(
+                        SubscriptionPollMessageType.POLL.getType(),
+                        new PollMessagePayload(topicNames),
+                        timeoutMs)));
       }
     } finally {
       releaseReadLock();

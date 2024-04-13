@@ -30,21 +30,21 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class SubscriptionRawMessage {
+public class SubscriptionPolledMessage {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionRawMessage.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPolledMessage.class);
 
   private final transient short messageType;
 
-  private final transient SubscriptionRawMessagePayload messagePayload;
+  private final transient SubscriptionMessagePayload messagePayload;
 
   private final transient SubscriptionCommitContext commitContext;
 
   private ByteBuffer byteBuffer;
 
-  public SubscriptionRawMessage(
+  public SubscriptionPolledMessage(
       short messageType,
-      SubscriptionRawMessagePayload messagePayload,
+      SubscriptionMessagePayload messagePayload,
       SubscriptionCommitContext commitContext) {
     this.messageType = messageType;
     this.messagePayload = messagePayload;
@@ -55,7 +55,7 @@ public class SubscriptionRawMessage {
     return messageType;
   }
 
-  public SubscriptionRawMessagePayload getMessagePayload() {
+  public SubscriptionMessagePayload getMessagePayload() {
     return messagePayload;
   }
 
@@ -69,7 +69,7 @@ public class SubscriptionRawMessage {
 
   /////////////////////////////// de/ser ///////////////////////////////
 
-  public static ByteBuffer serialize(SubscriptionRawMessage message) throws IOException {
+  public static ByteBuffer serialize(SubscriptionPolledMessage message) throws IOException {
     if (Objects.nonNull(message.byteBuffer)) {
       return message.byteBuffer;
     }
@@ -86,11 +86,11 @@ public class SubscriptionRawMessage {
     commitContext.serialize(stream);
   }
 
-  public static SubscriptionRawMessage deserialize(final ByteBuffer buffer) {
+  public static SubscriptionPolledMessage deserialize(final ByteBuffer buffer) {
     final short messageType = ReadWriteIOUtils.readShort(buffer);
-    final SubscriptionRawMessagePayload messagePayload;
-    if (SubscriptionRawMessageType.isValidatedMessageType(messageType)) {
-      switch (SubscriptionRawMessageType.valueOf(messageType)) {
+    final SubscriptionMessagePayload messagePayload;
+    if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
+      switch (SubscriptionPolledMessageType.valueOf(messageType)) {
         case TABLETS:
           messagePayload = new TabletsMessagePayload().deserialize(buffer);
           break;
@@ -105,7 +105,7 @@ public class SubscriptionRawMessage {
     }
 
     final SubscriptionCommitContext commitContext = SubscriptionCommitContext.deserialize(buffer);
-    return new SubscriptionRawMessage(messageType, messagePayload, commitContext);
+    return new SubscriptionPolledMessage(messageType, messagePayload, commitContext);
   }
 
   //////////////////////////// serialization ////////////////////////////

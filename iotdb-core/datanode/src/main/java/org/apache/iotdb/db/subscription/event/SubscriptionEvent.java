@@ -21,7 +21,7 @@ package org.apache.iotdb.db.subscription.event;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionRawMessage;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
 
 import java.util.List;
 
@@ -30,13 +30,13 @@ public class SubscriptionEvent {
   private static final long INVALID_TIMESTAMP = -1;
 
   private final List<EnrichedEvent> enrichedEvents;
-  private final SubscriptionRawMessage message;
+  private final SubscriptionPolledMessage message;
 
   private long lastPolledTimestamp;
   private long committedTimestamp;
 
   public SubscriptionEvent(
-      final List<EnrichedEvent> enrichedEvents, final SubscriptionRawMessage message) {
+      final List<EnrichedEvent> enrichedEvents, final SubscriptionPolledMessage message) {
     this.enrichedEvents = enrichedEvents;
     this.message = message;
 
@@ -44,7 +44,7 @@ public class SubscriptionEvent {
     this.committedTimestamp = INVALID_TIMESTAMP;
   }
 
-  public SubscriptionRawMessage getMessage() {
+  public SubscriptionPolledMessage getMessage() {
     return message;
   }
 
