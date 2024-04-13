@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.TableNodeStatus;
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.table.TableAlreadyExistsException;
 import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
@@ -632,16 +633,20 @@ public class ConfigMTree {
 
   public void preCreateTable(PartialPath database, TsTable table) throws MetadataException {
     IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
-    if (databaseNode.hasChild(table.getTableName())) {
+    IConfigMNode node = databaseNode.getChild(table.getTableName());
+    if (node == null) {
+      ConfigTableNode tableNode =
+          (ConfigTableNode)
+              databaseNode.addChild(
+                  table.getTableName(), new ConfigTableNode(databaseNode, table.getTableName()));
+      tableNode.setTable(table);
+      tableNode.setStatus(TableNodeStatus.PRE_CREATE);
+    } else if (node instanceof ConfigTableNode) {
       throw new TableAlreadyExistsException(
           database.getFullPath().substring(ROOT.length() + 1), table.getTableName());
+    } else {
+      throw new PathAlreadyExistException(database.concatNode(table.getTableName()).getFullPath());
     }
-    ConfigTableNode tableNode =
-        (ConfigTableNode)
-            databaseNode.addChild(
-                table.getTableName(), new ConfigTableNode(databaseNode, table.getTableName()));
-    tableNode.setTable(table);
-    tableNode.setStatus(TableNodeStatus.PRE_CREATE);
   }
 
   public void rollbackCreateTable(PartialPath database, String tableName) throws MetadataException {
