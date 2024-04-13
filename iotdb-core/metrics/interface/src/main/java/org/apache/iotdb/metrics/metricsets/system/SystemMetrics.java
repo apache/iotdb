@@ -184,7 +184,7 @@ public class SystemMetrics implements IMetricSet {
   }
 
   private final String[] linuxMemoryTitles =
-      new String[] {"total", "used", "free", "shared", "buff/cache", "available"};
+      new String[] {"Total", "Used", "Free", "Shared", "Buff/Cache", "Available"};
 
   private long updateLinuxSystemMemInfo(AbstractMetricService metricService) {
     long count = 0;
