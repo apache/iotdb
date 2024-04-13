@@ -54,6 +54,15 @@ public class RegionGroupCache {
   }
 
   /**
+   * Remove the cache of the specified Region in the specified RegionGroup.
+   *
+   * @param dataNodeId the specified DataNode
+   */
+  public void removeRegionCache(int dataNodeId) {
+    regionCacheMap.remove(dataNodeId);
+  }
+
+  /**
    * Update currentStatistics based on the latest NodeHeartbeatSamples that cached in the
    * slidingWindow.
    */

@@ -424,7 +424,7 @@ public class RegionMaintainHandler {
         regionId,
         getIdWithRpcEndpoint(newLocation),
         status);
-    updateRegionLocation(regionId);
+    configManager.getLoadManager().forceAddRegionCache(regionId, newLocation.getDataNodeId());
   }
 
   public void removeRegionLocation(
@@ -436,14 +436,9 @@ public class RegionMaintainHandler {
         regionId,
         getIdWithRpcEndpoint(deprecatedLocation),
         status);
-    updateRegionLocation(regionId);
-  }
-
-  private void updateRegionLocation(TConsensusGroupId regionId) {
-    // Remove the RegionGroupCache of the regionId
-    configManager.getLoadManager().removeRegionGroupRelatedCache(regionId);
-    // Wait for leader election
-    configManager.getLoadManager().waitForRegionGroupReady(Collections.singletonList(regionId));
+    configManager
+        .getLoadManager()
+        .forceRemoveRegionCache(regionId, deprecatedLocation.getDataNodeId());
   }
 
   /**

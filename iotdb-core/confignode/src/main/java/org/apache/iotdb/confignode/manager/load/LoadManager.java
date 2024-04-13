@@ -337,6 +337,33 @@ public class LoadManager {
     eventService.checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
   }
 
+  /**
+   * Add the cache of the specified Region in the specified RegionGroup.
+   *
+   * @param regionGroupId the specified RegionGroup
+   * @param dataNodeId the specified DataNode
+   */
+  public void forceAddRegionCache(TConsensusGroupId regionGroupId, int dataNodeId) {
+    loadCache.cacheRegionHeartbeatSample(
+        regionGroupId,
+        dataNodeId,
+        new RegionHeartbeatSample(System.nanoTime(), RegionStatus.Running));
+    loadCache.updateRegionGroupStatistics();
+    eventService.checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
+  }
+
+  /**
+   * Remove the cache of the specified Region in the specified RegionGroup.
+   *
+   * @param regionGroupId the specified RegionGroup
+   * @param dataNodeId the specified DataNode
+   */
+  public void forceRemoveRegionCache(TConsensusGroupId regionGroupId, int dataNodeId) {
+    loadCache.removeRegionCache(regionGroupId, dataNodeId);
+    loadCache.updateRegionGroupStatistics();
+    eventService.checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
+  }
+
   /** Remove the specified RegionGroup's cache. */
   public void removeRegionGroupRelatedCache(TConsensusGroupId consensusGroupId) {
     loadCache.removeRegionGroupCache(consensusGroupId);

@@ -208,6 +208,16 @@ public class LoadCache {
   }
 
   /**
+   * Remove the cache of the specified Region in the specified RegionGroup.
+   *
+   * @param regionGroupId the specified RegionGroup
+   * @param dataNodeId the specified DataNode
+   */
+  public void removeRegionCache(TConsensusGroupId regionGroupId, int dataNodeId) {
+    regionGroupCacheMap.get(regionGroupId).removeRegionCache(dataNodeId);
+  }
+
+  /**
    * Cache the latest leader of a RegionGroup.
    *
    * @param regionGroupId the id of the RegionGroup
@@ -541,7 +551,7 @@ public class LoadCache {
     }
 
     LOGGER.warn(
-        "[RegionElection] The leader or priority of RegionGroups: {} is not determined after 10 heartbeat interval. Some function might fail.",
+        "[RegionElection] The leader of RegionGroups: {} is not determined after 10 heartbeat interval. Some function might fail.",
         regionGroupIds);
   }
 
