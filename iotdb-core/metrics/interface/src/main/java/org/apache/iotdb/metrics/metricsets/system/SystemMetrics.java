@@ -195,7 +195,7 @@ public class SystemMetrics implements IMetricSet {
           new BufferedReader(new InputStreamReader(process.getInputStream()))) {
         String line;
         while ((line = input.readLine()) != null) {
-          result.append(line);
+          result.append(line + "\n");
         }
       }
       logger.error(result.toString());
