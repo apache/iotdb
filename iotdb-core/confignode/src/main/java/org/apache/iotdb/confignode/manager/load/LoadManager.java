@@ -338,8 +338,9 @@ public class LoadManager {
   }
 
   /** Remove the specified RegionGroup's cache. */
-  public void removeRegionGroupCache(TConsensusGroupId consensusGroupId) {
+  public void removeRegionGroupRelatedCache(TConsensusGroupId consensusGroupId) {
     loadCache.removeRegionGroupCache(consensusGroupId);
+    routeBalancer.removeRegionPriority(consensusGroupId);
   }
 
   /**
@@ -380,12 +381,13 @@ public class LoadManager {
   }
 
   /**
-   * Wait for the specified RegionGroups to finish leader election
+   * Wait for the specified RegionGroups to finish leader election and priority update.
    *
    * @param regionGroupIds Specified RegionGroupIds
    */
-  public void waitForLeaderElection(List<TConsensusGroupId> regionGroupIds) {
+  public void waitForRegionGroupReady(List<TConsensusGroupId> regionGroupIds) {
     loadCache.waitForLeaderElection(regionGroupIds);
+    routeBalancer.waitForPriorityUpdate(regionGroupIds);
   }
 
   /**

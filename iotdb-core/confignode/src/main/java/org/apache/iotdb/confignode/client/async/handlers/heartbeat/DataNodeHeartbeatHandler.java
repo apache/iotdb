@@ -145,5 +145,6 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
       loadManager.forceUpdateNodeCache(
           NodeType.DataNode, nodeId, new NodeHeartbeatSample(NodeStatus.Unknown));
     }
+    loadManager.getLoadCache().resetHeartbeatProcessing(nodeId);
   }
 }

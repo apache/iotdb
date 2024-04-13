@@ -51,5 +51,6 @@ public class ConfigNodeHeartbeatHandler implements AsyncMethodCallback<TConfigNo
       loadManager.forceUpdateNodeCache(
           NodeType.ConfigNode, nodeId, new NodeHeartbeatSample(NodeStatus.Unknown));
     }
+    loadManager.getLoadCache().resetHeartbeatProcessing(nodeId);
   }
 }

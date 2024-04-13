@@ -123,7 +123,7 @@ public class DeleteDatabaseProcedure
                 // Clear heartbeat cache along the way
                 env.getConfigManager()
                     .getLoadManager()
-                    .removeRegionGroupCache(regionReplicaSet.getRegionId());
+                    .removeRegionGroupRelatedCache(regionReplicaSet.getRegionId());
 
                 if (regionReplicaSet
                     .getRegionId()

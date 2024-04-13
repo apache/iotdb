@@ -441,9 +441,9 @@ public class RegionMaintainHandler {
 
   private void updateRegionLocation(TConsensusGroupId regionId) {
     // Remove the RegionGroupCache of the regionId
-    configManager.getLoadManager().removeRegionGroupCache(regionId);
+    configManager.getLoadManager().removeRegionGroupRelatedCache(regionId);
     // Wait for leader election
-    configManager.getLoadManager().waitForLeaderElection(Collections.singletonList(regionId));
+    configManager.getLoadManager().waitForRegionGroupReady(Collections.singletonList(regionId));
   }
 
   /**

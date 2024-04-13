@@ -125,9 +125,8 @@ public class EventService {
           NodeStatistics previousNodeStatistics =
               previousNodeStatisticsMap.getOrDefault(
                   nodeId, NodeStatistics.generateDefaultNodeStatistics());
-          if (previousNodeStatistics == null
-              || (currentNodeStatistics.isNewerThan(previousNodeStatistics)
-                  && !currentNodeStatistics.equals(previousNodeStatistics))) {
+          if (currentNodeStatistics.isNewerThan(previousNodeStatistics)
+              && !currentNodeStatistics.equals(previousNodeStatistics)) {
             differentNodeStatisticsMap.put(
                 nodeId, new Pair<>(previousNodeStatistics, currentNodeStatistics));
             previousNodeStatisticsMap.put(nodeId, currentNodeStatistics);
@@ -165,9 +164,8 @@ public class EventService {
           RegionGroupStatistics previousRegionGroupStatistics =
               previousRegionGroupStatisticsMap.getOrDefault(
                   regionGroupId, RegionGroupStatistics.generateDefaultRegionGroupStatistics());
-          if (previousRegionGroupStatistics == null
-              || (currentRegionGroupStatistics.isNewerThan(previousRegionGroupStatistics)
-                  && !currentRegionGroupStatistics.equals(previousRegionGroupStatistics))) {
+          if (currentRegionGroupStatistics.isNewerThan(previousRegionGroupStatistics)
+              && !currentRegionGroupStatistics.equals(previousRegionGroupStatistics)) {
             differentRegionGroupStatisticsMap.put(
                 regionGroupId,
                 new Pair<>(previousRegionGroupStatistics, currentRegionGroupStatistics));
@@ -233,9 +231,8 @@ public class EventService {
           ConsensusStatistics previousConsensusStatistics =
               previousConsensusStatisticsMap.getOrDefault(
                   consensusGroupId, ConsensusStatistics.generateDefaultConsensusStatistics());
-          if (previousConsensusStatistics == null
-              || (currentConsensusStatistics.isNewerThan(previousConsensusStatistics)
-                  && !currentConsensusStatistics.equals(previousConsensusStatistics))) {
+          if (currentConsensusStatistics.isNewerThan(previousConsensusStatistics)
+              && !currentConsensusStatistics.equals(previousConsensusStatistics)) {
             differentConsensusStatisticsMap.put(
                 consensusGroupId,
                 new Pair<>(previousConsensusStatistics, currentConsensusStatistics));

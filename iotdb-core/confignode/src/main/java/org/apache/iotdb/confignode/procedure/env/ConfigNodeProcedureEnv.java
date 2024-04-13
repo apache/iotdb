@@ -566,7 +566,7 @@ public class ConfigNodeProcedureEnv {
       Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> activateRegionGroupMap) {
     getLoadManager().forceUpdateRegionGroupCache(activateRegionGroupMap);
     // Wait for leader election
-    getLoadManager().waitForLeaderElection(new ArrayList<>(activateRegionGroupMap.keySet()));
+    getLoadManager().waitForRegionGroupReady(new ArrayList<>(activateRegionGroupMap.keySet()));
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {

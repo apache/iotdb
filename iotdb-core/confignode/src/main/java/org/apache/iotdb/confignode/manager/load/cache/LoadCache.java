@@ -189,6 +189,10 @@ public class LoadCache {
     heartbeatProcessingMap.get(nodeId).set(false);
   }
 
+  public void resetHeartbeatProcessing(int nodeId) {
+    heartbeatProcessingMap.get(nodeId).set(false);
+  }
+
   /**
    * Cache the latest heartbeat sample of a RegionGroup.
    *
