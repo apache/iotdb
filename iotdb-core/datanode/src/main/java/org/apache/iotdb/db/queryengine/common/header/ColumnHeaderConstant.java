@@ -236,8 +236,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
   public static final List<ColumnHeader> showTTLColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(DATABASE, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
+          new ColumnHeader(DEVICE, TSDataType.TEXT), new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showStorageGroupsColumnHeaders =
       ImmutableList.of(

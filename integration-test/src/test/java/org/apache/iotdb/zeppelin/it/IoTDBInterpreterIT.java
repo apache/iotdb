@@ -327,9 +327,9 @@ public class IoTDBInterpreterIT {
     interpreter.internalInterpret("SET TTL TO root.test.wf01.wt01 12345", null);
     InterpreterResult actual = interpreter.internalInterpret("show devices", null);
     String gt =
-        "Device\tIsAligned\tTemplate\tTTL\n" +
-                "root.test.wf01.wt01\tfalse\tnull\t12345\n" +
-                "root.test.wf02.wt02\tfalse\tnull\tINF";
+        "Device\tIsAligned\tTemplate\tTTL\n"
+            + "root.test.wf01.wt01\tfalse\tnull\t12345\n"
+            + "root.test.wf02.wt02\tfalse\tnull\tINF";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -340,9 +340,9 @@ public class IoTDBInterpreterIT {
     interpreter.internalInterpret("SET TTL TO root.test.wf01.wt01 12345", null);
     InterpreterResult actual = interpreter.internalInterpret("show devices with database", null);
     String gt =
-        "Device\tDatabase\tIsAligned\tTemplate\tTTL\n" +
-                "root.test.wf01.wt01\troot.test.wf01\tfalse\tnull\t12345\n" +
-                "root.test.wf02.wt02\troot.test.wf02\tfalse\tnull\tINF";
+        "Device\tDatabase\tIsAligned\tTemplate\tTTL\n"
+            + "root.test.wf01.wt01\troot.test.wf01\tfalse\tnull\t12345\n"
+            + "root.test.wf02.wt02\troot.test.wf02\tfalse\tnull\tINF";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -352,29 +352,24 @@ public class IoTDBInterpreterIT {
   public void testShowAllTTL() {
     interpreter.internalInterpret("SET TTL TO root.test.wf01 12345", null);
     InterpreterResult actual = interpreter.internalInterpret("SHOW ALL TTL", null);
-    String gt = "Database\tTTL\n" +
-            "root.**\tINF\n" +
-            "root.test.wf01.**\t12345";
+    String gt = "Device\tTTL\n" + "root.**\tINF\n" + "root.test.wf01.**\t12345";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
     interpreter.internalInterpret("UNSET TTL TO root.test.wf01", null);
-    gt = "Database\tTTL\n" +
-            "root.**\tINF";
+    gt = "Device\tTTL\n" + "root.**\tINF";
     actual = interpreter.internalInterpret("SHOW ALL TTL", null);
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
   }
 
-  /**
-   * Does not support this SQL in V1.3.2
-   */
+  /** Does not support this SQL in V1.3.2 */
   @Test
   public void testShowTTL() {
     interpreter.internalInterpret("SET TTL TO root.test.wf01 12345", null);
     InterpreterResult actual = interpreter.internalInterpret("SHOW TTL ON root.test.wf01", null);
-    String gt = "Database\tTTL\n" + "root.test.wf01\t12345";
+    String gt = "Device\tTTL\n" + "root.test.wf01\t12345";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
   }

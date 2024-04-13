@@ -139,12 +139,11 @@ public class DataNodeRegionManager {
     return tsStatus;
   }
 
-  public TSStatus createDataRegion(
-      TRegionReplicaSet regionReplicaSet, String storageGroup, long ttl) {
+  public TSStatus createDataRegion(TRegionReplicaSet regionReplicaSet, String storageGroup) {
     TSStatus tsStatus;
     DataRegionId dataRegionId = new DataRegionId(regionReplicaSet.getRegionId().getId());
     try {
-      storageEngine.createDataRegion(dataRegionId, storageGroup, ttl);
+      storageEngine.createDataRegion(dataRegionId, storageGroup);
       dataRegionLockMap.put(dataRegionId, new ReentrantReadWriteLock(false));
       List<Peer> peers = new ArrayList<>();
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
@@ -170,13 +169,13 @@ public class DataNodeRegionManager {
     return tsStatus;
   }
 
-  public TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup, long ttl) {
+  public TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     LOGGER.info("start to create new region {}", regionId);
     try {
       if (regionId instanceof DataRegionId) {
         DataRegionId dataRegionId = (DataRegionId) regionId;
-        storageEngine.createDataRegion(dataRegionId, storageGroup, ttl);
+        storageEngine.createDataRegion(dataRegionId, storageGroup);
         dataRegionLockMap.put(dataRegionId, new ReentrantReadWriteLock(false));
       } else {
         SchemaRegionId schemaRegionId = (SchemaRegionId) regionId;

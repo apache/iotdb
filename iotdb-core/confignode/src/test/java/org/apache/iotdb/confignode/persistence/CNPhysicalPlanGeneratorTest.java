@@ -28,7 +28,6 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
@@ -310,16 +309,11 @@ public class CNPhysicalPlanGeneratorTest {
     for (ConfigPhysicalPlan plan : planGenerator) {
       if (plan.getType() == ConfigPhysicalPlanType.CreateDatabase) {
         Assert.assertTrue(answerSet.contains(plan.hashCode()));
-      } else if (plan.getType() == ConfigPhysicalPlanType.SetTTL) {
-        final String[] database = ((SetTTLPlan) plan).getPathPattern();
-        final PartialPath databasePath = new PartialPath(database);
-        Assert.assertTrue(answerSet.contains(plan.hashCode()));
-        // clusterSchemaInfo.setTTL((SetTTLPlan) plan);
+        count++;
       }
-      count++;
     }
     planGenerator.checkException();
-    Assert.assertEquals(10, count);
+    Assert.assertEquals(5, count);
   }
 
   @Test
@@ -440,8 +434,6 @@ public class CNPhysicalPlanGeneratorTest {
     for (ConfigPhysicalPlan plan : planGenerator) {
       if (plan.getType() == ConfigPhysicalPlanType.CreateDatabase) {
         Assert.assertTrue(answerSet.contains(plan.hashCode()));
-      } else if (plan.getType() == ConfigPhysicalPlanType.SetTTL) {
-        Assert.assertTrue(answerSet.contains(plan.hashCode()));
       } else if (plan.getType() == ConfigPhysicalPlanType.CreateSchemaTemplate) {
         Assert.assertTrue(answerSet.contains(plan.hashCode()));
       } else if (plan.getType() == ConfigPhysicalPlanType.PreSetSchemaTemplate) {
@@ -457,6 +449,6 @@ public class CNPhysicalPlanGeneratorTest {
       }
       count++;
     }
-    Assert.assertEquals(12, count);
+    Assert.assertEquals(8, count);
   }
 }

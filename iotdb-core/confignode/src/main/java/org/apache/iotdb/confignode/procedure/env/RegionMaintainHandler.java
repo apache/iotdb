@@ -213,8 +213,6 @@ public class RegionMaintainHandler {
 
     String storageGroup = configManager.getPartitionManager().getRegionStorageGroup(regionId);
     TCreatePeerReq req = new TCreatePeerReq(regionId, currentPeerNodes, storageGroup);
-    // TODO replace with real ttl
-    req.setTtl(Long.MAX_VALUE);
 
     status =
         SyncDataNodeClientPool.getInstance()

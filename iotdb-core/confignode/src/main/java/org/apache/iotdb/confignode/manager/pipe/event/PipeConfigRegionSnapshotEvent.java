@@ -78,7 +78,6 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
             new HashSet<>(
                 Arrays.asList(
                     ConfigPhysicalPlanType.CreateDatabase.getPlanType(),
-                    ConfigPhysicalPlanType.SetTTL.getPlanType(),
                     ConfigPhysicalPlanType.CreateSchemaTemplate.getPlanType(),
                     ConfigPhysicalPlanType.CommitSetSchemaTemplate.getPlanType()))));
   }

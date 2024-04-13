@@ -225,7 +225,7 @@ public class StorageEngine implements IService {
             () -> {
               DataRegion dataRegion = null;
               try {
-                dataRegion = buildNewDataRegion(sgName, dataRegionId, Long.MAX_VALUE);
+                dataRegion = buildNewDataRegion(sgName, dataRegionId);
               } catch (DataRegionException e) {
                 LOGGER.error(
                     "Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
@@ -390,8 +390,7 @@ public class StorageEngine implements IService {
    * @param dataRegionId data region id e.g. 1
    * @param logicalStorageGroupName database name e.g. root.sg1
    */
-  public DataRegion buildNewDataRegion(
-      String logicalStorageGroupName, DataRegionId dataRegionId, long ttl)
+  public DataRegion buildNewDataRegion(String logicalStorageGroupName, DataRegionId dataRegionId)
       throws DataRegionException {
     DataRegion dataRegion;
     LOGGER.info(
@@ -631,8 +630,7 @@ public class StorageEngine implements IService {
 
   // When registering a new region, the coordinator needs to register the corresponding region with
   // the local storageengine before adding the corresponding consensusGroup to the consensus layer
-  public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl)
-      throws DataRegionException {
+  public DataRegion createDataRegion(DataRegionId regionId, String sg) throws DataRegionException {
     makeSureNoOldRegion(regionId);
     AtomicReference<DataRegionException> exceptionAtomicReference = new AtomicReference<>(null);
     DataRegion dataRegion =
@@ -640,7 +638,7 @@ public class StorageEngine implements IService {
             regionId,
             x -> {
               try {
-                return buildNewDataRegion(sg, x, ttl);
+                return buildNewDataRegion(sg, x);
               } catch (DataRegionException e) {
                 exceptionAtomicReference.set(e);
               }
