@@ -81,7 +81,7 @@ public class LoadManager {
     this.loadCache = new LoadCache();
     this.heartbeatService = new HeartbeatService(configManager, loadCache);
     this.statisticsService = new StatisticsService(loadCache);
-    this.eventService = new EventService(configManager, loadCache);
+    this.eventService = new EventService(configManager, loadCache, routeBalancer);
   }
 
   /**
@@ -402,5 +402,9 @@ public class LoadManager {
 
   public LoadCache getLoadCache() {
     return loadCache;
+  }
+
+  public RouteBalancer getRouteBalancer() {
+    return routeBalancer;
   }
 }

@@ -57,6 +57,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -106,7 +107,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
   public RouteBalancer(IManager configManager) {
     this.configManager = configManager;
-    this.regionPriorityMap = new TreeMap<>();
+    this.regionPriorityMap = new ConcurrentHashMap<>();
     this.lastFailedTimeForLeaderBalance = new TreeMap<>();
 
     switch (CONF.getLeaderDistributionPolicy()) {
@@ -130,13 +131,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     }
   }
 
-  private synchronized void balanceClusterRoutingPolicy() {
-    balanceRegionLeader();
-    balanceRegionPriority();
-  }
-
   /** Balance cluster RegionGroup leader distribution through configured algorithm. */
-  private void balanceRegionLeader() {
+  private synchronized void balanceRegionLeader() {
     if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION) {
       balanceRegionLeader(TConsensusGroupType.SchemaRegion, SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS);
     }
@@ -242,7 +238,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   }
 
   /** Balance cluster RegionGroup route priority through configured algorithm. */
-  private void balanceRegionPriority() {
+  private synchronized void balanceRegionPriority() {
     Map<TConsensusGroupId, Integer> regionLeaderMap = getLoadManager().getRegionLeaderMap();
     Map<Integer, Long> dataNodeLoadScoreMap = getLoadManager().getAllDataNodeLoadScores();
 
@@ -268,6 +264,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
           if (!optimalRegionPriority.equals(currentRegionPriority)) {
             differentPriorityMap.put(
                 regionGroupId, new Pair<>(currentRegionPriority, optimalRegionPriority));
+            regionPriorityMap.put(regionGroupId, optimalRegionPriority);
             needBroadcast.set(true);
           }
         });
@@ -324,7 +321,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
   /** @return Map<RegionGroupId, RegionPriority> */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRegionPriorityMap() {
-    return regionPriorityMap;
+    return new TreeMap<>(regionPriorityMap);
   }
 
   private NodeManager getNodeManager() {
@@ -341,16 +338,17 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
   @Override
   public void onNodeStatisticsChanged(NodeStatisticsChangeEvent event) {
-    balanceClusterRoutingPolicy();
+    balanceRegionLeader();
   }
 
   @Override
   public void onRegionGroupStatisticsChanged(RegionGroupStatisticsChangeEvent event) {
-    balanceClusterRoutingPolicy();
+    balanceRegionLeader();
   }
 
   @Override
   public void onConsensusStatisticsChanged(ConsensusStatisticsChangeEvent event) {
-    balanceClusterRoutingPolicy();
+    balanceRegionLeader();
+    balanceRegionPriority();
   }
 }

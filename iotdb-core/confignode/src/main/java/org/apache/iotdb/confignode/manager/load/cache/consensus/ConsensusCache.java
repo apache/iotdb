@@ -27,6 +27,7 @@ public class ConsensusCache extends AbstractLoadCache {
 
   public ConsensusCache() {
     super();
+    this.currentStatistics.set(ConsensusStatistics.generateDefaultConsensusStatistics());
   }
 
   @Override
