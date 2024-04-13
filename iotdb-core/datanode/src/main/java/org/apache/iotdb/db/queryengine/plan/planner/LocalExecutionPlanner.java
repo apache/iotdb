@@ -40,9 +40,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
- * Operator tree, but in the future, we may split one fragment instance into multiple pipeline to
- * run a fragment instance parallel and take full advantage of multi-cores
+ * Used to plan a fragment instance. One fragment instance could be split into multiple pipelines so
+ * that a fragment instance could be run in parallel, and thus we can take full advantages of
+ * multi-cores.
  */
 public class LocalExecutionPlanner {
 
@@ -50,12 +50,17 @@ public class LocalExecutionPlanner {
   private static final long ALLOCATE_MEMORY_FOR_OPERATORS;
   private static final long MAX_REST_MEMORY_FOR_LOAD;
 
+  private static final long QUERY_THREAD_COUNT;
+
+  private static final long ESTIMATED_FI_NUM = 8;
+
   static {
     IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
     ALLOCATE_MEMORY_FOR_OPERATORS = CONFIG.getAllocateMemoryForOperators();
     MAX_REST_MEMORY_FOR_LOAD =
         (long)
             ((ALLOCATE_MEMORY_FOR_OPERATORS) * (1.0 - CONFIG.getMaxAllocateMemoryRatioForLoad()));
+    QUERY_THREAD_COUNT = CONFIG.getQueryThreadCount();
   }
 
   /** allocated memory for operator execution */
@@ -82,10 +87,11 @@ public class LocalExecutionPlanner {
     // TODO Replace operator with operatorFactory to build multiple driver for one pipeline
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
-    // check whether current free memory is enough to execute current query
-    long estimatedMemorySize = checkMemory(root, instanceContext.getStateMachine());
+    context.addPipelineDriverFactory(
+        root, context.getDriverContext(), root.calculateMaxPeekMemory());
 
-    context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
+    // check whether current free memory is enough to execute current query
+    checkMemory(context.getPipelineDriverFactories(), instanceContext.getStateMachine());
 
     instanceContext.setSourcePaths(collectSourcePaths(context));
 
@@ -105,10 +111,11 @@ public class LocalExecutionPlanner {
 
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
-    // check whether current free memory is enough to execute current query
-    checkMemory(root, instanceContext.getStateMachine());
+    context.addPipelineDriverFactory(
+        root, context.getDriverContext(), root.calculateMaxPeekMemory());
 
-    context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
+    // check whether current free memory is enough to execute current query
+    checkMemory(context.getPipelineDriverFactories(), instanceContext.getStateMachine());
 
     // set maxBytes one SourceHandle can reserve after visiting the whole tree
     context.setMaxBytesOneHandleCanReserve();
@@ -116,16 +123,18 @@ public class LocalExecutionPlanner {
     return context.getPipelineDriverFactories();
   }
 
-  private long checkMemory(Operator root, FragmentInstanceStateMachine stateMachine)
+  private void checkMemory(
+      List<PipelineDriverFactory> pipelineDriverFactories,
+      FragmentInstanceStateMachine stateMachine)
       throws MemoryNotEnoughException {
 
     // if it is disabled, just return
     if (!IoTDBDescriptor.getInstance().getConfig().isEnableQueryMemoryEstimation()
         && !IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-      return 0;
+      return;
     }
 
-    long estimatedMemorySize = root.calculateMaxPeekMemoryWithCounter();
+    long estimatedMemorySize = calculateEstimatedMemorySize(pipelineDriverFactories);
     QueryRelatedResourceMetricSet.getInstance().updateEstimatedMemory(estimatedMemorySize);
 
     synchronized (this) {
@@ -164,7 +173,44 @@ public class LocalExecutionPlanner {
             }
           }
         });
-    return estimatedMemorySize;
+  }
+
+  /**
+   * Calculate the estimated memory size this FI would use. Given that there are
+   * QUERY_THREAD_COUNT(X) threads, each thread could deal with one DriverTask. Now we have
+   * pipelineDriverFactories.size()(Y) DriverTasks(We use pipelineDriverFactories.size() instead of
+   * degreeOfParallelism to estimate). Suppose that there are M FragmentInstances at the same time.
+   * Then one FragmentInstance could have N Drivers running.
+   *
+   * <p>N = (X / ( M * Y)) * Y = X / M
+   *
+   * <p>The estimated running memory size this FI would use is:
+   *
+   * <p>N * avgMemoryUsedPerDriver = N * totalSizeOfDriver / driverNum
+   *
+   * <p>Some operators still retain memory when they are not running, so we need to add the size of
+   * retained memory of all the Drivers when they are not running.
+   *
+   * <p>The total estimated memory size this FI would use is:
+   *
+   * <p>retainedSize + N * totalSizeOfDriver / driverNum
+   */
+  private long calculateEstimatedMemorySize(
+      final List<PipelineDriverFactory> pipelineDriverFactories) {
+    long retainedSize =
+        pipelineDriverFactories.stream()
+            .map(
+                pipelineDriverFactory ->
+                    pipelineDriverFactory.getOperation().calculateRetainedSizeAfterCallingNext())
+            .reduce(0L, Long::sum);
+    long totalSizeOfDrivers =
+        pipelineDriverFactories.stream()
+            .map(PipelineDriverFactory::getEstimatedMemorySize)
+            .reduce(0L, Long::sum);
+    long runningMemorySize =
+        Math.max((QUERY_THREAD_COUNT / ESTIMATED_FI_NUM), 1)
+            * (totalSizeOfDrivers / pipelineDriverFactories.size());
+    return retainedSize + runningMemorySize;
   }
 
   private List<PartialPath> collectSourcePaths(LocalExecutionPlanContext context) {

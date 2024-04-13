@@ -45,6 +45,10 @@ public class PipelineDriverFactory {
     this.estimatedMemorySize = estimatedMemorySize;
   }
 
+  public long getEstimatedMemorySize() {
+    return estimatedMemorySize;
+  }
+
   public DriverContext getDriverContext() {
     return driverContext;
   }

@@ -21,17 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
-import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SingleDeviceViewOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
@@ -44,33 +38,27 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
-import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
-import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 
-import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey.DEVICE;
+import static org.apache.iotdb.db.queryengine.plan.planner.FEPlanUtil.createLocalExecutionPlanContext;
+import static org.apache.iotdb.db.queryengine.plan.planner.FEPlanUtil.initDeviceViewNode;
+import static org.apache.iotdb.db.queryengine.plan.planner.FEPlanUtil.initFullOuterTimeJoinNode;
+import static org.apache.iotdb.db.queryengine.plan.planner.FEPlanUtil.initLeftOuterTimeJoinNode;
+import static org.apache.iotdb.db.queryengine.plan.planner.FEPlanUtil.initTopKNode;
 import static org.junit.Assert.assertEquals;
 
 public class PipelineBuilderTest {
@@ -1038,45 +1026,6 @@ public class PipelineBuilderTest {
     assertEquals(3, context.getExchangeSumNum());
   }
 
-  private LocalExecutionPlanContext createLocalExecutionPlanContext(TypeProvider typeProvider) {
-    ExecutorService instanceNotificationExecutor =
-        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
-
-    QueryId queryId = new QueryId("stub_query");
-    FragmentInstanceId instanceId =
-        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-    FragmentInstanceStateMachine stateMachine =
-        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-    DataRegion dataRegion = Mockito.mock(DataRegion.class);
-    FragmentInstanceContext fragmentInstanceContext =
-        createFragmentInstanceContext(instanceId, stateMachine);
-    fragmentInstanceContext.setDataRegion(dataRegion);
-
-    return new LocalExecutionPlanContext(
-        typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
-  }
-
-  /**
-   * This method will init a timeJoinNode with @childNum seriesScanNode as children.
-   *
-   * @param childNum the number of children
-   * @return a timeJoinNode with @childNum seriesScanNode as children
-   */
-  private FullOuterTimeJoinNode initFullOuterTimeJoinNode(TypeProvider typeProvider, int childNum)
-      throws IllegalPathException {
-    FullOuterTimeJoinNode fullOuterTimeJoinNode =
-        new FullOuterTimeJoinNode(new PlanNodeId("TimeJoinNode"), Ordering.ASC);
-    for (int i = 0; i < childNum; i++) {
-      SeriesScanNode seriesScanNode =
-          new SeriesScanNode(
-              new PlanNodeId(String.format("SeriesScanNode%d", i)),
-              new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
-      typeProvider.setType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
-      fullOuterTimeJoinNode.addChild(seriesScanNode);
-    }
-    return fullOuterTimeJoinNode;
-  }
-
   private FullOuterTimeJoinNode initFullOuterTimeJoinNodeWithExchangeNode(
       TypeProvider typeProvider, int exchangeNum, int scanNum) throws IllegalPathException {
     FullOuterTimeJoinNode fullOuterTimeJoinNode =
@@ -1099,73 +1048,5 @@ public class PipelineBuilderTest {
       fullOuterTimeJoinNode.addChild(seriesScanNode);
     }
     return fullOuterTimeJoinNode;
-  }
-
-  private LeftOuterTimeJoinNode initLeftOuterTimeJoinNode(TypeProvider typeProvider)
-      throws IllegalPathException {
-    LeftOuterTimeJoinNode leftOuterTimeJoinNode =
-        new LeftOuterTimeJoinNode(new PlanNodeId("TimeJoinNode"), Ordering.ASC);
-    for (int i = 0; i < 2; i++) {
-      SeriesScanNode seriesScanNode =
-          new SeriesScanNode(
-              new PlanNodeId(String.format("SeriesScanNode%d", i)),
-              new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
-      typeProvider.setType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
-      leftOuterTimeJoinNode.addChild(seriesScanNode);
-    }
-    return leftOuterTimeJoinNode;
-  }
-
-  /**
-   * This method will init a DeviceViewNode with @childNum alignedSeriesScanNode as children.
-   *
-   * @param childNum the number of children
-   * @return a DeviceViewNode with @childNum alignedSeriesScanNode as children
-   */
-  private DeviceViewNode initDeviceViewNode(TypeProvider typeProvider, int childNum)
-      throws IllegalPathException {
-    DeviceViewNode deviceViewNode =
-        new DeviceViewNode(new PlanNodeId("DeviceViewNode"), null, null, null);
-    for (int i = 0; i < childNum; i++) {
-      AlignedSeriesScanNode alignedSeriesScanNode =
-          new AlignedSeriesScanNode(
-              new PlanNodeId(String.format("AlignedSeriesScanNode%d", i)),
-              new AlignedPath(String.format("root.sg.d%d", i), "s1"));
-      deviceViewNode.addChild(alignedSeriesScanNode);
-    }
-    return deviceViewNode;
-  }
-
-  private TopKNode initTopKNode(TypeProvider typeProvider, int childNum)
-      throws IllegalPathException {
-    TopKNode topKNode =
-        new TopKNode(
-            new PlanNodeId("TopKNode"),
-            10,
-            new OrderByParameter(
-                Arrays.asList(
-                    new SortItem(OrderByKey.TIME, Ordering.ASC),
-                    new SortItem(DEVICE, Ordering.ASC))),
-            Arrays.asList("Time", "Device", "s1"));
-    for (int i = 0; i < childNum; i++) {
-      SingleDeviceViewNode singleDeviceViewNode =
-          new SingleDeviceViewNode(
-              new PlanNodeId(String.format("SingleDeviceViewNode%d", i)),
-              Arrays.asList("Time", "Device", "s1"),
-              "root.sg.d" + i,
-              Arrays.asList(0, 1, 2));
-      singleDeviceViewNode.setCacheOutputColumnNames(true);
-      SeriesScanNode seriesScanNode =
-          new SeriesScanNode(
-              new PlanNodeId(String.format("SeriesScanNode%d", i)),
-              new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
-      typeProvider.setType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
-      singleDeviceViewNode.addChild(seriesScanNode);
-      typeProvider.setType("Time", TSDataType.INT64);
-      typeProvider.setType("Device", TSDataType.TEXT);
-      typeProvider.setType("s1", TSDataType.INT32);
-      topKNode.addChild(singleDeviceViewNode);
-    }
-    return topKNode;
   }
 }
