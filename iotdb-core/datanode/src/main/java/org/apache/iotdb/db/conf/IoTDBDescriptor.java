@@ -59,6 +59,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
+import org.apache.iotdb.tsfile.utils.FSUtils;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.slf4j.Logger;
@@ -72,11 +73,17 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.ServiceLoader;
+import java.util.Set;
 
 public class IoTDBDescriptor {
 
@@ -326,8 +333,6 @@ public class IoTDBDescriptor {
                 .trim()));
 
     initMemoryAllocate(properties);
-
-    loadWALProps(properties);
 
     String systemDir = properties.getProperty("dn_system_dir");
     if (systemDir == null) {
@@ -971,6 +976,8 @@ public class IoTDBDescriptor {
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());
 
+    loadWALProps(properties);
+
     // Timed flush memtable
     loadTimedService(properties);
 
@@ -1271,7 +1278,7 @@ public class IoTDBDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "iot_consensus_throttle_threshold_in_byte",
-                Long.toString(conf.getThrottleThreshold())));
+                Long.toString(getThrottleThresholdWithDirs())));
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
     }
@@ -1284,6 +1291,59 @@ public class IoTDBDescriptor {
     if (cacheWindowInMs > 0) {
       conf.setCacheWindowTimeInMs(cacheWindowInMs);
     }
+  }
+
+  public long getThrottleThresholdWithDirs() {
+    ArrayList<String> dataDiskDirs = new ArrayList<>(Arrays.asList(conf.getDataDirs()));
+    ArrayList<String> walDiskDirs =
+        new ArrayList<>(Arrays.asList(commonDescriptor.getConfig().getWalDirs()));
+    Set<FileStore> dataFileStores = getFileStores(dataDiskDirs);
+    Set<FileStore> walFileStores = getFileStores(walDiskDirs);
+    double dirUseProportion = 0;
+    Set<FileStore> intersectFileStores = new HashSet<>(dataFileStores);
+    intersectFileStores.retainAll(walFileStores);
+    if (intersectFileStores.isEmpty()) {
+      dirUseProportion = 0.8;
+    } else {
+      dirUseProportion = 0.5;
+    }
+    long newThrottleThreshold = Long.MAX_VALUE;
+    for (FileStore fileStore : walFileStores) {
+      try {
+        newThrottleThreshold = Math.min(newThrottleThreshold, fileStore.getUsableSpace());
+      } catch (IOException e) {
+        LOGGER.error("Failed to get file size of {}, because", fileStore, e);
+      }
+    }
+    newThrottleThreshold = (long) (newThrottleThreshold * dirUseProportion * walFileStores.size());
+    return Math.max(
+        Math.min(newThrottleThreshold, 600 * 1024 * 1024 * 1024L), 50 * 1024 * 1024 * 1024L);
+  }
+
+  public Set<FileStore> getFileStores(List<String> dirs) {
+    Set<FileStore> fileStores = new HashSet<>();
+    for (String diskDir : dirs) {
+      if (!FSUtils.isLocal(diskDir)) {
+        continue;
+      }
+      Path path = Paths.get(diskDir);
+      FileStore fileStore = null;
+      try {
+        fileStore = Files.getFileStore(path);
+      } catch (IOException e) {
+        // check parent if path is not exists
+        path = path.getParent();
+        try {
+          fileStore = Files.getFileStore(path);
+        } catch (IOException innerException) {
+          LOGGER.error("Failed to get storage path of {}, because", diskDir, innerException);
+        }
+      }
+      if (null != fileStore) {
+        fileStores.add(fileStore);
+      }
+    }
+    return fileStores;
   }
 
   private void loadAutoCreateSchemaProps(Properties properties) {
