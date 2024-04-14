@@ -185,7 +185,7 @@
         <!-- This was the last version to support Java 8 -->
         <tomcat.version>9.0.86</tomcat.version>
         <xz.version>1.9</xz.version>
-        <zeppelin.version>0.10.1</zeppelin.version>
+        <zeppelin.version>0.11.1</zeppelin.version>
         <zstd-jni.version>1.5.5-5</zstd-jni.version>
     </properties>
     <!--

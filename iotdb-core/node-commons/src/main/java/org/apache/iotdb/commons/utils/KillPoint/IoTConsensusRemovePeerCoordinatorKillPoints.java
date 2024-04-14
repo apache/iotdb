@@ -17,31 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.exception.subscription;
+package org.apache.iotdb.commons.utils.KillPoint;
 
-import org.apache.iotdb.pipe.api.exception.PipeException;
-
-import java.util.Objects;
-
-public class SubscriptionException extends PipeException {
-
-  public SubscriptionException(String message) {
-    super(message);
-  }
-
-  protected SubscriptionException(String message, long timeStamp) {
-    super(message, timeStamp);
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    return obj instanceof SubscriptionException
-        && Objects.equals(getMessage(), ((SubscriptionException) obj).getMessage())
-        && Objects.equals(getTimeStamp(), ((SubscriptionException) obj).getTimeStamp());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(getMessage(), getTimeStamp());
-  }
+public enum IoTConsensusRemovePeerCoordinatorKillPoints {
+  INIT,
+  AFTER_NOTIFY_PEERS_TO_REMOVE_SYNC_LOG_CHANNEL,
+  AFTER_INACTIVE_PEER,
+  FINISH,
 }

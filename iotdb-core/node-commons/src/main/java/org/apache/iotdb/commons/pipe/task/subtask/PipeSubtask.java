@@ -90,7 +90,7 @@ public abstract class PipeSubtask
     return hasAtLeastOneEventProcessed;
   }
 
-  /** Should be synchronized with {@link PipeSubtask#releaseLastEvent} */
+  /** Should be synchronized with {@link PipeSubtask#decreaseReferenceCountAndReleaseLastEvent} */
   protected synchronized void setLastEvent(Event event) {
     lastEvent = event;
   }
@@ -146,18 +146,24 @@ public abstract class PipeSubtask
     return !shouldStopSubmittingSelf.get();
   }
 
-  // synchronized for close() and releaseLastEvent(). make sure that the lastEvent
-  // will not be updated after pipeProcessor.close() to avoid resource leak
-  // because of the lastEvent is not released.
   @Override
   public void close() {
-    releaseLastEvent(false);
+    clearReferenceCountAndReleaseLastEvent();
   }
 
-  protected synchronized void releaseLastEvent(boolean shouldReport) {
+  protected synchronized void decreaseReferenceCountAndReleaseLastEvent(boolean shouldReport) {
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent) {
         ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName(), shouldReport);
+      }
+      lastEvent = null;
+    }
+  }
+
+  protected synchronized void clearReferenceCountAndReleaseLastEvent() {
+    if (lastEvent != null) {
+      if (lastEvent instanceof EnrichedEvent) {
+        ((EnrichedEvent) lastEvent).clearReferenceCount(this.getClass().getName());
       }
       lastEvent = null;
     }

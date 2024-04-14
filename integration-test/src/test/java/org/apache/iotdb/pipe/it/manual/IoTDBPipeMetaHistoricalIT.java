@@ -72,6 +72,10 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
         .setSchemaReplicationFactor(3)
         .setDataReplicationFactor(2);
 
+    // 10 min, assert that the operations will not time out
+    senderEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment(3, 3);
   }
