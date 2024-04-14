@@ -62,7 +62,7 @@ public class SystemMetrics implements IMetricSet {
     }
   }
 
-  public Set<FileStore> getFileStores(List<String> dirs) {
+  public static Set<FileStore> getFileStores(List<String> dirs) {
     Set<FileStore> fileStoreSet = new HashSet<>();
     for (String diskDir : dirs) {
       if (!FSUtils.isLocal(diskDir)) {

@@ -1301,8 +1301,8 @@ public class IoTDBDescriptor {
     ArrayList<String> dataDiskDirs = new ArrayList<>(Arrays.asList(conf.getDataDirs()));
     ArrayList<String> walDiskDirs =
         new ArrayList<>(Arrays.asList(commonDescriptor.getConfig().getWalDirs()));
-    Set<FileStore> dataFileStores = SystemMetrics.getInstance().getFileStores(dataDiskDirs);
-    Set<FileStore> walFileStores = SystemMetrics.getInstance().getFileStores(walDiskDirs);
+    Set<FileStore> dataFileStores = SystemMetrics.getFileStores(dataDiskDirs);
+    Set<FileStore> walFileStores = SystemMetrics.getFileStores(walDiskDirs);
     double dirUseProportion = 0;
     dataFileStores.retainAll(walFileStores);
     // if there is no common disk between data and wal, use more usableSpace.
