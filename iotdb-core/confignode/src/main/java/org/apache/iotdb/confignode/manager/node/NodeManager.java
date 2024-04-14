@@ -243,6 +243,8 @@ public class NodeManager {
           getPipeManager().getPipePluginCoordinator().getPipePluginTable().getAllPipePluginMeta());
       runtimeConfiguration.setAllTTLInformation(
           DataNodeRegisterResp.convertAllTTLInformation(getClusterSchemaManager().getAllTTLInfo()));
+      runtimeConfiguration.setTableInfo(
+          getClusterSchemaManager().getAllTableInfoForDataNodeActivation());
       return runtimeConfiguration;
     } finally {
       getTriggerManager().getTriggerInfo().releaseTriggerTableLock();

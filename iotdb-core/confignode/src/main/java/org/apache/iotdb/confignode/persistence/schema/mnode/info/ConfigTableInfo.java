@@ -17,32 +17,40 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
+package org.apache.iotdb.confignode.persistence.schema.mnode.info;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.confignode.persistence.schema.mnode.impl.TableNodeStatus;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.BasicMNodeInfo;
 
-import com.google.common.util.concurrent.ListenableFuture;
+public class ConfigTableInfo extends BasicMNodeInfo {
 
-public class CreateTableTask implements IConfigTask {
+  private TsTable table;
 
-  private final TsTable table;
+  private TableNodeStatus status;
 
-  private final String database;
+  public ConfigTableInfo(String name) {
+    super(name);
+  }
 
-  private final boolean ifNotExists;
+  public TsTable getTable() {
+    return table;
+  }
 
-  public CreateTableTask(TsTable table, String database, boolean ifNotExists) {
+  public void setTable(TsTable table) {
     this.table = table;
-    this.database = database;
-    this.ifNotExists = ifNotExists;
+  }
+
+  public TableNodeStatus getStatus() {
+    return status;
+  }
+
+  public void setStatus(TableNodeStatus status) {
+    this.status = status;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
-      throws InterruptedException {
-    return configTaskExecutor.createTable(table, database, ifNotExists);
+  public int estimateSize() {
+    return 1 + 8 + table.getColumnNum() * 30;
   }
 }

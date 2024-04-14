@@ -105,6 +105,7 @@ struct TRuntimeConfiguration {
   4: required binary allTTLInformation
   5: required list<binary> allPipeInformation
   6: optional string clusterId
+  7: optional binary tableInfo
 }
 
 struct TDataNodeRegisterReq {
@@ -897,6 +898,7 @@ struct TShowThrottleReq {
   1: optional string userName;
 }
 
+
 // ====================================================
 // Activation
 // ====================================================
@@ -1557,5 +1559,11 @@ service IConfigNodeRPCService {
 
   /** Get throttle quota information */
   TThrottleQuotaResp getThrottleQuota()
+
+  // ======================================================
+  // Table
+  // ======================================================
+
+  common.TSStatus createTable(binary tableInfo)
 }
 
