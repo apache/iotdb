@@ -34,6 +34,8 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
 
   private String[] pathPattern;
 
+  boolean isDataBase = false;
+
   private long TTL;
 
   public SetTTLPlan() {
@@ -71,6 +73,7 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
       BasicStructureSerDeUtil.write(node, stream);
     }
     stream.writeLong(TTL);
+    stream.writeBoolean(isDataBase);
   }
 
   @Override
@@ -81,6 +84,7 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
       pathPattern[i] = BasicStructureSerDeUtil.readString(buffer);
     }
     TTL = buffer.getLong();
+    isDataBase = buffer.getInt() != 0;
   }
 
   @Override
@@ -98,5 +102,13 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
   @Override
   public int hashCode() {
     return Objects.hash(Arrays.hashCode(pathPattern), TTL);
+  }
+
+  public boolean isDataBase() {
+    return isDataBase;
+  }
+
+  public void setDataBase(boolean dataBase) {
+    isDataBase = dataBase;
   }
 }

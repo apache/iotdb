@@ -130,7 +130,9 @@ public class IoTDBDatabaseSetAndDeleteIT {
 
       // test Database setter interfaces
       PartialPath patternPath = new PartialPath(sg1);
-      status = client.setTTL(new TSetTTLReq(Arrays.asList(patternPath.getNodes()), Long.MAX_VALUE));
+      status =
+          client.setTTL(
+              new TSetTTLReq(Arrays.asList(patternPath.getNodes()), Long.MAX_VALUE, false));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       status = client.setSchemaReplicationFactor(new TSetSchemaReplicationFactorReq(sg1, 1));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());

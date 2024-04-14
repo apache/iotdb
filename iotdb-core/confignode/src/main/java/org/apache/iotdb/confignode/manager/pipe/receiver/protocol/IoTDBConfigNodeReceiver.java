@@ -262,7 +262,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return configManager.dropTrigger(
             new TDropTriggerReq(((DeleteTriggerInTablePlan) plan).getTriggerName())
                 .setIsGeneratedByPipe(true));
-      case SetTTL:
+      case SetTTL: // TODO: Update with new TTL module
         return configManager.getClusterSchemaManager().setTTL((SetTTLPlan) plan, true);
       case DropUser:
       case DropRole:

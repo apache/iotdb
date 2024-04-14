@@ -428,7 +428,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
-    return configManager.setTTL(new SetTTLPlan(req.getStorageGroupPathPattern(), req.getTTL()));
+    return configManager.setTTL(new SetTTLPlan(req.getPathPattern(), req.getTTL()));
   }
 
   @Override

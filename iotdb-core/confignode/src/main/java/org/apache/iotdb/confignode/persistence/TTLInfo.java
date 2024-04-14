@@ -19,6 +19,8 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -57,6 +59,14 @@ public class TTLInfo implements SnapshotProcessor {
     lock.writeLock().lock();
     try {
       ttlCache.setTTL(plan.getPathPattern(), plan.getTTL());
+      if (plan.isDataBase()) {
+        // set ttl to path.**
+        ttlCache.setTTL(
+            new PartialPath(plan.getPathPattern())
+                .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)
+                .getNodes(),
+            plan.getTTL());
+      }
     } finally {
       lock.writeLock().unlock();
     }
@@ -67,6 +77,13 @@ public class TTLInfo implements SnapshotProcessor {
     lock.writeLock().lock();
     try {
       ttlCache.unsetTTL(plan.getPathPattern());
+      if (plan.isDataBase()) {
+        // unset ttl to path.**
+        ttlCache.unsetTTL(
+            new PartialPath(plan.getPathPattern())
+                .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)
+                .getNodes());
+      }
     } finally {
       lock.writeLock().unlock();
     }

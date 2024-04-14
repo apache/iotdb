@@ -20,7 +20,6 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.TTLException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -66,11 +65,9 @@ public class TTLManager {
       return errorStatus;
     }
 
-    // if path matches database, then extends to path.**
-    if (configManager.getPartitionManager().isDatabaseExist(path.getFullPath())) {
-      setTTLPlan.setPathPattern(
-          path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD).getNodes());
-    }
+    // if path matches database, then set both path and path.**
+    setTTLPlan.setDataBase(configManager.getPartitionManager().isDatabaseExist(path.getFullPath()));
+
     long ttl =
         CommonDateTimeUtils.convertMilliTimeWithPrecision(
             setTTLPlan.getTTL(),
@@ -88,11 +85,8 @@ public class TTLManager {
       errorStatus.setMessage(new TTLException(path.getFullPath()).getMessage());
       return errorStatus;
     }
-    // if path matches database, then extends to path.**
-    if (configManager.getPartitionManager().isDatabaseExist(path.getFullPath())) {
-      setTTLPlan.setPathPattern(
-          path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD).getNodes());
-    }
+    // if path matches database, then unset both path and path.**
+    setTTLPlan.setDataBase(configManager.getPartitionManager().isDatabaseExist(path.getFullPath()));
 
     return configManager.getProcedureManager().setTTL(setTTLPlan);
   }

@@ -1306,6 +1306,7 @@ public class IoTDBRestServiceIT {
             add("Device");
             add("IsAligned");
             add("Template");
+            add("TTL");
           }
         };
     List<Object> values1 =
@@ -1343,6 +1344,7 @@ public class IoTDBRestServiceIT {
             add("Database");
             add("IsAligned");
             add("Template");
+            add("TTL");
           }
         };
     List<Object> values1 =
@@ -1711,20 +1713,20 @@ public class IoTDBRestServiceIT {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("Database");
+            add("Device");
             add("TTL");
           }
         };
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
+            add("root.**");
           }
         };
     List<Object> values2 =
         new ArrayList<Object>() {
           {
-            add(null);
+            add("INF");
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
@@ -1956,6 +1958,7 @@ public class IoTDBRestServiceIT {
             add("Device");
             add("IsAligned");
             add("Template");
+            add("TTL");
           }
         };
     List<Object> values1 =
@@ -1994,6 +1997,7 @@ public class IoTDBRestServiceIT {
             add("Database");
             add("IsAligned");
             add("Template");
+            add("TTL");
           }
         };
     List<Object> values1 =

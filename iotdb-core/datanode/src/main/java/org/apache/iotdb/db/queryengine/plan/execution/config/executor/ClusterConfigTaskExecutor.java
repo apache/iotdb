@@ -915,7 +915,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     List<String> pathPattern = Arrays.asList(setTTLStatement.getPath().getNodes());
-    TSetTTLReq setTTLReq = new TSetTTLReq(pathPattern, setTTLStatement.getTTL());
+    TSetTTLReq setTTLReq = new TSetTTLReq(pathPattern, setTTLStatement.getTTL(), false);
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server

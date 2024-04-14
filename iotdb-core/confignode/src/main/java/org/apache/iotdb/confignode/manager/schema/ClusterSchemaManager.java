@@ -388,6 +388,7 @@ public class ClusterSchemaManager {
     return new TShowDatabaseResp().setDatabaseInfoMap(infoMap).setStatus(StatusUtils.OK);
   }
 
+  // TODO: Remove, use TTLManager instead.
   /**
    * Update TTL for the specific StorageGroup or all databases in a path
    *
@@ -431,7 +432,8 @@ public class ClusterSchemaManager {
         .forEach(
             dataNodeId -> {
               TSetTTLReq setTTLReq =
-                  new TSetTTLReq(dnlToSgMap.get(dataNodeId), setTTLPlan.getTTL());
+                  new TSetTTLReq(
+                      dnlToSgMap.get(dataNodeId), setTTLPlan.getTTL(), setTTLPlan.isDataBase());
               clientHandler.putRequest(dataNodeId, setTTLReq);
               clientHandler.putDataNodeLocation(dataNodeId, dataNodeLocationMap.get(dataNodeId));
             });

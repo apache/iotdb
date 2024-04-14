@@ -180,7 +180,7 @@ public class IoTDBSeriesPermissionIT {
     resultSetEqualTest(
         "show devices",
         showDevicesColumnHeaders.stream().map(ColumnHeader::getColumnName).toArray(String[]::new),
-        new String[] {"root.test.d1,false,null,10000,", "root.test1.d1,false,null,10000,"},
+        new String[] {"root.test.d1,false,null,10000,", "root.test1.d1,false,null,INF,"},
         "test1",
         "test123");
     resultSetEqualTest(
@@ -239,7 +239,7 @@ public class IoTDBSeriesPermissionIT {
     resultSetEqualTest(
         "show all ttl",
         showTTLColumnHeaders.stream().map(ColumnHeader::getColumnName).toArray(String[]::new),
-        new String[] {"root.test,10000,", "root.**,INF,"},
+        new String[] {"root.test.**,10000,", "root.**,INF,", "root.test,10000,"},
         "test1",
         "test123");
   }

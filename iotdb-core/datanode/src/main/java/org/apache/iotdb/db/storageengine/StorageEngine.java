@@ -764,12 +764,23 @@ public class StorageEngine implements IService {
 
   /** Update ttl cache in dataNode. */
   public TSStatus setTTL(TSetTTLReq req) {
-    String path = req.getStorageGroupPathPattern().get(0);
+    String path = req.getPathPattern().get(0);
     long ttl = req.getTTL();
+    boolean isDataBase = req.isDataBase;
     if (ttl == TTLCache.NULL_TTL) {
       DataNodeTTLCache.getInstance().unsetTTL(path);
+      if (isDataBase) {
+        DataNodeTTLCache.getInstance()
+            .unsetTTL(
+                path + IoTDBConstant.PATH_SEPARATOR + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+      }
     } else {
       DataNodeTTLCache.getInstance().setTTL(path, ttl);
+      if (isDataBase) {
+        DataNodeTTLCache.getInstance()
+            .setTTL(
+                path + IoTDBConstant.PATH_SEPARATOR + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD, ttl);
+      }
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }

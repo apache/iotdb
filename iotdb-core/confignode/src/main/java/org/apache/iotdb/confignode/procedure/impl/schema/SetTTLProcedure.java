@@ -105,7 +105,9 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
         new AsyncClientHandler<>(
             DataNodeRequestType.SET_TTL,
             new TSetTTLReq(
-                Collections.singletonList(String.join(".", plan.getPathPattern())), plan.getTTL()),
+                Collections.singletonList(String.join(".", plan.getPathPattern())),
+                plan.getTTL(),
+                plan.isDataBase()),
             dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
