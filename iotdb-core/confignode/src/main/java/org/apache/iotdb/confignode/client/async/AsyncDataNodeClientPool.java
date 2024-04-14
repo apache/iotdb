@@ -492,12 +492,12 @@ public class AsyncDataNodeClientPool {
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
-          case UPDATE_TABLE:
-              client.updateTable(
-                      (TUpdateTableReq) clientHandler.getRequest(requestId),
-                      (AsyncTSStatusRPCHandler)
-                              clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
-              break;
+        case UPDATE_TABLE:
+          client.updateTable(
+              (TUpdateTableReq) clientHandler.getRequest(requestId),
+              (AsyncTSStatusRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
         default:
           LOGGER.error(
               "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",

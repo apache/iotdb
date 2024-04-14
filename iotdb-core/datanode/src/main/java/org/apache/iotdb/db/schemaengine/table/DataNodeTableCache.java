@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -32,6 +33,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class DataNodeTableCache implements ITableCache {
 
@@ -164,5 +168,40 @@ public class DataNodeTableCache implements ITableCache {
     } finally {
       readWriteLock.readLock().unlock();
     }
+  }
+
+  /** Check whether the given path overlap with some table existence. */
+  public Pair<String, String> checkTableCreateAndPreCreateOnGivenPath(PartialPath path) {
+    readWriteLock.writeLock().lock();
+    try {
+      String pathString = path.getFullPath();
+      Pair<String, String> result = checkTableExistenceOnGivenPath(pathString, databaseTableMap);
+      if (result == null) {
+        result = checkTableExistenceOnGivenPath(pathString, preCreateTableMap);
+      }
+      return result;
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  private Pair<String, String> checkTableExistenceOnGivenPath(
+      String path, Map<String, Map<String, TsTable>> tableMap) {
+    int dbStartIndex = PATH_ROOT.length() + 1;
+    for (Map.Entry<String, Map<String, TsTable>> dbEntry : tableMap.entrySet()) {
+      String database = dbEntry.getKey();
+      if (!(path.startsWith(database, dbStartIndex)
+          && path.charAt(dbStartIndex + database.length()) == PATH_SEPARATOR)) {
+        continue;
+      }
+      int tableStartIndex = dbStartIndex + database.length() + 1;
+      for (String tableName : dbEntry.getValue().keySet()) {
+        if (path.startsWith(tableName, tableStartIndex)
+            && path.charAt(tableStartIndex + tableName.length()) == PATH_SEPARATOR) {
+          return new Pair<>(database, tableName);
+        }
+      }
+    }
+    return null;
   }
 }

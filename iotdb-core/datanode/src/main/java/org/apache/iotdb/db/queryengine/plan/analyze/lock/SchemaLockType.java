@@ -30,7 +30,7 @@ public enum SchemaLockType {
    *
    * <ol>
    *   <li>Take read lock before creating timeseries.
-   *   <li>Release read lock after finishing creating timeseries
+   *   <li>Release read lock after finishing creating timeseries.
    *   <li>Take write lock before pre-set template.
    *   <li>Release write lock after finishing pre-set template.
    * </ol>
@@ -47,5 +47,18 @@ public enum SchemaLockType {
    *   <li>Release write lock after finishing invalidating schema cache.
    * </ol>
    */
-  VALIDATE_VS_DELETION
+  VALIDATE_VS_DELETION,
+
+  /**
+   * This lock is used for guarantee no timeseries (tree model) under path representing table (table
+   * model).
+   *
+   * <ol>
+   *   <li>Take read lock before creating timeseries (tree model).
+   *   <li>Release read lock after finishing creating timeseries (tree model).
+   *   <li>Take write lock before pre-create table (table model).
+   *   <li>Release write lock after finishing pre-create table (table model).
+   * </ol>
+   */
+  TIMESERIES_VS_TABLE,
 }

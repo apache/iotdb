@@ -1388,10 +1388,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus updateTable(TUpdateTableReq req) throws TException {
     switch (TsTableInternalRPCType.getType(req.type)) {
       case PRE_CREATE:
-        Pair<String, TsTable> pair =
-            TsTableInternalRPCUtil.deserializeSingleTsTable(req.getTableInfo());
-        DataNodeTableCache.getInstance().preCreateTable(pair.left, pair.right);
-        break;
+        DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
+        try {
+          Pair<String, TsTable> pair =
+              TsTableInternalRPCUtil.deserializeSingleTsTable(req.getTableInfo());
+          DataNodeTableCache.getInstance().preCreateTable(pair.left, pair.right);
+          break;
+        } finally {
+          DataNodeSchemaLockManager.getInstance()
+              .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
+        }
       case ROLLBACK_CREATE:
         DataNodeTableCache.getInstance()
             .rollbackCreateTable(

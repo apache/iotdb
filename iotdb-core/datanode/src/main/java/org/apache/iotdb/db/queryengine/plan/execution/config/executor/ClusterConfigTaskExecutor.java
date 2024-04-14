@@ -2842,8 +2842,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
     if (table == null) {
       future.setException(new TableNotExistsException(database, tableName));
+    } else {
+      DescribeTableTask.buildTsBlock(table, future);
     }
-    DescribeTableTask.buildTsBlock(table, future);
     return future;
   }
 
