@@ -29,9 +29,9 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
-import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusCache;
-import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusHeartbeatSample;
-import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupCache;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
@@ -76,8 +76,8 @@ public class LoadCache {
   private final Map<Integer, BaseNodeCache> nodeCacheMap;
   // Map<RegionGroupId, RegionGroupCache>
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
-  // Map<RegionGroupId, ConsensusCache>
-  private final Map<TConsensusGroupId, ConsensusCache> consensusCacheMap;
+  // Map<RegionGroupId, ConsensusGroupCache>
+  private final Map<TConsensusGroupId, ConsensusGroupCache> consensusGroupCacheMap;
   // Map<DataNodeId, confirmedConfigNodes>
   private final Map<Integer, Set<TEndPoint>> confirmedConfigNodeMap;
 
@@ -85,7 +85,7 @@ public class LoadCache {
     this.nodeCacheMap = new ConcurrentHashMap<>();
     this.heartbeatProcessingMap = new ConcurrentHashMap<>();
     this.regionGroupCacheMap = new ConcurrentHashMap<>();
-    this.consensusCacheMap = new ConcurrentHashMap<>();
+    this.consensusGroupCacheMap = new ConcurrentHashMap<>();
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
   }
 
@@ -135,20 +135,20 @@ public class LoadCache {
    */
   private void initRegionGroupHeartbeatCache(List<TRegionReplicaSet> regionReplicaSets) {
     regionGroupCacheMap.clear();
-    consensusCacheMap.clear();
+    consensusGroupCacheMap.clear();
     regionReplicaSets.forEach(
         regionReplicaSet -> {
           TConsensusGroupId consensusGroupId = regionReplicaSet.getRegionId();
           regionGroupCacheMap.put(consensusGroupId, new RegionGroupCache());
-          consensusCacheMap.put(consensusGroupId, new ConsensusCache());
+          consensusGroupCacheMap.put(consensusGroupId, new ConsensusGroupCache());
         });
   }
 
   public void clearHeartbeatCache() {
-    nodeCacheMap.clear();
     heartbeatProcessingMap.clear();
+    nodeCacheMap.clear();
     regionGroupCacheMap.clear();
-    consensusCacheMap.clear();
+    consensusGroupCacheMap.clear();
   }
 
   /**
@@ -224,9 +224,9 @@ public class LoadCache {
    * @param sample the latest heartbeat sample
    */
   public void cacheConsensusSample(
-      TConsensusGroupId regionGroupId, ConsensusHeartbeatSample sample) {
-    consensusCacheMap
-        .computeIfAbsent(regionGroupId, empty -> new ConsensusCache())
+      TConsensusGroupId regionGroupId, ConsensusGroupHeartbeatSample sample) {
+    consensusGroupCacheMap
+        .computeIfAbsent(regionGroupId, empty -> new ConsensusGroupCache())
         .cacheHeartbeatSample(sample);
   }
 
@@ -240,9 +240,9 @@ public class LoadCache {
     regionGroupCacheMap.values().forEach(RegionGroupCache::updateCurrentStatistics);
   }
 
-  /** Update the ConsensusStatistics of all RegionGroups. */
-  public void updateConsensusStatistics() {
-    consensusCacheMap.values().forEach(ConsensusCache::updateCurrentStatistics);
+  /** Update the ConsensusGroupStatistics of all RegionGroups. */
+  public void updateConsensusGroupStatistics() {
+    consensusGroupCacheMap.values().forEach(ConsensusGroupCache::updateCurrentStatistics);
   }
 
   /**
@@ -271,12 +271,13 @@ public class LoadCache {
     return regionGroupStatisticsMap;
   }
 
-  public Map<TConsensusGroupId, ConsensusStatistics> getCurrentConsensusStatisticsMap() {
-    Map<TConsensusGroupId, ConsensusStatistics> consensusStatisticsMap = new TreeMap<>();
-    consensusCacheMap.forEach(
-        (regionGroupId, consensusCache) ->
-            consensusStatisticsMap.put(regionGroupId, consensusCache.getCurrentStatistics()));
-    return consensusStatisticsMap;
+  public Map<TConsensusGroupId, ConsensusGroupStatistics> getCurrentConsensusGroupStatisticsMap() {
+    Map<TConsensusGroupId, ConsensusGroupStatistics> consensusGroupStatisticsMap = new TreeMap<>();
+    consensusGroupCacheMap.forEach(
+        (regionGroupId, consensusGroupCache) ->
+            consensusGroupStatisticsMap.put(
+                regionGroupId, consensusGroupCache.getCurrentStatistics()));
+    return consensusGroupStatisticsMap;
   }
 
   /**
@@ -504,7 +505,7 @@ public class LoadCache {
   /** Remove the specified RegionGroup's cache. */
   public void removeRegionGroupCache(TConsensusGroupId consensusGroupId) {
     regionGroupCacheMap.remove(consensusGroupId);
-    consensusCacheMap.remove(consensusGroupId);
+    consensusGroupCacheMap.remove(consensusGroupId);
   }
 
   /**
@@ -514,9 +515,9 @@ public class LoadCache {
    */
   public Map<TConsensusGroupId, Integer> getRegionLeaderMap() {
     Map<TConsensusGroupId, Integer> regionLeaderMap = new ConcurrentHashMap<>();
-    consensusCacheMap.forEach(
-        (regionGroupId, consensusCache) ->
-            regionLeaderMap.put(regionGroupId, consensusCache.getLeaderId()));
+    consensusGroupCacheMap.forEach(
+        (regionGroupId, consensusGroupCache) ->
+            regionLeaderMap.put(regionGroupId, consensusGroupCache.getLeaderId()));
     return regionLeaderMap;
   }
 
@@ -532,8 +533,8 @@ public class LoadCache {
       AtomicBoolean allRegionLeaderElected = new AtomicBoolean(true);
       regionGroupIds.forEach(
           regionGroupId -> {
-            if (!consensusCacheMap.containsKey(regionGroupId)
-                || consensusCacheMap.get(regionGroupId).isLeaderUnSelected()) {
+            if (!consensusGroupCacheMap.containsKey(regionGroupId)
+                || consensusGroupCacheMap.get(regionGroupId).isLeaderUnSelected()) {
               allRegionLeaderElected.set(false);
             }
           });

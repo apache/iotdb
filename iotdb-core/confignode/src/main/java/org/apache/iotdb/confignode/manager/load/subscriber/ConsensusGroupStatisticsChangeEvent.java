@@ -20,26 +20,26 @@
 package org.apache.iotdb.confignode.manager.load.subscriber;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupStatistics;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Map;
 
-/** ConsensusStatisticsChangeEvent represents the change of consensus statistics. */
-public class ConsensusStatisticsChangeEvent {
+/** ConsensusGroupStatisticsChangeEvent represents the change of consensus statistics. */
+public class ConsensusGroupStatisticsChangeEvent {
 
-  // Map<RegionGroupId, Pair<old ConsensusStatistics, new ConsensusStatistics>>
-  private final Map<TConsensusGroupId, Pair<ConsensusStatistics, ConsensusStatistics>>
-      differentConsensusStatisticsMap;
+  // Map<RegionGroupId, Pair<old ConsensusGroupStatistics, new ConsensusGroupStatistics>>
+  private final Map<TConsensusGroupId, Pair<ConsensusGroupStatistics, ConsensusGroupStatistics>>
+      differentConsensusGroupStatisticsMap;
 
-  public ConsensusStatisticsChangeEvent(
-      Map<TConsensusGroupId, Pair<ConsensusStatistics, ConsensusStatistics>>
-          differentConsensusStatisticsMap) {
-    this.differentConsensusStatisticsMap = differentConsensusStatisticsMap;
+  public ConsensusGroupStatisticsChangeEvent(
+      Map<TConsensusGroupId, Pair<ConsensusGroupStatistics, ConsensusGroupStatistics>>
+          differentConsensusGroupStatisticsMap) {
+    this.differentConsensusGroupStatisticsMap = differentConsensusGroupStatisticsMap;
   }
 
-  public Map<TConsensusGroupId, Pair<ConsensusStatistics, ConsensusStatistics>>
-      getDifferentConsensusStatisticsMap() {
-    return differentConsensusStatisticsMap;
+  public Map<TConsensusGroupId, Pair<ConsensusGroupStatistics, ConsensusGroupStatistics>>
+      getDifferentConsensusGroupStatisticsMap() {
+    return differentConsensusGroupStatisticsMap;
   }
 }

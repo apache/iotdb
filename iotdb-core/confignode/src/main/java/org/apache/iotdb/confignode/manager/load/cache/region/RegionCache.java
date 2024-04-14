@@ -34,7 +34,7 @@ public class RegionCache extends AbstractLoadCache {
   }
 
   @Override
-  public void updateCurrentStatistics() {
+  public synchronized void updateCurrentStatistics() {
     RegionHeartbeatSample lastSample;
     synchronized (slidingWindow) {
       lastSample = (RegionHeartbeatSample) getLastSample();

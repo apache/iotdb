@@ -37,7 +37,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
-import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.service.EventService;
@@ -146,6 +146,7 @@ public class LoadManager {
     eventService.stopEventService();
     loadCache.clearHeartbeatCache();
     partitionBalancer.clearPartitionBalancer();
+    routeBalancer.clearRegionPriority();
   }
 
   public void clearDataPartitionPolicyTable(String database) {
@@ -420,20 +421,16 @@ public class LoadManager {
   /**
    * Force update the specified Consensus' cache.
    *
-   * @param heartbeatSampleMap Map<RegionGroupId, ConsensusHeartbeatSample>
+   * @param heartbeatSampleMap Map<RegionGroupId, ConsensusGroupHeartbeatSample>
    */
-  public void forceUpdateConsensusCache(
-      Map<TConsensusGroupId, ConsensusHeartbeatSample> heartbeatSampleMap) {
+  public void forceUpdateConsensusGroupCache(
+      Map<TConsensusGroupId, ConsensusGroupHeartbeatSample> heartbeatSampleMap) {
     heartbeatSampleMap.forEach(loadCache::cacheConsensusSample);
-    loadCache.updateConsensusStatistics();
-    eventService.checkAndBroadcastConsensusStatisticsChangeEventIfNecessary();
+    loadCache.updateConsensusGroupStatistics();
+    eventService.checkAndBroadcastConsensusGroupStatisticsChangeEventIfNecessary();
   }
 
   public LoadCache getLoadCache() {
     return loadCache;
-  }
-
-  public RouteBalancer getRouteBalancer() {
-    return routeBalancer;
   }
 }

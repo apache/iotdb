@@ -19,47 +19,19 @@
 
 package org.apache.iotdb.confignode.manager.load.cache.consensus;
 
-import org.apache.iotdb.confignode.manager.load.cache.AbstractStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 
-import java.util.Objects;
-
-/** ConsensusStatistics indicates the statistics of a consensus group. */
-public class ConsensusStatistics extends AbstractStatistics {
+/** ConsensusGroupHeartbeatSample records the heartbeat sample of a consensus group. */
+public class ConsensusGroupHeartbeatSample extends AbstractHeartbeatSample {
 
   private final int leaderId;
 
-  public ConsensusStatistics(long statisticsNanoTimestamp, int leaderId) {
-    super(statisticsNanoTimestamp);
+  public ConsensusGroupHeartbeatSample(long sampleLogicalTimestamp, int leaderId) {
+    super(sampleLogicalTimestamp);
     this.leaderId = leaderId;
-  }
-
-  public static ConsensusStatistics generateDefaultConsensusStatistics() {
-    return new ConsensusStatistics(0, ConsensusCache.UN_READY_LEADER_ID);
   }
 
   public int getLeaderId() {
     return leaderId;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    ConsensusStatistics that = (ConsensusStatistics) o;
-    return leaderId == that.leaderId;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(leaderId);
-  }
-
-  @Override
-  public String toString() {
-    return "ConsensusStatistics{" + "leaderId=" + leaderId + '}';
   }
 }

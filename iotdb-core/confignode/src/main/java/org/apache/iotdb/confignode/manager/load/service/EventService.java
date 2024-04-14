@@ -27,10 +27,10 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
-import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
-import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusStatisticsChangeEvent;
+import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -69,14 +69,15 @@ public class EventService {
   private final LoadCache loadCache;
   private final Map<Integer, NodeStatistics> previousNodeStatisticsMap;
   private final Map<TConsensusGroupId, RegionGroupStatistics> previousRegionGroupStatisticsMap;
-  private final Map<TConsensusGroupId, ConsensusStatistics> previousConsensusStatisticsMap;
+  private final Map<TConsensusGroupId, ConsensusGroupStatistics>
+      previousConsensusGroupStatisticsMap;
   private final EventBus eventPublisher;
 
   public EventService(IManager configManager, LoadCache loadCache, RouteBalancer routeBalancer) {
     this.loadCache = loadCache;
     this.previousNodeStatisticsMap = new TreeMap<>();
     this.previousRegionGroupStatisticsMap = new TreeMap<>();
-    this.previousConsensusStatisticsMap = new TreeMap<>();
+    this.previousConsensusGroupStatisticsMap = new TreeMap<>();
 
     this.eventPublisher =
         new AsyncEventBus(
@@ -114,13 +115,13 @@ public class EventService {
     }
   }
 
-  private synchronized void broadcastChangeEventIfNecessary() {
+  private void broadcastChangeEventIfNecessary() {
     checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
     checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
-    checkAndBroadcastConsensusStatisticsChangeEventIfNecessary();
+    checkAndBroadcastConsensusGroupStatisticsChangeEventIfNecessary();
   }
 
-  public void checkAndBroadcastNodeStatisticsChangeEventIfNecessary() {
+  public synchronized void checkAndBroadcastNodeStatisticsChangeEventIfNecessary() {
     Map<Integer, NodeStatistics> currentNodeStatisticsMap = loadCache.getCurrentNodeStatisticsMap();
     Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap = new TreeMap<>();
     currentNodeStatisticsMap.forEach(
@@ -157,7 +158,7 @@ public class EventService {
     }
   }
 
-  public void checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary() {
+  public synchronized void checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary() {
     Map<TConsensusGroupId, RegionGroupStatistics> currentRegionGroupStatisticsMap =
         loadCache.getCurrentRegionGroupStatisticsMap();
     Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
@@ -224,44 +225,47 @@ public class EventService {
     }
   }
 
-  public void checkAndBroadcastConsensusStatisticsChangeEventIfNecessary() {
-    Map<TConsensusGroupId, ConsensusStatistics> currentConsensusStatisticsMap =
-        loadCache.getCurrentConsensusStatisticsMap();
-    Map<TConsensusGroupId, Pair<ConsensusStatistics, ConsensusStatistics>>
-        differentConsensusStatisticsMap = new TreeMap<>();
-    currentConsensusStatisticsMap.forEach(
-        (consensusGroupId, currentConsensusStatistics) -> {
-          ConsensusStatistics previousConsensusStatistics =
-              previousConsensusStatisticsMap.getOrDefault(
-                  consensusGroupId, ConsensusStatistics.generateDefaultConsensusStatistics());
-          if (currentConsensusStatistics.isNewerThan(previousConsensusStatistics)
-              && !currentConsensusStatistics.equals(previousConsensusStatistics)) {
-            differentConsensusStatisticsMap.put(
+  public synchronized void checkAndBroadcastConsensusGroupStatisticsChangeEventIfNecessary() {
+    Map<TConsensusGroupId, ConsensusGroupStatistics> currentConsensusGroupStatisticsMap =
+        loadCache.getCurrentConsensusGroupStatisticsMap();
+    Map<TConsensusGroupId, Pair<ConsensusGroupStatistics, ConsensusGroupStatistics>>
+        differentConsensusGroupStatisticsMap = new TreeMap<>();
+    currentConsensusGroupStatisticsMap.forEach(
+        (consensusGroupId, currentConsensusGroupStatistics) -> {
+          ConsensusGroupStatistics previousConsensusGroupStatistics =
+              previousConsensusGroupStatisticsMap.getOrDefault(
+                  consensusGroupId,
+                  ConsensusGroupStatistics.generateDefaultConsensusGroupStatistics());
+          if (currentConsensusGroupStatistics.isNewerThan(previousConsensusGroupStatistics)
+              && !currentConsensusGroupStatistics.equals(previousConsensusGroupStatistics)) {
+            differentConsensusGroupStatisticsMap.put(
                 consensusGroupId,
-                new Pair<>(previousConsensusStatistics, currentConsensusStatistics));
-            previousConsensusStatisticsMap.put(consensusGroupId, currentConsensusStatistics);
+                new Pair<>(previousConsensusGroupStatistics, currentConsensusGroupStatistics));
+            previousConsensusGroupStatisticsMap.put(
+                consensusGroupId, currentConsensusGroupStatistics);
           }
         });
-    if (!differentConsensusStatisticsMap.isEmpty()) {
-      eventPublisher.post(new ConsensusStatisticsChangeEvent(differentConsensusStatisticsMap));
-      recordConsensusStatistics(differentConsensusStatisticsMap);
+    if (!differentConsensusGroupStatisticsMap.isEmpty()) {
+      eventPublisher.post(
+          new ConsensusGroupStatisticsChangeEvent(differentConsensusGroupStatisticsMap));
+      recordConsensusGroupStatistics(differentConsensusGroupStatisticsMap);
     }
   }
 
-  private void recordConsensusStatistics(
-      Map<TConsensusGroupId, Pair<ConsensusStatistics, ConsensusStatistics>>
-          differentConsensusStatisticsMap) {
-    LOGGER.info("[ConsensusStatistics] ConsensusStatisticsMap: ");
-    for (Map.Entry<TConsensusGroupId, Pair<ConsensusStatistics, ConsensusStatistics>>
-        consensusStatisticsEntry : differentConsensusStatisticsMap.entrySet()) {
+  private void recordConsensusGroupStatistics(
+      Map<TConsensusGroupId, Pair<ConsensusGroupStatistics, ConsensusGroupStatistics>>
+          differentConsensusGroupStatisticsMap) {
+    LOGGER.info("[ConsensusGroupStatistics] ConsensusGroupStatisticsMap: ");
+    for (Map.Entry<TConsensusGroupId, Pair<ConsensusGroupStatistics, ConsensusGroupStatistics>>
+        consensusGroupStatisticsEntry : differentConsensusGroupStatisticsMap.entrySet()) {
       if (!Objects.equals(
-          consensusStatisticsEntry.getValue().getRight(),
-          consensusStatisticsEntry.getValue().getLeft())) {
+          consensusGroupStatisticsEntry.getValue().getRight(),
+          consensusGroupStatisticsEntry.getValue().getLeft())) {
         LOGGER.info(
-            "[ConsensusStatistics]\t {}: {}->{}",
-            consensusStatisticsEntry.getKey(),
-            consensusStatisticsEntry.getValue().getLeft(),
-            consensusStatisticsEntry.getValue().getRight());
+            "[ConsensusGroupStatistics]\t {}: {}->{}",
+            consensusGroupStatisticsEntry.getKey(),
+            consensusGroupStatisticsEntry.getValue().getLeft(),
+            consensusGroupStatisticsEntry.getValue().getRight());
       }
     }
   }

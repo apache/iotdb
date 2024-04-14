@@ -354,12 +354,6 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Leader will record the new Confignode's information.
-   *
-   * @param dataNodeConfiguration The new DataNode
-   */
-
-  /**
    * Leader will notify the new ConfigNode that registration success.
    *
    * @param configNodeLocation The new ConfigNode
@@ -565,7 +559,7 @@ public class ConfigNodeProcedureEnv {
   public void activateRegionGroup(
       Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> activateRegionGroupMap) {
     getLoadManager().forceUpdateRegionGroupCache(activateRegionGroupMap);
-    // Wait for leader election
+    // Wait for leader and priority redistribution
     getLoadManager().waitForRegionGroupReady(new ArrayList<>(activateRegionGroupMap.keySet()));
   }
 

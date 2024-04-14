@@ -34,5 +34,5 @@ public interface IClusterStatusSubscriber {
 
   @Subscribe
   @AllowConcurrentEvents
-  void onConsensusStatisticsChanged(ConsensusStatisticsChangeEvent event);
+  void onConsensusGroupStatisticsChanged(ConsensusGroupStatisticsChangeEvent event);
 }

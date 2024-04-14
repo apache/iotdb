@@ -16,22 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.manager.load.cache;
 
-package org.apache.iotdb.confignode.manager.load.cache.consensus;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupCache;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 
-import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
+import org.junit.Assert;
+import org.junit.Test;
 
-/** ConsensusHeartbeatSample records the heartbeat sample of a consensus group. */
-public class ConsensusHeartbeatSample extends AbstractHeartbeatSample {
+public class ConsensusGroupCacheTest {
 
-  private final int leaderId;
-
-  public ConsensusHeartbeatSample(long sampleLogicalTimestamp, int leaderId) {
-    super(sampleLogicalTimestamp);
-    this.leaderId = leaderId;
-  }
-
-  public int getLeaderId() {
-    return leaderId;
+  @Test
+  public void periodicUpdateTest() {
+    ConsensusGroupCache consensusGroupCache = new ConsensusGroupCache();
+    ConsensusGroupHeartbeatSample sample = new ConsensusGroupHeartbeatSample(1L, 1);
+    consensusGroupCache.cacheHeartbeatSample(sample);
+    consensusGroupCache.updateCurrentStatistics();
+    Assert.assertEquals(1, consensusGroupCache.getLeaderId());
   }
 }

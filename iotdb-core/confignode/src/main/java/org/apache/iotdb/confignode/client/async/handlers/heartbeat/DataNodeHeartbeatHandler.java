@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.PipeRuntimeCoordinator;
@@ -107,12 +107,12 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
                       || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
                           && DATA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE))
                   && Boolean.TRUE.equals(isLeader)) {
-                // Update ConsensusCache when necessary
+                // Update ConsensusGroupCache when necessary
                 loadManager
                     .getLoadCache()
                     .cacheConsensusSample(
                         regionGroupId,
-                        new ConsensusHeartbeatSample(
+                        new ConsensusGroupHeartbeatSample(
                             heartbeatResp.getConsensusLogicalTimeMap().get(regionGroupId), nodeId));
               }
             });

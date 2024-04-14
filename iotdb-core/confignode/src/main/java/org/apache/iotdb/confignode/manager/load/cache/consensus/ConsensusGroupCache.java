@@ -22,38 +22,40 @@ package org.apache.iotdb.confignode.manager.load.cache.consensus;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractLoadCache;
 
 /**
- * ConsensusCache caches the ConsensusHeartbeatSamples of a consensus group. Update and cache the
- * current statistics of the consensus group based on the latest ConsensusHeartbeatSample.
+ * ConsensusGroupCache caches the ConsensusGroupHeartbeatSamples of a consensus group. Update and
+ * cache the current statistics of the consensus group based on the latest
+ * ConsensusGroupHeartbeatSample.
  */
-public class ConsensusCache extends AbstractLoadCache {
+public class ConsensusGroupCache extends AbstractLoadCache {
 
   public static final int UN_READY_LEADER_ID = -1;
 
-  public ConsensusCache() {
+  public ConsensusGroupCache() {
     super();
-    this.currentStatistics.set(ConsensusStatistics.generateDefaultConsensusStatistics());
+    this.currentStatistics.set(ConsensusGroupStatistics.generateDefaultConsensusGroupStatistics());
   }
 
   @Override
-  public void updateCurrentStatistics() {
-    ConsensusHeartbeatSample lastSample;
+  public synchronized void updateCurrentStatistics() {
+    ConsensusGroupHeartbeatSample lastSample;
     synchronized (slidingWindow) {
-      lastSample = (ConsensusHeartbeatSample) getLastSample();
+      lastSample = (ConsensusGroupHeartbeatSample) getLastSample();
     }
     if (lastSample != null && lastSample.getLeaderId() != UN_READY_LEADER_ID) {
-      currentStatistics.set(new ConsensusStatistics(System.nanoTime(), lastSample.getLeaderId()));
+      currentStatistics.set(
+          new ConsensusGroupStatistics(System.nanoTime(), lastSample.getLeaderId()));
     }
   }
 
-  public ConsensusStatistics getCurrentStatistics() {
-    return (ConsensusStatistics) currentStatistics.get();
+  public ConsensusGroupStatistics getCurrentStatistics() {
+    return (ConsensusGroupStatistics) currentStatistics.get();
   }
 
   public boolean isLeaderUnSelected() {
-    return UN_READY_LEADER_ID == ((ConsensusStatistics) currentStatistics.get()).getLeaderId();
+    return UN_READY_LEADER_ID == ((ConsensusGroupStatistics) currentStatistics.get()).getLeaderId();
   }
 
   public int getLeaderId() {
-    return ((ConsensusStatistics) currentStatistics.get()).getLeaderId();
+    return ((ConsensusGroupStatistics) currentStatistics.get()).getLeaderId();
   }
 }

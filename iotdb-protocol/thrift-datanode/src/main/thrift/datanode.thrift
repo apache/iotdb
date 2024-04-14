@@ -41,6 +41,11 @@ struct TRegionLeaderChangeReq {
   2: required common.TDataNodeLocation newLeaderNode
 }
 
+struct TRegionLeaderChangeResp {
+  1: required common.TSStatus status
+  2: required i64 consensusLogicalTimestamp
+}
+
 struct TRegionMigrateResult {
   1: optional common.TConsensusGroupId regionId
   2: optional common.TSStatus migrateResult
@@ -675,7 +680,7 @@ service IDataNodeRPCService {
    *
    * @param The specified RegionGroup and the new leader DataNode
    */
-  common.TSStatus changeRegionLeader(TRegionLeaderChangeReq req)
+  TRegionLeaderChangeResp changeRegionLeader(TRegionLeaderChangeReq req)
 
   /**
    * Create a new Region peer in the given DataNode for the specified RegionGroup

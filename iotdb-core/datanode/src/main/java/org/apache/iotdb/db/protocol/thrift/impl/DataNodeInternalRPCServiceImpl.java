@@ -202,6 +202,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
@@ -1519,6 +1520,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return result;
   }
 
+  private long getLogicalClock(TConsensusGroupId groupId) {
+    switch (groupId.getType()) {
+      case DataRegion:
+        return DataRegionConsensusImpl.getInstance()
+            .getLogicalClock(ConsensusGroupId.Factory.createFromTConsensusGroupId(groupId));
+      case SchemaRegion:
+        return SchemaRegionConsensusImpl.getInstance()
+            .getLogicalClock(ConsensusGroupId.Factory.createFromTConsensusGroupId(groupId));
+      default:
+        throw new IllegalArgumentException("Unknown consensus group type: " + groupId.getType());
+    }
+  }
+
   private double getMemory(String gaugeName) {
     double result = 0d;
     try {
@@ -1768,9 +1782,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus changeRegionLeader(TRegionLeaderChangeReq req) {
+  public TRegionLeaderChangeResp changeRegionLeader(TRegionLeaderChangeReq req) {
     LOGGER.info("[ChangeRegionLeader] {}", req);
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TRegionLeaderChangeResp resp = new TRegionLeaderChangeResp();
+
+    TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     TConsensusGroupId tgId = req.getRegionId();
     ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tgId);
     TEndPoint newNode = getConsensusEndPoint(req.getNewLeaderNode(), regionId);
@@ -1784,14 +1800,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               + regionId
               + ", skip leader transfer.";
       LOGGER.info(msg);
-      return status.setMessage(msg);
+      resp.setStatus(successStatus.setMessage(msg));
+      resp.setConsensusLogicalTimestamp(getLogicalClock(req.getRegionId()));
+      return resp;
     }
 
     LOGGER.info(
         "[ChangeRegionLeader] Start change the leader of RegionGroup: {} to DataNode: {}",
         regionId,
         req.getNewLeaderNode().getDataNodeId());
-    return transferLeader(regionId, newLeaderPeer);
+    resp.setStatus(transferLeader(regionId, newLeaderPeer));
+    resp.setConsensusLogicalTimestamp(getLogicalClock(req.getRegionId()));
+    return resp;
   }
 
   private TSStatus transferLeader(ConsensusGroupId regionId, Peer newLeaderPeer) {

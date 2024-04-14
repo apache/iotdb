@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusStatisticsChangeEvent;
+import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
@@ -81,8 +81,9 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   }
 
   @Override
-  public synchronized void onConsensusStatisticsChanged(ConsensusStatisticsChangeEvent event) {
-    pipeLeaderChangeHandler.onConsensusStatisticsChanged(event);
+  public synchronized void onConsensusGroupStatisticsChanged(
+      ConsensusGroupStatisticsChangeEvent event) {
+    pipeLeaderChangeHandler.onConsensusGroupStatisticsChanged(event);
   }
 
   public void startPipeMetaSync() {

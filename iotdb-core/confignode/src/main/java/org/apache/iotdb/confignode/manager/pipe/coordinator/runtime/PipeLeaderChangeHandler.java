@@ -24,8 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusStatistics;
-import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusStatisticsChangeEvent;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupStatistics;
+import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
@@ -43,18 +43,18 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
   }
 
   public void onConfigRegionGroupLeaderChanged() {
-    Map<TConsensusGroupId, Pair<ConsensusStatistics, ConsensusStatistics>> virtualChangeMap =
-        new HashMap<>();
+    Map<TConsensusGroupId, Pair<ConsensusGroupStatistics, ConsensusGroupStatistics>>
+        virtualChangeMap = new HashMap<>();
     // The old leader id can be arbitrarily assigned because pipe task do not need this
     virtualChangeMap.put(
         new TConsensusGroupId(TConsensusGroupType.ConfigRegion, Integer.MIN_VALUE),
         new Pair<>(
-            new ConsensusStatistics(Long.MIN_VALUE, Integer.MIN_VALUE),
-            new ConsensusStatistics(
+            new ConsensusGroupStatistics(Long.MIN_VALUE, Integer.MIN_VALUE),
+            new ConsensusGroupStatistics(
                 System.nanoTime(),
                 ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId())));
 
-    onConsensusStatisticsChanged(new ConsensusStatisticsChangeEvent(virtualChangeMap));
+    onConsensusGroupStatisticsChanged(new ConsensusGroupStatisticsChangeEvent(virtualChangeMap));
   }
 
   @Override
@@ -68,7 +68,7 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
   }
 
   @Override
-  public void onConsensusStatisticsChanged(ConsensusStatisticsChangeEvent event) {
+  public void onConsensusGroupStatisticsChanged(ConsensusGroupStatisticsChangeEvent event) {
     // If no pipe tasks, return
     if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()) {
       return;
@@ -77,7 +77,7 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
     final Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap =
         new HashMap<>();
     event
-        .getDifferentConsensusStatisticsMap()
+        .getDifferentConsensusGroupStatisticsMap()
         .forEach(
             (regionGroupId, pair) -> {
               final String databaseName =
