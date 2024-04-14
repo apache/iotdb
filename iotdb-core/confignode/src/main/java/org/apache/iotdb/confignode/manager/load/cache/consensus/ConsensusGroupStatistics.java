@@ -17,29 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.load.cache.region;
+package org.apache.iotdb.confignode.manager.load.cache.consensus;
 
-import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractStatistics;
 
 import java.util.Objects;
 
-/** RegionStatistics indicates the statistics of a Region. */
-public class RegionStatistics extends AbstractStatistics {
+/** ConsensusGroupStatistics indicates the statistics of a consensus group. */
+public class ConsensusGroupStatistics extends AbstractStatistics {
 
-  private final RegionStatus regionStatus;
+  private final int leaderId;
 
-  public RegionStatistics(long statisticsNanoTimestamp, RegionStatus regionStatus) {
+  public ConsensusGroupStatistics(long statisticsNanoTimestamp, int leaderId) {
     super(statisticsNanoTimestamp);
-    this.regionStatus = regionStatus;
+    this.leaderId = leaderId;
   }
 
-  public static RegionStatistics generateDefaultRegionStatistics() {
-    return new RegionStatistics(0, RegionStatus.Unknown);
+  public static ConsensusGroupStatistics generateDefaultConsensusGroupStatistics() {
+    return new ConsensusGroupStatistics(0, ConsensusGroupCache.UN_READY_LEADER_ID);
   }
 
-  public RegionStatus getRegionStatus() {
-    return regionStatus;
+  public int getLeaderId() {
+    return leaderId;
   }
 
   @Override
@@ -50,17 +49,17 @@ public class RegionStatistics extends AbstractStatistics {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    RegionStatistics that = (RegionStatistics) o;
-    return regionStatus == that.regionStatus;
+    ConsensusGroupStatistics that = (ConsensusGroupStatistics) o;
+    return leaderId == that.leaderId;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(regionStatus);
+    return Objects.hash(leaderId);
   }
 
   @Override
   public String toString() {
-    return "RegionStatistics{" + "regionStatus=" + regionStatus + '}';
+    return "ConsensusGroupStatistics{" + "leaderId=" + leaderId + '}';
   }
 }
