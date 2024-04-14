@@ -17,24 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription;
+package org.apache.iotdb.rpc.subscription.exception;
 
 import java.util.Objects;
 
-public class SubscriptionException extends RuntimeException {
+public class SubscriptionPollTimeOutException extends SubscriptionException {
 
-  public SubscriptionException(String message) {
+  public SubscriptionPollTimeOutException(String message) {
     super(message);
+  }
+
+  protected SubscriptionPollTimeOutException(String message, long timeStamp) {
+    super(message, timeStamp);
   }
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof SubscriptionException
-        && Objects.equals(getMessage(), ((SubscriptionException) obj).getMessage());
+    return obj instanceof SubscriptionPollTimeOutException
+        && Objects.equals(getMessage(), ((SubscriptionPollTimeOutException) obj).getMessage())
+        && Objects.equals(getTimeStamp(), ((SubscriptionPollTimeOutException) obj).getTimeStamp());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getMessage());
+    return Objects.hash(getMessage(), getTimeStamp());
   }
 }

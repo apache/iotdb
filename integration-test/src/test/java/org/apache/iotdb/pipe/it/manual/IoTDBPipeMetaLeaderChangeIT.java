@@ -58,6 +58,10 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3);
 
+    // 10 min, assert that the operations will not time out
+    senderEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+
     senderEnv.initClusterEnvironment(3, 3, 180);
     receiverEnv.initClusterEnvironment();
   }

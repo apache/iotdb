@@ -267,6 +267,7 @@ public class AsyncClientHandler<Q, R> {
       case UPDATE_TABLE:
       case CHANGE_REGION_LEADER:
       case KILL_QUERY_INSTANCE:
+      case RESET_PEER_LIST:
       default:
         return new AsyncTSStatusRPCHandler(
             requestType,

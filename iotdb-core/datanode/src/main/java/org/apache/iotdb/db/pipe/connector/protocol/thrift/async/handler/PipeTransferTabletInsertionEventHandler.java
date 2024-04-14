@@ -50,11 +50,6 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
     this.event = event;
     this.req = req;
     this.connector = connector;
-
-    if (this.event instanceof EnrichedEvent) {
-      ((EnrichedEvent) this.event)
-          .increaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName());
-    }
   }
 
   public void transfer(AsyncPipeDataTransferServiceClient client) throws TException {

@@ -60,7 +60,7 @@ public final class GenericDataType extends DataType {
   }
 
   @Override
-  protected <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitGenericDataType(this, context);
   }
 
