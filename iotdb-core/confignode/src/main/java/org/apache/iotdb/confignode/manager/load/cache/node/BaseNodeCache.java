@@ -22,7 +22,10 @@ package org.apache.iotdb.confignode.manager.load.cache.node;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractLoadCache;
 
-/** All the statistic interfaces that provided by HeartbeatCache. */
+/**
+ * NodeCache caches the NodeHeartbeatSamples of a Node. Update and cache the current statistics of
+ * the Node based on the latest NodeHeartbeatSample.
+ */
 public abstract class BaseNodeCache extends AbstractLoadCache {
 
   protected final int nodeId;
@@ -49,8 +52,7 @@ public abstract class BaseNodeCache extends AbstractLoadCache {
 
   /** @return The current status of the Node. */
   public NodeStatus getNodeStatus() {
-    // Return a copy of status
-    return NodeStatus.parse(((NodeStatistics) currentStatistics.get()).getStatus().getStatus());
+    return ((NodeStatistics) currentStatistics.get()).getStatus();
   }
 
   /** @return The reason why lead to current NodeStatus. */

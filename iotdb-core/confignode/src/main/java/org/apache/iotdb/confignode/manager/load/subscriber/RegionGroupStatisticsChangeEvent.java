@@ -25,8 +25,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Map;
 
+/** RegionGroupStatisticsChangeEvent represents the change of RegionGroup statistics. */
 public class RegionGroupStatisticsChangeEvent {
 
+  // Map<RegionGroupId, Pair<old RegionGroupStatistics, new RegionGroupStatistics>>
   private final Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
       differentRegionGroupStatisticsMap;
 

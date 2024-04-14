@@ -58,7 +58,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-/** Maintain all kinds of heartbeat samples. */
+/** Maintain all kinds of heartbeat samples and statistics. */
 public class LoadCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadCache.class);
@@ -72,11 +72,11 @@ public class LoadCache {
   // Map<NodeId, is heartbeat processing>
   // False indicates there is no processing heartbeat request, true otherwise
   private final Map<Integer, AtomicBoolean> heartbeatProcessingMap;
-  // Map<NodeId, INodeCache>
+  // Map<NodeId, BaseNodeCache>
   private final Map<Integer, BaseNodeCache> nodeCacheMap;
   // Map<RegionGroupId, RegionGroupCache>
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
-  // Map<RegionGroupId, RegionRouteCache>
+  // Map<RegionGroupId, ConsensusCache>
   private final Map<TConsensusGroupId, ConsensusCache> consensusCacheMap;
   // Map<DataNodeId, confirmedConfigNodes>
   private final Map<Integer, Set<TEndPoint>> confirmedConfigNodeMap;

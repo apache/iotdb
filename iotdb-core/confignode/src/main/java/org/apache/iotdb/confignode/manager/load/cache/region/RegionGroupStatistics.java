@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 
+/** RegionGroupStatistics indicates the statistics of a RegionGroup. */
 public class RegionGroupStatistics {
 
   private final RegionGroupStatus regionGroupStatus;

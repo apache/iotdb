@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.confignode.manager.load.cache;
 
+/**
+ * AbstractHeartbeatSample contains the sample logical timestamp. All kinds of heartbeat samples
+ * should extend this class then expand its required fields.
+ */
 public abstract class AbstractHeartbeatSample {
 
   // Equals to the consensus group's logical timestamp for consensus heartbeat sample

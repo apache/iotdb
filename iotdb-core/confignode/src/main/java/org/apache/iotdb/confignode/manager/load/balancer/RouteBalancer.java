@@ -65,11 +65,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
-/**
- * The RouteBalancer will maintain cluster RegionRouteMap, which contains:
- *
- * <p>2. regionPriorityMap, record the priority for read/write requests in each RegionGroup
- */
+/** The RouteBalancer guides the cluster RegionGroups' leader distribution and routing priority. */
 public class RouteBalancer implements IClusterStatusSubscriber {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RouteBalancer.class);

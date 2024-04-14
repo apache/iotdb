@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.load.cache.consensus;
 
 import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 
+/** ConsensusHeartbeatSample records the heartbeat sample of a consensus group. */
 public class ConsensusHeartbeatSample extends AbstractHeartbeatSample {
 
   private final int leaderId;

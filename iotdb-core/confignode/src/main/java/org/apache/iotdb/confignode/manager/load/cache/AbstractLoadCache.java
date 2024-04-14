@@ -24,6 +24,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * AbstractLoadCache caches the recent MAXIMUM_WINDOW_SIZE heartbeat samples and calculates the
+ * current statistics based on the latest heartbeat mple.
+ */
 public abstract class AbstractLoadCache {
 
   // Max heartbeat cache samples store size
@@ -62,6 +66,11 @@ public abstract class AbstractLoadCache {
     }
   }
 
+  /**
+   * Get the latest heartbeat sample that cached in the slidingWindow.
+   *
+   * @return The latest heartbeat sample.
+   */
   protected AbstractHeartbeatSample getLastSample() {
     return slidingWindow.isEmpty() ? null : slidingWindow.get(slidingWindow.size() - 1);
   }

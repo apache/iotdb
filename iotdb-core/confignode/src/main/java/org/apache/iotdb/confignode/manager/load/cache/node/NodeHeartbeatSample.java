@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 
+/** NodeHeartbeatSample records the heartbeat sample of a Node. */
 public class NodeHeartbeatSample extends AbstractHeartbeatSample {
 
   // Node status and the status's reason

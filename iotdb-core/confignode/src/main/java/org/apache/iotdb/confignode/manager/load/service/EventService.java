@@ -48,6 +48,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * EventService periodically check statistics and broadcast corresponding change event if necessary.
+ */
 public class EventService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EventService.class);

@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Map;
 
+/** NodeStatisticsChangeEvent represents the change of Node statistics. */
 public class NodeStatisticsChangeEvent {
 
   // Map<NodeId, Pair<old NodeStatistics, new NodeStatistics>>

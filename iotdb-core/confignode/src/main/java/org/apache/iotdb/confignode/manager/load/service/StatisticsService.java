@@ -32,6 +32,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/** StatisticsService periodically update load statistics for all load cache. */
 public class StatisticsService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StatisticsService.class);

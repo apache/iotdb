@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.manager.load.cache.AbstractStatistics;
 
 import java.util.Objects;
 
+/** ConsensusStatistics indicates the statistics of a consensus group. */
 public class ConsensusStatistics extends AbstractStatistics {
 
   private final int leaderId;

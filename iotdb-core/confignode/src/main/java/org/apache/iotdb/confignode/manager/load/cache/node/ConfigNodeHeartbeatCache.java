@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.load.cache.node;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
+/** Heartbeat cache for cluster ConfigNodes. */
 public class ConfigNodeHeartbeatCache extends BaseNodeCache {
 
   /** Only get CURRENT_NODE_ID here due to initialization order. */

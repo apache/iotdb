@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.load.cache.region;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 
+/** RegionHeartbeatSample records the heartbeat sample of a Region. */
 public class RegionHeartbeatSample extends AbstractHeartbeatSample {
 
   private final RegionStatus status;

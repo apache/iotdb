@@ -22,6 +22,10 @@ package org.apache.iotdb.confignode.manager.load.cache.region;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractLoadCache;
 
+/**
+ * RegionCache caches the RegionHeartbeatSamples of a Region. Update and cache the current
+ * statistics of the Region based on the latest RegionHeartbeatSample.
+ */
 public class RegionCache extends AbstractLoadCache {
 
   public RegionCache() {

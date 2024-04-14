@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Map;
 
+/** ConsensusStatisticsChangeEvent represents the change of consensus statistics. */
 public class ConsensusStatisticsChangeEvent {
 
   // Map<RegionGroupId, Pair<old ConsensusStatistics, new ConsensusStatistics>>

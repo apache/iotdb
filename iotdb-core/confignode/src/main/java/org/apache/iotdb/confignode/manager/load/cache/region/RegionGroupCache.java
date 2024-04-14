@@ -27,6 +27,11 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * RegionGroupCache caches the RegionHeartbeatSamples of all Regions in the same RegionGroup. Update
+ * and cache the current statistics of the RegionGroup based on the latest RegionHeartbeatSamples
+ * from all Regions it contains.
+ */
 public class RegionGroupCache {
 
   // Map<DataNodeId(where a RegionReplica resides in), RegionCache>

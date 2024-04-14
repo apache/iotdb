@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.confignode.manager.load.cache;
 
+/**
+ * AbstractStatistics contains the statistics nano timestamp when calculating the statistics. All
+ * kinds of statistics should extend this class then expand its required fields.
+ */
 public abstract class AbstractStatistics {
 
   // The nano timestamp when the statistics is generated

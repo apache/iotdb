@@ -52,7 +52,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-/** Maintain the Cluster-Heartbeat-Service. */
+/**
+ * HeartbeatService periodically sending heartbeat requests from ConfigNode-leader to all other
+ * cluster Nodes.
+ */
 public class HeartbeatService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HeartbeatService.class);

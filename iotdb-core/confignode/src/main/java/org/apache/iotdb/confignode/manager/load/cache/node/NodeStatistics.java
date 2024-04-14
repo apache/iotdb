@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.manager.load.cache.AbstractStatistics;
 
 import java.util.Objects;
 
+/** NodeStatistics indicates the statistics of a Node. */
 public class NodeStatistics extends AbstractStatistics {
 
   private final NodeStatus status;

@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.manager.load.cache.AbstractStatistics;
 
 import java.util.Objects;
 
+/** RegionStatistics indicates the statistics of a Region. */
 public class RegionStatistics extends AbstractStatistics {
 
   private final RegionStatus regionStatus;

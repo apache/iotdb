@@ -21,6 +21,10 @@ package org.apache.iotdb.confignode.manager.load.cache.consensus;
 
 import org.apache.iotdb.confignode.manager.load.cache.AbstractLoadCache;
 
+/**
+ * ConsensusCache caches the ConsensusHeartbeatSamples of a consensus group. Update and cache the
+ * current statistics of the consensus group based on the latest ConsensusHeartbeatSample.
+ */
 public class ConsensusCache extends AbstractLoadCache {
 
   public static final int UN_READY_LEADER_ID = -1;
