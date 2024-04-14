@@ -52,6 +52,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -681,10 +682,19 @@ public class RegionMaintainHandler {
     }
 
     if (newLeaderNode.isPresent()) {
-      // TODO: Trigger event post after enhance RegionMigrate procedure
-      SyncDataNodeClientPool.getInstance()
-          .changeRegionLeader(
-              regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
+      TRegionLeaderChangeResp resp =
+          SyncDataNodeClientPool.getInstance()
+              .changeRegionLeader(
+                  regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        configManager
+            .getLoadManager()
+            .forceUpdateConsensusGroupCache(
+                Collections.singletonMap(
+                    regionId,
+                    new ConsensusGroupHeartbeatSample(
+                        resp.getConsensusLogicalTimestamp(), newLeaderNode.get().getDataNodeId())));
+      }
       LOGGER.info(
           "{}, Change region leader finished for RATIS_CONSENSUS, regionId: {}, newLeaderNode: {}",
           REGION_MIGRATE_PROCESS,

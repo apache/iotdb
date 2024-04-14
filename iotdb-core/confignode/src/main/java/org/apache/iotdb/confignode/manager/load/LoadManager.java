@@ -419,7 +419,7 @@ public class LoadManager {
   }
 
   /**
-   * Force update the specified Consensus' cache.
+   * Force update the specified ConsensusGroups' cache.
    *
    * @param heartbeatSampleMap Map<RegionGroupId, ConsensusGroupHeartbeatSample>
    */
