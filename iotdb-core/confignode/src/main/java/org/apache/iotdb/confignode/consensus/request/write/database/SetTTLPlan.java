@@ -84,7 +84,7 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
       pathPattern[i] = BasicStructureSerDeUtil.readString(buffer);
     }
     TTL = buffer.getLong();
-    isDataBase = buffer.getInt() != 0;
+    isDataBase = buffer.get() != 0;
   }
 
   @Override
