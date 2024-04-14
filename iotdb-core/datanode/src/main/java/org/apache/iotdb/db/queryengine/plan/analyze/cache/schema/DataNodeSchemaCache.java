@@ -111,22 +111,6 @@ public class DataNodeSchemaCache {
     readWriteLock.writeLock().unlock();
   }
 
-  public void takeInsertLock() {
-    insertDeletionLock.readLock().lock();
-  }
-
-  public void releaseInsertLock() {
-    insertDeletionLock.readLock().unlock();
-  }
-
-  public void takeDeleteLock() {
-    insertDeletionLock.writeLock().lock();
-  }
-
-  public void releaseDeleteLock() {
-    insertDeletionLock.writeLock().unlock();
-  }
-
   /**
    * Get SchemaEntity info without auto create schema
    *
