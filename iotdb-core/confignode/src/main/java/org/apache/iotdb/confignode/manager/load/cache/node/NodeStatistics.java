@@ -20,38 +20,30 @@
 package org.apache.iotdb.confignode.manager.load.cache.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.confignode.manager.load.cache.AbstractStatistics;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class NodeStatistics {
+/** NodeStatistics indicates the statistics of a Node. */
+public class NodeStatistics extends AbstractStatistics {
 
-  // For guiding queries, the higher the score the higher the load
-  private long loadScore;
-
-  // The current status of the Node
-  private NodeStatus status;
+  private final NodeStatus status;
   // The reason why lead to the current NodeStatus (for showing cluster)
   // Notice: Default is null
-  private String statusReason;
+  private final String statusReason;
+  // For guiding queries, the higher the score the higher the load
+  private final long loadScore;
 
-  public NodeStatistics() {
-    // Empty constructor
-  }
-
-  public NodeStatistics(long loadScore, NodeStatus status, String statusReason) {
-    this.loadScore = loadScore;
+  public NodeStatistics(
+      long statisticsNanoTimestamp, NodeStatus status, String statusReason, long loadScore) {
+    super(statisticsNanoTimestamp);
     this.status = status;
     this.statusReason = statusReason;
+    this.loadScore = loadScore;
   }
 
-  public long getLoadScore() {
-    return loadScore;
+  public static NodeStatistics generateDefaultNodeStatistics() {
+    return new NodeStatistics(Long.MIN_VALUE, NodeStatus.Unknown, null, Long.MAX_VALUE);
   }
 
   public NodeStatus getStatus() {
@@ -62,52 +54,8 @@ public class NodeStatistics {
     return statusReason;
   }
 
-  public void serialize(OutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(loadScore, stream);
-    ReadWriteIOUtils.write(status.getStatus(), stream);
-    if (statusReason != null) {
-      ReadWriteIOUtils.write(true, stream);
-      ReadWriteIOUtils.write(statusReason, stream);
-    } else {
-      ReadWriteIOUtils.write(false, stream);
-    }
-  }
-
-  // Deserializer for consensus-write
-  public void deserialize(ByteBuffer buffer) {
-    loadScore = buffer.getLong();
-    status = NodeStatus.parse(ReadWriteIOUtils.readString(buffer));
-    if (ReadWriteIOUtils.readBool(buffer)) {
-      statusReason = ReadWriteIOUtils.readString(buffer);
-    } else {
-      statusReason = null;
-    }
-  }
-
-  // Deserializer for snapshot
-  public void deserialize(InputStream inputStream) throws IOException {
-    loadScore = ReadWriteIOUtils.readLong(inputStream);
-    status = NodeStatus.parse(ReadWriteIOUtils.readString(inputStream));
-    if (ReadWriteIOUtils.readBool(inputStream)) {
-      statusReason = ReadWriteIOUtils.readString(inputStream);
-    } else {
-      statusReason = null;
-    }
-  }
-
-  public static NodeStatistics generateDefaultNodeStatistics() {
-    return new NodeStatistics(Long.MAX_VALUE, NodeStatus.Unknown, null);
-  }
-
-  public NodeStatistics deepCopy() {
-    return new NodeStatistics(loadScore, status, statusReason);
-  }
-
-  public NodeHeartbeatSample convertToNodeHeartbeatSample() {
-    long currentTime = System.nanoTime();
-    return new NodeHeartbeatSample(
-        new TDataNodeHeartbeatResp(currentTime, status.getStatus()).setStatusReason(statusReason),
-        currentTime);
+  public long getLoadScore() {
+    return loadScore;
   }
 
   @Override
@@ -126,19 +74,11 @@ public class NodeStatistics {
 
   @Override
   public int hashCode() {
-    return Objects.hash(loadScore, status, statusReason);
+    return Objects.hash(status, statusReason, loadScore);
   }
 
   @Override
   public String toString() {
-    return "NodeStatistics{"
-        + "loadScore="
-        + loadScore
-        + ", status="
-        + status
-        + ", statusReason='"
-        + (statusReason == null ? "null" : statusReason)
-        + '\''
-        + '}';
+    return "NodeStatistics{" + "status=" + status + ", statusReason='" + statusReason + '\'' + '}';
   }
 }

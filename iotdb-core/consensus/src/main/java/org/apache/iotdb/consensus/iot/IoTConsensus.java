@@ -405,6 +405,13 @@ public class IoTConsensus implements IConsensus {
   }
 
   @Override
+  public long getLogicalClock(ConsensusGroupId groupId) {
+    return Optional.ofNullable(stateMachineMap.get(groupId))
+        .map(IoTConsensusServerImpl::getSearchIndex)
+        .orElse(0L);
+  }
+
+  @Override
   public Peer getLeader(ConsensusGroupId groupId) {
     if (!stateMachineMap.containsKey(groupId)) {
       return null;

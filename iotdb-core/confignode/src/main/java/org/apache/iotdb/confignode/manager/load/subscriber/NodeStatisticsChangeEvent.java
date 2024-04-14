@@ -16,26 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.cache;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.confignode.manager.load.cache.route.RegionRouteCache;
+package org.apache.iotdb.confignode.manager.load.subscriber;
+
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.junit.Assert;
-import org.junit.Test;
+import java.util.Map;
 
-public class LoadCacheTest {
+/** NodeStatisticsChangeEvent represents the change of Node statistics. */
+public class NodeStatisticsChangeEvent {
 
-  @Test
-  public void periodicUpdateTest() {
-    RegionRouteCache regionRouteCache =
-        new RegionRouteCache(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
-    long currentTime = System.nanoTime();
-    Pair<Long, Integer> leaderSample = new Pair<>(currentTime, 1);
-    regionRouteCache.cacheLeaderSample(leaderSample);
-    Assert.assertTrue(regionRouteCache.periodicUpdate());
-    Assert.assertEquals(1, regionRouteCache.getLeaderId());
+  // Map<NodeId, Pair<old NodeStatistics, new NodeStatistics>>
+  private final Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap;
+
+  public NodeStatisticsChangeEvent(
+      Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap) {
+    this.differentNodeStatisticsMap = differentNodeStatisticsMap;
+  }
+
+  public Map<Integer, Pair<NodeStatistics, NodeStatistics>> getDifferentNodeStatisticsMap() {
+    return differentNodeStatisticsMap;
   }
 }

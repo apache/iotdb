@@ -20,30 +20,26 @@
 package org.apache.iotdb.confignode.manager.load.subscriber;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Map;
 
-public class RouteChangeEvent {
+/** RegionGroupStatisticsChangeEvent represents the change of RegionGroup statistics. */
+public class RegionGroupStatisticsChangeEvent {
 
-  // Map<RegionGroupId, Pair<old Leader, new Leader>>
-  private final Map<TConsensusGroupId, Pair<Integer, Integer>> leaderMap;
-  // Map<RegionGroupId, Pair<old Priority, new Priority>>
-  private final Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> priorityMap;
+  // Map<RegionGroupId, Pair<old RegionGroupStatistics, new RegionGroupStatistics>>
+  private final Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
+      differentRegionGroupStatisticsMap;
 
-  public RouteChangeEvent(
-      Map<TConsensusGroupId, Pair<Integer, Integer>> leaderMap,
-      Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> priorityMap) {
-    this.leaderMap = leaderMap;
-    this.priorityMap = priorityMap;
+  public RegionGroupStatisticsChangeEvent(
+      Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
+          differentRegionGroupStatisticsMap) {
+    this.differentRegionGroupStatisticsMap = differentRegionGroupStatisticsMap;
   }
 
-  public Map<TConsensusGroupId, Pair<Integer, Integer>> getLeaderMap() {
-    return leaderMap;
-  }
-
-  public Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> getPriorityMap() {
-    return priorityMap;
+  public Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
+      getDifferentRegionGroupStatisticsMap() {
+    return differentRegionGroupStatisticsMap;
   }
 }

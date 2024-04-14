@@ -17,22 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.load.cache.region;
+package org.apache.iotdb.confignode.manager.load.cache.consensus;
 
-import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 
-/** RegionHeartbeatSample records the heartbeat sample of a Region. */
-public class RegionHeartbeatSample extends AbstractHeartbeatSample {
+/** ConsensusGroupHeartbeatSample records the heartbeat sample of a consensus group. */
+public class ConsensusGroupHeartbeatSample extends AbstractHeartbeatSample {
 
-  private final RegionStatus status;
+  private final int leaderId;
 
-  public RegionHeartbeatSample(long sampleNanoTimestamp, RegionStatus status) {
-    super(sampleNanoTimestamp);
-    this.status = status;
+  public ConsensusGroupHeartbeatSample(long sampleLogicalTimestamp, int leaderId) {
+    super(sampleLogicalTimestamp);
+    this.leaderId = leaderId;
   }
 
-  public RegionStatus getStatus() {
-    return status;
+  public int getLeaderId() {
+    return leaderId;
   }
 }

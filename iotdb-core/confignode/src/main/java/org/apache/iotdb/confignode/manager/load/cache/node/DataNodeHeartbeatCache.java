@@ -24,9 +24,10 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-/** {@link DataNodeHeartbeatCache} caches and maintains all the heartbeat data. */
+/** Heartbeat cache for cluster DataNodes. */
 public class DataNodeHeartbeatCache extends BaseNodeCache {
 
+  // TODO: The load sample may be moved into NodeStatistics in the future
   private final AtomicReference<TLoadSample> latestLoadSample;
 
   /** Constructor for create DataNodeHeartbeatCache with default NodeStatistics. */
@@ -36,14 +37,17 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
   }
 
   @Override
-  protected void updateCurrentStatistics() {
-    NodeHeartbeatSample lastSample = null;
-    synchronized (slidingWindow) {
-      if (!slidingWindow.isEmpty()) {
-        lastSample = slidingWindow.getLast();
-      }
+  public synchronized void updateCurrentStatistics() {
+    // The Removing status can not be updated
+    if (NodeStatus.Removing.equals(getNodeStatus())) {
+      return;
     }
-    long lastSendTime = lastSample == null ? 0 : lastSample.getSendTimestamp();
+
+    NodeHeartbeatSample lastSample;
+    synchronized (slidingWindow) {
+      lastSample = (NodeHeartbeatSample) getLastSample();
+    }
+    long lastSendTime = lastSample == null ? 0 : lastSample.getSampleLogicalTimestamp();
 
     /* Update load sample */
     if (lastSample != null && lastSample.isSetLoadSample()) {
@@ -51,14 +55,15 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     }
 
     /* Update Node status */
-    NodeStatus status = null;
+    NodeStatus status;
     String statusReason = null;
-    // TODO: Optimize judge logic
-    if (lastSample != null && NodeStatus.Removing.equals(lastSample.getStatus())) {
-      status = NodeStatus.Removing;
-    } else if (System.nanoTime() - lastSendTime > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
+    long currentNanoTime = System.nanoTime();
+    if (lastSample == null) {
       status = NodeStatus.Unknown;
-    } else if (lastSample != null) {
+    } else if (currentNanoTime - lastSendTime > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
+      // TODO: Optimize Unknown judge logic
+      status = NodeStatus.Unknown;
+    } else {
       status = lastSample.getStatus();
       statusReason = lastSample.getStatusReason();
     }
@@ -68,11 +73,7 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     // TODO: Construct load score module
     long loadScore = NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE;
 
-    NodeStatistics newStatistics = new NodeStatistics(loadScore, status, statusReason);
-    if (!currentStatistics.get().equals(newStatistics)) {
-      // Update the current NodeStatistics if necessary
-      currentStatistics.set(newStatistics);
-    }
+    currentStatistics.set(new NodeStatistics(currentNanoTime, status, statusReason, loadScore));
   }
 
   public double getFreeDiskSpace() {

@@ -24,9 +24,11 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupStatistics;
+import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
-import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
-import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent;
+import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
+import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.HashMap;
@@ -40,24 +42,33 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
     this.configManager = configManager;
   }
 
-  @Override
-  public void onClusterStatisticsChanged(StatisticsChangeEvent event) {
-    // Do nothing, because pipe task is not related to statistics
-  }
-
   public void onConfigRegionGroupLeaderChanged() {
-    Map<TConsensusGroupId, Pair<Integer, Integer>> leaderMap = new HashMap<>();
+    Map<TConsensusGroupId, Pair<ConsensusGroupStatistics, ConsensusGroupStatistics>>
+        virtualChangeMap = new HashMap<>();
     // The old leader id can be arbitrarily assigned because pipe task do not need this
-    leaderMap.put(
+    virtualChangeMap.put(
         new TConsensusGroupId(TConsensusGroupType.ConfigRegion, Integer.MIN_VALUE),
         new Pair<>(
-            Integer.MIN_VALUE, ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()));
+            new ConsensusGroupStatistics(Long.MIN_VALUE, Integer.MIN_VALUE),
+            new ConsensusGroupStatistics(
+                System.nanoTime(),
+                ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId())));
 
-    onRegionGroupLeaderChanged(new RouteChangeEvent(leaderMap, null));
+    onConsensusGroupStatisticsChanged(new ConsensusGroupStatisticsChangeEvent(virtualChangeMap));
   }
 
   @Override
-  public void onRegionGroupLeaderChanged(RouteChangeEvent event) {
+  public void onNodeStatisticsChanged(NodeStatisticsChangeEvent event) {
+    // Do nothing
+  }
+
+  @Override
+  public void onRegionGroupStatisticsChanged(RegionGroupStatisticsChangeEvent event) {
+    // Do nothing
+  }
+
+  @Override
+  public void onConsensusGroupStatisticsChanged(ConsensusGroupStatisticsChangeEvent event) {
     // If no pipe tasks, return
     if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()) {
       return;
@@ -66,7 +77,7 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
     final Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap =
         new HashMap<>();
     event
-        .getLeaderMap()
+        .getDifferentConsensusGroupStatisticsMap()
         .forEach(
             (regionGroupId, pair) -> {
               final String databaseName =
@@ -75,8 +86,8 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
               // DatabaseName may be null for config region group
               if (!SchemaConstant.SYSTEM_DATABASE.equals(databaseName)) {
                 // null or -1 means empty origin leader
-                final int oldLeaderNodeId = (pair.left == null ? -1 : pair.left);
-                final int newLeaderNodeId = (pair.right == null ? -1 : pair.right);
+                final int oldLeaderNodeId = (pair.left == null ? -1 : pair.left.getLeaderId());
+                final int newLeaderNodeId = (pair.right == null ? -1 : pair.right.getLeaderId());
 
                 if (oldLeaderNodeId != newLeaderNodeId) {
                   regionGroupToOldAndNewLeaderPairMap.put(

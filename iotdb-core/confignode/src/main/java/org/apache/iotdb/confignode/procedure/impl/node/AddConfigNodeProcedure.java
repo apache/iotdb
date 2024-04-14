@@ -20,11 +20,8 @@
 package org.apache.iotdb.confignode.procedure.impl.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
-import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.AddConfigNodeState;
@@ -85,12 +82,7 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
         case REGISTER_SUCCESS:
           env.notifyRegisterSuccess(tConfigNodeLocation);
           env.applyConfigNode(tConfigNodeLocation, versionInfo);
-          env.getConfigManager()
-              .getLoadManager()
-              .forceUpdateNodeCache(
-                  NodeType.ConfigNode,
-                  tConfigNodeLocation.getConfigNodeId(),
-                  NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+          // TODO: Add a force heartbeat to update LoadCache immediately
           LOG.info("The ConfigNode: {} is successfully added to the cluster", tConfigNodeLocation);
           return Flow.NO_MORE_STATE;
       }
