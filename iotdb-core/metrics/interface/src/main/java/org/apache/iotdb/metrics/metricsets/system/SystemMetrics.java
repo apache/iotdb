@@ -53,6 +53,9 @@ public class SystemMetrics implements IMetricSet {
   private static final MetricConfig CONFIG = MetricConfigDescriptor.getInstance().getMetricConfig();
   private final Runtime runtime = Runtime.getRuntime();
   private final String[] getSystemMemoryCommand = new String[] {"/bin/sh", "-c", "free"};
+  private final String[] linuxMemoryTitles =
+      new String[] {"Total", "Used", "Free", "Shared", "Buff/Cache", "Available"};
+
   static final String SYSTEM = "system";
   private final com.sun.management.OperatingSystemMXBean osMxBean;
   private final Set<FileStore> fileStores = new HashSet<>();
@@ -183,9 +186,6 @@ public class SystemMetrics implements IMetricSet {
     }
   }
 
-  private final String[] linuxMemoryTitles =
-      new String[] {"Total", "Used", "Free", "Shared", "Buff/Cache", "Available"};
-
   private long updateLinuxSystemMemInfo(AbstractMetricService metricService) {
     long count = 0;
     try {
@@ -198,9 +198,16 @@ public class SystemMetrics implements IMetricSet {
           result.append(line).append("\n");
         }
       }
-      logger.error(result.toString());
       String[] lines = result.toString().split("\n");
+      // if failed to get result
+      if (lines.length < 2) {
+        return count;
+      }
       String[] memParts = lines[1].trim().split("\\s+");
+      // if failed to get linux memory info in standard format
+      if (memParts.length != 7) {
+        return count;
+      }
       count = memParts.length;
       for (int i = 1; i < count; i++) {
         metricService
@@ -212,7 +219,7 @@ public class SystemMetrics implements IMetricSet {
             .set(Long.parseLong(memParts[i]) * 1024);
       }
     } catch (IOException e) {
-      logger.warn("Failed to get memory, because ", e);
+      logger.debug("Failed to get memory, because ", e);
     }
     return count;
   }
@@ -243,6 +250,15 @@ public class SystemMetrics implements IMetricSet {
         SystemMetric.SYS_COMMITTED_VM_SIZE.toString(),
         SystemTag.NAME.toString(),
         SYSTEM);
+    if (CONFIG.getSystemType() == SystemType.LINUX) {
+      for (String title : linuxMemoryTitles) {
+        metricService.remove(
+            MetricType.GAUGE,
+            SystemMetric.LINUX_MEMORY_SIZE.toString(),
+            SystemTag.NAME.toString(),
+            title);
+      }
+    }
   }
 
   private void collectSystemDiskInfo(AbstractMetricService metricService) {
