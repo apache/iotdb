@@ -49,6 +49,7 @@ import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
+import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
@@ -59,7 +60,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
-import org.apache.iotdb.tsfile.utils.FSUtils;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.slf4j.Logger;
@@ -74,12 +74,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileStore;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.ServiceLoader;
@@ -92,6 +88,14 @@ public class IoTDBDescriptor {
   private final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
 
   private final IoTDBConfig conf = new IoTDBConfig();
+
+  private static final long MAX_THROTTLE_THRESHOLD = 600 * 1024 * 1024 * 1024L;
+
+  private static final long MIN_THROTTLE_THRESHOLD = 50 * 1024 * 1024 * 1024L;
+
+  private static final double MAX_DIR_USE_PROPORTION = 0.8;
+
+  private static final double MIN_DIR_USE_PROPORTION = 0.5;
 
   protected IoTDBDescriptor() {
     loadProps();
@@ -1297,15 +1301,15 @@ public class IoTDBDescriptor {
     ArrayList<String> dataDiskDirs = new ArrayList<>(Arrays.asList(conf.getDataDirs()));
     ArrayList<String> walDiskDirs =
         new ArrayList<>(Arrays.asList(commonDescriptor.getConfig().getWalDirs()));
-    Set<FileStore> dataFileStores = getFileStores(dataDiskDirs);
-    Set<FileStore> walFileStores = getFileStores(walDiskDirs);
+    Set<FileStore> dataFileStores = SystemMetrics.getInstance().getFileStores(dataDiskDirs);
+    Set<FileStore> walFileStores = SystemMetrics.getInstance().getFileStores(walDiskDirs);
     double dirUseProportion = 0;
-    Set<FileStore> intersectFileStores = new HashSet<>(dataFileStores);
-    intersectFileStores.retainAll(walFileStores);
-    if (intersectFileStores.isEmpty()) {
-      dirUseProportion = 0.8;
+    dataFileStores.retainAll(walFileStores);
+    // if there is no common disk between data and wal, use more usableSpace.
+    if (dataFileStores.isEmpty()) {
+      dirUseProportion = MAX_DIR_USE_PROPORTION;
     } else {
-      dirUseProportion = 0.5;
+      dirUseProportion = MIN_DIR_USE_PROPORTION;
     }
     long newThrottleThreshold = Long.MAX_VALUE;
     for (FileStore fileStore : walFileStores) {
@@ -1316,34 +1320,8 @@ public class IoTDBDescriptor {
       }
     }
     newThrottleThreshold = (long) (newThrottleThreshold * dirUseProportion * walFileStores.size());
-    return Math.max(
-        Math.min(newThrottleThreshold, 600 * 1024 * 1024 * 1024L), 50 * 1024 * 1024 * 1024L);
-  }
-
-  public Set<FileStore> getFileStores(List<String> dirs) {
-    Set<FileStore> fileStores = new HashSet<>();
-    for (String diskDir : dirs) {
-      if (!FSUtils.isLocal(diskDir)) {
-        continue;
-      }
-      Path path = Paths.get(diskDir);
-      FileStore fileStore = null;
-      try {
-        fileStore = Files.getFileStore(path);
-      } catch (IOException e) {
-        // check parent if path is not exists
-        path = path.getParent();
-        try {
-          fileStore = Files.getFileStore(path);
-        } catch (IOException innerException) {
-          LOGGER.error("Failed to get storage path of {}, because", diskDir, innerException);
-        }
-      }
-      if (null != fileStore) {
-        fileStores.add(fileStore);
-      }
-    }
-    return fileStores;
+    // the new throttle threshold should between MIN_THROTTLE_THRESHOLD and MAX_THROTTLE_THRESHOLD
+    return Math.max(Math.min(newThrottleThreshold, MAX_THROTTLE_THRESHOLD), MIN_THROTTLE_THRESHOLD);
   }
 
   private void loadAutoCreateSchemaProps(Properties properties) {
