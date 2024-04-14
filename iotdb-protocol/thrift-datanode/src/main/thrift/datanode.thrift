@@ -40,6 +40,11 @@ struct TRegionLeaderChangeReq {
   2: required common.TDataNodeLocation newLeaderNode
 }
 
+struct TRegionLeaderChangeResp {
+  1: required common.TSStatus status
+  2: required i64 consensusLogicalTimestamp
+}
+
 struct TRegionMigrateResult {
   1: optional common.TConsensusGroupId regionId
   2: optional common.TSStatus migrateResult
@@ -286,6 +291,7 @@ struct TDataNodeHeartbeatResp {
   10: optional list<binary> pipeMetaList
   11: optional string activateStatus
   12: optional set<common.TEndPoint> confirmedConfigNodeEndPoints
+  13: optional map<common.TConsensusGroupId, i64> consensusLogicalTimeMap
 }
 
 struct TPipeHeartbeatReq {
@@ -672,7 +678,7 @@ service IDataNodeRPCService {
    *
    * @param The specified RegionGroup and the new leader DataNode
    */
-  common.TSStatus changeRegionLeader(TRegionLeaderChangeReq req)
+  TRegionLeaderChangeResp changeRegionLeader(TRegionLeaderChangeReq req)
 
   /**
    * Create a new Region peer in the given DataNode for the specified RegionGroup

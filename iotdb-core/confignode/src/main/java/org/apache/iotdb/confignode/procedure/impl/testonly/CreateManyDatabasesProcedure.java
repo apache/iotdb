@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
  * This procedure will create numerous databases (perhaps 100), during which the confignode leader
@@ -47,12 +48,13 @@ public class CreateManyDatabasesProcedure
   public static final String DATABASE_NAME_PREFIX = "root.test_";
   public static final long SLEEP_FOREVER = Long.MAX_VALUE;
   private boolean createFailedOnce = false;
+  private boolean isDeserialized = false;
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv configNodeProcedureEnv, Integer state)
       throws InterruptedException {
     if (state < MAX_STATE) {
-      if (state == MAX_STATE - 1 && !isDeserialized()) {
+      if (state == MAX_STATE - 1 && !isDeserialized) {
         Thread.sleep(SLEEP_FOREVER);
       }
       try {
@@ -105,5 +107,11 @@ public class CreateManyDatabasesProcedure
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.CREATE_MANY_DATABASES_PROCEDURE.getTypeCode());
     super.serialize(stream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    isDeserialized = true;
   }
 }

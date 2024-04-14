@@ -20,36 +20,19 @@
 package org.apache.iotdb.confignode.manager.load.cache.region;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 
-public class RegionHeartbeatSample {
+/** RegionHeartbeatSample records the heartbeat sample of a Region. */
+public class RegionHeartbeatSample extends AbstractHeartbeatSample {
 
-  // Unit: ms
-  private final long sendTimestamp;
-  private final long receiveTimestamp;
   private final RegionStatus status;
 
-  // TODO: Add load sample
-
-  public RegionHeartbeatSample(long sendTimestamp, long receiveTimestamp, RegionStatus status) {
-    this.sendTimestamp = sendTimestamp;
-    this.receiveTimestamp = receiveTimestamp;
+  public RegionHeartbeatSample(long sampleNanoTimestamp, RegionStatus status) {
+    super(sampleNanoTimestamp);
     this.status = status;
-  }
-
-  public long getSendTimestamp() {
-    return sendTimestamp;
-  }
-
-  public long getReceiveTimestamp() {
-    return receiveTimestamp;
   }
 
   public RegionStatus getStatus() {
     return status;
-  }
-
-  public static RegionHeartbeatSample generateDefaultSample(RegionStatus status) {
-    long currentTime = System.nanoTime();
-    return new RegionHeartbeatSample(currentTime, currentTime, status);
   }
 }

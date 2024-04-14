@@ -65,7 +65,11 @@ public class PipeConnectorSubtaskManager {
             // for matching in `CONNECTOR_CONSTRUCTORS`
             .toLowerCase();
     PipeEventCommitManager.getInstance()
-        .register(environment.getPipeName(), environment.getRegionId(), connectorKey);
+        .register(
+            environment.getPipeName(),
+            environment.getCreationTime(),
+            environment.getRegionId(),
+            connectorKey);
 
     final boolean isDataRegionConnector =
         StorageEngine.getInstance()
@@ -145,7 +149,7 @@ public class PipeConnectorSubtaskManager {
   }
 
   public synchronized void deregister(
-      String pipeName, int dataRegionId, String attributeSortedString) {
+      String pipeName, long creationTime, int dataRegionId, String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
@@ -158,7 +162,7 @@ public class PipeConnectorSubtaskManager {
       attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
     }
 
-    PipeEventCommitManager.getInstance().deregister(pipeName, dataRegionId);
+    PipeEventCommitManager.getInstance().deregister(pipeName, creationTime, dataRegionId);
   }
 
   public synchronized void start(String attributeSortedString) {

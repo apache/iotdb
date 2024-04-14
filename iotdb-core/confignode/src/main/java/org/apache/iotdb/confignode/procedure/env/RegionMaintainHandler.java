@@ -34,6 +34,8 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -42,6 +44,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLo
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
@@ -49,6 +52,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -60,6 +64,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -247,7 +252,7 @@ public class RegionMaintainHandler {
    * @param regionId region id
    * @return TSStatus
    */
-  public TSStatus addRegionPeer(
+  public TSStatus submitAddRegionPeerTask(
       long procedureId,
       TDataNodeLocation destDataNode,
       TConsensusGroupId regionId,
@@ -264,11 +269,12 @@ public class RegionMaintainHandler {
                 maintainPeerReq,
                 DataNodeRequestType.ADD_REGION_PEER);
     LOGGER.info(
-        "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}",
+        "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}, status: {}",
         REGION_MIGRATE_PROCESS,
         regionId,
         getIdWithRpcEndpoint(coordinator),
-        getIdWithRpcEndpoint(destDataNode));
+        getIdWithRpcEndpoint(destDataNode),
+        status);
     return status;
   }
 
@@ -282,7 +288,7 @@ public class RegionMaintainHandler {
    * @param regionId region id
    * @return TSStatus
    */
-  public TSStatus removeRegionPeer(
+  public TSStatus submitRemoveRegionPeerTask(
       long procedureId,
       TDataNodeLocation originalDataNode,
       TConsensusGroupId regionId,
@@ -316,7 +322,7 @@ public class RegionMaintainHandler {
    * @param regionId region id
    * @return TSStatus
    */
-  public TSStatus deleteOldRegionPeer(
+  public TSStatus submitDeleteOldRegionPeerTask(
       long procedureId, TDataNodeLocation originalDataNode, TConsensusGroupId regionId) {
 
     TSStatus status;
@@ -346,27 +352,43 @@ public class RegionMaintainHandler {
   }
 
   public TSStatus resetPeerList(
-      TConsensusGroupId regionId, List<TDataNodeLocation> correctDataNodeLocations) {
-    Optional<TDataNodeLocation> optional = filterDataNodeWithOtherRegionReplica(regionId, null);
-    TDataNodeLocation selectDataNode = optional.get();
+      TConsensusGroupId regionId,
+      List<TDataNodeLocation> correctDataNodeLocations,
+      TDataNodeLocation target) {
     TSStatus status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
-                selectDataNode.getInternalEndPoint(),
+                target.getInternalEndPoint(),
                 new TResetPeerListReq(regionId, correctDataNodeLocations),
                 DataNodeRequestType.RESET_PEER_LIST);
     return status;
   }
 
+  public Map<Integer, TSStatus> resetPeerList(
+      TConsensusGroupId regionId,
+      List<TDataNodeLocation> correctDataNodeLocations,
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+    AsyncClientHandler<TResetPeerListReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.RESET_PEER_LIST,
+            new TResetPeerListReq(regionId, correctDataNodeLocations),
+            dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseMap();
+  }
+
   // TODO: will use 'procedure yield' to refactor later
   public TRegionMigrateResult waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
-    long lastTimeConnectDataNode = System.currentTimeMillis();
-    while (configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId())
-        != NodeStatus.Unknown) {
+    // In some cases the DataNode is still working, but its status is unknown.
+    // In order to make task continue under this circumstance, some unconditional retries are
+    // performed here.
+    int unconditionallyRetry = 0;
+    while (unconditionallyRetry < 6
+        || configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId())
+            != NodeStatus.Unknown) {
       try (SyncDataNodeInternalServiceClient dataNodeClient =
           dataNodeClientManager.borrowClient(dataNodeLocation.getInternalEndPoint())) {
         TRegionMigrateResult report = dataNodeClient.getRegionMaintainResult(taskId);
-        lastTimeConnectDataNode = System.currentTimeMillis();
         if (report.getTaskStatus() != TRegionMaintainTaskStatus.PROCESSING) {
           return report;
         }
@@ -379,6 +401,7 @@ public class RegionMaintainHandler {
           Thread.currentThread().interrupt();
         }
       }
+      unconditionallyRetry++;
     }
     LOGGER.warn(
         "{} task {} cannot contact to DataNode {}",
@@ -393,10 +416,6 @@ public class RegionMaintainHandler {
   }
 
   public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {
-    LOGGER.info(
-        "AddRegionLocation started, add region {} to {}",
-        regionId,
-        getIdWithRpcEndpoint(newLocation));
     AddRegionLocationPlan req = new AddRegionLocationPlan(regionId, newLocation);
     TSStatus status = configManager.getPartitionManager().addRegionLocation(req);
     LOGGER.info(
@@ -404,33 +423,21 @@ public class RegionMaintainHandler {
         regionId,
         getIdWithRpcEndpoint(newLocation),
         status);
-
-    // Remove the RegionGroupCache of the regionId
-    configManager.getLoadManager().removeRegionGroupCache(regionId);
-
-    // Broadcast the latest RegionRouteMap when Region migration finished
-    configManager.getLoadManager().broadcastLatestRegionRouteMap();
+    configManager.getLoadManager().forceAddRegionCache(regionId, newLocation.getDataNodeId());
   }
 
   public void removeRegionLocation(
       TConsensusGroupId regionId, TDataNodeLocation deprecatedLocation) {
-    LOGGER.info(
-        "RemoveRegionLocation started, remove region {} from DataNode {}",
-        regionId,
-        getIdWithRpcEndpoint(deprecatedLocation));
     RemoveRegionLocationPlan req = new RemoveRegionLocationPlan(regionId, deprecatedLocation);
     TSStatus status = configManager.getPartitionManager().removeRegionLocation(req);
     LOGGER.info(
-        "RemoveRegionLocation finished, remove region {} from DataNode {}, result is {}",
+        "RemoveRegionLocation remove region {} from DataNode {}, result is {}",
         regionId,
         getIdWithRpcEndpoint(deprecatedLocation),
         status);
-
-    // Remove the RegionGroupCache of the regionId
-    configManager.getLoadManager().removeRegionGroupCache(regionId);
-
-    // Broadcast the latest RegionRouteMap when Region migration finished
-    configManager.getLoadManager().broadcastLatestRegionRouteMap();
+    configManager
+        .getLoadManager()
+        .forceRemoveRegionCache(regionId, deprecatedLocation.getDataNodeId());
   }
 
   /**
@@ -657,8 +664,11 @@ public class RegionMaintainHandler {
       if (newLeaderNode.isPresent()) {
         configManager
             .getLoadManager()
-            .forceUpdateRegionLeader(regionId, newLeaderNode.get().getDataNodeId());
-
+            .forceUpdateConsensusGroupCache(
+                Collections.singletonMap(
+                    regionId,
+                    new ConsensusGroupHeartbeatSample(
+                        System.nanoTime(), newLeaderNode.get().getDataNodeId())));
         LOGGER.info(
             "{}, Change region leader finished for IOT_CONSENSUS, regionId: {}, newLeaderNode: {}",
             REGION_MIGRATE_PROCESS,
@@ -670,10 +680,19 @@ public class RegionMaintainHandler {
     }
 
     if (newLeaderNode.isPresent()) {
-      // TODO: Trigger event post after enhance RegionMigrate procedure
-      SyncDataNodeClientPool.getInstance()
-          .changeRegionLeader(
-              regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
+      TRegionLeaderChangeResp resp =
+          SyncDataNodeClientPool.getInstance()
+              .changeRegionLeader(
+                  regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        configManager
+            .getLoadManager()
+            .forceUpdateConsensusGroupCache(
+                Collections.singletonMap(
+                    regionId,
+                    new ConsensusGroupHeartbeatSample(
+                        resp.getConsensusLogicalTimestamp(), newLeaderNode.get().getDataNodeId())));
+      }
       LOGGER.info(
           "{}, Change region leader finished for RATIS_CONSENSUS, regionId: {}, newLeaderNode: {}",
           REGION_MIGRATE_PROCESS,
@@ -697,6 +716,12 @@ public class RegionMaintainHandler {
    */
   public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
       TConsensusGroupId regionId, TDataNodeLocation filterLocation) {
+    return filterDataNodeWithOtherRegionReplica(
+        regionId, filterLocation, NodeStatus.Running, NodeStatus.ReadOnly);
+  }
+
+  public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
+      TConsensusGroupId regionId, TDataNodeLocation filterLocation, NodeStatus... allowingStatus) {
     List<TDataNodeLocation> regionLocations = findRegionLocations(regionId);
     if (regionLocations.isEmpty()) {
       LOGGER.warn("Cannot find DataNodes contain the given region: {}", regionId);
@@ -706,14 +731,9 @@ public class RegionMaintainHandler {
     // Choosing the RUNNING DataNodes to execute firstly
     // If all DataNodes are not RUNNING, then choose the REMOVING DataNodes secondly
     List<TDataNodeLocation> aliveDataNodes =
-        configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
+        configManager.getNodeManager().filterDataNodeThroughStatus(allowingStatus).stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
-
-    aliveDataNodes.addAll(
-        configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Removing).stream()
-            .map(TDataNodeConfiguration::getLocation)
-            .collect(Collectors.toList()));
 
     // TODO return the node which has lowest load.
     for (TDataNodeLocation aliveDataNode : aliveDataNodes) {

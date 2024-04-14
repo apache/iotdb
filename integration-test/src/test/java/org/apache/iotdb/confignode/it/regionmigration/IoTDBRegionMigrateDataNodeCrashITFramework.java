@@ -17,11 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.utils.KillPoint;
+package org.apache.iotdb.confignode.it.regionmigration;
 
-public enum IoTConsensusRemovePeerKillPoints {
-  INIT,
-  AFTER_NOTIFY_PEERS_TO_REMOVE_SYNC_LOG_CHANNEL,
-  AFTER_INACTIVE_PEER,
-  FINISH,
+import org.apache.iotdb.commons.utils.KillPoint.KillNode;
+
+public class IoTDBRegionMigrateDataNodeCrashITFramework
+    extends IoTDBRegionMigrateReliabilityITFramework {
+  @SafeVarargs
+  public final <T extends Enum<T>> void success(T... dataNodeKillPoints) throws Exception {
+    successTest(1, 1, 1, 2, noKillPoints(), buildSet(dataNodeKillPoints), KillNode.ALL_NODES);
+  }
 }

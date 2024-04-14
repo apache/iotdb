@@ -86,6 +86,7 @@ public enum ThreadName {
   ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL("AsyncDataNodeHeartbeatServiceClientPool"),
   // -------------------------- ConfigNode-LoadBalance --------------------------
   CONFIG_NODE_LOAD_STATISTIC("Cluster-LoadStatistics-Service"),
+  CONFIG_NODE_EVENT_SERVICE("Cluster-Event-Service"),
   CONFIG_NODE_LOAD_PUBLISHER("Cluster-LoadStatistics-Publisher"),
   // -------------------------- ConfigNode-RegionManagement --------------------------
   CONFIG_NODE_REGION_MAINTAINER("IoTDB-Region-Maintainer"),
