@@ -64,12 +64,6 @@ public class DataNodeSchemaCache {
   // cache update or clean have higher priority than cache read
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
-  // To make insert and delete executive, I import a new rwlock to datanode schema.
-  // The reason is that some operations [loadtsfiles] will hold readlock then acquire writelock
-  // before
-  // closing the tsfile and resting the datanodeCache.
-  private final ReentrantReadWriteLock insertDeletionLock = new ReentrantReadWriteLock(false);
-
   private DataNodeSchemaCache() {
     deviceUsingTemplateSchemaCache = new DeviceUsingTemplateSchemaCache(templateManager);
     timeSeriesSchemaCache = new TimeSeriesSchemaCache();

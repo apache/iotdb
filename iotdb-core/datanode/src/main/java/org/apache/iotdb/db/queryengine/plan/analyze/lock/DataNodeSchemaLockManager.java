@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.lock;
+package org.apache.iotdb.db.queryengine.plan.analyze.lock;
 
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -37,7 +37,7 @@ public class DataNodeSchemaLockManager {
     int lockNum = SchemaLockType.values().length;
     this.locks = new ReentrantReadWriteLock[lockNum];
     for (int i = 0; i < lockNum; i++) {
-      locks[i] = new ReentrantReadWriteLock();
+      locks[i] = new ReentrantReadWriteLock(false);
     }
   }
 

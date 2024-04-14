@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.lock;
+package org.apache.iotdb.db.queryengine.plan.analyze.lock;
 
 /**
  * This enum class is used for maintaining types of locks used on DataNode for distributed

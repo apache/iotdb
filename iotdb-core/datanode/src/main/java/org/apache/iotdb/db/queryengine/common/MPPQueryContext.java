@@ -25,8 +25,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
-import org.apache.iotdb.db.schemaengine.lock.SchemaLockType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
