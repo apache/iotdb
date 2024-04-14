@@ -26,9 +26,13 @@ public interface IClusterStatusSubscriber {
 
   @Subscribe
   @AllowConcurrentEvents
-  void onClusterStatisticsChanged(StatisticsChangeEvent event);
+  void onNodeStatisticsChanged(NodeStatisticsChangeEvent event);
 
   @Subscribe
   @AllowConcurrentEvents
-  void onRegionGroupLeaderChanged(RouteChangeEvent event);
+  void onRegionGroupStatisticsChanged(RegionGroupStatisticsChangeEvent event);
+
+  @Subscribe
+  @AllowConcurrentEvents
+  void onConsensusGroupStatisticsChanged(ConsensusGroupStatisticsChangeEvent event);
 }
