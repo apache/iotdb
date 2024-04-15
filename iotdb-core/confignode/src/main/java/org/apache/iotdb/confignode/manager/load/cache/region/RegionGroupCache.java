@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.load.cache.region;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 
 import java.util.Map;
@@ -51,12 +52,20 @@ public class RegionGroupCache {
    *
    * @param dataNodeId Where the specified Region resides
    * @param newHeartbeatSample The newest RegionHeartbeatSample
+   * @param overwrite Able to overwrite Adding or Removing
    */
   public void cacheHeartbeatSample(
       int dataNodeId, RegionHeartbeatSample newHeartbeatSample, boolean overwrite) {
     regionCacheMap
         .computeIfAbsent(dataNodeId, empty -> new RegionCache())
         .cacheHeartbeatSample(newHeartbeatSample, overwrite);
+  }
+
+  @TestOnly
+  public void cacheHeartbeatSample(int dataNodeId, RegionHeartbeatSample newHeartbeatSample) {
+    regionCacheMap
+        .computeIfAbsent(dataNodeId, empty -> new RegionCache())
+        .cacheHeartbeatSample(newHeartbeatSample, false);
   }
 
   /**

@@ -69,9 +69,4 @@ public class RegionCache extends AbstractLoadCache {
     }
     super.cacheHeartbeatSample(newHeartbeatSample);
   }
-
-  public void cacheHeartbeatSampleOverwriteAddingAndRemoving(
-      RegionHeartbeatSample newHeartbeatSample) {
-    super.cacheHeartbeatSample(newHeartbeatSample);
-  }
 }
