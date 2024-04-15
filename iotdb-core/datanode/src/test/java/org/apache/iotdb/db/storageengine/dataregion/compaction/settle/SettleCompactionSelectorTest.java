@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.settle;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -30,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactio
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
@@ -202,7 +202,16 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     // the first file is all deleted, the rest file is partial deleted because its mods file size is
     // over threshold
     generateModsFile(4, 10, seqResources, 0, 200);
-    addDevicedMods(5, seqResources, 0, 200);
+    for (int i = 0; i < 5; i++) {
+      for (TsFileResource resource : seqResources) {
+        addFileMods(
+            resource,
+            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + i + ".**"),
+            Long.MAX_VALUE,
+            0,
+            200);
+      }
+    }
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -268,14 +277,12 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     // select second time
     // all unseq files is partial_deleted
     for (TsFileResource resource : unseqResources) {
-      resource
-          .getModFile()
-          .write(
-              new Deletion(
-                  new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
-                  Long.MAX_VALUE,
-                  Long.MIN_VALUE,
-                  Long.MAX_VALUE));
+      addFileMods(
+          resource,
+          new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
+          Long.MAX_VALUE,
+          Long.MIN_VALUE,
+          Long.MAX_VALUE);
     }
     unseqTasks = settleSelector.selectSettleTask(unseqResources);
     Assert.assertEquals(1, unseqTasks.size());
@@ -290,14 +297,12 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     // select third time
     // all seq files is partial_deleted
     for (TsFileResource resource : seqResources) {
-      resource
-          .getModFile()
-          .write(
-              new Deletion(
-                  new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
-                  Long.MAX_VALUE,
-                  Long.MIN_VALUE,
-                  Long.MAX_VALUE));
+      addFileMods(
+          resource,
+          new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
+          Long.MAX_VALUE,
+          Long.MIN_VALUE,
+          Long.MAX_VALUE);
     }
     seqTasks = settleSelector.selectSettleTask(seqResources);
     unseqTasks = settleSelector.selectSettleTask(unseqResources);
@@ -390,15 +395,12 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     // add device mods with already outdated device
     for (int i = 0; i < 10; i++) {
       if (i % 2 == 1) {
-        seqResources
-            .get(i)
-            .getModFile()
-            .write(
-                new Deletion(
-                    new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
-                    Long.MAX_VALUE,
-                    Long.MIN_VALUE,
-                    Long.MAX_VALUE));
+        addFileMods(
+            seqResources.get(i),
+            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
+            Long.MAX_VALUE,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
       }
     }
     SettleSelectorImpl settleSelector =
@@ -411,16 +413,12 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     for (int i = 0; i < 10; i++) {
       if (i % 2 == 0) {
         for (int d = 1; d < 5; d++) {
-          seqResources
-              .get(i)
-              .getModFile()
-              .write(
-                  new Deletion(
-                      new PartialPath(
-                          COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + d + ".**"),
-                      Long.MAX_VALUE,
-                      Long.MIN_VALUE,
-                      Long.MAX_VALUE));
+          addFileMods(
+              seqResources.get(i),
+              new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + d + ".**"),
+              Long.MAX_VALUE,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
         }
       }
     }
@@ -433,15 +431,12 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     // file 0 2 4 6 8 is all deleted, file 1 3 5 7 9 is partial_deleted
     for (int i = 0; i < 10; i++) {
       if (i % 2 == 1) {
-        seqResources
-            .get(i)
-            .getModFile()
-            .write(
-                new Deletion(
-                    new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1.**"),
-                    Long.MAX_VALUE,
-                    Long.MIN_VALUE,
-                    Long.MAX_VALUE));
+        addFileMods(
+            seqResources.get(i),
+            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1.**"),
+            Long.MAX_VALUE,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
       }
     }
     seqTasks = settleSelector.selectSettleTask(seqResources);
@@ -478,37 +473,27 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     // file 0 2 4 6 8 is partial_deleted, file 1 is all_deleted
     for (int i = 0; i < 10; i++) {
       if (i % 2 == 0) {
-        seqResources
-            .get(i)
-            .getModFile()
-            .write(
-                new Deletion(
-                    new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
-                    Long.MAX_VALUE,
-                    Long.MIN_VALUE,
-                    Long.MAX_VALUE));
-        seqResources
-            .get(i)
-            .getModFile()
-            .write(
-                new Deletion(
-                    new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1.**"),
-                    Long.MAX_VALUE,
-                    Long.MIN_VALUE,
-                    Long.MAX_VALUE));
+        addFileMods(
+            seqResources.get(i),
+            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
+            Long.MAX_VALUE,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+        addFileMods(
+            seqResources.get(i),
+            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1.**"),
+            Long.MAX_VALUE,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
       }
     }
     for (int d = 0; d < 5; d++) {
-      seqResources
-          .get(1)
-          .getModFile()
-          .write(
-              new Deletion(
-                  new PartialPath(
-                      COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + d + ".**"),
-                  Long.MAX_VALUE,
-                  Long.MIN_VALUE,
-                  Long.MAX_VALUE));
+      addFileMods(
+          seqResources.get(1),
+          new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + d + ".**"),
+          Long.MAX_VALUE,
+          Long.MIN_VALUE,
+          Long.MAX_VALUE);
     }
     // compact all_deleted file and partial_deleted file 0 2
     SettleSelectorImpl settleSelector =
@@ -557,58 +542,31 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     // file 0 4 6 8 is partial_deleted, file 2 3 7 is all_deleted
     for (int i = 0; i < 10; i++) {
       if (i % 2 == 0) {
-        seqResources
-            .get(i)
-            .getModFile()
-            .write(
-                new Deletion(
-                    new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
-                    Long.MAX_VALUE,
-                    Long.MIN_VALUE,
-                    Long.MAX_VALUE));
-        seqResources
-            .get(i)
-            .getModFile()
-            .write(
-                new Deletion(
-                    new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1.**"),
-                    Long.MAX_VALUE,
-                    Long.MIN_VALUE,
-                    Long.MAX_VALUE));
+        addFileMods(
+            seqResources.get(i),
+            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
+            Long.MAX_VALUE,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+        addFileMods(
+            seqResources.get(i),
+            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1.**"),
+            Long.MAX_VALUE,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
       }
     }
     for (int d = 0; d < 5; d++) {
-      seqResources
-          .get(2)
-          .getModFile()
-          .write(
-              new Deletion(
-                  new PartialPath(
-                      COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + d + ".**"),
-                  Long.MAX_VALUE,
-                  Long.MIN_VALUE,
-                  Long.MAX_VALUE));
-      seqResources
-          .get(3)
-          .getModFile()
-          .write(
-              new Deletion(
-                  new PartialPath(
-                      COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + d + ".**"),
-                  Long.MAX_VALUE,
-                  Long.MIN_VALUE,
-                  Long.MAX_VALUE));
-      seqResources
-          .get(7)
-          .getModFile()
-          .write(
-              new Deletion(
-                  new PartialPath(
-                      COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + d + ".**"),
-                  Long.MAX_VALUE,
-                  Long.MIN_VALUE,
-                  Long.MAX_VALUE));
+      PartialPath path =
+          new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + d + ".**");
+      addFileMods(seqResources.get(2), path, Long.MAX_VALUE, Long.MIN_VALUE, Long.MAX_VALUE);
+      addFileMods(seqResources.get(3), path, Long.MAX_VALUE, Long.MIN_VALUE, Long.MAX_VALUE);
+      addFileMods(seqResources.get(7), path, Long.MAX_VALUE, Long.MIN_VALUE, Long.MAX_VALUE);
     }
+    for (TsFileResource resource : seqResources) {
+      resource.getModFile().close();
+    }
+
     // compact all_deleted file and partial_deleted file 0
     SettleSelectorImpl settleSelector =
         new SettleSelectorImpl(true, COMPACTION_TEST_SG, "0", 0, tsFileManager);
@@ -633,21 +591,11 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(6, tsFileManager.getTsFileList(true).size());
   }
 
-  public void addDevicedMods(
-      int deviceNum, List<TsFileResource> resources, long startTime, long endTime)
-      throws IllegalPathException, IOException {
-    for (int i = 0; i < deviceNum; i++) {
-      for (TsFileResource resource : resources) {
-        resource
-            .getModFile()
-            .write(
-                new Deletion(
-                    new PartialPath(
-                        COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + i + ".**"),
-                    Long.MAX_VALUE,
-                    startTime,
-                    endTime));
-      }
+  private void addFileMods(
+      TsFileResource resource, PartialPath path, long fileOffset, long startTime, long endTime)
+      throws IOException {
+    try (ModificationFile modificationFile = resource.getModFile()) {
+      modificationFile.write(new Deletion(path, fileOffset, startTime, endTime));
     }
   }
 }
