@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.metricsets.system;
 
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -53,6 +54,11 @@ public class SystemMetrics implements IMetricSet {
   private final String[] getSystemMemoryCommand = new String[] {"/bin/sh", "-c", "free"};
   private final String[] linuxMemoryTitles =
       new String[] {"Total", "Used", "Free", "Shared", "Buff/Cache", "Available"};
+  private long lastUpdateTime = 0L;
+  private volatile long usedMemory = 0L;
+  private volatile long sharedMemory = 0L;
+  private volatile long buffCacheMemory = 0L;
+  private volatile long availableMemory = 0L;
 
   static final String SYSTEM = "system";
   private final com.sun.management.OperatingSystemMXBean osMxBean;
@@ -179,50 +185,77 @@ public class SystemMetrics implements IMetricSet {
         SYSTEM);
     if (CONFIG.getSystemType() == SystemType.LINUX) {
       metricService.createAutoGauge(
-          SystemMetric.LINUX_MEMORY_COUNT.toString(),
+          SystemMetric.LINUX_MEMORY_SIZE.toString(),
           MetricLevel.CORE,
           this,
-          a -> a.updateLinuxSystemMemInfo(metricService),
-          SystemTag.NAME.toString());
+          a -> {
+            updateLinuxSystemMemInfo();
+            return usedMemory;
+          },
+          SystemTag.NAME.toString(),
+          linuxMemoryTitles[1]);
+      metricService.createAutoGauge(
+          SystemMetric.LINUX_MEMORY_SIZE.toString(),
+          MetricLevel.CORE,
+          this,
+          a -> {
+            updateLinuxSystemMemInfo();
+            return sharedMemory;
+          },
+          SystemTag.NAME.toString(),
+          linuxMemoryTitles[3]);
+      metricService.createAutoGauge(
+          SystemMetric.LINUX_MEMORY_SIZE.toString(),
+          MetricLevel.CORE,
+          this,
+          a -> {
+            updateLinuxSystemMemInfo();
+            return buffCacheMemory;
+          },
+          SystemTag.NAME.toString(),
+          linuxMemoryTitles[4]);
+      metricService.createAutoGauge(
+          SystemMetric.LINUX_MEMORY_SIZE.toString(),
+          MetricLevel.CORE,
+          this,
+          a -> {
+            updateLinuxSystemMemInfo();
+            return availableMemory;
+          },
+          SystemTag.NAME.toString(),
+          linuxMemoryTitles[5]);
     }
   }
 
-  private long updateLinuxSystemMemInfo(AbstractMetricService metricService) {
-    long count = 0;
-    try {
-      Process process = runtime.exec(getSystemMemoryCommand);
-      StringBuilder result = new StringBuilder();
-      try (BufferedReader input =
-          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-        String line;
-        while ((line = input.readLine()) != null) {
-          result.append(line).append("\n");
+  private void updateLinuxSystemMemInfo() {
+    long time = System.currentTimeMillis();
+    if (time - lastUpdateTime > MetricConstant.UPDATE_INTERVAL) {
+      lastUpdateTime = time;
+      try {
+        Process process = runtime.exec(getSystemMemoryCommand);
+        StringBuilder result = new StringBuilder();
+        try (BufferedReader input =
+            new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+          String line;
+          while ((line = input.readLine()) != null) {
+            result.append(line).append("\n");
+          }
         }
+        String[] lines = result.toString().split("\n");
+        // if failed to get result
+        if (lines.length >= 2) {
+          String[] memParts = lines[1].trim().split("\\s+");
+          if (memParts.length == linuxMemoryTitles.length) {
+            usedMemory = Long.parseLong(memParts[1]) * 1024;
+            sharedMemory = Long.parseLong(memParts[3]) * 1024;
+            buffCacheMemory = Long.parseLong(memParts[4]) * 1024;
+            availableMemory = Long.parseLong(memParts[5]) * 1024;
+          }
+        }
+      } catch (IOException e) {
+        logger.debug("Failed to get memory, because ", e);
       }
-      String[] lines = result.toString().split("\n");
-      // if failed to get result
-      if (lines.length < 2) {
-        return count;
-      }
-      String[] memParts = lines[1].trim().split("\\s+");
-      // if failed to get linux memory info in standard format
-      if (memParts.length != 7) {
-        return count;
-      }
-      count = memParts.length;
-      for (int i = 1; i < count; i++) {
-        metricService
-            .getOrCreateGauge(
-                SystemMetric.LINUX_MEMORY_SIZE.toString(),
-                MetricLevel.CORE,
-                SystemTag.NAME.toString(),
-                linuxMemoryTitles[i - 1])
-            .set(Long.parseLong(memParts[i]) * 1024);
-      }
-    } catch (IOException e) {
-      logger.debug("Failed to get memory, because ", e);
     }
-    return count;
   }
 
   private void removeSystemMemInfo(AbstractMetricService metricService) {
