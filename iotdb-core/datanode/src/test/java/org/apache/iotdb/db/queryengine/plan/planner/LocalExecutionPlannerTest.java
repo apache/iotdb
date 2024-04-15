@@ -155,10 +155,9 @@ public class LocalExecutionPlannerTest {
     long result = 0;
     try {
       LocalExecutionPlanner localExecutionPlanner = new LocalExecutionPlanner();
-      long res = localExecutionPlanner.calculateEstimatedMemorySize(pipelineDriverFactories);
       Method method =
           LocalExecutionPlanner.class.getDeclaredMethod("calculateEstimatedMemorySize", List.class);
-      method.setAccessible(true); // 设置方法为可访问
+      method.setAccessible(true);
       result = (long) method.invoke(localExecutionPlanner, pipelineDriverFactories); // 调用私有方法
     } catch (Exception e) {
       e.printStackTrace();
