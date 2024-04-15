@@ -21,7 +21,7 @@ package org.apache.iotdb.db.subscription.task.stage;
 
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.execution.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskConnectorStage;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtaskManager;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -67,7 +67,7 @@ public class SubscriptionTaskConnectorStage extends PipeTaskConnectorStage {
   @Override
   public void dropSubtask() throws PipeException {
     SubscriptionConnectorSubtaskManager.instance()
-        .deregister(pipeName, regionId, connectorSubtaskId);
+        .deregister(pipeName, creationTime, regionId, connectorSubtaskId);
   }
 
   public BoundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue() {

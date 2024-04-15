@@ -58,22 +58,26 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3);
 
+    // 10 min, assert that the operations will not time out
+    senderEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+
     senderEnv.initClusterEnvironment(3, 3, 180);
     receiverEnv.initClusterEnvironment();
   }
 
   @Test
   public void testConfigNodeLeaderChange() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.inclusion.exclusion", "");
@@ -84,7 +88,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
       connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
       connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -127,16 +131,16 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
 
   @Test
   public void testSchemaRegionLeaderChange() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.inclusion.exclusion", "");
@@ -147,7 +151,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
       connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
       connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -170,7 +174,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
       }
     }
 
-    int index;
+    final int index;
     try {
       index = senderEnv.getFirstLeaderSchemaRegionDataNodeIndex();
       senderEnv.shutdownDataNode(index);

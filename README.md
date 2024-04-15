@@ -36,21 +36,21 @@
 
 # Overview
 
-IoTDB (Internet of Things Database) is a data management system for time series data, which provides users with specific services including data collection, storage and analysis. Due to its light weight structure, high performance and usable features, together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input, and complex data analysis in the industrial IoT field.
+IoTDB (Internet of Things Database) is a data management system for time series data, which provides users with specific services, including data collection, storage and analysis. Due to its lightweight structure, high performance and usable features, together with its seamless integration with the Hadoop and Spark ecosystem, IoTDB meets the requirements of massive dataset storage, high throughput data input, and complex data analysis in the industrial IoT field.
 
 # Main Features
 
-Main features of IoTDB are as follows:
+The main features of IoTDB are as follows:
 
-1. Flexible deployment strategy. IoTDB provides users a one-click installation tool on either the cloud platform or the terminal devices, and a data synchronization tool bridging the data on cloud platform and terminals.
+1. Flexible deployment strategy. IoTDB provides users with a one-click installation tool on either the cloud platform or the terminal devices, and a data synchronization tool bridging the data on cloud platform and terminals.
 2. Low cost on hardware. IoTDB can reach a high compression ratio of disk storage.
 3. Efficient directory structure. IoTDB supports efficient organization for complex time series data structures from intelligent networking devices, organization for time series data from devices of the same type, and fuzzy searching strategy for massive and complex directory of time series data.
 4. High-throughput read and write. IoTDB supports millions of low-power devices' strong connection data access, high-speed data read and write for intelligent networking devices and mixed devices mentioned above.
 5. Rich query semantics. IoTDB supports time alignment for time series data across devices and measurements, computation in time series field (frequency domain transformation) and rich aggregation function support in time dimension.
-6. Easy to get started. IoTDB supports SQL-Like language, JDBC standard API and import/export tools which is easy to use.
-7. Seamless integration with state-of-the-practice Open Source Ecosystem. IoTDB supports analysis ecosystems such as, Hadoop, Spark, and visualization tool, such as, Grafana.
+6. Easy to get started. IoTDB supports SQL-like language, JDBC standard API and import/export tools which are easy to use.
+7. Seamless integration with state-of-the-practice Open Source Ecosystem. IoTDB supports analysis ecosystems, such as Hadoop and Spark, as well as visualization tools, such as Grafana.
 
-For the latest information about IoTDB, please visit [IoTDB official website](https://iotdb.apache.org/). If you encounter any problems or identify any bugs while using IoTDB, please report an issue in [jira](https://issues.apache.org/jira/projects/IOTDB/issues).
+For the latest information about IoTDB, please visit [IoTDB official website](https://iotdb.apache.org/). If you encounter any problems or identify any bugs while using IoTDB, please report an issue in [Jira](https://issues.apache.org/jira/projects/IOTDB/issues).
 
 <!-- TOC -->
 
@@ -87,7 +87,7 @@ To use IoTDB, you need to have:
 
 1. Java >= 1.8 (1.8, 11 to 17 are verified. Please make sure the environment path has been set accordingly).
 2. Maven >= 3.6 (If you want to compile and install IoTDB from source code).
-3. Set the max open files num as 65535 to avoid "too many open files" error.
+3. Set the max open files num as 65535 to avoid the "too many open files" error.
 4. (Optional) Set the somaxconn as 65535 to avoid "connection reset" error when the system is under high load.
     ```
     # Linux
@@ -98,7 +98,7 @@ To use IoTDB, you need to have:
     ```
 ### Linux
 
-(This guide is based on an installation of Ubuntu 22.04)
+(This guide is based on an installation of Ubuntu 22.04.)
 
 #### Git
 
@@ -137,7 +137,7 @@ So ensure these are installed:
 
 First ensure `git` works.
 
-Usually on a new Mac, as soon as you simply type `git` in a `Terminal` window, a popup will come and ask if you want to finish installing the Mac developer tools. 
+Usually on a new Mac, as soon as you simply type `git` in a `Terminal` window, a popup will come up and ask if you want to finish installing the Mac developer tools. 
 Just say yes.
 As soon as this is finished, you are free to use `git`.
 
@@ -153,7 +153,7 @@ As soon as that's done install `Java`, if this hasn't been installed yet:
 
     brew install java
 
-Depending on your version of Homebrew, it will tell you to do one of the following (Depending on the type of processor in your device).
+Depending on your version of Homebrew, it will tell you to do one of the following (depending on the type of processor in your device).
 
 Mainly on the Intel-based models:
 
@@ -195,7 +195,7 @@ https://chocolatey.org/install
     choco install visualstudio2022buildtools
     choco install visualstudio2022-workload-nativedesktop
 
-#### FLex / Bison
+#### Flex / Bison
 
     choco install winflexbison
 
@@ -213,7 +213,7 @@ IoTDB provides three installation methods, you can refer to the following sugges
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.
-* Using Docker：The path to the dockerfile is [here](https://github.com/apache/iotdb/tree/master/docker/src/main)
+* Using Docker：The path to the dockerfile is [here](https://github.com/apache/iotdb/tree/master/docker/src/main).
 
 
 Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to [User Guide](https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html).
@@ -229,19 +229,19 @@ protocol definition), we involve Thrift during the compilation, so Thrift compil
 higher) is required to generate Thrift Java code. Thrift officially provides binary compiler for
 Windows, but unfortunately, they do not provide that for Unix OSs. 
 
-If you have permission to install new softwares, use `apt install` or `yum install` or `brew install`
-to install the Thrift compiler (If you already have installed the thrift compiler, skip this step).
+If you have permission to install new software, use `apt install` or `yum install` or `brew install`
+to install the Thrift compiler. (If you already have installed the thrift compiler, skip this step.)
 Then, you may add the following parameter
 when running Maven: `-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<YOUR LOCAL THRIFT BINARY FILE>`.
 
 If not, then you have to compile the thrift compiler, and it requires you install a boost library first.
-Therefore, we compiled a Unix  compiler ourselves and put it onto GitHub, and with the help of a
-maven plugin, it will be  downloaded automatically during compilation. 
-This compiler works fine with gcc8 or later, Ubuntu  MacOS, and CentOS, but previous versions 
+Therefore, we compiled a Unix compiler ourselves and put it onto GitHub, and with the help of a
+maven plugin, it will be downloaded automatically during compilation. 
+This compiler works fine with gcc8 or later, Ubuntu MacOS, and CentOS, but previous versions 
 and other OSs are not guaranteed.
 
-If you can not download the thrift compiler automatically because of network problem, you can download 
-it yourself, and then either:
+If you can not download the thrift compiler automatically because of a network problem, you can download 
+it by yourself, and then either:
 rename your thrift file to `{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`;
 or, add Maven commands:
 `-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<YOUR LOCAL THRIFT BINARY FILE>`.
@@ -254,13 +254,13 @@ You can download the source code from:
 git clone https://github.com/apache/iotdb.git
 ```
 
-The default dev branch is the master branch, If you want to use a released version x.x.x:
+The default dev branch is the master branch, if you want to use a released version x.x.x:
 
 ```
 git checkout vx.x.x
 ```
 
-Or checkout to the branch of a big version, e.g., the branch of 1.0 is rel/1.0
+Or checkout to the branch of a big version, e.g., the branch of 1.0 is rel/1.0.
 
 ```
 git checkout rel/x.x
@@ -289,7 +289,7 @@ After being built, the IoTDB cli is located at the folder "cli/target".
 
 ### Build Others
 
-Using `-P compile-cpp` for compiling cpp client (For more details, read client-cpp's Readme file.)
+Use `-P compile-cpp` for compiling the cpp client. (For more details, read client-cpp's Readme file.)
 
 **NOTE: Directories "`thrift/target/generated-sources/thrift`", "`thrift-sync/target/generated-sources/thrift`",
 "`thrift-cluster/target/generated-sources/thrift`", "`thrift-influxdb/target/generated-sources/thrift`" 
@@ -300,7 +300,7 @@ you run `mvn package` successfully.**
 
 ### Configurations
 
-configuration files are under "conf" folder
+Configuration files are under the "conf" folder.
 
   * environment config module (`datanode-env.bat`, `datanode-env.sh`),
   * system config module (`iotdb-datanode.properties`)
@@ -331,7 +331,7 @@ Users can start 1C1D IoTDB by the start-standalone script under the sbin folder.
 IoTDB offers different ways to interact with server, here we introduce the basic steps of using Cli tool to insert and query data.
 
 After installing IoTDB, there is a default user 'root', its default password is also 'root'. Users can use this
-default user to login Cli to use IoTDB. The startup script of Cli is the start-cli script in the folder sbin. When executing the script, user should assign
+default user to login Cli to use IoTDB. The start-up script of Cli is the start-cli script in the folder sbin. When executing the script, user should assign
 IP, PORT, USER_NAME and PASSWORD. The default parameters are "-h 127.0.0.1 -p 6667 -u root -pw -root".
 
 Here is the command for starting the Cli:
@@ -363,7 +363,7 @@ IoTDB>
 
 Now, let us introduce the way of creating timeseries, inserting data and querying data.
 
-The data in IoTDB is organized as timeseries. Each timeseries includes multiple data-time pairs, and is owned by a database. Before defining a timeseries, we should define a database using CREATE DATABASE first, and here is an example:
+The data in IoTDB is organized as timeseries. Each timeseries includes multiple data–time pairs, and is owned by a database. Before defining a timeseries, we should define a database using CREATE DATABASE first, and here is an example:
 
 ```
 IoTDB> CREATE DATABASE root.ln
@@ -388,7 +388,7 @@ IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODIN
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 ```
 
-In order to query the specific timeseries, we can use SHOW TIMESERIES <Path>. <Path> represent the location of the timeseries. The default value is "null", which queries all the timeseries in the system(the same as using "SHOW TIMESERIES root"). Here are some examples:
+In order to query the specific timeseries, we can use SHOW TIMESERIES <Path>. <Path> represent the location of the timeseries. The default value is "null", which queries all the timeseries in the system (the same as using "SHOW TIMESERIES root"). Here are some examples:
 
 1. Querying all timeseries in the system:
 
@@ -403,7 +403,7 @@ IoTDB> SHOW TIMESERIES
 Total line number = 2
 ```
 
-2. Querying a specific timeseries(root.ln.wf01.wt01.status):
+2. Querying a specific timeseries (root.ln.wf01.wt01.status):
 
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
@@ -415,14 +415,14 @@ IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 Total line number = 1
 ```
 
-Insert timeseries data is a basic operation of IoTDB, you can use ‘INSERT’ command to finish this. Before insertion, you should assign the timestamp and the suffix path name:
+Inserting timeseries data is a basic operation of IoTDB, you can use the ‘INSERT’ command to finish this. Before insertion, you should assign the timestamp and the suffix path name:
 
 ```
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(100,true);
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status,temperature) values(200,false,20.71)
 ```
 
-The data that you have just inserted will display as follows:
+The data that you have just inserted will be displayed as follows:
 
 ```
 IoTDB> SELECT status FROM root.ln.wf01.wt01
@@ -492,9 +492,9 @@ The server can be stopped with "ctrl-C" or the following script:
 > sbin\stop-standalone.bat
 ```
 
-# Usage of CSV Import and Export Tool
+# The use of CSV Import and Export Tool
 
-see [Usage of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/Master/Maintenance-Tools/CSV-Tool.html)
+see [The use of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/Master/Maintenance-Tools/CSV-Tool.html)
 
 # Frequent Questions for Compiling
 see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)

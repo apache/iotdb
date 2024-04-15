@@ -85,6 +85,8 @@ public abstract class AbstractEnv implements BaseEnv {
   protected long startTime;
   protected int retryCount = 30;
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
+  private List<String> configNodeKillPoints = new ArrayList<>();
+  private List<String> dataNodeKillPoints = new ArrayList<>();
 
   /**
    * This config object stores the properties set by developers during the test. It will be cleared
@@ -168,6 +170,7 @@ public abstract class AbstractEnv implements BaseEnv {
         (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
         (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
     seedConfigNodeWrapper.createLogDir();
+    seedConfigNodeWrapper.setKillPoints(configNodeKillPoints);
     seedConfigNodeWrapper.start();
     String seedConfigNode = seedConfigNodeWrapper.getIpAndPortString();
     this.configNodeWrapperList.add(seedConfigNodeWrapper);
@@ -202,6 +205,7 @@ public abstract class AbstractEnv implements BaseEnv {
           (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
           (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
       configNodeWrapper.createLogDir();
+      configNodeWrapper.setKillPoints(configNodeKillPoints);
       configNodesDelegate.addRequest(
           () -> {
             configNodeWrapper.start();
@@ -236,6 +240,7 @@ public abstract class AbstractEnv implements BaseEnv {
           (MppCommonConfig) clusterConfig.getDataNodeCommonConfig(),
           (MppJVMConfig) clusterConfig.getDataNodeJVMConfig());
       dataNodeWrapper.createLogDir();
+      dataNodeWrapper.setKillPoints(dataNodeKillPoints);
       dataNodesDelegate.addRequest(
           () -> {
             dataNodeWrapper.start();
@@ -463,7 +468,8 @@ public abstract class AbstractEnv implements BaseEnv {
       dataNode = this.dataNodeWrapperList.get(0);
     }
 
-    return getWriteConnectionWithSpecifiedDataNode(dataNode, version, username, password);
+    return getWriteConnectionFromDataNodeList(
+        this.dataNodeWrapperList, version, username, password);
   }
 
   protected NodeConnection getWriteConnectionWithSpecifiedDataNode(
@@ -480,6 +486,26 @@ public abstract class AbstractEnv implements BaseEnv {
         NodeConnection.NodeRole.DATA_NODE,
         NodeConnection.ConnectionRole.WRITE,
         writeConnection);
+  }
+
+  protected NodeConnection getWriteConnectionFromDataNodeList(
+      List<DataNodeWrapper> dataNodeList,
+      Constant.Version version,
+      String username,
+      String password)
+      throws SQLException {
+    List<DataNodeWrapper> dataNodeWrapperListCopy = new ArrayList<>(dataNodeList);
+    Collections.shuffle(dataNodeWrapperListCopy);
+    SQLException lastException = null;
+    for (DataNodeWrapper dataNode : dataNodeWrapperListCopy) {
+      try {
+        return getWriteConnectionWithSpecifiedDataNode(dataNode, version, username, password);
+      } catch (SQLException e) {
+        lastException = e;
+      }
+    }
+    logger.error("Failed to get connection from any DataNode, last exception is ", lastException);
+    throw lastException;
   }
 
   protected List<NodeConnection> getReadConnections(
@@ -593,6 +619,12 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public List<DataNodeWrapper> getDataNodeWrapperList() {
     return dataNodeWrapperList;
+  }
+
+  public List<AbstractNodeWrapper> getNodeWrapperList() {
+    List<AbstractNodeWrapper> result = new ArrayList<>(configNodeWrapperList);
+    result.addAll(dataNodeWrapperList);
+    return result;
   }
 
   /**
@@ -1031,5 +1063,15 @@ public abstract class AbstractEnv implements BaseEnv {
     } catch (Exception e) {
       return Optional.empty();
     }
+  }
+
+  @Override
+  public void registerConfigNodeKillPoints(List<String> killPoints) {
+    this.configNodeKillPoints = killPoints;
+  }
+
+  @Override
+  public void registerDataNodeKillPoints(List<String> killPoints) {
+    this.dataNodeKillPoints = killPoints;
   }
 }

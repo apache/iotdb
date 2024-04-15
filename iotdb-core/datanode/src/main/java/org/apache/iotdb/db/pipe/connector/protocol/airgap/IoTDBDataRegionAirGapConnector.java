@@ -125,11 +125,21 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
 
-    if (event instanceof PipeSchemaRegionWritePlanEvent) {
-      doTransfer(socket, (PipeSchemaRegionWritePlanEvent) event);
-    } else if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn(
-          "IoTDBDataRegionAirGapConnector does not support transferring generic event: {}.", event);
+    try {
+      if (event instanceof PipeSchemaRegionWritePlanEvent) {
+        doTransfer(socket, (PipeSchemaRegionWritePlanEvent) event);
+      } else if (!(event instanceof PipeHeartbeatEvent)) {
+        LOGGER.warn(
+            "IoTDBDataRegionAirGapConnector does not support transferring generic event: {}.",
+            event);
+      }
+    } catch (IOException e) {
+      isSocketAlive.set(socketIndex, false);
+
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer tsfile event %s, because %s.", event, e.getMessage()),
+          e);
     }
   }
 

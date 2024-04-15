@@ -66,18 +66,22 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
+    // 10 min, assert that the operations will not time out
+    senderEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
   }
 
   @Test
   public void testTumblingTimeSamplingProcessor() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // Test empty tsFile parsing
       // Assert that an empty tsFile will not be parsed by the processor then block
@@ -91,9 +95,9 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("source.realtime.mode", "log");
 
@@ -106,7 +110,7 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("sink.ip", receiverIp);
       connectorAttributes.put("sink.port", Integer.toString(receiverPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -130,7 +134,7 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      Set<String> expectedResSet = new HashSet<>();
+      final Set<String> expectedResSet = new HashSet<>();
 
       expectedResSet.add("0,1.0,");
       expectedResSet.add("20000,4.0,");

@@ -56,11 +56,11 @@ public class PipeReceiverStatusHandler {
   private final AtomicReference<String> exceptionRecordedMessage = new AtomicReference<>("");
 
   public PipeReceiverStatusHandler(
-      boolean isRetryAllowedWhenConflictOccurs,
-      long retryMaxSecondsWhenConflictOccurs,
-      boolean shouldRecordIgnoredDataWhenConflictOccurs,
-      long retryMaxSecondsWhenOtherExceptionsOccur,
-      boolean shouldRecordIgnoredDataWhenOtherExceptionsOccur) {
+      final boolean isRetryAllowedWhenConflictOccurs,
+      final long retryMaxSecondsWhenConflictOccurs,
+      final boolean shouldRecordIgnoredDataWhenConflictOccurs,
+      final long retryMaxSecondsWhenOtherExceptionsOccur,
+      final boolean shouldRecordIgnoredDataWhenOtherExceptionsOccur) {
     this.isRetryAllowedWhenConflictOccurs = isRetryAllowedWhenConflictOccurs;
     this.retryMaxMillisWhenConflictOccurs =
         retryMaxSecondsWhenConflictOccurs < 0

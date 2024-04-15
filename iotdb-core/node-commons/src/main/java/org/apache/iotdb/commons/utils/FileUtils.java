@@ -37,7 +37,6 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 
 public class FileUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
@@ -260,15 +259,6 @@ public class FileUtils {
 
     LOGGER.info("move file success, {}", fromTo);
     return true;
-  }
-
-  public static void logBreakpoint(String logContent) {
-    LOGGER.info("breakpoint:{}", logContent);
-    try {
-      TimeUnit.SECONDS.sleep(1);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
   }
 
   public static File createHardLink(File sourceFile, File hardlink) throws IOException {

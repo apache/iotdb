@@ -39,11 +39,11 @@ import java.util.Map;
 public class IoTDBPipeSingleEnvDemoIT extends AbstractPipeSingleIT {
   @Test
   public void testSingleEnv() throws Exception {
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.realtime.mode", "log");
 
@@ -51,7 +51,7 @@ public class IoTDBPipeSingleEnvDemoIT extends AbstractPipeSingleIT {
       connectorAttributes.put("connector.ip", "127.0.0.1");
       connectorAttributes.put("connector.port", Integer.toString(56565));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)

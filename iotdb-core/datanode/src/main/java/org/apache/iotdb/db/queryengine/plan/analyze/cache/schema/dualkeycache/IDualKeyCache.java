@@ -55,6 +55,15 @@ public interface IDualKeyCache<FK, SK, V> {
   void put(FK firstKey, SK secondKey, V value);
 
   /**
+   * Invalidate last cache in datanode schema cache. Do not invalidate time series cache.
+   *
+   * @param partialPathList
+   */
+  void invalidateLastCache(PartialPath partialPath);
+
+  void invalidateDataRegionLastCache(String database);
+
+  /**
    * Invalidate all cache values in the cache and clear related cache keys. The cache status and
    * statistics won't be clear and they can still be accessed via cache.stats().
    */

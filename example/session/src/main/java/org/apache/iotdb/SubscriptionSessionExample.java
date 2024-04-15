@@ -30,6 +30,7 @@ import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
@@ -50,7 +51,7 @@ public class SubscriptionSessionExample {
             .build();
     session.open(false);
 
-    // insert some historical data
+    // Insert some historical data
     long currentTime = System.currentTimeMillis();
     for (int i = 0; i < 100; ++i) {
       session.executeNonQueryStatement(
@@ -62,22 +63,24 @@ public class SubscriptionSessionExample {
     }
     session.executeNonQueryStatement("flush");
 
-    // create topic
+    // Create topic
+    final String topic1 = "topic1";
+    final String topic2 = "`topic2`";
     try (SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
       subscriptionSession.open();
-      subscriptionSession.createTopic("topic1");
-      subscriptionSession.createTopic("topic2");
+      subscriptionSession.createTopic(topic1);
+      subscriptionSession.createTopic(topic2);
     }
 
-    // subscription: property-style ctor
+    // Subscription: property-style ctor
     Properties config = new Properties();
     config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
     config.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
     SubscriptionPullConsumer consumer1 = new SubscriptionPullConsumer(config);
     consumer1.open();
-    consumer1.subscribe("topic1");
+    consumer1.subscribe(topic1);
     while (true) {
-      Thread.sleep(1000); // wait some time
+      Thread.sleep(1000); // Wait for some time
       List<SubscriptionMessage> messages = consumer1.poll(Duration.ofMillis(10000));
       if (messages.isEmpty()) {
         break;
@@ -92,20 +95,20 @@ public class SubscriptionSessionExample {
           }
         }
       }
-      // auto commit
+      // Auto commit
     }
 
-    // show topics and subscriptions
+    // Show topics and subscriptions
     try (SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
       subscriptionSession.open();
       subscriptionSession.getTopics().forEach((System.out::println));
       subscriptionSession.getSubscriptions().forEach((System.out::println));
     }
 
-    consumer1.unsubscribe("topic1");
+    consumer1.unsubscribe(topic1);
     consumer1.close();
 
-    // subscription: builder-style ctor
+    // Subscription: builder-style ctor
     try (SubscriptionPullConsumer consumer2 =
         new SubscriptionPullConsumer.Builder()
             .consumerId("c2")
@@ -113,10 +116,11 @@ public class SubscriptionSessionExample {
             .autoCommit(false)
             .buildPullConsumer()) {
       consumer2.open();
-      consumer2.subscribe("topic2");
+      consumer2.subscribe(topic2);
       while (true) {
         Thread.sleep(1000); // wait some time
-        List<SubscriptionMessage> messages = consumer2.poll(Duration.ofMillis(10000));
+        List<SubscriptionMessage> messages =
+            consumer2.poll(Collections.singleton(topic2), Duration.ofMillis(10000));
         if (messages.isEmpty()) {
           break;
         }
@@ -132,10 +136,10 @@ public class SubscriptionSessionExample {
         }
         consumer2.commitSync(messages);
       }
-      consumer2.unsubscribe("topic2");
+      consumer2.unsubscribe(topic2);
     }
 
-    // query
+    // Query
     SessionDataSet dataSet = session.executeQueryStatement("select ** from root.**");
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());

@@ -54,6 +54,12 @@ public class SerializedEnrichedEvent {
     this.committedTimestamp = INVALID_TIMESTAMP;
   }
 
+  //////////////////////////// serialization ////////////////////////////
+
+  public EnrichedTablets getEnrichedTablets() {
+    return enrichedTablets;
+  }
+
   /** @return true -> byte buffer is not null */
   public boolean serialize() {
     if (Objects.isNull(byteBuffer)) {
@@ -80,6 +86,8 @@ public class SerializedEnrichedEvent {
     byteBuffer = null;
   }
 
+  //////////////////////////// commit ////////////////////////////
+
   public String getSubscriptionCommitId() {
     return enrichedTablets.getSubscriptionCommitId();
   }
@@ -90,16 +98,18 @@ public class SerializedEnrichedEvent {
     }
   }
 
-  public void recordLastPolledTimestamp() {
-    lastPolledTimestamp = Math.max(lastPolledTimestamp, System.currentTimeMillis());
-  }
-
   public void recordCommittedTimestamp() {
     committedTimestamp = System.currentTimeMillis();
   }
 
   public boolean isCommitted() {
     return committedTimestamp != INVALID_TIMESTAMP;
+  }
+
+  //////////////////////////// pollable ////////////////////////////
+
+  public void recordLastPolledTimestamp() {
+    lastPolledTimestamp = Math.max(lastPolledTimestamp, System.currentTimeMillis());
   }
 
   public boolean pollable() {

@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.exception.subscription.SubscriptionException;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
@@ -33,12 +32,15 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SerializedEnrichedEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -59,6 +61,7 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribe
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -243,6 +246,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // subscribe topics
     Set<String> topicNames = req.getTopicNames();
+    topicNames = topicNames.stream().map(ASTVisitor::parseIdentifier).collect(Collectors.toSet());
     subscribe(consumerConfig, topicNames);
 
     LOGGER.info("Subscription: consumer {} subscribe {} successfully", consumerConfig, topicNames);
@@ -276,6 +280,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // unsubscribe topics
     Set<String> topicNames = req.getTopicNames();
+    topicNames = topicNames.stream().map(ASTVisitor::parseIdentifier).collect(Collectors.toSet());
     unsubscribe(consumerConfig, topicNames);
 
     LOGGER.info(
@@ -314,6 +319,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           SubscriptionAgent.consumer()
               .getTopicsSubscribedByConsumer(
                   consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+    } else {
+      topicNames = topicNames.stream().map(ASTVisitor::parseIdentifier).collect(Collectors.toSet());
     }
     SubscriptionPollTimer timer =
         new SubscriptionPollTimer(
@@ -325,14 +332,6 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                     SubscriptionConfig.getInstance().getSubscriptionMinPollTimeoutMs()));
     List<SerializedEnrichedEvent> events =
         SubscriptionAgent.broker().poll(consumerConfig, topicNames, timer);
-
-    // serialize events and filter
-    events =
-        events.stream()
-            .peek((SerializedEnrichedEvent::serialize))
-            .filter((event -> Objects.nonNull(event.getByteBuffer())))
-            .collect(Collectors.toList());
-
     List<String> subscriptionCommitIds =
         events.stream()
             .map(SerializedEnrichedEvent::getSubscriptionCommitId)
@@ -344,18 +343,21 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           consumerConfig,
           topicNames);
     }
-
     LOGGER.info(
         "Subscription: consumer {} poll topics {} successfully, commit ids: {}",
         consumerConfig,
         topicNames,
         subscriptionCommitIds);
 
-    // fetch and reset byte buffer
-    List<ByteBuffer> byteBuffers =
-        events.stream().map(SerializedEnrichedEvent::getByteBuffer).collect(Collectors.toList());
+    List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsWithByteBufferList =
+        events.stream()
+            .map(event -> new Pair<>(event.getByteBuffer(), event.getEnrichedTablets()))
+            .collect(Collectors.toList());
+    TPipeSubscribeResp resp =
+        PipeSubscribePollResp.toTPipeSubscribeResp(
+            RpcUtils.SUCCESS_STATUS, enrichedTabletsWithByteBufferList);
     events.forEach(SerializedEnrichedEvent::resetByteBuffer);
-    return PipeSubscribePollResp.directToTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, byteBuffers);
+    return resp;
   }
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(PipeSubscribeCommitReq req) {

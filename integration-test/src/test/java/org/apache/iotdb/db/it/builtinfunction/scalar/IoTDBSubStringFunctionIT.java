@@ -98,7 +98,7 @@ public class IoTDBSubStringFunctionIT {
         expectedHeader,
         retArray);
 
-    // param 1 greater than input series length
+    // Param 1 greater than input series length
     expectedHeader =
         new String[] {
           "Time,root.sg.s1,SUBSTRING(root.sg.s1,11),SUBSTRING(root.sg.s1,11,13),SUBSTRING(root.sg.s1 FROM 11),SUBSTRING(root.sg.s1 FROM 11 FOR 13)"
@@ -115,7 +115,7 @@ public class IoTDBSubStringFunctionIT {
 
   @Test
   public void testOldTransformer() {
-    // normal
+    // Normal
     String[] expectedHeader =
         new String[] {
           "Time,root.sg.s1,change_points(root.sg.s1),SUBSTRING(root.sg.s1,1),SUBSTRING(root.sg.s1,1,3),SUBSTRING(root.sg.s1 FROM 1),SUBSTRING(root.sg.s1 FROM 1 FOR 3)"
@@ -131,7 +131,7 @@ public class IoTDBSubStringFunctionIT {
         expectedHeader,
         retArray);
 
-    // param 1 greater than input series length
+    // Param 1 greater than input series length
     expectedHeader =
         new String[] {
           "Time,root.sg.s1,change_points(root.sg.s1),SUBSTRING(root.sg.s1,11),SUBSTRING(root.sg.s1,11,13),SUBSTRING(root.sg.s1 FROM 11),SUBSTRING(root.sg.s1 FROM 11 FOR 13)"
@@ -148,73 +148,73 @@ public class IoTDBSubStringFunctionIT {
 
   @Test
   public void testRoundBooleanAndText() {
-    // using substring without start and end position.
+    // Using substring without start and end position.
     assertTestFail(
         "select s1,SUBSTRING(s1) from root.sg",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Argument exception,the scalar function [SUBSTRING] needs at least one argument,it must be a signed integer");
 
-    // wrong input type
+    // Wrong input type
     assertTestFail(
         "select SUBSTRING(s2,1,1) from root.**",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Input series of Scalar function [SUBSTRING] only supports numeric data types [TEXT]");
 
-    // wrong input type
+    // Wrong input type
     assertTestFail(
         "select SUBSTRING(s3,1,1) from root.**",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Input series of Scalar function [SUBSTRING] only supports numeric data types [TEXT]");
 
-    // wrong input type
+    // Wrong input type
     assertTestFail(
         "select SUBSTRING(s4,1,1) from root.**",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Input series of Scalar function [SUBSTRING] only supports numeric data types [TEXT]");
 
-    // wrong input type
+    // Wrong input type
     assertTestFail(
         "select SUBSTRING(s5,1,1) from root.**",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Input series of Scalar function [SUBSTRING] only supports numeric data types [TEXT]");
 
-    // wrong input type
+    // Wrong input type
     assertTestFail(
         "select SUBSTRING(s6,1,1) from root.**",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Input series of Scalar function [SUBSTRING] only supports numeric data types [TEXT]");
 
-    // using substring with float start position
+    // Using substring with float start position
     assertTestFail(
         "select SUBSTRING(s1,1.0,1) from root.**",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Argument exception,the scalar function [SUBSTRING] needs at least one argument,it must be a signed integer");
 
-    // using substring with float start and length
+    // Using substring with float start and length
     assertTestFail(
         "select SUBSTRING(s1,1.0,1.1) from root.**",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Argument exception,the scalar function [SUBSTRING] needs at least one argument,it must be a signed integer");
 
-    // negative characters length
+    // Negative characters length
     assertTestFail(
         "select SUBSTRING(s1,1,-10) from root.**",
         TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
             + ": Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
 
-    // negative characters begin
+    // Negative characters begin
     assertTestFail(
         "select SUBSTRING(s1,-1,10) from root.**",
         TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
             + ": Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
 
-    // negative characters begin
+    // Negative characters begin
     assertTestFail(
         "select SUBSTRING(s1 from -1 for 10) from root.**",
         TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
             + ": Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
 
-    // negative characters begin
+    // Negative characters begin
     assertTestFail(
         "select SUBSTRING(s1,'start'='1','to'='2') from root.**",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()

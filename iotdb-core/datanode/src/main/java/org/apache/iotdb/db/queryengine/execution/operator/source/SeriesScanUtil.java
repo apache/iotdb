@@ -1089,12 +1089,6 @@ public class SeriesScanUtil {
       return;
     }
 
-    // skip if data type is mismatched which may be caused by delete
-    if (!firstTimeSeriesMetadata.typeMatch(getTsDataTypeList())) {
-      skipCurrentFile();
-      return;
-    }
-
     if (currentFileOverlapped() || firstTimeSeriesMetadata.isModified()) {
       return;
     }
@@ -1131,7 +1125,8 @@ public class SeriesScanUtil {
   private void unpackSeqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextSeqFileResource(true), true);
-    if (timeseriesMetadata != null) {
+    // skip if data type is mismatched which may be caused by delete
+    if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(true);
       seqTimeSeriesMetadata.add(timeseriesMetadata);
     }
@@ -1140,7 +1135,8 @@ public class SeriesScanUtil {
   private void unpackUnseqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextUnseqFileResource(true), false);
-    if (timeseriesMetadata != null) {
+    // skip if data type is mismatched which may be caused by delete
+    if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(false);
       unSeqTimeSeriesMetadata.add(timeseriesMetadata);
     }

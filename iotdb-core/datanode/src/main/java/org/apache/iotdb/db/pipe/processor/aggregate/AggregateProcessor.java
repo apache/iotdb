@@ -24,13 +24,16 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.event.common.row.PipeResetTabletRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
+import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -130,15 +133,43 @@ public class AggregateProcessor implements PipeProcessor {
     final PipeParameters parameters = validator.getParameters();
     validator
         .validate(
-            args -> !((String) args).isEmpty(),
+            arg -> !((String) arg).isEmpty(),
             String.format("The parameter %s must not be empty.", PROCESSOR_OPERATORS_KEY),
             parameters.getStringOrDefault(
                 PROCESSOR_OPERATORS_KEY, PROCESSOR_OPERATORS_DEFAULT_VALUE))
         .validate(
-            args -> !((String) args).isEmpty(),
+            arg -> !((String) arg).isEmpty(),
             String.format("The parameter %s must not be empty.", PROCESSOR_WINDOWING_STRATEGY_KEY),
             parameters.getStringOrDefault(
-                PROCESSOR_WINDOWING_STRATEGY_KEY, PROCESSOR_WINDOWING_STRATEGY_DEFAULT_VALUE));
+                PROCESSOR_WINDOWING_STRATEGY_KEY, PROCESSOR_WINDOWING_STRATEGY_DEFAULT_VALUE))
+        .validate(
+            arg -> ((String) arg).isEmpty() || ((String) arg).startsWith("root."),
+            String.format(
+                "The output database %s shall start with root.",
+                parameters.getStringOrDefault(
+                    PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE)),
+            parameters.getStringOrDefault(
+                PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE))
+        .validate(
+            arg ->
+                Arrays.stream(((String) arg).replace(" ", "").split(","))
+                    .allMatch(this::isLegalMeasurement),
+            String.format(
+                "The output measurements %s contains illegal measurements, the measurements must be the last level of a legal path",
+                parameters.getStringOrDefault(
+                    PROCESSOR_OUTPUT_MEASUREMENTS_KEY,
+                    PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE)),
+            parameters.getStringOrDefault(
+                PROCESSOR_OUTPUT_MEASUREMENTS_KEY, PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE));
+  }
+
+  private boolean isLegalMeasurement(String measurement) {
+    try {
+      PathUtils.isLegalPath("root." + measurement);
+    } catch (IllegalPathException e) {
+      return false;
+    }
+    return measurement.startsWith("`") && measurement.endsWith("`") || !measurement.contains(".");
   }
 
   @Override
@@ -452,7 +483,7 @@ public class AggregateProcessor implements PipeProcessor {
     // The timeProgressIndex shall only be reported by the output events
     // whose progressIndex is bounded with tablet events
     if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
-      ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReport();
+      ((PipeTsFileInsertionEvent) tsFileInsertionEvent).skipReportOnCommit();
     }
   }
 
@@ -469,20 +500,15 @@ public class AggregateProcessor implements PipeProcessor {
                 final AtomicReference<TimeSeriesRuntimeState> stateReference =
                     pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).get(timeSeries);
                 synchronized (stateReference) {
-                  // This is only a formal tablet insertion event to collect all the results
-                  final PipeRawTabletInsertionEvent tabletInsertionEvent =
-                      new PipeRawTabletInsertionEvent(
-                          null, false, pipeName, pipeTaskMeta, null, false);
-                  tabletInsertionEvent
-                      .processRowByRow(
-                          (row, rowCollector) -> {
-                            try {
-                              collectWindowOutputs(
-                                  stateReference.get().forceOutput(), timeSeries, rowCollector);
-                            } catch (Exception e) {
-                              exception.set(e);
-                            }
-                          })
+                  PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, null);
+                  try {
+                    collectWindowOutputs(
+                        stateReference.get().forceOutput(), timeSeries, rowCollector);
+                  } catch (IOException e) {
+                    exception.set(e);
+                  }
+                  rowCollector
+                      .convertToTabletInsertionEvents()
                       .forEach(
                           tabletEvent -> {
                             try {
