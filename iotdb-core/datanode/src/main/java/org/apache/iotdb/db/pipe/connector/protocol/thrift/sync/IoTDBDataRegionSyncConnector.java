@@ -187,7 +187,20 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   @Override
   public void transfer(Event event) throws Exception {
     if (event instanceof PipeSchemaRegionWritePlanEvent) {
-      doTransfer((PipeSchemaRegionWritePlanEvent) event);
+      final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent =
+          (PipeSchemaRegionWritePlanEvent) event;
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
+          IoTDBDataRegionAsyncConnector.class.getName())) {
+        LOGGER.error(
+            "PipeSchemaRegionWritePlanEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
+            pipeSchemaRegionWritePlanEvent.coreReportMessage());
+        return;
+      }
+
+      doTransfer(pipeSchemaRegionWritePlanEvent);
+      pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
+          IoTDBDataRegionSyncConnector.class.getName(), false);
       return;
     }
 
