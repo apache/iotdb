@@ -86,7 +86,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
       for (final Event event : events) {
         if (event instanceof EnrichedEvent) {
           ((EnrichedEvent) event)
-              .decreaseReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
+              .clearReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
         }
       }
     } catch (Exception e) {
@@ -108,8 +108,6 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
         requestCommitIds,
         exception);
 
-    for (final Event event : events) {
-      connector.addFailureEventToRetryQueue(event);
-    }
+    connector.addFailureEventsToRetryQueue(events);
   }
 }

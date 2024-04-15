@@ -105,11 +105,11 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean clearReferenceCount(String holderMessage) {
+  public boolean clearReferenceCount(String holderMessage, boolean shouldReport) {
     // This method must be overridden, otherwise during the real-time data extraction stage, the
     // current PipeRealtimeEvent rather than the member variable EnrichedEvent will clear
     // the reference count.
-    return event.clearReferenceCount(holderMessage);
+    return event.clearReferenceCount(holderMessage, shouldReport);
   }
 
   @Override

@@ -94,7 +94,7 @@ public class SerializedEnrichedEvent {
 
   public void decreaseReferenceCount() {
     for (EnrichedEvent enrichedEvent : enrichedEvents) {
-      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+      enrichedEvent.decreaseReferenceCount(SerializedEnrichedEvent.class.getName(), true);
     }
   }
 

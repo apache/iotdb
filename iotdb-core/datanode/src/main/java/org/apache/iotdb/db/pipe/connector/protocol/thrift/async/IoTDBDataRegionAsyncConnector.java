@@ -58,6 +58,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
@@ -81,7 +82,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   private IoTDBDataNodeAsyncClientManager clientManager;
 
-  private final IoTDBDataRegionSyncConnector retryConnector = new IoTDBDataRegionSyncConnector();
+  private final IoTDBDataRegionSyncConnector retryConnector =
+      new IoTDBDataRegionSyncConnector(true);
   private final PriorityBlockingQueue<Event> retryEventQueue =
       new PriorityBlockingQueue<>(
           11,
@@ -92,6 +94,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                   e instanceof EnrichedEvent ? ((EnrichedEvent) e).getCommitId() : 0));
 
   private IoTDBThriftAsyncPipeTransferBatchReqBuilder tabletBatchBuilder;
+
+  private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -354,7 +358,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
       if (peekedEvent instanceof EnrichedEvent) {
         ((EnrichedEvent) peekedEvent)
-            .decreaseReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), true);
+            .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), true);
       }
 
       final Event polledEvent = retryEventQueue.poll();
@@ -388,9 +392,38 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    * @param event event to retry
    */
   public synchronized void addFailureEventToRetryQueue(Event event) {
+    if (isClosed.get()) {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event)
+            .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), false);
+      }
+      return;
+    }
+
     retryEventQueue.offer(event);
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Added event {} to retry queue.", event);
+    }
+  }
+
+  /**
+   * Add failure events to retry queue.
+   *
+   * @param events events to retry
+   */
+  public synchronized void addFailureEventsToRetryQueue(Iterable<Event> events) {
+    for (final Event event : events) {
+      addFailureEventToRetryQueue(event);
+    }
+  }
+
+  public synchronized void clearRetryEventsReferenceCount() {
+    while (!retryEventQueue.isEmpty()) {
+      final Event event = retryEventQueue.poll();
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event)
+            .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), false);
+      }
     }
   }
 
@@ -406,15 +439,24 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    */
   public synchronized void discardEventsOfPipe(String pipeNameToDrop) {
     retryEventQueue.removeIf(
-        event ->
-            event instanceof EnrichedEvent
-                && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName()));
+        event -> {
+          if (event instanceof EnrichedEvent
+              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
+            ((EnrichedEvent) event)
+                .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), false);
+            return true;
+          }
+          return false;
+        });
   }
 
   @Override
   // synchronized to avoid close connector when transfer event
   public synchronized void close() throws Exception {
+    isClosed.set(true);
+
     retryConnector.close();
+    clearRetryEventsReferenceCount();
 
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();

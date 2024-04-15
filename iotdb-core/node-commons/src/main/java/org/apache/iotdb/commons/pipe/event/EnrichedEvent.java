@@ -85,7 +85,7 @@ public abstract class EnrichedEvent implements Event {
    *
    * @param holderMessage the message of the invoker
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is increased successfully,
-   *     {@code false} if the {@link EnrichedEvent} is not
+   *     {@code false} otherwise
    */
   public boolean increaseReferenceCount(String holderMessage) {
     boolean isSuccessful = true;
@@ -123,8 +123,8 @@ public abstract class EnrichedEvent implements Event {
    * {@link ProgressIndex} of the event should be reported to the {@link PipeTaskMeta}.
    *
    * @param holderMessage the message of the invoker
-   * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully, v
-   *     otherwise
+   * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully,
+   *     {@code false} otherwise
    */
   public boolean decreaseReferenceCount(String holderMessage, boolean shouldReport) {
     boolean isSuccessful = true;
@@ -156,14 +156,13 @@ public abstract class EnrichedEvent implements Event {
    * release the {@link EnrichedEvent} directly. The {@link EnrichedEvent} can be recycled and the
    * data stored in the {@link EnrichedEvent} may not be safe to use.
    *
-   * @param holderMessage the message of the invoker
+   * @param holderMessage The message of the invoker.
+   * @param shouldReport When in a closing scenario, specify as false; when it might be resource
+   *     release, specify as true, thus avoiding the problem of non-idempotence introduced by
+   *     multiple paths of {@link EnrichedEvent#decreaseReferenceCount}.
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully,
-   *     {@code true} otherwise
+   *     {@code false} otherwise
    */
-  public boolean clearReferenceCount(String holderMessage) {
-    return this.clearReferenceCount(holderMessage, false);
-  }
-
   public boolean clearReferenceCount(String holderMessage, boolean shouldReport) {
     boolean isSuccessful = true;
     synchronized (this) {

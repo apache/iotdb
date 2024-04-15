@@ -148,22 +148,23 @@ public abstract class PipeSubtask
 
   @Override
   public void close() {
-    clearReferenceCountAndReleaseLastEvent();
+    clearReferenceCountAndReleaseLastEvent(false);
   }
 
   protected synchronized void decreaseReferenceCountAndReleaseLastEvent(boolean shouldReport) {
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent) {
-        ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName(), shouldReport);
+        ((EnrichedEvent) lastEvent)
+            .decreaseReferenceCount(PipeSubtask.class.getName(), shouldReport);
       }
       lastEvent = null;
     }
   }
 
-  protected synchronized void clearReferenceCountAndReleaseLastEvent() {
+  protected synchronized void clearReferenceCountAndReleaseLastEvent(boolean shouldReport) {
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent) {
-        ((EnrichedEvent) lastEvent).clearReferenceCount(this.getClass().getName());
+        ((EnrichedEvent) lastEvent).clearReferenceCount(PipeSubtask.class.getName(), shouldReport);
       }
       lastEvent = null;
     }
