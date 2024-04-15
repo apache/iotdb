@@ -307,6 +307,27 @@ public class ReplicateTest {
     }
   }
 
+  @Test
+  public void parsingAndConstructIDTest() throws Exception {
+    logger.info("Start ParsingAndConstructIDTest");
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    for (int i = 0; i < CHECK_POINT_GAP; i++) {
+      servers.get(0).write(gid, new TestEntry(i, peers.get(0)));
+    }
+    List<ConsensusGroupId> ids = servers.get(0).getAllConsensusGroupIdsWithoutStarting();
+
+    Assert.assertEquals(1, ids.size());
+    Assert.assertEquals(gid, ids.get(0));
+
+    String regionDir = servers.get(0).getRegionDirFromConsensusGroupId(gid);
+    try {
+      File regionDirFile = new File(regionDir);
+      Assert.assertTrue(regionDirFile.exists());
+    } catch (Exception e) {
+      Assert.fail();
+    }
+  }
+
   private void findPortAvailable(int i) {
     long start = System.currentTimeMillis();
     while (System.currentTimeMillis() - start < timeout) {

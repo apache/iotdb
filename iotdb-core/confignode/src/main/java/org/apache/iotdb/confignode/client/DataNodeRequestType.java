@@ -115,4 +115,7 @@ public enum DataNodeRequestType {
   // Quota
   SET_SPACE_QUOTA,
   SET_THROTTLE_QUOTA,
+
+  // Table
+  UPDATE_TABLE,
 }

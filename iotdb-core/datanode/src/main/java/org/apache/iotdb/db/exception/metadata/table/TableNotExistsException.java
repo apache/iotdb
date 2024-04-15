@@ -17,24 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription;
+package org.apache.iotdb.db.exception.metadata.table;
 
-import java.util.Objects;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public class SubscriptionException extends RuntimeException {
+public class TableNotExistsException extends MetadataException {
 
-  public SubscriptionException(String message) {
-    super(message);
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    return obj instanceof SubscriptionException
-        && Objects.equals(getMessage(), ((SubscriptionException) obj).getMessage());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(getMessage());
+  public TableNotExistsException(String database, String tableName) {
+    super(
+        String.format("Table %s.%s not exists.", database, tableName),
+        TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
   }
 }

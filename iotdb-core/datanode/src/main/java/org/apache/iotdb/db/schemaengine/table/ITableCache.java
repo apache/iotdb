@@ -17,15 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.exception.subscription;
+package org.apache.iotdb.db.schemaengine.table;
 
-public class SubscriptionPollTimeOutException extends SubscriptionException {
+import org.apache.iotdb.commons.schema.table.TsTable;
 
-  public SubscriptionPollTimeOutException(String message) {
-    super(message);
-  }
+public interface ITableCache {
 
-  protected SubscriptionPollTimeOutException(String message, long timeStamp) {
-    super(message, timeStamp);
-  }
+  void init(byte[] tableInitializationBytes);
+
+  void preCreateTable(String database, TsTable table);
+
+  void rollbackCreateTable(String database, String tableName);
+
+  void commitCreateTable(String database, String tableName);
 }

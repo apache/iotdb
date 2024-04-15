@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.commons.utils.KillPoint;
 
-public enum IoTConsensusRemovePeerKillPoints {
-  INIT,
-  AFTER_NOTIFY_PEERS_TO_REMOVE_SYNC_LOG_CHANNEL,
-  AFTER_INACTIVE_PEER,
-  FINISH,
+public enum KillNode {
+  ALL_NODES,
+  CONFIG_NODE,
+  ORIGINAL_DATANODE,
+  DESTINATION_DATANODE,
+  COORDINATOR_DATANODE,
 }

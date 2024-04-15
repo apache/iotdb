@@ -19,24 +19,30 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.relational.sql.tree.CreateTable;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 public class CreateTableTask implements IConfigTask {
 
-  private final CreateTable createTable;
+  private final TsTable table;
 
-  public CreateTableTask(CreateTable createTable) {
-    this.createTable = createTable;
+  private final String database;
+
+  private final boolean ifNotExists;
+
+  public CreateTableTask(TsTable table, String database, boolean ifNotExists) {
+    this.table = table;
+    this.database = database;
+    this.ifNotExists = ifNotExists;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createTable(createTable);
+    return configTaskExecutor.createTable(table, database, ifNotExists);
   }
 }

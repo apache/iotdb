@@ -200,6 +200,12 @@ public class ColumnHeaderConstant {
   // column names for show current timestamp
   public static final String CURRENT_TIMESTAMP = "CurrentTimestamp";
 
+  // column names for table query
+  public static final String COLUMN_NAME = "ColumnName";
+  public static final String COLUMN_DATA_TYPE = "DataType";
+  public static final String COLUMN_CATEGORY = "Category";
+  public static final String TABLE_NAME = "TableName";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -496,4 +502,15 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64));
+
+  public static final List<ColumnHeader> describeTableColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_DATA_TYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showTablesColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TABLE_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TTL, TSDataType.INT64));
 }

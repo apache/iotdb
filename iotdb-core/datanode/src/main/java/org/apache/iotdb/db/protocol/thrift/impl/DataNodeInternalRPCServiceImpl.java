@@ -39,13 +39,15 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.exception.subscription.SubscriptionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -85,6 +87,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -121,6 +125,7 @@ import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.service.DataNode;
@@ -217,15 +222,18 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -548,13 +556,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req) {
     DataNodeSchemaCache cache = DataNodeSchemaCache.getInstance();
-    cache.takeDeleteLock();
+    DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     cache.takeWriteLock();
     try {
       cache.invalidate(PathPatternTree.deserialize(req.pathPatternTree).getAllPathPatterns());
     } finally {
       cache.releaseWriteLock();
-      cache.releaseDeleteLock();
+      DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     }
     return RpcUtils.SUCCESS_STATUS;
   }
@@ -1376,6 +1384,39 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return resp;
   }
 
+  @Override
+  public TSStatus updateTable(TUpdateTableReq req) throws TException {
+    switch (TsTableInternalRPCType.getType(req.type)) {
+      case PRE_CREATE:
+        DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
+        try {
+          Pair<String, TsTable> pair =
+              TsTableInternalRPCUtil.deserializeSingleTsTable(req.getTableInfo());
+          DataNodeTableCache.getInstance().preCreateTable(pair.left, pair.right);
+          break;
+        } finally {
+          DataNodeSchemaLockManager.getInstance()
+              .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);
+        }
+      case ROLLBACK_CREATE:
+        DataNodeTableCache.getInstance()
+            .rollbackCreateTable(
+                ReadWriteIOUtils.readString(req.tableInfo),
+                ReadWriteIOUtils.readString(req.tableInfo));
+        break;
+      case COMMIT_CREATE:
+        DataNodeTableCache.getInstance()
+            .commitCreateTable(
+                ReadWriteIOUtils.readString(req.tableInfo),
+                ReadWriteIOUtils.readString(req.tableInfo));
+        break;
+      default:
+        LOGGER.warn("Unsupported type {} when updating table", req.type);
+        return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER);
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {
     PathPatternTree filteredPatternTree = new PathPatternTree();
     try {
@@ -1697,7 +1738,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus updateTemplate(TUpdateTemplateReq req) {
     switch (TemplateInternalRPCUpdateType.getType(req.type)) {
       case ADD_TEMPLATE_SET_INFO:
-        ClusterTemplateManager.getInstance().addTemplateSetInfo(req.getTemplateInfo());
+        DataNodeSchemaLockManager.getInstance()
+            .takeWriteLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+        try {
+          ClusterTemplateManager.getInstance().addTemplateSetInfo(req.getTemplateInfo());
+        } finally {
+          DataNodeSchemaLockManager.getInstance()
+              .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+        }
         break;
       case INVALIDATE_TEMPLATE_SET_INFO:
         ClusterTemplateManager.getInstance().invalidateTemplateSetInfo(req.getTemplateInfo());
