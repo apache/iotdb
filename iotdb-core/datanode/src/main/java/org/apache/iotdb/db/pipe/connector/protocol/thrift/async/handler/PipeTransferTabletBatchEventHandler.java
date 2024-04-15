@@ -86,7 +86,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
       for (final Event event : events) {
         if (event instanceof EnrichedEvent) {
           ((EnrichedEvent) event)
-              .clearReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
+              .decreaseReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
         }
       }
     } catch (Exception e) {

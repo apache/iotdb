@@ -82,8 +82,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   private IoTDBDataNodeAsyncClientManager clientManager;
 
-  private final IoTDBDataRegionSyncConnector retryConnector =
-      new IoTDBDataRegionSyncConnector(true);
+  private final IoTDBDataRegionSyncConnector retryConnector = new IoTDBDataRegionSyncConnector();
   private final PriorityBlockingQueue<Event> retryEventQueue =
       new PriorityBlockingQueue<>(
           11,
@@ -358,7 +357,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
       if (peekedEvent instanceof EnrichedEvent) {
         ((EnrichedEvent) peekedEvent)
-            .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), true);
+            .decreaseReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), true);
       }
 
       final Event polledEvent = retryEventQueue.poll();
@@ -394,8 +393,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   public synchronized void addFailureEventToRetryQueue(Event event) {
     if (isClosed.get()) {
       if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event)
-            .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), false);
+        ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
       }
       return;
     }
@@ -421,8 +419,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     while (!retryEventQueue.isEmpty()) {
       final Event event = retryEventQueue.poll();
       if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event)
-            .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), false);
+        ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
       }
     }
   }
@@ -443,7 +440,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
           if (event instanceof EnrichedEvent
               && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
             ((EnrichedEvent) event)
-                .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), false);
+                .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
             return true;
           }
           return false;

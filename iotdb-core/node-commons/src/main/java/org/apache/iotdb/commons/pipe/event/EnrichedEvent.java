@@ -156,22 +156,15 @@ public abstract class EnrichedEvent implements Event {
    * release the {@link EnrichedEvent} directly. The {@link EnrichedEvent} can be recycled and the
    * data stored in the {@link EnrichedEvent} may not be safe to use.
    *
-   * @param holderMessage The message of the invoker.
-   * @param shouldReport When in a closing scenario, specify as false; when it might be resource
-   *     release, specify as true, thus avoiding the problem of non-idempotence introduced by
-   *     multiple paths of {@link EnrichedEvent#decreaseReferenceCount}.
+   * @param holderMessage the message of the invoker
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully,
    *     {@code false} otherwise
    */
-  public boolean clearReferenceCount(String holderMessage, boolean shouldReport) {
+  public boolean clearReferenceCount(String holderMessage) {
     boolean isSuccessful = true;
     synchronized (this) {
       if (referenceCount.get() >= 1) {
         isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
-        if (!shouldReport) {
-          shouldReportOnCommit = false;
-        }
-        PipeEventCommitManager.getInstance().commit(this, committerKey);
       }
       referenceCount.set(0);
       isReleased.set(true);

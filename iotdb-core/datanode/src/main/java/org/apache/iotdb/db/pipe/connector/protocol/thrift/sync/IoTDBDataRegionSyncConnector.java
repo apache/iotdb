@@ -60,16 +60,6 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private IoTDBThriftSyncPipeTransferBatchReqBuilder tabletBatchBuilder;
 
-  private final boolean isUsedByAsyncConnector;
-
-  public IoTDBDataRegionSyncConnector() {
-    this(false);
-  }
-
-  public IoTDBDataRegionSyncConnector(boolean isUsedByAsyncConnector) {
-    this.isUsedByAsyncConnector = isUsedByAsyncConnector;
-  }
-
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
@@ -234,17 +224,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           tabletBatchBuilder.deepCopyEvents().toString());
     }
 
-    // Manually release the reference count before `onSuccess`, here it is necessary to distinguish
-    // whether the sync connector is a retry connector in the async connector. If it is, then this
-    // reference count release is not the last one.
-    if (isUsedByAsyncConnector) {
-      tabletBatchBuilder.decreaseEventsReferenceCount(
-          IoTDBDataRegionSyncConnector.class.getName(), false);
-    } else {
-      tabletBatchBuilder.clearEventsReferenceCount(
-          IoTDBDataRegionSyncConnector.class.getName(), true);
-    }
-
+    tabletBatchBuilder.decreaseEventsReferenceCount(
+        IoTDBDataRegionSyncConnector.class.getName(), false);
     tabletBatchBuilder.onSuccess();
   }
 

@@ -148,7 +148,7 @@ public abstract class PipeSubtask
 
   @Override
   public void close() {
-    clearReferenceCountAndReleaseLastEvent(false);
+    clearReferenceCountAndReleaseLastEvent();
   }
 
   protected synchronized void decreaseReferenceCountAndReleaseLastEvent(boolean shouldReport) {
@@ -161,10 +161,10 @@ public abstract class PipeSubtask
     }
   }
 
-  protected synchronized void clearReferenceCountAndReleaseLastEvent(boolean shouldReport) {
+  protected synchronized void clearReferenceCountAndReleaseLastEvent() {
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent) {
-        ((EnrichedEvent) lastEvent).clearReferenceCount(PipeSubtask.class.getName(), shouldReport);
+        ((EnrichedEvent) lastEvent).clearReferenceCount(PipeSubtask.class.getName());
       }
       lastEvent = null;
     }

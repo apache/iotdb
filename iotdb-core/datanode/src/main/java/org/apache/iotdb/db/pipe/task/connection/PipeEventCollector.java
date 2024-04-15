@@ -202,7 +202,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
     bufferQueue.forEach(
         event -> {
           if (event instanceof EnrichedEvent) {
-            ((EnrichedEvent) event).clearReferenceCount(PipeEventCollector.class.getName(), false);
+            ((EnrichedEvent) event).clearReferenceCount(PipeEventCollector.class.getName());
           }
         });
     bufferQueue.clear();

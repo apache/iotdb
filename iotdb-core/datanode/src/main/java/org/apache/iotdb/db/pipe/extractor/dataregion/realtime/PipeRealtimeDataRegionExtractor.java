@@ -227,7 +227,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         event -> {
           if (event instanceof EnrichedEvent) {
             ((EnrichedEvent) event)
-                .clearReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
+                .clearReferenceCount(PipeRealtimeDataRegionExtractor.class.getName());
           }
         });
   }
