@@ -31,7 +31,7 @@ public class NonAlignedPageElement extends PageElement {
   private final PageHeader pageHeader;
 
   // compressed page data
-  private final ByteBuffer pageData;
+  private ByteBuffer pageData;
 
   private final CompactionChunkReader chunkReader;
 
@@ -52,6 +52,7 @@ public class NonAlignedPageElement extends PageElement {
   public void deserializePage() throws IOException {
     TsBlock batchData = chunkReader.readPageData(pageHeader, pageData);
     this.pointReader = batchData.getTsBlockSingleColumnIterator();
+    pageData = null;
   }
 
   @Override
