@@ -824,42 +824,48 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
     final List<Thread> threads = new ArrayList<>();
     for (int i = 0; i < pipeCount; ++i) {
       final int finalI = i;
-      final Thread t =
-          new Thread(
-              () -> {
-                try (final SyncConfigNodeIServiceClient client =
-                    (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-                  final TSStatus status =
-                      client.createPipe(
-                          new TCreatePipeReq("p" + finalI, connectorAttributes)
-                              .setExtractorAttributes(extractorAttributes)
-                              .setProcessorAttributes(processorAttributes));
-                  Assert.assertEquals(
-                      TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-                } catch (InterruptedException e) {
-                  Thread.currentThread().interrupt();
-                } catch (TException | ClientManagerException | IOException e) {
-                  e.printStackTrace();
-                } catch (Exception e) {
-                  // Fail iff pipe exception occurs
-                  e.printStackTrace();
-                  fail(e.getMessage());
-                }
-              });
-      t.start();
-      threads.add(t);
-    }
-    for (final Thread t : threads) {
-      t.join();
-    }
 
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
-      Assert.assertEquals(pipeCount, showPipeResult.size());
-      showPipeResult =
-          client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true)).pipeInfoList;
-      Assert.assertEquals(pipeCount, showPipeResult.size());
+      try {
+        final Thread t =
+            new Thread(
+                () -> {
+                  try (final SyncConfigNodeIServiceClient client =
+                      (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+                    final TSStatus status =
+                        client.createPipe(
+                            new TCreatePipeReq("p" + finalI, connectorAttributes)
+                                .setExtractorAttributes(extractorAttributes)
+                                .setProcessorAttributes(processorAttributes));
+                    Assert.assertEquals(
+                        TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                  } catch (TException | ClientManagerException | IOException e) {
+                    e.printStackTrace();
+                  } catch (Exception e) {
+                    // Fail iff pipe exception occurs
+                    e.printStackTrace();
+                    fail(e.getMessage());
+                  }
+                });
+        t.start();
+        threads.add(t);
+      } catch (OutOfMemoryError | Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+      for (final Thread t : threads) {
+        t.join();
+      }
+
+      try (final SyncConfigNodeIServiceClient client =
+          (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+        List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+        Assert.assertEquals(pipeCount, showPipeResult.size());
+        showPipeResult =
+            client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true)).pipeInfoList;
+        Assert.assertEquals(pipeCount, showPipeResult.size());
+      }
     }
   }
 
