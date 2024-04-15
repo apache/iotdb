@@ -116,14 +116,14 @@ public class AggregateProcessor implements PipeProcessor {
   private final Map<String, String> systemParameters = new HashMap<>();
 
   private static final Map<String, Integer> pipeName2referenceCountMap = new ConcurrentHashMap<>();
+  private static final Map<String, AtomicLong> pipeName2LastValueReceiveTimeMap =
+      new ConcurrentHashMap<>();
   private static final ConcurrentMap<
           String, ConcurrentMap<String, AtomicReference<TimeSeriesRuntimeState>>>
       pipeName2timeSeries2TimeSeriesRuntimeStateMap = new ConcurrentHashMap<>();
 
   private AbstractWindowingProcessor windowingProcessor;
   private final List<AbstractOperatorProcessor> operatorProcessors = new ArrayList<>();
-
-  private static final AtomicLong lastValueReceiveTime = new AtomicLong(0);
 
   // Static values, calculated on initialization
   private String[] columnNameStringList;
@@ -179,7 +179,7 @@ public class AggregateProcessor implements PipeProcessor {
     pipeName = configuration.getRuntimeEnvironment().getPipeName();
     pipeName2referenceCountMap.compute(
         pipeName, (name, count) -> Objects.nonNull(count) ? count + 1 : 1);
-    pipeName2timeSeries2TimeSeriesRuntimeStateMap.put(pipeName, new ConcurrentHashMap<>());
+    pipeName2timeSeries2TimeSeriesRuntimeStateMap.putIfAbsent(pipeName, new ConcurrentHashMap<>());
 
     databaseWithPathSeparator =
         StorageEngine.getInstance()
@@ -199,8 +199,10 @@ public class AggregateProcessor implements PipeProcessor {
         parameters.getLongOrDefault(
             PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_KEY,
             PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_DEFAULT_VALUE);
+    // The output max delay milliseconds must be set to at least 1
+    // to guarantee the correctness of the CAS in last receive time
     outputMaxDelayMilliseconds =
-        outputMaxDelaySeconds < 0 ? Long.MAX_VALUE : outputMaxDelaySeconds * 1000;
+        outputMaxDelaySeconds < 0 ? Long.MAX_VALUE : Math.max(outputMaxDelaySeconds * 1000, 1);
     outputMinReportIntervalMilliseconds =
         parameters.getLongOrDefault(
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_KEY,
@@ -367,7 +369,10 @@ public class AggregateProcessor implements PipeProcessor {
       return;
     }
 
-    lastValueReceiveTime.set(System.currentTimeMillis());
+    pipeName2LastValueReceiveTimeMap
+        .computeIfAbsent(pipeName, key -> new AtomicLong(System.currentTimeMillis()))
+        .set(System.currentTimeMillis());
+
     final AtomicReference<Exception> exception = new AtomicReference<>();
     final TimeWindowStateProgressIndex progressIndex =
         new TimeWindowStateProgressIndex(new ConcurrentHashMap<>());
@@ -503,7 +508,13 @@ public class AggregateProcessor implements PipeProcessor {
 
   @Override
   public void process(final Event event, final EventCollector eventCollector) throws Exception {
-    if (System.currentTimeMillis() - lastValueReceiveTime.get() > outputMaxDelayMilliseconds) {
+    final AtomicLong lastReceiveTime =
+        pipeName2LastValueReceiveTimeMap.computeIfAbsent(
+            pipeName, key -> new AtomicLong(System.currentTimeMillis()));
+
+    final long previousTime = lastReceiveTime.get();
+
+    if (System.currentTimeMillis() - previousTime > outputMaxDelayMilliseconds) {
       final AtomicReference<Exception> exception = new AtomicReference<>();
 
       pipeName2timeSeries2TimeSeriesRuntimeStateMap
@@ -534,10 +545,14 @@ public class AggregateProcessor implements PipeProcessor {
                 }
               });
       if (exception.get() != null) {
+        // Retry at the fixed interval
+        lastReceiveTime.set(System.currentTimeMillis());
         throw exception.get();
       }
       // Forbidding emitting results until next data comes
-      lastValueReceiveTime.set(Long.MAX_VALUE);
+      // If the last receive time has changed, it means new data has come
+      // thus the next output is needed
+      lastReceiveTime.compareAndSet(previousTime, Long.MAX_VALUE);
     }
 
     eventCollector.collect(event);

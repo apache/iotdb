@@ -60,10 +60,11 @@ public class TimeSeriesRuntimeState {
   private final List<WindowOutput> outputList = new ArrayList<>();
 
   public TimeSeriesRuntimeState(
-      Map<String, AggregatedResultOperator> aggregatorOutputName2OperatorMap,
-      Map<String, Supplier<IntermediateResultOperator>> intermediateResultName2OperatorSupplierMap,
-      Map<String, String> systemParameters,
-      AbstractWindowingProcessor windowingProcessor) {
+      final Map<String, AggregatedResultOperator> aggregatorOutputName2OperatorMap,
+      final Map<String, Supplier<IntermediateResultOperator>>
+          intermediateResultName2OperatorSupplierMap,
+      final Map<String, String> systemParameters,
+      final AbstractWindowingProcessor windowingProcessor) {
     this.aggregatorOutputName2OperatorMap = aggregatorOutputName2OperatorMap;
     this.intermediateResultName2OperatorSupplierMap = intermediateResultName2OperatorSupplierMap;
     this.systemParameters = systemParameters;
@@ -72,7 +73,8 @@ public class TimeSeriesRuntimeState {
 
   // The following "updateWindows" are the same except for the input value types
   public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
-      long timestamp, boolean value, long outputMinReportIntervalMilliseconds) throws IOException {
+      final long timestamp, final boolean value, final long outputMinReportIntervalMilliseconds)
+      throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 
     if (timestamp <= lastReportTimeStamp) {
@@ -117,7 +119,8 @@ public class TimeSeriesRuntimeState {
   }
 
   public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
-      long timestamp, int value, long outputMinReportIntervalMilliseconds) throws IOException {
+      final long timestamp, final int value, final long outputMinReportIntervalMilliseconds)
+      throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 
     if (timestamp <= lastReportTimeStamp) {
@@ -162,7 +165,8 @@ public class TimeSeriesRuntimeState {
   }
 
   public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
-      long timestamp, long value, long outputMinReportIntervalMilliseconds) throws IOException {
+      final long timestamp, final long value, final long outputMinReportIntervalMilliseconds)
+      throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 
     if (timestamp <= lastReportTimeStamp) {
@@ -207,7 +211,8 @@ public class TimeSeriesRuntimeState {
   }
 
   public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
-      long timestamp, float value, long outputMinReportIntervalMilliseconds) throws IOException {
+      final long timestamp, final float value, final long outputMinReportIntervalMilliseconds)
+      throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 
     if (timestamp <= lastReportTimeStamp) {
@@ -252,7 +257,8 @@ public class TimeSeriesRuntimeState {
   }
 
   public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
-      long timestamp, double value, long outputMinReportIntervalMilliseconds) throws IOException {
+      final long timestamp, final double value, final long outputMinReportIntervalMilliseconds)
+      throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 
     if (timestamp <= lastReportTimeStamp) {
@@ -297,7 +303,8 @@ public class TimeSeriesRuntimeState {
   }
 
   public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
-      long timestamp, String value, long outputMinReportIntervalMilliseconds) throws IOException {
+      final long timestamp, final String value, final long outputMinReportIntervalMilliseconds)
+      throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 
     if (timestamp <= lastReportTimeStamp) {
@@ -351,7 +358,7 @@ public class TimeSeriesRuntimeState {
   // interval time to avoid frequent serialization
   // Return null if this should not report
   private Pair<Long, ByteBuffer> getTimestampWindowBufferPair(
-      long outputMinReportIntervalMilliseconds) throws IOException {
+      final long outputMinReportIntervalMilliseconds) throws IOException {
     if (currentOpeningWindows.isEmpty()) {
       return new Pair<>(lastReportTimeStamp, null);
     }
@@ -372,7 +379,7 @@ public class TimeSeriesRuntimeState {
     }
   }
 
-  public void restoreTimestampAndWindows(Pair<Long, ByteBuffer> timestampWindowBufferPair)
+  public void restoreTimestampAndWindows(final Pair<Long, ByteBuffer> timestampWindowBufferPair)
       throws IOException {
     if (timestampWindowBufferPair.getLeft() <= lastReportTimeStamp) {
       // The runtime state may be initialized by different processorSubtasks on one DataNode
