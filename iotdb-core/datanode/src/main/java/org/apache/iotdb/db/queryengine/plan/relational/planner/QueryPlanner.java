@@ -28,6 +28,7 @@ import org.apache.iotdb.db.relational.sql.tree.Node;
 import org.apache.iotdb.db.relational.sql.tree.Offset;
 import org.apache.iotdb.db.relational.sql.tree.OrderBy;
 import org.apache.iotdb.db.relational.sql.tree.Query;
+import org.apache.iotdb.db.relational.sql.tree.QueryBody;
 import org.apache.iotdb.db.relational.sql.tree.QuerySpecification;
 import org.apache.iotdb.db.relational.sql.tree.SortItem;
 import org.apache.iotdb.tsfile.read.common.type.Type;
@@ -47,18 +48,17 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTranslator.sortItemToSortOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 
-class QueryPlanner {
-  private static final int MAX_BIGINT_PRECISION = 19;
+public class QueryPlanner {
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
   private final QueryId idAllocator;
-  // private final Map<NodeRef<LambdaArgumentDeclaration>, Symbol> lambdaDeclarationToSymbolMap;
-  // private final PlannerContext plannerContext;
   private final SessionInfo session;
-  // private final SubqueryPlanner subqueryPlanner;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
 
-  QueryPlanner(
+  // private final Map<NodeRef<LambdaArgumentDeclaration>, Symbol> lambdaDeclarationToSymbolMap;
+  // private final SubqueryPlanner subqueryPlanner;
+
+  public QueryPlanner(
       Analysis analysis,
       SymbolAllocator symbolAllocator,
       QueryId idAllocator,
@@ -74,12 +74,11 @@ class QueryPlanner {
     this.symbolAllocator = symbolAllocator;
     this.idAllocator = idAllocator;
     this.session = session;
-    // this.subqueryPlanner = null;
     this.recursiveSubqueries = recursiveSubqueries;
   }
 
   public RelationPlan plan(Query query) {
-    PlanBuilder builder = planQueryBody(query);
+    PlanBuilder builder = planQueryBody(query.getQueryBody());
 
     List<Expression> orderBy = analysis.getOrderByExpressions(query);
     // builder = subqueryPlanner.handleSubqueries(builder, orderBy, analysis.getSubqueries(query));
@@ -108,20 +107,16 @@ class QueryPlanner {
     PlanBuilder builder = planFrom(node);
 
     builder = filter(builder, analysis.getWhere(node), node);
-    // builder = aggregate(builder, node);
-    builder = filter(builder, analysis.getHaving(node), node);
-    // builder = planWindowFunctions(node, builder,
-    // ImmutableList.copyOf(analysis.getWindowFunctions(node)));
-    // builder = planWindowMeasures(node, builder,
-    // ImmutableList.copyOf(analysis.getWindowMeasures(node)));
+
+    // TODO prcess aggregate, having later
 
     List<Analysis.SelectExpression> selectExpressions = analysis.getSelectExpressions(node);
     List<Expression> expressions =
         selectExpressions.stream()
             .map(Analysis.SelectExpression::getExpression)
             .collect(toImmutableList());
-    // builder = subqueryPlanner.handleSubqueries(builder, expressions,
-    // analysis.getSubqueries(node));
+
+    // TODO process subQuery later
 
     if (hasExpressionsToUnfold(selectExpressions)) {
       // pre-project the folded expressions to preserve any non-deterministic semantics of functions
@@ -160,10 +155,12 @@ class QueryPlanner {
     }
 
     List<Expression> orderBy = analysis.getOrderByExpressions(node);
+    // TODO this appendProjections may be removed
     builder =
         builder.appendProjections(Iterables.concat(orderBy, outputs), symbolAllocator, idAllocator);
 
-    // builder = distinct(builder, node, outputs);
+    // TODO handle distinct
+
     Optional<OrderingScheme> orderingScheme =
         orderingScheme(builder, node.getOrderBy(), analysis.getOrderByExpressions(node));
     builder = sort(builder, orderingScheme);
@@ -208,10 +205,10 @@ class QueryPlanner {
     return outputSymbols.build();
   }
 
-  private PlanBuilder planQueryBody(Query query) {
+  private PlanBuilder planQueryBody(QueryBody queryBody) {
     RelationPlan relationPlan =
         new RelationPlanner(analysis, symbolAllocator, idAllocator, session, recursiveSubqueries)
-            .process(query.getQueryBody(), null);
+            .process(queryBody, null);
 
     return newPlanBuilder(relationPlan, analysis, session);
   }
@@ -223,7 +220,7 @@ class QueryPlanner {
               .process(node.getFrom().get(), null);
       return newPlanBuilder(relationPlan, analysis, session);
     } else {
-      throw new RuntimeException("From clause must not by empty");
+      throw new IllegalStateException("From clause must not by empty");
     }
   }
 

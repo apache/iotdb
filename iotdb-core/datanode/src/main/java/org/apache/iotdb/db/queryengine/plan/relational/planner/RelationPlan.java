@@ -29,14 +29,14 @@ import static java.util.Objects.requireNonNull;
  * values, etc.), and the mapping to indicate how the fields (by position) in the relation map to
  * the outputs of the plan.
  */
-class RelationPlan {
+public class RelationPlan {
 
   private final PlanNode root;
 
+  private final Scope scope;
+
   // for each field in the relation, the corresponding symbol from "root"
   private final List<Symbol> fieldMappings;
-
-  private final Scope scope;
 
   public RelationPlan(PlanNode root, Scope scope, List<Symbol> fieldMappings) {
     requireNonNull(root, "root is null");

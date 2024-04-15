@@ -29,7 +29,8 @@ import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
 
-class PlanBuilder {
+public class PlanBuilder {
+
   private final PlanNode root;
 
   public PlanBuilder(PlanNode root) {
@@ -68,8 +69,7 @@ class PlanBuilder {
     Assignments.Builder projections = Assignments.builder();
 
     // add an identity projection for underlying plan
-    // TODO needed?
-    // projections.putIdentities(root.getOutputSymbols());
+    projections.putIdentities(root.getOutputSymbols());
 
     Map<ScopeAware<Expression>, Symbol> mappings = new HashMap<>();
     //        for (T expression : expressions) {

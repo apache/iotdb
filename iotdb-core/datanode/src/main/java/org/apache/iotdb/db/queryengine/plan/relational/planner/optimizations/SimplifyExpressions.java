@@ -37,10 +37,6 @@ public class SimplifyExpressions implements RelationalPlanOptimizer {
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
-      // PlanNode newNode = node.clone();
-      if (node.getChildren() == null) {
-        System.out.println("aa");
-      }
       for (PlanNode child : node.getChildren()) {
         child.accept(this, context);
       }

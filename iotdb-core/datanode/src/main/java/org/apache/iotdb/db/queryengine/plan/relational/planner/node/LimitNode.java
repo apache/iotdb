@@ -4,6 +4,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -13,7 +14,7 @@ import java.util.Optional;
 
 public class LimitNode extends SingleChildProcessNode {
   private final long count;
-  // what's the meaning?
+  // TODO what's the meaning?
   private final Optional<OrderingScheme> tiesResolvingScheme;
   // private final boolean partial;
   // private final List<Symbol> preSortedInputs;
@@ -27,7 +28,7 @@ public class LimitNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return null;
+    return new LimitNode(id, child, count, tiesResolvingScheme);
   }
 
   @Override
@@ -40,4 +41,9 @@ public class LimitNode extends SingleChildProcessNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+
+  @Override
+  public List<Symbol> getOutputSymbols() {
+    return child.getOutputSymbols();
+  }
 }

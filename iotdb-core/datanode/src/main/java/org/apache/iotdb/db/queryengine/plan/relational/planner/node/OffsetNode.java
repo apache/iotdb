@@ -3,6 +3,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -19,7 +20,7 @@ public class OffsetNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return null;
+    return new OffsetNode(id, child, count);
   }
 
   @Override
@@ -32,4 +33,9 @@ public class OffsetNode extends SingleChildProcessNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+
+  @Override
+  public List<Symbol> getOutputSymbols() {
+    return child.getOutputSymbols();
+  }
 }

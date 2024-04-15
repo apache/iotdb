@@ -134,9 +134,10 @@ public class AnalyzerTest {
 
   @Test
   public void testSingleTableQuery() throws IoTDBException {
+    // no sort
     String sql =
         "SELECT tag1 as tt, tag2, attr1, s1+1 FROM table1 "
-            + "WHERE time>1 AND tag1='A' OR s2>3 ORDER BY time DESC OFFSET 10 LIMIT 5";
+            + "WHERE time>1 AND tag1='A' OR s2>3 OFFSET 10 LIMIT 5";
     Metadata metadata = new TestMatadata();
 
     Analysis actualAnalysis = analyzeSQL(sql, metadata);

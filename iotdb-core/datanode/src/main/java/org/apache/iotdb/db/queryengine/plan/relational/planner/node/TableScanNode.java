@@ -62,4 +62,9 @@ public class TableScanNode extends PlanNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+
+  @Override
+  public List<Symbol> getOutputSymbols() {
+    return outputSymbols;
+  }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -205,5 +206,10 @@ public abstract class PlanNode implements IConsensusRequest {
   @Override
   public int hashCode() {
     return Objects.hash(id);
+  }
+
+  // =========================== Used for Relational Model ============================
+  public List<Symbol> getOutputSymbols() {
+    throw new UnsupportedOperationException("This planNode does not support getOutputSymbols().");
   }
 }

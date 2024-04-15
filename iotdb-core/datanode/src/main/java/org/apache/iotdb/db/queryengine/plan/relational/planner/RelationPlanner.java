@@ -25,11 +25,17 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.relational.sql.tree.AliasedRelation;
 import org.apache.iotdb.db.relational.sql.tree.AstVisitor;
+import org.apache.iotdb.db.relational.sql.tree.Except;
+import org.apache.iotdb.db.relational.sql.tree.Intersect;
+import org.apache.iotdb.db.relational.sql.tree.Join;
 import org.apache.iotdb.db.relational.sql.tree.Node;
 import org.apache.iotdb.db.relational.sql.tree.Query;
 import org.apache.iotdb.db.relational.sql.tree.QuerySpecification;
 import org.apache.iotdb.db.relational.sql.tree.SubqueryExpression;
 import org.apache.iotdb.db.relational.sql.tree.Table;
+import org.apache.iotdb.db.relational.sql.tree.TableSubquery;
+import org.apache.iotdb.db.relational.sql.tree.Union;
+import org.apache.iotdb.db.relational.sql.tree.Values;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -40,14 +46,14 @@ import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
 
-class RelationPlanner extends AstVisitor<RelationPlan, Void> {
+public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
   private final QueryId idAllocator;
   private final SessionInfo session;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
 
-  RelationPlanner(
+  public RelationPlanner(
       Analysis analysis,
       SymbolAllocator symbolAllocator,
       QueryId idAllocator,
@@ -67,8 +73,9 @@ class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitNode(Node node, Void context) {
-    throw new IllegalStateException("Unsupported node type: " + node.getClass().getName());
+  protected RelationPlan visitQuery(Query node, Void context) {
+    return new QueryPlanner(analysis, symbolAllocator, idAllocator, session, recursiveSubqueries)
+        .plan(node);
   }
 
   @Override
@@ -83,144 +90,30 @@ class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           expansion.getRoot(), expansion.getScope(), expansion.getFieldMappings());
     }
 
-    Query namedQuery = analysis.getNamedQuery(node);
     Scope scope = analysis.getScope(node);
+    TableHandle tableHandle = analysis.getTableHandle(node);
 
-    RelationPlan plan;
-    if (namedQuery != null) {
-      throw new RuntimeException("NamedQuery is not supported");
-    } else {
-      TableHandle handle = analysis.getTableHandle(node);
+    ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
+    ImmutableMap.Builder<Symbol, ColumnHandle> columnsBuilder = ImmutableMap.builder();
 
-      ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
-      ImmutableMap.Builder<Symbol, ColumnHandle> columns = ImmutableMap.builder();
-
-      // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);
-      Collection<Field> fields = scope.getRelationType().getAllFields();
-      for (Field field : fields) {
-        Symbol symbol = symbolAllocator.newSymbol(field);
-
-        outputSymbolsBuilder.add(symbol);
-        columns.put(symbol, analysis.getColumn(field));
-      }
-
-      List<Symbol> outputSymbols = outputSymbolsBuilder.build();
-      PlanNode root =
-          new TableScanNode(
-              idAllocator.genPlanNodeId(), handle, outputSymbols, columns.buildOrThrow());
-
-      plan = new RelationPlan(root, scope, outputSymbols);
+    Collection<Field> fields = scope.getRelationType().getAllFields();
+    for (Field field : fields) {
+      Symbol symbol = symbolAllocator.newSymbol(field);
+      outputSymbolsBuilder.add(symbol);
+      columnsBuilder.put(symbol, analysis.getColumn(field));
     }
 
-    // TODO what's the meaning of RowFilters addColumnMasks?
+    List<Symbol> outputSymbols = outputSymbolsBuilder.build();
+    PlanNode root =
+        new TableScanNode(
+            idAllocator.genPlanNodeId(), tableHandle, outputSymbols, columnsBuilder.buildOrThrow());
+
+    return new RelationPlan(root, scope, outputSymbols);
+
+    // Query namedQuery = analysis.getNamedQuery(node);
+    // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);
     // plan = addRowFilters(node, plan);
     // plan = addColumnMasks(node, plan);
-
-    return plan;
-  }
-
-  //  private RelationPlan addRowFilters(Table node, RelationPlan plan) {
-  //    return addRowFilters(node, plan, Function.identity());
-  //  }
-
-  //  public RelationPlan addRowFilters(
-  //      Table node, RelationPlan plan, Function<Expression, Expression> predicateTransformation) {
-  //    List<Expression> filters = null;
-  //    // analysis.getRowFilters(node);
-  //
-  //    if (filters.isEmpty()) {
-  //      return plan;
-  //    }
-  //
-  //    // The fields in the access control scope has the same layout as those for the table scope
-  //    PlanBuilder planBuilder = newPlanBuilder(plan, analysis, session);
-  //    // .withScope(accessControlScope.apply(node), plan.getFieldMappings());
-  //
-  //    for (Expression filter : filters) {
-  //      // planBuilder = subqueryPlanner.handleSubqueries(planBuilder, filter,
-  //      // analysis.getSubqueries(filter));
-  //
-  //      Expression predicate = coerceIfNecessary(analysis, filter, filter);
-  //      predicate = predicateTransformation.apply(predicate);
-  //      planBuilder =
-  //          planBuilder.withNewRoot(
-  //              new FilterNode(idAllocator.genPlanNodeId(), planBuilder.getRoot(), predicate));
-  //    }
-  //
-  //    return new RelationPlan(planBuilder.getRoot(), plan.getScope(), plan.getFieldMappings());
-  //  }
-
-  //    private RelationPlan addColumnMasks(Table table, RelationPlan plan) {
-  //        Map<String, Expression> columnMasks = analysis.getColumnMasks(table);
-  //
-  //        // A Table can represent a WITH query, which can have anonymous fields. On the other
-  // hand,
-  //        // it can't have masks. The loop below expects fields to have proper names, so bail out
-  //        // if the masks are missing
-  //        if (columnMasks.isEmpty()) {
-  //            return plan;
-  //        }
-  //
-  //        // The fields in the access control scope has the same layout as those for the table
-  // scope
-  //        PlanBuilder planBuilder = newPlanBuilder(plan, analysis, session)
-  //                .withScope(analysis.getAccessControlScope(table), plan.getFieldMappings());
-  //
-  //        Assignments.Builder assignments = Assignments.builder();
-  //        assignments.putIdentities(planBuilder.getRoot().getOutputSymbols());
-  //
-  //        List<Symbol> fieldMappings = new ArrayList<>();
-  //        for (int i = 0; i < plan.getDescriptor().getAllFieldCount(); i++) {
-  //            Field field = plan.getDescriptor().getFieldByIndex(i);
-  //
-  //            Expression mask = columnMasks.get(field.getName().orElseThrow());
-  //            Symbol symbol = plan.getFieldMappings().get(i);
-  //            Expression projection = symbol.toSymbolReference();
-  //            if (mask != null) {
-  //                symbol = symbolAllocator.newSymbol(symbol);
-  //                projection = coerceIfNecessary(analysis, mask, planBuilder.rewrite(mask));
-  //            }
-  //
-  //            assignments.put(symbol, projection);
-  //            fieldMappings.add(symbol);
-  //        }
-  //
-  //        planBuilder = planBuilder
-  //                .withNewRoot(new ProjectNode(
-  //                        idAllocator.genPlanNodeId(),
-  //                        planBuilder.getRoot(),
-  //                        assignments.build()));
-  //
-  //        return new RelationPlan(planBuilder.getRoot(), plan.getScope(), fieldMappings);
-  //    }
-
-  @Override
-  protected RelationPlan visitAliasedRelation(AliasedRelation node, Void context) {
-    RelationPlan subPlan = process(node.getRelation(), context);
-
-    PlanNode root = subPlan.getRoot();
-    List<Symbol> mappings = subPlan.getFieldMappings();
-
-    if (node.getColumnNames() != null) {
-      ImmutableList.Builder<Symbol> newMappings = ImmutableList.builder();
-
-      // Adjust the mappings to expose only the columns visible in the scope of the aliased relation
-      for (int i = 0; i < subPlan.getDescriptor().getAllFieldCount(); i++) {
-        if (!subPlan.getDescriptor().getFieldByIndex(i).isHidden()) {
-          newMappings.add(subPlan.getFieldMappings().get(i));
-        }
-      }
-
-      mappings = newMappings.build();
-    }
-
-    return new RelationPlan(root, analysis.getScope(node), mappings);
-  }
-
-  @Override
-  protected RelationPlan visitQuery(Query node, Void context) {
-    return new QueryPlanner(analysis, symbolAllocator, idAllocator, session, recursiveSubqueries)
-        .plan(node);
   }
 
   @Override
@@ -230,7 +123,48 @@ class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
+  protected RelationPlan visitNode(Node node, Void context) {
+    throw new IllegalStateException("Unsupported node type: " + node.getClass().getName());
+  }
+
+  // ================================ Implemented later =====================================
+  @Override
+  protected RelationPlan visitTableSubquery(TableSubquery node, Void context) {
+    throw new IllegalStateException("TableSubquery is not supported in current version.");
+  }
+
+  @Override
+  protected RelationPlan visitValues(Values node, Void context) {
+    throw new IllegalStateException("Values is not supported in current version.");
+  }
+
+  @Override
   protected RelationPlan visitSubqueryExpression(SubqueryExpression node, Void context) {
-    return process(node.getQuery(), context);
+    throw new IllegalStateException("SubqueryExpression is not supported in current version.");
+  }
+
+  @Override
+  protected RelationPlan visitJoin(Join node, Void context) {
+    throw new IllegalStateException("Join is not supported in current version.");
+  }
+
+  @Override
+  protected RelationPlan visitAliasedRelation(AliasedRelation node, Void context) {
+    throw new IllegalStateException("AliasedRelation is not supported in current version.");
+  }
+
+  @Override
+  protected RelationPlan visitIntersect(Intersect node, Void context) {
+    throw new IllegalStateException("Intersect is not supported in current version.");
+  }
+
+  @Override
+  protected RelationPlan visitUnion(Union node, Void context) {
+    throw new IllegalStateException("Union is not supported in current version.");
+  }
+
+  @Override
+  protected RelationPlan visitExcept(Except node, Void context) {
+    throw new IllegalStateException("Except is not supported in current version.");
   }
 }
