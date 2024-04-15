@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -60,6 +62,7 @@ import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteRes;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -70,10 +73,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -87,6 +90,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class IoTConsensusServerImpl {
@@ -134,8 +138,9 @@ public class IoTConsensusServerImpl {
     this.configuration = configuration;
     if (configuration.isEmpty()) {
       recoverConfiguration();
+    } else {
+      persistConfiguration();
     }
-    persistConfiguration();
     this.backgroundTaskService = backgroundTaskService;
     this.config = config;
     this.consensusGroupId = thisNode.getGroupId().toString();
@@ -317,11 +322,10 @@ public class IoTConsensusServerImpl {
       if (!Files.exists(parentDir)) {
         Files.createDirectories(parentDir);
       }
-      Files.write(
-          Paths.get(targetFile.getAbsolutePath()),
-          fileChunk.array(),
-          StandardOpenOption.CREATE,
-          StandardOpenOption.APPEND);
+      try (FileOutputStream fos = new FileOutputStream(targetFile.getAbsolutePath(), true);
+          FileChannel channel = fos.getChannel()) {
+        channel.write(fileChunk.slice());
+      }
     } catch (IOException e) {
       throw new ConsensusGroupModifyPeerException(
           String.format("error when receiving snapshot %s", snapshotId), e);
@@ -379,19 +383,30 @@ public class IoTConsensusServerImpl {
     stateMachine.loadSnapshot(new File(storageDir, snapshotId));
   }
 
-  public void inactivePeer(Peer peer) throws ConsensusGroupModifyPeerException {
+  @FunctionalInterface
+  public interface ThrowableFunction<T, R> {
+    R apply(T t) throws Exception;
+  }
+
+  public void inactivePeer(Peer peer, boolean forDeletionPurpose)
+      throws ConsensusGroupModifyPeerException {
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(peer.getEndpoint())) {
-      TInactivatePeerRes res =
-          client.inactivatePeer(
-              new TInactivatePeerReq(peer.getGroupId().convertToTConsensusGroupId()));
-      if (!isSuccess(res.status)) {
+      try {
+        TInactivatePeerRes res =
+            client.inactivatePeer(
+                new TInactivatePeerReq(peer.getGroupId().convertToTConsensusGroupId())
+                    .setForDeletionPurpose(forDeletionPurpose));
+        if (!isSuccess(res.status)) {
+          throw new ConsensusGroupModifyPeerException(
+              String.format("error when inactivating %s. %s", peer, res.getStatus()));
+        }
+      } catch (Exception e) {
         throw new ConsensusGroupModifyPeerException(
-            String.format("error when inactivating %s. %s", peer, res.getStatus()));
+            String.format("error when inactivating %s", peer), e);
       }
-    } catch (Exception e) {
-      throw new ConsensusGroupModifyPeerException(
-          String.format("error when inactivating %s", peer), e);
+    } catch (ClientManagerException e) {
+      throw new ConsensusGroupModifyPeerException(e);
     }
   }
 
@@ -478,7 +493,7 @@ public class IoTConsensusServerImpl {
       throws ConsensusGroupModifyPeerException {
     // The configuration will be modified during iterating because we will add the targetPeer to
     // configuration
-    List<Peer> currentMembers = new ArrayList<>(this.configuration);
+    ImmutableList<Peer> currentMembers = ImmutableList.copyOf(this.configuration);
     for (Peer peer : currentMembers) {
       if (peer.equals(targetPeer)) {
         // if the targetPeer is the same as current peer, skip it because removing itself is illegal
@@ -562,6 +577,7 @@ public class IoTConsensusServerImpl {
 
   public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex)
       throws ConsensusGroupModifyPeerException {
+    KillPoint.setKillPoint(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE);
     // step 1, build sync channel in LogDispatcher
     logger.info(
         "[IoTConsensus] build sync log channel to {} with initialSyncIndex {}",
@@ -591,23 +607,12 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  // TODO: persist first and then delete old configuration file
   public void persistConfiguration() {
     try {
-      try (Stream<Path> stream = Files.walk(Paths.get(storageDir))) {
-        stream
-            .filter(Files::isRegularFile)
-            .filter(filePath -> filePath.getFileName().toString().contains("configuration"))
-            .forEach(
-                filePath -> {
-                  try {
-                    Files.delete(filePath);
-                  } catch (IOException e) {
-                    logger.error("Unexpected error occurs when deleting old configuration file", e);
-                  }
-                });
-      }
+      renameTmpConfigurationFileToRemoveSuffix();
       serializeConfigurationAndFsyncToDisk();
+      deleteConfiguration();
+      renameTmpConfigurationFileToRemoveSuffix();
     } catch (IOException e) {
       // TODO: (xingtanzjr) need to handle the IOException because the IoTConsensus won't
       // work expectedly
@@ -642,6 +647,7 @@ public class IoTConsensusServerImpl {
             configuration.add(peer);
           }
         }
+        persistConfiguration();
       }
       logger.info("Recover IoTConsensus server Impl, configuration: {}", configuration);
     } catch (IOException e) {
@@ -657,12 +663,12 @@ public class IoTConsensusServerImpl {
     for (int i = 0; i < size; i++) {
       configuration.add(Peer.deserialize(buffer));
     }
-    // TODO: delete old file before new file persisted is unsafe
+    persistConfiguration();
     Files.delete(oldConfigurationPath);
   }
 
-  public static String generateConfigurationDatFileName(int nodeId) {
-    return nodeId + "_" + CONFIGURATION_FILE_NAME;
+  public static String generateConfigurationDatFileName(int nodeId, String suffix) {
+    return nodeId + "_" + suffix;
   }
 
   private List<Peer> getConfiguration(Path dirPath, String configurationFileName)
@@ -679,11 +685,6 @@ public class IoTConsensusServerImpl {
       tmpConfiguration.add(Peer.deserialize(buffer));
     }
     return tmpConfiguration;
-  }
-
-  public void resetConfiguration(List<Peer> newConfiguration) {
-    configuration.clear();
-    configuration.addAll(newConfiguration);
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
@@ -876,7 +877,8 @@ public class IoTConsensusServerImpl {
 
   private void serializeConfigurationAndFsyncToDisk() throws IOException {
     for (Peer peer : configuration) {
-      String peerConfigurationFileName = generateConfigurationDatFileName(peer.getNodeId());
+      String peerConfigurationFileName =
+          generateConfigurationDatFileName(peer.getNodeId(), CONFIGURATION_TMP_FILE_NAME);
       FileOutputStream fileOutputStream =
           new FileOutputStream(new File(storageDir, peerConfigurationFileName));
       try (DataOutputStream outputStream = new DataOutputStream(fileOutputStream)) {
@@ -886,9 +888,55 @@ public class IoTConsensusServerImpl {
           fileOutputStream.flush();
           fileOutputStream.getFD().sync();
         } catch (IOException ignore) {
-          // ignore
+          // ignore sync exception
         }
       }
+    }
+  }
+
+  private void renameTmpConfigurationFileToRemoveSuffix() throws IOException {
+    try (Stream<Path> stream = Files.walk(Paths.get(storageDir))) {
+      List<Path> paths =
+          stream
+              .filter(Files::isRegularFile)
+              .filter(
+                  filePath ->
+                      filePath.getFileName().toString().endsWith(CONFIGURATION_TMP_FILE_NAME))
+              .collect(Collectors.toList());
+      for (Path filePath : paths) {
+        String targetPath =
+            filePath.toString().replace(CONFIGURATION_TMP_FILE_NAME, CONFIGURATION_FILE_NAME);
+        File targetFile = new File(targetPath);
+        if (targetFile.exists()) {
+          try {
+            Files.delete(targetFile.toPath());
+          } catch (IOException e) {
+            logger.error("Unexpected error occurs when delete file: {}", targetPath);
+          }
+        }
+        if (!filePath.toFile().renameTo(targetFile)) {
+          logger.error("Unexpected error occurs when rename file: {} -> {}", filePath, targetPath);
+        }
+      }
+    }
+  }
+
+  private void deleteConfiguration() throws IOException {
+    try (Stream<Path> stream = Files.walk(Paths.get(storageDir))) {
+      stream
+          .filter(Files::isRegularFile)
+          .filter(filePath -> filePath.getFileName().toString().endsWith(CONFIGURATION_FILE_NAME))
+          .forEach(
+              filePath -> {
+                try {
+                  Files.delete(filePath);
+                } catch (IOException e) {
+                  logger.error(
+                      "Unexpected error occurs when deleting old configuration file {}",
+                      filePath,
+                      e);
+                }
+              });
     }
   }
 

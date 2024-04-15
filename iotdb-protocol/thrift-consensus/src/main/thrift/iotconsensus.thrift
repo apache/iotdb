@@ -41,6 +41,7 @@ struct TSyncLogEntriesRes {
 
 struct TInactivatePeerReq {
   1: required common.TConsensusGroupId consensusGroupId
+  2: optional bool forDeletionPurpose
 }
 
 struct TInactivatePeerRes {

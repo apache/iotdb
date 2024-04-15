@@ -18,24 +18,20 @@
  */
 package org.apache.iotdb.confignode.manager.load.cache;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.confignode.manager.load.cache.route.RegionRouteCache;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupCache;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-public class RegionRouteCacheTest {
+public class ConsensusGroupCacheTest {
 
   @Test
   public void periodicUpdateTest() {
-    RegionRouteCache regionRouteCache =
-        new RegionRouteCache(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
-    long currentTime = System.nanoTime();
-    Pair<Long, Integer> leaderSample = new Pair<>(currentTime, 1);
-    regionRouteCache.cacheLeaderSample(leaderSample);
-    Assert.assertTrue(regionRouteCache.periodicUpdate());
-    Assert.assertEquals(1, regionRouteCache.getLeaderId());
+    ConsensusGroupCache consensusGroupCache = new ConsensusGroupCache();
+    ConsensusGroupHeartbeatSample sample = new ConsensusGroupHeartbeatSample(1L, 1);
+    consensusGroupCache.cacheHeartbeatSample(sample);
+    consensusGroupCache.updateCurrentStatistics();
+    Assert.assertEquals(1, consensusGroupCache.getLeaderId());
   }
 }
