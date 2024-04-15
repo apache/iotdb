@@ -161,10 +161,18 @@ public abstract class EnrichedEvent implements Event {
    *     {@code true} otherwise
    */
   public boolean clearReferenceCount(String holderMessage) {
+    return this.clearReferenceCount(holderMessage, false);
+  }
+
+  public boolean clearReferenceCount(String holderMessage, boolean shouldReport) {
     boolean isSuccessful = true;
     synchronized (this) {
       if (referenceCount.get() >= 1) {
         isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
+        if (!shouldReport) {
+          shouldReportOnCommit = false;
+        }
+        PipeEventCommitManager.getInstance().commit(this, committerKey);
       }
       referenceCount.set(0);
       isReleased.set(true);
