@@ -328,6 +328,7 @@ public class LoadTsFileManager {
                   MemTableFlushTask.recordFlushPointsMetricInternal(
                       writePointCount, databaseName, dataRegion.getDataRegionId());
 
+                  // TODO @SpriCoder
                   MetricService.getInstance()
                       .count(
                           writePointCount,

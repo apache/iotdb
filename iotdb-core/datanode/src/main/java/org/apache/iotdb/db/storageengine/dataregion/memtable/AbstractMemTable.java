@@ -205,17 +205,19 @@ public abstract class AbstractMemTable implements IMemTable {
 
     totalPointsNum += pointsInserted;
 
-    MetricService.getInstance()
-        .count(
-            pointsInserted,
-            Metric.QUANTITY.toString(),
-            MetricLevel.CORE,
-            Tag.NAME.toString(),
-            METRIC_POINT_IN,
-            Tag.DATABASE.toString(),
-            database,
-            Tag.REGION.toString(),
-            dataRegionId);
+    if (!insertRowNode.isGeneratedByConsensus()) {
+      MetricService.getInstance()
+          .count(
+              pointsInserted,
+              Metric.QUANTITY.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              METRIC_POINT_IN,
+              Tag.DATABASE.toString(),
+              database,
+              Tag.REGION.toString(),
+              dataRegionId);
+    }
   }
 
   @Override
@@ -244,17 +246,19 @@ public abstract class AbstractMemTable implements IMemTable {
         insertRowNode.getMeasurements().length - insertRowNode.getFailedMeasurementNumber();
     totalPointsNum += pointsInserted;
 
-    MetricService.getInstance()
-        .count(
-            pointsInserted,
-            Metric.QUANTITY.toString(),
-            MetricLevel.CORE,
-            Tag.NAME.toString(),
-            METRIC_POINT_IN,
-            Tag.DATABASE.toString(),
-            database,
-            Tag.REGION.toString(),
-            dataRegionId);
+    if (!insertRowNode.isGeneratedByConsensus()) {
+      MetricService.getInstance()
+          .count(
+              pointsInserted,
+              Metric.QUANTITY.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              METRIC_POINT_IN,
+              Tag.DATABASE.toString(),
+              database,
+              Tag.REGION.toString(),
+              dataRegionId);
+    }
   }
 
   @Override
@@ -267,17 +271,19 @@ public abstract class AbstractMemTable implements IMemTable {
           (insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
               * (end - start);
       totalPointsNum += pointsInserted;
-      MetricService.getInstance()
-          .count(
-              pointsInserted,
-              Metric.QUANTITY.toString(),
-              MetricLevel.CORE,
-              Tag.NAME.toString(),
-              METRIC_POINT_IN,
-              Tag.DATABASE.toString(),
-              database,
-              Tag.REGION.toString(),
-              dataRegionId);
+      if (!insertTabletNode.isGeneratedByConsensus()) {
+        MetricService.getInstance()
+            .count(
+                pointsInserted,
+                Metric.QUANTITY.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                METRIC_POINT_IN,
+                Tag.DATABASE.toString(),
+                database,
+                Tag.REGION.toString(),
+                dataRegionId);
+      }
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }
@@ -293,17 +299,19 @@ public abstract class AbstractMemTable implements IMemTable {
           (insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
               * (end - start);
       totalPointsNum += pointsInserted;
-      MetricService.getInstance()
-          .count(
-              pointsInserted,
-              Metric.QUANTITY.toString(),
-              MetricLevel.CORE,
-              Tag.NAME.toString(),
-              METRIC_POINT_IN,
-              Tag.DATABASE.toString(),
-              database,
-              Tag.REGION.toString(),
-              dataRegionId);
+      if (!insertTabletNode.isGeneratedByConsensus()) {
+        MetricService.getInstance()
+            .count(
+                pointsInserted,
+                Metric.QUANTITY.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                METRIC_POINT_IN,
+                Tag.DATABASE.toString(),
+                database,
+                Tag.REGION.toString(),
+                dataRegionId);
+      }
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }
