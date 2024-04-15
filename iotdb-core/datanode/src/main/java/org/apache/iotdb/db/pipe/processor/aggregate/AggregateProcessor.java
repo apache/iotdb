@@ -245,7 +245,7 @@ public class AggregateProcessor implements PipeProcessor {
     // logic.
     final Set<String> declaredIntermediateResultSet = new HashSet<>();
     final PipeDataRegionPluginAgent agent = PipeAgent.plugin().dataRegion();
-    for (String pipePluginName :
+    for (final String pipePluginName :
         agent.getSubProcessorNamesWithSpecifiedParent(AbstractOperatorProcessor.class)) {
       // Children are allowed to validate and configure the computational logic
       // from the same parameters other than processor name
@@ -350,7 +350,7 @@ public class AggregateProcessor implements PipeProcessor {
       synchronized (stateReference) {
         try {
           stateReference.get().restoreTimestampAndWindows(entry.getValue());
-        } catch (IOException e) {
+        } catch (final IOException e) {
           throw new PipeException("Encountered exception when deserializing from PipeTaskMeta", e);
         }
       }
@@ -474,7 +474,7 @@ public class AggregateProcessor implements PipeProcessor {
               resultMap.put(timeSeries, result.getRight());
             }
           }
-        } catch (IOException | UnsupportedOperationException e) {
+        } catch (final IOException | UnsupportedOperationException e) {
           exception.set(e);
         }
       }
@@ -565,7 +565,7 @@ public class AggregateProcessor implements PipeProcessor {
     final List<WindowOutput> distinctOutputs = new ArrayList<>();
     outputs.forEach(
         output -> {
-          long timeStamp = output.getTimestamp();
+          final long timeStamp = output.getTimestamp();
           if (timeStamp != lastValue.get()) {
             lastValue.set(timeStamp);
             distinctOutputs.add(output);
