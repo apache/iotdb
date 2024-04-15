@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -32,11 +31,12 @@ import java.nio.ByteBuffer;
 public class CompactionTsFileOutput extends OutputStream implements TsFileOutput {
 
   private TsFileOutput output;
-  private RateLimiter rateLimiter = CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
+  private RateLimiter rateLimiter;
   private final long maxSizePerWrite;
 
-  public CompactionTsFileOutput(TsFileOutput output) {
+  public CompactionTsFileOutput(TsFileOutput output, RateLimiter rateLimiter) {
     this.output = output;
+    this.rateLimiter = rateLimiter;
     maxSizePerWrite =
         (int)
             (rateLimiter.getRate()
@@ -45,6 +45,7 @@ public class CompactionTsFileOutput extends OutputStream implements TsFileOutput
 
   @Override
   public void write(int b) throws IOException {
+    rateLimiter.acquire(1);
     output.wrapAsStream().write(b);
   }
 
@@ -55,6 +56,7 @@ public class CompactionTsFileOutput extends OutputStream implements TsFileOutput
 
   @Override
   public void write(byte b) throws IOException {
+    rateLimiter.acquire(1);
     output.write(b);
   }
 

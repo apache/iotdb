@@ -250,21 +250,9 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
         .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
   }
 
-  private void acquireReadDataSizeWithCompactionReadRateLimiter(long readDataSize) {
+  private void acquireReadDataSizeWithCompactionReadRateLimiter(int readDataSize) {
     CompactionTaskManager.getInstance().getCompactionReadOperationRateLimiter().acquire(1);
-    while (readDataSize > 0) {
-      if (readDataSize > Integer.MAX_VALUE) {
-        CompactionTaskManager.getInstance()
-            .getCompactionReadRateLimiter()
-            .acquire(Integer.MAX_VALUE);
-        readDataSize -= Integer.MAX_VALUE;
-      } else {
-        CompactionTaskManager.getInstance()
-            .getCompactionReadRateLimiter()
-            .acquire((int) readDataSize);
-        return;
-      }
-    }
+    CompactionTaskManager.getInstance().getCompactionReadRateLimiter().acquire(readDataSize);
   }
 
   @Override

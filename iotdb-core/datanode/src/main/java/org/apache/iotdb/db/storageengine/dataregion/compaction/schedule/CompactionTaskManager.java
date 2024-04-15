@@ -283,7 +283,7 @@ public class CompactionTaskManager implements IService {
     if (rate <= 0) {
       rate = Double.MAX_VALUE;
     }
-    if (rateLimiter.getRate() != rate) {
+    if (Math.abs(rateLimiter.getRate() - rate) > 0.0001) {
       rateLimiter.setRate(rate);
     }
   }

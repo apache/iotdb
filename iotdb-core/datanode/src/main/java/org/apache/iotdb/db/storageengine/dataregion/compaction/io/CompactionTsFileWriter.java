@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -46,7 +47,9 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
       throws IOException {
     super(file, maxMetadataSize);
     this.type = type;
-    super.out = new CompactionTsFileOutput(super.out);
+    super.out =
+        new CompactionTsFileOutput(
+            super.out, CompactionTaskManager.getInstance().getMergeWriteRateLimiter());
   }
 
   public void markStartingWritingAligned() {
