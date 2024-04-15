@@ -246,10 +246,10 @@ public class SystemMetrics implements IMetricSet {
         if (lines.length >= 2) {
           String[] memParts = lines[1].trim().split("\\s+");
           if (memParts.length == linuxMemoryTitles.length) {
-            usedMemory = Long.parseLong(memParts[1]) * 1024;
-            sharedMemory = Long.parseLong(memParts[3]) * 1024;
-            buffCacheMemory = Long.parseLong(memParts[4]) * 1024;
-            availableMemory = Long.parseLong(memParts[5]) * 1024;
+            usedMemory = Long.parseLong(memParts[2]) * 1024;
+            sharedMemory = Long.parseLong(memParts[4]) * 1024;
+            buffCacheMemory = Long.parseLong(memParts[5]) * 1024;
+            availableMemory = Long.parseLong(memParts[6]) * 1024;
           }
         }
       } catch (IOException e) {
