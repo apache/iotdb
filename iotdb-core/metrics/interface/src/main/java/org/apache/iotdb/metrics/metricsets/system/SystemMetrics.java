@@ -42,11 +42,9 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class SystemMetrics implements IMetricSet {
   private static final Logger logger = LoggerFactory.getLogger(SystemMetrics.class);
@@ -58,9 +56,7 @@ public class SystemMetrics implements IMetricSet {
 
   static final String SYSTEM = "system";
   private final com.sun.management.OperatingSystemMXBean osMxBean;
-  private final Set<FileStore> fileStores = new HashSet<>();
-  private final AtomicReference<List<String>> diskDirs =
-      new AtomicReference<>(Collections.emptyList());
+  private Set<FileStore> fileStores = new HashSet<>();
   private static final String FAILED_TO_STATISTIC = "Failed to statistic the size of {}, because";
 
   public SystemMetrics() {
@@ -72,29 +68,34 @@ public class SystemMetrics implements IMetricSet {
         .getMetricConfig()
         .getMetricLevel()
         .equals(MetricLevel.OFF)) {
-      this.diskDirs.set(diskDirs);
-      for (String diskDir : this.diskDirs.get()) {
-        if (!FSUtils.isLocal(diskDir)) {
-          continue;
-        }
-        Path path = Paths.get(diskDir);
-        FileStore fileStore = null;
+      this.fileStores = getFileStores(diskDirs);
+    }
+  }
+
+  public static Set<FileStore> getFileStores(List<String> dirs) {
+    Set<FileStore> fileStoreSet = new HashSet<>();
+    for (String diskDir : dirs) {
+      if (!FSUtils.isLocal(diskDir)) {
+        continue;
+      }
+      Path path = Paths.get(diskDir);
+      FileStore fileStore = null;
+      try {
+        fileStore = Files.getFileStore(path);
+      } catch (IOException e) {
+        // check parent if path is not exists
+        path = path.getParent();
         try {
           fileStore = Files.getFileStore(path);
-        } catch (IOException e) {
-          // check parent if path is not exists
-          path = path.getParent();
-          try {
-            fileStore = Files.getFileStore(path);
-          } catch (IOException innerException) {
-            logger.error("Failed to get storage path of {}, because", diskDir, innerException);
-          }
-        }
-        if (null != fileStore) {
-          fileStores.add(fileStore);
+        } catch (IOException innerException) {
+          logger.error("Failed to get storage path of {}, because", diskDir, innerException);
         }
       }
+      if (null != fileStore) {
+        fileStoreSet.add(fileStore);
+      }
     }
+    return fileStoreSet;
   }
 
   @Override
@@ -301,8 +302,6 @@ public class SystemMetrics implements IMetricSet {
         SystemMetric.SYS_DISK_AVAILABLE_SPACE.toString(),
         SystemTag.NAME.toString(),
         SYSTEM);
-
-    diskDirs.get().clear();
     fileStores.clear();
   }
 

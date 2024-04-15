@@ -16,26 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.cache;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.confignode.manager.load.cache.route.RegionRouteCache;
-import org.apache.iotdb.tsfile.utils.Pair;
+package org.apache.iotdb.confignode.it.regionmigration.pass.datanodecrash;
 
-import org.junit.Assert;
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFramework;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-public class LoadCacheTest {
+@RunWith(IoTDBTestRunner.class)
+public class IoTDBRegionMigrateOriginalCrashWhenDeleteLocalPeerIT
+    extends IoTDBRegionMigrateDataNodeCrashITFramework {
+  @Test
+  public void crashBeforeDelete() throws Exception {
+    success(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);
+  }
 
   @Test
-  public void periodicUpdateTest() {
-    RegionRouteCache regionRouteCache =
-        new RegionRouteCache(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
-    long currentTime = System.nanoTime();
-    Pair<Long, Integer> leaderSample = new Pair<>(currentTime, 1);
-    regionRouteCache.cacheLeaderSample(leaderSample);
-    Assert.assertTrue(regionRouteCache.periodicUpdate());
-    Assert.assertEquals(1, regionRouteCache.getLeaderId());
+  public void crashAfterDelete() throws Exception {
+    success(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
   }
 }
