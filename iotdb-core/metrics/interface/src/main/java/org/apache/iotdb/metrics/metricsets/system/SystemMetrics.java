@@ -41,6 +41,7 @@ import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashSet;
@@ -86,15 +87,24 @@ public class SystemMetrics implements IMetricSet {
       }
       Path path = Paths.get(diskDir);
       FileStore fileStore = null;
-      try {
-        fileStore = Files.getFileStore(path);
-      } catch (IOException e) {
-        // check parent if path is not exists
-        path = path.getParent();
+      // if current path is not exists, check parent path.
+      while (fileStore == null && path != null) {
         try {
           fileStore = Files.getFileStore(path);
-        } catch (IOException innerException) {
-          logger.error("Failed to get storage path of {}, because", diskDir, innerException);
+        } catch (NoSuchFileException e) {
+          path = path.getParent();
+        } catch (IOException e) {
+          logger.error("Failed to get storage path of {}, because", diskDir, e);
+          break;
+        }
+      }
+      // If the dir is a relative dir, final use the current directory.
+      if (path == null) {
+        path = Paths.get("");
+        try {
+          fileStore = Files.getFileStore(path);
+        } catch (IOException e) {
+          logger.error("Failed to get storage path of {}, because", diskDir, e);
         }
       }
       if (null != fileStore) {
