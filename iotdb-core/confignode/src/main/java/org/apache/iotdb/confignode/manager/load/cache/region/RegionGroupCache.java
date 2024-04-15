@@ -52,10 +52,11 @@ public class RegionGroupCache {
    * @param dataNodeId Where the specified Region resides
    * @param newHeartbeatSample The newest RegionHeartbeatSample
    */
-  public void cacheHeartbeatSample(int dataNodeId, RegionHeartbeatSample newHeartbeatSample) {
+  public void cacheHeartbeatSample(
+      int dataNodeId, RegionHeartbeatSample newHeartbeatSample, boolean overwrite) {
     regionCacheMap
         .computeIfAbsent(dataNodeId, empty -> new RegionCache())
-        .cacheHeartbeatSample(newHeartbeatSample);
+        .cacheHeartbeatSample(newHeartbeatSample, overwrite);
   }
 
   /**
