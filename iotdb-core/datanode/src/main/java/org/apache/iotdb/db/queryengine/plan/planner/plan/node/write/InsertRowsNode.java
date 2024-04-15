@@ -221,6 +221,12 @@ public class InsertRowsNode extends InsertNode {
   }
 
   @Override
+  public void markAsGeneratedByConsensus() {
+    isGeneratedByConsensus = true;
+    insertRowNodeList.forEach(InsertRowNode::markAsGeneratedByConsensus);
+  }
+
+  @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     Map<TRegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
     List<TEndPoint> redirectInfo = new ArrayList<>();

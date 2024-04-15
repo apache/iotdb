@@ -256,6 +256,12 @@ public class InsertMultiTabletsNode extends InsertNode {
   }
 
   @Override
+  public void markAsGeneratedByConsensus() {
+    isGeneratedByConsensus = true;
+    insertTabletNodeList.forEach(InsertTabletNode::markAsGeneratedByConsensus);
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
