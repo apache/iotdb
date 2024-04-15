@@ -48,10 +48,12 @@ public class TwoStageAggregateSender implements AutoCloseable {
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
+  // TODO: Update the map periodically
   private static final Map<TEndPoint, IoTDBSyncClient> ENDPOINT_SYNC_CLIENT_MAP =
       new ConcurrentHashMap<>();
   private static final AtomicInteger REFERENCE_COUNT = new AtomicInteger(0);
 
+  // TODO: Update the end points periodically
   private final TEndPoint[] endPoints;
 
   public TwoStageAggregateSender() {
@@ -65,6 +67,8 @@ public class TwoStageAggregateSender implements AutoCloseable {
           if (showDataNodesResp == null || showDataNodesResp.getDataNodesInfoList() == null) {
             throw new PipeException("Failed to fetch data nodes");
           }
+          // TODO: We assume that different data nodes will get the same data nodes' endpoints for
+          // now. Finally, we have to periodically update the data nodes' endpoints.
           for (final TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
             final TEndPoint endPoint =
                 new TEndPoint(dataNodeInfo.getRpcAddresss(), dataNodeInfo.getRpcPort());
