@@ -854,18 +854,18 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         e.printStackTrace();
         fail(e.getMessage());
       }
-      for (final Thread t : threads) {
-        t.join();
-      }
+    }
+    for (final Thread t : threads) {
+      t.join();
+    }
 
-      try (final SyncConfigNodeIServiceClient client =
-          (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-        List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
-        Assert.assertEquals(pipeCount, showPipeResult.size());
-        showPipeResult =
-            client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true)).pipeInfoList;
-        Assert.assertEquals(pipeCount, showPipeResult.size());
-      }
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      Assert.assertEquals(pipeCount, showPipeResult.size());
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true)).pipeInfoList;
+      Assert.assertEquals(pipeCount, showPipeResult.size());
     }
   }
 
