@@ -103,8 +103,8 @@ public class SystemMetrics implements IMetricSet {
         path = Paths.get("");
         try {
           fileStore = Files.getFileStore(path);
-        } catch (IOException e) {
-          logger.error("Failed to get storage path of {}, because", diskDir, e);
+        } catch (IOException innerException) {
+          logger.error("Failed to get storage path of {}, because", diskDir, innerException);
         }
       }
       if (null != fileStore) {
