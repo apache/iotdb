@@ -38,6 +38,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -91,17 +93,17 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     createFiles(3, 30, 3, 100, 1000, 0, 50, 50, false, false);
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
+    List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + i);
+      deviceIds.add(new PlainDeviceID("root.testsg.d" + i));
     }
-    deviceIds.sort(String::compareTo);
+    deviceIds.sort(IDeviceID::compareTo);
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(seqResources, unseqResources)) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
         Assert.assertFalse(deviceInfo.right);
         deviceNum++;
@@ -120,17 +122,18 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     createFiles(3, 30, 3, 100, 1000, 0, 50, 50, true, false);
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
+    List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+      deviceIds.add(
+          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
-    deviceIds.sort(String::compareTo);
+    deviceIds.sort(IDeviceID::compareTo);
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(seqResources, unseqResources)) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
         Assert.assertTrue(deviceInfo.right);
         deviceNum++;
@@ -158,17 +161,17 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     }
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
+    List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + i);
+      deviceIds.add(new PlainDeviceID("root.testsg.d" + i));
     }
-    deviceIds.sort(String::compareTo);
+    deviceIds.sort(IDeviceID::compareTo);
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(seqResources, unseqResources)) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
         Assert.assertFalse(deviceInfo.right);
         deviceNum++;
@@ -195,17 +198,18 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     }
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
+    List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+      deviceIds.add(
+          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
-    deviceIds.sort(String::compareTo);
+    deviceIds.sort(IDeviceID::compareTo);
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(seqResources, unseqResources)) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
         Assert.assertTrue(deviceInfo.right);
         deviceNum++;
@@ -245,17 +249,18 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     createFiles(3, 30, 3, 100, 1000, 0, 50, 50, true, false);
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
+    List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+      deviceIds.add(
+          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
-    deviceIds.sort(String::compareTo);
+    deviceIds.sort(IDeviceID::compareTo);
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(seqResources, unseqResources)) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
         Assert.assertTrue(deviceInfo.right);
         deviceNum++;
@@ -295,19 +300,20 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     resetFileName(seqResources.get(8), 101);
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
+    List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+      deviceIds.add(
+          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
-    deviceIds.sort(String::compareTo);
+    deviceIds.sort(IDeviceID::compareTo);
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(seqResources)) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(deviceInfo.left.substring(13)) < 10) {
+        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
           Assert.assertTrue(deviceInfo.right);
         } else {
           Assert.assertFalse(deviceInfo.right);
@@ -353,19 +359,20 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
+    List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+      deviceIds.add(
+          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
-    deviceIds.sort(String::compareTo);
+    deviceIds.sort(IDeviceID::compareTo);
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(deviceInfo.left.substring(13)) < 10) {
+        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
           Assert.assertTrue(deviceInfo.right);
         } else {
           Assert.assertFalse(deviceInfo.right);
@@ -439,7 +446,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
         Assert.assertFalse(deviceInfo.right);
         deviceNum++;
@@ -498,19 +505,20 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
+    List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+      deviceIds.add(
+          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
-    deviceIds.sort(String::compareTo);
+    deviceIds.sort(IDeviceID::compareTo);
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(deviceInfo.left.substring(13)) < 10) {
+        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
           Assert.assertFalse(deviceInfo.right);
         } else {
           Assert.assertTrue(deviceInfo.right);
@@ -585,7 +593,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
         Assert.assertTrue(deviceInfo.right);
         deviceNum++;
@@ -642,19 +650,20 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
+    List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+      deviceIds.add(
+          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
-    deviceIds.sort(String::compareTo);
+    deviceIds.sort(IDeviceID::compareTo);
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(deviceInfo.left.substring(13)) < 10) {
+        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
           Assert.assertTrue(deviceInfo.right);
         } else {
           Assert.assertFalse(deviceInfo.right);
@@ -728,7 +737,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
         Assert.assertFalse(deviceInfo.right);
         deviceNum++;
@@ -786,19 +795,20 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
+    List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+      deviceIds.add(
+          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
-    deviceIds.sort(String::compareTo);
+    deviceIds.sort(IDeviceID::compareTo);
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(deviceInfo.left.substring(13)) < 10) {
+        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
           Assert.assertFalse(deviceInfo.right);
         } else {
           Assert.assertTrue(deviceInfo.right);
@@ -872,15 +882,16 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     // sort the deviceId in lexicographical order from small to large
     deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+      deviceIds.add(
+          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
-    deviceIds.sort(String::compareTo);
+    deviceIds.sort(IDeviceID::compareTo);
 
     deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
         Assert.assertTrue(deviceInfo.right);
         deviceNum++;
@@ -938,19 +949,20 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
+    List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+      deviceIds.add(
+          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
-    deviceIds.sort(String::compareTo);
+    deviceIds.sort(IDeviceID::compareTo);
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(deviceInfo.left.substring(13)) < 10) {
+        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
           Assert.assertTrue(deviceInfo.right);
         } else {
           Assert.assertFalse(deviceInfo.right);
@@ -1024,7 +1036,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
         Assert.assertFalse(deviceInfo.right);
         deviceNum++;
@@ -1082,19 +1094,20 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
-    List<String> deviceIds = new ArrayList<>();
+    List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+      deviceIds.add(
+          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
-    deviceIds.sort(String::compareTo);
+    deviceIds.sort(IDeviceID::compareTo);
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(deviceInfo.left.substring(13)) < 10) {
+        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
           Assert.assertFalse(deviceInfo.right);
         } else {
           Assert.assertTrue(deviceInfo.right);
@@ -1168,15 +1181,16 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     // sort the deviceId in lexicographical order from small to large
     deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset()));
+      deviceIds.add(
+          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
-    deviceIds.sort(String::compareTo);
+    deviceIds.sort(IDeviceID::compareTo);
 
     deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
-        Pair<String, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
+        Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
         Assert.assertTrue(deviceInfo.right);
         deviceNum++;

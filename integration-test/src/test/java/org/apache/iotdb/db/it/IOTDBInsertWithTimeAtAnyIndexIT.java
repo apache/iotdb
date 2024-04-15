@@ -67,13 +67,13 @@ public class IOTDBInsertWithTimeAtAnyIndexIT {
       try (ResultSet resultSet = statement.executeQuery("select s1 from root.db.d1")) {
         assertTrue(resultSet.next());
         assertEquals(1, resultSet.getLong(1));
-        assertEquals(2, resultSet.getFloat(2), 0.00001);
+        assertEquals(2, resultSet.getDouble(2), 0.00001);
         assertTrue(resultSet.next());
         assertEquals(10, resultSet.getLong(1));
-        assertEquals(20, resultSet.getFloat(2), 0.00001);
+        assertEquals(20, resultSet.getDouble(2), 0.00001);
         assertTrue(resultSet.next());
         assertEquals(100, resultSet.getLong(1));
-        assertEquals(200, resultSet.getFloat(2), 0.00001);
+        assertEquals(200, resultSet.getDouble(2), 0.00001);
         assertFalse(resultSet.next());
       }
     }

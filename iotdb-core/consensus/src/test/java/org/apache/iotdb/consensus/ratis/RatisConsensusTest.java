@@ -38,7 +38,9 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -123,10 +125,10 @@ public class RatisConsensusTest {
         () -> servers.get(0).createLocalPeer(group.getGroupId(), original));
 
     // add 2 members
-    servers.get(1).createLocalPeer(group.getGroupId(), peers.subList(1, 2));
+    servers.get(1).createLocalPeer(group.getGroupId(), Collections.emptyList());
     servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
 
-    servers.get(2).createLocalPeer(group.getGroupId(), peers.subList(2, 3));
+    servers.get(2).createLocalPeer(group.getGroupId(), Collections.emptyList());
     servers.get(0).addRemotePeer(group.getGroupId(), peers.get(2));
 
     miniCluster.waitUntilActiveLeaderElectedAndReady();
@@ -173,7 +175,7 @@ public class RatisConsensusTest {
     servers.get(0).createLocalPeer(group.getGroupId(), peers.subList(0, 1));
     doConsensus(0, 10, 10);
 
-    servers.get(1).createLocalPeer(group.getGroupId(), peers.subList(1, 2));
+    servers.get(1).createLocalPeer(group.getGroupId(), Collections.emptyList());
     servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
     Assert.assertThrows(
         PeerAlreadyInConsensusGroupException.class,
@@ -264,13 +266,31 @@ public class RatisConsensusTest {
     servers.get(0).createLocalPeer(gid, peers.subList(0, 1));
 
     doConsensus(0, 10, 10);
-    servers.get(0).triggerSnapshot(gid);
+    servers.get(0).triggerSnapshot(gid, false);
 
     servers.get(1).createLocalPeer(gid, peers.subList(1, 2));
     servers.get(0).addRemotePeer(gid, peers.get(1));
 
     miniCluster.waitUntilActiveLeaderElectedAndReady();
     doConsensus(1, 10, 20);
+  }
+
+  @Test
+  public void parsingAndConstructIDs() throws Exception {
+    servers.get(0).createLocalPeer(gid, peers.subList(0, 1));
+    doConsensus(0, 10, 10);
+
+    List<ConsensusGroupId> ids = servers.get(0).getAllConsensusGroupIdsWithoutStarting();
+    Assert.assertEquals(1, ids.size());
+    Assert.assertEquals(gid, ids.get(0));
+
+    String regionDir = servers.get(0).getRegionDirFromConsensusGroupId(gid);
+    try {
+      File regionDirFile = new File(regionDir);
+      Assert.assertTrue(regionDirFile.exists());
+    } catch (Exception e) {
+      Assert.fail();
+    }
   }
 
   private void doConsensus(int serverIndex, int count, int target) throws Exception {

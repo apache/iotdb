@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -90,8 +91,8 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.node.NodeMetrics;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
+import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
-import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.manager.subscription.SubscriptionManager;
@@ -163,7 +164,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
@@ -215,10 +215,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /** Entry of all management, AssignPartitionManager, AssignRegionManager. */
@@ -284,7 +284,7 @@ public class ConfigManager implements IManager {
     ClusterSchemaInfo clusterSchemaInfo = new ClusterSchemaInfo();
     PartitionInfo partitionInfo = new PartitionInfo();
     AuthorInfo authorInfo = new AuthorInfo();
-    ProcedureInfo procedureInfo = new ProcedureInfo();
+    ProcedureInfo procedureInfo = new ProcedureInfo(this);
     UDFInfo udfInfo = new UDFInfo();
     TriggerInfo triggerInfo = new TriggerInfo();
     CQInfo cqInfo = new CQInfo();
@@ -350,7 +350,7 @@ public class ConfigManager implements IManager {
       partitionManager.getRegionMaintainer().shutdown();
     }
     if (procedureManager != null) {
-      procedureManager.shiftExecutor(false);
+      procedureManager.stopExecutor();
     }
   }
 
@@ -432,19 +432,10 @@ public class ConfigManager implements IManager {
           .forceUpdateNodeCache(
               NodeType.DataNode,
               dataNodeLocation.getDataNodeId(),
-              NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+              new NodeHeartbeatSample(NodeStatus.Unknown));
       LOGGER.info(
           "[ShutdownHook] The DataNode-{} will be shutdown soon, mark it as Unknown",
           dataNodeLocation.getDataNodeId());
-    }
-    return status;
-  }
-
-  @Override
-  public TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
-    TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      procedureManager.reportRegionMigrateResult(req);
     }
     return status;
   }
@@ -1311,7 +1302,7 @@ public class ConfigManager implements IManager {
           .forceUpdateNodeCache(
               NodeType.ConfigNode,
               configNodeLocation.getConfigNodeId(),
-              NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+              new NodeHeartbeatSample(NodeStatus.Unknown));
       LOGGER.info(
           "[ShutdownHook] The ConfigNode-{} will be shutdown soon, mark it as Unknown",
           configNodeLocation.getConfigNodeId());
@@ -1517,14 +1508,40 @@ public class ConfigManager implements IManager {
 
   @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() {
+    final long retryIntervalInMS = 100;
     TSStatus status = confirmLeader();
     TRegionRouteMapResp resp = new TRegionRouteMapResp(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      for (int retry = 0;
+          retry < CONF.getHeartbeatIntervalInMs() * 4L / retryIntervalInMS;
+          retry++) {
+        AtomicBoolean containsAllRegionGroups = new AtomicBoolean(true);
+        Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap =
+            getLoadManager().getRegionPriorityMap();
+        getPartitionManager()
+            .getAllReplicaSets()
+            .forEach(
+                replicaSet -> {
+                  if (!regionPriorityMap.containsKey(replicaSet.getRegionId())) {
+                    containsAllRegionGroups.set(false);
+                  }
+                });
+        if (containsAllRegionGroups.get()) {
+          break;
+        }
+
+        try {
+          TimeUnit.MILLISECONDS.sleep(retryIntervalInMS);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          LOGGER.warn("Unexpected interruption during retry getting latest region route map");
+        }
+      }
+
       resp.setTimestamp(System.currentTimeMillis());
       resp.setRegionRouteMap(getLoadManager().getRegionPriorityMap());
     }
-
     return resp;
   }
 
@@ -1798,7 +1815,7 @@ public class ConfigManager implements IManager {
       HashSet<TDatabaseSchema> deleteDatabaseSchemas = new HashSet<>();
       List<PartialPath> deleteTimeSeriesPatternPaths = new ArrayList<>();
       for (PartialPath path : rawPatternTree.getAllPathPatterns()) {
-        if (path.getFullPath().endsWith(MULTI_LEVEL_PATH_WILDCARD)
+        if (PathPatternUtil.isMultiLevelMatchWildcard(path.getMeasurement())
             && !path.getDevicePath().hasWildcard()) {
           Map<String, TDatabaseSchema> databaseSchemaMap =
               getClusterSchemaManager().getMatchedDatabaseSchemasByPrefix(path.getDevicePath());
@@ -2019,6 +2036,7 @@ public class ConfigManager implements IManager {
     TPipeTransferResp result =
         PipeConfigNodeAgent.receiver()
             .receive(
+                req.getClientId(),
                 req.isAirGap
                     ? new AirGapPseudoTPipeTransferRequest()
                         .setVersion(req.version)
@@ -2026,6 +2044,16 @@ public class ConfigManager implements IManager {
                         .setBody(req.body)
                     : new TPipeTransferReq(req.version, req.type, req.body));
     return new TPipeConfigTransferResp(result.status).setBody(result.body);
+  }
+
+  @Override
+  public TSStatus handleClientExit(String clientId) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    PipeConfigNodeAgent.receiver().handleClientExit(clientId);
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

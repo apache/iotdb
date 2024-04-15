@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -215,8 +216,8 @@ public class CompactionValidationTest {
     TsFileResource resource1 = new TsFileResource();
     resource1.setFile(new File(dir + File.separator + "1-1-0-0.tsfile"));
     resource1.setTimeIndex(new DeviceTimeIndex());
-    resource1.updateStartTime("d1", 1);
-    resource1.updateEndTime("d1", 2);
+    resource1.updateStartTime(new PlainDeviceID("d1"), 1);
+    resource1.updateEndTime(new PlainDeviceID("d1"), 2);
 
     TsFileResource resource2 = new TsFileResource();
     resource2.setFile(new File(dir + File.separator + "2-2-0-0.tsfile"));
@@ -225,8 +226,8 @@ public class CompactionValidationTest {
     TsFileResource resource3 = new TsFileResource();
     resource3.setFile(new File(dir + File.separator + "3-3-0-0.tsfile"));
     resource3.setTimeIndex(new DeviceTimeIndex());
-    resource3.updateStartTime("d1", 4);
-    resource3.updateEndTime("d1", 5);
+    resource3.updateStartTime(new PlainDeviceID("d1"), 4);
+    resource3.updateEndTime(new PlainDeviceID("d1"), 5);
 
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
@@ -238,8 +239,8 @@ public class CompactionValidationTest {
     TsFileResource resource1 = new TsFileResource();
     resource1.setTimeIndex(new DeviceTimeIndex());
     resource1.setFile(new File(dir + File.separator + "1-1-0-0.tsfile"));
-    resource1.updateStartTime("d1", 1);
-    resource1.updateEndTime("d1", 2);
+    resource1.updateStartTime(new PlainDeviceID("d1"), 1);
+    resource1.updateEndTime(new PlainDeviceID("d1"), 2);
 
     TsFileResource resource2 = new TsFileResource();
     resource2.setFile(new File(dir + File.separator + "2-2-0-0.tsfile"));
@@ -248,8 +249,8 @@ public class CompactionValidationTest {
     TsFileResource resource3 = new TsFileResource();
     resource3.setFile(new File(dir + File.separator + "3-3-0-0.tsfile"));
     resource3.setTimeIndex(new DeviceTimeIndex());
-    resource3.updateStartTime("d1", 1);
-    resource3.updateEndTime("d1", 5);
+    resource3.updateStartTime(new PlainDeviceID("d1"), 1);
+    resource3.updateEndTime(new PlainDeviceID("d1"), 5);
 
     Assert.assertFalse(
         TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
@@ -261,8 +262,8 @@ public class CompactionValidationTest {
     TsFileResource resource1 = new TsFileResource();
     resource1.setTimeIndex(new DeviceTimeIndex());
     resource1.setFile(new File(dir + File.separator + "1-1-0-0.tsfile"));
-    resource1.updateStartTime("d1", 1);
-    resource1.updateEndTime("d1", 2);
+    resource1.updateStartTime(new PlainDeviceID("d1"), 1);
+    resource1.updateEndTime(new PlainDeviceID("d1"), 2);
 
     TsFileResource resource2 = new TsFileResource();
     File tsFile2 = new File(dir + File.separator + "2-2-0-0.tsfile");
@@ -275,8 +276,8 @@ public class CompactionValidationTest {
     TsFileResource resource3 = new TsFileResource();
     resource3.setFile(new File(dir + File.separator + "3-3-0-0.tsfile"));
     resource3.setTimeIndex(new DeviceTimeIndex());
-    resource3.updateStartTime("d1", 4);
-    resource3.updateEndTime("d1", 5);
+    resource3.updateStartTime(new PlainDeviceID("d1"), 4);
+    resource3.updateEndTime(new PlainDeviceID("d1"), 5);
 
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
@@ -288,8 +289,8 @@ public class CompactionValidationTest {
     TsFileResource resource1 = new TsFileResource();
     resource1.setTimeIndex(new DeviceTimeIndex());
     resource1.setFile(new File(dir + File.separator + "1-1-0-0.tsfile"));
-    resource1.updateStartTime("d1", 1);
-    resource1.updateEndTime("d1", 2);
+    resource1.updateStartTime(new PlainDeviceID("d1"), 1);
+    resource1.updateEndTime(new PlainDeviceID("d1"), 2);
 
     TsFileResource resource2 = new TsFileResource();
     File tsFile2 = new File(dir + File.separator + "2-2-0-0.tsfile");
@@ -302,8 +303,8 @@ public class CompactionValidationTest {
     TsFileResource resource3 = new TsFileResource();
     resource3.setFile(new File(dir + File.separator + "3-3-0-0.tsfile"));
     resource3.setTimeIndex(new DeviceTimeIndex());
-    resource3.updateStartTime("d1", 1);
-    resource3.updateEndTime("d1", 5);
+    resource3.updateStartTime(new PlainDeviceID("d1"), 1);
+    resource3.updateEndTime(new PlainDeviceID("d1"), 5);
 
     Assert.assertFalse(
         TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(

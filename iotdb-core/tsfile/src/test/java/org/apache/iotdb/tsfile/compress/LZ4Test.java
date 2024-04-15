@@ -80,4 +80,25 @@ public class LZ4Test {
     byte[] uncompressed = unCompressor.uncompress(compressed);
     Assert.assertArrayEquals(uncom, uncompressed);
   }
+
+  @Test
+  public void testBytes3() throws IOException {
+    ICompressor.IOTDBLZ4Compressor compressor = new ICompressor.IOTDBLZ4Compressor();
+    IUnCompressor.LZ4UnCompressor unCompressor = new IUnCompressor.LZ4UnCompressor();
+
+    int n = 500000;
+    int offset = 100;
+    String input = randomString(n);
+    byte[] origin = input.getBytes(StandardCharsets.UTF_8);
+    byte[] compressed = new byte[origin.length * 2];
+    int compressedLength = compressor.compress(origin, 0, origin.length, compressed);
+    System.arraycopy(compressed, 0, compressed, offset, compressedLength);
+    for (int i = 0; i < offset; i++) {
+      compressed[i] = 0;
+    }
+
+    byte[] uncompressed = new byte[origin.length];
+    unCompressor.uncompress(compressed, offset, compressedLength, uncompressed, 0);
+    Assert.assertArrayEquals(origin, uncompressed);
+  }
 }

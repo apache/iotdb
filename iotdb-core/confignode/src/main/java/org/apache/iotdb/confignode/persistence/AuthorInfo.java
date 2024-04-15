@@ -551,11 +551,11 @@ public class AuthorInfo implements SnapshotProcessor {
   public void clear() throws AuthException {
     File userFolder = new File(COMMON_CONFIG.getUserFolder());
     if (userFolder.exists()) {
-      FileUtils.deleteDirectory(userFolder);
+      FileUtils.deleteFileOrDirectory(userFolder);
     }
     File roleFolder = new File(COMMON_CONFIG.getRoleFolder());
     if (roleFolder.exists()) {
-      FileUtils.deleteDirectory(roleFolder);
+      FileUtils.deleteFileOrDirectory(roleFolder);
     }
     authorizer.reset();
   }

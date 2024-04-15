@@ -102,7 +102,7 @@ public class StabilityTest {
     try {
       consensusImpl.createLocalPeer(
           dataRegionId,
-          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
     } catch (ConsensusException e) {
       Assert.fail();
     }
@@ -110,7 +110,7 @@ public class StabilityTest {
     try {
       consensusImpl.createLocalPeer(
           dataRegionId,
-          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
       Assert.fail();
     } catch (ConsensusException e) {
       assertTrue(e instanceof ConsensusGroupAlreadyExistException);
@@ -126,7 +126,7 @@ public class StabilityTest {
     try {
       consensusImpl.createLocalPeer(
           dataRegionId,
-          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.1", 6667))));
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.1", basePort))));
       Assert.fail();
     } catch (ConsensusException e) {
       assertTrue(e instanceof IllegalPeerEndpointException);
@@ -150,7 +150,7 @@ public class StabilityTest {
     try {
       consensusImpl.createLocalPeer(
           dataRegionId,
-          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
       consensusImpl.deleteLocalPeer(dataRegionId);
     } catch (ConsensusException e) {
       Assert.fail();
@@ -177,8 +177,8 @@ public class StabilityTest {
   public void transferLeader() {
     try {
       consensusImpl.transferLeader(
-          dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
-      Assert.fail("Can't transfer leader in SimpleConsensus.");
+          dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort)));
+      Assert.fail("Can't transfer leader in IoTConsensus.");
     } catch (ConsensusException e) {
       // not handle
     }
@@ -188,7 +188,7 @@ public class StabilityTest {
     consensusImpl.createLocalPeer(
         dataRegionId,
         Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
-    consensusImpl.triggerSnapshot(dataRegionId);
+    consensusImpl.triggerSnapshot(dataRegionId, false);
 
     File dataDir = new File(IoTConsensus.buildPeerDir(storageDir, dataRegionId));
 
@@ -197,9 +197,9 @@ public class StabilityTest {
     Assert.assertNotNull(versionFiles1);
     Assert.assertEquals(1, versionFiles1.length);
 
-    consensusImpl.triggerSnapshot(dataRegionId);
+    consensusImpl.triggerSnapshot(dataRegionId, false);
 
-    consensusImpl.triggerSnapshot(dataRegionId);
+    consensusImpl.triggerSnapshot(dataRegionId, false);
 
     File[] versionFiles2 =
         dataDir.listFiles((dir, name) -> name.startsWith(IoTConsensusServerImpl.SNAPSHOT_DIR_NAME));
@@ -213,7 +213,7 @@ public class StabilityTest {
     consensusImpl.createLocalPeer(
         dataRegionId,
         Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
-    consensusImpl.triggerSnapshot(dataRegionId);
+    consensusImpl.triggerSnapshot(dataRegionId, false);
     long oldSnapshotIndex = System.currentTimeMillis();
     String oldSnapshotDirName =
         String.format(
@@ -228,7 +228,7 @@ public class StabilityTest {
       throw new ConsensusGroupModifyPeerException(
           String.format("%s: cannot mkdir for snapshot", dataRegionId));
     }
-    consensusImpl.triggerSnapshot(dataRegionId);
+    consensusImpl.triggerSnapshot(dataRegionId, false);
     Assert.assertFalse(oldSnapshotDir.exists());
 
     File dataDir = new File(IoTConsensus.buildPeerDir(storageDir, dataRegionId));

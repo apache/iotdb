@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -63,12 +64,6 @@ public class DataNodeSchemaCache {
   // cache update or clean have higher priority than cache read
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
-  // To make insert and delete executive, I import a new rwlock to datanode schema.
-  // The reason is that some operations [loadtsfiles] will hold readlock then acquire writelock
-  // before
-  // closing the tsfile and resting the datanodeCache.
-  private final ReentrantReadWriteLock insertDeletionLock = new ReentrantReadWriteLock(false);
-
   private DataNodeSchemaCache() {
     deviceUsingTemplateSchemaCache = new DeviceUsingTemplateSchemaCache(templateManager);
     timeSeriesSchemaCache = new TimeSeriesSchemaCache();
@@ -108,22 +103,6 @@ public class DataNodeSchemaCache {
 
   public void releaseWriteLock() {
     readWriteLock.writeLock().unlock();
-  }
-
-  public void takeInsertLock() {
-    insertDeletionLock.readLock().lock();
-  }
-
-  public void releaseInsertLock() {
-    insertDeletionLock.readLock().unlock();
-  }
-
-  public void takeDeleteLock() {
-    insertDeletionLock.writeLock().lock();
-  }
-
-  public void releaseDeleteLock() {
-    insertDeletionLock.writeLock().unlock();
   }
 
   /**
@@ -216,6 +195,30 @@ public class DataNodeSchemaCache {
 
   public TimeValuePair getLastCache(PartialPath seriesPath) {
     return timeSeriesSchemaCache.getLastCache(seriesPath);
+  }
+
+  public void invalidateLastCache(PartialPath path) {
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+      return;
+    }
+    takeReadLock();
+    try {
+      timeSeriesSchemaCache.invalidateLastCache(path);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public void invalidateLastCacheInDataRegion(String database) {
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+      return;
+    }
+    takeReadLock();
+    try {
+      timeSeriesSchemaCache.invalidateDataRegionLastCache(database);
+    } finally {
+      releaseReadLock();
+    }
   }
 
   /** get SchemaCacheEntry and update last cache */

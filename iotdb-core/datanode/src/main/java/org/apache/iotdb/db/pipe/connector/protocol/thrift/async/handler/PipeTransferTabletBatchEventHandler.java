@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
@@ -47,6 +49,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
   private final TPipeTransferReq req;
 
   private final IoTDBDataRegionAsyncConnector connector;
+  private final IoTDBThriftAsyncPipeTransferBatchReqBuilder batchReqBuilder;
 
   public PipeTransferTabletBatchEventHandler(
       IoTDBThriftAsyncPipeTransferBatchReqBuilder batchBuilder,
@@ -58,6 +61,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
     req = batchBuilder.toTPipeTransferReq();
 
     this.connector = connector;
+    this.batchReqBuilder = batchBuilder;
   }
 
   public void transfer(AsyncPipeDataTransferServiceClient client) throws TException {
@@ -73,13 +77,24 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
     }
 
     try {
-      connector
-          .statusHandler()
-          .handle(response.getStatus(), response.getStatus().getMessage(), events.toString());
+      final TSStatus status = response.getStatus();
+      // Only handle the failed statuses to avoid string format performance overhead
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        connector
+            .statusHandler()
+            .handle(status, response.getStatus().getMessage(), events.toString());
+      }
+      final boolean isClosed = batchReqBuilder.isClosed();
       for (final Event event : events) {
         if (event instanceof EnrichedEvent) {
-          ((EnrichedEvent) event)
-              .decreaseReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
+          if (isClosed) {
+            ((EnrichedEvent) event)
+                .clearReferenceCount(PipeTransferTabletBatchEventHandler.class.getName());
+          } else {
+            ((EnrichedEvent) event)
+                .decreaseReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
+          }
         }
       }
     } catch (Exception e) {

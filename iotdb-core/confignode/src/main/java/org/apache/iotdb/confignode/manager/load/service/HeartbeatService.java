@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.load.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -44,12 +45,17 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
-/** Maintain the Cluster-Heartbeat-Service. */
+/**
+ * HeartbeatService periodically sending heartbeat requests from ConfigNode-leader to all other
+ * cluster Nodes.
+ */
 public class HeartbeatService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HeartbeatService.class);
@@ -69,6 +75,7 @@ public class HeartbeatService {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.CONFIG_NODE_HEART_BEAT_SERVICE.getName());
   private final AtomicLong heartbeatCounter = new AtomicLong(0);
+  private static final int configNodeListPeriodicallySyncInterval = 100;
 
   public HeartbeatService(IManager configManager, LoadCache loadCache) {
     this.configManager = configManager;
@@ -150,6 +157,26 @@ public class HeartbeatService {
     return heartbeatReq;
   }
 
+  private void addConfigNodeLocationsToReq(int dataNodeId, TDataNodeHeartbeatReq req) {
+    Set<TEndPoint> confirmedConfigNodes = loadCache.getConfirmedConfigNodeEndPoints(dataNodeId);
+    Set<TEndPoint> actualConfigNodes =
+        getNodeManager().getRegisteredConfigNodes().stream()
+            .map(TConfigNodeLocation::getInternalEndPoint)
+            .collect(Collectors.toSet());
+    /*
+      In most cases, comparing actualConfigNodes and confirmedConfigNodes is sufficient, but in some cases it's not, hence the need for periodic sending.
+      Here's an example:
+      1. There are ConfigNode A and B, and one DataNode in the cluster. DataNode persists "ConfigNode list = [A,B]".
+      2. ConfigNode B is removed. DataNode persists "ConfigNode list = [A]" but fails to confirm it to ConfigNode.
+      3. ConfigNode B is re-added to the cluster.
+      4. At this point, because actualConfigNodes and confirmedConfigNodes are identical, the ConfigNode list is not re-sent to the DataNode.
+    */
+    if (!actualConfigNodes.equals(confirmedConfigNodes)
+        || heartbeatCounter.get() % configNodeListPeriodicallySyncInterval == 0) {
+      req.setConfigNodeEndPoints(actualConfigNodes);
+    }
+  }
+
   private TConfigNodeHeartbeatReq genConfigNodeHeartbeatReq() {
     TConfigNodeHeartbeatReq req = new TConfigNodeHeartbeatReq();
     req.setTimestamp(System.nanoTime());
@@ -165,14 +192,14 @@ public class HeartbeatService {
       TConfigNodeHeartbeatReq heartbeatReq, List<TConfigNodeLocation> registeredConfigNodes) {
     // Send heartbeat requests
     for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
-      if (configNodeLocation.getConfigNodeId() == ConfigNodeHeartbeatCache.CURRENT_NODE_ID) {
-        // Skip itself
+      int configNodeId = configNodeLocation.getConfigNodeId();
+      if (configNodeId == ConfigNodeHeartbeatCache.CURRENT_NODE_ID
+          || loadCache.checkAndSetHeartbeatProcessing(configNodeId)) {
+        // Skip itself and the ConfigNode that is processing heartbeat
         continue;
       }
-
       ConfigNodeHeartbeatHandler handler =
-          new ConfigNodeHeartbeatHandler(
-              configManager, configNodeLocation.getConfigNodeId(), loadCache);
+          new ConfigNodeHeartbeatHandler(configNodeId, configManager.getLoadManager());
       AsyncConfigNodeHeartbeatClientPool.getInstance()
           .getConfigNodeHeartBeat(configNodeLocation.getInternalEndPoint(), heartbeatReq, handler);
     }
@@ -187,10 +214,15 @@ public class HeartbeatService {
       TDataNodeHeartbeatReq heartbeatReq, List<TDataNodeConfiguration> registeredDataNodes) {
     // Send heartbeat requests
     for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
+      int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
+      if (loadCache.checkAndSetHeartbeatProcessing(dataNodeId)) {
+        // Skip the DataNode that is processing heartbeat
+        continue;
+      }
       DataNodeHeartbeatHandler handler =
           new DataNodeHeartbeatHandler(
-              dataNodeInfo.getLocation().getDataNodeId(),
-              loadCache,
+              dataNodeId,
+              configManager.getLoadManager(),
               configManager.getClusterQuotaManager().getDeviceNum(),
               configManager.getClusterQuotaManager().getTimeSeriesNum(),
               configManager.getClusterQuotaManager().getRegionDisk(),
@@ -198,6 +230,7 @@ public class HeartbeatService {
               configManager.getClusterSchemaManager()::updateDeviceUsage,
               configManager.getPipeManager().getPipeRuntimeCoordinator());
       configManager.getClusterQuotaManager().updateSpaceQuotaUsage();
+      addConfigNodeLocationsToReq(dataNodeId, heartbeatReq);
       AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);

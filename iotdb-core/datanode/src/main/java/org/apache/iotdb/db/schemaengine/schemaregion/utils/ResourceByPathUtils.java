@@ -27,7 +27,6 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemC
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.IDeviceID;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
@@ -41,6 +40,7 @@ import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -274,12 +274,12 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
     List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
     List<ChunkMetadata> timeChunkMetadataList =
-        writer.getVisibleMetadataList(partialPath.getDevice(), "", partialPath.getSeriesType());
+        writer.getVisibleMetadataList(partialPath.getIDeviceID(), "", partialPath.getSeriesType());
     List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
     for (int i = 0; i < partialPath.getMeasurementList().size(); i++) {
       valueChunkMetadataList.add(
           writer.getVisibleMetadataList(
-              partialPath.getDevice(),
+              partialPath.getIDeviceID(),
               partialPath.getMeasurementList().get(i),
               partialPath.getSchemaList().get(i).getType()));
     }
@@ -426,7 +426,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     List<IChunkMetadata> chunkMetadataList =
         new ArrayList<>(
             writer.getVisibleMetadataList(
-                partialPath.getDevice(),
+                partialPath.getIDeviceID(),
                 partialPath.getMeasurement(),
                 partialPath.getSeriesType()));
 

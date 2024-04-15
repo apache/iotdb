@@ -21,7 +21,6 @@ package org.apache.iotdb.rpc.subscription.payload.request;
 
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 
-import java.io.IOException;
 import java.util.Objects;
 
 public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
@@ -32,7 +31,7 @@ public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
    * Serialize the incoming parameters into `PipeSubscribeHeartbeatReq`, called by the subscription
    * client.
    */
-  public static PipeSubscribeHeartbeatReq toTPipeSubscribeReq() throws IOException {
+  public static PipeSubscribeHeartbeatReq toTPipeSubscribeReq() {
     final PipeSubscribeHeartbeatReq req = new PipeSubscribeHeartbeatReq();
 
     req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();

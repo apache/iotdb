@@ -38,6 +38,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
@@ -176,7 +178,8 @@ public class IoTDBStartCheck {
       // write properties to system.properties
       try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
         systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
-        properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
+        properties.store(
+            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
       }
       isFirstStart = true;
       return true;
@@ -209,8 +212,7 @@ public class IoTDBStartCheck {
     for (String dataDir : config.getLocalDataDirs()) {
       DirectoryChecker.getInstance().registerDirectory(new File(dataDir));
     }
-    if (config.isClusterMode()
-        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       if (DirectoryChecker.getInstance().isCrossDisk(config.getDataDirs())) {
         throw new ConfigurationException(
             "Configuring the data directories as cross-disk directories is not supported under RatisConsensus(it will be supported in a later version).");
@@ -219,19 +221,14 @@ public class IoTDBStartCheck {
     // check system dir
     DirectoryChecker.getInstance().registerDirectory(new File(config.getSystemDir()));
     // check WAL dir
-    if (!(config.isClusterMode()
-            && config
-                .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.RATIS_CONSENSUS))
+    if (!(config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS))
         && !config.getWalMode().equals(WALMode.DISABLE)) {
       for (String walDir : commonConfig.getWalDirs()) {
         DirectoryChecker.getInstance().registerDirectory(new File(walDir));
       }
     }
-    // in cluster mode, check consensus dir
-    if (config.isClusterMode()) {
-      DirectoryChecker.getInstance().registerDirectory(new File(config.getConsensusDir()));
-    }
+    // check consensus dir
+    DirectoryChecker.getInstance().registerDirectory(new File(config.getConsensusDir()));
   }
 
   /**
@@ -272,10 +269,10 @@ public class IoTDBStartCheck {
       // overwrite system.properties when first start
       try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
         systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
-        properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
+        properties.store(
+            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
       }
-      if (config.isClusterMode()
-          && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
           && config.getWalMode().equals(WALMode.DISABLE)) {
         throw new ConfigurationException(
             "Configuring the WALMode as disable is not supported under IoTConsensus");
@@ -316,7 +313,8 @@ public class IoTDBStartCheck {
           });
       properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
       properties.setProperty(COMMIT_ID_STRING, IoTDBConstant.BUILD_INFO);
-      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
+      properties.store(
+          new OutputStreamWriter(tmpFOS, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
       // upgrade finished, delete old system.properties file
       if (propertiesFile.exists()) {
         Files.delete(propertiesFile.toPath());
@@ -387,7 +385,8 @@ public class IoTDBStartCheck {
     try {
       properties.setProperty(IoTDBConstant.CLUSTER_NAME, clusterName);
       properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
-      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
+      properties.store(
+          new OutputStreamWriter(tmpFOS, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file
       if (propertiesFile.exists()) {
         Files.delete(propertiesFile.toPath());
@@ -424,7 +423,8 @@ public class IoTDBStartCheck {
     if (needsSerialize) {
       try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
         systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
-        properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
+        properties.store(
+            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
       }
     }
     long endTime = System.currentTimeMillis();

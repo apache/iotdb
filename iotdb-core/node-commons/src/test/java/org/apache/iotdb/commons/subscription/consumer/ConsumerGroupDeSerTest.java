@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.commons.subscription.consumer;
 
-import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -56,6 +56,8 @@ public class ConsumerGroupDeSerTest {
 
     Assert.assertTrue(
         consumerGroupMeta.getConsumersSubscribingTopic("test_topic").contains("test_consumer1"));
+    Assert.assertTrue(
+        consumerGroupMeta.getTopicsSubscribedByConsumer("test_consumer1").contains("test_topic"));
 
     ByteBuffer byteBuffer = consumerGroupMeta.serialize();
     ConsumerGroupMeta consumerGroupMeta1 = ConsumerGroupMeta.deserialize(byteBuffer);

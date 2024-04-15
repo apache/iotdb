@@ -80,6 +80,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -88,9 +89,9 @@ public class SessionConnection {
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to reconnect to server. Please check server status.";
-  private Session session;
+  protected Session session;
   private TTransport transport;
-  private IClientRPCService.Iface client;
+  protected IClientRPCService.Iface client;
   private long sessionId;
   private long statementId;
   private ZoneId zoneId;
@@ -1406,6 +1407,9 @@ public class SessionConnection {
         session.removeBrokenSessionConnection(this);
         session.defaultEndPoint = this.endPoint;
         session.defaultSessionConnection = this;
+        if (session.endPointToSessionConnection == null) {
+          session.endPointToSessionConnection = new ConcurrentHashMap<>();
+        }
         session.endPointToSessionConnection.put(session.defaultEndPoint, this);
         break;
       }

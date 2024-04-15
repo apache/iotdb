@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -52,8 +53,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * DiskGuardian manages to take snapshots periodically for each Raft Group in order to control disk
- * storage consumption.
+ * {@link DiskGuardian} manages to take snapshots periodically for each Raft Group in order to
+ * control disk storage consumption.
  */
 class DiskGuardian {
   private static final Logger logger = LoggerFactory.getLogger(DiskGuardian.class);
@@ -67,7 +68,7 @@ class DiskGuardian {
    */
   static final class RaftLogSummary {
 
-    /** whether the path denotes an open segment under active writing progress */
+    /** Whether the path denotes an open segment under active writing progress */
     private static final Predicate<Path> isOpenSegment =
         p -> p.toFile().getName().startsWith("log_inprogress");
 
@@ -115,10 +116,10 @@ class DiskGuardian {
     }
   }
 
-  /** use a {@link MemoizedSupplier} here to avoid this reference leak */
+  /** Use a {@link MemoizedSupplier} here to avoid this reference leak */
   private final MemoizedSupplier<RatisConsensus> serverRef;
 
-  /** whether a specific RaftGroup need to take snapshot during next check period */
+  /** Whether a specific RaftGroup need to take snapshot during next check period */
   private final Map<RaftGroupId, AtomicBoolean> snapshotFlag = new ConcurrentHashMap<>();
 
   /** Raft Log disk usage summary statistics */
@@ -162,14 +163,14 @@ class DiskGuardian {
     }
   }
 
-  /** call this method to register checkers before {@link #start()} */
+  /** Call this method to register checkers before {@link #start()} */
   void registerChecker(Predicate<RaftLogSummary> checker, TimeDuration interval) {
     final List<Predicate<RaftLogSummary>> checkers =
         snapshotArbitrators.computeIfAbsent(interval, i -> new CopyOnWriteArrayList<>());
     checkers.add(checker);
   }
 
-  /** periodically woken up. Will take a snapshot if a flag is set. */
+  /** Periodically woken up. Will take a snapshot if a flag is set. */
   private void snapshotDaemon() {
     if (isStopped.get()) {
       return;
@@ -177,7 +178,7 @@ class DiskGuardian {
     for (RaftGroupId groupId : serverRef.get().getServer().getGroupIds()) {
       if (getSnapshotFlag(groupId).get()) {
         try {
-          serverRef.get().triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(groupId));
+          serverRef.get().triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(groupId), false);
           final boolean flagCleared = snapshotFlag.get(groupId).compareAndSet(true, false);
           if (!flagCleared) {
             logger.warn(
@@ -197,7 +198,7 @@ class DiskGuardian {
     }
   }
 
-  /** periodically woken up. Will check the snapshot condition and set the snapshot flag. */
+  /** Periodically woken up. Will check the snapshot condition and set the snapshot flag. */
   private void checkerDaemon(List<Predicate<RaftLogSummary>> checkerList) {
     if (isStopped.get()) {
       return;

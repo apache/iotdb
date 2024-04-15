@@ -40,7 +40,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -52,11 +51,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   private static final Logger LOG = LoggerFactory.getLogger(Procedure.class);
   public static final long NO_PROC_ID = -1;
   public static final long NO_TIMEOUT = -1;
-  /**
-   * The isDeserialized of a newly created procedure is false. When a leader switch or ConfigNode
-   * restart occurs during the execution of the procedure, isDeserialized becomes true.
-   */
-  private boolean isDeserialized = false;
 
   private long parentProcId = NO_PROC_ID;
   private long rootProcId = NO_PROC_ID;
@@ -193,8 +187,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   public void deserialize(ByteBuffer byteBuffer) {
     // procid
     this.setProcId(byteBuffer.getLong());
-    // isDeserialized
-    this.setDeserialized(true);
     // state
     this.setState(ProcedureState.values()[byteBuffer.getInt()]);
     //  submit time
@@ -546,10 +538,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     return procId;
   }
 
-  public boolean isDeserialized() {
-    return isDeserialized;
-  }
-
   public boolean hasParent() {
     return parentProcId != NO_PROC_ID;
   }
@@ -571,12 +559,8 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   }
 
   /** Called by the ProcedureExecutor to assign the ID to the newly created procedure. */
-  protected void setProcId(long procId) {
+  public void setProcId(long procId) {
     this.procId = procId;
-  }
-
-  private void setDeserialized(boolean isDeserialized) {
-    this.isDeserialized = isDeserialized;
   }
 
   public void setProcRunnable() {
@@ -880,17 +864,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
 
   protected synchronized int[] getStackIndexes() {
     return stackIndexes;
-  }
-
-  /** Helper to lookup the root Procedure ID given a specified procedure. */
-  protected static long getRootProcedureId(Map<Long, Procedure> procedures, Procedure proc) {
-    while (proc.hasParent()) {
-      proc = procedures.get(proc.getParentProcId());
-      if (proc == null) {
-        return NO_PROC_ID;
-      }
-    }
-    return proc.getProcId();
   }
 
   public void setRootProcedureId(long rootProcedureId) {
