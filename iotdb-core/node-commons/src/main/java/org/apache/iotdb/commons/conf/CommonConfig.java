@@ -227,7 +227,8 @@ public class CommonConfig {
   private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
-
+  private int pipeConsensusEventBufferSize = 5;
+  private long pipeConsensusEventEnqueueTimeoutInMs = 5000;
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
   private int subscriptionMaxTabletsPerPrefetching = 16;
@@ -959,6 +960,22 @@ public class CommonConfig {
   public void setPipeListeningQueueTransferSnapshotThreshold(
       long pipeListeningQueueTransferSnapshotThreshold) {
     this.pipeListeningQueueTransferSnapshotThreshold = pipeListeningQueueTransferSnapshotThreshold;
+  }
+
+  public int getPipeConsensusEventBufferSize() {
+    return pipeConsensusEventBufferSize;
+  }
+
+  public void setPipeConsensusEventBufferSize(int pipeConsensusEventBufferSize) {
+    this.pipeConsensusEventBufferSize = pipeConsensusEventBufferSize;
+  }
+
+  public long getPipeConsensusEventEnqueueTimeoutInMs() {
+    return pipeConsensusEventEnqueueTimeoutInMs;
+  }
+
+  public void setPipeConsensusEventEnqueueTimeoutInMs(long pipeConsensusEventEnqueueTimeoutInMs) {
+    this.pipeConsensusEventEnqueueTimeoutInMs = pipeConsensusEventEnqueueTimeoutInMs;
   }
 
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {
