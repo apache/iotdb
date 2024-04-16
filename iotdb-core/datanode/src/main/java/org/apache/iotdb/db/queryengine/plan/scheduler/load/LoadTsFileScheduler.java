@@ -212,10 +212,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
       if (!failedTsFileNodes.isEmpty()) {
         LOGGER.warn("Load - Dispatch Stage: {} TsFiles failed to load.", failedTsFileNodes.size());
-        for (LoadSingleTsFileNode node : failedTsFileNodes) {
-          LOGGER.warn(
-              "Load - Dispatch Stage: TsFile {} failed to load.", node.getTsFile().getPath());
-        }
+        LOGGER.warn("Load - Dispatch Stage: Failed TsFiles: {}.", failedTsFileNodes);
         stateMachine.transitionToFailed(new LoadFailedException(failedTsFileNodes));
       } else {
         stateMachine.transitionToFinished();

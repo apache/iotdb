@@ -42,6 +42,6 @@ public class LoadFailedException extends IoTDBException {
       fileNames.setLength(fileNames.length() - 2);
     }
 
-    return "Failed to load " + failedNodeSize + " files: " + fileNames;
+    return String.format("Failed to load %d files: %s", failedNodeSize, fileNames);
   }
 }

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -104,10 +105,10 @@ public class LoadTsFileNode extends WritePlanNode {
               statement.getWritePointCount(i)));
     }
 
-    for (int i = 0; i < statement.getFailedTsFiles().size(); i++) {
-      res.add(
-          new LoadSingleTsFileNode(getPlanNodeId(), statement.getFailedTsFiles().get(i), false));
+    for (File failedTsFile : statement.getFailedTsFiles()) {
+      res.add(new LoadSingleTsFileNode(getPlanNodeId(), failedTsFile, false));
     }
+
     return res;
   }
 

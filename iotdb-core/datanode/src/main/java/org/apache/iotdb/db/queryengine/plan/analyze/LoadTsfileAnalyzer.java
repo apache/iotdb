@@ -185,13 +185,15 @@ public class LoadTsfileAnalyzer {
       }
     }
 
-    LOGGER.info(
-        "Load - Analysis Stage: there are {} tsfiles failed to analyze.",
-        loadTsFileStatement.getFailedTsFiles().size());
+    if (!loadTsFileStatement.getFailedTsFiles().isEmpty()) {
+      LOGGER.warn(
+          "Load - Analysis Stage: there are {} tsfiles failed to analyze.",
+          loadTsFileStatement.getFailedTsFiles().size());
 
-    for (File failedFile : loadTsFileStatement.getFailedTsFiles()) {
-      loadTsFileStatement.removeTsFileAndTsFileResource(failedFile);
-      LOGGER.warn("Load - Analysis Stage: Failed to analyze tsfile: {}", failedFile.getPath());
+      for (File failedFile : loadTsFileStatement.getFailedTsFiles()) {
+        loadTsFileStatement.removeTsFileAndTsFileResource(failedFile);
+        LOGGER.warn("Load - Analysis Stage: Failed to analyze tsfile: {}", failedFile.getPath());
+      }
     }
 
     LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
