@@ -265,6 +265,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
   @Override
   public void close() throws Exception {
     PipeCombineHandlerManager.getInstance().deregister(pipeName, creationTime);
-    twoStageAggregateSender.close();
+    if (Objects.nonNull(twoStageAggregateSender)) {
+      twoStageAggregateSender.close();
+    }
   }
 }
