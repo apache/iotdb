@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -301,11 +302,12 @@ public class IoTConsensusServerImpl {
     final long snapshotSizeSum = snapshotSizeSumAtomic.get();
     long transitedSnapshotSizeSum = 0;
     long transitedFilesNum = 0;
+    long startTime = System.nanoTime();
     logger.info(
-        "[SNAPSHOT TRANSMISSION] Start to transmit snapshots from dir {} ({} files, full size {}) ",
-        newSnapshotDirName,
+        "[SNAPSHOT TRANSMISSION] Start to transmit snapshots ({} files, full size {}) from dir {}",
         snapshotPaths.size(),
-        FileUtils.byteCountToDisplaySize(snapshotSizeSum));
+        FileUtils.byteCountToDisplaySize(snapshotSizeSum),
+        snapshotDir);
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       for (Path path : snapshotPaths) {
@@ -327,12 +329,14 @@ public class IoTConsensusServerImpl {
           transitedSnapshotSizeSum += reader.getTotalReadSize();
           transitedFilesNum++;
           logger.info(
-              "[SNAPSHOT TRANSMISSION] The overall progress for dir {}: files {}/{} done, size {}/{} done)",
+              "[SNAPSHOT TRANSMISSION] The overall progress for dir {}: files {}/{} done, size {}/{} done, {} pass)",
               newSnapshotDirName,
               transitedFilesNum,
               snapshotPaths.size(),
               FileUtils.byteCountToDisplaySize(transitedSnapshotSizeSum),
-              FileUtils.byteCountToDisplaySize(snapshotSizeSum));
+              FileUtils.byteCountToDisplaySize(snapshotSizeSum),
+              CommonDateTimeUtils.convertMillisecondToDurationStr(
+                  (System.nanoTime() - startTime) / 1_000_000));
         } finally {
           reader.close();
         }
@@ -343,7 +347,10 @@ public class IoTConsensusServerImpl {
           e);
     }
     logger.info(
-        "[SNAPSHOT TRANSMISSION] Successfully transmit all snapshots from {}", newSnapshotDirName);
+        "[SNAPSHOT TRANSMISSION] After {}, successfully transmit all snapshots from dir {}",
+        CommonDateTimeUtils.convertMillisecondToDurationStr(
+            (System.nanoTime() - startTime) / 1_000_000),
+        snapshotDir);
   }
 
   public void receiveSnapshotFragment(
