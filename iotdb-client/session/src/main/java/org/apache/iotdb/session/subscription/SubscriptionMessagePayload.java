@@ -19,7 +19,4 @@
 
 package org.apache.iotdb.session.subscription;
 
-public interface SubscriptionMessagePayload extends AutoCloseable {
-
-  void open() throws Exception;
-}
+public interface SubscriptionMessagePayload {}

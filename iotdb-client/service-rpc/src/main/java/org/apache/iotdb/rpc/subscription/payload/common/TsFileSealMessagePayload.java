@@ -31,6 +31,14 @@ public class TsFileSealMessagePayload implements SubscriptionMessagePayload {
 
   private transient long fileLength;
 
+  public String getFileName() {
+    return fileName;
+  }
+
+  public long getFileLength() {
+    return fileLength;
+  }
+
   public TsFileSealMessagePayload() {}
 
   public TsFileSealMessagePayload(String fileName, long fileLength) {

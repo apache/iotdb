@@ -46,16 +46,4 @@ public class SubscriptionSessionDataSets
   public Iterator<Tablet> tabletIterator() {
     return tablets.iterator();
   }
-
-  @Override
-  public void open() {
-    // do nothing
-  }
-
-  @Override
-  public void close() throws Exception {
-    for (SubscriptionSessionDataSet dataSet : dataSetList) {
-      dataSet.close();
-    }
-  }
 }

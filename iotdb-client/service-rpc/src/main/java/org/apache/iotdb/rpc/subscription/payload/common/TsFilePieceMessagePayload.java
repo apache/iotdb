@@ -34,6 +34,18 @@ public class TsFilePieceMessagePayload implements SubscriptionMessagePayload {
 
   private transient byte[] filePiece;
 
+  public String getFileName() {
+    return fileName;
+  }
+
+  public long getEndWritingOffset() {
+    return endWritingOffset;
+  }
+
+  public byte[] getFilePiece() {
+    return filePiece;
+  }
+
   public TsFilePieceMessagePayload() {}
 
   public TsFilePieceMessagePayload(String fileName, long endWritingOffset, byte[] filePiece) {

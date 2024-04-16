@@ -22,23 +22,17 @@ package org.apache.iotdb.session.subscription;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
+import java.io.IOException;
+
 public class SubscriptionTsFileReader implements SubscriptionMessagePayload {
 
   private final String fileName;
-
-  private TsFileReader reader;
 
   public SubscriptionTsFileReader(String fileName) {
     this.fileName = fileName;
   }
 
-  @Override
-  public void open() throws Exception {
-    reader = new TsFileReader(new TsFileSequenceReader(fileName));
-  }
-
-  @Override
-  public void close() throws Exception {
-    reader.close();
+  public TsFileReader open() throws IOException {
+    return new TsFileReader(new TsFileSequenceReader(fileName));
   }
 }

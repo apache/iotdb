@@ -29,12 +29,22 @@ import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContex
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessage;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessageType;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessageType;
+import org.apache.iotdb.rpc.subscription.payload.common.TabletsMessagePayload;
+import org.apache.iotdb.rpc.subscription.payload.common.TsFileInfoMessagePayload;
+import org.apache.iotdb.rpc.subscription.payload.common.TsFilePieceMessagePayload;
+import org.apache.iotdb.rpc.subscription.payload.common.TsFileSealMessagePayload;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,7 +61,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
 public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
@@ -64,6 +73,11 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   private SortedMap<Long, Set<SubscriptionMessage>> uncommittedMessages;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
+
+  @Override
+  boolean isClosed() {
+    return isClosed.get();
+  }
 
   /////////////////////////////// ctor ///////////////////////////////
 
@@ -171,10 +185,37 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       releaseReadLock();
     }
 
-    List<SubscriptionMessage> messages =
-        polledMessages.stream()
-            .map(polledMessage -> SubscriptionPolledMessageParser.parse(this, polledMessage))
-            .collect(Collectors.toList());
+    final List<SubscriptionMessage> messages = new ArrayList<>();
+    for (final SubscriptionPolledMessage polledMessage : polledMessages) {
+      final short messageType = polledMessage.getMessageType();
+      if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
+        switch (SubscriptionPolledMessageType.valueOf(messageType)) {
+          case TABLETS:
+            messages.add(
+                new SubscriptionMessage(
+                    polledMessage.getCommitContext(),
+                    ((TabletsMessagePayload) polledMessage.getMessagePayload()).getTablets()));
+            break;
+          case TS_FILE_INFO:
+            try {
+              final SubscriptionMessage message =
+                  pollTsFile(
+                      polledMessage.getCommitContext(),
+                      ((TsFileInfoMessagePayload) polledMessage.getMessagePayload()).getFileName(),
+                      timeoutMs);
+              if (Objects.isNull(message)) {
+                throw new Exception("xxx");
+              }
+              messages.add(message);
+            } catch (Exception e) {
+              LOGGER.warn(e.getMessage());
+            }
+            break;
+          default:
+            break;
+        }
+      }
+    }
 
     if (autoCommit) {
       long currentTimestamp = System.currentTimeMillis();
@@ -190,7 +231,64 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     return messages;
   }
 
-  List<SubscriptionPolledMessage> pollTsFile(
+  private SubscriptionMessage pollTsFile(
+      SubscriptionCommitContext commitContext, String fileName, long timeoutMs)
+      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+    final int dataNodeId = commitContext.getDataNodeId();
+    final String topicName = commitContext.getTopicName();
+
+    final Path filePath = getTsFileDir(topicName).resolve(fileName);
+    Files.createFile(filePath);
+    final File file = filePath.toFile();
+    final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw");
+    commitContextToTsFile.put(commitContext, new Pair<>(file, fileWriter));
+
+    long endWritingOffset = 0;
+    while (true) {
+      final List<SubscriptionPolledMessage> polledMessages =
+          pollTsFileInternal(dataNodeId, topicName, fileName, endWritingOffset, timeoutMs);
+      if (Objects.isNull(polledMessages) || polledMessages.size() != 1) {
+        return null;
+      }
+      final SubscriptionPolledMessage polledMessage = polledMessages.get(0);
+      final short messageType = polledMessage.getMessageType();
+      if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
+        switch (SubscriptionPolledMessageType.valueOf(messageType)) {
+          case TS_FILE_PIECE:
+            {
+              final TsFilePieceMessagePayload messagePayload =
+                  (TsFilePieceMessagePayload) polledMessage.getMessagePayload();
+              if (!fileName.equals(messagePayload.getFileName())) {
+                return null;
+              }
+              fileWriter.write(messagePayload.getFilePiece());
+              fileWriter.getFD().sync();
+              endWritingOffset = messagePayload.getEndWritingOffset();
+              break;
+            }
+          case TS_FILE_SEAL:
+            {
+              final TsFileSealMessagePayload messagePayload =
+                  (TsFileSealMessagePayload) polledMessage.getMessagePayload();
+              if (!fileName.equals(messagePayload.getFileName())) {
+                return null;
+              }
+              if (fileWriter.length() != messagePayload.getFileLength()) {
+                return null;
+              }
+              fileWriter.getFD().sync();
+              fileWriter.close();
+              commitContextToTsFile.remove(commitContext);
+              break;
+            }
+          default:
+            break;
+        }
+      }
+    }
+  }
+
+  private List<SubscriptionPolledMessage> pollTsFileInternal(
       int dataNodeId, String topicName, String fileName, long endWritingOffset, long timeoutMs)
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     acquireReadLock();
@@ -294,10 +392,6 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
         LOGGER.warn("something unexpected happened when commit messages during close", e);
       }
     }
-  }
-
-  boolean isClosed() {
-    return isClosed.get();
   }
 
   long getAutoCommitIntervalMs() {

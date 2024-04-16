@@ -24,13 +24,19 @@ import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 import org.apache.iotdb.session.util.SessionUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -60,8 +66,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private final String username;
   private final String password;
 
-  private final String consumerId;
-  private final String consumerGroupId;
+  protected final String consumerId;
+  protected final String consumerGroupId;
 
   private final long heartbeatIntervalMs;
   private final long endpointsSyncIntervalMs;
@@ -81,6 +87,24 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   public String getConsumerGroupId() {
     return consumerGroupId;
+  }
+
+  /////////////////////////////// tsfile dir ///////////////////////////////
+
+  protected Path subscribedTsFileBaseDirPath;
+
+  protected final Map<SubscriptionCommitContext, Pair<File, RandomAccessFile>>
+      commitContextToTsFile = new ConcurrentHashMap<>();
+
+  public Path getTsFileDir(String topicName) throws IOException {
+    if (Objects.isNull(subscribedTsFileBaseDirPath)) {
+      subscribedTsFileBaseDirPath =
+          Files.createTempDirectory(
+              String.format("subscribedTsFile_%s_%s", consumerId, consumerGroupId));
+    }
+    Path dirPath = subscribedTsFileBaseDirPath.resolve(topicName);
+    Files.createDirectories(dirPath);
+    return dirPath;
   }
 
   /////////////////////////////// ctor ///////////////////////////////
