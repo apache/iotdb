@@ -28,7 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -56,8 +55,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeM
 
 public class TableScanOperator extends AbstractDataSourceOperator {
 
-  private final List<Symbol> outputColumnNames;
-
   private final List<ColumnSchema> columnSchemas;
 
   private final int[] columnsIndexArray;
@@ -78,18 +75,18 @@ public class TableScanOperator extends AbstractDataSourceOperator {
   private final List<TSDataType> measurementColumnTSDataTypes;
 
   private final TsBlockBuilder measurementDataBuilder;
+
+  private final int maxTsBlockLineNum;
+
   private TsBlock measurementDataBlock;
 
   private QueryDataSource queryDataSource;
 
-  private int currentDeviceIndex = 0;
-
-  private int maxTsBlockLineNum = -1;
+  private int currentDeviceIndex;
 
   public TableScanOperator(
       OperatorContext context,
       PlanNodeId sourceId,
-      List<Symbol> outputColumnNames,
       List<ColumnSchema> columnSchemas,
       int[] columnsIndexArray,
       int measurementColumnCount,
@@ -101,7 +98,6 @@ public class TableScanOperator extends AbstractDataSourceOperator {
       int maxTsBlockLineNum) {
     this.sourceId = sourceId;
     this.operatorContext = context;
-    this.outputColumnNames = outputColumnNames;
     this.columnSchemas = columnSchemas;
     this.columnsIndexArray = columnsIndexArray;
     this.measurementColumnCount = measurementColumnCount;
@@ -118,7 +114,7 @@ public class TableScanOperator extends AbstractDataSourceOperator {
     this.maxReturnSize =
         Math.min(
             maxReturnSize,
-            (1L + outputColumnNames.size())
+            (1L + columnsIndexArray.length)
                 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.maxTsBlockLineNum = maxTsBlockLineNum;
 
@@ -303,7 +299,7 @@ public class TableScanOperator extends AbstractDataSourceOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return (1L + outputColumnNames.size())
+    return (1L + columnsIndexArray.length)
         * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()
         * 3L;
   }

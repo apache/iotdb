@@ -290,6 +290,19 @@ public class PredicateUtils {
             allMeasurements, isBuildPlanUseTemplate, typeProvider));
   }
 
+  public static Filter convertPredicateToFilter(
+      org.apache.iotdb.db.relational.sql.tree.Expression predicate,
+      List<String> allMeasurements,
+      TypeProvider typeProvider) {
+    if (predicate == null) {
+      return null;
+    }
+    return predicate.accept(
+        new ConvertPredicateToFilterVisitor(),
+        new ConvertPredicateToFilterVisitor.Context(
+            allMeasurements, isBuildPlanUseTemplate, typeProvider));
+  }
+
   /**
    * Combine the given conjuncts into a single expression using "and".
    *
@@ -395,5 +408,12 @@ public class PredicateUtils {
    */
   public static boolean predicateCanPushIntoScan(Expression predicate) {
     return new PredicatePushIntoScanChecker().process(predicate, null);
+  }
+
+  public static boolean predicateCanPushIntoScan(
+      org.apache.iotdb.db.relational.sql.tree.Expression predicate) {
+    return new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
+            .PredicatePushIntoScanChecker()
+        .process(predicate, null);
   }
 }

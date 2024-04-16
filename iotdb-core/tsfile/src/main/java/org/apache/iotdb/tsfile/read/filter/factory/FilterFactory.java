@@ -24,6 +24,8 @@ import org.apache.iotdb.tsfile.read.filter.operator.And;
 import org.apache.iotdb.tsfile.read.filter.operator.Not;
 import org.apache.iotdb.tsfile.read.filter.operator.Or;
 
+import java.util.List;
+
 import static org.apache.iotdb.tsfile.utils.Preconditions.checkArgument;
 
 public class FilterFactory {
@@ -43,6 +45,14 @@ public class FilterFactory {
     return new And(left, right);
   }
 
+  public static Filter and(List<Filter> filterList) {
+    And result = new And(filterList.get(0), filterList.get(1));
+    for (int i = 2, size = filterList.size(); i < size; i++) {
+      result = new And(result, filterList.get(i));
+    }
+    return result;
+  }
+
   public static Filter or(Filter left, Filter right) {
     if (left == null && right == null) {
       return null;
@@ -52,6 +62,14 @@ public class FilterFactory {
       return left;
     }
     return new Or(left, right);
+  }
+
+  public static Filter or(List<Filter> filterList) {
+    Or result = new Or(filterList.get(0), filterList.get(1));
+    for (int i = 2, size = filterList.size(); i < size; i++) {
+      result = new Or(result, filterList.get(i));
+    }
+    return result;
   }
 
   public static Not not(Filter filter) {

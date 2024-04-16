@@ -131,6 +131,14 @@ public class TableScanNode extends PlanNode {
     return this.scanOrder;
   }
 
+  public List<DeviceEntry> getDeviceEntries() {
+    return deviceEntries;
+  }
+
+  public Map<Symbol, Integer> getAttributesMap() {
+    return attributesMap;
+  }
+
   public Expression getPushDownPredicate() {
     return this.pushDownPredicate;
   }
