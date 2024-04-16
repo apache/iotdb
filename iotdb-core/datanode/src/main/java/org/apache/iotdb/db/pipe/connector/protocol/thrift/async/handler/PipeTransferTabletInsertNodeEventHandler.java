@@ -42,7 +42,6 @@ public class PipeTransferTabletInsertNodeEventHandler
   @Override
   protected void doTransfer(AsyncPipeDataTransferServiceClient client, TPipeTransferReq req)
       throws TException {
-    // 第二个参数是构造 callback
     client.pipeTransfer(req, this);
   }
 
