@@ -112,15 +112,11 @@ public class QueryPlanner {
 
     builder = filter(builder, analysis.getWhere(node), node);
 
-    // TODO prcess aggregate, having later
-
     List<Analysis.SelectExpression> selectExpressions = analysis.getSelectExpressions(node);
     List<Expression> expressions =
         selectExpressions.stream()
             .map(Analysis.SelectExpression::getExpression)
             .collect(toImmutableList());
-
-    // TODO process subQuery later
 
     if (hasExpressionsToUnfold(selectExpressions)) {
       // pre-project the folded expressions to preserve any non-deterministic semantics of functions
@@ -167,8 +163,6 @@ public class QueryPlanner {
               Iterables.concat(orderBy, outputs), analysis, symbolAllocator, idAllocator);
     }
 
-    // TODO handle distinct
-
     Optional<OrderingScheme> orderingScheme =
         orderingScheme(builder, node.getOrderBy(), analysis.getOrderByExpressions(node));
     builder = sort(builder, orderingScheme);
@@ -178,6 +172,8 @@ public class QueryPlanner {
 
     return new RelationPlan(
         builder.getRoot(), analysis.getScope(node), computeOutputs(builder, outputs));
+
+    // TODO handle aggregate, having, distinct, subQuery later
   }
 
   private static boolean hasExpressionsToUnfold(List<Analysis.SelectExpression> selectExpressions) {
