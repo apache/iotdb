@@ -165,7 +165,6 @@
         <spark-scala.2.12.version>3.5.0</spark-scala.2.12.version>
         <!-- Override this to `true`, if you want to disable spotless -->
         <spotless.skip>false</spotless.skip>
-        <!-- This was the last version to support Java 8 -->
         <spotless.version>2.43.0</spotless.version>
         <!-- This is the matching version of spring-boot for spring 5.3.30 -->
         <spring-boot.version>2.7.18</spring-boot.version>
@@ -2524,6 +2523,9 @@
                 <jdk>(,11]</jdk>
             </activation>
             <properties>
+                <!-- This was the last version to support Java 8, Just for run -->
+                <spotless.version>2.27.1</spotless.version>
+                <!-- To avoid format conflicts -->
                 <spotless.skip>true</spotless.skip>
             </properties>
         </profile>
