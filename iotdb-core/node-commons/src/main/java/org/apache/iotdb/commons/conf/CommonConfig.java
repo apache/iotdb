@@ -229,6 +229,7 @@ public class CommonConfig {
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeConsensusEventBufferSize = 5;
   private long pipeConsensusEventEnqueueTimeoutInMs = 5000;
+  private long pipeConsensusReceiverMaxWaitingTimeForEventsInMs = 5000;
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
   private int subscriptionMaxTabletsPerPrefetching = 16;
@@ -976,6 +977,16 @@ public class CommonConfig {
 
   public void setPipeConsensusEventEnqueueTimeoutInMs(long pipeConsensusEventEnqueueTimeoutInMs) {
     this.pipeConsensusEventEnqueueTimeoutInMs = pipeConsensusEventEnqueueTimeoutInMs;
+  }
+
+  public long getPipeConsensusReceiverMaxWaitingTimeForEventsInMs() {
+    return pipeConsensusReceiverMaxWaitingTimeForEventsInMs;
+  }
+
+  public void setPipeConsensusReceiverMaxWaitingTimeForEventsInMs(
+      long pipeConsensusReceiverMaxWaitingTimeForEventsInMs) {
+    this.pipeConsensusReceiverMaxWaitingTimeForEventsInMs =
+        pipeConsensusReceiverMaxWaitingTimeForEventsInMs;
   }
 
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {
