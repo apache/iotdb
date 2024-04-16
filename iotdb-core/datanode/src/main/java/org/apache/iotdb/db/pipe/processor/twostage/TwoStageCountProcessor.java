@@ -110,6 +110,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
     outputSeries =
         new PartialPath(parameters.getString(PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY));
 
+    // TODO: init localCommitProgressIndex with the progress index of the last successful combine
+
     twoStageAggregateSender = new TwoStageAggregateSender();
     PipeCombineHandlerManager.getInstance()
         .register(

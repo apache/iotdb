@@ -99,7 +99,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               "Receiver id = {}: Original receiver file dir {} was deleted.",
               receiverId.get(),
               receiverFileDirWithIdSuffix.get().getPath());
-        } catch (IOException e) {
+        } catch (Exception e) {
           LOGGER.warn(
               "Receiver id = {}: Failed to delete original receiver file dir {}, because {}.",
               receiverId.get(),
@@ -278,7 +278,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       try {
         return PipeTransferFilePieceResp.toTPipeTransferResp(
             status, PipeTransferFilePieceResp.ERROR_END_OFFSET);
-      } catch (IOException ex) {
+      } catch (Exception ex) {
         return PipeTransferFilePieceResp.toTPipeTransferResp(status);
       }
     }
@@ -340,7 +340,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             "Receiver id = {}: Current writing file writer {} was closed.",
             receiverId.get(),
             writingFile == null ? "null" : writingFile.getPath());
-      } catch (IOException e) {
+      } catch (Exception e) {
         LOGGER.warn(
             "Receiver id = {}: Failed to close current writing file writer {}, because {}.",
             receiverId.get(),
@@ -377,7 +377,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             "Receiver id = {}: Original writing file {} was deleted.",
             receiverId.get(),
             file.getPath());
-      } catch (IOException e) {
+      } catch (Exception e) {
         LOGGER.warn(
             "Receiver id = {}: Failed to delete original writing file {}, because {}.",
             receiverId.get(),
@@ -454,7 +454,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             status.getMessage());
       }
       return new TPipeTransferResp(status);
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOGGER.warn(
           "Receiver id = {}: Failed to seal file {} from req {}.",
           receiverId.get(),
@@ -534,7 +534,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             status);
       }
       return new TPipeTransferResp(status);
-    } catch (IOException | IllegalPathException e) {
+    } catch (Exception e) {
       LOGGER.warn(
           "Receiver id = {}: Failed to seal file {} from req {}.", receiverId.get(), files, req, e);
       return new TPipeTransferResp(
@@ -701,7 +701,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               "Receiver id = {}: Handling exit: Original receiver file dir {} was deleted.",
               receiverId.get(),
               receiverFileDirWithIdSuffix.get().getPath());
-        } catch (IOException e) {
+        } catch (Exception e) {
           LOGGER.warn(
               "Receiver id = {}: Handling exit: Delete original receiver file dir {} error.",
               receiverId.get(),
