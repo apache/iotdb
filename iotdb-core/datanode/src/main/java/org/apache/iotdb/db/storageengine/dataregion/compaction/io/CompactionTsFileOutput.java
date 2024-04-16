@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -32,15 +31,12 @@ public class CompactionTsFileOutput extends OutputStream implements TsFileOutput
 
   private TsFileOutput output;
   private RateLimiter rateLimiter;
-  private final long maxSizePerWrite;
+  private final int maxSizePerWrite;
 
   public CompactionTsFileOutput(TsFileOutput output, RateLimiter rateLimiter) {
     this.output = output;
     this.rateLimiter = rateLimiter;
-    maxSizePerWrite =
-        (int)
-            (rateLimiter.getRate()
-                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+    this.maxSizePerWrite = (int) Math.min((long) rateLimiter.getRate(), Integer.MAX_VALUE);
   }
 
   @Override
