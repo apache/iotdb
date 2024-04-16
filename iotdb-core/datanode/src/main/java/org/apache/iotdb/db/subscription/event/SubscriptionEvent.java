@@ -44,6 +44,10 @@ public class SubscriptionEvent {
     this.committedTimestamp = INVALID_TIMESTAMP;
   }
 
+  public List<EnrichedEvent> getEnrichedEvents() {
+    return enrichedEvents;
+  }
+
   public SubscriptionPolledMessage getMessage() {
     return message;
   }

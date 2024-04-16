@@ -19,14 +19,8 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
 import org.apache.iotdb.tsfile.read.TsFileReader;
-
-import org.apache.thrift.TException;
-
-import java.io.IOException;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 public class SubscriptionTsFileReader implements SubscriptionMessagePayload {
 
@@ -38,9 +32,9 @@ public class SubscriptionTsFileReader implements SubscriptionMessagePayload {
     this.fileName = fileName;
   }
 
-  public void open(SubscriptionPullConsumer consumer, SubscriptionCommitContext commitContext)
-      throws TException, IOException, StatementExecutionException {
-    SubscriptionPolledMessage rawMessage;
+  @Override
+  public void open() throws Exception {
+    reader = new TsFileReader(new TsFileSequenceReader(fileName));
   }
 
   @Override

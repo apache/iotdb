@@ -25,46 +25,29 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class PollTsFileMessagePayload implements SubscriptionMessagePayload {
-
-  private transient String topicName;
+public class TsFileSealMessagePayload implements SubscriptionMessagePayload {
 
   private transient String fileName;
 
-  private transient long endWritingOffset;
+  private transient long fileLength;
 
-  public String getTopicName() {
-    return topicName;
-  }
+  public TsFileSealMessagePayload() {}
 
-  public String getFileName() {
-    return fileName;
-  }
-
-  public long getEndWritingOffset() {
-    return endWritingOffset;
-  }
-
-  public PollTsFileMessagePayload() {}
-
-  public PollTsFileMessagePayload(String topicName, String fileName, long endWritingOffset) {
-    this.topicName = topicName;
+  public TsFileSealMessagePayload(String fileName, long fileLength) {
     this.fileName = fileName;
-    this.endWritingOffset = endWritingOffset;
+    this.fileLength = fileLength;
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(topicName, stream);
     ReadWriteIOUtils.write(fileName, stream);
-    ReadWriteIOUtils.write(endWritingOffset, stream);
+    ReadWriteIOUtils.write(fileLength, stream);
   }
 
   @Override
   public SubscriptionMessagePayload deserialize(ByteBuffer buffer) {
-    topicName = ReadWriteIOUtils.readString(buffer);
-    fileName = ReadWriteIOUtils.readString(buffer);
-    endWritingOffset = ReadWriteIOUtils.readLong(buffer);
+    this.fileName = ReadWriteIOUtils.readString(buffer);
+    this.fileLength = ReadWriteIOUtils.readLong(buffer);
     return this;
   }
 }

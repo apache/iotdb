@@ -35,16 +35,21 @@ public class SubscriptionSessionDataSets
   public SubscriptionSessionDataSets(List<Tablet> tablets) {
     this.dataSetList = new ArrayList<>();
     this.tablets = tablets;
+    tablets.forEach((tablet -> this.dataSetList.add(new SubscriptionSessionDataSet(tablet))));
   }
 
   @Override
   public Iterator<SubscriptionSessionDataSet> iterator() {
-    tablets.forEach((tablet -> this.dataSetList.add(new SubscriptionSessionDataSet(tablet))));
     return dataSetList.iterator();
   }
 
   public Iterator<Tablet> tabletIterator() {
     return tablets.iterator();
+  }
+
+  @Override
+  public void open() {
+    // do nothing
   }
 
   @Override

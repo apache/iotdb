@@ -237,6 +237,7 @@ public class CommonConfig {
   private int subscriptionRecycleUncommittedEventIntervalMs = 240000; // 240s
   private long subscriptionDefaultPollTimeoutMs = 30000;
   private long subscriptionMinPollTimeoutMs = 500;
+  private int subscriptionReadFileBufferSize = 8388608;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -1030,6 +1031,14 @@ public class CommonConfig {
 
   public void setSubscriptionMinPollTimeoutMs(long subscriptionMinPollTimeoutMs) {
     this.subscriptionMinPollTimeoutMs = subscriptionMinPollTimeoutMs;
+  }
+
+  public int getSubscriptionReadFileBufferSize() {
+    return subscriptionReadFileBufferSize;
+  }
+
+  public void setSubscriptionReadFileBufferSize(int subscriptionReadFileBufferSize) {
+    this.subscriptionReadFileBufferSize = subscriptionReadFileBufferSize;
   }
 
   public String getSchemaEngineMode() {

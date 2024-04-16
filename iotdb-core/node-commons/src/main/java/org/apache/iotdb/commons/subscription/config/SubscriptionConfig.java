@@ -63,6 +63,10 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionMinPollTimeoutMs();
   }
 
+  public int getSubscriptionReadFileBufferSize() {
+    return COMMON_CONFIG.getSubscriptionReadFileBufferSize();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
@@ -82,6 +86,7 @@ public class SubscriptionConfig {
         getSubscriptionRecycleUncommittedEventIntervalMs());
     LOGGER.info("SubscriptionDefaultPollTimeoutMs: {}", getSubscriptionDefaultPollTimeoutMs());
     LOGGER.info("SubscriptionMinPollTimeoutMs: {}", getSubscriptionMinPollTimeoutMs());
+    LOGGER.info("SubscriptionReadFileBufferSize: {}", getSubscriptionReadFileBufferSize());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

@@ -29,7 +29,6 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   private final SubscriptionCommitContext commitContext;
 
-  // TODO: support more data format
   private final SubscriptionMessagePayload payload;
 
   public SubscriptionMessage(SubscriptionCommitContext commitContext, List<Tablet> tablets) {

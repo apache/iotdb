@@ -562,6 +562,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_min_poll_timeout_ms",
                 String.valueOf(config.getSubscriptionMinPollTimeoutMs()))));
+    config.setSubscriptionReadFileBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_read_file_buffer_size",
+                String.valueOf(config.getSubscriptionReadFileBufferSize()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

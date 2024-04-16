@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.common.PollMessagePayload;
+import org.apache.iotdb.rpc.subscription.payload.common.PollTsFileMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessage;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessageType;
@@ -151,13 +152,13 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   public List<SubscriptionMessage> poll(Set<String> topicNames, long timeoutMs)
       throws TException, IOException, StatementExecutionException {
-    List<SubscriptionPolledMessage> rawMessages = new ArrayList<>();
+    List<SubscriptionPolledMessage> polledMessages = new ArrayList<>();
 
     acquireReadLock();
     try {
       for (final SubscriptionProvider provider : getAllAvailableProviders()) {
         // TODO: network timeout
-        rawMessages.addAll(
+        polledMessages.addAll(
             provider
                 .getSessionConnection()
                 .poll(
@@ -171,7 +172,9 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     }
 
     List<SubscriptionMessage> messages =
-        rawMessages.stream().map(SubscriptionRawMessageParser::parse).collect(Collectors.toList());
+        polledMessages.stream()
+            .map(polledMessage -> SubscriptionPolledMessageParser.parse(this, polledMessage))
+            .collect(Collectors.toList());
 
     if (autoCommit) {
       long currentTimestamp = System.currentTimeMillis();
@@ -185,6 +188,30 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     }
 
     return messages;
+  }
+
+  List<SubscriptionPolledMessage> pollTsFile(
+      int dataNodeId, String topicName, String fileName, long endWritingOffset, long timeoutMs)
+      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+    acquireReadLock();
+    try {
+      final SubscriptionProvider provider = getProvider(dataNodeId);
+      if (Objects.isNull(provider) || !provider.isAvailable()) {
+        throw new IoTDBConnectionException(
+            String.format(
+                "something unexpected happened when poll tsfile from subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                dataNodeId));
+      }
+      return provider
+          .getSessionConnection()
+          .poll(
+              new SubscriptionPollMessage(
+                  SubscriptionPollMessageType.POLL_TS_FILE.getType(),
+                  new PollTsFileMessagePayload(topicName, fileName, endWritingOffset),
+                  timeoutMs));
+    } finally {
+      releaseReadLock();
+    }
   }
 
   public void commitSync(SubscriptionMessage message)

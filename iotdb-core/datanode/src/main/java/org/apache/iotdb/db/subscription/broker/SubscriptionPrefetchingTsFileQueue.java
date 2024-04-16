@@ -19,21 +19,30 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessageType;
 import org.apache.iotdb.rpc.subscription.payload.common.TsFileInfoMessagePayload;
+import org.apache.iotdb.rpc.subscription.payload.common.TsFilePieceMessagePayload;
+import org.apache.iotdb.rpc.subscription.payload.common.TsFileSealMessagePayload;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -80,8 +89,76 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
                   new TsFileInfoMessagePayload(tsFileInsertionEvent.getTsFile().getName()),
                   commitContext));
       eventRef.set(subscriptionEvent);
-      uncommittedEvents.put(commitContext, subscriptionEvent);
+      // don't allow commit now
       return subscriptionEvent;
+    }
+
+    return null;
+  }
+
+  public SubscriptionEvent pollTsFile(String fileName, long endWritingOffset) {
+    final SubscriptionEvent event = eventRef.get();
+    if (Objects.isNull(event)) {
+      return null;
+    }
+
+    final SubscriptionPolledMessage polledMessage = event.getMessage();
+    final List<EnrichedEvent> enrichedEvents = event.getEnrichedEvents();
+    final PipeTsFileInsertionEvent tsFileInsertionEvent =
+        (PipeTsFileInsertionEvent) enrichedEvents.get(0);
+    final SubscriptionMessagePayload messagePayload = polledMessage.getMessagePayload();
+    final SubscriptionCommitContext commitContext = polledMessage.getCommitContext();
+
+    if (messagePayload instanceof TsFileInfoMessagePayload) {
+      if (!fileName.equals(((TsFileInfoMessagePayload) messagePayload).getFileName())) {
+        return null;
+      }
+    } else if (messagePayload instanceof TsFilePieceMessagePayload) {
+      final int readFileBufferSize =
+          SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
+      final byte[] readBuffer = new byte[readFileBufferSize];
+      try (final RandomAccessFile reader =
+          new RandomAccessFile(tsFileInsertionEvent.getTsFile(), "r")) {
+        while (true) {
+          reader.seek(endWritingOffset);
+          final int readLength = reader.read(readBuffer);
+          if (readLength == -1) {
+            break;
+          }
+          final byte[] filePiece =
+              readLength == readFileBufferSize
+                  ? readBuffer
+                  : Arrays.copyOfRange(readBuffer, 0, readLength);
+
+          // poll tsfile piece
+          final SubscriptionEvent newEvent =
+              new SubscriptionEvent(
+                  Collections.singletonList(tsFileInsertionEvent),
+                  new SubscriptionPolledMessage(
+                      SubscriptionPolledMessageType.TS_FILE_PIECE.getType(),
+                      new TsFilePieceMessagePayload(
+                          fileName, endWritingOffset + readLength, filePiece),
+                      commitContext));
+          eventRef.set(newEvent);
+          return newEvent;
+        }
+
+        // poll tsfile seal
+        final SubscriptionEvent newEvent =
+            new SubscriptionEvent(
+                Collections.singletonList(tsFileInsertionEvent),
+                new SubscriptionPolledMessage(
+                    SubscriptionPolledMessageType.TS_FILE_SEAL.getType(),
+                    new TsFileSealMessagePayload(
+                        fileName, tsFileInsertionEvent.getTsFile().length()),
+                    commitContext));
+        eventRef.set(newEvent);
+        // allow commit now
+        uncommittedEvents.put(commitContext, newEvent);
+        return newEvent;
+      } catch (IOException e) {
+        LOGGER.warn(e.getMessage());
+      }
     }
 
     return null;

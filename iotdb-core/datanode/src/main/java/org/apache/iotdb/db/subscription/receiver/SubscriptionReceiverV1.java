@@ -303,18 +303,25 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     try {
       SubscriptionPollMessage pollMessage = req.getPollMessage();
       short messageType = pollMessage.getMessageType();
+
+      long timeoutMs = pollMessage.getTimeoutMs();
+      final SubscriptionPollTimer timer =
+          new SubscriptionPollTimer(
+              System.currentTimeMillis(),
+              timeoutMs == 0
+                  ? SubscriptionConfig.getInstance().getSubscriptionDefaultPollTimeoutMs()
+                  : Math.max(
+                      timeoutMs,
+                      SubscriptionConfig.getInstance().getSubscriptionMinPollTimeoutMs()));
+
       if (SubscriptionPollMessageType.isValidatedMessageType(messageType)) {
         switch (SubscriptionPollMessageType.valueOf(messageType)) {
           case POLL:
             return handlePipeSubscribePollInternal(
-                consumerConfig,
-                (PollMessagePayload) pollMessage.getMessagePayload(),
-                pollMessage.getTimeoutMs());
+                consumerConfig, (PollMessagePayload) pollMessage.getMessagePayload(), timer);
           case POLL_TS_FILE:
             return handlePipeSubscribePollTsFileInternal(
-                consumerConfig,
-                (PollTsFileMessagePayload) pollMessage.getMessagePayload(),
-                pollMessage.getTimeoutMs());
+                consumerConfig, (PollTsFileMessagePayload) pollMessage.getMessagePayload(), timer);
         }
       }
       throw new SubscriptionException("...");
@@ -330,7 +337,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private TPipeSubscribeResp handlePipeSubscribePollInternal(
-      ConsumerConfig consumerConfig, PollMessagePayload messagePayload, long timeoutMs) {
+      ConsumerConfig consumerConfig,
+      PollMessagePayload messagePayload,
+      SubscriptionPollTimer timer) {
     Set<String> topicNames = messagePayload.getTopicNames();
     if (topicNames.isEmpty()) {
       // poll all subscribed topics
@@ -343,21 +352,14 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     // poll
-    final SubscriptionPollTimer timer =
-        new SubscriptionPollTimer(
-            System.currentTimeMillis(),
-            timeoutMs == 0
-                ? SubscriptionConfig.getInstance().getSubscriptionDefaultPollTimeoutMs()
-                : Math.max(
-                    timeoutMs, SubscriptionConfig.getInstance().getSubscriptionMinPollTimeoutMs()));
     final List<SubscriptionEvent> events =
         SubscriptionAgent.broker().poll(consumerConfig, topicNames, timer);
 
-    final List<SubscriptionPolledMessage> rawMessages =
+    final List<SubscriptionPolledMessage> polledMessages =
         events.stream().map(SubscriptionEvent::getMessage).collect(Collectors.toList());
 
     final List<SubscriptionCommitContext> commitContexts =
-        rawMessages.stream()
+        polledMessages.stream()
             .map(SubscriptionPolledMessage::getCommitContext)
             .collect(Collectors.toList());
 
@@ -376,13 +378,43 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         commitContexts);
 
     // generate response
-    return PipeSubscribePollResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, rawMessages);
+    return PipeSubscribePollResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, polledMessages);
   }
 
-  // TODO
   private TPipeSubscribeResp handlePipeSubscribePollTsFileInternal(
-      ConsumerConfig consumerConfig, PollTsFileMessagePayload messagePayload, long timeoutMs) {
-    return null;
+      ConsumerConfig consumerConfig,
+      PollTsFileMessagePayload messagePayload,
+      SubscriptionPollTimer timer) {
+    // TODO: timer
+
+    // poll
+    final List<SubscriptionEvent> events =
+        SubscriptionAgent.broker()
+            .pollTsFile(
+                consumerConfig,
+                messagePayload.getTopicName(),
+                messagePayload.getFileName(),
+                messagePayload.getEndWritingOffset());
+
+    final List<SubscriptionPolledMessage> polledMessages =
+        events.stream().map(SubscriptionEvent::getMessage).collect(Collectors.toList());
+
+    final List<SubscriptionCommitContext> commitContexts =
+        polledMessages.stream()
+            .map(SubscriptionPolledMessage::getCommitContext)
+            .collect(Collectors.toList());
+
+    // check timer
+    if (timer.isExpired()) {
+      LOGGER.warn("Subscription: timeout happened when consumer {} poll tsfile", consumerConfig);
+    }
+
+    LOGGER.info(
+        "Subscription: consumer {} poll tsfile, commit contexts: {}",
+        consumerConfig,
+        commitContexts);
+
+    return PipeSubscribePollResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, polledMessages);
   }
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(final PipeSubscribeCommitReq req) {

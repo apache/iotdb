@@ -60,6 +60,18 @@ public class SubscriptionBrokerAgent {
     return broker.poll(topicNames, timer);
   }
 
+  public List<SubscriptionEvent> pollTsFile(
+      ConsumerConfig consumerConfig, String topicName, String fileName, long endWritingOffset) {
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+    final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      LOGGER.warn(
+          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
+      return Collections.emptyList();
+    }
+    return broker.pollTsFile(topicName, fileName, endWritingOffset);
+  }
+
   public void commit(
       final ConsumerConfig consumerConfig, final List<SubscriptionCommitContext> commitContexts) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();

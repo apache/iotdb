@@ -27,7 +27,11 @@ import java.nio.ByteBuffer;
 
 public class TsFileInfoMessagePayload implements SubscriptionMessagePayload {
 
-  protected transient String fileName;
+  private transient String fileName;
+
+  public String getFileName() {
+    return fileName;
+  }
 
   public TsFileInfoMessagePayload() {}
 

@@ -19,52 +19,42 @@
 
 package org.apache.iotdb.rpc.subscription.payload.common;
 
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class PollTsFileMessagePayload implements SubscriptionMessagePayload {
-
-  private transient String topicName;
+public class TsFilePieceMessagePayload implements SubscriptionMessagePayload {
 
   private transient String fileName;
 
   private transient long endWritingOffset;
 
-  public String getTopicName() {
-    return topicName;
-  }
+  private transient byte[] filePiece;
 
-  public String getFileName() {
-    return fileName;
-  }
+  public TsFilePieceMessagePayload() {}
 
-  public long getEndWritingOffset() {
-    return endWritingOffset;
-  }
-
-  public PollTsFileMessagePayload() {}
-
-  public PollTsFileMessagePayload(String topicName, String fileName, long endWritingOffset) {
-    this.topicName = topicName;
+  public TsFilePieceMessagePayload(String fileName, long endWritingOffset, byte[] filePiece) {
     this.fileName = fileName;
     this.endWritingOffset = endWritingOffset;
+    this.filePiece = filePiece;
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(topicName, stream);
     ReadWriteIOUtils.write(fileName, stream);
     ReadWriteIOUtils.write(endWritingOffset, stream);
+    ReadWriteIOUtils.write(new Binary(filePiece), stream);
   }
 
   @Override
   public SubscriptionMessagePayload deserialize(ByteBuffer buffer) {
-    topicName = ReadWriteIOUtils.readString(buffer);
-    fileName = ReadWriteIOUtils.readString(buffer);
-    endWritingOffset = ReadWriteIOUtils.readLong(buffer);
+    this.fileName = ReadWriteIOUtils.readString(buffer);
+    this.endWritingOffset = ReadWriteIOUtils.readLong(buffer);
+    final int size = ReadWriteIOUtils.readInt(buffer);
+    this.filePiece = ReadWriteIOUtils.readBytes(buffer, size);
     return this;
   }
 }

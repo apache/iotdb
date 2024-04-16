@@ -22,19 +22,33 @@ package org.apache.iotdb.session.subscription;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessageType;
 import org.apache.iotdb.rpc.subscription.payload.common.TabletsMessagePayload;
+import org.apache.iotdb.rpc.subscription.payload.common.TsFileInfoMessagePayload;
 
-public class SubscriptionRawMessageParser {
+public class SubscriptionPolledMessageParser {
 
-  private SubscriptionRawMessageParser() {}
+  private SubscriptionPolledMessageParser() {}
 
-  public static SubscriptionMessage parse(SubscriptionPolledMessage rawMessage) {
-    short messageType = rawMessage.getMessageType();
+  public static SubscriptionMessage parse(
+      SubscriptionPullConsumer consumer, SubscriptionPolledMessage polledMessage) {
+    short messageType = polledMessage.getMessageType();
     if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
       switch (SubscriptionPolledMessageType.valueOf(messageType)) {
         case TABLETS:
           return new SubscriptionMessage(
-              rawMessage.getCommitContext(),
-              ((TabletsMessagePayload) rawMessage.getMessagePayload()).getTablets());
+              polledMessage.getCommitContext(),
+              ((TabletsMessagePayload) polledMessage.getMessagePayload()).getTablets());
+        case TS_FILE_INFO:
+          // TODO
+          try {
+            consumer.pollTsFile(
+                polledMessage.getCommitContext().getDataNodeId(),
+                polledMessage.getCommitContext().getTopicName(),
+                ((TsFileInfoMessagePayload) polledMessage.getMessagePayload()).getFileName(),
+                0,
+                0L);
+          } catch (Exception e) {
+
+          }
       }
     }
     return null;

@@ -40,8 +40,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
-import java.util.SortedMap;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -67,8 +66,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private final long heartbeatIntervalMs;
   private final long endpointsSyncIntervalMs;
 
-  private final SortedMap<Integer, SubscriptionProvider> subscriptionProviders =
-      new ConcurrentSkipListMap<>();
+  private final Map<Integer, SubscriptionProvider> subscriptionProviders =
+      new ConcurrentHashMap<>();
   private final ReentrantReadWriteLock subscriptionProvidersLock = new ReentrantReadWriteLock(true);
 
   private ScheduledExecutorService heartbeatWorkerExecutor;

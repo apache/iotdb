@@ -97,6 +97,12 @@ public class SubscriptionPolledMessage {
         case TS_FILE_INFO:
           messagePayload = new TsFileInfoMessagePayload().deserialize(buffer);
           break;
+        case TS_FILE_PIECE:
+          messagePayload = new TsFilePieceMessagePayload().deserialize(buffer);
+          break;
+        case TS_FILE_SEAL:
+          messagePayload = new TsFileSealMessagePayload().deserialize(buffer);
+          break;
         default:
           messagePayload = null;
       }
