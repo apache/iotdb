@@ -64,9 +64,29 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
 
     try {
       if (event instanceof PipeSchemaRegionWritePlanEvent) {
-        doTransfer(socket, (PipeSchemaRegionWritePlanEvent) event);
+        final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent =
+            (PipeSchemaRegionWritePlanEvent) event;
+        // We increase the reference count for this event to determine if the event may be released.
+        if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
+            IoTDBSchemaRegionAirGapConnector.class.getName())) {
+          return;
+        }
+
+        doTransfer(socket, pipeSchemaRegionWritePlanEvent);
+        pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
+            IoTDBSchemaRegionAirGapConnector.class.getName(), false);
       } else if (event instanceof PipeSchemaRegionSnapshotEvent) {
-        doTransfer(socket, (PipeSchemaRegionSnapshotEvent) event);
+        final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent =
+            (PipeSchemaRegionSnapshotEvent) event;
+        // We increase the reference count for this event to determine if the event may be released.
+        if (!pipeSchemaRegionSnapshotEvent.increaseReferenceCount(
+            IoTDBSchemaRegionAirGapConnector.class.getName())) {
+          return;
+        }
+
+        doTransfer(socket, pipeSchemaRegionSnapshotEvent);
+        pipeSchemaRegionSnapshotEvent.decreaseReferenceCount(
+            IoTDBSchemaRegionAirGapConnector.class.getName(), false);
       } else if (!(event instanceof PipeHeartbeatEvent)) {
         LOGGER.warn(
             "IoTDBSchemaRegionAirGapConnector does not support transferring generic event: {}.",

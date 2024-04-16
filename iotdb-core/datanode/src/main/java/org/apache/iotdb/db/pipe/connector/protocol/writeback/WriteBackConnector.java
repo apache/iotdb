@@ -93,9 +93,27 @@ public class WriteBackConnector implements PipeConnector {
     }
 
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
+          (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+          WriteBackConnector.class.getName())) {
+        return;
+      }
+
+      doTransfer(pipeInsertNodeTabletInsertionEvent);
+      pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
+          WriteBackConnector.class.getName(), false);
     } else {
-      doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
+          (PipeRawTabletInsertionEvent) tabletInsertionEvent;
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(WriteBackConnector.class.getName())) {
+        return;
+      }
+
+      doTransfer(pipeRawTabletInsertionEvent);
+      pipeRawTabletInsertionEvent.decreaseReferenceCount(WriteBackConnector.class.getName(), false);
     }
   }
 

@@ -30,7 +30,6 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -121,7 +120,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           // We increase the reference count for this event to determine if the event may be
           // released.
           if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
-              IoTDBDataRegionAsyncConnector.class.getName())) {
+              IoTDBDataRegionSyncConnector.class.getName())) {
             return;
           }
 
@@ -159,7 +158,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           (PipeTsFileInsertionEvent) tsFileInsertionEvent;
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeTsFileInsertionEvent.increaseReferenceCount(
-          IoTDBDataRegionAsyncConnector.class.getName())) {
+          IoTDBDataRegionSyncConnector.class.getName())) {
         return;
       }
 
@@ -182,7 +181,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           (PipeSchemaRegionWritePlanEvent) event;
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
-          IoTDBDataRegionAsyncConnector.class.getName())) {
+          IoTDBDataRegionSyncConnector.class.getName())) {
         return;
       }
 

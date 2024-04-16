@@ -263,9 +263,29 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
+          (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+          IoTDBLegacyPipeConnector.class.getName())) {
+        return;
+      }
+
+      doTransfer(pipeInsertNodeTabletInsertionEvent);
+      pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
+          IoTDBLegacyPipeConnector.class.getName(), false);
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
+          (PipeRawTabletInsertionEvent) tabletInsertionEvent;
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
+          IoTDBLegacyPipeConnector.class.getName())) {
+        return;
+      }
+
+      doTransfer(pipeRawTabletInsertionEvent);
+      pipeRawTabletInsertionEvent.decreaseReferenceCount(
+          IoTDBLegacyPipeConnector.class.getName(), false);
     } else {
       throw new NotImplementedException(
           "IoTDBLegacyPipeConnector only support "
@@ -279,6 +299,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
       throw new NotImplementedException(
           "IoTDBLegacyPipeConnector only support PipeTsFileInsertionEvent.");
     }
+
     if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
       LOGGER.warn(
           "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
@@ -287,7 +308,17 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     }
 
     try {
-      doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
+      final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
+          (PipeTsFileInsertionEvent) tsFileInsertionEvent;
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeTsFileInsertionEvent.increaseReferenceCount(
+          IoTDBLegacyPipeConnector.class.getName())) {
+        return;
+      }
+
+      doTransfer(pipeTsFileInsertionEvent);
+      pipeTsFileInsertionEvent.decreaseReferenceCount(
+          IoTDBLegacyPipeConnector.class.getName(), false);
     } catch (TException e) {
       throw new PipeConnectionException(
           String.format(

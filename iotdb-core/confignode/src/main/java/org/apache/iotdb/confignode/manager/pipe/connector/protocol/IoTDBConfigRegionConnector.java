@@ -93,9 +93,29 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
   @Override
   public void transfer(Event event) throws Exception {
     if (event instanceof PipeConfigRegionWritePlanEvent) {
-      doTransfer((PipeConfigRegionWritePlanEvent) event);
+      final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent =
+          (PipeConfigRegionWritePlanEvent) event;
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeConfigRegionWritePlanEvent.increaseReferenceCount(
+          IoTDBConfigRegionConnector.class.getName())) {
+        return;
+      }
+
+      doTransfer(pipeConfigRegionWritePlanEvent);
+      pipeConfigRegionWritePlanEvent.decreaseReferenceCount(
+          IoTDBConfigRegionConnector.class.getName(), false);
     } else if (event instanceof PipeConfigRegionSnapshotEvent) {
-      doTransfer((PipeConfigRegionSnapshotEvent) event);
+      final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent =
+          (PipeConfigRegionSnapshotEvent) event;
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeConfigRegionSnapshotEvent.increaseReferenceCount(
+          IoTDBConfigRegionConnector.class.getName())) {
+        return;
+      }
+
+      doTransfer(pipeConfigRegionSnapshotEvent);
+      pipeConfigRegionSnapshotEvent.decreaseReferenceCount(
+          IoTDBConfigRegionConnector.class.getName(), false);
     } else if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn(
           "IoTDBConfigRegionConnector does not support transferring generic event: {}.", event);

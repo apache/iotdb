@@ -169,11 +169,27 @@ public class OpcUaConnector implements PipeConnector {
     }
 
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      transferTablet(
-          server, ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
+          (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+          OpcUaConnector.class.getName())) {
+        return;
+      }
+
+      transferTablet(server, pipeInsertNodeTabletInsertionEvent.convertToTablet());
+      pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
+          OpcUaConnector.class.getName(), false);
     } else {
-      transferTablet(
-          server, ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
+      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
+          (PipeRawTabletInsertionEvent) tabletInsertionEvent;
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(OpcUaConnector.class.getName())) {
+        return;
+      }
+
+      transferTablet(server, pipeRawTabletInsertionEvent.convertToTablet());
+      pipeRawTabletInsertionEvent.decreaseReferenceCount(OpcUaConnector.class.getName(), false);
     }
   }
 
