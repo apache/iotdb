@@ -19,17 +19,11 @@ public class TableScanNode extends PlanNode {
   private final Map<Symbol, ColumnHandle> assignments; // symbol -> column
 
   // db.tablename
-  //  String qualifiedTableName;
-  //
-  //  List<Symbol> outputSymbols;
-  //
-  //  List<IDeviceID> deviceIDList;
-  //
-  //  List<List<String>> deviceAttributesList;
-  //
-  //  Map<Symbol, ColumnSchema> assignments;
-  //
-  //  Map<Symbol, Integer> attributesMap;
+  // private final String qualifiedTableName;
+  // private final List<Symbol> outputSymbols;
+  // private final List<ColumnSchema> columnSchemas;
+  // private final int[] idOrAttributeColumnsIndex;
+  // private final List<DeviceEntry> deviceIDList;
 
   public TableScanNode(
       PlanNodeId id,
