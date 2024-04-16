@@ -17,6 +17,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class TableScanNode extends PlanNode {
 
@@ -81,7 +83,7 @@ public class TableScanNode extends PlanNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return outputSymbols.stream().map(Symbol::getName).collect(Collectors.toList());
   }
 
   @Override
@@ -93,6 +95,28 @@ public class TableScanNode extends PlanNode {
   @Override
   public List<Symbol> getOutputSymbols() {
     return outputSymbols;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    TableScanNode that = (TableScanNode) o;
+    return Objects.equals(qualifiedTableName, that.qualifiedTableName)
+        && Objects.equals(outputSymbols, that.outputSymbols)
+        && Objects.equals(regionReplicaSet, that.regionReplicaSet);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), qualifiedTableName, outputSymbols, regionReplicaSet);
   }
 
   public String getQualifiedTableName() {
