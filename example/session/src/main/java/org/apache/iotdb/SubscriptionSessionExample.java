@@ -22,12 +22,18 @@ package org.apache.iotdb;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
+import org.apache.iotdb.session.subscription.SubscriptionTsFileReader;
+import org.apache.iotdb.tsfile.read.TsFileReader;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.QueryExpression;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -38,13 +44,18 @@ public class SubscriptionSessionExample {
 
   private static Session session;
 
-  private static final String LOCAL_HOST = "127.0.0.1";
+  private static final String HOST = "127.0.0.1";
+  private static final int PORT = 6667;
 
-  public static void main(String[] args) throws Exception {
+  private static final String TOPIC_1 = "topic1";
+  private static final String TOPIC_2 = "`topic2`";
+
+  private static void prepareData() throws Exception {
+    // Open session
     session =
         new Session.Builder()
-            .host(LOCAL_HOST)
-            .port(6667)
+            .host(HOST)
+            .port(PORT)
             .username("root")
             .password("root")
             .version(Version.V_1_0)
@@ -52,7 +63,7 @@ public class SubscriptionSessionExample {
     session.open(false);
 
     // Insert some historical data
-    long currentTime = System.currentTimeMillis();
+    final long currentTime = System.currentTimeMillis();
     for (int i = 0; i < 100; ++i) {
       session.executeNonQueryStatement(
           String.format("insert into root.db.d1(time, s1, s2) values (%s, 1, 2)", i));
@@ -63,31 +74,63 @@ public class SubscriptionSessionExample {
     }
     session.executeNonQueryStatement("flush");
 
-    // Create topic
-    final String topic1 = "topic1";
-    final String topic2 = "`topic2`";
-    try (SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
-      subscriptionSession.open();
-      subscriptionSession.createTopic(topic1);
-      subscriptionSession.createTopic(topic2);
+    // Close session
+    session.close();
+    session = null;
+  }
+
+  private static void dataQuery() throws Exception {
+    // Open session
+    session =
+        new Session.Builder()
+            .host(HOST)
+            .port(PORT)
+            .username("root")
+            .password("root")
+            .version(Version.V_1_0)
+            .build();
+    session.open(false);
+
+    // Query
+    final SessionDataSet dataSet = session.executeQueryStatement("select ** from root.**");
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
     }
 
+    // Close session
+    session.close();
+    session = null;
+  }
+
+  private static void createTopics() throws Exception {
+    // Create topics
+    try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
+      subscriptionSession.open();
+      subscriptionSession.createTopic(TOPIC_1);
+      final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_READER_VALUE);
+      subscriptionSession.createTopic(TOPIC_2, config);
+    }
+  }
+
+  private static void subscriptionExample1() throws Exception {
     // Subscription: property-style ctor
-    Properties config = new Properties();
+    final Properties config = new Properties();
     config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
     config.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-    SubscriptionPullConsumer consumer1 = new SubscriptionPullConsumer(config);
+    final SubscriptionPullConsumer consumer1 = new SubscriptionPullConsumer(config);
     consumer1.open();
-    consumer1.subscribe(topic1);
+    consumer1.subscribe(TOPIC_1);
     while (true) {
       Thread.sleep(1000); // Wait for some time
-      List<SubscriptionMessage> messages = consumer1.poll(Duration.ofMillis(10000));
+      final List<SubscriptionMessage> messages = consumer1.poll(Duration.ofMillis(10000));
       if (messages.isEmpty()) {
         break;
       }
-      for (SubscriptionMessage message : messages) {
-        SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
-        for (SubscriptionSessionDataSet dataSet : payload) {
+      for (final SubscriptionMessage message : messages) {
+        final SubscriptionSessionDataSets dataSets =
+            (SubscriptionSessionDataSets) message.getPayload();
+        for (final SubscriptionSessionDataSet dataSet : dataSets) {
           System.out.println(dataSet.getColumnNames());
           System.out.println(dataSet.getColumnTypes());
           while (dataSet.hasNext()) {
@@ -99,36 +142,39 @@ public class SubscriptionSessionExample {
     }
 
     // Show topics and subscriptions
-    try (SubscriptionSession subscriptionSession = new SubscriptionSession(LOCAL_HOST, 6667)) {
+    try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
       subscriptionSession.open();
       subscriptionSession.getTopics().forEach((System.out::println));
       subscriptionSession.getSubscriptions().forEach((System.out::println));
     }
 
-    consumer1.unsubscribe(topic1);
+    consumer1.unsubscribe(TOPIC_1);
     consumer1.close();
+  }
 
+  private static void subscriptionExample2() throws Exception {
     // Subscription: builder-style ctor
-    try (SubscriptionPullConsumer consumer2 =
+    try (final SubscriptionPullConsumer consumer2 =
         new SubscriptionPullConsumer.Builder()
             .consumerId("c2")
             .consumerGroupId("cg2")
             .autoCommit(false)
             .buildPullConsumer()) {
       consumer2.open();
-      consumer2.subscribe(topic2);
+      consumer2.subscribe(TOPIC_2);
       while (true) {
         Thread.sleep(1000); // wait some time
-        List<SubscriptionMessage> messages =
-            consumer2.poll(Collections.singleton(topic2), Duration.ofMillis(10000));
+        final List<SubscriptionMessage> messages =
+            consumer2.poll(Collections.singleton(TOPIC_2), Duration.ofMillis(10000));
         if (messages.isEmpty()) {
           break;
         }
-        for (SubscriptionMessage message : messages) {
-          SubscriptionSessionDataSets payload = (SubscriptionSessionDataSets) message.getPayload();
-          for (SubscriptionSessionDataSet dataSet : payload) {
-            System.out.println(dataSet.getColumnNames());
-            System.out.println(dataSet.getColumnTypes());
+        for (final SubscriptionMessage message : messages) {
+          final SubscriptionTsFileReader reader = (SubscriptionTsFileReader) message.getPayload();
+          try (final TsFileReader tsFileReader = reader.open()) {
+            final Path path = new Path("root.db.d1", "s1", true);
+            QueryDataSet dataSet =
+                tsFileReader.query(QueryExpression.create(Collections.singletonList(path), null));
             while (dataSet.hasNext()) {
               System.out.println(dataSet.next());
             }
@@ -136,14 +182,15 @@ public class SubscriptionSessionExample {
         }
         consumer2.commitSync(messages);
       }
-      consumer2.unsubscribe(topic2);
+      consumer2.unsubscribe(TOPIC_2);
     }
+  }
 
-    // Query
-    SessionDataSet dataSet = session.executeQueryStatement("select ** from root.**");
-    while (dataSet.hasNext()) {
-      System.out.println(dataSet.next());
-    }
-    session.close();
+  public static void main(final String[] args) throws Exception {
+    prepareData();
+    dataQuery();
+    createTopics();
+    subscriptionExample1();
+    subscriptionExample2();
   }
 }
