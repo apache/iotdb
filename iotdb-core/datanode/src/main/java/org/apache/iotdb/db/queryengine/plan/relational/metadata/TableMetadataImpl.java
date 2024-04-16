@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
@@ -225,6 +226,14 @@ public class TableMetadataImpl implements Metadata {
   @Override
   public boolean canCoerce(Type from, Type to) {
     return true;
+  }
+
+  @Override
+  public List<DeviceEntry> indexScan(
+      QualifiedObjectName tableName,
+      List<Expression> expressionList,
+      List<String> attributeColumns) {
+    return null;
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
