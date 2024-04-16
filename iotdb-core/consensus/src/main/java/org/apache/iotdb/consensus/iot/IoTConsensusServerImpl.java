@@ -43,7 +43,6 @@ import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.log.GetConsensusReqReaderPlan;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher;
-import org.apache.iotdb.consensus.iot.snapshot.SnapshotFragment;
 import org.apache.iotdb.consensus.iot.snapshot.SnapshotFragmentReader;
 import org.apache.iotdb.consensus.iot.thrift.TActivatePeerReq;
 import org.apache.iotdb.consensus.iot.thrift.TActivatePeerRes;
@@ -304,7 +303,7 @@ public class IoTConsensusServerImpl {
     long transitedFilesNum = 0;
     long startTime = System.nanoTime();
     logger.info(
-        "[SNAPSHOT TRANSMISSION] Start to transmit snapshots ({} files, full size {}) from dir {}",
+        "[SNAPSHOT TRANSMISSION] Start to transmit snapshots ({} files, total size {}) from dir {}",
         snapshotPaths.size(),
         FileUtils.byteCountToDisplaySize(snapshotSizeSum),
         snapshotDir);
@@ -328,7 +327,7 @@ public class IoTConsensusServerImpl {
           transitedSnapshotSizeSum += reader.getTotalReadSize();
           transitedFilesNum++;
           logger.info(
-              "[SNAPSHOT TRANSMISSION] The overall progress for dir {}: files {}/{} done, size {}/{} done, {} pass)",
+              "[SNAPSHOT TRANSMISSION] The overall progress for dir {}: files {}/{} done, size {}/{} done, time {} passed",
               newSnapshotDirName,
               transitedFilesNum,
               snapshotPaths.size(),
