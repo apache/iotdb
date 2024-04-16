@@ -180,12 +180,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       enableSkippingTimeParseByTimePartition.set(false);
     }
 
-    isForwardingPipeRequests =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
-            PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+    isForwardingPipeRequests = true;
   }
 
   @Override
