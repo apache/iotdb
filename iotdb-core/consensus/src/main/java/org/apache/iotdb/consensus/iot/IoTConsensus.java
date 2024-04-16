@@ -57,6 +57,7 @@ import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.logdispatcher.IoTConsensusMemoryManager;
 import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCService;
 import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCServiceProcessor;
+import org.apache.iotdb.consensus.iot.snapshot.IoTConsensusRateLimiter;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -120,6 +121,13 @@ public class IoTConsensus implements IConsensus {
         .init(
             config.getIotConsensusConfig().getReplication().getAllocateMemoryForConsensus(),
             config.getIotConsensusConfig().getReplication().getAllocateMemoryForQueue());
+    // init IoTConsensus Rate Limiter
+    IoTConsensusRateLimiter.getInstance()
+        .init(
+            config
+                .getIotConsensusConfig()
+                .getReplication()
+                .getRegionMigrationSpeedLimitBytesPerSecond());
   }
 
   @Override

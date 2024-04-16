@@ -125,7 +125,6 @@ public class IoTConsensusServerImpl {
 
   private static final long WAIT_LIMITER_INTERVAL = 500;
 
-
   public IoTConsensusServerImpl(
       String storageDir,
       Peer thisNode,

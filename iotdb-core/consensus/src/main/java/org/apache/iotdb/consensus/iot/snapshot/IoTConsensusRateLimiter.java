@@ -28,10 +28,11 @@ public class IoTConsensusRateLimiter {
   private static final Logger logger = LoggerFactory.getLogger(IoTConsensusRateLimiter.class);
 
   private final AverageIntervalRateLimiter rateLimiter = new AverageIntervalRateLimiter();
-  private final Long maxTransitSizeInBytePerSecond = 16 * 1024 * 1024L;
 
-  private IoTConsensusRateLimiter() {
-    rateLimiter.set(maxTransitSizeInBytePerSecond, 1000);
+  private IoTConsensusRateLimiter() {}
+
+  public void init(long regionMigrationSpeedLimitBytesPerSecond) {
+    rateLimiter.set(regionMigrationSpeedLimitBytesPerSecond, 1000);
   }
 
   /**
