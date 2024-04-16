@@ -300,8 +300,8 @@ public class IoTConsensus implements IConsensus {
       impl.takeSnapshot();
 
       // step 3: transit snapshot
-      logger.info("[IoTConsensus] start to transit snapshot...");
-      impl.transitSnapshot(peer);
+      logger.info("[IoTConsensus] start to transmit snapshot...");
+      impl.transmitSnapshot(peer);
 
       // step 4: let the new peer load snapshot
       logger.info("[IoTConsensus] trigger new peer to load snapshot...");

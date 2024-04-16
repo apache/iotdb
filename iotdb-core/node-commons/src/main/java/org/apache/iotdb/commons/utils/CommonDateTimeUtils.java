@@ -21,6 +21,9 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
+import java.time.Duration;
+import java.util.function.BiConsumer;
+
 public class CommonDateTimeUtils {
 
   public CommonDateTimeUtils() {
@@ -53,5 +56,34 @@ public class CommonDateTimeUtils {
       default:
         return System.currentTimeMillis();
     }
+  }
+
+  public static String convertMillisecondToDurationStr(long millisecond) {
+    Duration duration = Duration.ofMillis(millisecond);
+    long days = duration.toDays();
+    long years = days / 365;
+    days = days % 365;
+    long months = days / 30;
+    days %= 30;
+    long hours = duration.toHours() % 24;
+    long minutes = duration.toMinutes() % 60;
+    long seconds = duration.getSeconds() % 60;
+    long ms = millisecond % 1000;
+    StringBuilder result = new StringBuilder();
+    BiConsumer<Long, String> append =
+        (value, unit) -> {
+          if (value > 0) {
+            result.append(value).append(" ").append(unit).append(" ");
+          }
+        };
+    append.accept(years, "year");
+    append.accept(months, "month");
+    append.accept(days, "day");
+    append.accept(hours, "hour");
+    append.accept(minutes, "minute");
+    append.accept(seconds, "second");
+    append.accept(ms, "ms");
+    result.delete(result.length() - 1, result.length());
+    return result.toString();
   }
 }
