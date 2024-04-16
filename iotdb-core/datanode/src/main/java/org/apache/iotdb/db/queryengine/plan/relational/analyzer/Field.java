@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.relational.sql.tree.QualifiedName;
 import org.apache.iotdb.tsfile.read.common.type.Type;
@@ -33,10 +34,13 @@ public class Field {
   private final Optional<QualifiedName> relationAlias;
   private final Optional<String> name;
   private final Type type;
+
+  private final TsTableColumnCategory columnCategory;
+
   private final boolean hidden;
   private final boolean aliased;
 
-  public static Field newUnqualified(String name, Type type) {
+  public static Field newUnqualified(String name, Type type, TsTableColumnCategory columnCategory) {
     requireNonNull(name, "name is null");
     requireNonNull(type, "type is null");
 
@@ -44,23 +48,33 @@ public class Field {
         Optional.empty(),
         Optional.of(name),
         type,
+        columnCategory,
         false,
         Optional.empty(),
         Optional.empty(),
         false);
   }
 
-  public static Field newUnqualified(Optional<String> name, Type type) {
+  public static Field newUnqualified(
+      Optional<String> name, Type type, TsTableColumnCategory columnCategory) {
     requireNonNull(name, "name is null");
     requireNonNull(type, "type is null");
 
     return new Field(
-        Optional.empty(), name, type, false, Optional.empty(), Optional.empty(), false);
+        Optional.empty(),
+        name,
+        type,
+        columnCategory,
+        false,
+        Optional.empty(),
+        Optional.empty(),
+        false);
   }
 
   public static Field newUnqualified(
       Optional<String> name,
       Type type,
+      TsTableColumnCategory columnCategory,
       Optional<QualifiedObjectName> originTable,
       Optional<String> originColumn,
       boolean aliased) {
@@ -68,13 +82,15 @@ public class Field {
     requireNonNull(type, "type is null");
     requireNonNull(originTable, "originTable is null");
 
-    return new Field(Optional.empty(), name, type, false, originTable, originColumn, aliased);
+    return new Field(
+        Optional.empty(), name, type, columnCategory, false, originTable, originColumn, aliased);
   }
 
   public static Field newQualified(
       QualifiedName relationAlias,
       Optional<String> name,
       Type type,
+      TsTableColumnCategory columnCategory,
       boolean hidden,
       Optional<QualifiedObjectName> originTable,
       Optional<String> originColumn,
@@ -85,13 +101,21 @@ public class Field {
     requireNonNull(originTable, "originTable is null");
 
     return new Field(
-        Optional.of(relationAlias), name, type, hidden, originTable, originColumn, aliased);
+        Optional.of(relationAlias),
+        name,
+        type,
+        columnCategory,
+        hidden,
+        originTable,
+        originColumn,
+        aliased);
   }
 
   public Field(
       Optional<QualifiedName> relationAlias,
       Optional<String> name,
       Type type,
+      TsTableColumnCategory columnCategory,
       boolean hidden,
       Optional<QualifiedObjectName> originTable,
       Optional<String> originColumnName,
@@ -105,6 +129,7 @@ public class Field {
     this.relationAlias = relationAlias;
     this.name = name;
     this.type = type;
+    this.columnCategory = columnCategory;
     this.hidden = hidden;
     this.originTable = originTable;
     this.originColumnName = originColumnName;
@@ -129,6 +154,10 @@ public class Field {
 
   public Type getType() {
     return type;
+  }
+
+  public TsTableColumnCategory getColumnCategory() {
+    return columnCategory;
   }
 
   public boolean isHidden() {

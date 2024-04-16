@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import com.google.errorprone.annotations.Immutable;
@@ -48,6 +49,10 @@ public class ResolvedField {
 
   public Type getType() {
     return field.getType();
+  }
+
+  public TsTableColumnCategory getColumnCategory() {
+    return field.getColumnCategory();
   }
 
   public Scope getScope() {

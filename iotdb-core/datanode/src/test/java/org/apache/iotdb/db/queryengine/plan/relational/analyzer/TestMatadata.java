@@ -4,19 +4,12 @@ import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
@@ -25,16 +18,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.read.common.type.BinaryType;
-import org.apache.iotdb.tsfile.read.common.type.BooleanType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
-import org.mockito.Mockito;
-
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.common.type.BinaryType.TEXT;
@@ -77,7 +65,7 @@ public class TestMatadata implements Metadata {
   }
 
   @Override
-  public TableSchema getTableSchema(SessionInfo session, TableHandle tableHandle) {
+  public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
     List<ColumnSchema> columnSchemas =
         Arrays.asList(
             ColumnSchema.builder(TIME_CM).build(),
@@ -89,62 +77,7 @@ public class TestMatadata implements Metadata {
             ColumnSchema.builder(S1_CM).build(),
             ColumnSchema.builder(S2_CM).build());
 
-    return new TableSchema(TABLE1, columnSchemas);
-  }
-
-  @Override
-  public TableMetadata getTableMetadata(SessionInfo session, TableHandle tableHandle) {
-    return new TableMetadata(
-        TABLE1,
-        Arrays.asList(TIME_CM, TAG1_CM, TAG2_CM, TAG3_CM, ATTR1_CM, ATTR2_CM, S1_CM, S2_CM));
-  }
-
-  @Override
-  public Optional<TableHandle> getTableHandle(SessionInfo session, QualifiedObjectName name) {
-    return Optional.of(Mockito.mock(TableHandle.class));
-  }
-
-  @Override
-  public Map<String, ColumnHandle> getColumnHandles(SessionInfo session, TableHandle tableHandle) {
-    Map<String, ColumnHandle> map = new HashMap<>();
-    ColumnHandle columnHandle = Mockito.mock(ColumnHandle.class);
-    map.put(TIME, columnHandle);
-    map.put(TAG1, columnHandle);
-    map.put(TAG2, columnHandle);
-    map.put(TAG3, columnHandle);
-    map.put(ATTR1, columnHandle);
-    map.put(ATTR2, columnHandle);
-    map.put(S1, columnHandle);
-    map.put(S2, columnHandle);
-    return map;
-  }
-
-  @Override
-  public ResolvedFunction resolveOperator(
-      OperatorType operatorType, List<? extends Type> argumentTypes)
-      throws OperatorNotFoundException {
-    if (operatorType == OperatorType.LESS_THAN) {
-      return new ResolvedFunction(
-          new BoundSignature("less_than", BooleanType.BOOLEAN, Arrays.asList(INT64, INT32)),
-          new FunctionId("less_than"),
-          FunctionKind.SCALAR,
-          true);
-    } else if (operatorType == OperatorType.ADD) {
-      return new ResolvedFunction(
-          new BoundSignature("add", INT64, Arrays.asList(INT64, INT32)),
-          new FunctionId("add"),
-          FunctionKind.SCALAR,
-          true);
-    } else if (operatorType == OperatorType.EQUAL) {
-      return new ResolvedFunction(
-          new BoundSignature(
-              "equals", BooleanType.BOOLEAN, Arrays.asList(BinaryType.TEXT, BinaryType.TEXT)),
-          new FunctionId("equals"),
-          FunctionKind.SCALAR,
-          true);
-    } else {
-      throw new OperatorNotFoundException(operatorType, argumentTypes, new RuntimeException());
-    }
+    return Optional.of(new TableSchema(TABLE1, columnSchemas));
   }
 
   @Override

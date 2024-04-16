@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -115,7 +114,6 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -945,6 +943,7 @@ public class StatementAnalyzer {
                 field.getRelationAlias(),
                 alias,
                 field.getType(),
+                field.getColumnCategory(),
                 false,
                 field.getOriginTable(),
                 field.getOriginColumnName(),
@@ -1237,6 +1236,7 @@ public class StatementAnalyzer {
                 Field.newUnqualified(
                     name,
                     field.getType(),
+                    field.getColumnCategory(),
                     field.getOriginTable(),
                     field.getOriginColumnName(),
                     false);
@@ -1274,6 +1274,7 @@ public class StatementAnalyzer {
               Field.newUnqualified(
                   field.map(Identifier::getValue),
                   analysis.getType(expression),
+                  TsTableColumnCategory.MEASUREMENT,
                   originTable,
                   originColumn,
                   column.getAlias().isPresent()); // TODO don't use analysis as a side-channel. Use
@@ -1373,6 +1374,7 @@ public class StatementAnalyzer {
                 oldField.getRelationAlias(),
                 oldField.getName(),
                 outputFieldTypes[i],
+                oldField.getColumnCategory(),
                 oldField.isHidden(),
                 oldField.getOriginTable(),
                 oldField.getOriginColumnName(),
@@ -1433,19 +1435,15 @@ public class StatementAnalyzer {
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
-      Optional<TableHandle> tableHandle = metadata.getTableHandle(sessionContext, name);
+      Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
       // This can only be a table
-      if (!tableHandle.isPresent()) {
+      if (!tableSchema.isPresent()) {
         throw new SemanticException(String.format("Table '%s' does not exist", name));
       }
       analysis.addEmptyColumnReferencesForTable(accessControl, sessionContext.getIdentity(), name);
 
-      TableSchema tableSchema = metadata.getTableSchema(sessionContext, tableHandle.get());
-      Map<String, ColumnHandle> columnHandles =
-          metadata.getColumnHandles(sessionContext, tableHandle.get());
-
       ImmutableList.Builder<Field> fields = ImmutableList.builder();
-      fields.addAll(analyzeTableOutputFields(table, name, tableSchema, columnHandles));
+      fields.addAll(analyzeTableOutputFields(table, name, tableSchema.get()));
 
       //      boolean addRowIdColumn = updateKind.isPresent();
       //
@@ -1468,7 +1466,7 @@ public class StatementAnalyzer {
               .build();
       //      analyzeFiltersAndMasks(table, name, new RelationType(outputFields),
       // accessControlScope);
-      analysis.registerTable(table, tableHandle, name);
+      analysis.registerTable(table, tableSchema, name);
 
       Scope tableScope = createAndAssignScope(table, scope, outputFields);
 
@@ -1506,6 +1504,7 @@ public class StatementAnalyzer {
                     QualifiedName.of(table.getName().getSuffix()),
                     Optional.of(aliases.next().getValue()),
                     inputField.getType(),
+                    inputField.getColumnCategory(),
                     false,
                     inputField.getOriginTable(),
                     inputField.getOriginColumnName(),
@@ -1525,6 +1524,7 @@ public class StatementAnalyzer {
                     QualifiedName.of(table.getName().getSuffix()),
                     inputField.getName(),
                     inputField.getType(),
+                    inputField.getColumnCategory(),
                     false,
                     inputField.getOriginTable(),
                     inputField.getOriginColumnName(),
@@ -1540,10 +1540,7 @@ public class StatementAnalyzer {
     }
 
     private List<Field> analyzeTableOutputFields(
-        Table table,
-        QualifiedObjectName tableName,
-        TableSchema tableSchema,
-        Map<String, ColumnHandle> columnHandles) {
+        Table table, QualifiedObjectName tableName, TableSchema tableSchema) {
       // TODO: discover columns lazily based on where they are needed (to support connectors that
       // can't enumerate all tables)
       ImmutableList.Builder<Field> fields = ImmutableList.builder();
@@ -1553,14 +1550,12 @@ public class StatementAnalyzer {
                 table.getName(),
                 Optional.of(column.getName()),
                 column.getType(),
+                column.getColumnCategory(),
                 column.isHidden(),
                 Optional.of(tableName),
                 Optional.of(column.getName()),
                 false);
         fields.add(field);
-        ColumnHandle columnHandle = columnHandles.get(column.getName());
-        checkArgument(columnHandle != null, "Unknown field %s", field);
-        analysis.setColumn(field, columnHandle);
         analysis.addSourceColumns(
             field, ImmutableSet.of(new Analysis.SourceColumn(tableName, column.getName())));
       }
@@ -1681,7 +1676,10 @@ public class StatementAnalyzer {
 
       List<Field> fields =
           commonSuperType.getTypeParameters().stream()
-              .map(valueType -> Field.newUnqualified(Optional.empty(), valueType))
+              .map(
+                  valueType ->
+                      Field.newUnqualified(
+                          Optional.empty(), valueType, TsTableColumnCategory.MEASUREMENT))
               .collect(toImmutableList());
 
       return createAndAssignScope(node, scope, fields);
@@ -1844,7 +1842,9 @@ public class StatementAnalyzer {
 
         analysis.addTypes(ImmutableMap.of(NodeRef.of(column), leftField.getType()));
 
-        joinFields.add(Field.newUnqualified(column.getValue(), leftField.getType()));
+        joinFields.add(
+            Field.newUnqualified(
+                column.getValue(), leftField.getType(), leftField.getColumnCategory()));
 
         leftJoinFields.add(leftField.getRelationFieldIndex());
         rightJoinFields.add(rightField.getRelationFieldIndex());

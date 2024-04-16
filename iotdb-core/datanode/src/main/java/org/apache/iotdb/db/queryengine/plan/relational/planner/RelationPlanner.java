@@ -20,8 +20,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.relational.sql.tree.AliasedRelation;
 import org.apache.iotdb.db.relational.sql.tree.AstVisitor;
@@ -32,7 +31,6 @@ import org.apache.iotdb.db.relational.sql.tree.SubqueryExpression;
 import org.apache.iotdb.db.relational.sql.tree.Table;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 
 import java.util.Collection;
 import java.util.List;
@@ -90,10 +88,9 @@ class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     if (namedQuery != null) {
       throw new RuntimeException("NamedQuery is not supported");
     } else {
-      TableHandle handle = analysis.getTableHandle(node);
+      TableSchema handle = analysis.getTableHandle(node);
 
       ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
-      ImmutableMap.Builder<Symbol, ColumnHandle> columns = ImmutableMap.builder();
 
       // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);
       Collection<Field> fields = scope.getRelationType().getAllFields();
@@ -101,13 +98,10 @@ class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         Symbol symbol = symbolAllocator.newSymbol(field);
 
         outputSymbolsBuilder.add(symbol);
-        columns.put(symbol, analysis.getColumn(field));
       }
 
       List<Symbol> outputSymbols = outputSymbolsBuilder.build();
-      PlanNode root =
-          new TableScanNode(
-              idAllocator.genPlanNodeId(), handle, outputSymbols, columns.buildOrThrow());
+      PlanNode root = new TableScanNode(idAllocator.genPlanNodeId(), null, outputSymbols, null);
 
       plan = new RelationPlan(root, scope, outputSymbols);
     }
