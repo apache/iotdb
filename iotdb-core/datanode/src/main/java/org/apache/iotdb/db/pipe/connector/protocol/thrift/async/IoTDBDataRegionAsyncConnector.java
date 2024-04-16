@@ -176,9 +176,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         // We increase the reference count for this event to determine if the event may be released.
         if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
             IoTDBDataRegionAsyncConnector.class.getName())) {
-          LOGGER.error(
-              "PipeInsertNodeTabletInsertionEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
-              pipeInsertNodeTabletInsertionEvent.coreReportMessage());
           return;
         }
 
@@ -200,9 +197,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         // We increase the reference count for this event to determine if the event may be released.
         if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
             IoTDBDataRegionAsyncConnector.class.getName())) {
-          LOGGER.error(
-              "PipeRawTabletInsertionEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
-              pipeRawTabletInsertionEvent.coreReportMessage());
           return;
         }
 
@@ -269,9 +263,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeTsFileInsertionEvent.increaseReferenceCount(
         IoTDBDataRegionAsyncConnector.class.getName())) {
-      LOGGER.error(
-          "PipeTsFileInsertionEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
-          pipeTsFileInsertionEvent.coreReportMessage());
       return;
     }
 

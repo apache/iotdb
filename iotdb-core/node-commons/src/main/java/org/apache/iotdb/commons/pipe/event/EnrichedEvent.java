@@ -95,12 +95,16 @@ public abstract class EnrichedEvent implements Event {
             "re-increase reference count to event that has already been released: {}, stack trace: {}",
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
-        return false;
+        isSuccessful = false;
+      } else {
+        if (referenceCount.get() == 0) {
+          isSuccessful = internallyIncreaseResourceReferenceCount(holderMessage);
+        }
+        referenceCount.incrementAndGet();
       }
-      if (referenceCount.get() == 0) {
-        isSuccessful = internallyIncreaseResourceReferenceCount(holderMessage);
-      }
-      referenceCount.incrementAndGet();
+    }
+    if (!isSuccessful) {
+      LOGGER.warn("increase reference count failed, EnrichedEvent: {}", coreReportMessage());
     }
     return isSuccessful;
   }
@@ -148,6 +152,9 @@ public abstract class EnrichedEvent implements Event {
             Thread.currentThread().getStackTrace());
       }
     }
+    if (!isSuccessful) {
+      LOGGER.warn("decrease reference count failed, EnrichedEvent: {}", coreReportMessage());
+    }
     return isSuccessful;
   }
 
@@ -168,6 +175,9 @@ public abstract class EnrichedEvent implements Event {
       }
       referenceCount.set(0);
       isReleased.set(true);
+    }
+    if (!isSuccessful) {
+      LOGGER.warn("clear reference count failed, EnrichedEvent: {}", coreReportMessage());
     }
     return isSuccessful;
   }

@@ -109,9 +109,6 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           // released.
           if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
               IoTDBDataRegionSyncConnector.class.getName())) {
-            LOGGER.error(
-                "PipeInsertNodeTabletInsertionEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
-                pipeInsertNodeTabletInsertionEvent.coreReportMessage());
             return;
           }
 
@@ -125,9 +122,6 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           // released.
           if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
               IoTDBDataRegionAsyncConnector.class.getName())) {
-            LOGGER.error(
-                "PipeRawTabletInsertionEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
-                pipeRawTabletInsertionEvent.coreReportMessage());
             return;
           }
 
@@ -166,9 +160,6 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeTsFileInsertionEvent.increaseReferenceCount(
           IoTDBDataRegionAsyncConnector.class.getName())) {
-        LOGGER.error(
-            "PipeTsFileInsertionEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
-            pipeTsFileInsertionEvent.coreReportMessage());
         return;
       }
 
@@ -192,9 +183,6 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
           IoTDBDataRegionAsyncConnector.class.getName())) {
-        LOGGER.error(
-            "PipeSchemaRegionWritePlanEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
-            pipeSchemaRegionWritePlanEvent.coreReportMessage());
         return;
       }
 
