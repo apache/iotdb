@@ -26,13 +26,13 @@ import java.io.IOException;
 
 public class SubscriptionTsFileReader implements SubscriptionMessagePayload {
 
-  private final String fileName;
+  private final String filePath;
 
-  public SubscriptionTsFileReader(String fileName) {
-    this.fileName = fileName;
+  public SubscriptionTsFileReader(String filePath) {
+    this.filePath = filePath;
   }
 
   public TsFileReader open() throws IOException {
-    return new TsFileReader(new TsFileSequenceReader(fileName));
+    return new TsFileReader(new TsFileSequenceReader(filePath));
   }
 }

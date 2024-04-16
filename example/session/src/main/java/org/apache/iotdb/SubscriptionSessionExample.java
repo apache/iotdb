@@ -173,7 +173,7 @@ public class SubscriptionSessionExample {
           final SubscriptionTsFileReader reader = (SubscriptionTsFileReader) message.getPayload();
           try (final TsFileReader tsFileReader = reader.open()) {
             final Path path = new Path("root.db.d1", "s1", true);
-            QueryDataSet dataSet =
+            final QueryDataSet dataSet =
                 tsFileReader.query(QueryExpression.create(Collections.singletonList(path), null));
             while (dataSet.hasNext()) {
               System.out.println(dataSet.next());

@@ -301,7 +301,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
               commitContextToTsFile.remove(commitContext);
               LOGGER.info("successfully poll tsfile: {}", file.getAbsolutePath());
               // generate subscription message
-              return new SubscriptionMessage(commitContext, fileName);
+              return new SubscriptionMessage(commitContext, file.getAbsolutePath());
             }
           default:
             LOGGER.warn("unexpected message type: {}", messageType);
