@@ -20,8 +20,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.relational.sql.tree.AliasedRelation;
 import org.apache.iotdb.db.relational.sql.tree.AstVisitor;
@@ -38,7 +36,6 @@ import org.apache.iotdb.db.relational.sql.tree.Union;
 import org.apache.iotdb.db.relational.sql.tree.Values;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 
 import java.util.Collection;
 import java.util.List;
@@ -91,22 +88,20 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     }
 
     Scope scope = analysis.getScope(node);
-    TableHandle tableHandle = analysis.getTableHandle(node);
+    // TableHandle tableHandle = analysis.getTableHandle(node);
 
     ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
-    ImmutableMap.Builder<Symbol, ColumnHandle> columnsBuilder = ImmutableMap.builder();
 
+    // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);
     Collection<Field> fields = scope.getRelationType().getAllFields();
     for (Field field : fields) {
       Symbol symbol = symbolAllocator.newSymbol(field);
+
       outputSymbolsBuilder.add(symbol);
-      columnsBuilder.put(symbol, analysis.getColumn(field));
     }
 
     List<Symbol> outputSymbols = outputSymbolsBuilder.build();
-    PlanNode root =
-        new TableScanNode(
-            idAllocator.genPlanNodeId(), tableHandle, outputSymbols, columnsBuilder.buildOrThrow());
+    PlanNode root = new TableScanNode(idAllocator.genPlanNodeId(), null, outputSymbols, null);
 
     return new RelationPlan(root, scope, outputSymbols);
 

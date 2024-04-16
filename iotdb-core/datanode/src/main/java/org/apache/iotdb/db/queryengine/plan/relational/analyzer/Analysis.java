@@ -23,9 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.Identity;
 import org.apache.iotdb.db.relational.sql.tree.AllColumns;
@@ -125,8 +124,6 @@ public class Analysis implements IAnalysis {
   private final Set<NodeRef<Expression>> typeOnlyCoercions = new LinkedHashSet<>();
 
   private final Map<NodeRef<Relation>, List<Type>> relationCoercions = new LinkedHashMap<>();
-
-  private final Map<Field, ColumnHandle> columns = new LinkedHashMap<>();
 
   private final Map<NodeRef<QuerySpecification>, List<FunctionCall>> aggregates =
       new LinkedHashMap<>();
@@ -292,14 +289,6 @@ public class Analysis implements IAnalysis {
     relationCoercions.put(NodeRef.of(relation), ImmutableList.copyOf(types));
   }
 
-  public void setColumn(Field field, ColumnHandle handle) {
-    columns.put(field, handle);
-  }
-
-  public ColumnHandle getColumn(Field field) {
-    return columns.get(field);
-  }
-
   public Map<NodeRef<Expression>, Type> getCoercions() {
     return unmodifiableMap(coercions);
   }
@@ -444,7 +433,7 @@ public class Analysis implements IAnalysis {
     return subQueries.computeIfAbsent(NodeRef.of(node), key -> new SubqueryAnalysis());
   }
 
-  public TableHandle getTableHandle(Table table) {
+  public TableSchema getTableHandle(Table table) {
     return tables
         .get(NodeRef.of(table))
         .getHandle()
@@ -452,7 +441,7 @@ public class Analysis implements IAnalysis {
             () -> new IllegalArgumentException(format("%s is not a table reference", table)));
   }
 
-  public Collection<TableHandle> getTables() {
+  public Collection<TableSchema> getTables() {
     return tables.values().stream()
         .map(TableEntry::getHandle)
         .filter(Optional::isPresent)
@@ -460,7 +449,7 @@ public class Analysis implements IAnalysis {
         .collect(toImmutableList());
   }
 
-  public void registerTable(Table table, Optional<TableHandle> handle, QualifiedObjectName name) {
+  public void registerTable(Table table, Optional<TableSchema> handle, QualifiedObjectName name) {
     tables.put(NodeRef.of(table), new TableEntry(handle, name));
   }
 
@@ -621,15 +610,15 @@ public class Analysis implements IAnalysis {
   }
 
   private static class TableEntry {
-    private final Optional<TableHandle> handle;
+    private final Optional<TableSchema> handle;
     private final QualifiedObjectName name;
 
-    public TableEntry(Optional<TableHandle> handle, QualifiedObjectName name) {
+    public TableEntry(Optional<TableSchema> handle, QualifiedObjectName name) {
       this.handle = requireNonNull(handle, "handle is null");
       this.name = requireNonNull(name, "name is null");
     }
 
-    public Optional<TableHandle> getHandle() {
+    public Optional<TableSchema> getHandle() {
       return handle;
     }
 

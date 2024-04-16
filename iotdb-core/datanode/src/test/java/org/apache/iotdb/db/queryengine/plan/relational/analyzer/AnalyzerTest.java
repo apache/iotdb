@@ -72,9 +72,6 @@ public class AnalyzerTest {
     Mockito.when(metadata.tableExists(Mockito.any())).thenReturn(true);
 
     TableHandle tableHandle = Mockito.mock(TableHandle.class);
-    Mockito.when(
-            metadata.getTableHandle(Mockito.any(), eq(new QualifiedObjectName("testdb", "table1"))))
-        .thenReturn(Optional.of(tableHandle));
 
     Map<String, ColumnHandle> map = new HashMap<>();
     TableSchema tableSchema = Mockito.mock(TableSchema.class);
@@ -94,8 +91,9 @@ public class AnalyzerTest {
     List<ColumnSchema> columnSchemaList = Arrays.asList(column1, column2, column3);
     Mockito.when(tableSchema.getColumns()).thenReturn(columnSchemaList);
 
-    Mockito.when(metadata.getTableSchema(Mockito.any(), eq(tableHandle))).thenReturn(tableSchema);
-    Mockito.when(metadata.getColumnHandles(Mockito.any(), eq(tableHandle))).thenReturn(map);
+    Mockito.when(
+            metadata.getTableSchema(Mockito.any(), eq(new QualifiedObjectName("testdb", "table1"))))
+        .thenReturn(Optional.of(tableSchema));
 
     //    ResolvedFunction lLessThanI =
     //        new ResolvedFunction(
