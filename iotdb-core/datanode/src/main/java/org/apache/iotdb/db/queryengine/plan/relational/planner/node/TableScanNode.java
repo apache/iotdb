@@ -3,8 +3,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import java.io.DataOutputStream;
@@ -14,28 +14,22 @@ import java.util.List;
 import java.util.Map;
 
 public class TableScanNode extends PlanNode {
-  private final TableHandle table;
-  private final List<Symbol> outputSymbols;
-  private final Map<Symbol, ColumnHandle> assignments; // symbol -> column
 
   // db.tablename
-  //  String qualifiedTableName;
-  //
-  //  List<Symbol> outputSymbols;
-  //
-  //  List<DeviceEntry> deviceEntries;
-  //
-  //  Map<Symbol, ColumnSchema> assignments;
-  //
-  //  Map<Symbol, Integer> attributesMap;
+  private final String qualifiedTableName;
+  private final List<Symbol> outputSymbols;
+  private final Map<Symbol, ColumnSchema> assignments;
+
+  private List<DeviceEntry> deviceEntries;
+  private Map<Symbol, Integer> attributesMap;
 
   public TableScanNode(
       PlanNodeId id,
-      TableHandle table,
+      String qualifiedTableName,
       List<Symbol> outputSymbols,
-      Map<Symbol, ColumnHandle> assignments) {
+      Map<Symbol, ColumnSchema> assignments) {
     super(id);
-    this.table = table;
+    this.qualifiedTableName = qualifiedTableName;
     this.outputSymbols = outputSymbols;
     this.assignments = assignments;
   }
@@ -73,4 +67,9 @@ public class TableScanNode extends PlanNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+
+  @Override
+  public List<Symbol> getOutputSymbols() {
+    return outputSymbols;
+  }
 }

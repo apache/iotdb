@@ -34,7 +34,7 @@ public class ColumnSchema {
   private final TsTableColumnCategory columnCategory;
   private final boolean hidden;
 
-  private ColumnSchema(
+  public ColumnSchema(
       String name, Type type, boolean hidden, TsTableColumnCategory columnCategory) {
     requireNonNull(type, "type is null");
 
