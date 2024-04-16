@@ -48,6 +48,7 @@ public abstract class EnrichedEvent implements Event {
   protected String committerKey;
   public static final long NO_COMMIT_ID = -1;
   protected long commitId = NO_COMMIT_ID;
+  protected long rebootTimes = 0;
 
   protected final PipePattern pipePattern;
 
@@ -270,6 +271,10 @@ public abstract class EnrichedEvent implements Event {
     this.commitId = commitId;
   }
 
+  public void setRebootTimes(int rebootTimes) {
+    this.rebootTimes = rebootTimes;
+  }
+
   public String getCommitterKey() {
     return committerKey;
   }
@@ -282,6 +287,21 @@ public abstract class EnrichedEvent implements Event {
     if (shouldReportOnCommit) {
       reportProgress();
     }
+  }
+
+  /** Used for pipeConsensus */
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    EnrichedEvent otherEvent = (EnrichedEvent) o;
+    return committerKey.equals(otherEvent.committerKey)
+        && commitId == otherEvent.commitId
+        && rebootTimes == otherEvent.rebootTimes;
   }
 
   @Override
