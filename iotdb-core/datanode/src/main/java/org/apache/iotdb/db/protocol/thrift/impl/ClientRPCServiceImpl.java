@@ -34,6 +34,8 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -104,6 +106,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSche
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.relational.sql.tree.Expression;
+import org.apache.iotdb.db.relational.sql.tree.Identifier;
+import org.apache.iotdb.db.relational.sql.tree.Insert;
+import org.apache.iotdb.db.relational.sql.tree.LongLiteral;
+import org.apache.iotdb.db.relational.sql.tree.Row;
+import org.apache.iotdb.db.relational.sql.tree.Values;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -113,6 +122,7 @@ import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -201,6 +211,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
@@ -336,17 +347,29 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
         queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
 
-        // TODO audit log, quota, StatementType
-        result =
-            COORDINATOR.executeForTableModel(
-                s,
-                relationSqlParser,
-                clientSession,
-                queryId,
-                SESSION_MANAGER.getSessionInfo(clientSession),
-                statement,
-                metadata,
-                req.getTimeout());
+        if (s instanceof Insert) {
+          result =
+              COORDINATOR.executeForTreeModel(
+                  parseInsert(clientSession, (Insert) s),
+                  queryId,
+                  SESSION_MANAGER.getSessionInfo(clientSession),
+                  statement,
+                  partitionFetcher,
+                  schemaFetcher,
+                  req.getTimeout());
+        } else {
+          // TODO audit log, quota, StatementType
+          result =
+              COORDINATOR.executeForTableModel(
+                  s,
+                  relationSqlParser,
+                  clientSession,
+                  queryId,
+                  SESSION_MANAGER.getSessionInfo(clientSession),
+                  statement,
+                  metadata,
+                  req.getTimeout());
+        }
       }
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -401,6 +424,73 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         quota.close();
       }
     }
+  }
+
+  private InsertRowStatement parseInsert(IClientSession clientSession, Insert insert) {
+    InsertRowStatement insertStatement = new InsertRowStatement();
+    String database = clientSession.getDatabaseName();
+    if (database == null) {
+      database = insert.getTable().getName().getPrefix().get().getSuffix();
+    }
+    String tableName = insert.getTable().getName().getSuffix().toString();
+    TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
+    List<Expression> values =
+        ((Row) (((Values) (insert.getQuery().getQueryBody())).getRows().get(0))).getItems();
+    Map<String, String> idColumnMap = new HashMap<>();
+    Map<String, String> attrColumnMap = new HashMap<>();
+    Map<String, Object> measurementColumnMap = new HashMap<>();
+    long time = 0L;
+    boolean hasColumn = insert.getColumns().isPresent();
+    int size = hasColumn ? insert.getColumns().get().size() : table.getColumnNum();
+    List<Identifier> columnNameList = hasColumn ? insert.getColumns().get() : null;
+    for (int i = 0; i < size; i++) {
+      String columnName =
+          hasColumn
+              ? columnNameList.get(i).getValue()
+              : table.getColumnList().get(i).getColumnName();
+      TsTableColumnCategory category = table.getColumnSchema(columnName).getColumnCategory();
+      if (category.equals(TsTableColumnCategory.ID)) {
+        idColumnMap.put(columnName, ((Identifier) values.get(i)).getValue());
+      } else if (category.equals(TsTableColumnCategory.ATTRIBUTE)) {
+        attrColumnMap.put(columnName, ((Identifier) values.get(i)).getValue());
+      } else if (category.equals(TsTableColumnCategory.MEASUREMENT)) {
+        measurementColumnMap.put(columnName, ((LongLiteral) values.get(i)).getValue());
+      } else {
+        time = Long.parseLong(((LongLiteral) values.get(i)).getValue());
+      }
+    }
+    String[] deviceIds = new String[table.getIdNums() + 3];
+    deviceIds[0] = PATH_ROOT;
+    deviceIds[1] = database;
+    deviceIds[2] = tableName;
+    String[] measurements = new String[measurementColumnMap.size()];
+    Object[] valueList = new Object[measurements.length];
+    int idIndex = 0;
+    int measurementIndex = 0;
+    for (int i = 0; i < table.getColumnNum(); i++) {
+      TsTableColumnCategory category = table.getColumnList().get(i).getColumnCategory();
+      if (category.equals(TsTableColumnCategory.ID)) {
+        String id = idColumnMap.get(table.getColumnList().get(i).getColumnName());
+        deviceIds[3 + idIndex] = id == null ? "" : id;
+        idIndex++;
+      } else if (category.equals(TsTableColumnCategory.MEASUREMENT)) {
+        String measurement = table.getColumnList().get(i).getColumnName();
+        if (measurementColumnMap.containsKey(measurement)) {
+          measurements[measurementIndex] = measurement;
+          valueList[measurementIndex] = measurementColumnMap.get(measurement);
+          measurementIndex++;
+        }
+      }
+    }
+    insertStatement.setDevicePath(new PartialPath(deviceIds));
+    TimestampPrecisionUtils.checkTimestampPrecision(time);
+    insertStatement.setTime(time);
+    insertStatement.setMeasurements(measurements);
+    insertStatement.setDataTypes(new TSDataType[insertStatement.getMeasurements().length]);
+    insertStatement.setValues(valueList);
+    insertStatement.setNeedInferType(true);
+    insertStatement.setAligned(true);
+    return insertStatement;
   }
 
   private TSExecuteStatementResp executeRawDataQueryInternal(
