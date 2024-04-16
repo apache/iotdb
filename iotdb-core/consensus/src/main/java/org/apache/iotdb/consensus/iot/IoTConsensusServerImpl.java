@@ -42,6 +42,7 @@ import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.log.GetConsensusReqReaderPlan;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher;
+import org.apache.iotdb.consensus.iot.snapshot.SnapshotFragment;
 import org.apache.iotdb.consensus.iot.snapshot.SnapshotFragmentReader;
 import org.apache.iotdb.consensus.iot.thrift.TActivatePeerReq;
 import org.apache.iotdb.consensus.iot.thrift.TActivatePeerRes;
@@ -284,32 +285,65 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  public void transitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
+  public void transmitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
     File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<Path> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
-    logger.info("transit snapshots: {}", snapshotPaths);
+    AtomicLong snapshotSizeSumAtomic = new AtomicLong();
+    snapshotPaths.forEach(
+        snapshotPath -> {
+          try {
+            snapshotSizeSumAtomic.addAndGet(Files.size(snapshotPath));
+          } catch (IOException e) {
+            logger.error(
+                "[SNAPSHOT TRANSMISSION] Calculate snapshot file's size fail: {}", snapshotPath, e);
+          }
+        });
+    final long snapshotSizeSum = snapshotSizeSumAtomic.get();
+    long transitedSnapshotSizeSum = 0;
+    long transitedFilesNum = 0;
+    logger.info(
+        "[SNAPSHOT TRANSMISSION] Start to transmit snapshots from dir {} ({} files, full size {}) ",
+        newSnapshotDirName,
+        snapshotPaths.size(),
+        FileUtils.byteCountToDisplaySize(snapshotSizeSum));
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       for (Path path : snapshotPaths) {
         SnapshotFragmentReader reader = new SnapshotFragmentReader(newSnapshotDirName, path);
         try {
           while (reader.hasNext()) {
-            TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
+            SnapshotFragment fragment = reader.next();
+            // TODO: zero copy ?
+            TSendSnapshotFragmentReq req = fragment.toTSendSnapshotFragmentReq();
             req.setConsensusGroupId(targetPeer.getGroupId().convertToTConsensusGroupId());
             TSendSnapshotFragmentRes res = client.sendSnapshotFragment(req);
             if (!isSuccess(res.getStatus())) {
               throw new ConsensusGroupModifyPeerException(
-                  String.format("error when sending snapshot fragment to %s", targetPeer));
+                  String.format(
+                      "[SNAPSHOT TRANSMISSION] Error when transmitting snapshot fragment to %s",
+                      targetPeer));
             }
           }
+          transitedSnapshotSizeSum += reader.getTotalReadSize();
+          transitedFilesNum++;
+          logger.info(
+              "[SNAPSHOT TRANSMISSION] The overall progress for dir {}: files {}/{} done, size {}/{} done)",
+              newSnapshotDirName,
+              transitedFilesNum,
+              snapshotPaths.size(),
+              FileUtils.byteCountToDisplaySize(transitedSnapshotSizeSum),
+              FileUtils.byteCountToDisplaySize(snapshotSizeSum));
         } finally {
           reader.close();
         }
       }
     } catch (Exception e) {
       throw new ConsensusGroupModifyPeerException(
-          String.format("error when send snapshot file to %s", targetPeer), e);
+          String.format("[SNAPSHOT TRANSMISSION] Error when send snapshot file to %s", targetPeer),
+          e);
     }
+    logger.info(
+        "[SNAPSHOT TRANSMISSION] Successfully transmit all snapshots from {}", newSnapshotDirName);
   }
 
   public void receiveSnapshotFragment(
