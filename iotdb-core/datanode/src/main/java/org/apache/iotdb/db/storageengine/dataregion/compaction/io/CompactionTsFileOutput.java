@@ -94,7 +94,7 @@ public class CompactionTsFileOutput extends OutputStream implements TsFileOutput
   @Override
   public void write(byte[] buf, int start, int length) throws IOException {
     while (length > 0) {
-      int writeSize = Math.min(length, (int) maxSizePerWrite);
+      int writeSize = Math.min(length, maxSizePerWrite);
       rateLimiter.acquire(writeSize);
       output.wrapAsStream().write(buf, start, writeSize);
       start += writeSize;
