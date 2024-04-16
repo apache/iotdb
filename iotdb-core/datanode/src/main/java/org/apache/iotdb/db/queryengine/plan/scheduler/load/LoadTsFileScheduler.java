@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInfo;
 import org.apache.iotdb.db.queryengine.execution.load.ChunkData;
+import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
 import org.apache.iotdb.db.queryengine.load.LoadTsFileDataCacheMemoryBlock;
@@ -392,6 +393,9 @@ public class LoadTsFileScheduler implements IScheduler {
       stateMachine.transitionToFailed(e.getFailureStatus());
       return false;
     }
+
+    LoadTsFileRateLimiter.getInstance()
+        .acquireWrittenPointCountWithLoadWriteRateLimiter(node.getWritePointCount());
 
     // add metrics
     DataRegion dataRegion =

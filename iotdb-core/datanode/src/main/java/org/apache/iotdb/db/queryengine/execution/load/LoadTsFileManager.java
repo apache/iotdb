@@ -324,6 +324,10 @@ public class LoadTsFileManager {
             .ifPresent(
                 databaseName -> {
                   long writePointCount = getTsFileWritePointCount(writer);
+
+                  LoadTsFileRateLimiter.getInstance()
+                      .acquireWrittenPointCountWithLoadWriteRateLimiter(writePointCount);
+
                   // Report load tsFile points to IoTDB flush metrics
                   MemTableFlushTask.recordFlushPointsMetricInternal(
                       writePointCount, databaseName, dataRegion.getDataRegionId());
