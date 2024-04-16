@@ -104,7 +104,11 @@ public class PipeTransferTsFileInsertionEventHandler
       if (currentFile == modFile) {
         currentFile = tsFile;
         position = 0;
-        reader.close();
+        try {
+          reader.close();
+        } catch (final IOException e) {
+          LOGGER.warn("Failed to close file reader when successfully transferred mod file.", e);
+        }
         reader = new RandomAccessFile(tsFile, "r");
         transfer(client);
       } else if (currentFile == tsFile) {
