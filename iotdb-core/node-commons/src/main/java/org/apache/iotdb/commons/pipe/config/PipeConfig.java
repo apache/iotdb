@@ -135,6 +135,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeListeningQueueTransferSnapshotThreshold();
   }
 
+  public boolean isPipeRefreshFileListByCompactionEnabled() {
+    return COMMON_CONFIG.isPipeRefreshFileListByCompactionEnabled();
+  }
+
+  public long getPipeRefreshFileListByCompactionIntervalSeconds() {
+    return COMMON_CONFIG.getPipeRefreshFileListByCompactionIntervalSeconds();
+  }
+
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
   public boolean isSeperatedPipeHeartbeatEnabled() {
@@ -291,6 +299,8 @@ public class PipeConfig {
     LOGGER.info(
         "PipeListeningQueueTransferSnapshotThreshold: {}",
         getPipeListeningQueueTransferSnapshotThreshold());
+    LOGGER.info(
+        "PipeRefreshFileListByCompactionEnabled: {}", isPipeRefreshFileListByCompactionEnabled());
 
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());

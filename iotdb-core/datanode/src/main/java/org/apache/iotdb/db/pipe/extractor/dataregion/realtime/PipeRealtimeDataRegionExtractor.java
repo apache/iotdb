@@ -30,8 +30,11 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeCompactionListener;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeDataRegionCompactionRecorder;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
@@ -52,10 +55,13 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
@@ -101,6 +107,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   // supply() will poll events from this queue and send them to the next pipe plugin.
   protected final UnboundedBlockingPendingQueue<Event> pendingQueue =
       new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
+
+  protected final ReentrantReadWriteLock pendingQueueLock = new ReentrantReadWriteLock();
 
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
 
@@ -197,6 +205,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   @Override
   public void start() throws Exception {
+    PipeCompactionListener.getInstance().startListenTo(dataRegionId, this);
     PipeTimePartitionListener.getInstance().startListen(dataRegionId, this);
     PipeInsertionDataNodeListener.getInstance().startListenAndAssign(dataRegionId, this);
   }
@@ -206,6 +215,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     if (Objects.nonNull(dataRegionId)) {
       PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
       PipeTimePartitionListener.getInstance().stopListen(dataRegionId, this);
+      PipeCompactionListener.getInstance().stopListenTo(dataRegionId, this);
     }
 
     synchronized (isClosed) {
@@ -215,13 +225,20 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   }
 
   private void clearPendingQueue() {
-    final List<Event> eventsToDrop = new ArrayList<>(pendingQueue.size());
+    final List<Event> eventsToDrop;
 
-    // processor stage is closed later than extractor stage, {@link supply()} may be called after
-    // processor stage is closed. To avoid concurrent issues, we should clear the pending queue
-    // before clearing all the reference count of the events in the pending queue.
-    pendingQueue.forEach(eventsToDrop::add);
-    pendingQueue.clear();
+    pendingQueueLock.writeLock().lock();
+    try {
+      eventsToDrop = new ArrayList<>(pendingQueue.size());
+
+      // processor stage is closed later than extractor stage, {@link supply()} may be called after
+      // processor stage is closed. To avoid concurrent issues, we should clear the pending queue
+      // before clearing all the reference count of the events in the pending queue.
+      pendingQueue.forEach(eventsToDrop::add);
+      pendingQueue.clear();
+    } finally {
+      pendingQueueLock.writeLock().unlock();
+    }
 
     eventsToDrop.forEach(
         event -> {
@@ -230,6 +247,63 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
                 .clearReferenceCount(PipeRealtimeDataRegionExtractor.class.getName());
           }
         });
+  }
+
+  public final void refreshFileList(PipeDataRegionCompactionRecorder compactionRecorder) {
+    pendingQueueLock.writeLock().lock();
+    try {
+      Set<Event> eventsToRemove = new HashSet<>();
+      Set<Event> eventsToAdd = new HashSet<>();
+      pendingQueue.forEach(
+          event -> {
+            if (event instanceof PipeRealtimeEvent) {
+              EnrichedEvent enrichedEvent = ((PipeRealtimeEvent) event).getEvent();
+              if (enrichedEvent instanceof PipeTsFileInsertionEvent) {
+                String filePath = ((PipeTsFileInsertionEvent) enrichedEvent).getTsFilePath();
+                Pair<List<PipeRealtimeEvent>, Boolean> pair =
+                    compactionRecorder.getTargetRealtimeEventList(filePath);
+                if (Objects.nonNull(pair)) {
+                  // nonNull means this PipeTsFileInsertionEvent was compacted.
+                  eventsToRemove.add(event);
+                  if (Boolean.FALSE.equals(pair.getRight())) {
+                    // FALSE means the compaction target files has not been added to this
+                    // extractor's queue.
+                    for (PipeRealtimeEvent targetEvent : pair.getLeft()) {
+                      eventsToAdd.add(
+                          targetEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+                              pipeName,
+                              pipeTaskMeta,
+                              pipePattern,
+                              realtimeDataExtractionStartTime,
+                              realtimeDataExtractionEndTime));
+                    }
+                    pair.setRight(true);
+                  }
+                }
+              }
+            }
+          });
+
+      for (Event event : eventsToRemove) {
+        if (pendingQueue.remove(event)) {
+          ((PipeRealtimeEvent) event)
+              .decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
+        } else {
+          LOGGER.warn("refreshFileList: Could not find the event to remove.");
+        }
+      }
+
+      for (Event event : eventsToAdd) {
+        ((PipeRealtimeEvent) event)
+            .increaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName());
+        if (!pendingQueue.waitedOffer(event)) {
+          LOGGER.warn("refreshFileList: failed to add new event {}.", event);
+        }
+      }
+
+    } finally {
+      pendingQueueLock.writeLock().unlock();
+    }
   }
 
   /** @param event the {@link Event} from the {@link StorageEngine} */
@@ -274,52 +348,65 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     // Bind extractor so that the heartbeat event can later inform the extractor of queue size
     ((PipeHeartbeatEvent) event.getEvent()).bindExtractor(this);
 
-    // Record the pending queue size before trying to put heartbeatEvent into queue
-    ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue);
+    pendingQueueLock.writeLock().lock();
+    try {
+      // Record the pending queue size before trying to put heartbeatEvent into queue
+      ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue);
 
-    Event lastEvent = pendingQueue.peekLast();
-    if (lastEvent instanceof PipeRealtimeEvent
-        && ((PipeRealtimeEvent) lastEvent).getEvent() instanceof PipeHeartbeatEvent
-        && (((PipeHeartbeatEvent) ((PipeRealtimeEvent) lastEvent).getEvent()).isShouldPrintMessage()
-            || !((PipeHeartbeatEvent) event.getEvent()).isShouldPrintMessage())) {
-      // If the last event in the pending queue is a heartbeat event, we should not extract any more
-      // heartbeat events to avoid OOM when the pipe is stopped.
-      // Besides, the printable event has higher priority to stay in queue to enable metrics report.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
-      return;
-    }
+      Event lastEvent = pendingQueue.peekLast();
+      if (lastEvent instanceof PipeRealtimeEvent
+          && ((PipeRealtimeEvent) lastEvent).getEvent() instanceof PipeHeartbeatEvent
+          && (((PipeHeartbeatEvent) ((PipeRealtimeEvent) lastEvent).getEvent())
+                  .isShouldPrintMessage()
+              || !((PipeHeartbeatEvent) event.getEvent()).isShouldPrintMessage())) {
+        // If the last event in the pending queue is a heartbeat event, we should not extract any
+        // more
+        // heartbeat events to avoid OOM when the pipe is stopped.
+        // Besides, the printable event has higher priority to stay in queue to enable metrics
+        // report.
+        event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
+        return;
+      }
 
-    if (!pendingQueue.waitedOffer(event)) {
-      // this would not happen, but just in case.
-      // pendingQueue is unbounded, so it should never reach capacity.
-      LOGGER.error(
-          "extract: pending queue of PipeRealtimeDataRegionHybridExtractor {} "
-              + "has reached capacity, discard heartbeat event {}",
-          this,
-          event);
+      if (!pendingQueue.waitedOffer(event)) {
+        // this would not happen, but just in case.
+        // pendingQueue is unbounded, so it should never reach capacity.
+        LOGGER.error(
+            "extract: pending queue of PipeRealtimeDataRegionHybridExtractor {} "
+                + "has reached capacity, discard heartbeat event {}",
+            this,
+            event);
 
-      // Do not report exception since the PipeHeartbeatEvent doesn't affect
-      // the correction of pipe progress.
+        // Do not report exception since the PipeHeartbeatEvent doesn't affect
+        // the correction of pipe progress.
 
-      // ignore this event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
+        // ignore this event.
+        event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
+      }
+    } finally {
+      pendingQueueLock.writeLock().unlock();
     }
   }
 
   protected void extractDeletion(PipeRealtimeEvent event) {
-    if (!pendingQueue.waitedOffer(event)) {
-      // This would not happen, but just in case.
-      // Pending is unbounded, so it should never reach capacity.
-      final String errorMessage =
-          String.format(
-              "extract: pending queue of %s %s "
-                  + "has reached capacity, discard deletion event %s",
-              this.getClass().getSimpleName(), this, event);
-      LOGGER.error(errorMessage);
-      PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+    pendingQueueLock.writeLock().lock();
+    try {
+      if (!pendingQueue.waitedOffer(event)) {
+        // This would not happen, but just in case.
+        // Pending is unbounded, so it should never reach capacity.
+        final String errorMessage =
+            String.format(
+                "extract: pending queue of %s %s "
+                    + "has reached capacity, discard deletion event %s",
+                this.getClass().getSimpleName(), this, event);
+        LOGGER.error(errorMessage);
+        PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
-      // Ignore the event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
+        // Ignore the event.
+        event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
+      }
+    } finally {
+      pendingQueueLock.writeLock().unlock();
     }
   }
 
@@ -433,15 +520,30 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public int getTabletInsertionEventCount() {
-    return pendingQueue.getTabletInsertionEventCount();
+    pendingQueueLock.readLock().lock();
+    try {
+      return pendingQueue.getTabletInsertionEventCount();
+    } finally {
+      pendingQueueLock.readLock().unlock();
+    }
   }
 
   public int getTsFileInsertionEventCount() {
-    return pendingQueue.getTsFileInsertionEventCount();
+    pendingQueueLock.readLock().lock();
+    try {
+      return pendingQueue.getTsFileInsertionEventCount();
+    } finally {
+      pendingQueueLock.readLock().unlock();
+    }
   }
 
   public int getPipeHeartbeatEventCount() {
-    return pendingQueue.getPipeHeartbeatEventCount();
+    pendingQueueLock.readLock().lock();
+    try {
+      return pendingQueue.getPipeHeartbeatEventCount();
+    } finally {
+      pendingQueueLock.readLock().unlock();
+    }
   }
 
   public String getTaskID() {

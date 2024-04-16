@@ -157,10 +157,10 @@ public class PipeInsertionDataNodeListener {
   }
 
   public static PipeInsertionDataNodeListener getInstance() {
-    return PipeChangeDataCaptureListenerHolder.INSTANCE;
+    return PipeInsertionDataNodeListenerHolder.INSTANCE;
   }
 
-  private static class PipeChangeDataCaptureListenerHolder {
+  private static class PipeInsertionDataNodeListenerHolder {
     private static final PipeInsertionDataNodeListener INSTANCE =
         new PipeInsertionDataNodeListener();
   }

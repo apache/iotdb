@@ -150,6 +150,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return tsFile;
   }
 
+  public String getTsFilePath() {
+    return resource.getTsFilePath();
+  }
+
   public File getModFile() {
     return modFile;
   }

@@ -61,19 +61,24 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
   private void extractTabletInsertion(PipeRealtimeEvent event) {
     event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TABLET);
 
-    if (!pendingQueue.waitedOffer(event)) {
-      // this would not happen, but just in case.
-      // pendingQueue is unbounded, so it should never reach capacity.
-      final String errorMessage =
-          String.format(
-              "extract: pending queue of PipeRealtimeDataRegionLogExtractor %s "
-                  + "has reached capacity, discard tablet event %s, current state %s",
-              this, event, event.getTsFileEpoch().getState(this));
-      LOGGER.error(errorMessage);
-      PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+    pendingQueueLock.writeLock().lock();
+    try {
+      if (!pendingQueue.waitedOffer(event)) {
+        // this would not happen, but just in case.
+        // pendingQueue is unbounded, so it should never reach capacity.
+        final String errorMessage =
+            String.format(
+                "extract: pending queue of PipeRealtimeDataRegionLogExtractor %s "
+                    + "has reached capacity, discard tablet event %s, current state %s",
+                this, event, event.getTsFileEpoch().getState(this));
+        LOGGER.error(errorMessage);
+        PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
-      // ignore this event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
+        // ignore this event.
+        event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
+      }
+    } finally {
+      pendingQueueLock.writeLock().unlock();
     }
   }
 
@@ -92,19 +97,24 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
 
     event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
 
-    if (!pendingQueue.waitedOffer(event)) {
-      // this would not happen, but just in case.
-      // pendingQueue is unbounded, so it should never reach capacity.
-      final String errorMessage =
-          String.format(
-              "extract: pending queue of PipeRealtimeDataRegionLogExtractor %s "
-                  + "has reached capacity, discard loaded tsFile event %s, current state %s",
-              this, event, event.getTsFileEpoch().getState(this));
-      LOGGER.error(errorMessage);
-      PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+    pendingQueueLock.writeLock().lock();
+    try {
+      if (!pendingQueue.waitedOffer(event)) {
+        // this would not happen, but just in case.
+        // pendingQueue is unbounded, so it should never reach capacity.
+        final String errorMessage =
+            String.format(
+                "extract: pending queue of PipeRealtimeDataRegionLogExtractor %s "
+                    + "has reached capacity, discard loaded tsFile event %s, current state %s",
+                this, event, event.getTsFileEpoch().getState(this));
+        LOGGER.error(errorMessage);
+        PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
-      // ignore this event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
+        // ignore this event.
+        event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName(), false);
+      }
+    } finally {
+      pendingQueueLock.writeLock().unlock();
     }
   }
 
@@ -121,43 +131,50 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
 
   @Override
   public Event supply() {
-    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+    pendingQueueLock.writeLock().lock();
+    try {
+      PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
 
-    while (realtimeEvent != null) {
-      Event suppliedEvent = null;
+      while (realtimeEvent != null) {
+        Event suppliedEvent = null;
 
-      if (realtimeEvent.getEvent() instanceof PipeHeartbeatEvent) {
-        suppliedEvent = supplyHeartbeat(realtimeEvent);
-      } else if (realtimeEvent.getEvent() instanceof PipeSchemaRegionWritePlanEvent) {
-        suppliedEvent = supplyDeletion(realtimeEvent);
-      } else if (realtimeEvent.increaseReferenceCount(
-          PipeRealtimeDataRegionLogExtractor.class.getName())) {
-        suppliedEvent = realtimeEvent.getEvent();
-      } else {
-        // if the event's reference count can not be increased, it means the data represented by
-        // this event is not reliable anymore. the data has been lost. we simply discard this event
-        // and report the exception to PipeRuntimeAgent.
-        final String errorMessage =
-            String.format(
-                "Event %s can not be supplied because "
-                    + "the reference count can not be increased, "
-                    + "the data represented by this event is lost",
-                realtimeEvent.getEvent());
-        LOGGER.error(errorMessage);
-        PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+        if (realtimeEvent.getEvent() instanceof PipeHeartbeatEvent) {
+          suppliedEvent = supplyHeartbeat(realtimeEvent);
+        } else if (realtimeEvent.getEvent() instanceof PipeSchemaRegionWritePlanEvent) {
+          suppliedEvent = supplyDeletion(realtimeEvent);
+        } else if (realtimeEvent.increaseReferenceCount(
+            PipeRealtimeDataRegionLogExtractor.class.getName())) {
+          suppliedEvent = realtimeEvent.getEvent();
+        } else {
+          // if the event's reference count can not be increased, it means the data represented by
+          // this event is not reliable anymore. the data has been lost. we simply discard this
+          // event
+          // and report the exception to PipeRuntimeAgent.
+          final String errorMessage =
+              String.format(
+                  "Event %s can not be supplied because "
+                      + "the reference count can not be increased, "
+                      + "the data represented by this event is lost",
+                  realtimeEvent.getEvent());
+          LOGGER.error(errorMessage);
+          PipeAgent.runtime()
+              .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+        }
+
+        realtimeEvent.decreaseReferenceCount(
+            PipeRealtimeDataRegionLogExtractor.class.getName(), false);
+
+        if (suppliedEvent != null) {
+          return suppliedEvent;
+        }
+
+        realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
       }
 
-      realtimeEvent.decreaseReferenceCount(
-          PipeRealtimeDataRegionLogExtractor.class.getName(), false);
-
-      if (suppliedEvent != null) {
-        return suppliedEvent;
-      }
-
-      realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+      // means the pending queue is empty.
+      return null;
+    } finally {
+      pendingQueueLock.writeLock().unlock();
     }
-
-    // means the pending queue is empty.
-    return null;
   }
 }

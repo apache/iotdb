@@ -106,21 +106,26 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       case EMPTY:
       case USING_TABLET:
       case USING_BOTH:
-        if (!pendingQueue.waitedOffer(event)) {
-          // this would not happen, but just in case.
-          // pendingQueue is unbounded, so it should never reach capacity.
-          final String errorMessage =
-              String.format(
-                  "extractTabletInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor %s "
-                      + "has reached capacity, discard tablet event %s, current state %s",
-                  this, event, event.getTsFileEpoch().getState(this));
-          LOGGER.error(errorMessage);
-          PipeAgent.runtime()
-              .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+        pendingQueueLock.writeLock().lock();
+        try {
+          if (!pendingQueue.waitedOffer(event)) {
+            // this would not happen, but just in case.
+            // pendingQueue is unbounded, so it should never reach capacity.
+            final String errorMessage =
+                String.format(
+                    "extractTabletInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor %s "
+                        + "has reached capacity, discard tablet event %s, current state %s",
+                    this, event, event.getTsFileEpoch().getState(this));
+            LOGGER.error(errorMessage);
+            PipeAgent.runtime()
+                .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
-          // Ignore the tablet event.
-          event.decreaseReferenceCount(
-              PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
+            // Ignore the tablet event.
+            event.decreaseReferenceCount(
+                PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
+          }
+        } finally {
+          pendingQueueLock.writeLock().unlock();
         }
         break;
       default:
@@ -177,21 +182,26 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       case EMPTY:
       case USING_TSFILE:
       case USING_BOTH:
-        if (!pendingQueue.waitedOffer(event)) {
-          // this would not happen, but just in case.
-          // pendingQueue is unbounded, so it should never reach capacity.
-          final String errorMessage =
-              String.format(
-                  "extractTsFileInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor %s "
-                      + "has reached capacity, discard TsFile event %s, current state %s",
-                  this, event, event.getTsFileEpoch().getState(this));
-          LOGGER.error(errorMessage);
-          PipeAgent.runtime()
-              .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+        pendingQueueLock.writeLock().lock();
+        try {
+          if (!pendingQueue.waitedOffer(event)) {
+            // this would not happen, but just in case.
+            // pendingQueue is unbounded, so it should never reach capacity.
+            final String errorMessage =
+                String.format(
+                    "extractTsFileInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor %s "
+                        + "has reached capacity, discard TsFile event %s, current state %s",
+                    this, event, event.getTsFileEpoch().getState(this));
+            LOGGER.error(errorMessage);
+            PipeAgent.runtime()
+                .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
-          // Ignore the tsfile event.
-          event.decreaseReferenceCount(
-              PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
+            // Ignore the tsfile event.
+            event.decreaseReferenceCount(
+                PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
+          }
+        } finally {
+          pendingQueueLock.writeLock().unlock();
         }
         break;
       default:
@@ -230,10 +240,15 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean isTsFileEventCountInQueueExceededLimit() {
-    return pendingQueue.getTsFileInsertionEventCount()
-            + processorEventCollectorQueueTsFileSize.get()
-            + connectorInputPendingQueueTsFileSize.get()
-        >= PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
+    pendingQueueLock.readLock().lock();
+    try {
+      return pendingQueue.getTsFileInsertionEventCount()
+              + processorEventCollectorQueueTsFileSize.get()
+              + connectorInputPendingQueueTsFileSize.get()
+          >= PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
+    } finally {
+      pendingQueueLock.readLock().unlock();
+    }
   }
 
   private boolean mayTsFileLinkedCountReachDangerousThreshold() {
@@ -253,40 +268,45 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   public Event supply() {
     isStartedToSupply = true;
 
-    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+    pendingQueueLock.writeLock().lock();
+    try {
+      PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
 
-    while (realtimeEvent != null) {
-      Event suppliedEvent;
+      while (realtimeEvent != null) {
+        Event suppliedEvent;
 
-      // used to judge type of event, not directly for supplying.
-      final Event eventToSupply = realtimeEvent.getEvent();
-      if (eventToSupply instanceof TabletInsertionEvent) {
-        suppliedEvent = supplyTabletInsertion(realtimeEvent);
-      } else if (eventToSupply instanceof TsFileInsertionEvent) {
-        suppliedEvent = supplyTsFileInsertion(realtimeEvent);
-      } else if (eventToSupply instanceof PipeHeartbeatEvent) {
-        suppliedEvent = supplyHeartbeat(realtimeEvent);
-      } else if (eventToSupply instanceof PipeSchemaRegionWritePlanEvent) {
-        suppliedEvent = supplyDeletion(realtimeEvent);
-      } else {
-        throw new UnsupportedOperationException(
-            String.format(
-                "Unsupported event type %s for hybrid realtime extractor %s to supply.",
-                eventToSupply.getClass(), this));
+        // used to judge type of event, not directly for supplying.
+        final Event eventToSupply = realtimeEvent.getEvent();
+        if (eventToSupply instanceof TabletInsertionEvent) {
+          suppliedEvent = supplyTabletInsertion(realtimeEvent);
+        } else if (eventToSupply instanceof TsFileInsertionEvent) {
+          suppliedEvent = supplyTsFileInsertion(realtimeEvent);
+        } else if (eventToSupply instanceof PipeHeartbeatEvent) {
+          suppliedEvent = supplyHeartbeat(realtimeEvent);
+        } else if (eventToSupply instanceof PipeSchemaRegionWritePlanEvent) {
+          suppliedEvent = supplyDeletion(realtimeEvent);
+        } else {
+          throw new UnsupportedOperationException(
+              String.format(
+                  "Unsupported event type %s for hybrid realtime extractor %s to supply.",
+                  eventToSupply.getClass(), this));
+        }
+
+        realtimeEvent.decreaseReferenceCount(
+            PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
+
+        if (suppliedEvent != null) {
+          return suppliedEvent;
+        }
+
+        realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
       }
 
-      realtimeEvent.decreaseReferenceCount(
-          PipeRealtimeDataRegionHybridExtractor.class.getName(), false);
-
-      if (suppliedEvent != null) {
-        return suppliedEvent;
-      }
-
-      realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+      // means the pending queue is empty.
+      return null;
+    } finally {
+      pendingQueueLock.writeLock().unlock();
     }
-
-    // means the pending queue is empty.
-    return null;
   }
 
   private Event supplyTabletInsertion(PipeRealtimeEvent event) {

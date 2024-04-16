@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeCompactionListener;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -228,7 +230,10 @@ public class TsFileManager {
     }
   }
 
-  /** This method is called after compaction to update memory. */
+  /**
+   * This method is called after compaction to update memory and notify the pipe engine of the
+   * compaction.
+   */
   public void replace(
       List<TsFileResource> seqFileResources,
       List<TsFileResource> unseqFileResources,
@@ -260,6 +265,15 @@ public class TsFileManager {
                 .keepOrderInsert(resource);
           }
         }
+      }
+
+      // Notify pipe engine if necessary.
+      if (PipeConfig.getInstance().isPipeRefreshFileListByCompactionEnabled()) {
+        List<TsFileResource> sourceFileResources = new ArrayList<>();
+        sourceFileResources.addAll(seqFileResources);
+        sourceFileResources.addAll(unseqFileResources);
+        PipeCompactionListener.getInstance()
+            .listenToCompaction(dataRegionId, sourceFileResources, targetFileResources);
       }
     } finally {
       writeUnlock();

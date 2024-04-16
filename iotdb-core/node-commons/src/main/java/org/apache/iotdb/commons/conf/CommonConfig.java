@@ -227,6 +227,8 @@ public class CommonConfig {
   private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
+  private boolean pipeRefreshFileListByCompactionEnabled = true;
+  private long pipeRefreshFileListByCompactionIntervalSeconds = 180;
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
@@ -959,6 +961,25 @@ public class CommonConfig {
   public void setPipeListeningQueueTransferSnapshotThreshold(
       long pipeListeningQueueTransferSnapshotThreshold) {
     this.pipeListeningQueueTransferSnapshotThreshold = pipeListeningQueueTransferSnapshotThreshold;
+  }
+
+  public boolean isPipeRefreshFileListByCompactionEnabled() {
+    return pipeRefreshFileListByCompactionEnabled;
+  }
+
+  public void setPipeRefreshFileListByCompactionEnabled(
+      boolean pipeRefreshFileListByCompactionEnabled) {
+    this.pipeRefreshFileListByCompactionEnabled = pipeRefreshFileListByCompactionEnabled;
+  }
+
+  public long getPipeRefreshFileListByCompactionIntervalSeconds() {
+    return pipeRefreshFileListByCompactionIntervalSeconds;
+  }
+
+  public void setPipeRefreshFileListByCompactionIntervalSeconds(
+      long pipeRefreshFileListByCompactionIntervalSeconds) {
+    this.pipeRefreshFileListByCompactionIntervalSeconds =
+        pipeRefreshFileListByCompactionIntervalSeconds;
   }
 
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {

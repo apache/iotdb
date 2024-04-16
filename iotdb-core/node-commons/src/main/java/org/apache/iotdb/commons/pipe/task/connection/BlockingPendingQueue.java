@@ -108,6 +108,10 @@ public abstract class BlockingPendingQueue<E extends Event> {
     pendingQueue.forEach(action);
   }
 
+  public boolean remove(E event) {
+    return pendingQueue.remove(event);
+  }
+
   public boolean isEmpty() {
     return pendingQueue.isEmpty();
   }

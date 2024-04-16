@@ -516,6 +516,17 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_listening_queue_transfer_snapshot_threshold",
                 String.valueOf(config.getPipeListeningQueueTransferSnapshotThreshold()))));
+
+    config.setPipeRefreshFileListByCompactionEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_refresh_file_list_by_compaction_enabled",
+                String.valueOf(config.isPipeRefreshFileListByCompactionEnabled()))));
+    config.setPipeRefreshFileListByCompactionIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_refresh_file_list_by_compaction_interval_seconds",
+                String.valueOf(config.getPipeRefreshFileListByCompactionIntervalSeconds()))));
   }
 
   private void loadSubscriptionProps(Properties properties) {
