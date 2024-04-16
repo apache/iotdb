@@ -86,7 +86,7 @@ public class CompactionTaskManager implements IService {
       RateLimiter.create(
           config.getCompactionWriteThroughputMbPerSec() <= 0
               ? Double.MAX_VALUE
-              : config.getCompactionWriteThroughputMbPerSec());
+              : config.getCompactionWriteThroughputMbPerSec() * 1024.0 * 1024.0);
   private final RateLimiter compactionReadOperationRateLimiter =
       RateLimiter.create(
           config.getCompactionReadOperationPerSec() <= 0
@@ -96,7 +96,7 @@ public class CompactionTaskManager implements IService {
       RateLimiter.create(
           config.getCompactionReadThroughputMbPerSec() <= 0
               ? Double.MAX_VALUE
-              : config.getCompactionReadThroughputMbPerSec());
+              : config.getCompactionReadThroughputMbPerSec() * 1024.0 * 1024.0);
 
   private volatile boolean init = false;
 
