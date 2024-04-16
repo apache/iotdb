@@ -26,7 +26,7 @@ public class TableScanNode extends PlanNode {
   private final Map<Symbol, ColumnSchema> assignments;
 
   private List<DeviceEntry> deviceEntries;
-  private Map<Symbol, Integer> attributesMap;
+  private Map<Symbol, Integer> idAndAttributeIndexMap;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.

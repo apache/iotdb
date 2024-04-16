@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.Identity;
 import org.apache.iotdb.db.relational.sql.tree.AllColumns;
+import org.apache.iotdb.db.relational.sql.tree.DataType;
 import org.apache.iotdb.db.relational.sql.tree.ExistsPredicate;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.relational.sql.tree.FunctionCall;
@@ -169,6 +170,10 @@ public class Analysis implements IAnalysis {
 
   public Query getNamedQuery(Table table) {
     return namedQueries.get(NodeRef.of(table));
+  }
+
+  public boolean isAnalyzed(Expression expression) {
+    return expression instanceof DataType || types.containsKey(NodeRef.of(expression));
   }
 
   public void registerNamedQuery(Table tableReference, Query query) {
@@ -336,6 +341,10 @@ public class Analysis implements IAnalysis {
 
   public Expression getWhere(QuerySpecification node) {
     return where.get(NodeRef.<Node>of(node));
+  }
+
+  public Map<NodeRef<Node>, Expression> getWhereMap() {
+    return this.where;
   }
 
   public void setOrderByExpressions(Node node, List<Expression> items) {
