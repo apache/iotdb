@@ -74,8 +74,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
             (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
-        // We increase the reference count for this event to determine if the event may be
-        // released.
+        // We increase the reference count for this event to determine if the event may be released.
         if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
             IoTDBDataRegionAirGapConnector.class.getName())) {
           return;
@@ -87,8 +86,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
       } else {
         final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
             (PipeRawTabletInsertionEvent) tabletInsertionEvent;
-        // We increase the reference count for this event to determine if the event may be
-        // released.
+        // We increase the reference count for this event to determine if the event may be released.
         if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
             IoTDBDataRegionAirGapConnector.class.getName())) {
           return;
