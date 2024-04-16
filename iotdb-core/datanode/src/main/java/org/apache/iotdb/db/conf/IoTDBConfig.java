@@ -684,14 +684,17 @@ public class IoTDBConfig {
    */
   private long mergeIntervalSec = 0L;
 
-  /** The limit of compaction merge can reach per second, unit: megabyte */
+  /** The limit of compaction merge can reach per second. When <= 0, no limit. unit: megabyte */
   private int compactionWriteThroughputMbPerSec = 16;
 
-  /** The limit of compaction read throughput can reach per second, unit: megabyte */
-  private int compactionReadThroughputMbPerSec = 40;
+  /**
+   * The limit of compaction read throughput can reach per second. When <= 0, no limit. unit:
+   * megabyte
+   */
+  private int compactionReadThroughputMbPerSec = 0;
 
-  /** The limit of compaction read operation can reach per second */
-  private int compactionReadOperationPerSec = 500;
+  /** The limit of compaction read operation can reach per second. When <= 0, no limit. */
+  private int compactionReadOperationPerSec = 0;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
