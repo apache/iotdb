@@ -45,6 +45,7 @@ public class RemoveRedundantIdentityProjections implements RelationalPlanOptimiz
 
     @Override
     public PlanNode visitProject(ProjectNode projectNode, RewriterContext context) {
+      // TODO change the impl using the method of context.getParent()
       if (projectNode.getOutputSymbols().equals(projectNode.getChild().getOutputSymbols())) {
         if (context.getParent() instanceof SingleChildProcessNode) {
           ((SingleChildProcessNode) context.getParent()).setChild(projectNode.getChild());

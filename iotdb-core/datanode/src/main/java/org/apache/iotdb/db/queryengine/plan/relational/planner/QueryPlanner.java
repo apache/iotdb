@@ -83,21 +83,25 @@ public class QueryPlanner {
     List<Expression> orderBy = analysis.getOrderByExpressions(query);
     // builder = subqueryPlanner.handleSubqueries(builder, orderBy, analysis.getSubqueries(query));
 
+    // TODO result is :input[0], :input[1], :input[2]
     List<Analysis.SelectExpression> selectExpressions = analysis.getSelectExpressions(query);
     List<Expression> outputs =
         selectExpressions.stream()
             .map(Analysis.SelectExpression::getExpression)
             .collect(toImmutableList());
 
-    builder =
-        builder.appendProjections(Iterables.concat(orderBy, outputs), symbolAllocator, idAllocator);
+    if (orderBy.size() > 0) {
+      builder =
+          builder.appendProjections(
+              Iterables.concat(orderBy, outputs), analysis, symbolAllocator, idAllocator);
+    }
 
     Optional<OrderingScheme> orderingScheme =
         orderingScheme(builder, query.getOrderBy(), analysis.getOrderByExpressions(query));
     builder = sort(builder, orderingScheme);
     builder = offset(builder, query.getOffset());
     builder = limit(builder, query.getLimit(), orderingScheme);
-    builder = builder.appendProjections(outputs, symbolAllocator, idAllocator);
+    builder = builder.appendProjections(outputs, analysis, symbolAllocator, idAllocator);
 
     return new RelationPlan(
         builder.getRoot(), analysis.getScope(query), computeOutputs(builder, outputs));
@@ -121,7 +125,7 @@ public class QueryPlanner {
     if (hasExpressionsToUnfold(selectExpressions)) {
       // pre-project the folded expressions to preserve any non-deterministic semantics of functions
       // that might be referenced
-      builder = builder.appendProjections(expressions, symbolAllocator, idAllocator);
+      builder = builder.appendProjections(expressions, analysis, symbolAllocator, idAllocator);
     }
 
     List<Expression> outputs = outputExpressions(selectExpressions);
@@ -133,13 +137,14 @@ public class QueryPlanner {
         // translated
         // aggregations are visible.
         List<Expression> orderByAggregates = analysis.getOrderByAggregates(node.getOrderBy().get());
-        builder = builder.appendProjections(orderByAggregates, symbolAllocator, idAllocator);
+        builder =
+            builder.appendProjections(orderByAggregates, analysis, symbolAllocator, idAllocator);
       }
 
       // Add projections for the outputs of SELECT, but stack them on top of the ones from the FROM
       // clause so both are visible
       // when resolving the ORDER BY clause.
-      builder = builder.appendProjections(outputs, symbolAllocator, idAllocator);
+      builder = builder.appendProjections(outputs, analysis, symbolAllocator, idAllocator);
 
       // The new scope is the composite of the fields from the FROM and SELECT clause (local nested
       // scopes). Fields from the bottom of
@@ -156,8 +161,11 @@ public class QueryPlanner {
 
     List<Expression> orderBy = analysis.getOrderByExpressions(node);
     // TODO this appendProjections may be removed
-    builder =
-        builder.appendProjections(Iterables.concat(orderBy, outputs), symbolAllocator, idAllocator);
+    if (orderBy.size() > 0) {
+      builder =
+          builder.appendProjections(
+              Iterables.concat(orderBy, outputs), analysis, symbolAllocator, idAllocator);
+    }
 
     // TODO handle distinct
 
@@ -166,7 +174,7 @@ public class QueryPlanner {
     builder = sort(builder, orderingScheme);
     builder = offset(builder, node.getOffset());
     builder = limit(builder, node.getLimit(), orderingScheme);
-    builder = builder.appendProjections(outputs, symbolAllocator, idAllocator);
+    builder = builder.appendProjections(outputs, analysis, symbolAllocator, idAllocator);
 
     return new RelationPlan(
         builder.getRoot(), analysis.getScope(node), computeOutputs(builder, outputs));
