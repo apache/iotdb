@@ -575,14 +575,14 @@ public class IoTConsensusServerImpl {
                 new TWaitSyncLogCompleteReq(targetPeer.getGroupId().convertToTConsensusGroupId()));
         if (res.complete) {
           logger.info(
-              "{} SyncLog is completed. TargetIndex: {}, CurrentSyncIndex: {}",
+              "[WAIT LOG SYNC] {} SyncLog is completed. TargetIndex: {}, CurrentSyncIndex: {}",
               targetPeer,
               res.searchIndex,
               res.safeIndex);
           return;
         }
         logger.info(
-            "{} SyncLog is still in progress. TargetIndex: {}, CurrentSyncIndex: {}",
+            "[WAIT LOG SYNC] {} SyncLog is still in progress. TargetIndex: {}, CurrentSyncIndex: {}",
             targetPeer,
             res.searchIndex,
             res.safeIndex);
