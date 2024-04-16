@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.type;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
@@ -63,5 +64,27 @@ public class InternalTypeManager implements TypeManager {
   @Override
   public Type getType(TypeId id) {
     throw new UnsupportedOperationException();
+  }
+
+  public static TSDataType getTSDataType(Type type) {
+    TypeEnum typeEnum = type.getTypeEnum();
+    switch (typeEnum) {
+      case TEXT:
+        return TSDataType.TEXT;
+      case FLOAT:
+        return TSDataType.FLOAT;
+      case DOUBLE:
+        return TSDataType.DOUBLE;
+      case INT32:
+        return TSDataType.INT32;
+      case INT64:
+        return TSDataType.INT64;
+      case BOOLEAN:
+        return TSDataType.BOOLEAN;
+      case UNKNOWN:
+        return TSDataType.UNKNOWN;
+      default:
+        throw new IllegalArgumentException();
+    }
   }
 }

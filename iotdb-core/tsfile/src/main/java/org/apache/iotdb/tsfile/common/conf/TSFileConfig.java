@@ -73,6 +73,8 @@ public class TSFileConfig implements Serializable {
 
   /** The primitive array capacity threshold. */
   public static final int ARRAY_CAPACITY_THRESHOLD = 1000;
+
+  public static final int DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME = 3;
   /** Memory size threshold for flushing to disk, default value is 128MB. */
   private int groupSizeInByte = 128 * 1024 * 1024;
   /** The memory size for each series writer to pack page, default value is 64KB. */

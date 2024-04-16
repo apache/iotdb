@@ -51,9 +51,8 @@ import org.apache.iotdb.db.relational.sql.tree.ShowTables;
 import org.apache.iotdb.db.relational.sql.tree.Use;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.type.Type;
-import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
+import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
@@ -143,24 +142,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   private TSDataType getDataType(DataType dataType) {
     try {
-      Type type = metadata.getType(toTypeSignature(dataType));
-      TypeEnum typeEnum = type.getTypeEnum();
-      switch (typeEnum) {
-        case TEXT:
-          return TSDataType.TEXT;
-        case FLOAT:
-          return TSDataType.FLOAT;
-        case DOUBLE:
-          return TSDataType.DOUBLE;
-        case INT32:
-          return TSDataType.INT32;
-        case INT64:
-          return TSDataType.INT64;
-        case BOOLEAN:
-          return TSDataType.BOOLEAN;
-        default:
-          throw new IllegalArgumentException();
-      }
+      return getTSDataType(metadata.getType(toTypeSignature(dataType)));
     } catch (TypeNotFoundException e) {
       throw new SemanticException(String.format("Unknown type: %s", dataType));
     }
