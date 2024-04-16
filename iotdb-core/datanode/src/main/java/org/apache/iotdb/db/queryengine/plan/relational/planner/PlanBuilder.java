@@ -24,12 +24,15 @@ import org.apache.iotdb.db.relational.sql.tree.Expression;
 import com.google.common.collect.ImmutableMap;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
 
-class PlanBuilder {
+public class PlanBuilder {
+
   private final PlanNode root;
 
   public PlanBuilder(PlanNode root) {
@@ -64,27 +67,31 @@ class PlanBuilder {
   }
 
   public <T extends Expression> PlanBuilder appendProjections(
-      Iterable<T> expressions, SymbolAllocator symbolAllocator, QueryId idAllocator) {
+      Iterable<T> expressions,
+      Analysis analysis,
+      SymbolAllocator symbolAllocator,
+      QueryId idAllocator) {
     Assignments.Builder projections = Assignments.builder();
 
     // add an identity projection for underlying plan
-    // TODO needed?
-    // projections.putIdentities(root.getOutputSymbols());
+    projections.putIdentities(root.getOutputSymbols());
 
-    Map<ScopeAware<Expression>, Symbol> mappings = new HashMap<>();
-    //        for (T expression : expressions) {
-    //            // Skip any expressions that have already been translated and recorded in the
-    // translation map, or that are duplicated in the list of exp
-    //            if (!mappings.containsKey(scopeAwareKey(expression, translations.getAnalysis(),
-    //                    translations.getScope())) && !alreadyHasTranslation.test(translations,
-    // expression)) {
-    //                Symbol symbol = symbolAllocator.newSymbol("expr",
-    // translations.getAnalysis().getType(expression));
-    //                projections.put(symbol, rewriter.apply(translations, expression));
-    //                mappings.put(scopeAwareKey(expression, translations.getAnalysis(),
-    // translations.getScope()), symbol);
-    //            }
-    //        }
+    Set<String> set = new HashSet<>();
+    for (Symbol symbol : root.getOutputSymbols()) {
+      set.add(symbol.toString());
+    }
+
+    Map<Expression, Symbol> mappings = new HashMap<>();
+    for (T expression : expressions) {
+      // Skip any expressions that have already been translated and recorded in the
+      // translation map, or that are duplicated in the list of exp
+      if (!mappings.containsKey(expression) && !set.contains(expression.toString())) {
+        set.add(expression.toString());
+        Symbol symbol = symbolAllocator.newSymbol("expr", analysis.getType(expression));
+        projections.put(symbol, expression);
+        mappings.put(expression, symbol);
+      }
+    }
 
     return new PlanBuilder(new ProjectNode(idAllocator.genPlanNodeId(), root, projections.build()));
   }

@@ -37,6 +37,9 @@ import static java.util.Arrays.asList;
 import static java.util.Objects.requireNonNull;
 
 public class Assignments {
+
+  private final Map<Symbol, Expression> assignments;
+
   public static Builder builder() {
     return new Builder();
   }
@@ -65,8 +68,6 @@ public class Assignments {
       Symbol symbol1, Expression expression1, Symbol symbol2, Expression expression2) {
     return builder().put(symbol1, expression1).put(symbol2, expression2).build();
   }
-
-  private final Map<Symbol, Expression> assignments;
 
   @JsonCreator
   public Assignments(@JsonProperty("assignments") Map<Symbol, Expression> assignments) {

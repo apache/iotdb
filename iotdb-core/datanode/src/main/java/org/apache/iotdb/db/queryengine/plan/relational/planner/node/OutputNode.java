@@ -5,6 +5,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
+import com.google.common.collect.ImmutableList;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -12,22 +14,22 @@ import java.util.List;
 
 public class OutputNode extends SingleChildProcessNode {
 
-  private final List<String> outputColumnNames;
+  private final List<String> columnNames;
 
-  private final List<Symbol> symbols;
+  // column name = symbol
+  private final List<Symbol> outputs;
 
-  public OutputNode(
-      PlanNodeId id, PlanNode child, List<String> outputColumnNames, List<Symbol> symbols) {
+  public OutputNode(PlanNodeId id, PlanNode child, List<String> columnNames, List<Symbol> outputs) {
     super(id, child);
     this.id = id;
     this.child = child;
-    this.outputColumnNames = outputColumnNames;
-    this.symbols = symbols;
+    this.columnNames = ImmutableList.copyOf(columnNames);
+    this.outputs = ImmutableList.copyOf(outputs);
   }
 
   @Override
   public PlanNode clone() {
-    return null;
+    return new OutputNode(id, child, columnNames, outputs);
   }
 
   @Override
@@ -40,4 +42,8 @@ public class OutputNode extends SingleChildProcessNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+
+  public List<Symbol> getOutputSymbols() {
+    return outputs;
+  }
 }

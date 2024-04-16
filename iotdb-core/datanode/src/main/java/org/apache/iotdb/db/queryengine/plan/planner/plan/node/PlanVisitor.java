@@ -518,4 +518,9 @@ public abstract class PlanVisitor<R, C> {
   public R visitTableScan(TableScanNode node, C context) {
     return visitPlan(node, context);
   }
+
+  public R visitProject(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode node, C context) {
+    return visitPlan(node, context);
+  }
 }
