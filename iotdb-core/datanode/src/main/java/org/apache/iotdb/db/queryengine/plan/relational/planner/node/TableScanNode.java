@@ -19,11 +19,15 @@ public class TableScanNode extends PlanNode {
   private final Map<Symbol, ColumnHandle> assignments; // symbol -> column
 
   // db.tablename
-  // private final String qualifiedTableName;
-  // private final List<Symbol> outputSymbols;
-  // private final List<ColumnSchema> columnSchemas;
-  // private final int[] idOrAttributeColumnsIndex;
-  // private final List<DeviceEntry> deviceIDList;
+  //  String qualifiedTableName;
+  //
+  //  List<Symbol> outputSymbols;
+  //
+  //  List<DeviceEntry> deviceEntries;
+  //
+  //  Map<Symbol, ColumnSchema> assignments;
+  //
+  //  Map<Symbol, Integer> attributesMap;
 
   public TableScanNode(
       PlanNodeId id,
@@ -69,9 +73,4 @@ public class TableScanNode extends PlanNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
-
-  @Override
-  public List<Symbol> getOutputSymbols() {
-    return outputSymbols;
-  }
 }
