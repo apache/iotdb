@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class TabletsMessagePayload implements SubscriptionMessagePayload {
 
@@ -59,5 +60,27 @@ public class TabletsMessagePayload implements SubscriptionMessagePayload {
     }
     this.tablets = tablets;
     return this;
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    final TabletsMessagePayload that = (TabletsMessagePayload) obj;
+    return Objects.equals(this.tablets, that.tablets);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(tablets);
+  }
+
+  @Override
+  public String toString() {
+    return "TabletsMessagePayload{tablets=" + tablets + "}";
   }
 }

@@ -322,9 +322,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           case POLL_TS_FILE:
             return handlePipeSubscribePollTsFileInternal(
                 consumerConfig, (PollTsFileMessagePayload) pollMessage.getMessagePayload(), timer);
+          default:
+            break;
         }
       }
-      throw new SubscriptionException("...");
+      throw new SubscriptionException(String.format("unexpected message type: %s", messageType));
     } catch (final SubscriptionException e) {
       final String exceptionMessage =
           String.format(

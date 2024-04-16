@@ -25,6 +25,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Objects;
 
 public class TsFilePieceMessagePayload implements SubscriptionMessagePayload {
 
@@ -68,5 +70,35 @@ public class TsFilePieceMessagePayload implements SubscriptionMessagePayload {
     final int size = ReadWriteIOUtils.readInt(buffer);
     this.filePiece = ReadWriteIOUtils.readBytes(buffer, size);
     return this;
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    final TsFilePieceMessagePayload that = (TsFilePieceMessagePayload) obj;
+    return Objects.equals(this.fileName, that.fileName)
+        && Objects.equals(this.endWritingOffset, that.endWritingOffset)
+        && Arrays.equals(this.filePiece, that.filePiece);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(fileName, endWritingOffset, filePiece);
+  }
+
+  @Override
+  public String toString() {
+    return "TsFilePieceMessagePayload{fileName="
+        + fileName
+        + ", endWritingOffset="
+        + endWritingOffset
+        + ", filePiece="
+        + Arrays.toString(filePiece)
+        + "}";
   }
 }

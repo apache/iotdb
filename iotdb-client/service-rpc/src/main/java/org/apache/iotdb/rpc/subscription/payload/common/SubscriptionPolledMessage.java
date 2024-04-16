@@ -88,7 +88,7 @@ public class SubscriptionPolledMessage {
 
   public static SubscriptionPolledMessage deserialize(final ByteBuffer buffer) {
     final short messageType = ReadWriteIOUtils.readShort(buffer);
-    final SubscriptionMessagePayload messagePayload;
+    SubscriptionMessagePayload messagePayload = null;
     if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
       switch (SubscriptionPolledMessageType.valueOf(messageType)) {
         case TABLETS:
@@ -104,10 +104,11 @@ public class SubscriptionPolledMessage {
           messagePayload = new TsFileSealMessagePayload().deserialize(buffer);
           break;
         default:
-          messagePayload = null;
+          LOGGER.warn("unexpected message type: {}, message payload will be null", messageType);
+          break;
       }
     } else {
-      messagePayload = null;
+      LOGGER.warn("unexpected message type: {}, message payload will be null", messageType);
     }
 
     final SubscriptionCommitContext commitContext = SubscriptionCommitContext.deserialize(buffer);

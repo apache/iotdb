@@ -31,7 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -87,9 +86,14 @@ public class SubscriptionBroker {
     if (!(prefetchingQueue instanceof SubscriptionPrefetchingTsFileQueue)) {
       return null;
     }
-    return Collections.singletonList(
+    final List<SubscriptionEvent> events = new ArrayList<>();
+    final SubscriptionEvent event =
         ((SubscriptionPrefetchingTsFileQueue) prefetchingQueue)
-            .pollTsFile(fileName, endWritingOffset));
+            .pollTsFile(fileName, endWritingOffset);
+    if (Objects.nonNull(event)) {
+      events.add(event);
+    }
+    return events;
   }
 
   public void commit(final List<SubscriptionCommitContext> commitContexts) {

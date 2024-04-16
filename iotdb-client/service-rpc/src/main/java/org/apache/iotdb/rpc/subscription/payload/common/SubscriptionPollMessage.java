@@ -76,7 +76,7 @@ public class SubscriptionPollMessage {
 
   public static SubscriptionPollMessage deserialize(final ByteBuffer buffer) {
     final short messageType = ReadWriteIOUtils.readShort(buffer);
-    final SubscriptionMessagePayload messagePayload;
+    SubscriptionMessagePayload messagePayload = null;
     if (SubscriptionPollMessageType.isValidatedMessageType(messageType)) {
       switch (SubscriptionPollMessageType.valueOf(messageType)) {
         case POLL:
@@ -86,10 +86,11 @@ public class SubscriptionPollMessage {
           messagePayload = new PollTsFileMessagePayload().deserialize(buffer);
           break;
         default:
-          messagePayload = null;
+          LOGGER.warn("unexpected message type: {}, message payload will be null", messageType);
+          break;
       }
     } else {
-      messagePayload = null;
+      LOGGER.warn("unexpected message type: {}, message payload will be null", messageType);
     }
 
     final long timeoutMs = ReadWriteIOUtils.readLong(buffer);

@@ -25,6 +25,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 public class PollMessagePayload implements SubscriptionMessagePayload {
@@ -50,5 +51,29 @@ public class PollMessagePayload implements SubscriptionMessagePayload {
   public SubscriptionMessagePayload deserialize(ByteBuffer buffer) {
     topicNames = ReadWriteIOUtils.readObjectSet(buffer);
     return this;
+  }
+
+  /////////////////////////////// Object ///////////////////////////////
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    final PollMessagePayload that = (PollMessagePayload) obj;
+    return Objects.equals(this.topicNames, that.topicNames);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(topicNames);
+  }
+
+  @Override
+  public String toString() {
+    return "PollMessagePayload{topicNames=" + topicNames + "}";
   }
 }

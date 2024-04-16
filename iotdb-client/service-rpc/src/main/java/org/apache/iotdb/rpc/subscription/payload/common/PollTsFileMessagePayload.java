@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class PollTsFileMessagePayload implements SubscriptionMessagePayload {
 
@@ -66,5 +67,37 @@ public class PollTsFileMessagePayload implements SubscriptionMessagePayload {
     fileName = ReadWriteIOUtils.readString(buffer);
     endWritingOffset = ReadWriteIOUtils.readLong(buffer);
     return this;
+  }
+
+  /////////////////////////////// Object ///////////////////////////////
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    final PollTsFileMessagePayload that = (PollTsFileMessagePayload) obj;
+    return Objects.equals(this.topicName, that.topicName)
+        && Objects.equals(this.fileName, that.fileName)
+        && Objects.equals(this.endWritingOffset, that.endWritingOffset);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(topicName, fileName, endWritingOffset);
+  }
+
+  @Override
+  public String toString() {
+    return "PollTsFileMessagePayload{topicName="
+        + topicName
+        + ", fileName="
+        + fileName
+        + ", endWritingOffset="
+        + endWritingOffset
+        + "}";
   }
 }

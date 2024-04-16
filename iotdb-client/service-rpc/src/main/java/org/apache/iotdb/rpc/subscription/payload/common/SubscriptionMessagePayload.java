@@ -28,10 +28,4 @@ public interface SubscriptionMessagePayload {
   void serialize(final DataOutputStream stream) throws IOException;
 
   SubscriptionMessagePayload deserialize(final ByteBuffer buffer);
-
-  boolean equals(final Object obj);
-
-  int hashCode();
-
-  String toString();
 }

@@ -204,7 +204,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
                       ((TsFileInfoMessagePayload) polledMessage.getMessagePayload()).getFileName(),
                       timeoutMs);
               if (Objects.isNull(message)) {
-                throw new Exception("xxx");
+                throw new Exception("poll empty tsfile, will retry later...");
               }
               messages.add(message);
             } catch (Exception e) {
@@ -212,8 +212,11 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
             }
             break;
           default:
+            LOGGER.warn("unexpected message type: {}", messageType);
             break;
         }
+      } else {
+        LOGGER.warn("unexpected message type: {}", messageType);
       }
     }
 
@@ -243,6 +246,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw");
     commitContextToTsFile.put(commitContext, new Pair<>(file, fileWriter));
 
+    LOGGER.info("start poll tsfile: {}", file.getAbsolutePath());
+
     long endWritingOffset = 0;
     while (true) {
       final List<SubscriptionPolledMessage> polledMessages =
@@ -251,6 +256,9 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
         return null;
       }
       final SubscriptionPolledMessage polledMessage = polledMessages.get(0);
+      if (Objects.isNull(polledMessage)) {
+        return null;
+      }
       final short messageType = polledMessage.getMessageType();
       if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
         switch (SubscriptionPolledMessageType.valueOf(messageType)) {
@@ -258,11 +266,17 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
             {
               final TsFilePieceMessagePayload messagePayload =
                   (TsFilePieceMessagePayload) polledMessage.getMessagePayload();
+              if (Objects.isNull(messagePayload)) {
+                return null;
+              }
+              // check file name
               if (!fileName.equals(messagePayload.getFileName())) {
                 return null;
               }
+              // write file piece
               fileWriter.write(messagePayload.getFilePiece());
               fileWriter.getFD().sync();
+              // update offset
               endWritingOffset = messagePayload.getEndWritingOffset();
               break;
             }
@@ -270,20 +284,32 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
             {
               final TsFileSealMessagePayload messagePayload =
                   (TsFileSealMessagePayload) polledMessage.getMessagePayload();
+              if (Objects.isNull(messagePayload)) {
+                return null;
+              }
+              // check file name
               if (!fileName.equals(messagePayload.getFileName())) {
                 return null;
               }
+              // check file length
               if (fileWriter.length() != messagePayload.getFileLength()) {
                 return null;
               }
+              // sync and close
               fileWriter.getFD().sync();
               fileWriter.close();
               commitContextToTsFile.remove(commitContext);
-              break;
+              LOGGER.info("successfully poll tsfile: {}", file.getAbsolutePath());
+              // generate subscription message
+              return new SubscriptionMessage(commitContext, fileName);
             }
           default:
-            break;
+            LOGGER.warn("unexpected message type: {}", messageType);
+            return null;
         }
+      } else {
+        LOGGER.warn("unexpected message type: {}", messageType);
+        return null;
       }
     }
   }

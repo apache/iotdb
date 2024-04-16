@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class TsFileSealMessagePayload implements SubscriptionMessagePayload {
 
@@ -57,5 +58,28 @@ public class TsFileSealMessagePayload implements SubscriptionMessagePayload {
     this.fileName = ReadWriteIOUtils.readString(buffer);
     this.fileLength = ReadWriteIOUtils.readLong(buffer);
     return this;
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    final TsFileSealMessagePayload that = (TsFileSealMessagePayload) obj;
+    return Objects.equals(this.fileName, that.fileName)
+        && Objects.equals(this.fileLength, that.fileLength);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(fileName, fileLength);
+  }
+
+  @Override
+  public String toString() {
+    return "TsFileSealMessagePayload{fileName=" + fileName + ", fileLength=" + fileLength + "}";
   }
 }
