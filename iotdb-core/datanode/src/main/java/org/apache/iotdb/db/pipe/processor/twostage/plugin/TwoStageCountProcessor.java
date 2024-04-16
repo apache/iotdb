@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.processor.twostage.plugin;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
@@ -54,15 +55,21 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class TwoStageCountProcessor implements PipeProcessor {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TwoStageCountProcessor.class);
 
   private String pipeName;
   private long creationTime;
@@ -110,7 +117,21 @@ public class TwoStageCountProcessor implements PipeProcessor {
     outputSeries =
         new PartialPath(parameters.getString(PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY));
 
-    // TODO: init localCommitProgressIndex with the progress index of the last successful combine
+    if (Objects.nonNull(pipeTaskMeta) && Objects.nonNull(pipeTaskMeta.getProgressIndex())) {
+      if (pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex) {
+        pipeTaskMeta.updateProgressIndex(
+            new StateProgressIndex(new HashMap<>(), MinimumProgressIndex.INSTANCE));
+      }
+      localCommitProgressIndex.set(pipeTaskMeta.getProgressIndex());
+    }
+    LOGGER.info(
+        "TwoStageCountProcessor customized by thread {}: pipeName={}, creationTime={}, regionId={}, outputSeries={}, progressIndex={}",
+        Thread.currentThread().getName(),
+        pipeName,
+        creationTime,
+        regionId,
+        outputSeries,
+        localCommitProgressIndex.get());
 
     twoStageAggregateSender = new TwoStageAggregateSender();
     PipeCombineHandlerManager.getInstance()
@@ -196,7 +217,6 @@ public class TwoStageCountProcessor implements PipeProcessor {
                       localCommitQueue.add(pair);
                       return;
                     case SUCCESS:
-                      // TODO: record count in the progress index
                       pipeTaskMeta.updateProgressIndex(pair.right);
                       return;
                     default:
