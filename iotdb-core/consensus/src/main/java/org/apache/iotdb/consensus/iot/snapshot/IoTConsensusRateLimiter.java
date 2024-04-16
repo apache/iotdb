@@ -19,39 +19,34 @@
 
 package org.apache.iotdb.consensus.iot.snapshot;
 
-import org.apache.iotdb.commons.quotas.AverageIntervalRateLimiter;
-
+import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class IoTConsensusRateLimiter {
   private static final Logger logger = LoggerFactory.getLogger(IoTConsensusRateLimiter.class);
 
-  private final AverageIntervalRateLimiter rateLimiter = new AverageIntervalRateLimiter();
+  private final RateLimiter rateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
   private IoTConsensusRateLimiter() {}
 
   public void init(long regionMigrationSpeedLimitBytesPerSecond) {
-    rateLimiter.set(regionMigrationSpeedLimitBytesPerSecond, 1000);
+    rateLimiter.setRate(regionMigrationSpeedLimitBytesPerSecond);
   }
 
   /**
    * Acquire the size of the data to be sent.
    *
-   * @param size the size of the data to be sent
-   * @return true if the data can be sent, false if the data cannot be sent
+   * @param transitDataSize the size of the data to be sent
    */
-  public boolean reserve(long size) {
-    synchronized (this) {
-      if (rateLimiter.canExecute(size)) {
-        rateLimiter.consume(size);
-        return true;
+  public void acquireTransitDataSizeWithRateLimiter(long transitDataSize) {
+    while (transitDataSize > 0) {
+      if (transitDataSize > Integer.MAX_VALUE) {
+        rateLimiter.acquire(Integer.MAX_VALUE);
+        transitDataSize -= Integer.MAX_VALUE;
       } else {
-        logger.debug(
-            "The rate limiter is limited. Required: {}, available: {}",
-            size,
-            rateLimiter.getAvailable());
-        return false;
+        rateLimiter.acquire((int) transitDataSize);
+        return;
       }
     }
   }

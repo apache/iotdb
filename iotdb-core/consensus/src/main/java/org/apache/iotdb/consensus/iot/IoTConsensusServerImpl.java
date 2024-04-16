@@ -123,8 +123,6 @@ public class IoTConsensusServerImpl {
   private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
       IoTConsensusRateLimiter.getInstance();
 
-  private static final long WAIT_LIMITER_INTERVAL = 500;
-
   public IoTConsensusServerImpl(
       String storageDir,
       Peer thisNode,
@@ -301,9 +299,7 @@ public class IoTConsensusServerImpl {
           while (reader.hasNext()) {
             TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
             req.setConsensusGroupId(targetPeer.getGroupId().convertToTConsensusGroupId());
-            while (!ioTConsensusRateLimiter.reserve(req.getChunkLength())) {
-              TimeUnit.MILLISECONDS.sleep(WAIT_LIMITER_INTERVAL);
-            }
+            ioTConsensusRateLimiter.acquireTransitDataSizeWithRateLimiter(req.getChunkLength());
             TSendSnapshotFragmentRes res = client.sendSnapshotFragment(req);
             if (!isSuccess(res.getStatus())) {
               throw new ConsensusGroupModifyPeerException(
