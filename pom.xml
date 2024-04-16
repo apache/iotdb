@@ -141,7 +141,7 @@
       is for ensuring the SNAPSHOT will stay available. We should however have the Ratis folks do a
       new release soon, as releasing with this version is more than sub-ideal.
     -->
-        <ratis.version>3.1.0-52e8db6-SNAPSHOT</ratis.version>
+        <ratis.version>3.1.0-a6a21d5-SNAPSHOT</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor-netty.version>1.1.13</reactor-netty.version>
         <reactor.version>3.5.10</reactor.version>

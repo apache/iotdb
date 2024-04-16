@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
-import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -65,13 +64,10 @@ public class LeaderPriorityBalancerTest {
       if (i != 2 && i != 5) {
         nodeCacheMap
             .get(i)
-            .cacheHeartbeatSample(
-                new NodeHeartbeatSample(
-                    new TDataNodeHeartbeatResp(currentTimeNs, NodeStatus.Running.getStatus()),
-                    currentTimeNs));
+            .cacheHeartbeatSample(new NodeHeartbeatSample(currentTimeNs, NodeStatus.Running));
       }
     }
-    nodeCacheMap.values().forEach(BaseNodeCache::periodicUpdate);
+    nodeCacheMap.values().forEach(BaseNodeCache::updateCurrentStatistics);
 
     // Get the loadScoreMap
     Map<Integer, Long> loadScoreMap = new ConcurrentHashMap<>();
