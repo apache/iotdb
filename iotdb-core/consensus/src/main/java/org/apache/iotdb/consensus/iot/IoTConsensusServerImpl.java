@@ -314,9 +314,8 @@ public class IoTConsensusServerImpl {
         SnapshotFragmentReader reader = new SnapshotFragmentReader(newSnapshotDirName, path);
         try {
           while (reader.hasNext()) {
-            SnapshotFragment fragment = reader.next();
             // TODO: zero copy ?
-            TSendSnapshotFragmentReq req = fragment.toTSendSnapshotFragmentReq();
+            TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
             req.setConsensusGroupId(targetPeer.getGroupId().convertToTConsensusGroupId());
             TSendSnapshotFragmentRes res = client.sendSnapshotFragment(req);
             if (!isSuccess(res.getStatus())) {
