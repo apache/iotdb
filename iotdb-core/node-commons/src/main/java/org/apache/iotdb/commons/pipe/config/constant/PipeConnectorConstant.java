@@ -23,6 +23,10 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
@@ -136,6 +140,20 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_LEADER_CACHE_ENABLE_KEY = "connector.leader-cache.enable";
   public static final String SINK_LEADER_CACHE_ENABLE_KEY = "sink.leader-cache.enable";
   public static final boolean CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE = true;
+
+  public static final String CONNECTOR_LOAD_BALANCE_STRATEGY_KEY =
+      "connector.load-balance-strategy";
+  public static final String SINK_LOAD_BALANCE_STRATEGY_KEY = "sink.load-balance-strategy";
+  public static final String CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY = "round-robin";
+  public static final String CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY = "random";
+  public static final String CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY = "priority";
+  public static final Set<String> CONNECTOR_LOAD_BALANCE_STRATEGY_SET =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY,
+                  CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY,
+                  CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY)));
 
   public static final String SINK_TOPIC_KEY = "sink.topic";
   public static final String SINK_CONSUMER_GROUP_KEY = "sink.consumer-group";

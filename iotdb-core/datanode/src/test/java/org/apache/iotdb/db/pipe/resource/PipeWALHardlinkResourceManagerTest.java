@@ -66,7 +66,7 @@ public class PipeWALHardlinkResourceManagerTest {
   public void tearDown() throws Exception {
     File pipeFolder = new File(ROOT_DIR);
     if (pipeFolder.exists()) {
-      FileUtils.deleteDirectory(pipeFolder);
+      FileUtils.deleteFileOrDirectory(pipeFolder);
     }
   }
 

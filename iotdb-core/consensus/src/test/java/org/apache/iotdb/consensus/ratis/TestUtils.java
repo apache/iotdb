@@ -36,10 +36,10 @@ import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
+import org.apache.iotdb.consensus.ratis.utils.Retriable;
 
 import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
 import org.apache.ratis.util.FileUtils;
-import org.apache.ratis.util.JavaUtils;
 import org.apache.ratis.util.TimeDuration;
 import org.apache.ratis.util.Timestamp;
 import org.junit.Assert;
@@ -347,7 +347,7 @@ public class TestUtils {
     }
 
     void waitUntilActiveLeaderElected() throws InterruptedException {
-      JavaUtils.attemptUntilTrue(
+      Retriable.attemptUntilTrue(
           () -> servers.stream().anyMatch(server -> server.isLeader(gid)),
           600,
           TimeDuration.valueOf(100, TimeUnit.MILLISECONDS),
@@ -356,7 +356,7 @@ public class TestUtils {
     }
 
     void waitUntilActiveLeaderElectedAndReady() throws InterruptedException {
-      JavaUtils.attemptUntilTrue(
+      Retriable.attemptUntilTrue(
           () -> servers.stream().anyMatch(server -> server.isLeaderReady(gid)),
           600,
           TimeDuration.valueOf(100, TimeUnit.MILLISECONDS),

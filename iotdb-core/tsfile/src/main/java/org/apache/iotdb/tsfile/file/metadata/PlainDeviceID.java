@@ -35,7 +35,7 @@ public class PlainDeviceID implements IDeviceID {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(PlainDeviceID.class)
           + RamUsageEstimator.shallowSizeOfInstance(String.class);
-  String deviceID;
+  private final String deviceID;
 
   public PlainDeviceID(String deviceID) {
     this.deviceID = deviceID;

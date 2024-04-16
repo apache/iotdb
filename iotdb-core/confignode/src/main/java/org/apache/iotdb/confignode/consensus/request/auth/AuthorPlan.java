@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.consensus.request.auth;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
@@ -182,7 +183,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
     roleName = BasicStructureSerDeUtil.readString(buffer);
     password = BasicStructureSerDeUtil.readString(buffer);
     newPassword = BasicStructureSerDeUtil.readString(buffer);
-    byte hasPermissions = buffer.get();
+    final byte hasPermissions = buffer.get();
     if (hasPermissions == (byte) 0) {
       this.permissions = null;
     } else {
@@ -291,5 +292,22 @@ public class AuthorPlan extends ConfigPhysicalPlan {
   public int hashCode() {
     return Objects.hash(
         authorType, userName, roleName, password, newPassword, permissions, nodeNameList, grantOpt);
+  }
+
+  @Override
+  public String toString() {
+    return "[type:"
+        + authorType
+        + ", username:"
+        + userName
+        + ", rolename:"
+        + roleName
+        + ", permissions:"
+        + PrivilegeType.toPriType(permissions)
+        + ", grant option:"
+        + grantOpt
+        + ", paths:"
+        + nodeNameList
+        + "]";
   }
 }

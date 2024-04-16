@@ -56,7 +56,7 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
 
   public CreateAlignedTimeSeriesStatement() {
     super();
-    statementType = StatementType.CREATE_ALIGNED_TIMESERIES;
+    statementType = StatementType.CREATE_ALIGNED_TIME_SERIES;
   }
 
   @Override

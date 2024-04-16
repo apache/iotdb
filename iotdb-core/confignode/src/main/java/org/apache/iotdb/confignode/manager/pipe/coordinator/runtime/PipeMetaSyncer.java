@@ -62,7 +62,7 @@ public class PipeMetaSyncer {
   // This variable is used to record whether the last sync operation was successful. If successful,
   // before the next sync operation, it can be determined based on PipeTaskInfoVersion whether the
   // pipe metadata in DN and the latest pipe metadata in CN have been synchronized and whether there
-  // is a pipe task in the current cluster, thereby skipping unnecessary skip operations.
+  // is a pipe task in the current cluster, thereby skipping unnecessary sync operations.
   private boolean isLastPipeSyncSuccessful = false;
 
   PipeMetaSyncer(ConfigManager configManager) {

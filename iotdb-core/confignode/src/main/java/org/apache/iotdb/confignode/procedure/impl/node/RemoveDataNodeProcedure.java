@@ -25,7 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
+import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.state.RemoveDataNodeState;
@@ -68,11 +68,11 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
       return Flow.NO_MORE_STATE;
     }
 
-    DataNodeRemoveHandler handler = env.getDataNodeRemoveHandler();
+    RegionMaintainHandler handler = env.getRegionMaintainHandler();
     try {
       switch (state) {
         case REGION_REPLICA_CHECK:
-          if (env.doubleCheckReplica(removedDataNode)) {
+          if (env.checkEnoughDataNodeAfterRemoving(removedDataNode)) {
             setNextState(RemoveDataNodeState.REMOVE_DATA_NODE_PREPARE);
           } else {
             LOG.error(
@@ -126,10 +126,22 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
     migratedDataNodeRegions.forEach(
         regionId -> {
           TDataNodeLocation destDataNode =
-              env.getDataNodeRemoveHandler().findDestDataNode(regionId);
+              env.getRegionMaintainHandler().findDestDataNode(regionId);
+          // TODO: need to improve the coordinator selection method here, maybe through load
+          // balancing and other means.
+          final TDataNodeLocation coordinatorForAddPeer =
+              env.getRegionMaintainHandler()
+                  .filterDataNodeWithOtherRegionReplica(regionId, destDataNode)
+                  .orElse(removedDataNode);
+          final TDataNodeLocation coordinatorForRemovePeer = destDataNode;
           if (destDataNode != null) {
             RegionMigrateProcedure regionMigrateProcedure =
-                new RegionMigrateProcedure(regionId, removedDataNode, destDataNode);
+                new RegionMigrateProcedure(
+                    regionId,
+                    removedDataNode,
+                    destDataNode,
+                    coordinatorForAddPeer,
+                    coordinatorForRemovePeer);
             addChildProcedure(regionMigrateProcedure);
             LOG.info("Submit child procedure {} for regionId {}", regionMigrateProcedure, regionId);
           } else {

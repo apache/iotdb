@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
-import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
-import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaRespExceptionMessage;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +61,7 @@ public class SubscriptionConsumerAgent {
 
   ////////////////////////// ConsumerGroupMeta Management Entry //////////////////////////
 
-  public TPushConsumerGroupRespExceptionMessage handleSingleConsumerGroupMetaChanges(
+  public TPushConsumerGroupMetaRespExceptionMessage handleSingleConsumerGroupMetaChanges(
       ConsumerGroupMeta consumerGroupMetaFromCoordinator) {
     acquireWriteLock();
     try {
@@ -78,7 +78,7 @@ public class SubscriptionConsumerAgent {
               "Subscription: Failed to handle single consumer group meta changes for consumer group %s, because %s",
               consumerGroupId, e.getMessage());
       LOGGER.warn(exceptionMessage);
-      return new TPushConsumerGroupRespExceptionMessage(
+      return new TPushConsumerGroupMetaRespExceptionMessage(
           consumerGroupId, exceptionMessage, System.currentTimeMillis());
     } finally {
       releaseWriteLock();
@@ -120,7 +120,7 @@ public class SubscriptionConsumerAgent {
     consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
   }
 
-  public TPushConsumerGroupRespExceptionMessage handleConsumerGroupMetaChanges(
+  public TPushConsumerGroupMetaRespExceptionMessage handleConsumerGroupMetaChanges(
       List<ConsumerGroupMeta> consumerGroupMetasFromCoordinator) {
     acquireWriteLock();
     try {
@@ -135,7 +135,7 @@ public class SubscriptionConsumerAgent {
                   "Subscription: Failed to handle single consumer group meta changes for consumer group %s, because %s",
                   consumerGroupId, e.getMessage());
           LOGGER.warn(exceptionMessage);
-          return new TPushConsumerGroupRespExceptionMessage(
+          return new TPushConsumerGroupMetaRespExceptionMessage(
               consumerGroupId, exceptionMessage, System.currentTimeMillis());
         }
       }
@@ -145,7 +145,8 @@ public class SubscriptionConsumerAgent {
     }
   }
 
-  public TPushConsumerGroupRespExceptionMessage handleDropConsumerGroup(String consumerGroupId) {
+  public TPushConsumerGroupMetaRespExceptionMessage handleDropConsumerGroup(
+      String consumerGroupId) {
     acquireWriteLock();
     try {
       handleDropConsumerGroupInternal(consumerGroupId);
@@ -156,7 +157,7 @@ public class SubscriptionConsumerAgent {
               "Subscription: Failed to drop consumer group %s, because %s",
               consumerGroupId, e.getMessage());
       LOGGER.warn(exceptionMessage);
-      return new TPushConsumerGroupRespExceptionMessage(
+      return new TPushConsumerGroupMetaRespExceptionMessage(
           consumerGroupId, exceptionMessage, System.currentTimeMillis());
     } finally {
       releaseWriteLock();
@@ -180,7 +181,7 @@ public class SubscriptionConsumerAgent {
     consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
   }
 
-  public boolean isConsumerExisted(String consumerId, String consumerGroupId) {
+  public boolean isConsumerExisted(String consumerGroupId, String consumerId) {
     acquireReadLock();
     try {
       final ConsumerGroupMeta consumerGroupMeta =

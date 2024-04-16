@@ -87,6 +87,12 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
             .collect(Collectors.toList());
     CountDownLatch latch = new CountDownLatch(sourceFiles.size());
     for (TsFileResource sourceFile : sourceFiles) {
+      if (!timePartition.getTsFileManager().isAllowCompaction()) {
+        LOGGER.info(
+            "[RepairScheduler] cannot scan source files in {} because 'allowCompaction' is false",
+            repairTimePartition.getDataRegionId());
+        return;
+      }
       checkTaskStatusAndMayStop();
       sourceFile.readLock();
       try {
@@ -137,6 +143,12 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
     List<TsFileResource> overlapFiles =
         RepairDataFileScanUtil.checkTimePartitionHasOverlap(seqList);
     for (TsFileResource overlapFile : overlapFiles) {
+      if (!timePartition.getTsFileManager().isAllowCompaction()) {
+        LOGGER.info(
+            "[RepairScheduler] cannot scan source files in {} because 'allowCompaction' is false",
+            repairTimePartition.getDataRegionId());
+        return;
+      }
       checkTaskStatusAndMayStop();
       CountDownLatch latch = new CountDownLatch(1);
       RepairUnsortedFileCompactionTask task =

@@ -30,16 +30,13 @@ public class SessionConfig {
   public static final int DEFAULT_FETCH_SIZE = 5000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
   public static final boolean DEFAULT_REDIRECTION_MODE = true;
-
+  public static final boolean DEFAULT_RECORDS_AUTO_CONVERT_TABLET = true;
   public static final int CPU_CORES = Runtime.getRuntime().availableProcessors();
   public static final int DEFAULT_SESSION_EXECUTOR_THREAD_NUM = 2 * CPU_CORES;
   public static final int DEFAULT_SESSION_EXECUTOR_TASK_NUM = 1_000;
-
   public static final int RETRY_NUM = 3;
   public static final long RETRY_INTERVAL_MS = 1000;
-
   public static final long DEFAULT_QUERY_TIME_OUT = 60000;
-
   /** thrift init buffer size, 1KB by default */
   public static final int DEFAULT_INITIAL_BUFFER_CAPACITY = 1024;
 

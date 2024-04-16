@@ -100,11 +100,13 @@ public class IoTDBProcedureIT {
   @Test
   public void procedureRecoverAtAnotherConfigNodeTest() throws Exception {
     recoverTest(3, false);
+    LOGGER.info("test pass");
   }
 
   @Test
   public void procedureRecoverAtTheSameConfigNodeTest() throws Exception {
     recoverTest(1, true);
+    LOGGER.info("test pass");
   }
 
   private void recoverTest(int configNodeNum, boolean needRestartLeader) throws Exception {

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.utils;
 
-// universal metric related to system
+// Universal metric related to system
 public enum SystemMetric {
   // thread pool related
   THREAD_POOL_ACTIVE_THREAD_COUNT("thread_pool_active_thread_count"),
@@ -51,6 +51,7 @@ public enum SystemMetric {
   // system related
   SYS_CPU_LOAD("sys_cpu_load"),
   SYS_CPU_CORES("sys_cpu_cores"),
+  LINUX_MEMORY_SIZE("linux_memory_size"),
   SYS_TOTAL_PHYSICAL_MEMORY_SIZE("sys_total_physical_memory_size"),
   SYS_FREE_PHYSICAL_MEMORY_SIZE("sys_free_physical_memory_size"),
   SYS_TOTAL_SWAP_SPACE_SIZE("sys_total_swap_space_size"),
