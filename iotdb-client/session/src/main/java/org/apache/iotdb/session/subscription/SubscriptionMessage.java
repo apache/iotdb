@@ -29,20 +29,28 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   private final SubscriptionCommitContext commitContext;
 
+  private final short messageType;
+
   private final SubscriptionMessagePayload payload;
 
   public SubscriptionMessage(SubscriptionCommitContext commitContext, List<Tablet> tablets) {
     this.commitContext = commitContext;
+    this.messageType = SubscriptionMessageType.SESSION_DATA_SET.getType();
     this.payload = new SubscriptionSessionDataSets(tablets);
   }
 
   public SubscriptionMessage(SubscriptionCommitContext commitContext, String filePath) {
     this.commitContext = commitContext;
+    this.messageType = SubscriptionMessageType.TS_FILE_READER.getType();
     this.payload = new SubscriptionTsFileReader(filePath);
   }
 
   public SubscriptionCommitContext getCommitContext() {
     return commitContext;
+  }
+
+  public short getMessageType() {
+    return messageType;
   }
 
   public SubscriptionMessagePayload getPayload() {
@@ -60,13 +68,14 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
       return false;
     }
     SubscriptionMessage that = (SubscriptionMessage) obj;
-    return Objects.equals(this.payload, that.payload)
-        && Objects.equals(this.commitContext, that.commitContext);
+    return Objects.equals(this.commitContext, that.commitContext)
+        && Objects.equals(this.messageType, that.messageType)
+        && Objects.equals(this.payload, that.payload);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(payload, commitContext);
+    return Objects.hash(commitContext, messageType, payload);
   }
 
   @Override

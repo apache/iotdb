@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Comparator;
 import java.util.Objects;
 
 public class SubscriptionCommitContext implements Comparable<SubscriptionCommitContext> {
@@ -139,8 +140,12 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
   }
 
   @Override
-  public int compareTo(SubscriptionCommitContext commitContext) {
-    // TODO
-    return 0;
+  public int compareTo(SubscriptionCommitContext that) {
+    return Comparator.comparingInt(SubscriptionCommitContext::getDataNodeId)
+        .thenComparingInt(SubscriptionCommitContext::getRebootTimes)
+        .thenComparing(SubscriptionCommitContext::getTopicName)
+        .thenComparing(SubscriptionCommitContext::getConsumerGroupId)
+        .thenComparingLong(SubscriptionCommitContext::getCommitId)
+        .compare(this, that);
   }
 }

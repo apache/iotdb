@@ -28,6 +28,7 @@ import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
+import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.awaitility.Awaitility;
@@ -39,7 +40,6 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.Statement;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -48,6 +48,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
 
 import static org.junit.Assert.fail;
 
@@ -108,16 +109,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 consumer.open();
                 consumer.subscribe(topicName);
                 while (!isClosed.get()) {
-                  try {
-                    Thread.sleep(1000); // wait some time
-                  } catch (final InterruptedException e) {
-                    break;
-                  }
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages =
-                      consumer.poll(Duration.ofMillis(10000));
-                  if (messages.isEmpty()) {
-                    continue;
-                  }
+                      consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
                     final SubscriptionSessionDataSets payload =
                         (SubscriptionSessionDataSets) message.getPayload();
@@ -144,9 +138,10 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
           final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
         Awaitility.await()
-            .pollDelay(1, TimeUnit.SECONDS)
-            .pollInterval(1, TimeUnit.SECONDS)
-            .atMost(120, TimeUnit.SECONDS)
+            .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+            .pollInterval(
+                IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+            .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
             .untilAsserted(
                 () ->
                     TestUtils.assertSingleResultSetEqual(
@@ -215,16 +210,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 consumer.open();
                 consumer.subscribe(topicName);
                 while (!isClosed.get()) {
-                  try {
-                    Thread.sleep(1000); // wait some time
-                  } catch (final InterruptedException e) {
-                    break;
-                  }
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages =
-                      consumer.poll(Duration.ofMillis(10000));
-                  if (messages.isEmpty()) {
-                    continue;
-                  }
+                      consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
                     final SubscriptionSessionDataSets payload =
                         (SubscriptionSessionDataSets) message.getPayload();
@@ -251,9 +239,10 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
           final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
         Awaitility.await()
-            .pollDelay(1, TimeUnit.SECONDS)
-            .pollInterval(1, TimeUnit.SECONDS)
-            .atMost(120, TimeUnit.SECONDS)
+            .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+            .pollInterval(
+                IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+            .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
             .untilAsserted(
                 () ->
                     TestUtils.assertSingleResultSetEqual(
@@ -318,16 +307,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 consumer.open();
                 consumer.subscribe(topicName);
                 while (!isClosed.get()) {
-                  try {
-                    Thread.sleep(1000); // wait some time
-                  } catch (final InterruptedException e) {
-                    break;
-                  }
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages =
-                      consumer.poll(Duration.ofMillis(10000));
-                  if (messages.isEmpty()) {
-                    continue;
-                  }
+                      consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
                     final SubscriptionSessionDataSets payload =
                         (SubscriptionSessionDataSets) message.getPayload();
@@ -358,9 +340,10 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
           final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
         Awaitility.await()
-            .pollDelay(1, TimeUnit.SECONDS)
-            .pollInterval(1, TimeUnit.SECONDS)
-            .atMost(120, TimeUnit.SECONDS)
+            .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+            .pollInterval(
+                IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+            .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
             .untilAsserted(
                 () ->
                     TestUtils.assertResultSetEqual(
@@ -451,16 +434,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 consumer.open();
                 consumer.subscribe(topics);
                 while (!isClosed.get()) {
-                  try {
-                    Thread.sleep(1000); // wait some time
-                  } catch (final InterruptedException e) {
-                    break;
-                  }
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages =
-                      consumer.poll(topics, Duration.ofMillis(10000));
-                  if (messages.isEmpty()) {
-                    continue;
-                  }
+                      consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
                     final SubscriptionSessionDataSets payload =
                         (SubscriptionSessionDataSets) message.getPayload();
@@ -487,9 +463,10 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
           final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
         Awaitility.await()
-            .pollDelay(1, TimeUnit.SECONDS)
-            .pollInterval(1, TimeUnit.SECONDS)
-            .atMost(120, TimeUnit.SECONDS)
+            .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+            .pollInterval(
+                IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+            .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
             .untilAsserted(
                 () ->
                     TestUtils.assertSingleResultSetEqual(

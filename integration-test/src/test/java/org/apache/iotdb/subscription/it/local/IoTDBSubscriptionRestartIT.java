@@ -37,6 +37,7 @@ import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
+import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.awaitility.Awaitility;
 import org.junit.After;
@@ -48,12 +49,12 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
 
 import static org.junit.Assert.fail;
 
@@ -160,16 +161,9 @@ public class IoTDBSubscriptionRestartIT {
                       .buildPullConsumer()) {
                 consumer.open();
                 while (!isClosed.get()) {
-                  try {
-                    Thread.sleep(1000); // wait some time
-                  } catch (final InterruptedException e) {
-                    break;
-                  }
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages =
-                      consumer.poll(Duration.ofMillis(10000));
-                  if (messages.isEmpty()) {
-                    continue;
-                  }
+                      consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
                     final SubscriptionSessionDataSets payload =
                         (SubscriptionSessionDataSets) message.getPayload();
@@ -196,9 +190,10 @@ public class IoTDBSubscriptionRestartIT {
     try {
       // Keep retrying if there are execution failures
       Awaitility.await()
-          .pollDelay(1, TimeUnit.SECONDS)
-          .pollInterval(1, TimeUnit.SECONDS)
-          .atMost(120, TimeUnit.SECONDS)
+          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+          .pollInterval(
+              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
           .untilAsserted(() -> Assert.assertEquals(100, timestamps.size()));
     } catch (final Exception e) {
       e.printStackTrace();
@@ -235,7 +230,7 @@ public class IoTDBSubscriptionRestartIT {
               .consumerId("c1")
               .consumerGroupId("cg1")
               .autoCommit(true)
-              .heartbeatIntervalMs(1000)
+              .heartbeatIntervalMs(1000) // narrow heartbeat interval
               .endpointsSyncIntervalMs(5000) // narrow endpoints sync interval
               .buildPullConsumer();
       consumer.open();
@@ -271,14 +266,10 @@ public class IoTDBSubscriptionRestartIT {
             () -> {
               try (final SubscriptionPullConsumer consumerRef = consumer) {
                 while (!isClosed.get()) {
-                  try {
-                    Thread.sleep(1000); // wait some time
-                  } catch (final InterruptedException e) {
-                    break;
-                  }
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages;
                   try {
-                    messages = consumerRef.poll(Duration.ofMillis(10000));
+                    messages = consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   } catch (final Exception e) {
                     e.printStackTrace();
                     // Avoid failure
@@ -328,9 +319,10 @@ public class IoTDBSubscriptionRestartIT {
     try {
       // Keep retrying if there are execution failures
       Awaitility.await()
-          .pollDelay(1, TimeUnit.SECONDS)
-          .pollInterval(1, TimeUnit.SECONDS)
-          .atMost(120, TimeUnit.SECONDS)
+          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+          .pollInterval(
+              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
           .untilAsserted(() -> Assert.assertEquals(200, timestamps.size()));
     } catch (final Exception e) {
       e.printStackTrace();
@@ -367,7 +359,7 @@ public class IoTDBSubscriptionRestartIT {
               .consumerId("c1")
               .consumerGroupId("cg1")
               .autoCommit(true)
-              .heartbeatIntervalMs(1000)
+              .heartbeatIntervalMs(1000) // narrow heartbeat interval
               .endpointsSyncIntervalMs(5000) // narrow endpoints sync interval
               .buildPullConsumer();
       consumer.open();
@@ -398,14 +390,10 @@ public class IoTDBSubscriptionRestartIT {
             () -> {
               try (final SubscriptionPullConsumer consumerRef = consumer) {
                 while (!isClosed.get()) {
-                  try {
-                    Thread.sleep(1000); // wait some time
-                  } catch (final InterruptedException e) {
-                    break;
-                  }
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages;
                   try {
-                    messages = consumerRef.poll(Duration.ofMillis(10000));
+                    messages = consumerRef.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   } catch (final Exception e) {
                     e.printStackTrace();
                     // Avoid failure
@@ -467,9 +455,10 @@ public class IoTDBSubscriptionRestartIT {
     try {
       // Keep retrying if there are execution failures
       Awaitility.await()
-          .pollDelay(1, TimeUnit.SECONDS)
-          .pollInterval(1, TimeUnit.SECONDS)
-          .atMost(120, TimeUnit.SECONDS)
+          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+          .pollInterval(
+              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
           .untilAsserted(() -> Assert.assertEquals(200, timestamps.size()));
     } catch (final Exception e) {
       e.printStackTrace();
