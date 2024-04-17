@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.RelationalDistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
@@ -145,8 +146,13 @@ public class AnalyzerTest {
     WarningCollector warningCollector = WarningCollector.NOOP;
     LogicalPlanner logicalPlanner =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector);
-    LogicalQueryPlan result = logicalPlanner.plan(actualAnalysis);
-    System.out.println(result);
+    LogicalQueryPlan logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    System.out.println(logicalQueryPlan);
+
+    RelationalDistributionPlanner distributionPlanner =
+        new RelationalDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    // DistributedQueryPlan distributedQueryPlan = distributionPlanner.plan();
+    // System.out.println(distributedQueryPlan);
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {

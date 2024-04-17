@@ -49,39 +49,40 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
   private final QueryId idAllocator;
-  private final SessionInfo session;
+  private final SessionInfo sessionInfo;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
 
   public RelationPlanner(
       Analysis analysis,
       SymbolAllocator symbolAllocator,
       QueryId idAllocator,
-      SessionInfo session,
+      SessionInfo sessionInfo,
       Map<NodeRef<Node>, RelationPlan> recursiveSubqueries) {
     requireNonNull(analysis, "analysis is null");
     requireNonNull(symbolAllocator, "symbolAllocator is null");
     requireNonNull(idAllocator, "idAllocator is null");
-    requireNonNull(session, "session is null");
+    requireNonNull(sessionInfo, "session is null");
     requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
 
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
     this.idAllocator = idAllocator;
-    this.session = session;
+    this.sessionInfo = sessionInfo;
     this.recursiveSubqueries = recursiveSubqueries;
   }
 
   @Override
   protected RelationPlan visitQuery(Query node, Void context) {
-    return new QueryPlanner(analysis, symbolAllocator, idAllocator, session, recursiveSubqueries)
+    return new QueryPlanner(
+            analysis, symbolAllocator, idAllocator, sessionInfo, recursiveSubqueries)
         .plan(node);
   }
 
   @Override
-  protected RelationPlan visitTable(Table node, Void context) {
+  protected RelationPlan visitTable(Table table, Void context) {
     // is this a recursive reference in expandable named query? If so, there's base relation already
     // planned.
-    RelationPlan expansion = recursiveSubqueries.get(NodeRef.of(node));
+    RelationPlan expansion = recursiveSubqueries.get(NodeRef.of(table));
     if (expansion != null) {
       // put the pre-planned recursive subquery in the actual outer context to enable resolving
       // correlation
@@ -89,7 +90,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           expansion.getRoot(), expansion.getScope(), expansion.getFieldMappings());
     }
 
-    Scope scope = analysis.getScope(node);
+    Scope scope = analysis.getScope(table);
     ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
     ImmutableMap.Builder<Symbol, ColumnSchema> symbolToColumnSchema = ImmutableMap.builder();
     Collection<Field> fields = scope.getRelationType().getAllFields();
@@ -106,7 +107,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     PlanNode root =
         new TableScanNode(
             idAllocator.genPlanNodeId(),
-            node.getName().toString(),
+            table.getName().toString(),
             outputSymbols,
             symbolToColumnSchema.build());
 
@@ -121,7 +122,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
   @Override
   protected RelationPlan visitQuerySpecification(QuerySpecification node, Void context) {
-    return new QueryPlanner(analysis, symbolAllocator, idAllocator, session, recursiveSubqueries)
+    return new QueryPlanner(
+            analysis, symbolAllocator, idAllocator, sessionInfo, recursiveSubqueries)
         .plan(node);
   }
 
