@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
+import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
@@ -33,10 +35,12 @@ import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.iotdb.tsfile.read.common.type.BooleanType.BOOLEAN;
@@ -58,7 +62,22 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
-    return null;
+    TsTable table = tableCache.getTable(name.getDatabaseName(), name.getObjectName());
+    if (table == null) {
+      throw new SemanticException(
+          new TableNotExistsException(name.getDatabaseName(), name.getObjectName()));
+    }
+    List<ColumnSchema> columnSchemaList =
+        table.getColumnList().stream()
+            .map(
+                o ->
+                    new ColumnSchema(
+                        o.getColumnName(),
+                        TypeFactory.getType(o.getDataType()),
+                        false,
+                        o.getColumnCategory()))
+            .collect(Collectors.toList());
+    return Optional.of(new TableSchema(table.getTableName(), columnSchemaList));
   }
 
   @Override
