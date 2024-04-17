@@ -128,7 +128,8 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
             // the requests from the connector without duplication or leakage.
             try {
               condition.await(
-                  COMMON_CONFIG.getPipeConsensusEventEnqueueTimeoutInMs(), TimeUnit.MILLISECONDS);
+                  COMMON_CONFIG.getPipeConsensusReceiverMaxWaitingTimeForEventsInMs(),
+                  TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
               LOGGER.warn(
                   "current waiting is interrupted. onSyncedCommitIndex: {}. Exception: ",

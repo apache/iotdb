@@ -50,10 +50,12 @@ public class PipeConsensusAsyncConnector extends IoTDBDataRegionAsyncConnector {
   /** Add an event to transferBuffer, whose events will be asynchronizedly transfer to receiver. */
   private boolean addEvent2Buffer(Event event) {
     try {
-      LOGGER.debug(
-          "PipeConsensus connector: one event enqueue, queue size = {}, limit size = {}",
-          transferBuffer.size(),
-          COMMON_CONFIG.getPipeConsensusEventBufferSize());
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "PipeConsensus connector: one event enqueue, queue size = {}, limit size = {}",
+            transferBuffer.size(),
+            COMMON_CONFIG.getPipeConsensusEventBufferSize());
+      }
       return transferBuffer.offer(
           event, COMMON_CONFIG.getPipeConsensusEventEnqueueTimeoutInMs(), TimeUnit.SECONDS);
     } catch (InterruptedException e) {
@@ -67,12 +69,14 @@ public class PipeConsensusAsyncConnector extends IoTDBDataRegionAsyncConnector {
    * if one event is successfully processed by receiver in PipeConsensus, we will remove this event
    * from transferBuffer in order to transfer other event.
    */
-  public void removeEventFromBuffer(Event event) {
+  public synchronized void removeEventFromBuffer(Event event) {
     synchronized (this) {
-      LOGGER.debug(
-          "PipeConsensus connector: one event removed from queue, queue size = {}, limit size = {}",
-          transferBuffer.size(),
-          COMMON_CONFIG.getPipeConsensusEventBufferSize());
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "PipeConsensus connector: one event removed from queue, queue size = {}, limit size = {}",
+            transferBuffer.size(),
+            COMMON_CONFIG.getPipeConsensusEventBufferSize());
+      }
       Iterator<Event> iterator = transferBuffer.iterator();
       Event current = iterator.next();
       while (!current.equals(event) && iterator.hasNext()) {
