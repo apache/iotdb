@@ -33,7 +33,7 @@ public class WindowOutput {
     return timestamp;
   }
 
-  public WindowOutput setTimestamp(long timestamp) {
+  public WindowOutput setTimestamp(final long timestamp) {
     this.timestamp = timestamp;
     return this;
   }
@@ -42,7 +42,7 @@ public class WindowOutput {
     return progressTime;
   }
 
-  public WindowOutput setProgressTime(long progressTime) {
+  public WindowOutput setProgressTime(final long progressTime) {
     this.progressTime = progressTime;
     return this;
   }
@@ -52,7 +52,7 @@ public class WindowOutput {
   }
 
   public WindowOutput setAggregatedResults(
-      Map<String, Pair<TSDataType, Object>> aggregatedResults) {
+      final Map<String, Pair<TSDataType, Object>> aggregatedResults) {
     this.aggregatedResults = aggregatedResults;
     return this;
   }

@@ -104,11 +104,11 @@ public class AggregateProcessor implements PipeProcessor {
   private static final String WINDOWING_PROCESSOR_SUFFIX = "-windowing-processor";
 
   private String pipeName;
-  private String database;
+  private String databaseWithPathSeparator;
   private PipeTaskMeta pipeTaskMeta;
   private long outputMaxDelayMilliseconds;
   private long outputMinReportIntervalMilliseconds;
-  private String outputDatabase;
+  private String outputDatabaseWithPathSeparator;
 
   private final Map<String, AggregatedResultOperator> outputName2OperatorMap = new HashMap<>();
   private final Map<String, Supplier<IntermediateResultOperator>>
@@ -116,6 +116,8 @@ public class AggregateProcessor implements PipeProcessor {
   private final Map<String, String> systemParameters = new HashMap<>();
 
   private static final Map<String, Integer> pipeName2referenceCountMap = new ConcurrentHashMap<>();
+  private static final Map<String, AtomicLong> pipeName2LastValueReceiveTimeMap =
+      new ConcurrentHashMap<>();
   private static final ConcurrentMap<
           String, ConcurrentMap<String, AtomicReference<TimeSeriesRuntimeState>>>
       pipeName2timeSeries2TimeSeriesRuntimeStateMap = new ConcurrentHashMap<>();
@@ -123,13 +125,11 @@ public class AggregateProcessor implements PipeProcessor {
   private AbstractWindowingProcessor windowingProcessor;
   private final List<AbstractOperatorProcessor> operatorProcessors = new ArrayList<>();
 
-  private static final AtomicLong lastValueReceiveTime = new AtomicLong(0);
-
   // Static values, calculated on initialization
   private String[] columnNameStringList;
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     final PipeParameters parameters = validator.getParameters();
     validator
         .validate(
@@ -163,49 +163,56 @@ public class AggregateProcessor implements PipeProcessor {
                 PROCESSOR_OUTPUT_MEASUREMENTS_KEY, PROCESSOR_OUTPUT_MEASUREMENTS_DEFAULT_VALUE));
   }
 
-  private boolean isLegalMeasurement(String measurement) {
+  private boolean isLegalMeasurement(final String measurement) {
     try {
       PathUtils.isLegalPath("root." + measurement);
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       return false;
     }
     return measurement.startsWith("`") && measurement.endsWith("`") || !measurement.contains(".");
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeProcessorRuntimeConfiguration configuration)
       throws Exception {
     pipeName = configuration.getRuntimeEnvironment().getPipeName();
     pipeName2referenceCountMap.compute(
         pipeName, (name, count) -> Objects.nonNull(count) ? count + 1 : 1);
-    pipeName2timeSeries2TimeSeriesRuntimeStateMap.put(pipeName, new ConcurrentHashMap<>());
+    pipeName2timeSeries2TimeSeriesRuntimeStateMap.putIfAbsent(pipeName, new ConcurrentHashMap<>());
 
-    database =
+    databaseWithPathSeparator =
         StorageEngine.getInstance()
-            .getDataRegion(
-                new DataRegionId(
-                    ((PipeTaskProcessorRuntimeEnvironment) configuration.getRuntimeEnvironment())
-                        .getRegionId()))
-            .getDatabaseName();
+                .getDataRegion(
+                    new DataRegionId(
+                        ((PipeTaskProcessorRuntimeEnvironment)
+                                configuration.getRuntimeEnvironment())
+                            .getRegionId()))
+                .getDatabaseName()
+            + TsFileConstant.PATH_SEPARATOR;
 
     pipeTaskMeta =
         ((PipeTaskProcessorRuntimeEnvironment) configuration.getRuntimeEnvironment())
             .getPipeTaskMeta();
     // Load parameters
-    long outputMaxDelaySeconds =
+    final long outputMaxDelaySeconds =
         parameters.getLongOrDefault(
             PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_KEY,
             PROCESSOR_OUTPUT_MAX_DELAY_SECONDS_DEFAULT_VALUE);
+    // The output max delay milliseconds must be set to at least 1
+    // to guarantee the correctness of the CAS in last receive time
     outputMaxDelayMilliseconds =
-        outputMaxDelaySeconds < 0 ? Long.MAX_VALUE : outputMaxDelaySeconds * 1000;
+        outputMaxDelaySeconds < 0 ? Long.MAX_VALUE : Math.max(outputMaxDelaySeconds * 1000, 1);
     outputMinReportIntervalMilliseconds =
         parameters.getLongOrDefault(
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_KEY,
                 PROCESSOR_OUTPUT_MIN_REPORT_INTERVAL_SECONDS_DEFAULT_VALUE)
             * 1000;
-    outputDatabase =
+    final String outputDatabase =
         parameters.getStringOrDefault(
             PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE);
+    outputDatabaseWithPathSeparator =
+        outputDatabase.isEmpty() ? outputDatabase : outputDatabase + TsFileConstant.PATH_SEPARATOR;
 
     // Set output name
     final List<String> operatorNameList =
@@ -240,7 +247,7 @@ public class AggregateProcessor implements PipeProcessor {
     // logic.
     final Set<String> declaredIntermediateResultSet = new HashSet<>();
     final PipeDataRegionPluginAgent agent = PipeAgent.plugin().dataRegion();
-    for (String pipePluginName :
+    for (final String pipePluginName :
         agent.getSubProcessorNamesWithSpecifiedParent(AbstractOperatorProcessor.class)) {
       // Children are allowed to validate and configure the computational logic
       // from the same parameters other than processor name
@@ -328,7 +335,7 @@ public class AggregateProcessor implements PipeProcessor {
 
     final TimeWindowStateProgressIndex timeWindowStateProgressIndex =
         (TimeWindowStateProgressIndex) index;
-    for (Map.Entry<String, Pair<Long, ByteBuffer>> entry :
+    for (final Map.Entry<String, Pair<Long, ByteBuffer>> entry :
         timeWindowStateProgressIndex.getTimeSeries2TimestampWindowBufferPairMap().entrySet()) {
       final AtomicReference<TimeSeriesRuntimeState> stateReference =
           pipeName2timeSeries2TimeSeriesRuntimeStateMap
@@ -345,7 +352,7 @@ public class AggregateProcessor implements PipeProcessor {
       synchronized (stateReference) {
         try {
           stateReference.get().restoreTimestampAndWindows(entry.getValue());
-        } catch (IOException e) {
+        } catch (final IOException e) {
           throw new PipeException("Encountered exception when deserializing from PipeTaskMeta", e);
         }
       }
@@ -353,7 +360,8 @@ public class AggregateProcessor implements PipeProcessor {
   }
 
   @Override
-  public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
+  public void process(
+      final TabletInsertionEvent tabletInsertionEvent, final EventCollector eventCollector)
       throws Exception {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
@@ -361,7 +369,10 @@ public class AggregateProcessor implements PipeProcessor {
       return;
     }
 
-    lastValueReceiveTime.set(System.currentTimeMillis());
+    pipeName2LastValueReceiveTimeMap
+        .computeIfAbsent(pipeName, key -> new AtomicLong(System.currentTimeMillis()))
+        .set(System.currentTimeMillis());
+
     final AtomicReference<Exception> exception = new AtomicReference<>();
     final TimeWindowStateProgressIndex progressIndex =
         new TimeWindowStateProgressIndex(new ConcurrentHashMap<>());
@@ -390,7 +401,7 @@ public class AggregateProcessor implements PipeProcessor {
   }
 
   private Map<String, Pair<Long, ByteBuffer>> processRow(
-      Row row, RowCollector rowCollector, AtomicReference<Exception> exception) {
+      final Row row, final RowCollector rowCollector, final AtomicReference<Exception> exception) {
     final Map<String, Pair<Long, ByteBuffer>> resultMap = new HashMap<>();
 
     final long timestamp = row.getTime();
@@ -400,8 +411,15 @@ public class AggregateProcessor implements PipeProcessor {
         continue;
       }
 
+      // All the timeSeries we stored are without database here if the parameters "outputDatabase"
+      // is configured, because we do not support the same timeSeries (all the same except database)
+      // in that mode, without the database we can save space and prevent string replacing problems.
       final String timeSeries =
-          row.getDeviceId() + TsFileConstant.PATH_SEPARATOR + row.getColumnName(index);
+          (outputDatabaseWithPathSeparator.isEmpty()
+                  ? row.getDeviceId()
+                  : row.getDeviceId().replaceFirst(databaseWithPathSeparator, ""))
+              + TsFileConstant.PATH_SEPARATOR
+              + row.getColumnName(index);
 
       final AtomicReference<TimeSeriesRuntimeState> stateReference =
           pipeName2timeSeries2TimeSeriesRuntimeStateMap
@@ -461,7 +479,7 @@ public class AggregateProcessor implements PipeProcessor {
               resultMap.put(timeSeries, result.getRight());
             }
           }
-        } catch (IOException | UnsupportedOperationException e) {
+        } catch (final IOException | UnsupportedOperationException e) {
           exception.set(e);
         }
       }
@@ -470,7 +488,8 @@ public class AggregateProcessor implements PipeProcessor {
   }
 
   @Override
-  public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
+  public void process(
+      final TsFileInsertionEvent tsFileInsertionEvent, final EventCollector eventCollector)
       throws Exception {
     try {
       for (final TabletInsertionEvent tabletInsertionEvent :
@@ -488,8 +507,14 @@ public class AggregateProcessor implements PipeProcessor {
   }
 
   @Override
-  public void process(Event event, EventCollector eventCollector) throws Exception {
-    if (System.currentTimeMillis() - lastValueReceiveTime.get() > outputMaxDelayMilliseconds) {
+  public void process(final Event event, final EventCollector eventCollector) throws Exception {
+    final AtomicLong lastReceiveTime =
+        pipeName2LastValueReceiveTimeMap.computeIfAbsent(
+            pipeName, key -> new AtomicLong(System.currentTimeMillis()));
+
+    final long previousTime = lastReceiveTime.get();
+
+    if (System.currentTimeMillis() - previousTime > outputMaxDelayMilliseconds) {
       final AtomicReference<Exception> exception = new AtomicReference<>();
 
       pipeName2timeSeries2TimeSeriesRuntimeStateMap
@@ -500,11 +525,11 @@ public class AggregateProcessor implements PipeProcessor {
                 final AtomicReference<TimeSeriesRuntimeState> stateReference =
                     pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).get(timeSeries);
                 synchronized (stateReference) {
-                  PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, null);
+                  final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, null);
                   try {
                     collectWindowOutputs(
                         stateReference.get().forceOutput(), timeSeries, rowCollector);
-                  } catch (IOException e) {
+                  } catch (final IOException e) {
                     exception.set(e);
                   }
                   rowCollector
@@ -520,10 +545,14 @@ public class AggregateProcessor implements PipeProcessor {
                 }
               });
       if (exception.get() != null) {
+        // Retry at the fixed interval
+        lastReceiveTime.set(System.currentTimeMillis());
         throw exception.get();
       }
       // Forbidding emitting results until next data comes
-      lastValueReceiveTime.set(Long.MAX_VALUE);
+      // If the last receive time has changed, it means new data has come
+      // thus the next output is needed
+      lastReceiveTime.compareAndSet(previousTime, Long.MAX_VALUE);
     }
 
     eventCollector.collect(event);
@@ -539,7 +568,8 @@ public class AggregateProcessor implements PipeProcessor {
    * @param collector {@link RowCollector}
    */
   public void collectWindowOutputs(
-      List<WindowOutput> outputs, String timeSeries, RowCollector collector) throws IOException {
+      final List<WindowOutput> outputs, final String timeSeries, final RowCollector collector)
+      throws IOException {
     if (Objects.isNull(outputs) || outputs.isEmpty()) {
       return;
     }
@@ -550,7 +580,7 @@ public class AggregateProcessor implements PipeProcessor {
     final List<WindowOutput> distinctOutputs = new ArrayList<>();
     outputs.forEach(
         output -> {
-          long timeStamp = output.getTimestamp();
+          final long timeStamp = output.getTimestamp();
           if (timeStamp != lastValue.get()) {
             lastValue.set(timeStamp);
             distinctOutputs.add(output);
@@ -572,7 +602,7 @@ public class AggregateProcessor implements PipeProcessor {
     for (int columnIndex = 0; columnIndex < columnNameStringList.length; ++columnIndex) {
       bitMaps[columnIndex] = new BitMap(distinctOutputs.size());
       for (int rowIndex = 0; rowIndex < distinctOutputs.size(); ++rowIndex) {
-        Map<String, Pair<TSDataType, Object>> aggregatedResults =
+        final Map<String, Pair<TSDataType, Object>> aggregatedResults =
             distinctOutputs.get(rowIndex).getAggregatedResults();
         if (aggregatedResults.containsKey(columnNameStringList[columnIndex])) {
           if (Objects.isNull(valueColumnTypes[columnIndex])) {
@@ -657,7 +687,9 @@ public class AggregateProcessor implements PipeProcessor {
     }
 
     final String outputTimeSeries =
-        outputDatabase.isEmpty() ? timeSeries : timeSeries.replaceFirst(database, outputDatabase);
+        outputDatabaseWithPathSeparator.isEmpty()
+            ? timeSeries
+            : outputDatabaseWithPathSeparator + timeSeries;
 
     if (filteredCount == columnNameStringList.length) {
       // No filter, collect rows
@@ -744,7 +776,7 @@ public class AggregateProcessor implements PipeProcessor {
     if (Objects.nonNull(windowingProcessor)) {
       windowingProcessor.close();
     }
-    for (PipeProcessor operatorProcessor : operatorProcessors) {
+    for (final PipeProcessor operatorProcessor : operatorProcessors) {
       operatorProcessor.close();
     }
   }
