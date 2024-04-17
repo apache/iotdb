@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeCollector;
@@ -92,6 +93,8 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntConsumer;
+import java.util.function.IntSupplier;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -1251,5 +1254,45 @@ public class MTreeBelowSGMemoryImpl {
     }
     return result;
   }
+  // endregion
+
+  // region table device management
+
+  public void createTableDevice(
+      PartialPath devicePath, IntSupplier attributePointerGetter, IntConsumer attributeUppdater)
+      throws MetadataException {
+    String[] nodeNames = devicePath.getNodes();
+    IMemMNode cur = storageGroupMNode;
+    IMemMNode child;
+    for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
+      child = cur.getChild(nodeNames[i]);
+      if (child == null) {
+        child =
+            store.addChild(cur, nodeNames[i], nodeFactory.createInternalMNode(cur, nodeNames[i]));
+      }
+      cur = child;
+    }
+
+    IDeviceMNode<IMemMNode> entityMNode;
+
+    synchronized (this) {
+      if (cur.isDevice()) {
+        entityMNode = cur.getAsDeviceMNode();
+        if (!(entityMNode.getDeviceInfo() instanceof TableDeviceInfo)) {
+          throw new MetadataException("Table device shall not create under tree model");
+        }
+        TableDeviceInfo<IMemMNode> deviceInfo =
+            (TableDeviceInfo<IMemMNode>) entityMNode.getDeviceInfo();
+        attributeUppdater.accept(deviceInfo.getAttributePointer());
+      } else {
+        entityMNode = store.setToEntity(cur);
+        TableDeviceInfo<IMemMNode> deviceInfo = new TableDeviceInfo<>();
+        deviceInfo.setAttributePointer(attributePointerGetter.getAsInt());
+        entityMNode.getAsInternalMNode().setDeviceInfo(deviceInfo);
+        regionStatistics.addDevice();
+      }
+    }
+  }
+
   // endregion
 }
