@@ -65,8 +65,11 @@ public class RegionCache extends AbstractLoadCache {
     }
     RegionStatus lastStatus = ((RegionHeartbeatSample) getLastSample()).getStatus();
     if (lastStatus.equals(RegionStatus.Adding) || lastStatus.equals(RegionStatus.Removing)) {
-      return;
+      RegionHeartbeatSample fakeHeartbeatSample =
+          new RegionHeartbeatSample(newHeartbeatSample.getSampleLogicalTimestamp(), lastStatus);
+      super.cacheHeartbeatSample(fakeHeartbeatSample);
+    } else {
+      super.cacheHeartbeatSample(newHeartbeatSample);
     }
-    super.cacheHeartbeatSample(newHeartbeatSample);
   }
 }

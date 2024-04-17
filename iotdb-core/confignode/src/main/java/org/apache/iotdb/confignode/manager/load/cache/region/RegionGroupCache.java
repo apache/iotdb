@@ -63,9 +63,7 @@ public class RegionGroupCache {
 
   @TestOnly
   public void cacheHeartbeatSample(int dataNodeId, RegionHeartbeatSample newHeartbeatSample) {
-    regionCacheMap
-        .computeIfAbsent(dataNodeId, empty -> new RegionCache())
-        .cacheHeartbeatSample(newHeartbeatSample, false);
+    cacheHeartbeatSample(dataNodeId, newHeartbeatSample, false);
   }
 
   /**
