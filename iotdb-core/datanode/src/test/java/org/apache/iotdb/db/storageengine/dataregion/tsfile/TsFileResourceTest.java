@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
@@ -50,13 +50,17 @@ public class TsFileResourceTest {
   @Before
   public void setUp() {
     IntStream.range(0, DEVICE_NUM)
-        .forEach(i -> deviceToIndex.put(new PlainDeviceID("root.sg.d" + i), i));
-    DeviceTimeIndex deviceTimeIndex = new DeviceTimeIndex(deviceToIndex, startTimes, endTimes);
+        .forEach(
+            i -> deviceToIndex.put(IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i));
+    ArrayDeviceTimeIndex deviceTimeIndex =
+        new ArrayDeviceTimeIndex(deviceToIndex, startTimes, endTimes);
     IntStream.range(0, DEVICE_NUM)
         .forEach(
             i -> {
-              deviceTimeIndex.updateStartTime(new PlainDeviceID("root.sg.d" + i), i);
-              deviceTimeIndex.updateEndTime(new PlainDeviceID("root.sg.d" + i), i + 1);
+              deviceTimeIndex.updateStartTime(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i);
+              deviceTimeIndex.updateEndTime(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i + 1);
             });
     tsFileResource.setTimeIndex(deviceTimeIndex);
     tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
@@ -84,7 +88,7 @@ public class TsFileResourceTest {
 
   @Test
   public void testDegradeAndFileTimeIndex() {
-    Assert.assertEquals(ITimeIndex.DEVICE_TIME_INDEX_TYPE, tsFileResource.getTimeIndexType());
+    Assert.assertEquals(ITimeIndex.ARRAY_DEVICE_TIME_INDEX_TYPE, tsFileResource.getTimeIndexType());
     tsFileResource.degradeTimeIndex();
     Assert.assertEquals(ITimeIndex.FILE_TIME_INDEX_TYPE, tsFileResource.getTimeIndexType());
     Assert.assertEquals(deviceToIndex.keySet(), tsFileResource.getDevices());

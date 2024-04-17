@@ -30,7 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.Cr
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
@@ -2339,7 +2339,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   private TsFileResource createTsFileResource(String name, boolean seq) {
     String filePath = (seq ? SEQ_DIRS : UNSEQ_DIRS) + File.separator + name;
     TsFileResource resource = new TsFileResource();
-    resource.setTimeIndex(new DeviceTimeIndex());
+    resource.setTimeIndex(new ArrayDeviceTimeIndex());
     resource.setFile(new File(filePath));
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
     resource.setSeq(seq);

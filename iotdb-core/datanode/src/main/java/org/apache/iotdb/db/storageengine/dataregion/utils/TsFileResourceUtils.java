@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.utils;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -67,13 +67,13 @@ public class TsFileResourceUtils {
   }
 
   public static boolean validateTsFileResourceCorrectness(TsFileResource resource) {
-    DeviceTimeIndex timeIndex;
+    ArrayDeviceTimeIndex timeIndex;
     try {
       if (resource.getTimeIndexType() != 1) {
         // if time index is not device time index, then deserialize it from resource file
         timeIndex = resource.buildDeviceTimeIndex();
       } else {
-        timeIndex = (DeviceTimeIndex) resource.getTimeIndex();
+        timeIndex = (ArrayDeviceTimeIndex) resource.getTimeIndex();
       }
       if (timeIndex == null) {
         logger.error("{} {} time index is null", resource.getTsFilePath(), VALIDATE_FAILED);
@@ -345,7 +345,7 @@ public class TsFileResourceUtils {
     // deviceID -> <TsFileResource, last end time>
     Map<IDeviceID, Pair<TsFileResource, Long>> lastEndTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
-      DeviceTimeIndex timeIndex;
+      ArrayDeviceTimeIndex timeIndex;
       if (resource.getTimeIndexType() != 1) {
         // if time index is not device time index, then deserialize it from resource file
         try {
@@ -355,7 +355,7 @@ public class TsFileResourceUtils {
           continue;
         }
       } else {
-        timeIndex = (DeviceTimeIndex) resource.getTimeIndex();
+        timeIndex = (ArrayDeviceTimeIndex) resource.getTimeIndex();
       }
       if (timeIndex == null) {
         return false;

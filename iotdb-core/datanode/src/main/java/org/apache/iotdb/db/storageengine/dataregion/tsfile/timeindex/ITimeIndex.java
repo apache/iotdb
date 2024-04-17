@@ -34,8 +34,9 @@ import java.util.Set;
 
 public interface ITimeIndex {
 
-  byte DEVICE_TIME_INDEX_TYPE = 1;
+  byte PLAIN_DEVICE_TIME_INDEX_TYPE = 1;
   byte FILE_TIME_INDEX_TYPE = 2;
+  byte ARRAY_DEVICE_TIME_INDEX_TYPE = 3;
 
   /**
    * serialize to outputStream

@@ -34,9 +34,10 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PlainDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -413,7 +414,7 @@ public class TsFileResource {
     return timeIndex.getDevices(file.getPath(), this);
   }
 
-  public DeviceTimeIndex buildDeviceTimeIndex() throws IOException {
+  public ArrayDeviceTimeIndex buildDeviceTimeIndex() throws IOException {
     readLock();
     try {
       if (!resourceFileExists()) {
@@ -424,10 +425,10 @@ public class TsFileResource {
               .getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
         ReadWriteIOUtils.readByte(inputStream);
         ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
-        if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
+        if (!(timeIndexFromResourceFile instanceof ArrayDeviceTimeIndex)) {
           throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
         }
-        return (DeviceTimeIndex) timeIndexFromResourceFile;
+        return (ArrayDeviceTimeIndex) timeIndexFromResourceFile;
       } catch (Exception e) {
         throw new IOException(
             "Can't read file " + file.getPath() + RESOURCE_SUFFIX + " from disk", e);
@@ -1049,11 +1050,14 @@ public class TsFileResource {
   @TestOnly
   public void setTimeIndexType(byte type) {
     switch (type) {
-      case ITimeIndex.DEVICE_TIME_INDEX_TYPE:
-        this.timeIndex = new DeviceTimeIndex();
+      case ITimeIndex.ARRAY_DEVICE_TIME_INDEX_TYPE:
+        this.timeIndex = new ArrayDeviceTimeIndex();
         break;
       case ITimeIndex.FILE_TIME_INDEX_TYPE:
         this.timeIndex = new FileTimeIndex();
+        break;
+      case ITimeIndex.PLAIN_DEVICE_TIME_INDEX_TYPE:
+        this.timeIndex = new PlainDeviceTimeIndex();
         break;
       default:
         throw new UnsupportedOperationException();
