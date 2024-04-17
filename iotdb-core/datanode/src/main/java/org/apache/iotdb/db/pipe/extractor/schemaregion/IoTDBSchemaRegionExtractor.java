@@ -51,7 +51,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   // TODO: Delete this
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     if (IoTDBDescriptor.getInstance()
         .getConfig()
         .getSchemaRegionConsensusProtocolClass()
@@ -63,7 +63,8 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
 
@@ -110,18 +111,25 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
+  protected long getMaxBlockingTimeMs() {
+    // The dataNode processor can sleep if it supplies null
+    // Here we return immediately to be consistent with the data region extractor
+    return 0;
+  }
+
+  @Override
   protected AbstractPipeListeningQueue getListeningQueue() {
     return PipeAgent.runtime().schemaListener(schemaRegionId);
   }
 
   @Override
-  protected boolean isTypeListened(Event event) {
+  protected boolean isTypeListened(final Event event) {
     return listenedTypeSet.contains(
         ((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType());
   }
 
   @Override
-  protected void confineHistoricalEventTransferTypes(PipeSnapshotEvent event) {
+  protected void confineHistoricalEventTransferTypes(final PipeSnapshotEvent event) {
     ((PipeSchemaRegionSnapshotEvent) event).confineTransferredTypes(listenedTypeSet);
   }
 
