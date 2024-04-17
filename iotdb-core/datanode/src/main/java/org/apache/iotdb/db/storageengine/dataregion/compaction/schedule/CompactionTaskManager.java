@@ -419,6 +419,7 @@ public class CompactionTaskManager implements IService {
   }
 
   public void restart() throws InterruptedException {
+    stopAllCompactionWorker = true;
     if (IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0) {
       if (subCompactionTaskExecutionPool != null) {
         this.subCompactionTaskExecutionPool.shutdownNow();
@@ -445,6 +446,7 @@ public class CompactionTaskManager implements IService {
       init = true;
     }
     init = true;
+    stopAllCompactionWorker = false;
     logger.info("Compaction task manager started.");
   }
 
