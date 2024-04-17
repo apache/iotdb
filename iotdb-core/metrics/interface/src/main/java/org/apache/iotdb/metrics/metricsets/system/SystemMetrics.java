@@ -24,6 +24,7 @@ import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.utils.FileStoreUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.SystemMetric;
@@ -40,10 +41,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.nio.file.FileStore;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -85,29 +82,8 @@ public class SystemMetrics implements IMetricSet {
       if (!FSUtils.isLocal(diskDir)) {
         continue;
       }
-      Path path = Paths.get(diskDir);
-      FileStore fileStore = null;
-      // if current path is not exists, check parent path.
-      while (fileStore == null && path != null) {
-        try {
-          fileStore = Files.getFileStore(path);
-        } catch (NoSuchFileException e) {
-          path = path.getParent();
-        } catch (IOException e) {
-          logger.error("Failed to get storage path of {}, because", diskDir, e);
-          break;
-        }
-      }
-      // If the dir is a relative dir, final use the current directory.
-      if (path == null) {
-        path = Paths.get("");
-        try {
-          fileStore = Files.getFileStore(path);
-        } catch (IOException innerException) {
-          logger.error("Failed to get storage path of {}, because", diskDir, innerException);
-        }
-      }
-      if (null != fileStore) {
+      FileStore fileStore = FileStoreUtils.getFileStore(diskDir);
+      if (fileStore != null) {
         fileStoreSet.add(fileStore);
       }
     }
