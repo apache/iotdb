@@ -2439,7 +2439,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Analysis analysis = new Analysis();
     analysis.setStatement(internalCreateTimeSeriesStatement);
-    //    checkIsTableCompatible(internalCreateTimeSeriesStatement.getDevicePath(), context);
+    checkIsTableCompatible(internalCreateTimeSeriesStatement.getDevicePath(), context);
     checkIsTemplateCompatible(
         internalCreateTimeSeriesStatement.getDevicePath(),
         internalCreateTimeSeriesStatement.getMeasurements(),
