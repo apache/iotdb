@@ -26,7 +26,6 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 import org.apache.iotdb.session.util.SessionUtils;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -37,6 +36,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -81,6 +81,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
+  private final String tsFileBaseDir;
+
   public String getConsumerId() {
     return consumerId;
   }
@@ -100,19 +102,82 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         + "}";
   }
 
-  /////////////////////////////// tsfile dir ///////////////////////////////
+  /////////////////////////////// tsfile ///////////////////////////////
 
-  protected Path subscribedTsFileBaseDirPath;
+  protected static class OnTheFlyTsFileInfo {
 
-  protected final Map<SubscriptionCommitContext, Pair<File, RandomAccessFile>>
-      commitContextToTsFile = new ConcurrentHashMap<>();
+    SubscriptionCommitContext commitContext;
+    File file;
+    RandomAccessFile fileWriter;
 
-  public Path getTsFileDir(String topicName) throws IOException {
-    if (Objects.isNull(subscribedTsFileBaseDirPath)) {
-      subscribedTsFileBaseDirPath = Files.createTempDirectory("subscribedTsFile#");
+    OnTheFlyTsFileInfo(
+        SubscriptionCommitContext commitContext, File file, RandomAccessFile fileWriter) {
+      this.commitContext = commitContext;
+      this.file = file;
+      this.fileWriter = fileWriter;
     }
+
+    String getTopicName() {
+      return commitContext.getTopicName();
+    }
+  }
+
+  protected final Map<String, OnTheFlyTsFileInfo> topicNameToOnTheFlyTsFileInfo =
+      new ConcurrentHashMap<>();
+
+  protected OnTheFlyTsFileInfo getOnTheFlyTsFileInfo(String topicName) {
+    final OnTheFlyTsFileInfo info = topicNameToOnTheFlyTsFileInfo.get(topicName);
+    if (Objects.isNull(info)) {
+      return null;
+    }
+
+    if (!info.file.exists()) {
+      try {
+        info.fileWriter.close();
+      } catch (final IOException e) {
+        LOGGER.warn(e.getMessage());
+      }
+      topicNameToOnTheFlyTsFileInfo.remove(topicName);
+      return null;
+    }
+
+    return info;
+  }
+
+  protected void removeOnTheFlyTsFileInfo(String topicName) {
+    final OnTheFlyTsFileInfo info = topicNameToOnTheFlyTsFileInfo.get(topicName);
+    if (Objects.isNull(info)) {
+      return;
+    }
+
+    try {
+      info.fileWriter.close();
+    } catch (final IOException e) {
+      LOGGER.warn(e.getMessage());
+    }
+    topicNameToOnTheFlyTsFileInfo.remove(topicName);
+  }
+
+  protected OnTheFlyTsFileInfo createOnTheFlyTsFileInfo(
+      SubscriptionCommitContext commitContext, String fileName) {
+    try {
+      final String topicName = commitContext.getTopicName();
+      final Path filePath = getTsFileDir(topicName).resolve(fileName);
+      Files.createFile(filePath);
+      final File file = filePath.toFile();
+      final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw");
+      final OnTheFlyTsFileInfo info = new OnTheFlyTsFileInfo(commitContext, file, fileWriter);
+      topicNameToOnTheFlyTsFileInfo.put(topicName, info);
+      return info;
+    } catch (final IOException e) {
+      LOGGER.warn(e.getMessage());
+      return null;
+    }
+  }
+
+  public Path getTsFileDir(final String topicName) throws IOException {
     final Path dirPath =
-        subscribedTsFileBaseDirPath.resolve(consumerGroupId).resolve(consumerId).resolve(topicName);
+        Paths.get(tsFileBaseDir).resolve(consumerGroupId).resolve(consumerId).resolve(topicName);
     Files.createDirectories(dirPath);
     return dirPath;
   }
@@ -137,6 +202,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
     this.heartbeatIntervalMs = builder.heartbeatIntervalMs;
     this.endpointsSyncIntervalMs = builder.endpointsSyncIntervalMs;
+
+    this.tsFileBaseDir = builder.tsFileBaseDir;
   }
 
   protected SubscriptionConsumer(Builder builder, Properties properties) {
@@ -168,7 +235,12 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
                 (Long)
                     properties.getOrDefault(
                         ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_KEY,
-                        ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE)));
+                        ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE))
+            .tsFileBaseDir(
+                (String)
+                    properties.getOrDefault(
+                        ConsumerConstant.TS_FILE_BASE_DIR_KEY,
+                        ConsumerConstant.TS_FILE_BASE_DIR_DEFAULT_VALUE)));
   }
 
   /////////////////////////////// open & close ///////////////////////////////
@@ -535,6 +607,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     protected long endpointsSyncIntervalMs =
         ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE;
 
+    protected String tsFileBaseDir;
+
     public Builder host(String host) {
       this.host = host;
       return this;
@@ -579,6 +653,11 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     public Builder endpointsSyncIntervalMs(long endpointsSyncIntervalMs) {
       this.endpointsSyncIntervalMs =
           Math.max(endpointsSyncIntervalMs, ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE);
+      return this;
+    }
+
+    public Builder tsFileBaseDir(String tsFileBaseDir) {
+      this.tsFileBaseDir = tsFileBaseDir;
       return this;
     }
 
