@@ -101,6 +101,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTableStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -3643,5 +3644,28 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setFinishQueryAfterAnalyze(true);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowCurrentTimestampHeader());
     return analysis;
+  }
+
+  @Override
+  public Analysis visitInsertTable(
+      InsertTableStatement insertTableStatement, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    InsertRowStatement insertRowStatement = insertTableStatement.getInsertRowStatement();
+    validateSchema(analysis, insertRowStatement, context);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
+    analysis.setStatement(insertRowStatement);
+
+    DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+    dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
+    dataPartitionQueryParam.setTimePartitionSlotList(
+        Collections.singletonList(insertRowStatement.getTimePartitionSlot()));
+
+    return getAnalysisForWriting(
+        analysis,
+        Collections.singletonList(dataPartitionQueryParam),
+        context.getSession().getUserName());
   }
 }

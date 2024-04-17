@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTableStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -599,5 +600,9 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowCurrentTimestamp(
       ShowCurrentTimestampStatement showCurrentTimestampStatement, C context) {
     return visitStatement(showCurrentTimestampStatement, context);
+  }
+
+  public R visitInsertTable(InsertTableStatement insertTableStatement, C context) {
+    return visitStatement(insertTableStatement, context);
   }
 }
