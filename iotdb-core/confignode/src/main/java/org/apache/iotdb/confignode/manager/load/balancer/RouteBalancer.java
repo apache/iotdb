@@ -108,7 +108,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   private final Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap;
 
   // The interval of retrying to balance ratis leader after the last failed time
-  private static final long BALANCE_RATIS_LEADER_FAILED_INTERVAL_IN_NS = 60 * 1000L * 1000L;
+  private static final long BALANCE_RATIS_LEADER_FAILED_INTERVAL_IN_NS = 60 * 1000L * 1000L * 1000L;
   private final Map<TConsensusGroupId, Long> lastFailedTimeForLeaderBalance;
 
   public RouteBalancer(IManager configManager) {
