@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import java.util.Objects;
@@ -30,13 +31,16 @@ import static java.util.Objects.requireNonNull;
 public class ColumnSchema {
   private final String name;
   private final Type type;
+  private final TsTableColumnCategory columnCategory;
   private final boolean hidden;
 
-  private ColumnSchema(String name, Type type, boolean hidden) {
+  public ColumnSchema(
+      String name, Type type, boolean hidden, TsTableColumnCategory columnCategory) {
     requireNonNull(type, "type is null");
 
     this.name = name.toLowerCase(ENGLISH);
     this.type = type;
+    this.columnCategory = columnCategory;
     this.hidden = hidden;
   }
 
@@ -46,6 +50,10 @@ public class ColumnSchema {
 
   public Type getType() {
     return type;
+  }
+
+  public TsTableColumnCategory getColumnCategory() {
+    return columnCategory;
   }
 
   public boolean isHidden() {
@@ -89,6 +97,7 @@ public class ColumnSchema {
   public static class Builder {
     private String name;
     private Type type;
+    private TsTableColumnCategory columnCategory;
     private boolean hidden;
 
     private Builder() {}
@@ -109,13 +118,18 @@ public class ColumnSchema {
       return this;
     }
 
+    public Builder setColumnCategory(TsTableColumnCategory columnCategory) {
+      this.columnCategory = requireNonNull(columnCategory, "columnCategory is null");
+      return this;
+    }
+
     public Builder setHidden(boolean hidden) {
       this.hidden = hidden;
       return this;
     }
 
     public ColumnSchema build() {
-      return new ColumnSchema(name, type, hidden);
+      return new ColumnSchema(name, type, hidden, columnCategory);
     }
   }
 }

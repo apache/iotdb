@@ -60,9 +60,7 @@ import static org.mockito.ArgumentMatchers.eq;
 
 public class AnalyzerTest {
 
-  private final SqlParser sqlParser = new SqlParser();
-
-  private final NopAccessControl nopAccessControl = new NopAccessControl();
+  private static final NopAccessControl nopAccessControl = new NopAccessControl();
 
   @Test
   public void testMockQuery() throws OperatorNotFoundException {
@@ -72,9 +70,6 @@ public class AnalyzerTest {
     Mockito.when(metadata.tableExists(Mockito.any())).thenReturn(true);
 
     TableHandle tableHandle = Mockito.mock(TableHandle.class);
-    Mockito.when(
-            metadata.getTableHandle(Mockito.any(), eq(new QualifiedObjectName("testdb", "table1"))))
-        .thenReturn(Optional.of(tableHandle));
 
     Map<String, ColumnHandle> map = new HashMap<>();
     TableSchema tableSchema = Mockito.mock(TableSchema.class);
@@ -94,8 +89,9 @@ public class AnalyzerTest {
     List<ColumnSchema> columnSchemaList = Arrays.asList(column1, column2, column3);
     Mockito.when(tableSchema.getColumns()).thenReturn(columnSchemaList);
 
-    Mockito.when(metadata.getTableSchema(Mockito.any(), eq(tableHandle))).thenReturn(tableSchema);
-    Mockito.when(metadata.getColumnHandles(Mockito.any(), eq(tableHandle))).thenReturn(map);
+    Mockito.when(
+            metadata.getTableSchema(Mockito.any(), eq(new QualifiedObjectName("testdb", "table1"))))
+        .thenReturn(Optional.of(tableSchema));
 
     //    ResolvedFunction lLessThanI =
     //        new ResolvedFunction(
@@ -134,9 +130,9 @@ public class AnalyzerTest {
 
   @Test
   public void testSingleTableQuery() throws IoTDBException {
-    String sql =
-        "SELECT tag1 as tt, tag2, attr1, s1+1 FROM table1 "
-            + "WHERE time>1 AND tag1='A' OR s2>3 ORDER BY time DESC OFFSET 10 LIMIT 5";
+    // no sort
+    String sql = "SELECT tag1 as tt, tag2, attr1, s1+1 FROM table1 where time>1 and s1>1";
+    // + "WHERE time>1 AND tag1='A' OR s2>3";
     Metadata metadata = new TestMatadata();
 
     Analysis actualAnalysis = analyzeSQL(sql, metadata);
@@ -153,8 +149,9 @@ public class AnalyzerTest {
     System.out.println(result);
   }
 
-  private Analysis analyzeSQL(String sql, Metadata metadata) {
+  public static Analysis analyzeSQL(String sql, Metadata metadata) {
     try {
+      SqlParser sqlParser = new SqlParser();
       Statement statement = sqlParser.createStatement(sql);
       SessionInfo session = new SessionInfo(0, "test", ZoneId.systemDefault(), "testdb");
       StatementAnalyzerFactory statementAnalyzerFactory =

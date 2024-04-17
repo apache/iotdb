@@ -189,7 +189,7 @@ public class Analysis implements IAnalysis {
   // indicate is there a value filter
   private boolean hasValueFilter = false;
 
-  // a global time predicate used in `initQueryDataSource` and filter push down
+  // a global time predicate used in `initQueryDataSource` and filter push down?
   private Expression globalTimePredicate;
 
   // expression of output column to be calculated

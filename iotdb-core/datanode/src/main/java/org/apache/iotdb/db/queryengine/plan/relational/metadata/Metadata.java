@@ -24,10 +24,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 public interface Metadata {
@@ -39,31 +39,8 @@ public interface Metadata {
    * of information required by semantic analyzer to analyze the query.
    *
    * @throws RuntimeException if table handle is no longer valid
-   * @see #getTableMetadata(SessionInfo, TableHandle)
    */
-  TableSchema getTableSchema(SessionInfo session, TableHandle tableHandle);
-
-  /**
-   * Return the metadata for the specified table handle.
-   *
-   * @throws RuntimeException if table handle is no longer valid
-   * @see #getTableSchema(SessionInfo, TableHandle) a different method which is less expensive.
-   */
-  TableMetadata getTableMetadata(SessionInfo session, TableHandle tableHandle);
-
-  /** Returns a table handle for the specified table name with a specified version */
-  Optional<TableHandle> getTableHandle(SessionInfo session, QualifiedObjectName name);
-
-  /**
-   * Gets all of the columns on the specified table, or an empty map if the columns cannot be
-   * enumerated.
-   *
-   * @throws RuntimeException if table handle is no longer valid
-   */
-  Map<String, ColumnHandle> getColumnHandles(SessionInfo session, TableHandle tableHandle);
-
-  ResolvedFunction resolveOperator(OperatorType operatorType, List<? extends Type> argumentTypes)
-      throws OperatorNotFoundException;
+  Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name);
 
   Type getOperatorReturnType(OperatorType operatorType, List<? extends Type> argumentTypes)
       throws OperatorNotFoundException;
@@ -76,4 +53,17 @@ public interface Metadata {
   Type getType(TypeSignature signature) throws TypeNotFoundException;
 
   boolean canCoerce(Type from, Type to);
+
+  /**
+   * get all device ids and corresponding attributes from schema region
+   *
+   * @param tableName qualified table name
+   * @param expressionList device filter in conj style, need to remove all the deviceId filter after
+   *     index scanning
+   * @param attributeColumns attribute column names
+   */
+  List<DeviceEntry> indexScan(
+      QualifiedObjectName tableName,
+      List<Expression> expressionList,
+      List<String> attributeColumns);
 }

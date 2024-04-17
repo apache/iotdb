@@ -45,7 +45,7 @@ public class LogicalExpression extends Expression {
   }
 
   private final Operator operator;
-  private final List<Expression> terms;
+  private List<Expression> terms;
 
   public LogicalExpression(Operator operator, List<Expression> terms) {
     super(null);
@@ -67,6 +67,10 @@ public class LogicalExpression extends Expression {
 
   public List<Expression> getTerms() {
     return terms;
+  }
+
+  public void setTerms(List<Expression> terms) {
+    this.terms = ImmutableList.copyOf(terms);
   }
 
   @Override

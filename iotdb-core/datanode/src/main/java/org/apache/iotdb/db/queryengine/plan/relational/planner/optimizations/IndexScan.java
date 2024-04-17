@@ -11,25 +11,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
+
+package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 
-public class RelationalDistributionPlanner {
-  private final Analysis analysis;
-  private final LogicalQueryPlan logicalQueryPlan;
-  private final MPPQueryContext context;
+public class IndexScan implements RelationalPlanOptimizer {
 
-  public RelationalDistributionPlanner(Analysis analysis, LogicalQueryPlan logicalQueryPlan) {
-    this.analysis = analysis;
-    this.logicalQueryPlan = logicalQueryPlan;
-    this.context = null;
-  }
-
-  public DistributedQueryPlan planFragments() {
+  @Override
+  public PlanNode optimize(PlanNode planNode, Analysis analysis, MPPQueryContext context) {
     return null;
   }
 }

@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 
 import java.io.DataOutputStream;
@@ -45,7 +46,7 @@ public class FilterNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return null;
+    return new FilterNode(id, child, predicate);
   }
 
   @Override
@@ -65,5 +66,10 @@ public class FilterNode extends SingleChildProcessNode {
 
   public void setPredicate(Expression predicate) {
     this.predicate = predicate;
+  }
+
+  @Override
+  public List<Symbol> getOutputSymbols() {
+    return child.getOutputSymbols();
   }
 }

@@ -29,12 +29,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.apache.iotdb.tsfile.read.common.type.BinaryType.TEXT;
@@ -54,29 +54,7 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public TableSchema getTableSchema(SessionInfo session, TableHandle tableHandle) {
-    return null;
-  }
-
-  @Override
-  public TableMetadata getTableMetadata(SessionInfo session, TableHandle tableHandle) {
-    return null;
-  }
-
-  @Override
-  public Optional<TableHandle> getTableHandle(SessionInfo session, QualifiedObjectName name) {
-    return Optional.empty();
-  }
-
-  @Override
-  public Map<String, ColumnHandle> getColumnHandles(SessionInfo session, TableHandle tableHandle) {
-    return null;
-  }
-
-  @Override
-  public ResolvedFunction resolveOperator(
-      OperatorType operatorType, List<? extends Type> argumentTypes)
-      throws OperatorNotFoundException {
+  public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
     return null;
   }
 
@@ -248,6 +226,14 @@ public class TableMetadataImpl implements Metadata {
   @Override
   public boolean canCoerce(Type from, Type to) {
     return true;
+  }
+
+  @Override
+  public List<DeviceEntry> indexScan(
+      QualifiedObjectName tableName,
+      List<Expression> expressionList,
+      List<String> attributeColumns) {
+    return null;
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

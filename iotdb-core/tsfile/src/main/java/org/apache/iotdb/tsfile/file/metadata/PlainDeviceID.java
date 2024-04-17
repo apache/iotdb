@@ -87,6 +87,21 @@ public class PlainDeviceID implements IDeviceID {
   }
 
   @Override
+  public String getTableName() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int segmentNum() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Object segment(int i) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE + sizeOfCharArray(deviceID.length());
   }
