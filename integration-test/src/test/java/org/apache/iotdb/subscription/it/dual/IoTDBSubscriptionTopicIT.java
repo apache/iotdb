@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -483,6 +484,43 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     } finally {
       isClosed.set(true);
       thread.join();
+    }
+  }
+
+  @Test
+  public void testInvalidTopicConfig() {
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
+
+    final List<Properties> configs = new ArrayList<>();
+    {
+      final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_READER_VALUE);
+      config.put(TopicConstant.PATH_KEY, "root.db.*.s");
+      configs.add(config);
+    }
+    {
+      final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_READER_VALUE);
+      config.put(TopicConstant.START_TIME_KEY, System.currentTimeMillis());
+      configs.add(config);
+    }
+    {
+      final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_READER_VALUE);
+      config.put("processor", "tumbling-time-sampling-processor");
+      config.put("processor.tumbling-time.interval-seconds", "1");
+      config.put("processor.down-sampling.split-file", "true");
+      configs.add(config);
+    }
+
+    for (final Properties config : configs) {
+      try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+        session.open();
+        session.createTopic("foo", config);
+        fail();
+      } catch (final Exception ignored) {
+      }
     }
   }
 }

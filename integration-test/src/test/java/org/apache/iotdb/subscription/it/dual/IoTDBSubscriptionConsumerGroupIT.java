@@ -28,12 +28,20 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
+import org.apache.iotdb.session.subscription.SubscriptionTsFileReader;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
+import org.apache.iotdb.tsfile.read.TsFileReader;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.expression.QueryExpression;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.awaitility.Awaitility;
@@ -54,6 +62,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -84,6 +93,8 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   private static Pair<List<SubscriptionInfo>, Map<String, String>> __3C_1CG_SUBSCRIBE_TWO_TOPIC;
   private static Pair<List<SubscriptionInfo>, Map<String, String>> __3C_3CG_SUBSCRIBE_TWO_TOPIC;
   private static Pair<List<SubscriptionInfo>, Map<String, String>> __4C_2CG_SUBSCRIBE_TWO_TOPIC;
+  private static Pair<List<SubscriptionInfo>, Map<String, String>>
+      __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE;
 
   static final class SubscriptionInfo {
     final String consumerId;
@@ -209,6 +220,25 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
       __4C_2CG_SUBSCRIBE_TWO_TOPIC = new Pair<>(subscriptionInfoList, expectedHeaderWithResult);
     }
+    {
+      final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
+      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("all")));
+      subscriptionInfoList.add(
+          new SubscriptionInfo("c2", "cg2", new HashSet<>(Arrays.asList("topic1", "topic2"))));
+      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton("all")));
+      subscriptionInfoList.add(new SubscriptionInfo("c4", "cg2", Collections.singleton("topic2")));
+
+      final Map<String, String> expectedHeaderWithResult = new HashMap<>();
+      expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
+      expectedHeaderWithResult.put("count(root.cg1.topic2.s)", "100");
+      expectedHeaderWithResult.put("count(root.cg2.topic1.s)", "100");
+      expectedHeaderWithResult.put("count(root.cg2.topic2.s)", "100");
+      expectedHeaderWithResult.put("count(root.topic1.s)", "100");
+      expectedHeaderWithResult.put("count(root.topic2.s)", "100");
+
+      __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE =
+          new Pair<>(subscriptionInfoList, expectedHeaderWithResult);
+    }
   }
 
   private void testSubscriptionHistoricalDataTemplate(
@@ -221,10 +251,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     // Insert some historical data
     insertData(currentTime);
 
-    // Create topic 'topic1' and 'topic2'
+    // Create topics
     createTopics(currentTime);
 
-    // Create pipe 'sync_topic1' and 'sync_topic2' with given connector attributes
+    // Create pipes with given connector attributes
     createPipes(currentTime, connectorAttributes);
 
     // Create subscription and check result
@@ -251,10 +281,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       throws Exception {
     final long currentTime = System.currentTimeMillis();
 
-    // Create topic 'topic1' and 'topic2'
+    // Create topics
     createTopics(currentTime);
 
-    // Create pipe 'sync_topic1' and 'sync_topic2' with given connector attributes
+    // Create pipes with given connector attributes
     createPipes(currentTime, connectorAttributes);
 
     // Insert some realtime data
@@ -617,15 +647,104 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
   }
 
+  // ------------------------------------------------------ //
+  // 4 consumers, 2 consumer groups, 2 topics (with tsfile) //
+  // ------------------------------------------------------ //
+
+  @Test
+  public void test4C2CGSubscribeTwoTopicWithTsFileHistoricalDataWithAsyncConnector()
+      throws Exception {
+    testSubscriptionHistoricalDataTemplate(
+        ASYNC_CONNECTOR_ATTRIBUTES,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+  }
+
+  @Test
+  public void test4C2CGSubscribeTwoTopicWithTsFileHistoricalDataWithSyncConnector()
+      throws Exception {
+    testSubscriptionHistoricalDataTemplate(
+        SYNC_CONNECTOR_ATTRIBUTES,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+  }
+
+  @Test
+  public void test4C2CGSubscribeTwoTopicWithTsFileHistoricalDataWithLegacyConnector()
+      throws Exception {
+    testSubscriptionHistoricalDataTemplate(
+        LEGACY_CONNECTOR_ATTRIBUTES,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+  }
+
+  @Test
+  public void test4C2CGSubscribeTwoTopicWithTsFileHistoricalDataWithAirGapConnector()
+      throws Exception {
+    testSubscriptionHistoricalDataTemplate(
+        AIR_GAP_CONNECTOR_ATTRIBUTES,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+  }
+
+  @Test
+  public void test4C2CGSubscribeTwoTopicWithTsFileRealtimeDataWithAsyncConnector()
+      throws Exception {
+    testSubscriptionRealtimeDataTemplate(
+        ASYNC_CONNECTOR_ATTRIBUTES,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+  }
+
+  @Test
+  public void test4C2CGSubscribeTwoTopicWithTsFileRealtimeDataWithSyncConnector() throws Exception {
+    testSubscriptionRealtimeDataTemplate(
+        SYNC_CONNECTOR_ATTRIBUTES,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+  }
+
+  @Test
+  public void test4C2CGSubscribeTwoTopicWithTsFileRealtimeDataWithLegacyConnector()
+      throws Exception {
+    testSubscriptionRealtimeDataTemplate(
+        LEGACY_CONNECTOR_ATTRIBUTES,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+  }
+
+  @Test
+  public void test4C2CGSubscribeTwoTopicWithTsFileRealtimeDataWithAirGapConnector()
+      throws Exception {
+    testSubscriptionRealtimeDataTemplate(
+        AIR_GAP_CONNECTOR_ATTRIBUTES,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
+        __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+  }
+
   /////////////////////////////// utility ///////////////////////////////
 
   private void createTopics(final long currentTime) {
     // Create topics on sender
-    try (final ISession session = senderEnv.getSessionConnection()) {
-      session.executeNonQueryStatement(
-          String.format("create topic topic1 with ('end-time'='%s')", currentTime - 1));
-      session.executeNonQueryStatement(
-          String.format("create topic topic2 with ('start-time'='%s')", currentTime));
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      {
+        final Properties config = new Properties();
+        config.put(TopicConstant.END_TIME_KEY, currentTime - 1);
+        session.createTopic("topic1", config);
+      }
+      {
+        final Properties config = new Properties();
+        config.put(TopicConstant.START_TIME_KEY, currentTime);
+        session.createTopic("topic2", config);
+      }
+      {
+        final Properties config = new Properties();
+        config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_READER_VALUE);
+        session.createTopic("all", config);
+      }
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -728,18 +847,57 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                     final List<SubscriptionMessage> messages =
                         consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                     for (final SubscriptionMessage message : messages) {
-                      final SubscriptionSessionDataSets payload =
-                          (SubscriptionSessionDataSets) message.getPayload();
-                      for (final SubscriptionSessionDataSet dataSet : payload) {
-                        final List<String> columnNameList = dataSet.getColumnNames();
-                        while (dataSet.hasNext()) {
-                          final RowRecord record = dataSet.next();
-                          if (!insertRowRecordEnrichedByConsumerGroupId(
-                              columnNameList, record, consumerGroupId)) {
-                            receiverCrashed.set(true);
-                            throw new RuntimeException("detect receiver crashed");
-                          }
+                      final short messageType = message.getMessageType();
+                      if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
+                        switch (SubscriptionMessageType.valueOf(messageType)) {
+                          case SESSION_DATA_SET:
+                            {
+                              final SubscriptionSessionDataSets payload =
+                                  (SubscriptionSessionDataSets) message.getPayload();
+                              for (final SubscriptionSessionDataSet dataSet : payload) {
+                                final List<String> columnNameList = dataSet.getColumnNames();
+                                while (dataSet.hasNext()) {
+                                  final RowRecord record = dataSet.next();
+                                  if (!insertRowRecordEnrichedByConsumerGroupId(
+                                      columnNameList, record, consumerGroupId)) {
+                                    receiverCrashed.set(true);
+                                    throw new RuntimeException("detect receiver crashed");
+                                  }
+                                }
+                              }
+                              break;
+                            }
+                          case TS_FILE_READER:
+                            {
+                              final SubscriptionTsFileReader reader =
+                                  (SubscriptionTsFileReader) message.getPayload();
+                              try (final TsFileReader tsFileReader = reader.open()) {
+                                final QueryDataSet dataSet =
+                                    tsFileReader.query(
+                                        QueryExpression.create(
+                                            Arrays.asList(
+                                                new Path("root.topic1", "s", true),
+                                                new Path("root.topic2", "s", true)),
+                                            null));
+                                while (dataSet.hasNext()) {
+                                  final RowRecord record = dataSet.next();
+                                  if (!insertRowRecordEnrichedByConsumerGroupId(
+                                      dataSet.getPaths().get(0).toString(),
+                                      record,
+                                      consumerGroupId)) {
+                                    receiverCrashed.set(true);
+                                    throw new RuntimeException("detect receiver crashed");
+                                  }
+                                }
+                              }
+                              break;
+                            }
+                          default:
+                            LOGGER.warn("unexpected message type: {}", messageType);
+                            break;
                         }
+                      } else {
+                        LOGGER.warn("unexpected message type: {}", messageType);
                       }
                     }
                     consumer.commitSync(messages);
@@ -799,6 +957,13 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       throw new Exception("unexpected column name list");
     }
     final String columnName = columnNameList.get(1);
+    return insertRowRecordEnrichedByConsumerGroupId(columnName, record, consumerGroupId);
+  }
+
+  /** @return false -> receiver crashed */
+  private boolean insertRowRecordEnrichedByConsumerGroupId(
+      final String columnName, final RowRecord record, final String consumerGroupId)
+      throws Exception {
     if ("root.topic1.s".equals(columnName)) {
       final String sql =
           String.format(
