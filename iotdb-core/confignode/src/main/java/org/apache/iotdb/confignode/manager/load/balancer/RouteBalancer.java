@@ -175,7 +175,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
         (regionGroupId, newLeaderId) -> {
           if (ConsensusFactory.RATIS_CONSENSUS.equals(consensusProtocolClass)
               && currentTime - lastFailedTimeForLeaderBalance.getOrDefault(regionGroupId, 0L)
-                  <= BALANCE_RATIS_LEADER_FAILED_INTERVAL) {
+                  > BALANCE_RATIS_LEADER_FAILED_INTERVAL) {
             return;
           }
 
