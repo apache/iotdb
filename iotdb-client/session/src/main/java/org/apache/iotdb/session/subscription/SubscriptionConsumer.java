@@ -643,7 +643,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     protected long endpointsSyncIntervalMs =
         ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE;
 
-    protected String tsFileBaseDir;
+    protected String tsFileBaseDir = ConsumerConstant.TS_FILE_BASE_DIR_DEFAULT_VALUE;
 
     public Builder host(String host) {
       this.host = host;
