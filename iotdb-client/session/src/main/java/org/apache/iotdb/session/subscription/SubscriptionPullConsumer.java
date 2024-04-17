@@ -170,6 +170,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     final List<SubscriptionMessage> messages = new ArrayList<>();
 
+    // poll on the fly tsfile
     for (final OnTheFlyTsFileInfo info :
         topicNameToOnTheFlyTsFileInfo.values().stream()
             .filter(
@@ -183,9 +184,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       pollTsFile(info.commitContext, info.file.getName(), timeoutMs).ifPresent(messages::add);
     }
 
-    final List<SubscriptionPolledMessage> polledMessages = pollInternal(topicNames, timeoutMs);
-
-    for (final SubscriptionPolledMessage polledMessage : polledMessages) {
+    // poll tablets or tsfile
+    for (final SubscriptionPolledMessage polledMessage : pollInternal(topicNames, timeoutMs)) {
       final short messageType = polledMessage.getMessageType();
       if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
         switch (SubscriptionPolledMessageType.valueOf(messageType)) {
@@ -211,8 +211,9 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       }
     }
 
+    // add to uncommitted messages
     if (autoCommit) {
-      long currentTimestamp = System.currentTimeMillis();
+      final long currentTimestamp = System.currentTimeMillis();
       long index = currentTimestamp / autoCommitIntervalMs;
       if (currentTimestamp % autoCommitIntervalMs == 0) {
         index -= 1;
@@ -235,7 +236,10 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
         return Optional.of(messageWithRetryable.getLeft());
       }
       if (!messageWithRetryable.getRight()) {
+        // non-retryable
         removeOnTheFlyTsFileInfo(commitContext.getTopicName());
+      } else {
+        increaseOnTheFlyTsFileInfoRetryCountOrRemove(commitContext.getTopicName());
       }
     } catch (IOException e) {
       LOGGER.warn(
@@ -245,6 +249,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
           commitContext,
           e.getMessage());
       // assume retryable
+      increaseOnTheFlyTsFileInfoRetryCountOrRemove(commitContext.getTopicName());
     } catch (TException | IoTDBConnectionException | StatementExecutionException e) {
       LOGGER.warn(
           "Exception occurred when {} polling TsFile {} with commit context {}: {}",
@@ -448,6 +453,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       releaseReadLock();
     }
   }
+
+  /////////////////////////////// commit ///////////////////////////////
 
   public void commitSync(SubscriptionMessage message)
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {

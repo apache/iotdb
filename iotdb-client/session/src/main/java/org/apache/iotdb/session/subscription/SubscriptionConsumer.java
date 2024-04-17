@@ -109,16 +109,36 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     SubscriptionCommitContext commitContext;
     File file;
     RandomAccessFile fileWriter;
+    int retryCount;
 
     OnTheFlyTsFileInfo(
         SubscriptionCommitContext commitContext, File file, RandomAccessFile fileWriter) {
       this.commitContext = commitContext;
       this.file = file;
       this.fileWriter = fileWriter;
+      this.retryCount = 0;
     }
 
     String getTopicName() {
       return commitContext.getTopicName();
+    }
+
+    /** @return {@code true} if exceed retry limit */
+    boolean increaseRetryCountAndCheck() {
+      retryCount++;
+      return retryCount > 3;
+    }
+
+    @Override
+    public String toString() {
+      return "OnTheFlyTsFileInfo{"
+          + "commitContext="
+          + commitContext
+          + ", file="
+          + file.getAbsoluteFile()
+          + ", retryCount="
+          + retryCount
+          + "}";
     }
   }
 
@@ -155,7 +175,20 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     } catch (final IOException e) {
       LOGGER.warn(e.getMessage());
     }
+
+    LOGGER.info("consumer {} remove on the fly tsfile info {}", this, info);
     topicNameToOnTheFlyTsFileInfo.remove(topicName);
+  }
+
+  protected void increaseOnTheFlyTsFileInfoRetryCountOrRemove(String topicName) {
+    final OnTheFlyTsFileInfo info = topicNameToOnTheFlyTsFileInfo.get(topicName);
+    if (Objects.isNull(info)) {
+      return;
+    }
+
+    if (info.increaseRetryCountAndCheck()) {
+      removeOnTheFlyTsFileInfo(topicName);
+    }
   }
 
   protected OnTheFlyTsFileInfo createOnTheFlyTsFileInfo(
@@ -163,11 +196,14 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     try {
       final String topicName = commitContext.getTopicName();
       final Path filePath = getTsFileDir(topicName).resolve(fileName);
+
       Files.createFile(filePath);
       final File file = filePath.toFile();
       final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw");
+
       final OnTheFlyTsFileInfo info = new OnTheFlyTsFileInfo(commitContext, file, fileWriter);
       topicNameToOnTheFlyTsFileInfo.put(topicName, info);
+      LOGGER.info("consumer {} create on the fly tsfile info {}", this, info);
       return info;
     } catch (final IOException e) {
       LOGGER.warn(e.getMessage());

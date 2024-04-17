@@ -69,12 +69,40 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   public SubscriptionEvent poll(final String consumerId, final SubscriptionPollTimer timer) {
     final SubscriptionEvent currentEvent = consumerIdToCurrentEvents.get(consumerId);
     if (Objects.nonNull(currentEvent)) {
-      LOGGER.info(
-          "{} is currently transferring tsfile (with event {}) to consumer {}.",
-          this,
-          currentEvent,
-          consumerId);
-      return null;
+      if (currentEvent.isCommitted()) {
+        consumerIdToCurrentEvents.remove(consumerId);
+      } else {
+        // uncommitted event
+        if (!currentEvent.pollable()) {
+          LOGGER.info(
+              "{} is currently transferring tsfile (with event {}) to consumer {}.",
+              this,
+              currentEvent,
+              consumerId);
+        } else {
+          // uncommitted and pollable event
+          final SubscriptionEvent subscriptionEvent =
+              new SubscriptionEvent(
+                  Collections.singletonList(currentEvent.getEnrichedEvents().get(0)),
+                  new SubscriptionPolledMessage(
+                      SubscriptionPolledMessageType.TS_FILE_INIT.getType(),
+                      new TsFileInitMessagePayload(
+                          ((PipeTsFileInsertionEvent) currentEvent.getEnrichedEvents().get(0))
+                              .getTsFile()
+                              .getName()),
+                      currentEvent.getMessage().getCommitContext()));
+          consumerIdToCurrentEvents.put(consumerId, subscriptionEvent);
+          // don't allow commit now
+          subscriptionEvent.recordLastPolledConsumerId(consumerId);
+          subscriptionEvent.recordLastPolledTimestamp();
+          return subscriptionEvent;
+        }
+      }
+    }
+
+    final SubscriptionEvent stealEvent = stealPollableOnTheFlyTsFile(consumerId);
+    if (Objects.nonNull(stealEvent)) {
+      return stealEvent;
     }
 
     Event event;
@@ -316,6 +344,41 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   }
 
   /////////////////////////////// utility ///////////////////////////////
+
+  private SubscriptionEvent stealPollableOnTheFlyTsFile(final String consumerId) {
+    for (final Map.Entry<String, SubscriptionEvent> entry : consumerIdToCurrentEvents.entrySet()) {
+      if (Objects.equals(consumerId, entry.getKey())) {
+        continue;
+      }
+      final SubscriptionEvent currentEvent = entry.getValue();
+      if (currentEvent.isCommitted()) {
+        consumerIdToCurrentEvents.remove(entry.getKey());
+        continue;
+      }
+      // uncommitted event
+      if (currentEvent.pollable()) {
+        consumerIdToCurrentEvents.remove(entry.getKey());
+
+        final SubscriptionEvent subscriptionEvent =
+            new SubscriptionEvent(
+                Collections.singletonList(currentEvent.getEnrichedEvents().get(0)),
+                new SubscriptionPolledMessage(
+                    SubscriptionPolledMessageType.TS_FILE_INIT.getType(),
+                    new TsFileInitMessagePayload(
+                        ((PipeTsFileInsertionEvent) currentEvent.getEnrichedEvents().get(0))
+                            .getTsFile()
+                            .getName()),
+                    currentEvent.getMessage().getCommitContext()));
+        consumerIdToCurrentEvents.put(consumerId, subscriptionEvent);
+        // don't allow commit now
+        subscriptionEvent.recordLastPolledConsumerId(consumerId);
+        subscriptionEvent.recordLastPolledTimestamp();
+        return subscriptionEvent;
+      }
+    }
+
+    return null;
+  }
 
   private SubscriptionEvent generateSubscriptionEventWithTsFileErrorMessage(
       final String errorMessage, final boolean retryable) {
