@@ -357,7 +357,7 @@ public class IoTConsensusConfig {
       private long checkpointGap = 500;
       private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
       private double maxMemoryRatioForQueue = 0.6;
-      private long regionMigrationSpeedLimitBytesPerSecond = 64 * 1024 * 1024L;
+      private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
 
       public Replication.Builder setMaxLogEntriesNumPerBatch(int maxLogEntriesNumPerBatch) {
         this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
