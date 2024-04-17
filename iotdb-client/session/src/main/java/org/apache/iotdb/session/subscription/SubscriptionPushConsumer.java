@@ -37,7 +37,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-// TODO
 public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPushConsumer.class);
@@ -60,14 +59,19 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     this(
         config,
         (AckStrategy)
-            config.getOrDefault(ConsumerConstant.ACK_STRATEGY_KEY, AckStrategy.defaultValue()));
+            config.getOrDefault(ConsumerConstant.ACK_STRATEGY_KEY, AckStrategy.defaultValue()),
+        (ConsumeListener)
+            config.getOrDefault(
+                ConsumerConstant.CONSUME_LISTENER_KEY,
+                (ConsumeListener) message -> ConsumeResult.SUCCESS));
   }
 
-  private SubscriptionPushConsumer(Properties config, AckStrategy ackStrategy) {
+  private SubscriptionPushConsumer(
+      Properties config, AckStrategy ackStrategy, ConsumeListener consumeListener) {
     super(new Builder().ackStrategy(ackStrategy), config);
 
     this.ackStrategy = ackStrategy;
-    this.consumeListener = message -> ConsumeResult.SUCCESS;
+    this.consumeListener = consumeListener;
   }
 
   /////////////////////////////// open & close ///////////////////////////////
@@ -124,7 +128,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     workerExecutor.scheduleAtFixedRate(
         new PushConsumerWorker(),
         0,
-        ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_INTERVAL,
+        ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_INTERVAL_MS,
         TimeUnit.MILLISECONDS);
   }
 
@@ -202,7 +206,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       try {
         // Poll all subscribed topics by passing an empty set
         List<SubscriptionMessage> pollResults =
-            poll(Collections.emptySet(), ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_TIME_OUT);
+            poll(Collections.emptySet(), ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_TIME_OUT_MS);
 
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
           commitSync(pollResults);

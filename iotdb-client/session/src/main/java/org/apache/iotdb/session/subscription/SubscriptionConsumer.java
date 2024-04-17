@@ -178,7 +178,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       // shutdown endpoints syncer
       shutdownEndpointsSyncer();
 
-      // shutdown heartbeat worker
+      // shutdown workers
       shutdownWorkers();
 
       // close subscription providers
@@ -279,6 +279,10 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         new ConsumerHeartbeatWorker(this), 0, heartbeatIntervalMs, TimeUnit.MILLISECONDS);
   }
 
+  /**
+   * Shut down workers upon close. There are currently two workers: heartbeat worker and async
+   * commit executor.
+   */
   private void shutdownWorkers() {
     heartbeatWorkerExecutor.shutdown();
     heartbeatWorkerExecutor = null;

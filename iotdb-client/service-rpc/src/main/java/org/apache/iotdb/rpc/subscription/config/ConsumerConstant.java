@@ -54,10 +54,11 @@ public class ConsumerConstant {
   /////////////////////////////// push consumer ///////////////////////////////
 
   public static final String ACK_STRATEGY_KEY = "ack-strategy";
+  public static final String CONSUME_LISTENER_KEY = "consume-listener";
 
   // TODO: configure this parameter
-  public static final int PUSH_CONSUMER_AUTO_POLL_INTERVAL = 1000;
-  public static final int PUSH_CONSUMER_AUTO_POLL_TIME_OUT = 2000;
+  public static final int PUSH_CONSUMER_AUTO_POLL_INTERVAL_MS = 1000;
+  public static final int PUSH_CONSUMER_AUTO_POLL_TIME_OUT_MS = 2000;
 
   private ConsumerConstant() {
     throw new IllegalStateException("Utility class");
