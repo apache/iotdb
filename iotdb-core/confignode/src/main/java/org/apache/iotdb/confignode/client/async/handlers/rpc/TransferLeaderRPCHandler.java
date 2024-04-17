@@ -35,7 +35,7 @@ public class TransferLeaderRPCHandler extends AbstractAsyncRPCHandler<TRegionLea
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TransferLeaderRPCHandler.class);
 
-  protected TransferLeaderRPCHandler(
+  public TransferLeaderRPCHandler(
       DataNodeRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
