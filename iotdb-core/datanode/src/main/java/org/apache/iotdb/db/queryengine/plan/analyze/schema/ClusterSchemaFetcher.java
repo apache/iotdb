@@ -29,6 +29,8 @@ import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -165,8 +167,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       MPPQueryContext context) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
-    schemaCache.takeInsertLock();
-    context.addAcquiredLockNum();
+    DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.VALIDATE_VS_DELETION);
+    context.addAcquiredLockNum(SchemaLockType.VALIDATE_VS_DELETION);
     schemaCache.takeReadLock();
     try {
       Pair<Template, PartialPath> templateSetInfo =
@@ -203,8 +205,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       MPPQueryContext context) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
-    schemaCache.takeInsertLock();
-    context.addAcquiredLockNum();
+    DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.VALIDATE_VS_DELETION);
+    context.addAcquiredLockNum(SchemaLockType.VALIDATE_VS_DELETION);
     schemaCache.takeReadLock();
     try {
 
@@ -247,8 +249,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       MPPQueryContext context) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
-    schemaCache.takeInsertLock();
-    context.addAcquiredLockNum();
+    DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.VALIDATE_VS_DELETION);
+    context.addAcquiredLockNum(SchemaLockType.VALIDATE_VS_DELETION);
     schemaCache.takeReadLock();
     try {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();

@@ -85,6 +85,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
         .setSchemaReplicationFactor(schemaRegionReplicationFactor)
         .setDataReplicationFactor(dataRegionReplicationFactor);
 
+    // 10 min, assert that the operations will not time out
+    senderEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+
     senderEnv.initClusterEnvironment(configNodesNum, dataNodesNum);
     receiverEnv.initClusterEnvironment(configNodesNum, dataNodesNum);
   }
@@ -174,6 +178,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(1)
         .setDataReplicationFactor(1);
+
+    // 10 min, assert that the operations will not time out
+    senderEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment(3, 3);
     receiverEnv.initClusterEnvironment(1, 1);
@@ -364,6 +372,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
         .setSchemaReplicationFactor(3)
         .setDataReplicationFactor(2);
 
+    // 10 min, assert that the operations will not time out
+    senderEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+
     senderEnv.initClusterEnvironment(1, 1);
     receiverEnv.initClusterEnvironment(1, 3);
 
@@ -403,6 +415,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.node-urls", nodeUrlsBuilder.toString());
 
+      extractorAttributes.put("source.inclusion", "all");
       extractorAttributes.put("source.mods.enable", "true");
 
       // Test forced-log mode, in open releases this might be "file"

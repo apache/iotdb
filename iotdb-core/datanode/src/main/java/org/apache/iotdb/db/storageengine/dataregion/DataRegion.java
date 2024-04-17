@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -1957,17 +1956,8 @@ public class DataRegion implements IDataRegionForQuery {
     boolean hasReleasedLock = false;
 
     try {
-
+      DataNodeSchemaCache.getInstance().invalidateLastCache(pattern);
       Set<PartialPath> devicePaths = new HashSet<>(pattern.getDevicePathPattern());
-
-      // delete Last cache record if necessary
-      DataNodeSchemaCache.getInstance().takeWriteLock();
-      try {
-        DataNodeSchemaCache.getInstance().invalidate(Collections.singletonList(pattern));
-      } finally {
-        DataNodeSchemaCache.getInstance().releaseWriteLock();
-      }
-
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
           logDeletionInWAL(startTime, endTime, searchIndex, pattern);
@@ -1992,7 +1982,6 @@ public class DataRegion implements IDataRegionForQuery {
       hasReleasedLock = true;
 
       deleteDataInFiles(sealedTsFileResource, deletion, devicePaths, deviceMatchInfo);
-
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
@@ -2012,15 +2001,9 @@ public class DataRegion implements IDataRegionForQuery {
 
     writeLock("deleteDataDirect");
     boolean releasedLock = false;
-    try {
-      // delete last cache record if necessary
-      DataNodeSchemaCache.getInstance().takeWriteLock();
-      try {
-        DataNodeSchemaCache.getInstance().invalidate(databaseName);
-      } finally {
-        DataNodeSchemaCache.getInstance().releaseWriteLock();
-      }
 
+    try {
+      DataNodeSchemaCache.getInstance().invalidateLastCacheInDataRegion(getDatabaseName());
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
           logDeletionInWAL(startTime, endTime, searchIndex, pathToDelete);
@@ -2551,18 +2534,6 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  private void resetLastCacheWhenLoadingTsFile() throws IllegalPathException {
-    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-      return;
-    }
-    DataNodeSchemaCache.getInstance().takeWriteLock();
-    try {
-      DataNodeSchemaCache.getInstance().invalidateAll();
-    } finally {
-      DataNodeSchemaCache.getInstance().releaseWriteLock();
-    }
-  }
-
   /**
    * Load a new tsfile to unsequence dir.
    *
@@ -2615,10 +2586,6 @@ public class DataRegion implements IDataRegionForQuery {
               false,
               newTsFileResource.getTsFile().getName());
 
-      // Update last cache
-      resetLastCacheWhenLoadingTsFile();
-
-      // Update last flush time & help last flush time map degrade
       if (config.isEnableSeparateData()) {
         final DataRegionId dataRegionId = new DataRegionId(Integer.parseInt(this.dataRegionId));
         final long timePartitionId = newTsFileResource.getTimePartition();
@@ -2649,12 +2616,9 @@ public class DataRegion implements IDataRegionForQuery {
           tsfileToBeInserted.getAbsolutePath(),
           tsfileToBeInserted.getParentFile().getName());
       throw new LoadFileException(e);
-    } catch (IllegalPathException e) {
-      logger.error(
-          "Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
-      throw new LoadFileException(e);
     } finally {
       writeUnlock();
+      DataNodeSchemaCache.getInstance().invalidateLastCacheInDataRegion(databaseName);
     }
   }
 

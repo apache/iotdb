@@ -38,6 +38,7 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
+import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -231,6 +232,11 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
+  public long getLogicalClock(ConsensusGroupId groupId) {
+    return 0;
+  }
+
+  @Override
   public Peer getLeader(ConsensusGroupId groupId) {
     if (!stateMachineMap.containsKey(groupId)) {
       return null;
@@ -241,6 +247,16 @@ class SimpleConsensus implements IConsensus {
   @Override
   public List<ConsensusGroupId> getAllConsensusGroupIds() {
     return new ArrayList<>(stateMachineMap.keySet());
+  }
+
+  @Override
+  public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
+    return IoTConsensus.getConsensusGroupIdsFromDir(storageDir, logger);
+  }
+
+  @Override
+  public String getRegionDirFromConsensusGroupId(ConsensusGroupId groupId) {
+    return buildPeerDir(groupId);
   }
 
   @Override

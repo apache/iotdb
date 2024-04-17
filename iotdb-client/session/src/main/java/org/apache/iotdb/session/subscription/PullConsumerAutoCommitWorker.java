@@ -19,13 +19,9 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.StatementExecutionException;
-
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 
@@ -46,8 +42,8 @@ public class PullConsumerAutoCommitWorker implements Runnable {
     }
 
     long currentTimestamp = System.currentTimeMillis();
-    long index = currentTimestamp / consumer.getAutoCommitInterval();
-    if (currentTimestamp % consumer.getAutoCommitInterval() == 0) {
+    long index = currentTimestamp / consumer.getAutoCommitIntervalMs();
+    if (currentTimestamp % consumer.getAutoCommitIntervalMs() == 0) {
       index -= 1;
     }
 
@@ -56,7 +52,7 @@ public class PullConsumerAutoCommitWorker implements Runnable {
       try {
         consumer.commitSync(entry.getValue());
         consumer.getUncommittedMessages().remove(entry.getKey());
-      } catch (TException | IOException | StatementExecutionException e) {
+      } catch (final Exception e) {
         LOGGER.warn("something unexpected happened when auto commit messages...", e);
       }
     }

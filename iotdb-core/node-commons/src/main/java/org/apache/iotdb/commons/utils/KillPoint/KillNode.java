@@ -17,15 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.exception.subscription;
+package org.apache.iotdb.commons.utils.KillPoint;
 
-public class SubscriptionPollTimeOutException extends SubscriptionException {
-
-  public SubscriptionPollTimeOutException(String message) {
-    super(message);
-  }
-
-  protected SubscriptionPollTimeOutException(String message, long timeStamp) {
-    super(message, timeStamp);
-  }
+public enum KillNode {
+  ALL_NODES,
+  CONFIG_NODE,
+  ORIGINAL_DATANODE,
+  DESTINATION_DATANODE,
+  COORDINATOR_DATANODE,
 }

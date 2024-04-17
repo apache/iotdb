@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
-import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -30,39 +29,13 @@ import org.junit.Test;
 public class NodeCacheTest {
 
   @Test
-  public void forceUpdateTest() {
-    DataNodeHeartbeatCache dataNodeHeartbeatCache = new DataNodeHeartbeatCache(1);
-
-    // Test default
-    Assert.assertEquals(NodeStatus.Unknown, dataNodeHeartbeatCache.getNodeStatus());
-    Assert.assertEquals(Long.MAX_VALUE, dataNodeHeartbeatCache.getLoadScore());
-
-    // Test force update to RunningStatus
-    long currentTime = System.nanoTime() - 2_000_000;
-    dataNodeHeartbeatCache.forceUpdate(
-        new NodeHeartbeatSample(
-            new TDataNodeHeartbeatResp(currentTime, NodeStatus.Running.getStatus()), currentTime));
-    Assert.assertEquals(NodeStatus.Running, dataNodeHeartbeatCache.getNodeStatus());
-    Assert.assertEquals(0, dataNodeHeartbeatCache.getLoadScore());
-
-    // Test force update to ReadOnlyStatus
-    currentTime += 2000;
-    dataNodeHeartbeatCache.forceUpdate(
-        new NodeHeartbeatSample(
-            new TDataNodeHeartbeatResp(currentTime, NodeStatus.ReadOnly.getStatus()), currentTime));
-    Assert.assertEquals(NodeStatus.ReadOnly, dataNodeHeartbeatCache.getNodeStatus());
-    Assert.assertEquals(Long.MAX_VALUE, dataNodeHeartbeatCache.getLoadScore());
-  }
-
-  @Test
-  public void periodicUpdateTest() {
+  public void updateStatisticsTest() {
     // Test DataNode heartbeat cache
     DataNodeHeartbeatCache dataNodeHeartbeatCache = new DataNodeHeartbeatCache(1);
     long currentTime = System.nanoTime();
     dataNodeHeartbeatCache.cacheHeartbeatSample(
-        new NodeHeartbeatSample(
-            new TDataNodeHeartbeatResp(currentTime, NodeStatus.Running.getStatus()), currentTime));
-    Assert.assertTrue(dataNodeHeartbeatCache.periodicUpdate());
+        new NodeHeartbeatSample(currentTime, NodeStatus.Running));
+    dataNodeHeartbeatCache.updateCurrentStatistics();
     Assert.assertEquals(NodeStatus.Running, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(0, dataNodeHeartbeatCache.getLoadScore());
 
@@ -70,8 +43,8 @@ public class NodeCacheTest {
     ConfigNodeHeartbeatCache configNodeHeartbeatCache = new ConfigNodeHeartbeatCache(2);
     currentTime = System.nanoTime();
     configNodeHeartbeatCache.cacheHeartbeatSample(
-        new NodeHeartbeatSample(currentTime, currentTime));
-    Assert.assertTrue(configNodeHeartbeatCache.periodicUpdate());
+        new NodeHeartbeatSample(currentTime, NodeStatus.Running));
+    configNodeHeartbeatCache.updateCurrentStatistics();
     Assert.assertEquals(NodeStatus.Running, configNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(0, configNodeHeartbeatCache.getLoadScore());
   }
