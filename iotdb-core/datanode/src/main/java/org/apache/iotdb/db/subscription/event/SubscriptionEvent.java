@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class SubscriptionEvent {
 
@@ -32,6 +33,7 @@ public class SubscriptionEvent {
   private final List<EnrichedEvent> enrichedEvents;
   private final SubscriptionPolledMessage message;
 
+  private String lastPolledConsumerId;
   private long lastPolledTimestamp;
   private long committedTimestamp;
 
@@ -82,5 +84,30 @@ public class SubscriptionEvent {
     // not committed within a certain period of time.
     return System.currentTimeMillis() - lastPolledTimestamp
         > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
+  }
+
+  public void recordLastPolledConsumerId(final String consumerId) {
+    lastPolledConsumerId = consumerId;
+  }
+
+  public String getLastPolledConsumerId() {
+    return lastPolledConsumerId;
+  }
+
+  /////////////////////////////// object ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionEvent{enrichedEvents="
+        + enrichedEvents.stream().map(EnrichedEvent::coreReportMessage).collect(Collectors.toList())
+        + ", message="
+        + message
+        + ", lastPolledConsumerId="
+        + lastPolledConsumerId
+        + ", lastPolledTimestamp="
+        + lastPolledTimestamp
+        + ", committedTimestamp="
+        + committedTimestamp
+        + "}";
   }
 }

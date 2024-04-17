@@ -62,7 +62,7 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
   }
 
   @Override
-  public SubscriptionEvent poll(final SubscriptionPollTimer timer) {
+  public SubscriptionEvent poll(final String consumerId, final SubscriptionPollTimer timer) {
     if (prefetchingQueue.isEmpty()) {
       prefetchOnce(SubscriptionConfig.getInstance().getSubscriptionMaxTabletsPerPrefetching());
       // without serializeOnce here
@@ -88,6 +88,7 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
         if (!currentEvent.pollable()) {
           continue;
         }
+        currentEvent.recordLastPolledConsumerId(consumerId);
         currentEvent.recordLastPolledTimestamp();
         return currentEvent;
       }

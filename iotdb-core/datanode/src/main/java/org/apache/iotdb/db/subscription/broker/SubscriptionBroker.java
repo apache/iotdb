@@ -57,14 +57,14 @@ public class SubscriptionBroker {
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
 
   public List<SubscriptionEvent> poll(
-      final Set<String> topicNames, final SubscriptionPollTimer timer) {
+      final String consumerId, final Set<String> topicNames, final SubscriptionPollTimer timer) {
     final List<SubscriptionEvent> events = new ArrayList<>();
     for (final Map.Entry<String, SubscriptionPrefetchingQueue> entry :
         topicNameToPrefetchingQueue.entrySet()) {
       final String topicName = entry.getKey();
       final SubscriptionPrefetchingQueue prefetchingQueue = entry.getValue();
       if (topicNames.contains(topicName)) {
-        final SubscriptionEvent event = prefetchingQueue.poll(timer);
+        final SubscriptionEvent event = prefetchingQueue.poll(consumerId, timer);
         if (Objects.nonNull(event)) {
           events.add(event);
         }
@@ -78,7 +78,7 @@ public class SubscriptionBroker {
   }
 
   public List<SubscriptionEvent> pollTsFile(
-      String topicName, String fileName, long endWritingOffset) {
+      String consumerId, String topicName, String fileName, long endWritingOffset) {
     SubscriptionPrefetchingQueue prefetchingQueue = topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
       return null;
@@ -89,10 +89,8 @@ public class SubscriptionBroker {
     final List<SubscriptionEvent> events = new ArrayList<>();
     final SubscriptionEvent event =
         ((SubscriptionPrefetchingTsFileQueue) prefetchingQueue)
-            .pollTsFile(fileName, endWritingOffset);
-    if (Objects.nonNull(event)) {
-      events.add(event);
-    }
+            .pollTsFile(consumerId, fileName, endWritingOffset);
+    events.add(event);
     return events;
   }
 

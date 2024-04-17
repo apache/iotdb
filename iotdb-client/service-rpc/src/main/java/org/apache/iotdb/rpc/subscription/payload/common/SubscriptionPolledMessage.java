@@ -94,14 +94,17 @@ public class SubscriptionPolledMessage {
         case TABLETS:
           messagePayload = new TabletsMessagePayload().deserialize(buffer);
           break;
-        case TS_FILE_INFO:
-          messagePayload = new TsFileInfoMessagePayload().deserialize(buffer);
+        case TS_FILE_INIT:
+          messagePayload = new TsFileInitMessagePayload().deserialize(buffer);
           break;
         case TS_FILE_PIECE:
           messagePayload = new TsFilePieceMessagePayload().deserialize(buffer);
           break;
         case TS_FILE_SEAL:
           messagePayload = new TsFileSealMessagePayload().deserialize(buffer);
+          break;
+        case TS_FILE_ERROR:
+          messagePayload = new TsFileErrorMessagePayload().deserialize(buffer);
           break;
         default:
           LOGGER.warn("unexpected message type: {}, message payload will be null", messageType);
@@ -141,5 +144,18 @@ public class SubscriptionPolledMessage {
   public void resetByteBuffer() {
     // maybe friendly for gc
     byteBuffer = null;
+  }
+
+  /////////////////////////////// object ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionPolledMessage{messageType="
+        + SubscriptionPolledMessageType.valueOf(messageType).toString()
+        + ", messagePayload="
+        + messagePayload
+        + ", commitContext="
+        + commitContext
+        + "}";
   }
 }

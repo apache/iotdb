@@ -82,4 +82,13 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
   public int compareTo(SubscriptionMessage that) {
     return this.commitContext.compareTo(that.commitContext);
   }
+
+  @Override
+  public String toString() {
+    return "SubscriptionMessage{commitContext="
+        + commitContext
+        + ", messageType="
+        + SubscriptionMessageType.valueOf(messageType).toString()
+        + "}";
+  }
 }

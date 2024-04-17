@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class TsFileInfoMessagePayload implements SubscriptionMessagePayload {
+public class TsFileInitMessagePayload implements SubscriptionMessagePayload {
 
   private transient String fileName;
 
@@ -34,9 +34,9 @@ public class TsFileInfoMessagePayload implements SubscriptionMessagePayload {
     return fileName;
   }
 
-  public TsFileInfoMessagePayload() {}
+  public TsFileInitMessagePayload() {}
 
-  public TsFileInfoMessagePayload(String fileName) {
+  public TsFileInitMessagePayload(String fileName) {
     this.fileName = fileName;
   }
 
@@ -59,7 +59,7 @@ public class TsFileInfoMessagePayload implements SubscriptionMessagePayload {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final TsFileInfoMessagePayload that = (TsFileInfoMessagePayload) obj;
+    final TsFileInitMessagePayload that = (TsFileInitMessagePayload) obj;
     return Objects.equals(this.fileName, that.fileName);
   }
 
@@ -70,6 +70,6 @@ public class TsFileInfoMessagePayload implements SubscriptionMessagePayload {
 
   @Override
   public String toString() {
-    return "TsFileInfoMessagePayload{fileName=" + fileName + "}";
+    return "TsFileInitMessagePayload{fileName=" + fileName + "}";
   }
 }

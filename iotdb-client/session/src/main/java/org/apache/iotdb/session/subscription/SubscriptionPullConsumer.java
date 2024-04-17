@@ -26,12 +26,13 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.common.PollMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.PollTsFileMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessage;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessageType;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessageType;
 import org.apache.iotdb.rpc.subscription.payload.common.TabletsMessagePayload;
-import org.apache.iotdb.rpc.subscription.payload.common.TsFileInfoMessagePayload;
+import org.apache.iotdb.rpc.subscription.payload.common.TsFileInitMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.TsFilePieceMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.TsFileSealMessagePayload;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -196,12 +197,12 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
                     polledMessage.getCommitContext(),
                     ((TabletsMessagePayload) polledMessage.getMessagePayload()).getTablets()));
             break;
-          case TS_FILE_INFO:
+          case TS_FILE_INIT:
             try {
               final SubscriptionMessage message =
                   pollTsFile(
                       polledMessage.getCommitContext(),
-                      ((TsFileInfoMessagePayload) polledMessage.getMessagePayload()).getFileName(),
+                      ((TsFileInitMessagePayload) polledMessage.getMessagePayload()).getFileName(),
                       timeoutMs);
               if (Objects.isNull(message)) {
                 throw new Exception("poll empty tsfile, will retry later...");
@@ -252,47 +253,63 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     while (true) {
       final List<SubscriptionPolledMessage> polledMessages =
           pollTsFileInternal(dataNodeId, topicName, fileName, endWritingOffset, timeoutMs);
+
       if (Objects.isNull(polledMessages) || polledMessages.size() != 1) {
+        LOGGER.warn("unexpected polledMessages: {}, consumer: {}", polledMessages, this);
         return null;
       }
+
       final SubscriptionPolledMessage polledMessage = polledMessages.get(0);
       if (Objects.isNull(polledMessage)) {
+        LOGGER.warn("unexpected polledMessage: {}, consumer: {}", polledMessage, this);
         return null;
       }
+
+      final SubscriptionMessagePayload messagePayload = polledMessage.getMessagePayload();
+      if (Objects.isNull(messagePayload)) {
+        LOGGER.warn("unexpected messagePayload: {}, consumer: {}", messagePayload, this);
+        return null;
+      }
+
+      final SubscriptionCommitContext incomingCommitContext = polledMessage.getCommitContext();
+      if (Objects.isNull(incomingCommitContext)
+          || !Objects.equals(commitContext, incomingCommitContext)) {
+        LOGGER.warn(
+            "inconsistent commit context, current is {}, incoming is {}, consumer: {}",
+            messagePayload,
+            incomingCommitContext,
+            this);
+        return null;
+      }
+
       final short messageType = polledMessage.getMessageType();
       if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
         switch (SubscriptionPolledMessageType.valueOf(messageType)) {
           case TS_FILE_PIECE:
             {
-              final TsFilePieceMessagePayload messagePayload =
-                  (TsFilePieceMessagePayload) polledMessage.getMessagePayload();
-              if (Objects.isNull(messagePayload)) {
-                return null;
-              }
               // check file name
-              if (!fileName.equals(messagePayload.getFileName())) {
+              if (!fileName.equals(((TsFilePieceMessagePayload) messagePayload).getFileName())) {
+
                 return null;
               }
               // write file piece
-              fileWriter.write(messagePayload.getFilePiece());
+              fileWriter.write(((TsFilePieceMessagePayload) messagePayload).getFilePiece());
               fileWriter.getFD().sync();
               // update offset
-              endWritingOffset = messagePayload.getEndWritingOffset();
+              endWritingOffset = ((TsFilePieceMessagePayload) messagePayload).getEndWritingOffset();
               break;
             }
           case TS_FILE_SEAL:
             {
-              final TsFileSealMessagePayload messagePayload =
-                  (TsFileSealMessagePayload) polledMessage.getMessagePayload();
-              if (Objects.isNull(messagePayload)) {
-                return null;
-              }
               // check file name
-              if (!fileName.equals(messagePayload.getFileName())) {
+              if (!fileName.equals(((TsFileSealMessagePayload) messagePayload).getFileName())) {
+
                 return null;
               }
               // check file length
-              if (fileWriter.length() != messagePayload.getFileLength()) {
+              if (fileWriter.length()
+                  != ((TsFileSealMessagePayload) messagePayload).getFileLength()) {
+
                 return null;
               }
               // sync and close
@@ -303,6 +320,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
               // generate subscription message
               return new SubscriptionMessage(commitContext, file.getAbsolutePath());
             }
+          case TS_FILE_ERROR:
+            return null;
           default:
             LOGGER.warn("unexpected message type: {}", messageType);
             return null;

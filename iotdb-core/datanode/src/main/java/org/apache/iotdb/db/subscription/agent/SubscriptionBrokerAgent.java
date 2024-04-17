@@ -57,7 +57,8 @@ public class SubscriptionBrokerAgent {
       return Collections.emptyList();
     }
     // TODO: currently we fetch messages from all topics
-    return broker.poll(topicNames, timer);
+    final String consumerId = consumerConfig.getConsumerId();
+    return broker.poll(consumerId, topicNames, timer);
   }
 
   public List<SubscriptionEvent> pollTsFile(
@@ -69,7 +70,8 @@ public class SubscriptionBrokerAgent {
           "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
       return Collections.emptyList();
     }
-    return broker.pollTsFile(topicName, fileName, endWritingOffset);
+    final String consumerId = consumerConfig.getConsumerId();
+    return broker.pollTsFile(consumerId, topicName, fileName, endWritingOffset);
   }
 
   public void commit(

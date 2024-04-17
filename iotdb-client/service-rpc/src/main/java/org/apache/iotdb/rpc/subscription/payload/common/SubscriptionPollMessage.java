@@ -96,4 +96,17 @@ public class SubscriptionPollMessage {
     final long timeoutMs = ReadWriteIOUtils.readLong(buffer);
     return new SubscriptionPollMessage(messageType, messagePayload, timeoutMs);
   }
+
+  /////////////////////////////// object ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionPollMessage{messageType="
+        + SubscriptionPollMessageType.valueOf(messageType).toString()
+        + ", messagePayload="
+        + messagePayload
+        + ", timeoutMs="
+        + timeoutMs
+        + "}";
+  }
 }

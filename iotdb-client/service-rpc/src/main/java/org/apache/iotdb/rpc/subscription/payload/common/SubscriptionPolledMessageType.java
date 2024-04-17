@@ -26,9 +26,10 @@ import java.util.Map;
 public enum SubscriptionPolledMessageType {
   TABLETS((short) 0),
 
-  TS_FILE_INFO((short) 1),
+  TS_FILE_INIT((short) 1),
   TS_FILE_PIECE((short) 2),
   TS_FILE_SEAL((short) 3),
+  TS_FILE_ERROR((short) 4),
   ;
 
   private final short type;

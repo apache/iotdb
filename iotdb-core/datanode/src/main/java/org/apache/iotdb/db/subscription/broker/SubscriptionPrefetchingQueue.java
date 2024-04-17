@@ -57,7 +57,7 @@ public abstract class SubscriptionPrefetchingQueue {
     this.uncommittedEvents = new ConcurrentHashMap<>();
   }
 
-  public abstract SubscriptionEvent poll(SubscriptionPollTimer timer);
+  public abstract SubscriptionEvent poll(String consumerId, SubscriptionPollTimer timer);
 
   public abstract void executePrefetch();
 
@@ -73,9 +73,6 @@ public abstract class SubscriptionPrefetchingQueue {
     event.decreaseReferenceCount();
     event.recordCommittedTimestamp();
     uncommittedEvents.remove(commitContext);
-    if (this instanceof SubscriptionPrefetchingTsFileQueue) {
-      ((SubscriptionPrefetchingTsFileQueue) this).resetEventRef();
-    }
   }
 
   protected SubscriptionCommitContext generateSubscriptionCommitContext() {
@@ -87,5 +84,21 @@ public abstract class SubscriptionPrefetchingQueue {
         topicName,
         brokerId,
         subscriptionCommitIdGenerator.getAndIncrement());
+  }
+
+  protected SubscriptionCommitContext generateInvalidSubscriptionCommitContext() {
+    return new SubscriptionCommitContext(
+        IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
+        PipeAgent.runtime().getRebootTimes(),
+        topicName,
+        brokerId,
+        -1);
+  }
+
+  /////////////////////////////// object ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionPrefetchingQueue{brokerId=" + brokerId + ", topicName=" + topicName + "}";
   }
 }
