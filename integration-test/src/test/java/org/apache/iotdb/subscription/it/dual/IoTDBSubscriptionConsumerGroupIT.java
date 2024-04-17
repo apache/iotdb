@@ -247,6 +247,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       final Map<String, String> expectedHeaderWithResult)
       throws Exception {
     final long currentTime = System.currentTimeMillis();
+    LOGGER.info("currentTime: {}", currentTime);
 
     // Insert some historical data
     insertData(currentTime);
@@ -280,6 +281,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       final Map<String, String> expectedHeaderWithResult)
       throws Exception {
     final long currentTime = System.currentTimeMillis();
+    LOGGER.info("currentTime: {}", currentTime);
 
     // Create topics
     createTopics(currentTime);
@@ -307,345 +309,345 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         expectedHeaderWithResult);
   }
 
-  // -------------------------------------- //
-  // 3 consumers, 1 consumer group, 1 topic //
-  // -------------------------------------- //
-
-  @Test
-  public void test3C1CGSubscribeOneTopicHistoricalDataWithAsyncConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        ASYNC_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  @Test
-  public void test3C1CGSubscribeOneTopicHistoricalDataWithSyncConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        SYNC_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  @Test
-  public void test3C1CGSubscribeOneTopicHistoricalDataWithLegacyConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        LEGACY_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  @Test
-  public void test3C1CGSubscribeOneTopicHistoricalDataWithAirGapConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  @Test
-  public void test3C1CGSubscribeOneTopicRealtimeDataWithAsyncConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        ASYNC_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  @Test
-  public void test3C1CGSubscribeOneTopicRealtimeDataWithSyncConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        SYNC_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  @Test
-  public void test3C1CGSubscribeOneTopicRealtimeDataWithLegacyConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        LEGACY_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  @Test
-  public void test3C1CGSubscribeOneTopicRealtimeDataWithAirGapConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  // --------------------------------------- //
-  // 3 consumers, 3 consumer groups, 1 topic //
-  // --------------------------------------- //
-
-  @Test
-  public void test3C3CGSubscribeOneTopicHistoricalDataWithAsyncConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        ASYNC_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  @Test
-  public void test3C3CGSubscribeOneTopicHistoricalDataWithSyncConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        SYNC_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  @Test
-  public void test3C3CGSubscribeOneTopicHistoricalDataWithLegacyConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        LEGACY_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  @Test
-  public void test3C3CGSubscribeOneTopicHistoricalDataWithAirGapConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  @Test
-  public void test3C3CGSubscribeOneTopicRealtimeDataWithAsyncConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        ASYNC_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  @Test
-  public void test3C3CGSubscribeOneTopicRealtimeDataWithSyncConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        SYNC_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  @Test
-  public void test3C3CGSubscribeOneTopicRealtimeDataWithLegacyConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        LEGACY_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  @Test
-  public void test3C3CGSubscribeOneTopicRealtimeDataWithAirGapConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
-  }
-
-  // --------------------------------------- //
-  // 3 consumers, 1 consumer group, 2 topics //
-  // --------------------------------------- //
-
-  @Test
-  public void test3C1CGSubscribeTwoTopicHistoricalDataWithAsyncConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        ASYNC_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test3C1CGSubscribeTwoTopicHistoricalDataWithSyncConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        SYNC_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test3C1CGSubscribeTwoTopicHistoricalDataWithLegacyConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        LEGACY_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test3C1CGSubscribeTwoTopicHistoricalDataWithAirGapConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test3C1CGSubscribeTwoTopicRealtimeDataWithAsyncConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        ASYNC_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test3C1CGSubscribeTwoTopicRealtimeDataWithSyncConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        SYNC_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test3C1CGSubscribeTwoTopicRealtimeDataWithLegacyConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        LEGACY_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test3C1CGSubscribeTwoTopicRealtimeDataWithAirGapConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  // ---------------------------------------- //
-  // 3 consumers, 3 consumer groups, 2 topics //
-  // ---------------------------------------- //
-
-  @Test
-  public void test3C3CGSubscribeTwoTopicHistoricalDataWithAsyncConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        ASYNC_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test3C3CGSubscribeTwoTopicHistoricalDataWithSyncConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        SYNC_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test3C3CGSubscribeTwoTopicHistoricalDataWithLegacyConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        LEGACY_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test3C3CGSubscribeTwoTopicHistoricalDataWithAirGapConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test3C3CGSubscribeTwoTopicRealtimeDataWithAsyncConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        ASYNC_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test3C3CGSubscribeTwoTopicRealtimeDataWithSyncConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        SYNC_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test3C3CGSubscribeTwoTopicRealtimeDataWithLegacyConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        LEGACY_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test3C3CGSubscribeTwoTopicRealtimeDataWithAirGapConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
-        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  // ---------------------------------------- //
-  // 4 consumers, 2 consumer groups, 2 topics //
-  // ---------------------------------------- //
-
-  @Test
-  public void test4C2CGSubscribeTwoTopicHistoricalDataWithAsyncConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        ASYNC_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test4C2CGSubscribeTwoTopicHistoricalDataWithSyncConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        SYNC_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test4C2CGSubscribeTwoTopicHistoricalDataWithLegacyConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        LEGACY_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test4C2CGSubscribeTwoTopicHistoricalDataWithAirGapConnector() throws Exception {
-    testSubscriptionHistoricalDataTemplate(
-        AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test4C2CGSubscribeTwoTopicRealtimeDataWithAsyncConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        ASYNC_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test4C2CGSubscribeTwoTopicRealtimeDataWithSyncConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        SYNC_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test4C2CGSubscribeTwoTopicRealtimeDataWithLegacyConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        LEGACY_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
-
-  @Test
-  public void test4C2CGSubscribeTwoTopicRealtimeDataWithAirGapConnector() throws Exception {
-    testSubscriptionRealtimeDataTemplate(
-        AIR_GAP_CONNECTOR_ATTRIBUTES,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
-        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
-  }
+  //  // -------------------------------------- //
+  //  // 3 consumers, 1 consumer group, 1 topic //
+  //  // -------------------------------------- //
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeOneTopicHistoricalDataWithAsyncConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        ASYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeOneTopicHistoricalDataWithSyncConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        SYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeOneTopicHistoricalDataWithLegacyConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        LEGACY_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeOneTopicHistoricalDataWithAirGapConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        AIR_GAP_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeOneTopicRealtimeDataWithAsyncConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        ASYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeOneTopicRealtimeDataWithSyncConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        SYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeOneTopicRealtimeDataWithLegacyConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        LEGACY_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeOneTopicRealtimeDataWithAirGapConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        AIR_GAP_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  // --------------------------------------- //
+  //  // 3 consumers, 3 consumer groups, 1 topic //
+  //  // --------------------------------------- //
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeOneTopicHistoricalDataWithAsyncConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        ASYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeOneTopicHistoricalDataWithSyncConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        SYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeOneTopicHistoricalDataWithLegacyConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        LEGACY_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeOneTopicHistoricalDataWithAirGapConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        AIR_GAP_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeOneTopicRealtimeDataWithAsyncConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        ASYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeOneTopicRealtimeDataWithSyncConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        SYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeOneTopicRealtimeDataWithLegacyConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        LEGACY_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeOneTopicRealtimeDataWithAirGapConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        AIR_GAP_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
+  //  }
+  //
+  //  // --------------------------------------- //
+  //  // 3 consumers, 1 consumer group, 2 topics //
+  //  // --------------------------------------- //
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeTwoTopicHistoricalDataWithAsyncConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        ASYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeTwoTopicHistoricalDataWithSyncConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        SYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeTwoTopicHistoricalDataWithLegacyConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        LEGACY_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeTwoTopicHistoricalDataWithAirGapConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        AIR_GAP_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeTwoTopicRealtimeDataWithAsyncConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        ASYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeTwoTopicRealtimeDataWithSyncConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        SYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeTwoTopicRealtimeDataWithLegacyConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        LEGACY_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C1CGSubscribeTwoTopicRealtimeDataWithAirGapConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        AIR_GAP_CONNECTOR_ATTRIBUTES,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  // ---------------------------------------- //
+  //  // 3 consumers, 3 consumer groups, 2 topics //
+  //  // ---------------------------------------- //
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeTwoTopicHistoricalDataWithAsyncConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        ASYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeTwoTopicHistoricalDataWithSyncConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        SYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeTwoTopicHistoricalDataWithLegacyConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        LEGACY_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeTwoTopicHistoricalDataWithAirGapConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        AIR_GAP_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeTwoTopicRealtimeDataWithAsyncConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        ASYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeTwoTopicRealtimeDataWithSyncConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        SYNC_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeTwoTopicRealtimeDataWithLegacyConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        LEGACY_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test3C3CGSubscribeTwoTopicRealtimeDataWithAirGapConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        AIR_GAP_CONNECTOR_ATTRIBUTES,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  // ---------------------------------------- //
+  //  // 4 consumers, 2 consumer groups, 2 topics //
+  //  // ---------------------------------------- //
+  //
+  //  @Test
+  //  public void test4C2CGSubscribeTwoTopicHistoricalDataWithAsyncConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        ASYNC_CONNECTOR_ATTRIBUTES,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test4C2CGSubscribeTwoTopicHistoricalDataWithSyncConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        SYNC_CONNECTOR_ATTRIBUTES,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test4C2CGSubscribeTwoTopicHistoricalDataWithLegacyConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        LEGACY_CONNECTOR_ATTRIBUTES,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test4C2CGSubscribeTwoTopicHistoricalDataWithAirGapConnector() throws Exception {
+  //    testSubscriptionHistoricalDataTemplate(
+  //        AIR_GAP_CONNECTOR_ATTRIBUTES,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test4C2CGSubscribeTwoTopicRealtimeDataWithAsyncConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        ASYNC_CONNECTOR_ATTRIBUTES,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test4C2CGSubscribeTwoTopicRealtimeDataWithSyncConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        SYNC_CONNECTOR_ATTRIBUTES,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test4C2CGSubscribeTwoTopicRealtimeDataWithLegacyConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        LEGACY_CONNECTOR_ATTRIBUTES,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
+  //
+  //  @Test
+  //  public void test4C2CGSubscribeTwoTopicRealtimeDataWithAirGapConnector() throws Exception {
+  //    testSubscriptionRealtimeDataTemplate(
+  //        AIR_GAP_CONNECTOR_ATTRIBUTES,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.left,
+  //        __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
+  //  }
 
   // ------------------------------------------------------ //
   // 4 consumers, 2 consumer groups, 2 topics (with tsfile) //

@@ -63,7 +63,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   }
 
   @Override
-  public SubscriptionEvent poll(final SubscriptionPollTimer timer) {
+  public synchronized SubscriptionEvent poll(final SubscriptionPollTimer timer) {
     if (Objects.nonNull(eventRef.get())) {
       return null;
     }

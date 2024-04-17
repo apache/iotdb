@@ -109,11 +109,10 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   public Path getTsFileDir(String topicName) throws IOException {
     if (Objects.isNull(subscribedTsFileBaseDirPath)) {
-      subscribedTsFileBaseDirPath =
-          Files.createTempDirectory(
-              String.format("subscribedTsFile_%s_%s#", consumerId, consumerGroupId));
+      subscribedTsFileBaseDirPath = Files.createTempDirectory("subscribedTsFile#");
     }
-    final Path dirPath = subscribedTsFileBaseDirPath.resolve(topicName);
+    final Path dirPath =
+        subscribedTsFileBaseDirPath.resolve(consumerGroupId).resolve(consumerId).resolve(topicName);
     Files.createDirectories(dirPath);
     return dirPath;
   }

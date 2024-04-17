@@ -114,6 +114,7 @@ public class SubscriptionSessionExample {
   }
 
   private static void subscriptionExample1() throws Exception {
+    int retryCount = 0;
     // Subscription: property-style ctor
     final Properties config = new Properties();
     config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
@@ -125,7 +126,10 @@ public class SubscriptionSessionExample {
       Thread.sleep(1000); // Wait for some time
       final List<SubscriptionMessage> messages = consumer1.poll(Duration.ofMillis(10000));
       if (messages.isEmpty()) {
-        break;
+        retryCount++;
+        if (retryCount >= 5) {
+          break;
+        }
       }
       for (final SubscriptionMessage message : messages) {
         final SubscriptionSessionDataSets dataSets =
@@ -153,6 +157,7 @@ public class SubscriptionSessionExample {
   }
 
   private static void subscriptionExample2() throws Exception {
+    int retryCount = 0;
     // Subscription: builder-style ctor
     try (final SubscriptionPullConsumer consumer2 =
         new SubscriptionPullConsumer.Builder()
@@ -167,7 +172,10 @@ public class SubscriptionSessionExample {
         final List<SubscriptionMessage> messages =
             consumer2.poll(Collections.singleton(TOPIC_2), Duration.ofMillis(10000));
         if (messages.isEmpty()) {
-          break;
+          retryCount++;
+          if (retryCount >= 5) {
+            break;
+          }
         }
         for (final SubscriptionMessage message : messages) {
           final SubscriptionTsFileReader reader = (SubscriptionTsFileReader) message.getPayload();
