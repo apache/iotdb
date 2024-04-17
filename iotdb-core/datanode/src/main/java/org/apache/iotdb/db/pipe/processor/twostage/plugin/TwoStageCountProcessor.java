@@ -26,10 +26,13 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.watermark.PipeWatermarkEvent;
 import org.apache.iotdb.db.pipe.processor.twostage.combiner.PipeCombineHandlerManager;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.CombineRequest;
@@ -155,18 +158,49 @@ public class TwoStageCountProcessor implements PipeProcessor {
   @Override
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
       throws Exception {
+    if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
+        && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
+      LOGGER.warn(
+          "Ignored TabletInsertionEvent is not an instance of PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent: {}",
+          tabletInsertionEvent);
+      return;
+    }
+
+    final EnrichedEvent event = (EnrichedEvent) tabletInsertionEvent;
+    event.skipReportOnCommit();
+
     // TODO: count the number of given points in the tablet
-    // TODO: ignore progress index report
     localCount.incrementAndGet();
-    // TODO: update progress index
+
+    localCommitProgressIndex
+        .get()
+        .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex());
   }
 
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws Exception {
+    if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
+      LOGGER.warn(
+          "Ignored TsFileInsertionEvent is not an instance of PipeTsFileInsertionEvent: {}",
+          tsFileInsertionEvent);
+      return;
+    }
+
+    final PipeTsFileInsertionEvent event = (PipeTsFileInsertionEvent) tsFileInsertionEvent;
+    event.skipReportOnCommit();
+
+    if (!event.waitForTsFileClose()) {
+      LOGGER.warn("Ignored TsFileInsertionEvent is empty: {}", event);
+      return;
+    }
+
     // TODO: count the number of points in the TsFile
     localCount.incrementAndGet();
-    // TODO: update progress index
+
+    localCommitProgressIndex
+        .get()
+        .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex());
   }
 
   @Override
