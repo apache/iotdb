@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryCo
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.MappableUDFColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.MultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.TernaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -43,6 +44,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
 
 public class FilterAndProjectOperator implements ProcessOperator {
 
@@ -357,6 +359,13 @@ public class FilterAndProjectOperator implements ProcessOperator {
                   ((CaseWhenThenColumnTransformer) columnTransformer).getElseTransformer()));
       childMaxLevel = Math.max(childMaxLevel, childCount + 2);
       return childMaxLevel;
+    } else if (columnTransformer instanceof MultiColumnTransformer) {
+      int childrenCount = ((MultiColumnTransformer) columnTransformer).getChildren().size();
+      OptionalInt childMaxLevel =
+          ((MultiColumnTransformer) columnTransformer)
+              .getChildren().stream().mapToInt(this::getMaxLevelOfColumnTransformerTree).max();
+
+      return Math.max(childrenCount + 1, childMaxLevel.orElse(childrenCount + 1));
     } else {
       throw new UnsupportedOperationException("Unsupported ColumnTransformer");
     }

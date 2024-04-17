@@ -315,7 +315,7 @@ public class TableScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
-  protected List<TSDataType> getResultDataTypes() {
+  public List<TSDataType> getResultDataTypes() {
     List<TSDataType> resultDataTypes = new ArrayList<>(columnSchemas.size());
     for (ColumnSchema columnSchema : columnSchemas) {
       resultDataTypes.add(getTSDataType(columnSchema.getType()));
@@ -343,7 +343,22 @@ public class TableScanOperator extends AbstractDataSourceOperator {
   }
 
   private AlignedSeriesScanUtil constructAlignedSeriesScanUtil(DeviceEntry deviceEntry) {
+    AlignedPath alignedPath =
+        constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas);
 
+    return new AlignedSeriesScanUtil(
+        alignedPath,
+        scanOrder,
+        seriesScanOptions,
+        operatorContext.getInstanceContext(),
+        true,
+        measurementColumnTSDataTypes);
+  }
+
+  public static AlignedPath constructAlignedPath(
+      DeviceEntry deviceEntry,
+      List<String> measurementColumnNames,
+      List<IMeasurementSchema> measurementSchemas) {
     String[] devicePath = new String[1 + deviceEntry.getDeviceID().segmentNum()];
     devicePath[0] = "root";
     for (int i = 1; i < devicePath.length; i++) {
@@ -353,13 +368,6 @@ public class TableScanOperator extends AbstractDataSourceOperator {
 
     alignedPath.setMeasurementList(measurementColumnNames);
     alignedPath.setSchemaList(measurementSchemas);
-
-    return new AlignedSeriesScanUtil(
-        alignedPath,
-        scanOrder,
-        seriesScanOptions,
-        operatorContext.getInstanceContext(),
-        true,
-        measurementColumnTSDataTypes);
+    return alignedPath;
   }
 }

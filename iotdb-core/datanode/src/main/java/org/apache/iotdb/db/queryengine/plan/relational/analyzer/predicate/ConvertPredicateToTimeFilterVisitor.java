@@ -59,7 +59,7 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
       checkArgument(value instanceof LongLiteral);
     }
     if (values.size() == 1) {
-      TimeFilterApi.eq(((LongLiteral) values.get(0)).getParsedValue());
+      TimeFilterApi.eq(getLongValue(values.get(0)));
     }
     Set<Long> longValues = new HashSet<>();
     for (Expression value : values) {

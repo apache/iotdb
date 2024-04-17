@@ -35,6 +35,10 @@ public class ProjectNode extends SingleChildProcessNode {
     return null;
   }
 
+  public Assignments getAssignments() {
+    return assignments;
+  }
+
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {}
 

@@ -63,7 +63,7 @@ public class PredicatePushIntoScanChecker extends PredicateVisitor<Boolean, Void
   protected Boolean visitLikePredicate(LikePredicate node, Void context) {
     return isSymbolReference(node.getValue())
         && isLiteral(node.getPattern())
-        && node.getEscape().map(this::isLiteral).orElse(true);
+        && node.getEscape().map(PredicatePushIntoScanChecker::isLiteral).orElse(true);
   }
 
   @Override

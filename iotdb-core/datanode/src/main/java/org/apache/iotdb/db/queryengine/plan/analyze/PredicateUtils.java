@@ -40,6 +40,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.Convert
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicatePushIntoScanChecker;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicateSimplifier;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ReversePredicateVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -48,6 +50,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -293,14 +296,15 @@ public class PredicateUtils {
   public static Filter convertPredicateToFilter(
       org.apache.iotdb.db.relational.sql.tree.Expression predicate,
       List<String> allMeasurements,
-      TypeProvider typeProvider) {
+      Map<Symbol, ColumnSchema> schemaMap) {
     if (predicate == null) {
       return null;
     }
     return predicate.accept(
-        new ConvertPredicateToFilterVisitor(),
-        new ConvertPredicateToFilterVisitor.Context(
-            allMeasurements, isBuildPlanUseTemplate, typeProvider));
+        new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
+            .ConvertPredicateToFilterVisitor(),
+        new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
+            .ConvertPredicateToFilterVisitor.Context(allMeasurements, schemaMap));
   }
 
   /**
