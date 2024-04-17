@@ -73,6 +73,9 @@ public abstract class SubscriptionPrefetchingQueue {
     event.decreaseReferenceCount();
     event.recordCommittedTimestamp();
     uncommittedEvents.remove(commitContext);
+    if (this instanceof SubscriptionPrefetchingTsFileQueue) {
+      ((SubscriptionPrefetchingTsFileQueue) this).resetEventRef();
+    }
   }
 
   protected SubscriptionCommitContext generateSubscriptionCommitContext() {

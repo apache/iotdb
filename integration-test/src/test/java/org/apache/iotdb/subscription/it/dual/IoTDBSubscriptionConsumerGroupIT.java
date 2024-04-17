@@ -907,11 +907,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                   e.printStackTrace();
                   // Avoid failure
                 } finally {
-                  LOGGER.info(
-                      "consumer {} (consumer group {}) exiting...", consumerId, consumerGroupId);
+                  LOGGER.info("consumer {} exiting...", consumers.get(index));
                 }
               },
-              String.format("%s_%s", consumerId, consumerGroupId));
+              consumers.get(index).toString());
       t.start();
       threads.add(t);
     }

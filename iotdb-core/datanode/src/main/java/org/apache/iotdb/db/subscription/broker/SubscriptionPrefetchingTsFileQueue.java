@@ -228,4 +228,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   public void executePrefetch() {
     // do nothing now
   }
+
+  void resetEventRef() {
+    eventRef.set(null);
+  }
 }

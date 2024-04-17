@@ -89,6 +89,17 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     return consumerGroupId;
   }
 
+  /////////////////////////////// object ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionConsumer{consumerId="
+        + consumerId
+        + ", consumerGroupId="
+        + consumerGroupId
+        + "}";
+  }
+
   /////////////////////////////// tsfile dir ///////////////////////////////
 
   protected Path subscribedTsFileBaseDirPath;
@@ -100,7 +111,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     if (Objects.isNull(subscribedTsFileBaseDirPath)) {
       subscribedTsFileBaseDirPath =
           Files.createTempDirectory(
-              String.format("subscribedTsFile_%s_%s", consumerId, consumerGroupId));
+              String.format("subscribedTsFile_%s_%s#", consumerId, consumerGroupId));
     }
     final Path dirPath = subscribedTsFileBaseDirPath.resolve(topicName);
     Files.createDirectories(dirPath);

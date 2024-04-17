@@ -246,7 +246,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw");
     commitContextToTsFile.put(commitContext, new Pair<>(file, fileWriter));
 
-    LOGGER.info("start poll tsfile: {}", file.getAbsolutePath());
+    LOGGER.info("{} start poll tsfile: {}", this, file.getAbsolutePath());
 
     long endWritingOffset = 0;
     while (true) {
@@ -299,7 +299,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
               fileWriter.getFD().sync();
               fileWriter.close();
               commitContextToTsFile.remove(commitContext);
-              LOGGER.info("successfully poll tsfile: {}", file.getAbsolutePath());
+              LOGGER.info("{} successfully poll tsfile: {}", this, file.getAbsolutePath());
               // generate subscription message
               return new SubscriptionMessage(commitContext, file.getAbsolutePath());
             }
