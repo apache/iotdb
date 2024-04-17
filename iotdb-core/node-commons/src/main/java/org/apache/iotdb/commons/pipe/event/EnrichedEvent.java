@@ -29,6 +29,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -299,7 +300,7 @@ public abstract class EnrichedEvent implements Event {
       return false;
     }
     EnrichedEvent otherEvent = (EnrichedEvent) o;
-    return committerKey.equals(otherEvent.committerKey)
+    return Objects.equals(committerKey, otherEvent.committerKey)
         && commitId == otherEvent.commitId
         && rebootTimes == otherEvent.rebootTimes;
   }
