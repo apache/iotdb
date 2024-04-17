@@ -21,31 +21,27 @@ package org.apache.iotdb.confignode.manager.load.cache.region;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.TreeMap;
 
+/** RegionGroupStatistics indicates the statistics of a RegionGroup. */
 public class RegionGroupStatistics {
 
-  private volatile RegionGroupStatus regionGroupStatus;
+  private final RegionGroupStatus regionGroupStatus;
   private final Map<Integer, RegionStatistics> regionStatisticsMap;
-
-  public RegionGroupStatistics() {
-    this.regionStatisticsMap = new ConcurrentHashMap<>();
-  }
 
   public RegionGroupStatistics(
       RegionGroupStatus regionGroupStatus, Map<Integer, RegionStatistics> regionStatisticsMap) {
     this.regionGroupStatus = regionGroupStatus;
     this.regionStatisticsMap = regionStatisticsMap;
+  }
+
+  public static RegionGroupStatistics generateDefaultRegionGroupStatistics() {
+    return new RegionGroupStatistics(RegionGroupStatus.Disabled, new TreeMap<>());
   }
 
   public RegionGroupStatus getRegionGroupStatus() {
@@ -72,52 +68,24 @@ public class RegionGroupStatistics {
     return new ArrayList<>(regionStatisticsMap.keySet());
   }
 
-  public static RegionGroupStatistics generateDefaultRegionGroupStatistics() {
-    return new RegionGroupStatistics(RegionGroupStatus.Disabled, new ConcurrentHashMap<>());
-  }
-
-  public RegionGroupStatistics deepCopy() {
-    Map<Integer, RegionStatistics> deepCopyMap = new ConcurrentHashMap<>();
-    regionStatisticsMap.forEach(
-        (dataNodeId, regionStatistics) -> deepCopyMap.put(dataNodeId, regionStatistics.deepCopy()));
-    return new RegionGroupStatistics(regionGroupStatus, deepCopyMap);
-  }
-
-  public void serialize(OutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(regionGroupStatus.getStatus(), stream);
-
-    ReadWriteIOUtils.write(regionStatisticsMap.size(), stream);
-    for (Map.Entry<Integer, RegionStatistics> regionStatisticsEntry :
-        regionStatisticsMap.entrySet()) {
-      ReadWriteIOUtils.write(regionStatisticsEntry.getKey(), stream);
-      regionStatisticsEntry.getValue().serialize(stream);
+  /**
+   * Check if the current statistics is newer than the given one.
+   *
+   * @param o The other RegionGroupStatistics.
+   * @return True if one of the RegionStatistics in the current RegionGroupStatistics is newer than
+   *     the corresponding one in the other RegionGroupStatistics, or the current
+   *     RegionGroupStatistics contains newer Region's statistics, False otherwise.
+   */
+  public boolean isNewerThan(RegionGroupStatistics o) {
+    for (Integer dataNodeId : regionStatisticsMap.keySet()) {
+      if (!o.regionStatisticsMap.containsKey(dataNodeId)
+          || (regionStatisticsMap
+              .get(dataNodeId)
+              .isNewerThan(o.regionStatisticsMap.get(dataNodeId)))) {
+        return true;
+      }
     }
-  }
-
-  // Deserializer for snapshot
-  public void deserialize(InputStream inputStream) throws IOException {
-    this.regionGroupStatus = RegionGroupStatus.parse(ReadWriteIOUtils.readString(inputStream));
-
-    int regionNum = ReadWriteIOUtils.readInt(inputStream);
-    for (int i = 0; i < regionNum; i++) {
-      int belongedDataNodeId = ReadWriteIOUtils.readInt(inputStream);
-      RegionStatistics regionStatistics = new RegionStatistics();
-      regionStatistics.deserialize(inputStream);
-      regionStatisticsMap.put(belongedDataNodeId, regionStatistics);
-    }
-  }
-
-  // Deserializer for consensus-write
-  public void deserialize(ByteBuffer buffer) {
-    this.regionGroupStatus = RegionGroupStatus.parse(ReadWriteIOUtils.readString(buffer));
-
-    int regionNum = buffer.getInt();
-    for (int i = 0; i < regionNum; i++) {
-      int belongedDataNodeId = buffer.getInt();
-      RegionStatistics regionStatistics = new RegionStatistics();
-      regionStatistics.deserialize(buffer);
-      regionStatisticsMap.put(belongedDataNodeId, regionStatistics);
-    }
+    return false;
   }
 
   @Override

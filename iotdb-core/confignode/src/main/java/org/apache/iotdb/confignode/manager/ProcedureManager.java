@@ -654,7 +654,14 @@ public class ProcedureManager {
     // select coordinator for adding peer
     RegionMaintainHandler handler = new RegionMaintainHandler(configManager);
     final TDataNodeLocation coordinatorForAddPeer =
-        handler.filterDataNodeWithOtherRegionReplica(regionGroupId, destDataNode).orElse(null);
+        handler
+            .filterDataNodeWithOtherRegionReplica(
+                regionGroupId,
+                destDataNode,
+                NodeStatus.Running,
+                NodeStatus.Removing,
+                NodeStatus.ReadOnly)
+            .orElse(null);
     // Select coordinator for removing peer
     // For now, destDataNode temporarily acts as the coordinatorForRemovePeer
     final TDataNodeLocation coordinatorForRemovePeer = destDataNode;
@@ -675,10 +682,12 @@ public class ProcedureManager {
             coordinatorForAddPeer,
             coordinatorForRemovePeer));
     LOGGER.info(
-        "Submit RegionMigrateProcedure successfully, Region: {}, From: {}, To: {}",
-        migrateRegionReq.getRegionId(),
-        migrateRegionReq.getFromId(),
-        migrateRegionReq.getToId());
+        "Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}",
+        regionGroupId,
+        originalDataNode,
+        destDataNode,
+        coordinatorForAddPeer,
+        coordinatorForRemovePeer);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

@@ -20,46 +20,26 @@
 package org.apache.iotdb.confignode.manager.load.cache.region;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.confignode.manager.load.cache.AbstractStatistics;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class RegionStatistics {
+/** RegionStatistics indicates the statistics of a Region. */
+public class RegionStatistics extends AbstractStatistics {
 
-  private RegionStatus regionStatus;
+  private final RegionStatus regionStatus;
 
-  public RegionStatistics() {
-    // Empty constructor
+  public RegionStatistics(long statisticsNanoTimestamp, RegionStatus regionStatus) {
+    super(statisticsNanoTimestamp);
+    this.regionStatus = regionStatus;
   }
 
-  public RegionStatistics(RegionStatus regionStatus) {
-    this.regionStatus = regionStatus;
+  public static RegionStatistics generateDefaultRegionStatistics() {
+    return new RegionStatistics(0, RegionStatus.Unknown);
   }
 
   public RegionStatus getRegionStatus() {
     return regionStatus;
-  }
-
-  public RegionStatistics deepCopy() {
-    return new RegionStatistics(regionStatus);
-  }
-
-  public void serialize(OutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(regionStatus.getStatus(), stream);
-  }
-
-  // Deserializer for snapshot
-  public void deserialize(InputStream inputStream) throws IOException {
-    this.regionStatus = RegionStatus.parse(ReadWriteIOUtils.readString(inputStream));
-  }
-
-  // Deserializer for consensus-write
-  public void deserialize(ByteBuffer buffer) {
-    this.regionStatus = RegionStatus.parse(ReadWriteIOUtils.readString(buffer));
   }
 
   @Override

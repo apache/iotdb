@@ -2647,10 +2647,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public TPipeTransferResp handleTransferConfigPlan(TPipeTransferReq req) {
+  public TPipeTransferResp handleTransferConfigPlan(String clientId, TPipeTransferReq req) {
     final TPipeConfigTransferReq configTransferReq =
         new TPipeConfigTransferReq(
-            req.version, req.type, req.body, req instanceof AirGapPseudoTPipeTransferRequest);
+            req.version,
+            req.type,
+            req.body,
+            req instanceof AirGapPseudoTPipeTransferRequest,
+            clientId);
 
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -2666,6 +2670,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       return new TPipeTransferResp(
           new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
               .setMessage(e.toString()));
+    }
+  }
+
+  @Override
+  public void handlePipeConfigClientExit(String clientId) {
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSStatus status = configNodeClient.handlePipeConfigClientExit(clientId);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
+        LOGGER.warn("Failed to handlePipeConfigClientExit, status is {}.", status);
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Failed to handlePipeConfigClientExit.", e);
     }
   }
 }

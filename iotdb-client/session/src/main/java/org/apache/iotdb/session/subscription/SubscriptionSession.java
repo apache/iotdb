@@ -24,7 +24,8 @@ import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.subscription.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionParameterNotValidException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionConnection;
 import org.apache.iotdb.session.subscription.model.Subscription;
@@ -35,6 +36,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -55,15 +57,17 @@ public class SubscriptionSession extends Session {
             .username(username)
             .password(password)
             // disable auto fetch
-            .enableAutoFetch(false));
+            .enableAutoFetch(false)
+            // disable redirection
+            .enableRedirection(false));
   }
 
   @Override
   public SessionConnection constructSessionConnection(
       Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
-    if (endpoint == null) {
-      return new SubscriptionSessionConnection(
-          session, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
+    if (Objects.isNull(endpoint)) {
+      throw new SubscriptionParameterNotValidException(
+          "Subscription session must be configured with an endpoint.");
     }
     return new SubscriptionSessionConnection(
         session, endpoint, zoneId, availableNodes, maxRetryCount, retryIntervalInMs);
@@ -77,14 +81,14 @@ public class SubscriptionSession extends Session {
     executeNonQueryStatement(sql);
   }
 
-  public void createTopic(String topicName, Properties config)
+  public void createTopic(String topicName, Properties properties)
       throws IoTDBConnectionException, StatementExecutionException {
-    if (config.isEmpty()) {
+    if (properties.isEmpty()) {
       createTopic(topicName);
     }
     final StringBuilder sb = new StringBuilder();
     sb.append('(');
-    config.forEach(
+    properties.forEach(
         (k, v) ->
             sb.append('\'')
                 .append(k)

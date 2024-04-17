@@ -41,15 +41,11 @@ import java.util.List;
  */
 public class TsFilePlanRedoer {
   private final TsFileResource tsFileResource;
-  // only unsequence file tolerates duplicated data
-  private final boolean sequence;
-
   // store data when redoing logs
   private IMemTable recoveryMemTable;
 
-  public TsFilePlanRedoer(TsFileResource tsFileResource, boolean sequence) {
+  public TsFilePlanRedoer(TsFileResource tsFileResource) {
     this.tsFileResource = tsFileResource;
-    this.sequence = sequence;
     this.recoveryMemTable =
         new PrimitiveMemTable(tsFileResource.getDatabaseName(), tsFileResource.getDataRegionId());
     WritingMetrics.getInstance().recordActiveMemTableCount(tsFileResource.getDataRegionId(), 1);
@@ -89,7 +85,7 @@ public class TsFilePlanRedoer {
       } else {
         minTimeInNode = ((InsertTabletNode) node).getTimes()[0];
       }
-      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTimeInNode && sequence) {
+      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTimeInNode) {
         return;
       }
     }

@@ -169,7 +169,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     recoverMemoryStatus = true;
     LOGGER.info(
         "{}-{} [Compaction] {} InnerSpaceCompaction task starts with {} files, "
-            + "total file size is {} MB, memory cost is {} MB",
+            + "total file size is {} MB, estimated memory cost is {} MB",
         storageGroupName,
         dataRegionId,
         sequence ? "Sequence" : "Unsequence",
@@ -492,6 +492,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           return -1;
         }
         innerSpaceEstimator.cleanup();
+        // This exception may be caused by drop database
+        if (!tsFileManager.isAllowCompaction()) {
+          return -1;
+        }
         LOGGER.error("Meet error when estimate inner compaction memory", e);
         return -1;
       }

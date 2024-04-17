@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
-import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
@@ -43,6 +41,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.StopReadTsFileByInterruptException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -167,7 +166,9 @@ public abstract class AbstractCompactionTask {
           resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
         }
       }
-    } else if (e instanceof InterruptedException) {
+    } else if (e instanceof InterruptedException
+        || Thread.interrupted()
+        || e instanceof StopReadTsFileByInterruptException) {
       logger.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
       Thread.currentThread().interrupt();
     } else {
@@ -319,9 +320,11 @@ public abstract class AbstractCompactionTask {
         dataRegionId,
         this,
         e);
-    tsFileManager.setAllowCompaction(false);
-    LOGGER.error("stop compaction because of exception during recovering");
-    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+    // Do not set allow compaction to false here. To keep the error environment, mark all source
+    // files in memory to avoid compaction.
+    for (TsFileResource sourceTsFileResource : getAllSourceTsFiles()) {
+      sourceTsFileResource.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
+    }
   }
 
   protected void insertFilesToTsFileManager(List<TsFileResource> tsFiles) throws IOException {
