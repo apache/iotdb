@@ -50,6 +50,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -61,6 +62,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -78,6 +80,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
 
   private PartialPath outputSeries;
 
+  private static final String LOCAL_COUNT_STATE_KEY = "count";
   private final AtomicLong localCount = new AtomicLong(0);
   private final AtomicReference<ProgressIndex> localCommitProgressIndex =
       new AtomicReference<>(MinimumProgressIndex.INSTANCE);
@@ -102,6 +105,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Illegal output series path: " + rawOutputSeries);
     }
+
+    // TODO: injection interval validation
   }
 
   @Override
@@ -122,16 +127,24 @@ public class TwoStageCountProcessor implements PipeProcessor {
         pipeTaskMeta.updateProgressIndex(
             new StateProgressIndex(new HashMap<>(), MinimumProgressIndex.INSTANCE));
       }
-      localCommitProgressIndex.set(pipeTaskMeta.getProgressIndex());
+
+      final StateProgressIndex stateProgressIndex =
+          (StateProgressIndex) pipeTaskMeta.getProgressIndex();
+      localCommitProgressIndex.set(stateProgressIndex.getInnerProgressIndex());
+      final Binary localCountState = stateProgressIndex.getState().get(LOCAL_COUNT_STATE_KEY);
+      localCount.set(
+          Objects.isNull(localCountState) ? 0 : Long.parseLong(localCountState.toString()));
     }
     LOGGER.info(
-        "TwoStageCountProcessor customized by thread {}: pipeName={}, creationTime={}, regionId={}, outputSeries={}, progressIndex={}",
+        "TwoStageCountProcessor customized by thread {}: pipeName={}, creationTime={}, regionId={}, outputSeries={}, "
+            + "localCommitProgressIndex={}, localCount={}",
         Thread.currentThread().getName(),
         pipeName,
         creationTime,
         regionId,
         outputSeries,
-        localCommitProgressIndex.get());
+        localCommitProgressIndex.get(),
+        localCount.get());
 
     twoStageAggregateSender = new TwoStageAggregateSender();
     PipeCombineHandlerManager.getInstance()
@@ -145,6 +158,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
     // TODO: count the number of given points in the tablet
     // TODO: ignore progress index report
     localCount.incrementAndGet();
+    // TODO: update progress index
   }
 
   @Override
@@ -152,6 +166,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
       throws Exception {
     // TODO: count the number of points in the TsFile
     localCount.incrementAndGet();
+    // TODO: update progress index
   }
 
   @Override
@@ -217,7 +232,11 @@ public class TwoStageCountProcessor implements PipeProcessor {
                       localCommitQueue.add(pair);
                       return;
                     case SUCCESS:
-                      pipeTaskMeta.updateProgressIndex(pair.right);
+                      final Map<String, Binary> state = new HashMap<>();
+                      state.put(
+                          LOCAL_COUNT_STATE_KEY,
+                          new Binary(Long.toString(pair.left[1]).getBytes()));
+                      pipeTaskMeta.updateProgressIndex(new StateProgressIndex(state, pair.right));
                       return;
                     default:
                       throw new PipeException("Unknown combine result type: " + resultType);

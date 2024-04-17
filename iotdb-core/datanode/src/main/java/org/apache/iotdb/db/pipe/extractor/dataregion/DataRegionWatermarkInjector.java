@@ -21,7 +21,12 @@ package org.apache.iotdb.db.pipe.extractor.dataregion;
 
 import org.apache.iotdb.db.pipe.event.common.watermark.PipeWatermarkEvent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class DataRegionWatermarkInjector {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataRegionWatermarkInjector.class);
 
   public static final long MIN_INJECTION_INTERVAL_IN_MS = 1000 * 60 * 5; // 5 minutes
 
@@ -49,9 +54,15 @@ public class DataRegionWatermarkInjector {
       return null;
     }
 
-    final PipeWatermarkEvent watermarkEvent = new PipeWatermarkEvent(nextInjectionTime);
-    nextInjectionTime = calculateNextInjectionTime(injectionIntervalInMs);
-    return watermarkEvent;
+    try {
+      final PipeWatermarkEvent watermarkEvent = new PipeWatermarkEvent(nextInjectionTime);
+      nextInjectionTime = calculateNextInjectionTime(injectionIntervalInMs);
+      return watermarkEvent;
+    } finally {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Injected watermark event with timestamp: {}", nextInjectionTime);
+      }
+    }
   }
 
   private static long calculateNextInjectionTime(long injectionIntervalInMs) {

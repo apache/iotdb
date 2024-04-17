@@ -47,6 +47,14 @@ public class StateProgressIndex extends ProgressIndex {
     this.innerProgressIndex = innerProgressIndex;
   }
 
+  public ProgressIndex getInnerProgressIndex() {
+    return innerProgressIndex;
+  }
+
+  public Map<String, Binary> getState() {
+    return state;
+  }
+
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     lock.readLock().lock();
