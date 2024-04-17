@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.iotdb.tsfile.utils.UnsynchronizedPublicBAOS;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +54,7 @@ public class TimePageWriter {
   private TimeStatistics statistics;
 
   public TimePageWriter(Encoder timeEncoder, ICompressor compressor) {
-    this.timeOut = new UnsynchronizedPublicBAOS();
+    this.timeOut = new PublicBAOS();
     this.timeEncoder = timeEncoder;
     this.statistics = new TimeStatistics();
     this.compressor = compressor;

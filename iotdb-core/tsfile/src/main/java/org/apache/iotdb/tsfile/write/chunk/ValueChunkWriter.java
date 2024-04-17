@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.iotdb.tsfile.utils.UnsynchronizedPublicBAOS;
 import org.apache.iotdb.tsfile.write.page.ValuePageWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -94,7 +93,7 @@ public class ValueChunkWriter {
     this.encodingType = encodingType;
     this.dataType = dataType;
     this.compressionType = compressionType;
-    this.pageBuffer = new UnsynchronizedPublicBAOS();
+    this.pageBuffer = new PublicBAOS();
     this.pageSizeThreshold = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.maxNumberOfPointsInPage =
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();

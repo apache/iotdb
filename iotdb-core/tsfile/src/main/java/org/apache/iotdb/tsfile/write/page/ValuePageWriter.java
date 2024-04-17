@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.iotdb.tsfile.utils.UnsynchronizedPublicBAOS;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,10 +64,10 @@ public class ValuePageWriter {
   private static final int MASK = 1 << 7;
 
   public ValuePageWriter(Encoder valueEncoder, ICompressor compressor, TSDataType dataType) {
-    this.valueOut = new UnsynchronizedPublicBAOS();
+    this.valueOut = new PublicBAOS();
     this.bitmap = 0;
     this.size = 0;
-    this.bitmapOut = new UnsynchronizedPublicBAOS();
+    this.bitmapOut = new PublicBAOS();
     this.valueEncoder = valueEncoder;
     this.statistics = Statistics.getStatsByType(dataType);
     this.compressor = compressor;

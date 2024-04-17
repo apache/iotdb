@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.iotdb.tsfile.utils.UnsynchronizedPublicBAOS;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
@@ -72,8 +71,8 @@ public class PageWriter {
   }
 
   private PageWriter(Encoder timeEncoder, Encoder valueEncoder) {
-    this.timeOut = new UnsynchronizedPublicBAOS();
-    this.valueOut = new UnsynchronizedPublicBAOS();
+    this.timeOut = new PublicBAOS();
+    this.valueOut = new PublicBAOS();
     this.timeEncoder = timeEncoder;
     this.valueEncoder = valueEncoder;
   }

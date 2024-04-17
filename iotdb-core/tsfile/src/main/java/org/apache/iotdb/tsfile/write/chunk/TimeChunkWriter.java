@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.iotdb.tsfile.utils.UnsynchronizedPublicBAOS;
 import org.apache.iotdb.tsfile.write.page.TimePageWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -89,7 +88,7 @@ public class TimeChunkWriter {
     this.measurementId = measurementId;
     this.encodingType = encodingType;
     this.compressionType = compressionType;
-    this.pageBuffer = new UnsynchronizedPublicBAOS();
+    this.pageBuffer = new PublicBAOS();
 
     this.pageSizeThreshold = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.maxNumberOfPointsInPage =
