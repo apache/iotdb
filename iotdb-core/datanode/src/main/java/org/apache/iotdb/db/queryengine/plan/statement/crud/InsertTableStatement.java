@@ -21,8 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
@@ -34,28 +37,53 @@ import org.apache.iotdb.db.relational.sql.tree.Values;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 
-public class InsertTableStatement extends Statement {
+public class InsertTableStatement extends Statement implements ITableDeviceSchemaValidation {
+
+  private final String database;
+
+  private final String table;
+
+  private List<String[]> deviceIdList;
+
+  private List<String> attributeNameList;
+
+  private List<List<String>> attributeValueList;
 
   private final InsertRowStatement insertRowStatement;
 
   public InsertTableStatement(IClientSession clientSession, Insert insert) {
-    insertRowStatement = parseInsert(clientSession, insert);
+    this.database = parseDatabase(clientSession, insert);
+    this.table = parseTable(insert);
+    insertRowStatement = parseInsert(insert);
   }
 
-  private InsertRowStatement parseInsert(IClientSession clientSession, Insert insert) {
-    InsertRowStatement insertStatement = new InsertRowStatement();
+  private String parseDatabase(IClientSession clientSession, Insert insert) {
     String database = clientSession.getDatabaseName();
     if (database == null) {
       database = insert.getTable().getName().getPrefix().get().getSuffix();
     }
-    String tableName = insert.getTable().getName().getSuffix().toString();
+    return database;
+  }
+
+  private String parseTable(Insert insert) {
+    return insert.getTable().getName().getSuffix().toString();
+  }
+
+  private InsertRowStatement parseInsert(Insert insert) {
+    InsertRowStatement insertStatement = new InsertRowStatement();
+    String tableName = table;
     TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
     List<Expression> values =
         ((Row) (((Values) (insert.getQuery().getQueryBody())).getRows().get(0))).getItems();
@@ -88,6 +116,8 @@ public class InsertTableStatement extends Statement {
     deviceIds[2] = tableName;
     String[] measurements = new String[measurementColumnMap.size()];
     Object[] valueList = new Object[measurements.length];
+    MeasurementSchema[] schemas = new MeasurementSchema[measurements.length];
+    TSDataType[] dataTypes = new TSDataType[measurements.length];
     int idIndex = 0;
     int measurementIndex = 0;
     for (int i = 0; i < table.getColumnNum(); i++) {
@@ -101,10 +131,21 @@ public class InsertTableStatement extends Statement {
         if (measurementColumnMap.containsKey(measurement)) {
           measurements[measurementIndex] = measurement;
           valueList[measurementIndex] = measurementColumnMap.get(measurement);
+          schemas[measurementIndex] =
+              ((MeasurementColumnSchema) table.getColumnList().get(i)).getMeasurementSchema();
+          dataTypes[measurementIndex] = schemas[measurementIndex].getType();
           measurementIndex++;
         }
       }
     }
+
+    this.deviceIdList =
+        Collections.singletonList(Arrays.copyOfRange(deviceIds, 3, deviceIds.length));
+    this.attributeNameList = new ArrayList<>(attrColumnMap.keySet());
+    this.attributeValueList =
+        Collections.singletonList(
+            attributeNameList.stream().map(attrColumnMap::get).collect(Collectors.toList()));
+
     insertStatement.setDevicePath(new PartialPath(deviceIds));
     TimestampPrecisionUtils.checkTimestampPrecision(time);
     insertStatement.setTime(time);
@@ -113,6 +154,16 @@ public class InsertTableStatement extends Statement {
     insertStatement.setValues(valueList);
     insertStatement.setNeedInferType(true);
     insertStatement.setAligned(true);
+    insertStatement.setMeasurementSchemas(schemas);
+    insertStatement.setDataTypes(dataTypes);
+    try {
+      for (int i = 0; i < measurements.length; i++) {
+        insertStatement.selfCheckDataTypes(i);
+      }
+      insertStatement.updateAfterSchemaValidation();
+    } catch (Exception e) {
+      throw new SemanticException(e);
+    }
     return insertStatement;
   }
 
@@ -128,5 +179,30 @@ public class InsertTableStatement extends Statement {
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertTable(this, context);
+  }
+
+  @Override
+  public String getDatabase() {
+    return database;
+  }
+
+  @Override
+  public String getTableName() {
+    return table;
+  }
+
+  @Override
+  public List<String[]> getDeviceIdList() {
+    return deviceIdList;
+  }
+
+  @Override
+  public List<String> getAttributeColumnNameList() {
+    return attributeNameList;
+  }
+
+  @Override
+  public List<List<String>> getAttributeValue() {
+    return attributeValueList;
   }
 }

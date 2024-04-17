@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
@@ -48,9 +49,11 @@ public class TableMetadataImpl implements Metadata {
 
   private final TypeManager typeManager = new InternalTypeManager();
 
+  private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
+
   @Override
   public boolean tableExists(QualifiedObjectName name) {
-    return false;
+    return tableCache.getTable(name.getDatabaseName(), name.getObjectName()) != null;
   }
 
   @Override

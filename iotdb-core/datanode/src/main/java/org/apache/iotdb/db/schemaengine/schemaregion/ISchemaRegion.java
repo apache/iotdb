@@ -293,6 +293,16 @@ public interface ISchemaRegion {
 
   // endregion
 
+  // region table device management
+
+  void createTableDevice(
+      List<PartialPath> devicePathList,
+      List<String> attributeNameList,
+      List<List<String>> attributeValueList)
+      throws MetadataException;
+
+  // endregion
+
   // region Interfaces for SchemaReader
 
   ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)

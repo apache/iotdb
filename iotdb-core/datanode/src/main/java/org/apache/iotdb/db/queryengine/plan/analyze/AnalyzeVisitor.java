@@ -79,6 +79,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByVariationParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.TableModelSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -105,6 +106,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTableStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.CreateTableDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
@@ -2720,6 +2722,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private void validateSchema(
       Analysis analysis, InsertBaseStatement insertStatement, MPPQueryContext context) {
+    if (context.isSkipSchemaValidate()) {
+      return;
+    }
     final long startTime = System.nanoTime();
     try {
       SchemaValidator.validate(schemaFetcher, insertStatement, context);
@@ -3652,20 +3657,47 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
     InsertRowStatement insertRowStatement = insertTableStatement.getInsertRowStatement();
-    validateSchema(analysis, insertRowStatement, context);
+
+    final long startTime = System.nanoTime();
+    try {
+      TableModelSchemaFetcher.getInstance().validateDeviceSchema(insertTableStatement, context);
+    } catch (SemanticException e) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      if (e.getCause() instanceof IoTDBException) {
+        IoTDBException exception = (IoTDBException) e.getCause();
+        analysis.setFailStatus(
+            RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
+      } else {
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
+      }
+    } finally {
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleSchemaValidateCost(System.nanoTime() - startTime);
+    }
+
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
-    analysis.setStatement(insertRowStatement);
+    context.setSkipSchemaValidate(true);
+    return insertRowStatement.accept(this, context);
+  }
 
-    DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-    dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
-    dataPartitionQueryParam.setTimePartitionSlotList(
-        Collections.singletonList(insertRowStatement.getTimePartitionSlot()));
+  @Override
+  public Analysis visitCreateTableDevice(
+      CreateTableDeviceStatement createTableDeviceStatement, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(createTableDeviceStatement);
 
-    return getAnalysisForWriting(
-        analysis,
-        Collections.singletonList(dataPartitionQueryParam),
-        context.getSession().getUserName());
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath devicePath : createTableDeviceStatement.getPaths()) {
+      patternTree.appendFullPath(devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
+    }
+    SchemaPartition partition =
+        partitionFetcher.getOrCreateSchemaPartition(
+            patternTree, context.getSession().getUserName());
+
+    analysis.setSchemaPartitionInfo(partition);
+
+    return analysis;
   }
 }

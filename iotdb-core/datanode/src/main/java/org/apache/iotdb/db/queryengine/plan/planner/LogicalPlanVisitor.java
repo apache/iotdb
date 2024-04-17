@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Alt
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
@@ -67,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.CreateTableDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
@@ -1009,5 +1011,15 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         .planOffset(showLogicalViewStatement.getOffset())
         .planLimit(showLogicalViewStatement.getLimit())
         .getRoot();
+  }
+
+  @Override
+  public PlanNode visitCreateTableDevice(
+      CreateTableDeviceStatement createTableDeviceStatement, MPPQueryContext context) {
+    return new CreateTableDeviceNode(
+        context.getQueryId().genPlanNodeId(),
+        createTableDeviceStatement.getPaths(),
+        createTableDeviceStatement.getAttributeNameList(),
+        createTableDeviceStatement.getAttributeValueList());
   }
 }

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTableStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.CreateTableDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
@@ -604,5 +605,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitInsertTable(InsertTableStatement insertTableStatement, C context) {
     return visitStatement(insertTableStatement, context);
+  }
+
+  public R visitCreateTableDevice(
+      CreateTableDeviceStatement createTableDeviceStatement, C context) {
+    return visitStatement(createTableDeviceStatement, context);
   }
 }

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Bat
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
@@ -551,6 +552,10 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitTopK(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitCreateTableDevice(CreateTableDeviceNode node, C context) {
     return visitPlan(node, context);
   }
 }

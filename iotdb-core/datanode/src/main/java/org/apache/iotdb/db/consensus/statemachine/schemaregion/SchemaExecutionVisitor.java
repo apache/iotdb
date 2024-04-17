@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Bat
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
@@ -518,6 +519,18 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   public TSStatus visitDeleteLogicalView(DeleteLogicalViewNode node, ISchemaRegion schemaRegion) {
     try {
       schemaRegion.deleteLogicalView(node.getPatternTree());
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (MetadataException e) {
+      logger.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus visitCreateTableDevice(CreateTableDeviceNode node, ISchemaRegion schemaRegion) {
+    try {
+      schemaRegion.createTableDevice(
+          node.getDevicePathList(), node.getAttributeNameList(), node.getAttributeValueList());
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (MetadataException e) {
       logger.error(e.getMessage(), e);

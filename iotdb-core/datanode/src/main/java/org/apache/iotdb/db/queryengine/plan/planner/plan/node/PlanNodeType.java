@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Bat
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
@@ -209,6 +210,8 @@ public enum PlanNodeType {
   EXPLAIN_ANALYZE((short) 90),
 
   PIPE_OPERATE_SCHEMA_QUEUE_REFERENCE((short) 91),
+
+  CREATE_TABLE_DEVICE((short) 92),
   ;
 
   public static final int BYTES = Short.BYTES;
@@ -440,6 +443,8 @@ public enum PlanNodeType {
         return ExplainAnalyzeNode.deserialize(buffer);
       case 91:
         return PipeOperateSchemaQueueNode.deserialize(buffer);
+      case 92:
+        return CreateTableDeviceNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
