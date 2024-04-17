@@ -108,7 +108,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   private final Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap;
 
   // The interval of retrying to balance ratis leader after the last failed time
-  private static final long BALANCE_RATIS_LEADER_FAILED_INTERVAL = 60 * 1000L;
+  private static final long BALANCE_RATIS_LEADER_FAILED_INTERVAL_IN_NS = 60 * 1000L * 1000L * 1000L;
   private final Map<TConsensusGroupId, Long> lastFailedTimeForLeaderBalance;
 
   public RouteBalancer(IManager configManager) {
@@ -175,7 +175,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
         (regionGroupId, newLeaderId) -> {
           if (ConsensusFactory.RATIS_CONSENSUS.equals(consensusProtocolClass)
               && currentTime - lastFailedTimeForLeaderBalance.getOrDefault(regionGroupId, 0L)
-                  > BALANCE_RATIS_LEADER_FAILED_INTERVAL) {
+                  <= BALANCE_RATIS_LEADER_FAILED_INTERVAL_IN_NS) {
             return;
           }
 
@@ -283,13 +283,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     }
 
     if (needBroadcast.get()) {
-      priorityMapLock.readLock().lock();
-      try {
-        broadcastLatestRegionPriorityMap();
-        recordRegionPriorityMap(differentPriorityMap);
-      } finally {
-        priorityMapLock.readLock().unlock();
-      }
+      recordRegionPriorityMap(differentPriorityMap);
+      broadcastLatestRegionPriorityMap();
     }
   }
 
@@ -304,10 +299,11 @@ public class RouteBalancer implements IClusterStatusSubscriber {
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
 
     long broadcastTime = System.currentTimeMillis();
+    Map<TConsensusGroupId, TRegionReplicaSet> tmpPriorityMap = getRegionPriorityMap();
     AsyncClientHandler<TRegionRouteReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
             DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
-            new TRegionRouteReq(broadcastTime, regionPriorityMap),
+            new TRegionRouteReq(broadcastTime, tmpPriorityMap),
             dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
   }
