@@ -36,6 +36,7 @@ public class PipeEventCommitter {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitter.class);
 
   private final String pipeName;
+  private final long creationTime;
   private final int dataRegionId;
 
   private final AtomicLong commitIdGenerator = new AtomicLong(0);
@@ -48,9 +49,10 @@ public class PipeEventCommitter {
               event ->
                   Objects.requireNonNull(event, "committable event cannot be null").getCommitId()));
 
-  PipeEventCommitter(String pipeName, int dataRegionId) {
+  PipeEventCommitter(String pipeName, long creationTime, int dataRegionId) {
     // make it package-private
     this.pipeName = pipeName;
+    this.creationTime = creationTime;
     this.dataRegionId = dataRegionId;
   }
 
@@ -66,9 +68,11 @@ public class PipeEventCommitter {
 
       if (e.getCommitId() <= lastCommitId.get()) {
         LOGGER.warn(
-            "commit id must be monotonically increasing, lastCommitId: {}, event: {}",
+            "commit id must be monotonically increasing, current commit id: {}, last commit id: {}, event: {}, stack trace: {}",
+            e.getCommitId(),
             lastCommitId.get(),
-            e);
+            e.coreReportMessage(),
+            Thread.currentThread().getStackTrace());
         commitQueue.poll();
         continue;
       }
@@ -87,6 +91,11 @@ public class PipeEventCommitter {
 
   public String getPipeName() {
     return pipeName;
+  }
+
+  // TODO: waiting called by PipeEventCommitMetrics
+  public long getCreationTime() {
+    return creationTime;
   }
 
   public int getDataRegionId() {

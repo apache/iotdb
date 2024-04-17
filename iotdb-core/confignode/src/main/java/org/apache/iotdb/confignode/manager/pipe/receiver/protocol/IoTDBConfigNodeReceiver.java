@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeReques
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
-import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -89,12 +88,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
   private static final AtomicInteger QUERY_ID_GENERATOR = new AtomicInteger(0);
 
-  private final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
-
-  private static final PipeConfigPhysicalPlanTSStatusVisitor statusVisitor =
+  private static final PipeConfigPhysicalPlanTSStatusVisitor STATUS_VISITOR =
       new PipeConfigPhysicalPlanTSStatusVisitor();
-  private static final PipeConfigPhysicalPlanExceptionVisitor exceptionVisitor =
+  private static final PipeConfigPhysicalPlanExceptionVisitor EXCEPTION_VISITOR =
       new PipeConfigPhysicalPlanExceptionVisitor();
+
+  private final ConfigManager configManager = ConfigNode.getInstance().getConfigManager();
 
   @Override
   public TPipeTransferResp receive(final TPipeTransferReq req) {
@@ -136,19 +135,23 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TYPE_ERROR,
               String.format("Unsupported PipeRequestType on ConfigNode %s.", rawRequestType));
-      LOGGER.warn("Unsupported PipeRequestType on ConfigNode, response status = {}.", status);
+      LOGGER.warn(
+          "Receiver id = {}: Unsupported PipeRequestType on ConfigNode, response status = {}.",
+          receiverId.get(),
+          status);
       return new TPipeTransferResp(status);
     } catch (Exception e) {
       final String error =
           "Exception encountered while handling pipe transfer request. Root cause: "
               + e.getMessage();
-      LOGGER.warn(error, e);
+      LOGGER.warn("Receiver id = {}: {}", receiverId.get(), error, e);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
   }
 
-  // This indicates that the client from DataNode to ConfigNode is newly created and
-  // thus the sender needs to re-handshake to notify its configurations.
+  // This indicates that the client from DataNode to ConfigNode is newly created,
+  // mainly because the receiver has changed its leader, and thus the sender needs to re-handshake
+  // to notify its configurations.
   // Note that the sender needs not to reconstruct its client because the client
   // is directly linked to the preceding DataNode and has not broken.
   private boolean needHandshake(PipeRequestType type) {
@@ -168,12 +171,20 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     try {
       result = executePlan(plan);
       if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn("Failure status encountered while executing plan {}: {}", plan, result);
-        result = statusVisitor.process(plan, result);
+        LOGGER.warn(
+            "Receiver id = {}: Failure status encountered while executing plan {}: {}",
+            receiverId.get(),
+            plan,
+            result);
+        result = STATUS_VISITOR.process(plan, result);
       }
     } catch (Exception e) {
-      LOGGER.warn("Exception encountered while executing plan {}: ", plan, e);
-      result = exceptionVisitor.process(plan, e);
+      LOGGER.warn(
+          "Receiver id = {}: Exception encountered while executing plan {}: ",
+          receiverId.get(),
+          plan,
+          e);
+      result = EXCEPTION_VISITOR.process(plan, e);
     }
     return result;
   }
@@ -181,13 +192,6 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   private TSStatus executePlan(ConfigPhysicalPlan plan) throws ConsensusException {
     switch (plan.getType()) {
       case CreateDatabase:
-        if (((DatabaseSchemaPlan) plan)
-            .getSchema()
-            .getName()
-            .equals(SchemaConstant.SYSTEM_DATABASE)) {
-          // System database doesn't need transferring
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        }
         // Here we only reserve database name and substitute the sender's local information
         // with the receiver's default configurations
         TDatabaseSchema schema = ((DatabaseSchemaPlan) plan).getSchema();

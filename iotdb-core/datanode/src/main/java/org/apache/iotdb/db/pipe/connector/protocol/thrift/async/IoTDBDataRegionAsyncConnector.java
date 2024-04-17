@@ -99,6 +99,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     retryConnector.validate(validator);
 
     final PipeParameters parameters = validator.getParameters();
+
     validator.validate(
         args -> !((boolean) args[0] || (boolean) args[1] || (boolean) args[2]),
         "Only 'iotdb-thrift-ssl-sink' supports SSL transmission currently.",
@@ -124,7 +125,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             nodeUrls,
             parameters.getBooleanOrDefault(
                 Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
-                CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE));
+                CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE),
+            loadBalanceStrategy);
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new IoTDBThriftAsyncPipeTransferBatchReqBuilder(parameters);
@@ -168,6 +170,15 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
             (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
+        // We increase the reference count for this event to determine if the event may be released.
+        if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+            IoTDBDataRegionAsyncConnector.class.getName())) {
+          LOGGER.error(
+              "PipeInsertNodeTabletInsertionEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
+              pipeInsertNodeTabletInsertionEvent.coreReportMessage());
+          return;
+        }
+
         final InsertNode insertNode =
             pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
         final TPipeTransferReq pipeTransferReq =
@@ -183,6 +194,15 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
         final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
             (PipeRawTabletInsertionEvent) tabletInsertionEvent;
+        // We increase the reference count for this event to determine if the event may be released.
+        if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
+            IoTDBDataRegionAsyncConnector.class.getName())) {
+          LOGGER.error(
+              "PipeRawTabletInsertionEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
+              pipeRawTabletInsertionEvent.coreReportMessage());
+          return;
+        }
+
         final PipeTransferTabletRawReq pipeTransferTabletRawReq =
             PipeTransferTabletRawReq.toTPipeTransferReq(
                 pipeRawTabletInsertionEvent.convertToTablet(),
@@ -243,6 +263,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
     final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeTsFileInsertionEvent.increaseReferenceCount(
+        IoTDBDataRegionAsyncConnector.class.getName())) {
+      LOGGER.error(
+          "PipeTsFileInsertionEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
+          pipeTsFileInsertionEvent.coreReportMessage());
+      return;
+    }
 
     // Just in case. To avoid the case that exception occurred when constructing the handler.
     if (!pipeTsFileInsertionEvent.getTsFile().exists()) {
