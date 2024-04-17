@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.subscription.meta.consumer;
 
-import org.apache.iotdb.commons.subscription.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -38,7 +38,7 @@ public class ConsumerMeta {
   private long creationTime;
   private ConsumerConfig config;
 
-  public ConsumerMeta() {
+  private ConsumerMeta() {
     // Empty constructor
   }
 

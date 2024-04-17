@@ -100,7 +100,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
@@ -271,14 +270,6 @@ public interface IManager {
    * @return {@link TSStatusCode#SUCCESS_STATUS} if reporting successfully
    */
   TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation);
-
-  /**
-   * DataNode report region migrate result to ConfigNode when remove DataNode.
-   *
-   * @param req TRegionMigrateResultReportReq
-   * @return TSStatus
-   */
-  TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req);
 
   /**
    * Get DataNode info.
@@ -647,6 +638,13 @@ public interface IManager {
    * @return The result of the command execution.
    */
   TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req);
+
+  /**
+   * Execute the config req received from pipe.
+   *
+   * @return The result of handling.
+   */
+  TSStatus handleClientExit(String clientId);
 
   /** Create Topic. */
   TSStatus createTopic(TCreateTopicReq topic);

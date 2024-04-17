@@ -343,7 +343,7 @@ public class FragmentInstanceExecution {
               + File.separator;
       File tmpFile = new File(tmpFilePath);
       if (tmpFile.exists()) {
-        FileUtils.deleteDirectory(tmpFile);
+        FileUtils.deleteFileOrDirectory(tmpFile);
       }
     }
   }

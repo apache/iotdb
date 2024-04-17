@@ -33,6 +33,8 @@ public interface BaseNodeWrapper {
 
   void stopForcibly();
 
+  boolean isAlive();
+
   String getIp();
 
   int getPort();

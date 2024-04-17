@@ -130,6 +130,7 @@ struct TDataNodeRestartResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional TRuntimeConfiguration runtimeConfiguration
+  4: optional list<common.TConsensusGroupId> consensusGroupIds
 }
 
 struct TDataNodeRemoveReq {
@@ -139,12 +140,6 @@ struct TDataNodeRemoveReq {
 struct TDataNodeRemoveResp {
   1: required common.TSStatus status
   2: optional map<common.TDataNodeLocation, common.TSStatus> nodeToStatus
-}
-
-struct TRegionMigrateResultReportReq {
-  1: required common.TConsensusGroupId regionId
-  2: required common.TSStatus migrateResult
-  3: optional map<common.TDataNodeLocation, common.TRegionMigrateFailedType> failedNodeAndReason
 }
 
 struct TDataNodeConfigurationResp {
@@ -735,6 +730,7 @@ struct TPipeConfigTransferReq {
   2: required i16 type
   3: required binary body
   4: required bool isAirGap
+  5: required string clientId
 }
 
 struct TPipeConfigTransferResp {
@@ -986,9 +982,6 @@ service IConfigNodeRPCService {
    *         or all DataNodes' configuration if dataNodeId is -1
    */
   TDataNodeConfigurationResp getDataNodeConfiguration(i32 dataNodeId)
-
-  /** Report region migration complete */
-  common.TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req)
 
   // ======================================================
   // Database
@@ -1458,11 +1451,14 @@ service IConfigNodeRPCService {
   /** Show Pipe by name, if name is empty, show all Pipe */
   TShowPipeResp showPipe(TShowPipeReq req)
 
-  /** Get all pipe information. It is used for DataNode registration and restart*/
+  /** Get all pipe information. It is used for DataNode registration and restart */
   TGetAllPipeInfoResp getAllPipeInfo()
 
- /** Execute schema language from external pipes */
+  /** Execute schema language from external pipes */
   TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
+
+  /** Handle client exit for ConfigNode receiver */
+  common.TSStatus handlePipeConfigClientExit(string clientId)
 
   // ======================================================
   // Subscription Topic

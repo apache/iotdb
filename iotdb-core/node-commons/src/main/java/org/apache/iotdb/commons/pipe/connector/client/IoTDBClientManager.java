@@ -30,8 +30,16 @@ public abstract class IoTDBClientManager {
 
   protected final boolean useLeaderCache;
 
+  // This flag indicates whether the receiver supports mods transferring if
+  // it is a DataNode receiver. The flag is useless for configNode receiver.
+  protected boolean supportModsIfIsDataNodeReceiver = true;
+
   protected IoTDBClientManager(List<TEndPoint> endPointList, boolean useLeaderCache) {
     this.endPointList = endPointList;
     this.useLeaderCache = useLeaderCache;
+  }
+
+  public boolean supportModsIfIsDataNodeReceiver() {
+    return supportModsIfIsDataNodeReceiver;
   }
 }

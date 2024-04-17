@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -163,24 +162,24 @@ import static org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
- * For sequence data, a DataRegion has some TsFileProcessors, in which there is only one
- * TsFileProcessor in the working status. <br>
+ * For sequence data, a {@link DataRegion} has some {@link TsFileProcessor}s, in which there is only
+ * one {@link TsFileProcessor} in the working status. <br>
  *
- * <p>There are two situations to set the working TsFileProcessor to closing status:<br>
+ * <p>There are two situations to set the working {@link TsFileProcessor} to closing status:<br>
  *
- * <p>(1) when inserting data into the TsFileProcessor, and the TsFileProcessor shouldFlush() (or
- * shouldClose())<br>
+ * <p>(1) when inserting data into the {@link TsFileProcessor}, and the {@link TsFileProcessor}
+ * shouldFlush() (or shouldClose())<br>
  *
  * <p>(2) someone calls syncCloseAllWorkingTsFileProcessors(). (up to now, only flush command from
  * cli will call this method)<br>
  *
  * <p>UnSequence data has the similar process as above.
  *
- * <p>When a sequence TsFileProcessor is submitted to be flushed, the
+ * <p>When a sequence {@link TsFileProcessor} is submitted to be flushed, the
  * updateLatestFlushTimeCallback() method will be called as a callback.<br>
  *
- * <p>When a TsFileProcessor is closed, the closeUnsealedTsFileProcessorCallBack() method will be
- * called as a callback.
+ * <p>When a {@link TsFileProcessor} is closed, the closeUnsealedTsFileProcessorCallBack() method
+ * will be called as a callback.
  */
 public class DataRegion implements IDataRegionForQuery {
 
@@ -196,31 +195,31 @@ public class DataRegion implements IDataRegionForQuery {
   private static final Logger logger = LoggerFactory.getLogger(DataRegion.class);
 
   /**
-   * a read write lock for guaranteeing concurrent safety when accessing all fields in this class
+   * A read write lock for guaranteeing concurrent safety when accessing all fields in this class
    * (i.e., schema, (un)sequenceFileList, work(un)SequenceTsFileProcessor,
    * closing(Un)SequenceTsFileProcessor, latestTimeForEachDevice, and
    * partitionLatestFlushedTimeForEachDevice)
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
-  /** condition to safely delete data region. */
+  /** Condition to safely delete data region. */
   private final Condition deletedCondition = insertLock.writeLock().newCondition();
-  /** data region has been deleted or not. */
+  /** Data region has been deleted or not. */
   private volatile boolean deleted = false;
   /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
   private final Object closeStorageGroupCondition = new Object();
   /**
-   * avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a read is executed.
+   * Avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a read is executed.
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
-  /** time partition id in the database -> tsFileProcessor for this time partition. */
+  /** time partition id in the database -> {@link TsFileProcessor} for this time partition. */
   private final TreeMap<Long, TsFileProcessor> workSequenceTsFileProcessors = new TreeMap<>();
-  /** time partition id in the database -> tsFileProcessor for this time partition. */
+  /** time partition id in the database -> {@link TsFileProcessor} for this time partition. */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
 
-  /** sequence tsfile processors which are closing. */
+  /** sequence {@link TsFileProcessor}s which are closing. */
   private final Set<TsFileProcessor> closingSequenceTsFileProcessor = ConcurrentHashMap.newKeySet();
 
-  /** unsequence tsfile processors which are closing. */
+  /** unsequence {@link TsFileProcessor}s which are closing. */
   private final Set<TsFileProcessor> closingUnSequenceTsFileProcessor =
       ConcurrentHashMap.newKeySet();
 
@@ -244,13 +243,13 @@ public class DataRegion implements IDataRegionForQuery {
   private final HashMap<Long, VersionController> timePartitionIdVersionControllerMap =
       new HashMap<>();
   /**
-   * when the data in a database is older than dataTTL, it is considered invalid and will be
+   * When the data in a database is older than dataTTL, it is considered invalid and will be
    * eventually removed.
    */
   private long dataTTL = Long.MAX_VALUE;
-  /** file system factory (local or hdfs). */
+  /** File system factory (local or hdfs). */
   private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
-  /** file flush policy. */
+  /** File flush policy. */
   private TsFileFlushPolicy fileFlushPolicy;
   /**
    * The max file versions in each partition. By recording this, if several IoTDB instances have the
@@ -271,7 +270,7 @@ public class DataRegion implements IDataRegionForQuery {
   private ILastFlushTimeMap lastFlushTimeMap;
 
   /**
-   * record the insertWriteLock in SG is being hold by which method, it will be empty string if no
+   * Record the insertWriteLock in SG is being hold by which method, it will be empty string if no
    * one holds the insertWriteLock.
    */
   private String insertWriteLockHolder = "";
@@ -285,7 +284,7 @@ public class DataRegion implements IDataRegionForQuery {
       PerformanceOverviewMetrics.getInstance();
 
   /**
-   * construct a database processor.
+   * Construct a database processor.
    *
    * @param systemDir system dir path
    * @param dataRegionId data region id e.g. 1
@@ -1945,17 +1944,8 @@ public class DataRegion implements IDataRegionForQuery {
     boolean hasReleasedLock = false;
 
     try {
-
+      DataNodeSchemaCache.getInstance().invalidateLastCache(pattern);
       Set<PartialPath> devicePaths = new HashSet<>(pattern.getDevicePathPattern());
-
-      // delete Last cache record if necessary
-      DataNodeSchemaCache.getInstance().takeWriteLock();
-      try {
-        DataNodeSchemaCache.getInstance().invalidate(Collections.singletonList(pattern));
-      } finally {
-        DataNodeSchemaCache.getInstance().releaseWriteLock();
-      }
-
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
           logDeletionInWAL(startTime, endTime, searchIndex, pattern);
@@ -1980,7 +1970,6 @@ public class DataRegion implements IDataRegionForQuery {
       hasReleasedLock = true;
 
       deleteDataInFiles(sealedTsFileResource, deletion, devicePaths, deviceMatchInfo);
-
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
@@ -2000,15 +1989,9 @@ public class DataRegion implements IDataRegionForQuery {
 
     writeLock("deleteDataDirect");
     boolean releasedLock = false;
-    try {
-      // delete last cache record if necessary
-      DataNodeSchemaCache.getInstance().takeWriteLock();
-      try {
-        DataNodeSchemaCache.getInstance().invalidate(databaseName);
-      } finally {
-        DataNodeSchemaCache.getInstance().releaseWriteLock();
-      }
 
+    try {
+      DataNodeSchemaCache.getInstance().invalidateLastCacheInDataRegion(getDatabaseName());
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
           logDeletionInWAL(startTime, endTime, searchIndex, pathToDelete);
@@ -2325,7 +2308,7 @@ public class DataRegion implements IDataRegionForQuery {
       TsFileProcessor processor, Map<IDeviceID, Long> updateMap, long systemFlushTime) {
     if (config.isEnableSeparateData()
         && CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-      // update both partitionLastFlushTime and globalLastFlushTime
+      // Update both partitionLastFlushTime and globalLastFlushTime
       lastFlushTimeMap.updateLatestFlushTime(processor.getTimeRangeId(), updateMap);
     } else {
       // isEnableSeparateData is true and isLastCacheEnable is false, then update
@@ -2344,7 +2327,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /** put the memtable back to the MemTablePool and make the metadata in writer visible */
+  /** Put the memtable back to the MemTablePool and make the metadata in writer visible */
   // TODO please consider concurrency with read and insert method.
   private void closeUnsealedTsFileProcessorCallBack(TsFileProcessor tsFileProcessor)
       throws TsFileProcessorException {
@@ -2404,7 +2387,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       int trySubmitCount = 0;
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
-      // sort the time partition from largest to smallest
+      // Sort the time partition from largest to smallest
       timePartitions.sort(Comparator.reverseOrder());
 
       CompactionScheduleSummary summary = new CompactionScheduleSummary();
@@ -2413,7 +2396,7 @@ public class DataRegion implements IDataRegionForQuery {
         summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
       }
       if (summary.getSubmitInsertionCrossSpaceCompactionTaskNum() == 0) {
-        // the name of this variable is trySubmitCount, because the task submitted to the queue
+        // The name of this variable is trySubmitCount, because the task submitted to the queue
         // could
         // be evicted due to the low priority of the task
         for (long timePartition : timePartitions) {
@@ -2471,7 +2454,7 @@ public class DataRegion implements IDataRegionForQuery {
   /**
    * After finishing settling tsfile, we need to do 2 things : (1) move the new tsfile to the
    * correct folder, including deleting its old mods file (2) update the relevant data of this old
-   * tsFile in memory ,eg: FileSequenceReader, tsFileManager, cache, etc.
+   * tsFile in memory ,eg: TsFileSequenceReader, {@link #tsFileManager}, cache, etc.
    */
   private void settleTsFileCallBack(
       TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources)
@@ -2525,7 +2508,7 @@ public class DataRegion implements IDataRegionForQuery {
     return getNonSystemDatabaseName(databaseName);
   }
 
-  /** merge file under this database processor */
+  /** Merge file under this database processor */
   public int compact() {
     writeLock("merge");
     CompactionScheduler.exclusiveLockCompactionSelection();
@@ -2536,18 +2519,6 @@ public class DataRegion implements IDataRegionForQuery {
     } finally {
       CompactionScheduler.exclusiveUnlockCompactionSelection();
       writeUnlock();
-    }
-  }
-
-  private void resetLastCacheWhenLoadingTsFile() throws IllegalPathException {
-    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-      return;
-    }
-    DataNodeSchemaCache.getInstance().takeWriteLock();
-    try {
-      DataNodeSchemaCache.getInstance().invalidateAll();
-    } finally {
-      DataNodeSchemaCache.getInstance().releaseWriteLock();
     }
   }
 
@@ -2603,10 +2574,6 @@ public class DataRegion implements IDataRegionForQuery {
               false,
               newTsFileResource.getTsFile().getName());
 
-      // update last cache
-      resetLastCacheWhenLoadingTsFile();
-
-      // update last flush time & help last flush time map degrade
       if (config.isEnableSeparateData()) {
         final DataRegionId dataRegionId = new DataRegionId(Integer.parseInt(this.dataRegionId));
         final long timePartitionId = newTsFileResource.getTimePartition();
@@ -2630,13 +2597,6 @@ public class DataRegion implements IDataRegionForQuery {
                 false);
       }
 
-      // update partition version
-      updatePartitionFileVersion(
-          newTsFileResource.getTimePartition(), newTsFileResource.getVersion());
-
-      // help tsfile resource degrade
-      TsFileResourceManager.getInstance().registerSealedTsFileResource(newTsFileResource);
-
       logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
@@ -2644,12 +2604,9 @@ public class DataRegion implements IDataRegionForQuery {
           tsfileToBeInserted.getAbsolutePath(),
           tsfileToBeInserted.getParentFile().getName());
       throw new LoadFileException(e);
-    } catch (IllegalPathException e) {
-      logger.error(
-          "Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
-      throw new LoadFileException(e);
     } finally {
       writeUnlock();
+      DataNodeSchemaCache.getInstance().invalidateLastCacheInDataRegion(databaseName);
     }
   }
 
@@ -2719,8 +2676,9 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /**
-   * remove the given tsFileResource. If the corresponding tsFileProcessor is in the working status,
-   * close it before remove the related resource files. maybe time-consuming for closing a tsfile.
+   * Remove the given {@link TsFileResource}. If the corresponding {@link TsFileProcessor} is in the
+   * working status, close it before remove the related resource files. maybe time-consuming for
+   * closing a tsfile.
    */
   private void removeFullyOverlapFile(
       TsFileResource tsFileResource, Iterator<TsFileResource> iterator, boolean isSeq) {
@@ -2802,7 +2760,7 @@ public class DataRegion implements IDataRegionForQuery {
       logger.error("The file {} has already been loaded in unsequence list", tsFileResource);
       return false;
     }
-    tsFileManager.add(tsFileResource, false);
+
     logger.info(
         "Load tsfile in unsequence list, move file from {} to {}",
         tsFileToLoad.getAbsolutePath(),
@@ -2887,12 +2845,16 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
 
-    updatePartitionFileVersion(filePartitionId, tsFileResource.getVersion());
+    // help tsfile resource degrade
+    TsFileResourceManager.getInstance().registerSealedTsFileResource(tsFileResource);
+
+    tsFileManager.add(tsFileResource, false);
+
     return true;
   }
 
   /**
-   * get all working sequence tsfile processors
+   * Get all working sequence tsfile processors
    *
    * @return all working sequence tsfile processors
    */
@@ -2978,7 +2940,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /**
-   * get all working unsequence tsfile processors
+   * Get all working unsequence tsfile processors
    *
    * @return all working unsequence tsfile processors
    */
@@ -3102,7 +3064,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /**
-   * insert batch of rows belongs to one device
+   * Insert batch of rows belongs to one device
    *
    * @param insertRowsOfOneDeviceNode batch of rows belongs to one device
    */
@@ -3237,7 +3199,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /**
-   * insert batch of tablets belongs to multiple devices
+   * Insert batch of tablets belongs to multiple devices
    *
    * @param insertMultiTabletsNode batch of tablets belongs to multiple devices
    */

@@ -49,7 +49,7 @@ public class CreateMultiTimeSeriesStatement extends Statement {
 
   public CreateMultiTimeSeriesStatement() {
     super();
-    statementType = StatementType.CREATE_MULTI_TIMESERIES;
+    statementType = StatementType.CREATE_MULTI_TIME_SERIES;
   }
 
   @Override

@@ -28,9 +28,11 @@ import org.slf4j.LoggerFactory;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.Properties;
@@ -134,7 +136,7 @@ public class TSFileDescriptor {
   private Optional<Properties> loadPropertiesFromFile(String filePath) {
     try (FileInputStream fileInputStream = new FileInputStream(filePath)) {
       Properties properties = new Properties();
-      properties.load(fileInputStream);
+      properties.load(new InputStreamReader(fileInputStream, StandardCharsets.UTF_8));
       return Optional.of(properties);
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", filePath);

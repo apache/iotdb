@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.rpc.subscription.payload.response;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -31,14 +30,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
 
   // dataNodeId -> clientRpcEndPoint
-  private transient Map<Integer, TEndPoint> endPoints = new HashMap<>();
+  private transient int dataNodeId;
+
+  public int getDataNodeId() {
+    return dataNodeId;
+  }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
@@ -46,11 +47,10 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
    * Serialize the incoming parameters into `PipeSubscribeHandshakeResp`, called by the subscription
    * server.
    */
-  public static PipeSubscribeHandshakeResp toTPipeSubscribeResp(
-      TSStatus status, Map<Integer, TEndPoint> endPoints) {
+  public static PipeSubscribeHandshakeResp toTPipeSubscribeResp(TSStatus status, int dataNodeId) {
     final PipeSubscribeHandshakeResp resp = new PipeSubscribeHandshakeResp();
 
-    resp.endPoints = endPoints;
+    resp.dataNodeId = dataNodeId;
 
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
@@ -58,13 +58,10 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
 
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(endPoints.size(), outputStream);
-      for (Map.Entry<Integer, TEndPoint> endPoint : endPoints.entrySet()) {
-        ReadWriteIOUtils.write(endPoint.getKey(), outputStream);
-        ReadWriteIOUtils.write(endPoint.getValue().ip, outputStream);
-        ReadWriteIOUtils.write(endPoint.getValue().port, outputStream);
-      }
-      resp.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      ReadWriteIOUtils.write(dataNodeId, outputStream);
+      resp.body =
+          Collections.singletonList(
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
     } catch (IOException e) {
       resp.status = RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, e.getMessage());
       return resp;
@@ -74,7 +71,7 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
   }
 
   public static PipeSubscribeHandshakeResp toTPipeSubscribeResp(TSStatus status) {
-    return toTPipeSubscribeResp(status, Collections.emptyMap());
+    return toTPipeSubscribeResp(status, -1);
   }
 
   /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
@@ -82,13 +79,10 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
       TPipeSubscribeResp handshakeResp) {
     final PipeSubscribeHandshakeResp resp = new PipeSubscribeHandshakeResp();
 
-    if (handshakeResp.body.hasRemaining()) {
-      int size = ReadWriteIOUtils.readInt(handshakeResp.body);
-      for (int i = 0; i < size; ++i) {
-        final int id = ReadWriteIOUtils.readInt(handshakeResp.body);
-        final String ip = ReadWriteIOUtils.readString(handshakeResp.body);
-        final int port = ReadWriteIOUtils.readInt(handshakeResp.body);
-        resp.endPoints.put(id, new TEndPoint(ip, port));
+    if (Objects.nonNull(handshakeResp.body) && !handshakeResp.body.isEmpty()) {
+      ByteBuffer byteBuffer = handshakeResp.body.get(0);
+      if (byteBuffer.hasRemaining()) {
+        resp.dataNodeId = ReadWriteIOUtils.readInt(byteBuffer);
       }
     }
 
@@ -111,7 +105,7 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
       return false;
     }
     PipeSubscribeHandshakeResp that = (PipeSubscribeHandshakeResp) obj;
-    return Objects.equals(this.endPoints, that.endPoints)
+    return Objects.equals(this.dataNodeId, that.dataNodeId)
         && Objects.equals(this.status, that.status)
         && this.version == that.version
         && this.type == that.type
@@ -120,6 +114,6 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
 
   @Override
   public int hashCode() {
-    return Objects.hash(endPoints, status, version, type, body);
+    return Objects.hash(dataNodeId, status, version, type, body);
   }
 }

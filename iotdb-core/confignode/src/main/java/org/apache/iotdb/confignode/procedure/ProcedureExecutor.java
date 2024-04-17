@@ -279,6 +279,7 @@ public class ProcedureExecutor<Env> {
     for (WorkerThread workerThread : workerThreads) {
       workerThread.start();
     }
+    LOG.info("{} procedure workers are started.", workerThreads.size());
   }
 
   public void startCompletedCleaner(long cleanTimeInterval, long cleanEvictTTL) {
@@ -749,10 +750,14 @@ public class ProcedureExecutor<Env> {
 
       } catch (Throwable throwable) {
         if (this.activeProcedure.get() != null) {
-          LOG.warn("Worker terminated {}", this.activeProcedure.get(), throwable);
+          LOG.warn(
+              "Procedure Worker {} terminated {}",
+              getName(),
+              this.activeProcedure.get(),
+              throwable);
         }
       } finally {
-        LOG.debug("Worker terminated.");
+        LOG.info("Procedure worker {} terminated.", getName());
       }
       workerThreads.remove(this);
     }

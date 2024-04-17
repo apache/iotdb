@@ -26,18 +26,18 @@ public class SwingingDoorTrendingFilter<T> {
   private final SwingingDoorTrendingSamplingProcessor processor;
 
   /**
-   * the maximum curUpperSlope between the lastStoredPoint to the current point upperDoor can only
+   * The maximum curUpperSlope between the lastStoredPoint to the current point upperDoor can only
    * open up
    */
   private double upperDoor;
   /**
-   * the minimum curLowerSlope between the lastStoredPoint to the current point lowerDoor can only
+   * The minimum curLowerSlope between the lastStoredPoint to the current point lowerDoor can only
    * open downward
    */
   private double lowerDoor;
 
   /**
-   * the last read time and value if upperDoor >= lowerDoor meaning out of compressionDeviation
+   * The last read time and value if upperDoor >= lowerDoor meaning out of compressionDeviation
    * range, will store lastReadTimestamp and lastReadValue
    */
   private long lastReadTimestamp;
@@ -45,7 +45,7 @@ public class SwingingDoorTrendingFilter<T> {
   private T lastReadValue;
 
   /**
-   * the last stored time and value we compare current point against lastReadTimestamp and
+   * The last stored time and value we compare current point against lastReadTimestamp and
    * lastReadValue
    */
   private long lastStoredTimestamp;

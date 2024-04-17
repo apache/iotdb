@@ -92,6 +92,10 @@ public class RepairDataFileScanUtil {
       if (Thread.currentThread().isInterrupted()) {
         return;
       }
+      // source file may be deleted
+      if (!resource.tsFileExists()) {
+        return;
+      }
       logger.warn("Meet error when read tsfile {}", tsfile.getAbsolutePath(), e);
       isBrokenFile = true;
     }
@@ -197,11 +201,7 @@ public class RepairDataFileScanUtil {
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(compressionType);
     byte[] uncompressedData = new byte[pageHeader.getUncompressedSize()];
     unCompressor.uncompress(
-        pageData.array(),
-        0,
-        pageHeader.getCompressedSize(),
-        uncompressedData,
-        pageHeader.getUncompressedSize());
+        pageData.array(), 0, pageHeader.getCompressedSize(), uncompressedData, 0);
     return ByteBuffer.wrap(uncompressedData);
   }
 

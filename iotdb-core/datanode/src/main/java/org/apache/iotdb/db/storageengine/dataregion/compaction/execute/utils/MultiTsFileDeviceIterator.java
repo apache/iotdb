@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -247,6 +248,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       getTimeseriesMetadataOffsetOfCurrentDevice() throws IOException {
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
         new HashMap<>();
+    Map<String, TSDataType> measurementDataTypeMap = new HashMap<>();
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
       if (!deviceIteratorMap.containsKey(resource)
           || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
@@ -255,14 +257,22 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         continue;
       }
       TsFileSequenceReader reader = readerMap.get(resource);
-      for (Map.Entry<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> entrySet :
-          reader
-              .getTimeseriesMetadataOffsetByDevice(
+      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entrySet :
+          ((CompactionTsFileReader) reader)
+              .getTimeseriesMetadataAndOffsetByDevice(
                   deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
                   Collections.emptySet(),
                   false)
               .entrySet()) {
         String measurementId = entrySet.getKey();
+        // skip the TimeseriesMetadata whose data type is not consistent
+        TSDataType dataTypeOfCurrentTimeseriesMetadata = entrySet.getValue().left.getTsDataType();
+        TSDataType correctDataTypeOfCurrentMeasurement =
+            measurementDataTypeMap.putIfAbsent(measurementId, dataTypeOfCurrentTimeseriesMetadata);
+        if (correctDataTypeOfCurrentMeasurement != null
+            && correctDataTypeOfCurrentMeasurement != dataTypeOfCurrentTimeseriesMetadata) {
+          continue;
+        }
         timeseriesMetadataOffsetMap.putIfAbsent(measurementId, new HashMap<>());
         timeseriesMetadataOffsetMap.get(measurementId).put(resource, entrySet.getValue().right);
       }

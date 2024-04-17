@@ -51,6 +51,8 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
@@ -76,10 +78,12 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.CreateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.DropSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.CreateTopicProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.DropTopicProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.topic.runtime.TopicMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.testonly.AddNeverFinishSubProcedureProcedure;
 import org.apache.iotdb.confignode.procedure.impl.testonly.CreateManyDatabasesProcedure;
@@ -102,7 +106,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.db.exception.BatchProcessException;
@@ -124,9 +127,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
+import java.util.Optional;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 
 public class ProcedureManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureManager.class);
@@ -509,7 +514,7 @@ public class ProcedureManager {
    * AddConfigNodeProcedure}s.
    */
   public void addConfigNode(TConfigNodeRegisterReq req) {
-    AddConfigNodeProcedure addConfigNodeProcedure =
+    final AddConfigNodeProcedure addConfigNodeProcedure =
         new AddConfigNodeProcedure(req.getConfigNodeLocation(), req.getVersionInfo());
     this.executor.submitProcedure(addConfigNodeProcedure);
   }
@@ -519,7 +524,7 @@ public class ProcedureManager {
    * RemoveConfigNodeProcedure}s.
    */
   public void removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
-    RemoveConfigNodeProcedure removeConfigNodeProcedure =
+    final RemoveConfigNodeProcedure removeConfigNodeProcedure =
         new RemoveConfigNodeProcedure(removeConfigNodePlan.getConfigNodeLocation());
     this.executor.submitProcedure(removeConfigNodeProcedure);
     LOGGER.info("Submit RemoveConfigNodeProcedure successfully: {}", removeConfigNodePlan);
@@ -540,132 +545,153 @@ public class ProcedureManager {
     return true;
   }
 
-  public TSStatus migrateRegion(TMigrateRegionReq migrateRegionReq) {
-    TConsensusGroupId regionGroupId;
+  // region region migration
+
+  private TConsensusGroupId regionIdToTConsensusGroupId(final int regionId)
+      throws ProcedureException {
     if (configManager
         .getPartitionManager()
-        .isRegionGroupExists(
-            new TConsensusGroupId(
-                TConsensusGroupType.SchemaRegion, migrateRegionReq.getRegionId()))) {
-      regionGroupId =
-          new TConsensusGroupId(TConsensusGroupType.SchemaRegion, migrateRegionReq.getRegionId());
-    } else if (configManager
+        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId))) {
+      return new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId);
+    }
+    if (configManager
         .getPartitionManager()
-        .isRegionGroupExists(
-            new TConsensusGroupId(
-                TConsensusGroupType.DataRegion, migrateRegionReq.getRegionId()))) {
-      regionGroupId =
-          new TConsensusGroupId(TConsensusGroupType.DataRegion, migrateRegionReq.getRegionId());
-    } else {
-      LOGGER.warn(
-          "Submit RegionMigrateProcedure failed, because RegionGroup: {} doesn't exist",
-          migrateRegionReq.getRegionId());
-      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage(
+        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))) {
+      return new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId);
+    }
+    String msg =
+        String.format(
+            "Submit RegionMigrateProcedure failed, because RegionGroup: %s doesn't exist",
+            regionId);
+    LOGGER.warn(msg);
+    throw new ProcedureException(msg);
+  }
+
+  private TSStatus checkRegionMigrate(
+      TMigrateRegionReq migrateRegionReq,
+      TConsensusGroupId regionGroupId,
+      TDataNodeLocation originalDataNode,
+      TDataNodeLocation destDataNode,
+      TDataNodeLocation coordinatorForAddPeer) {
+    String failMessage = null;
+    if (originalDataNode == null) {
+      failMessage =
           String.format(
-              "Submit RegionMigrateProcedure failed, because RegionGroup: %s doesn't exist",
-              migrateRegionReq.getRegionId()));
-      return status;
+              "Submit RegionMigrateProcedure failed, because no original DataNode %d",
+              migrateRegionReq.getFromId());
+    } else if (destDataNode == null) {
+      failMessage =
+          String.format(
+              "Submit RegionMigrateProcedure failed, because no target DataNode %s",
+              migrateRegionReq.getToId());
+    } else if (coordinatorForAddPeer == null) {
+      failMessage =
+          String.format(
+              "%s, There are no other DataNodes could be selected to perform the add peer process, "
+                  + "please check RegionGroup: %s by show regions sql command",
+              REGION_MIGRATE_PROCESS, regionGroupId);
+    } else if (configManager.getPartitionManager()
+        .getAllReplicaSets(originalDataNode.getDataNodeId()).stream()
+        .noneMatch(replicaSet -> replicaSet.getRegionId().equals(regionGroupId))) {
+      failMessage =
+          String.format(
+              "Submit RegionMigrateProcedure failed, because the original DataNode %s doesn't contain Region %s",
+              migrateRegionReq.getFromId(), migrateRegionReq.getRegionId());
+    } else if (configManager.getPartitionManager().getAllReplicaSets(destDataNode.getDataNodeId())
+        .stream()
+        .anyMatch(replicaSet -> replicaSet.getRegionId().equals(regionGroupId))) {
+      failMessage =
+          String.format(
+              "Submit RegionMigrateProcedure failed, because the target DataNode %s already contains Region %s",
+              migrateRegionReq.getToId(), migrateRegionReq.getRegionId());
+    } else if (!configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running)
+        .stream()
+        .map(TDataNodeConfiguration::getLocation)
+        .map(TDataNodeLocation::getDataNodeId)
+        .collect(Collectors.toSet())
+        .contains(migrateRegionReq.getToId())) {
+      // Here we only check Running DataNode to implement migration, because removing nodes may not
+      // exist when add peer is performing
+      failMessage =
+          String.format(
+              "Submit RegionMigrateProcedure failed, because the destDataNode %s is ReadOnly or Unknown.",
+              migrateRegionReq.getToId());
+    }
+    if (failMessage != null) {
+      LOGGER.warn(failMessage);
+      TSStatus failStatus = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      failStatus.setMessage(failMessage);
+      return failStatus;
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public TSStatus migrateRegion(TMigrateRegionReq migrateRegionReq) {
+    TConsensusGroupId regionGroupId;
+    Optional<TConsensusGroupId> optional =
+        configManager
+            .getPartitionManager()
+            .generateTConsensusGroupIdByRegionId(migrateRegionReq.getRegionId());
+    if (optional.isPresent()) {
+      regionGroupId = optional.get();
+    } else {
+      LOGGER.error("get region group id fail");
+      return new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode())
+          .setMessage("get region group id fail");
     }
 
-    TDataNodeLocation originalDataNode =
+    // find original dn and dest dn
+    final TDataNodeLocation originalDataNode =
         configManager
             .getNodeManager()
             .getRegisteredDataNode(migrateRegionReq.getFromId())
             .getLocation();
-    TDataNodeLocation destDataNode =
+    final TDataNodeLocation destDataNode =
         configManager
             .getNodeManager()
             .getRegisteredDataNode(migrateRegionReq.getToId())
             .getLocation();
+    // select coordinator for adding peer
+    RegionMaintainHandler handler = new RegionMaintainHandler(configManager);
+    final TDataNodeLocation coordinatorForAddPeer =
+        handler
+            .filterDataNodeWithOtherRegionReplica(
+                regionGroupId,
+                destDataNode,
+                NodeStatus.Running,
+                NodeStatus.Removing,
+                NodeStatus.ReadOnly)
+            .orElse(null);
+    // Select coordinator for removing peer
+    // For now, destDataNode temporarily acts as the coordinatorForRemovePeer
+    final TDataNodeLocation coordinatorForRemovePeer = destDataNode;
 
-    if (originalDataNode == null) {
-      LOGGER.warn(
-          "Submit RegionMigrateProcedure failed, because no original DataNode {}",
-          migrateRegionReq.getFromId());
-      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage(
-          "Submit RegionMigrateProcedure failed, because no original DataNode "
-              + migrateRegionReq.getFromId());
-      return status;
-    } else if (destDataNode == null) {
-      LOGGER.warn(
-          "Submit RegionMigrateProcedure failed, because no target DataNode {}",
-          migrateRegionReq.getToId());
-      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage(
-          "Submit RegionMigrateProcedure failed, because no target DataNode "
-              + migrateRegionReq.getToId());
-      return status;
-    } else if (configManager.getPartitionManager()
-        .getAllReplicaSets(originalDataNode.getDataNodeId()).stream()
-        .noneMatch(replicaSet -> replicaSet.getRegionId().equals(regionGroupId))) {
-      LOGGER.warn(
-          "Submit RegionMigrateProcedure failed, because the original DataNode {} doesn't contain Region {}",
-          migrateRegionReq.getFromId(),
-          migrateRegionReq.getRegionId());
-      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage(
-          "Submit RegionMigrateProcedure failed, because the original DataNode "
-              + migrateRegionReq.getFromId()
-              + " doesn't contain Region "
-              + migrateRegionReq.getRegionId());
-      return status;
-    } else if (configManager.getPartitionManager().getAllReplicaSets(destDataNode.getDataNodeId())
-        .stream()
-        .anyMatch(replicaSet -> replicaSet.getRegionId().equals(regionGroupId))) {
-      LOGGER.warn(
-          "Submit RegionMigrateProcedure failed, because the target DataNode {} already contains Region {}",
-          migrateRegionReq.getToId(),
-          migrateRegionReq.getRegionId());
-      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage(
-          "Submit RegionMigrateProcedure failed, because the target DataNode "
-              + migrateRegionReq.getToId()
-              + " already contains Region "
-              + migrateRegionReq.getRegionId());
-      return status;
-    }
-    // Here we only check Running DataNode to implement migration, because removing nodes may not
-    // exist when add peer is performing
-    Set<Integer> aliveDataNodes =
-        configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
-            .map(TDataNodeConfiguration::getLocation)
-            .map(TDataNodeLocation::getDataNodeId)
-            .collect(Collectors.toSet());
-    if (NodeStatus.Unknown.equals(
-        configManager.getLoadManager().getNodeStatus(migrateRegionReq.getFromId()))) {
-      LOGGER.warn(
-          "Submit RegionMigrateProcedure failed, because the sourceDataNode {} is Unknown.",
-          migrateRegionReq.getFromId());
-      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage(
-          "Submit RegionMigrateProcedure failed, because the sourceDataNode "
-              + migrateRegionReq.getFromId()
-              + " is Unknown.");
+    TSStatus status =
+        checkRegionMigrate(
+            migrateRegionReq, regionGroupId, originalDataNode, destDataNode, coordinatorForAddPeer);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     }
 
-    if (!aliveDataNodes.contains(migrateRegionReq.getToId())) {
-      LOGGER.warn(
-          "Submit RegionMigrateProcedure failed, because the destDataNode {} is ReadOnly or Unknown.",
-          migrateRegionReq.getToId());
-      TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage(
-          "Submit RegionMigrateProcedure failed, because the destDataNode "
-              + migrateRegionReq.getToId()
-              + " is ReadOnly or Unknown.");
-      return status;
-    }
+    // finally, submit procedure
     this.executor.submitProcedure(
-        new RegionMigrateProcedure(regionGroupId, originalDataNode, destDataNode));
+        new RegionMigrateProcedure(
+            regionGroupId,
+            originalDataNode,
+            destDataNode,
+            coordinatorForAddPeer,
+            coordinatorForRemovePeer));
     LOGGER.info(
-        "Submit RegionMigrateProcedure successfully, Region: {}, From: {}, To: {}",
-        migrateRegionReq.getRegionId(),
-        migrateRegionReq.getFromId(),
-        migrateRegionReq.getToId());
+        "Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}",
+        regionGroupId,
+        originalDataNode,
+        destDataNode,
+        coordinatorForAddPeer,
+        coordinatorForRemovePeer);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
+
+  // endregion
 
   /**
    * Generate {@link CreateRegionGroupsProcedure} and wait until it finished.
@@ -675,11 +701,11 @@ public class ProcedureManager {
    */
   public TSStatus createRegionGroups(
       TConsensusGroupType consensusGroupType, CreateRegionGroupsPlan createRegionGroupsPlan) {
-    long procedureId =
+    final long procedureId =
         executor.submitProcedure(
             new CreateRegionGroupsProcedure(consensusGroupType, createRegionGroupsPlan));
-    List<TSStatus> statusList = new ArrayList<>();
-    boolean isSucceed =
+    final List<TSStatus> statusList = new ArrayList<>();
+    final boolean isSucceed =
         waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
     if (isSucceed) {
       return RpcUtils.SUCCESS_STATUS;
@@ -713,9 +739,9 @@ public class ProcedureManager {
           .setMessage(e.getMessage());
     }
 
-    long procedureId = executor.submitProcedure(createTriggerProcedure);
-    List<TSStatus> statusList = new ArrayList<>();
-    boolean isSucceed =
+    final long procedureId = executor.submitProcedure(createTriggerProcedure);
+    final List<TSStatus> statusList = new ArrayList<>();
+    final boolean isSucceed =
         waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
     if (isSucceed) {
       return RpcUtils.SUCCESS_STATUS;
@@ -734,8 +760,8 @@ public class ProcedureManager {
   public TSStatus dropTrigger(String triggerName, boolean isGeneratedByPipe) {
     long procedureId =
         executor.submitProcedure(new DropTriggerProcedure(triggerName, isGeneratedByPipe));
-    List<TSStatus> statusList = new ArrayList<>();
-    boolean isSucceed =
+    final List<TSStatus> statusList = new ArrayList<>();
+    final boolean isSucceed =
         waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
     if (isSucceed) {
       return RpcUtils.SUCCESS_STATUS;
@@ -746,8 +772,9 @@ public class ProcedureManager {
   }
 
   public TSStatus createCQ(TCreateCQReq req, ScheduledExecutorService scheduledExecutor) {
-    long procedureId = executor.submitProcedure(new CreateCQProcedure(req, scheduledExecutor));
-    List<TSStatus> statusList = new ArrayList<>();
+    final long procedureId =
+        executor.submitProcedure(new CreateCQProcedure(req, scheduledExecutor));
+    final List<TSStatus> statusList = new ArrayList<>();
     waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
     return statusList.get(0);
   }
@@ -770,9 +797,9 @@ public class ProcedureManager {
           .setMessage(e.getMessage());
     }
 
-    long procedureId = executor.submitProcedure(createPipePluginProcedure);
-    List<TSStatus> statusList = new ArrayList<>();
-    boolean isSucceed =
+    final long procedureId = executor.submitProcedure(createPipePluginProcedure);
+    final List<TSStatus> statusList = new ArrayList<>();
+    final boolean isSucceed =
         waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
     if (isSucceed) {
       return RpcUtils.SUCCESS_STATUS;
@@ -783,9 +810,9 @@ public class ProcedureManager {
   }
 
   public TSStatus dropPipePlugin(String pluginName) {
-    long procedureId = executor.submitProcedure(new DropPipePluginProcedure(pluginName));
-    List<TSStatus> statusList = new ArrayList<>();
-    boolean isSucceed =
+    final long procedureId = executor.submitProcedure(new DropPipePluginProcedure(pluginName));
+    final List<TSStatus> statusList = new ArrayList<>();
+    final boolean isSucceed =
         waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
     if (isSucceed) {
       return RpcUtils.SUCCESS_STATUS;
@@ -797,9 +824,9 @@ public class ProcedureManager {
 
   public TSStatus createPipe(TCreatePipeReq req) {
     try {
-      long procedureId = executor.submitProcedure(new CreatePipeProcedureV2(req));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
+      final long procedureId = executor.submitProcedure(new CreatePipeProcedureV2(req));
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return statusList.get(0);
@@ -814,9 +841,9 @@ public class ProcedureManager {
 
   public TSStatus alterPipe(TAlterPipeReq req) {
     try {
-      long procedureId = executor.submitProcedure(new AlterPipeProcedureV2(req));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
+      final long procedureId = executor.submitProcedure(new AlterPipeProcedureV2(req));
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return statusList.get(0);
@@ -831,9 +858,9 @@ public class ProcedureManager {
 
   public TSStatus startPipe(String pipeName) {
     try {
-      long procedureId = executor.submitProcedure(new StartPipeProcedureV2(pipeName));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
+      final long procedureId = executor.submitProcedure(new StartPipeProcedureV2(pipeName));
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return statusList.get(0);
@@ -848,9 +875,9 @@ public class ProcedureManager {
 
   public TSStatus stopPipe(String pipeName) {
     try {
-      long procedureId = executor.submitProcedure(new StopPipeProcedureV2(pipeName));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
+      final long procedureId = executor.submitProcedure(new StopPipeProcedureV2(pipeName));
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return statusList.get(0);
@@ -865,9 +892,9 @@ public class ProcedureManager {
 
   public TSStatus dropPipe(String pipeName) {
     try {
-      long procedureId = executor.submitProcedure(new DropPipeProcedureV2(pipeName));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
+      final long procedureId = executor.submitProcedure(new DropPipeProcedureV2(pipeName));
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return statusList.get(0);
@@ -945,9 +972,9 @@ public class ProcedureManager {
 
   public TSStatus createTopic(TCreateTopicReq req) {
     try {
-      long procedureId = executor.submitProcedure(new CreateTopicProcedure(req));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
+      final long procedureId = executor.submitProcedure(new CreateTopicProcedure(req));
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return statusList.get(0);
@@ -963,9 +990,9 @@ public class ProcedureManager {
 
   public TSStatus dropTopic(String topicName) {
     try {
-      long procedureId = executor.submitProcedure(new DropTopicProcedure(topicName));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
+      final long procedureId = executor.submitProcedure(new DropTopicProcedure(topicName));
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return statusList.get(0);
@@ -978,11 +1005,29 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus topicMetaSync() {
+    try {
+      final long procedureId = executor.submitProcedure(new TopicMetaSyncProcedure());
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return RpcUtils.SUCCESS_STATUS;
+      } else {
+        return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode())
+            .setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
   public TSStatus createConsumer(TCreateConsumerReq req) {
     try {
-      long procedureId = executor.submitProcedure(new CreateConsumerProcedure(req));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
+      final long procedureId = executor.submitProcedure(new CreateConsumerProcedure(req));
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return statusList.get(0);
@@ -998,9 +1043,9 @@ public class ProcedureManager {
 
   public TSStatus dropConsumer(TCloseConsumerReq req) {
     try {
-      long procedureId = executor.submitProcedure(new DropConsumerProcedure(req));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
+      final long procedureId = executor.submitProcedure(new DropConsumerProcedure(req));
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return statusList.get(0);
@@ -1014,11 +1059,29 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus consumerGroupMetaSync() {
+    try {
+      final long procedureId = executor.submitProcedure(new ConsumerGroupMetaSyncProcedure());
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return RpcUtils.SUCCESS_STATUS;
+      } else {
+        return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
+            .setMessage(statusList.get(0).getMessage());
+      }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
+  }
+
   public TSStatus createSubscription(TSubscribeReq req) {
     try {
-      long procedureId = executor.submitProcedure(new CreateSubscriptionProcedure(req));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
+      final long procedureId = executor.submitProcedure(new CreateSubscriptionProcedure(req));
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return statusList.get(0);
@@ -1034,9 +1097,9 @@ public class ProcedureManager {
 
   public TSStatus dropSubscription(TUnsubscribeReq req) {
     try {
-      long procedureId = executor.submitProcedure(new DropSubscriptionProcedure(req));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
+      final long procedureId = executor.submitProcedure(new DropSubscriptionProcedure(req));
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return statusList.get(0);
@@ -1055,8 +1118,8 @@ public class ProcedureManager {
     try {
       final long procedureId =
           executor.submitProcedure(new AuthOperationProcedure(authorPlan, dns, isGeneratedByPipe));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return RpcUtils.SUCCESS_STATUS;
@@ -1079,13 +1142,13 @@ public class ProcedureManager {
   private boolean waitingProcedureFinished(List<Long> procedureIds, List<TSStatus> statusList) {
     boolean isSucceed = true;
     for (long procedureId : procedureIds) {
-      long startTimeForCurrentProcedure = System.currentTimeMillis();
+      final long startTimeForCurrentProcedure = System.currentTimeMillis();
       while (executor.isRunning()
           && !executor.isFinished(procedureId)
           && System.currentTimeMillis() - startTimeForCurrentProcedure < PROCEDURE_WAIT_TIME_OUT) {
         sleepWithoutInterrupt(PROCEDURE_WAIT_RETRY_TIMEOUT);
       }
-      Procedure<ConfigNodeProcedureEnv> finishedProcedure =
+      final Procedure<ConfigNodeProcedureEnv> finishedProcedure =
           executor.getResultOrProcedure(procedureId);
       if (!finishedProcedure.isFinished()) {
         // the procedure is still executing
@@ -1105,7 +1168,7 @@ public class ProcedureManager {
         }
       } else {
         if (finishedProcedure.getException().getCause() instanceof IoTDBException) {
-          IoTDBException e = (IoTDBException) finishedProcedure.getException().getCause();
+          final IoTDBException e = (IoTDBException) finishedProcedure.getException().getCause();
           if (e instanceof BatchProcessException) {
             statusList.add(
                 RpcUtils.getStatus(
@@ -1127,7 +1190,7 @@ public class ProcedureManager {
 
   public static void sleepWithoutInterrupt(final long timeToSleep) {
     long currentTime = System.currentTimeMillis();
-    long endTime = timeToSleep + currentTime;
+    final long endTime = timeToSleep + currentTime;
     boolean interrupted = false;
     while (currentTime < endTime) {
       try {
@@ -1177,22 +1240,6 @@ public class ProcedureManager {
 
   public void setEnv(ConfigNodeProcedureEnv env) {
     this.env = env;
-  }
-
-  public void reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
-
-    this.executor
-        .getProcedures()
-        .values()
-        .forEach(
-            procedure -> {
-              if (procedure instanceof RegionMigrateProcedure) {
-                RegionMigrateProcedure regionMigrateProcedure = (RegionMigrateProcedure) procedure;
-                if (regionMigrateProcedure.getConsensusGroupId().equals(req.getRegionId())) {
-                  regionMigrateProcedure.notifyTheRegionMigrateFinished(req);
-                }
-              }
-            });
   }
 
   public void addMetrics() {

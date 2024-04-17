@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityM
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 import org.apache.iotdb.tsfile.file.metadata.IMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -68,6 +69,8 @@ public class SeriesScanUtil {
 
   // The path of the target series which will be scanned.
   protected final PartialPath seriesPath;
+
+  private final IDeviceID deviceID;
   protected boolean isAligned = false;
   private final TSDataType dataType;
 
@@ -113,6 +116,7 @@ public class SeriesScanUtil {
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context) {
     this.seriesPath = seriesPath;
+    this.deviceID = seriesPath.getIDeviceID();
     this.dataType = seriesPath.getSeriesType();
 
     this.scanOptions = scanOptions;
@@ -155,7 +159,7 @@ public class SeriesScanUtil {
    * @param dataSource the query data source
    */
   public void initQueryDataSource(QueryDataSource dataSource) {
-    dataSource.fillOrderIndexes(seriesPath.getDevice(), orderUtils.getAscending());
+    dataSource.fillOrderIndexes(deviceID, orderUtils.getAscending());
     this.dataSource = dataSource;
 
     // updated filter concerning TTL
@@ -1085,12 +1089,6 @@ public class SeriesScanUtil {
       return;
     }
 
-    // skip if data type is mismatched which may be caused by delete
-    if (!firstTimeSeriesMetadata.typeMatch(getTsDataTypeList())) {
-      skipCurrentFile();
-      return;
-    }
-
     if (currentFileOverlapped() || firstTimeSeriesMetadata.isModified()) {
       return;
     }
@@ -1116,12 +1114,10 @@ public class SeriesScanUtil {
 
   private void unpackAllOverlappedTsFilesToTimeSeriesMetadata(long endpointTime)
       throws IOException {
-    while (orderUtils.hasNextUnseqResource()
-        && orderUtils.isOverlapped(endpointTime, orderUtils.getNextUnseqFileResource(false))) {
+    while (orderUtils.hasNextUnseqResource() && orderUtils.isCurUnSeqOverlappedWith(endpointTime)) {
       unpackUnseqTsFileResource();
     }
-    while (orderUtils.hasNextSeqResource()
-        && orderUtils.isOverlapped(endpointTime, orderUtils.getNextSeqFileResource(false))) {
+    while (orderUtils.hasNextSeqResource() && orderUtils.isCurSeqOverlappedWith(endpointTime)) {
       unpackSeqTsFileResource();
     }
   }
@@ -1129,7 +1125,8 @@ public class SeriesScanUtil {
   private void unpackSeqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextSeqFileResource(true), true);
-    if (timeseriesMetadata != null) {
+    // skip if data type is mismatched which may be caused by delete
+    if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(true);
       seqTimeSeriesMetadata.add(timeseriesMetadata);
     }
@@ -1138,7 +1135,8 @@ public class SeriesScanUtil {
   private void unpackUnseqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextUnseqFileResource(true), false);
-    if (timeseriesMetadata != null) {
+    // skip if data type is mismatched which may be caused by delete
+    if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(false);
       unSeqTimeSeriesMetadata.add(timeseriesMetadata);
     }
@@ -1256,15 +1254,15 @@ public class SeriesScanUtil {
 
     long getOrderTime(Statistics<? extends Object> statistics);
 
-    long getOrderTime(TsFileResource fileResource);
-
     long getOverlapCheckTime(Statistics<? extends Object> range);
 
     boolean isOverlapped(Statistics<? extends Object> left, Statistics<? extends Object> right);
 
     boolean isOverlapped(long time, Statistics<? extends Object> right);
 
-    boolean isOverlapped(long time, TsFileResource right);
+    boolean isCurSeqOverlappedWith(long time);
+
+    boolean isCurUnSeqOverlappedWith(long time);
 
     <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor);
 
@@ -1302,12 +1300,6 @@ public class SeriesScanUtil {
 
     @SuppressWarnings("squid:S3740")
     @Override
-    public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getEndTime(seriesPath.getIDeviceID());
-    }
-
-    @SuppressWarnings("squid:S3740")
-    @Override
     public long getOverlapCheckTime(Statistics range) {
       return range.getStartTime();
     }
@@ -1325,8 +1317,13 @@ public class SeriesScanUtil {
     }
 
     @Override
-    public boolean isOverlapped(long time, TsFileResource right) {
-      return time <= right.getEndTime(seriesPath.getIDeviceID());
+    public boolean isCurSeqOverlappedWith(long time) {
+      return time <= dataSource.getCurrentSeqOrderTime(curSeqFileIndex);
+    }
+
+    @Override
+    public boolean isCurUnSeqOverlappedWith(long time) {
+      return time <= dataSource.getCurrentUnSeqOrderTime(curUnseqFileIndex);
     }
 
     @Override
@@ -1365,30 +1362,26 @@ public class SeriesScanUtil {
 
     @Override
     public boolean hasNextSeqResource() {
-      while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
-        TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
-        if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), true, false)) {
+      while (dataSource.hasNextSeqResource(curSeqFileIndex, false, deviceID)) {
+        if (dataSource.isSeqSatisfied(
+            deviceID, curSeqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
           break;
         }
         curSeqFileIndex--;
       }
-      return dataSource.hasNextSeqResource(curSeqFileIndex, getAscending());
+      return dataSource.hasNextSeqResource(curSeqFileIndex, false, deviceID);
     }
 
     @Override
     public boolean hasNextUnseqResource() {
-      while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
-        TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
-        if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), false, false)) {
+      while (dataSource.hasNextUnseqResource(curUnseqFileIndex, false, deviceID)) {
+        if (dataSource.isUnSeqSatisfied(
+            deviceID, curUnseqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
           break;
         }
         curUnseqFileIndex++;
       }
-      return dataSource.hasNextUnseqResource(curUnseqFileIndex);
+      return dataSource.hasNextUnseqResource(curUnseqFileIndex, false, deviceID);
     }
 
     @Override
@@ -1425,12 +1418,6 @@ public class SeriesScanUtil {
 
     @SuppressWarnings("squid:S3740")
     @Override
-    public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getStartTime(seriesPath.getIDeviceID());
-    }
-
-    @SuppressWarnings("squid:S3740")
-    @Override
     public long getOverlapCheckTime(Statistics range) {
       return range.getEndTime();
     }
@@ -1448,8 +1435,13 @@ public class SeriesScanUtil {
     }
 
     @Override
-    public boolean isOverlapped(long time, TsFileResource right) {
-      return time >= right.getStartTime(seriesPath.getIDeviceID());
+    public boolean isCurSeqOverlappedWith(long time) {
+      return time >= dataSource.getCurrentSeqOrderTime(curSeqFileIndex);
+    }
+
+    @Override
+    public boolean isCurUnSeqOverlappedWith(long time) {
+      return time >= dataSource.getCurrentUnSeqOrderTime(curUnseqFileIndex);
     }
 
     @Override
@@ -1488,30 +1480,26 @@ public class SeriesScanUtil {
 
     @Override
     public boolean hasNextSeqResource() {
-      while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
-        TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
-        if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), true, false)) {
+      while (dataSource.hasNextSeqResource(curSeqFileIndex, true, deviceID)) {
+        if (dataSource.isSeqSatisfied(
+            deviceID, curSeqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
           break;
         }
         curSeqFileIndex++;
       }
-      return dataSource.hasNextSeqResource(curSeqFileIndex, getAscending());
+      return dataSource.hasNextSeqResource(curSeqFileIndex, true, deviceID);
     }
 
     @Override
     public boolean hasNextUnseqResource() {
-      while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
-        TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
-        if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getIDeviceID(), scanOptions.getGlobalTimeFilter(), false, false)) {
+      while (dataSource.hasNextUnseqResource(curUnseqFileIndex, true, deviceID)) {
+        if (dataSource.isUnSeqSatisfied(
+            deviceID, curUnseqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
           break;
         }
         curUnseqFileIndex++;
       }
-      return dataSource.hasNextUnseqResource(curUnseqFileIndex);
+      return dataSource.hasNextUnseqResource(curUnseqFileIndex, true, deviceID);
     }
 
     @Override

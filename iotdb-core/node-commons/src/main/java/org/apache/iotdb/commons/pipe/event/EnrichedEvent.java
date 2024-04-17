@@ -22,13 +22,14 @@ package org.apache.iotdb.commons.pipe.event;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.progress.committer.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -41,6 +42,7 @@ public abstract class EnrichedEvent implements Event {
   private static final Logger LOGGER = LoggerFactory.getLogger(EnrichedEvent.class);
 
   protected final AtomicInteger referenceCount;
+  protected final AtomicBoolean isReleased;
 
   protected final String pipeName;
   protected final PipeTaskMeta pipeTaskMeta;
@@ -57,7 +59,7 @@ public abstract class EnrichedEvent implements Event {
   protected boolean isPatternParsed;
   protected boolean isTimeParsed;
 
-  protected boolean shouldReportOnCommit = false;
+  protected boolean shouldReportOnCommit = true;
 
   protected EnrichedEvent(
       String pipeName,
@@ -66,6 +68,7 @@ public abstract class EnrichedEvent implements Event {
       long startTime,
       long endTime) {
     referenceCount = new AtomicInteger(0);
+    isReleased = new AtomicBoolean(false);
     this.pipeName = pipeName;
     this.pipeTaskMeta = pipeTaskMeta;
     this.pipePattern = pipePattern;
@@ -87,6 +90,13 @@ public abstract class EnrichedEvent implements Event {
   public boolean increaseReferenceCount(String holderMessage) {
     boolean isSuccessful = true;
     synchronized (this) {
+      if (isReleased.get()) {
+        LOGGER.warn(
+            "re-increase reference count to event that has already been released: {}, stack trace: {}",
+            coreReportMessage(),
+            Thread.currentThread().getStackTrace());
+        return false;
+      }
       if (referenceCount.get() == 0) {
         isSuccessful = internallyIncreaseResourceReferenceCount(holderMessage);
       }
@@ -121,14 +131,21 @@ public abstract class EnrichedEvent implements Event {
     synchronized (this) {
       if (referenceCount.get() == 1) {
         isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
-        if (shouldReport) {
-          shouldReportOnCommit = true;
+        if (!shouldReport) {
+          shouldReportOnCommit = false;
         }
         PipeEventCommitManager.getInstance().commit(this, committerKey);
       }
       final int newReferenceCount = referenceCount.decrementAndGet();
+      if (newReferenceCount == 0) {
+        isReleased.set(true);
+      }
       if (newReferenceCount < 0) {
-        LOGGER.warn("reference count is decreased to {}.", newReferenceCount);
+        LOGGER.warn(
+            "reference count is decreased to {}, event: {}, stack trace: {}",
+            newReferenceCount,
+            coreReportMessage(),
+            Thread.currentThread().getStackTrace());
       }
     }
     return isSuccessful;
@@ -150,6 +167,7 @@ public abstract class EnrichedEvent implements Event {
         isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
       }
       referenceCount.set(0);
+      isReleased.set(true);
     }
     return isSuccessful;
   }
@@ -171,6 +189,14 @@ public abstract class EnrichedEvent implements Event {
       pipeTaskMeta.updateProgressIndex(
           progressIndex == null ? MinimumProgressIndex.INSTANCE : progressIndex);
     }
+  }
+
+  /**
+   * Externally skip the report of the processing {@link ProgressIndex} of this {@link
+   * EnrichedEvent} when committed. Report by generated events are still allowed.
+   */
+  public void skipReportOnCommit() {
+    shouldReportOnCommit = false;
   }
 
   public void bindProgressIndex(ProgressIndex progressIndex) {
@@ -281,6 +307,8 @@ public abstract class EnrichedEvent implements Event {
     return "EnrichedEvent{"
         + "referenceCount="
         + referenceCount.get()
+        + ", isReleased="
+        + isReleased.get()
         + ", pipeName='"
         + pipeName
         + "', pipeTaskMeta="
@@ -308,6 +336,8 @@ public abstract class EnrichedEvent implements Event {
     return "EnrichedEvent{"
         + "referenceCount="
         + referenceCount.get()
+        + ", isReleased="
+        + isReleased.get()
         + ", pipeName='"
         + pipeName
         + "', committerKey='"
