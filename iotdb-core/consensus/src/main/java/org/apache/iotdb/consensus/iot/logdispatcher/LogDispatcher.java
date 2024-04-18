@@ -101,9 +101,7 @@ public class LogDispatcher {
 
   public synchronized void start() {
     if (!threads.isEmpty()) {
-      threads.stream()
-          .parallel()
-          .forEach(thread -> thread.setFuture(executorService.submit(thread)));
+      threads.forEach(thread -> thread.setFuture(executorService.submit(thread)));
     }
   }
 
