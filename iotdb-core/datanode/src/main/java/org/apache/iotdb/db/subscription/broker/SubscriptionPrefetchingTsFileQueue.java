@@ -98,7 +98,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     return null;
   }
 
-  public @NonNull SubscriptionTsFileEvent pollTsFile(
+  public synchronized @NonNull SubscriptionTsFileEvent pollTsFile(
       String consumerId, String fileName, long writingOffset) {
     // 1. Extract current event and check it
     final SubscriptionTsFileEvent event = consumerIdToCurrentEventMap.get(consumerId);
@@ -193,11 +193,11 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     return pollTsFile(consumerId, writingOffset, event);
   }
 
-  private @NonNull SubscriptionTsFileEvent pollTsFile(
+  private synchronized @NonNull SubscriptionTsFileEvent pollTsFile(
       String consumerId, long writingOffset, SubscriptionTsFileEvent event) {
-    Pair<SubscriptionTsFileEvent, Boolean> newEventWithCommittable = event.matchNext(writingOffset);
+    Pair<SubscriptionTsFileEvent, Boolean> newEventWithCommittable =
+        event.matchOrResetNext(writingOffset);
     if (Objects.isNull(newEventWithCommittable)) {
-      event.resetNext();
       try {
         newEventWithCommittable =
             event.generateSubscriptionTsFileEventWithPieceOrSealPayload(writingOffset);
@@ -214,7 +214,6 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
     // remove outdated event
     consumerIdToCurrentEventMap.remove(consumerId);
-    event.resetNext();
 
     // update current event
     final SubscriptionTsFileEvent newEvent = newEventWithCommittable.getLeft();
@@ -229,7 +228,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   }
 
   @Override
-  public void executePrefetch() {
+  public synchronized void executePrefetch() {
     consumerIdToCurrentEventMap.values().forEach(SubscriptionTsFileEvent::prefetchNext);
     consumerIdToCurrentEventMap.values().forEach(SubscriptionTsFileEvent::serializeNext);
   }
@@ -259,7 +258,6 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
       // remove outdated event
       consumerIdToCurrentEventMap.remove(entry.getKey());
-      currentEvent.resetNext();
 
       // update current event
       final SubscriptionTsFileEvent newEvent =

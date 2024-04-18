@@ -109,43 +109,41 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
         });
   }
 
-  public void resetNext() {
-    nextEventWithCommittableRef.set(null);
-  }
-
-  public Pair<@NonNull SubscriptionTsFileEvent, Boolean> matchNext(long writingOffset) {
-    final Pair<SubscriptionTsFileEvent, Boolean> nextEventWithCommittable =
-        nextEventWithCommittableRef.get();
-    if (Objects.isNull(nextEventWithCommittable)) {
-      return null;
-    }
-
-    final SubscriptionPolledMessage polledMessage = this.getMessage();
-    final short messageType = polledMessage.getMessageType();
-    final SubscriptionMessagePayload messagePayload = polledMessage.getMessagePayload();
-    if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
-      switch (SubscriptionPolledMessageType.valueOf(messageType)) {
-        case TS_FILE_INIT:
-          if (Objects.equals(writingOffset, 0)) {
-            return nextEventWithCommittable;
+  public Pair<@NonNull SubscriptionTsFileEvent, Boolean> matchOrResetNext(long writingOffset) {
+    return nextEventWithCommittableRef.getAndUpdate(
+        (nextEventWithCommittable) -> {
+          if (Objects.isNull(nextEventWithCommittable)) {
+            return null;
           }
-          return null;
-        case TS_FILE_PIECE:
-          if (Objects.equals(
-              writingOffset, ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset())) {
-            return nextEventWithCommittable;
+
+          final SubscriptionPolledMessage polledMessage = this.getMessage();
+          final short messageType = polledMessage.getMessageType();
+          final SubscriptionMessagePayload messagePayload = polledMessage.getMessagePayload();
+          if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
+            switch (SubscriptionPolledMessageType.valueOf(messageType)) {
+              case TS_FILE_INIT:
+                if (Objects.equals(writingOffset, 0)) {
+                  return nextEventWithCommittable;
+                }
+                return null;
+              case TS_FILE_PIECE:
+                if (Objects.equals(
+                    writingOffset,
+                    ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset())) {
+                  return nextEventWithCommittable;
+                }
+                return null;
+              case TS_FILE_SEAL:
+                return null;
+              default:
+                LOGGER.warn("unexpected message type: {}", messageType);
+                return null;
+            }
+          } else {
+            LOGGER.warn("unexpected message type: {}", messageType);
+            return null;
           }
-          return null;
-        case TS_FILE_SEAL:
-          return null;
-        default:
-          LOGGER.warn("unexpected message type: {}", messageType);
-          return null;
-      }
-    } else {
-      LOGGER.warn("unexpected message type: {}", messageType);
-      return null;
-    }
+        });
   }
 
   public static SubscriptionTsFileEvent generateSubscriptionTsFileEventWithInitPayload(
