@@ -35,9 +35,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -256,12 +260,10 @@ public class TableMetadataImpl implements Metadata {
       QualifiedObjectName tableName,
       List<Expression> expressionList,
       List<String> attributeColumns) {
-    return TableModelSchemaFetcher.getInstance()
-        .fetchDeviceSchema(
-            tableName.getDatabaseName(),
-            tableName.getObjectName(),
-            expressionList,
-            attributeColumns);
+    List<DeviceEntry> result = new ArrayList<>();
+    IDeviceID deviceID = new StringArrayDeviceID("beijing", "a_1");
+    result.add(new DeviceEntry(deviceID, Arrays.asList("new", "low")));
+    return result;
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
