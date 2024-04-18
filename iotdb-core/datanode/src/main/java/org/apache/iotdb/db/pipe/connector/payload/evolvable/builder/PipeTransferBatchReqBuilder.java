@@ -135,6 +135,9 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
         if (firstEventProcessingTime == Long.MIN_VALUE) {
           firstEventProcessingTime = System.currentTimeMillis();
         }
+      } else {
+        ((EnrichedEvent) event)
+            .decreaseReferenceCount(PipeTransferBatchReqBuilder.class.getName(), false);
       }
     }
 
