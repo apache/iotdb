@@ -38,15 +38,6 @@ IF EXIST "%IOTDB_CONF%\datanode-env.bat" (
   echo Can't find datanode-env.bat
 )
 
-call :local_ports_check
-set CLASSPATH=%CLASSPATH%;%IOTDB_HOME%\lib\*
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.tool.IoTDBDataBackTool
-
-"%JAVA_HOME%\bin\java" -DIOTDB_HOME=!IOTDB_HOME! !JAVA_OPTS! -cp !CLASSPATH! !MAIN_CLASS! %*
-pause
-exit /b
-
-:local_ports_check
 IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
     %IOTDB_CONF%\iotdb-datanode.properties') do (
@@ -73,7 +64,6 @@ set cn_internal_port_occupied=0
 for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
     if %%i==TCP (
        if %%j==%dn_rpc_port% (
-         echo !dn_rpc_port_occupied!
          if !dn_rpc_port_occupied!==0 (
            set spid=%%k
            call :checkIfIOTDBProcess !spid! is_iotdb
@@ -95,11 +85,15 @@ for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
 )
 
 if defined local_iotdb_occupied_ports (
-     echo Please stop IoTDB
-     exit /b 0
+     goto :checkFail
 )
-exit /b
 
+set CLASSPATH=%CLASSPATH%;%IOTDB_HOME%\lib\*
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.tool.IoTDBDataBackTool
+
+"%JAVA_HOME%\bin\java" -DIOTDB_HOME=!IOTDB_HOME! !JAVA_OPTS! -cp !CLASSPATH! !MAIN_CLASS! %*
+pause
+exit /b
 
 :checkIfIOTDBProcess
 setlocal
@@ -117,4 +111,8 @@ exit /b
 :err
 echo JAVA_HOME environment variable must be set!
 set ret_code=1
-pause
+exit /b
+
+:checkFail
+echo Please stop IoTDB
+exit /b
