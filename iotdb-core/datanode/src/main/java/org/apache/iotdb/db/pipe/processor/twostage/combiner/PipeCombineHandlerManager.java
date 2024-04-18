@@ -25,8 +25,6 @@ import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.FetchCombine
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.FetchCombineResultResponse;
 import org.apache.iotdb.db.pipe.processor.twostage.operator.Operator;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.slf4j.Logger;
@@ -84,9 +82,12 @@ public class PipeCombineHandlerManager {
       throw new PipeException("CombineHandler not found for pipeId = " + pipeId);
     }
 
-    handler.combine(
-        combineRequest.getRegionId(), combineRequest.getCombineId(), combineRequest.getState());
-    return new TPipeTransferResp().setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    return new TPipeTransferResp()
+        .setStatus(
+            handler.combine(
+                combineRequest.getRegionId(),
+                combineRequest.getCombineId(),
+                combineRequest.getState()));
   }
 
   public FetchCombineResultResponse handle(FetchCombineResultRequest fetchCombineResultRequest)

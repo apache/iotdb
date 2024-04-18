@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.processor.twostage.combiner;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -84,8 +85,8 @@ public class PipeCombineHandler {
     return creationTime;
   }
 
-  public synchronized void combine(int regionId, String combineId, State state) {
-    combineId2Combiner
+  public synchronized TSStatus combine(int regionId, String combineId, State state) {
+    return combineId2Combiner
         .computeIfAbsent(
             combineId,
             id -> new Combiner(operatorConstructor.apply(combineId), expectedRegionIdSet))

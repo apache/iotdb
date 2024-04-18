@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.pipe.processor.twostage.combiner;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.pipe.processor.twostage.operator.Operator;
 import org.apache.iotdb.db.pipe.processor.twostage.state.State;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +55,12 @@ public class Combiner {
     this.receivedRegionIdSet = new HashSet<>();
   }
 
-  public void combine(int regionId, State state) {
+  public TSStatus combine(int regionId, State state) {
+    if (expectedRegionIdSet.isEmpty()) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_ERROR, "Expected region id set is empty. Sender should try again.");
+    }
+
     receivedRegionIdSet.add(regionId);
     operator.combine(state);
 
@@ -78,6 +86,8 @@ public class Combiner {
             expectedRegionIdSet);
       }
     }
+
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   public boolean isOutdated() {
