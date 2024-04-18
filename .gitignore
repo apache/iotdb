@@ -60,11 +60,7 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 ### CSV ###
 *.csv
 ### Maven ###
-grafana/target/
-!grafana/.mvn/wrapper/maven-wrapper.jar
-grafana/.mvn/
 
-grafana/logs/
 *.log
 
 
@@ -83,13 +79,10 @@ grafana/logs/
 **/dist/
 **/nbdist/
 **/.nb-gradle/
-grafana/data/
 
 ### vscode project
 **/.vscode/
 
-
-grafana/data/test.csv
 **/lib/
 /target/
 *.tsfile
