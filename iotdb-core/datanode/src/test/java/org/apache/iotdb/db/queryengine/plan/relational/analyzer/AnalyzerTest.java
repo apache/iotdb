@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
@@ -34,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.RelationalDistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
@@ -145,15 +148,22 @@ public class AnalyzerTest {
     WarningCollector warningCollector = WarningCollector.NOOP;
     LogicalPlanner logicalPlanner =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector);
-    LogicalQueryPlan result = logicalPlanner.plan(actualAnalysis);
-    System.out.println(result);
+    LogicalQueryPlan logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    System.out.println(logicalQueryPlan);
+
+    RelationalDistributionPlanner distributionPlanner =
+        new RelationalDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    DistributedQueryPlan distributedQueryPlan = distributionPlanner.plan();
+    System.out.println(distributedQueryPlan);
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {
     try {
       SqlParser sqlParser = new SqlParser();
       Statement statement = sqlParser.createStatement(sql);
-      SessionInfo session = new SessionInfo(0, "test", ZoneId.systemDefault(), "testdb");
+      SessionInfo session =
+          new SessionInfo(
+              0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
       StatementAnalyzerFactory statementAnalyzerFactory =
           new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
 

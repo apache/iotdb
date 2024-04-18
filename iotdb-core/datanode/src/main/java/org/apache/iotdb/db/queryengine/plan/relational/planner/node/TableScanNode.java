@@ -10,6 +10,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 
+import com.google.common.collect.ImmutableList;
+
 import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
@@ -65,7 +67,7 @@ public class TableScanNode extends PlanNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return ImmutableList.of();
   }
 
   @Override
@@ -123,12 +125,24 @@ public class TableScanNode extends PlanNode {
     return this.qualifiedTableName;
   }
 
+  public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
+    this.deviceEntries = deviceEntries;
+  }
+
+  public Map<Symbol, Integer> getIdAndAttributeIndexMap() {
+    return this.idAndAttributeIndexMap;
+  }
+
   public Map<Symbol, ColumnSchema> getAssignments() {
     return this.assignments;
   }
 
   public Ordering getScanOrder() {
     return this.scanOrder;
+  }
+
+  public List<DeviceEntry> getDeviceEntries() {
+    return deviceEntries;
   }
 
   public Expression getPushDownPredicate() {

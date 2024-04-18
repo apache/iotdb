@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
@@ -80,7 +81,18 @@ public class LocalExecutionPlanner {
 
     // Generate pipelines, return the last pipeline data structure
     // TODO Replace operator with operatorFactory to build multiple driver for one pipeline
-    Operator root = plan.accept(new OperatorTreeGenerator(), context);
+    Operator root;
+    IClientSession.SqlDialect sqlDialect = instanceContext.getSessionInfo().getSqlDialect();
+    switch (sqlDialect) {
+      case TREE:
+        root = plan.accept(new OperatorTreeGenerator(), context);
+        break;
+      case TABLE:
+        root = plan.accept(new TableOperatorGenerator(), context);
+        break;
+      default:
+        throw new IllegalArgumentException(String.format("Unknown sql dialect: %s", sqlDialect));
+    }
 
     // check whether current free memory is enough to execute current query
     long estimatedMemorySize = checkMemory(root, instanceContext.getStateMachine());

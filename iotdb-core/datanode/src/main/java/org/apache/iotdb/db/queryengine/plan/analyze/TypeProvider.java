@@ -98,26 +98,32 @@ public class TypeProvider {
     return new TypeProvider(ImmutableMap.of());
   }
 
-  private TypeProvider(Map<Symbol, Type> types) {
+  public TypeProvider(Map<Symbol, Type> types) {
     this.types = types;
 
     this.typeMap = null;
   }
 
-  private TypeProvider(
+  public TypeProvider(
       Map<String, TSDataType> typeMap, TemplatedInfo templatedInfo, Map<Symbol, Type> types) {
     this.typeMap = typeMap;
     this.templatedInfo = templatedInfo;
     this.types = types;
   }
 
-  public Type get(Symbol symbol) {
+  public Type getTableModelType(Symbol symbol) {
     requireNonNull(symbol, "symbol is null");
 
     Type type = types.get(symbol);
     checkArgument(type != null, "no type found for symbol '%s'", symbol);
 
     return type;
+  }
+
+  public void putTableModelType(Symbol symbol, Type type) {
+    requireNonNull(symbol, "symbol is null");
+
+    types.put(symbol, type);
   }
 
   public Map<Symbol, Type> allTypes() {

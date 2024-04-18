@@ -378,7 +378,8 @@ public class SessionManager implements SessionManagerMBean {
         session.getUsername(),
         session.getZoneId(),
         session.getClientVersion(),
-        session.getDatabaseName());
+        session.getDatabaseName(),
+        session.getSqlDialect());
   }
 
   @Override
