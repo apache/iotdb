@@ -668,7 +668,7 @@ public class ColumnTransformerBuilder
     }
 
     public Type getType(SymbolReference symbolReference) {
-      return typeProvider.get(Symbol.from(symbolReference));
+      return typeProvider.getTableModelType(Symbol.from(symbolReference));
     }
   }
 }
