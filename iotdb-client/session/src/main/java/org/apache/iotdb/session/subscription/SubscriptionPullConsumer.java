@@ -239,6 +239,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
         // non-retryable
         removeOnTheFlyTsFileInfo(commitContext.getTopicName());
       } else {
+        // retryable
         increaseOnTheFlyTsFileInfoRetryCountOrRemove(commitContext.getTopicName());
       }
     } catch (IOException e) {
@@ -285,29 +286,19 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
         this,
         file.getAbsolutePath(),
         commitContext);
-    long endWritingOffset = fileWriter.length();
 
+    long writingOffset = fileWriter.length();
     while (true) {
       final List<SubscriptionPolledMessage> polledMessages =
-          pollTsFileInternal(dataNodeId, topicName, fileName, endWritingOffset, timeoutMs);
+          pollTsFileInternal(dataNodeId, topicName, fileName, writingOffset, timeoutMs);
 
-      if (Objects.isNull(polledMessages) || polledMessages.size() != 1) {
-        LOGGER.warn("unexpected polledMessages: {}, consumer: {}", polledMessages, this);
+      if (polledMessages.isEmpty()) {
+        LOGGER.warn("poll empty messages, consumer: {}", this);
         return new Pair<>(null, false);
       }
 
       final SubscriptionPolledMessage polledMessage = polledMessages.get(0);
-      if (Objects.isNull(polledMessage)) {
-        LOGGER.warn("unexpected polledMessage: {}, consumer: {}", polledMessage, this);
-        return new Pair<>(null, false);
-      }
-
       final SubscriptionMessagePayload messagePayload = polledMessage.getMessagePayload();
-      if (Objects.isNull(messagePayload)) {
-        LOGGER.warn("unexpected messagePayload: {}, consumer: {}", messagePayload, this);
-        return new Pair<>(null, false);
-      }
-
       final SubscriptionCommitContext incomingCommitContext = polledMessage.getCommitContext();
       if (Objects.isNull(incomingCommitContext)
           || !Objects.equals(commitContext, incomingCommitContext)) {
@@ -340,7 +331,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
               fileWriter.getFD().sync();
 
               // update offset
-              endWritingOffset = ((TsFilePieceMessagePayload) messagePayload).getEndWritingOffset();
+              writingOffset = ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset();
               break;
             }
           case TS_FILE_SEAL:
@@ -431,7 +422,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   }
 
   private List<SubscriptionPolledMessage> pollTsFileInternal(
-      int dataNodeId, String topicName, String fileName, long endWritingOffset, long timeoutMs)
+      int dataNodeId, String topicName, String fileName, long writingOffset, long timeoutMs)
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     acquireReadLock();
     try {
@@ -447,7 +438,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
           .poll(
               new SubscriptionPollMessage(
                   SubscriptionPollMessageType.POLL_TS_FILE.getType(),
-                  new PollTsFileMessagePayload(topicName, fileName, endWritingOffset),
+                  new PollTsFileMessagePayload(topicName, fileName, writingOffset),
                   timeoutMs));
     } finally {
       releaseReadLock();

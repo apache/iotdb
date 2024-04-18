@@ -61,6 +61,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private static final IoTDBConnectionException NO_PROVIDERS_EXCEPTION =
       new IoTDBConnectionException("Cluster has no available subscription providers to connect");
 
+  private static final int ON_THE_FLY_TS_FILE_RETRY_LIMIT = 3;
+
   private final List<TEndPoint> initialEndpoints;
 
   private final String username;
@@ -124,9 +126,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
 
     /** @return {@code true} if exceed retry limit */
-    boolean increaseRetryCountAndCheck() {
+    boolean increaseRetryCountAndCheckIfExceedRetryLimit() {
       retryCount++;
-      return retryCount > 3;
+      return retryCount > ON_THE_FLY_TS_FILE_RETRY_LIMIT;
     }
 
     @Override
@@ -186,7 +188,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       return;
     }
 
-    if (info.increaseRetryCountAndCheck()) {
+    if (info.increaseRetryCountAndCheckIfExceedRetryLimit()) {
       removeOnTheFlyTsFileInfo(topicName);
     }
   }

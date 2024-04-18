@@ -32,7 +32,7 @@ public class TsFilePieceMessagePayload implements SubscriptionMessagePayload {
 
   private transient String fileName;
 
-  private transient long endWritingOffset;
+  private transient long nextWritingOffset;
 
   private transient byte[] filePiece;
 
@@ -40,8 +40,8 @@ public class TsFilePieceMessagePayload implements SubscriptionMessagePayload {
     return fileName;
   }
 
-  public long getEndWritingOffset() {
-    return endWritingOffset;
+  public long getNextWritingOffset() {
+    return nextWritingOffset;
   }
 
   public byte[] getFilePiece() {
@@ -50,23 +50,23 @@ public class TsFilePieceMessagePayload implements SubscriptionMessagePayload {
 
   public TsFilePieceMessagePayload() {}
 
-  public TsFilePieceMessagePayload(String fileName, long endWritingOffset, byte[] filePiece) {
+  public TsFilePieceMessagePayload(String fileName, long nextWritingOffset, byte[] filePiece) {
     this.fileName = fileName;
-    this.endWritingOffset = endWritingOffset;
+    this.nextWritingOffset = nextWritingOffset;
     this.filePiece = filePiece;
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(fileName, stream);
-    ReadWriteIOUtils.write(endWritingOffset, stream);
+    ReadWriteIOUtils.write(nextWritingOffset, stream);
     ReadWriteIOUtils.write(new Binary(filePiece), stream);
   }
 
   @Override
   public SubscriptionMessagePayload deserialize(ByteBuffer buffer) {
     this.fileName = ReadWriteIOUtils.readString(buffer);
-    this.endWritingOffset = ReadWriteIOUtils.readLong(buffer);
+    this.nextWritingOffset = ReadWriteIOUtils.readLong(buffer);
     final int size = ReadWriteIOUtils.readInt(buffer);
     this.filePiece = ReadWriteIOUtils.readBytes(buffer, size);
     return this;
@@ -82,21 +82,21 @@ public class TsFilePieceMessagePayload implements SubscriptionMessagePayload {
     }
     final TsFilePieceMessagePayload that = (TsFilePieceMessagePayload) obj;
     return Objects.equals(this.fileName, that.fileName)
-        && Objects.equals(this.endWritingOffset, that.endWritingOffset)
+        && Objects.equals(this.nextWritingOffset, that.nextWritingOffset)
         && Arrays.equals(this.filePiece, that.filePiece);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(fileName, endWritingOffset, filePiece);
+    return Objects.hash(fileName, nextWritingOffset, filePiece);
   }
 
   @Override
   public String toString() {
     return "TsFilePieceMessagePayload{fileName="
         + fileName
-        + ", endWritingOffset="
-        + endWritingOffset
+        + ", nextWritingOffset="
+        + nextWritingOffset
         + ", filePiece="
         + Arrays.toString(filePiece)
         + "}";

@@ -62,7 +62,7 @@ public class SubscriptionBrokerAgent {
   }
 
   public List<SubscriptionEvent> pollTsFile(
-      ConsumerConfig consumerConfig, String topicName, String fileName, long endWritingOffset) {
+      ConsumerConfig consumerConfig, String topicName, String fileName, long writingOffset) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
@@ -71,7 +71,7 @@ public class SubscriptionBrokerAgent {
       return Collections.emptyList();
     }
     final String consumerId = consumerConfig.getConsumerId();
-    return broker.pollTsFile(consumerId, topicName, fileName, endWritingOffset);
+    return broker.pollTsFile(consumerId, topicName, fileName, writingOffset);
   }
 
   public void commit(

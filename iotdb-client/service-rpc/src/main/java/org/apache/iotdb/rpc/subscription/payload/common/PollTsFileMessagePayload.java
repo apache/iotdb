@@ -32,7 +32,7 @@ public class PollTsFileMessagePayload implements SubscriptionMessagePayload {
 
   private transient String fileName;
 
-  private transient long endWritingOffset;
+  private transient long writingOffset;
 
   public String getTopicName() {
     return topicName;
@@ -42,30 +42,30 @@ public class PollTsFileMessagePayload implements SubscriptionMessagePayload {
     return fileName;
   }
 
-  public long getEndWritingOffset() {
-    return endWritingOffset;
+  public long getWritingOffset() {
+    return writingOffset;
   }
 
   public PollTsFileMessagePayload() {}
 
-  public PollTsFileMessagePayload(String topicName, String fileName, long endWritingOffset) {
+  public PollTsFileMessagePayload(String topicName, String fileName, long writingOffset) {
     this.topicName = topicName;
     this.fileName = fileName;
-    this.endWritingOffset = endWritingOffset;
+    this.writingOffset = writingOffset;
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(topicName, stream);
     ReadWriteIOUtils.write(fileName, stream);
-    ReadWriteIOUtils.write(endWritingOffset, stream);
+    ReadWriteIOUtils.write(writingOffset, stream);
   }
 
   @Override
   public SubscriptionMessagePayload deserialize(ByteBuffer buffer) {
     topicName = ReadWriteIOUtils.readString(buffer);
     fileName = ReadWriteIOUtils.readString(buffer);
-    endWritingOffset = ReadWriteIOUtils.readLong(buffer);
+    writingOffset = ReadWriteIOUtils.readLong(buffer);
     return this;
   }
 
@@ -82,12 +82,12 @@ public class PollTsFileMessagePayload implements SubscriptionMessagePayload {
     final PollTsFileMessagePayload that = (PollTsFileMessagePayload) obj;
     return Objects.equals(this.topicName, that.topicName)
         && Objects.equals(this.fileName, that.fileName)
-        && Objects.equals(this.endWritingOffset, that.endWritingOffset);
+        && Objects.equals(this.writingOffset, that.writingOffset);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicName, fileName, endWritingOffset);
+    return Objects.hash(topicName, fileName, writingOffset);
   }
 
   @Override
@@ -96,8 +96,8 @@ public class PollTsFileMessagePayload implements SubscriptionMessagePayload {
         + topicName
         + ", fileName="
         + fileName
-        + ", endWritingOffset="
-        + endWritingOffset
+        + ", writingOffset="
+        + writingOffset
         + "}";
   }
 }

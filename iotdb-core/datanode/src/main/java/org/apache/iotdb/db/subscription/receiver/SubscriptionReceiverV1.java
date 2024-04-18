@@ -396,7 +396,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                 consumerConfig,
                 messagePayload.getTopicName(),
                 messagePayload.getFileName(),
-                messagePayload.getEndWritingOffset());
+                messagePayload.getWritingOffset());
 
     final List<SubscriptionPolledMessage> polledMessages =
         events.stream().map(SubscriptionEvent::getMessage).collect(Collectors.toList());

@@ -30,8 +30,8 @@ public class SubscriptionEvent {
 
   private static final long INVALID_TIMESTAMP = -1;
 
-  private final List<EnrichedEvent> enrichedEvents;
-  private final SubscriptionPolledMessage message;
+  protected final List<EnrichedEvent> enrichedEvents;
+  protected final SubscriptionPolledMessage message;
 
   private String lastPolledConsumerId;
   private long lastPolledTimestamp;

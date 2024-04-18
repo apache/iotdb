@@ -21,10 +21,9 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
-import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.db.subscription.event.SubscriptionTsFileEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
@@ -34,15 +33,13 @@ import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessag
 import org.apache.iotdb.rpc.subscription.payload.common.TsFileErrorMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.TsFileInitMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.TsFilePieceMessagePayload;
-import org.apache.iotdb.rpc.subscription.payload.common.TsFileSealMessagePayload;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +51,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPrefetchingTsFileQueue.class);
 
-  private final Map<String, SubscriptionEvent> consumerIdToCurrentEvents;
+  private final Map<String, SubscriptionTsFileEvent> consumerIdToCurrentEventMap;
 
   public SubscriptionPrefetchingTsFileQueue(
       final String brokerId,
@@ -62,12 +59,13 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       final BoundedBlockingPendingQueue<Event> inputPendingQueue) {
     super(brokerId, topicName, inputPendingQueue);
 
-    this.consumerIdToCurrentEvents = new ConcurrentHashMap<>();
+    this.consumerIdToCurrentEventMap = new ConcurrentHashMap<>();
   }
 
   @Override
-  public SubscriptionEvent poll(final String consumerId, final SubscriptionPollTimer timer) {
-    final SubscriptionEvent pollableEvent = checkPollableOnTheFlyTsFile(consumerId);
+  public SubscriptionTsFileEvent poll(final String consumerId, final SubscriptionPollTimer timer) {
+    final SubscriptionTsFileEvent pollableEvent =
+        getPollableOnTheFlySubscriptionTsFileEvent(consumerId);
     if (Objects.nonNull(pollableEvent)) {
       return pollableEvent;
     }
@@ -86,15 +84,12 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       final PipeTsFileInsertionEvent tsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
       final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
 
-      final SubscriptionEvent subscriptionEvent =
-          new SubscriptionEvent(
-              Collections.singletonList(tsFileInsertionEvent),
-              new SubscriptionPolledMessage(
-                  SubscriptionPolledMessageType.TS_FILE_INIT.getType(),
-                  new TsFileInitMessagePayload(tsFileInsertionEvent.getTsFile().getName()),
-                  commitContext));
-      consumerIdToCurrentEvents.put(consumerId, subscriptionEvent);
-      // don't allow commit now
+      // update current event
+      final SubscriptionTsFileEvent subscriptionEvent =
+          SubscriptionTsFileEvent.generateSubscriptionTsFileEventWithInitPayload(
+              tsFileInsertionEvent, commitContext);
+      consumerIdToCurrentEventMap.put(consumerId, subscriptionEvent);
+
       subscriptionEvent.recordLastPolledConsumerId(consumerId);
       subscriptionEvent.recordLastPolledTimestamp();
       return subscriptionEvent;
@@ -103,16 +98,16 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     return null;
   }
 
-  public @NonNull SubscriptionEvent pollTsFile(
-      String consumerId, String fileName, long endWritingOffset) {
+  public @NonNull SubscriptionTsFileEvent pollTsFile(
+      String consumerId, String fileName, long writingOffset) {
     // 1. Extract current event and check it
-    final SubscriptionEvent event = consumerIdToCurrentEvents.get(consumerId);
+    final SubscriptionTsFileEvent event = consumerIdToCurrentEventMap.get(consumerId);
     if (Objects.isNull(event)) {
       final String errorMessage =
           String.format(
               "%s is currently not transferring any tsfile to consumer %s", this, consumerId);
       LOGGER.warn(errorMessage);
-      return generateSubscriptionEventWithTsFileErrorMessage(errorMessage, false);
+      return generateSubscriptionTsFileEventWithErrorMessage(errorMessage, false);
     }
 
     // check consumer id
@@ -122,62 +117,25 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
               "inconsistent polled consumer id, current is %s, incoming is %s, prefetching queue: %s",
               event.getLastPolledConsumerId(), consumerId, this);
       LOGGER.warn(errorMessage);
-      return generateSubscriptionEventWithTsFileErrorMessage(errorMessage, false);
+      return generateSubscriptionTsFileEventWithErrorMessage(errorMessage, false);
     }
 
     final List<EnrichedEvent> enrichedEvents = event.getEnrichedEvents();
-    if (Objects.isNull(enrichedEvents) || enrichedEvents.size() != 1) {
-      final String errorMessage =
-          String.format(
-              "unexpected enrichedEvents: %s, prefetching queue: %s", enrichedEvents, this);
-      LOGGER.warn(errorMessage);
-      return generateSubscriptionEventWithTsFileErrorMessage(errorMessage, false);
-    }
-
     final PipeTsFileInsertionEvent tsFileInsertionEvent =
         (PipeTsFileInsertionEvent) enrichedEvents.get(0);
-    if (Objects.isNull(tsFileInsertionEvent)) {
-      final String errorMessage =
-          String.format(
-              "unexpected tsFileInsertionEvent: %s, prefetching queue: %s",
-              tsFileInsertionEvent, this);
-      LOGGER.warn(errorMessage);
-      return generateSubscriptionEventWithTsFileErrorMessage(errorMessage, false);
-    }
 
+    // check file name
     if (!Objects.equals(tsFileInsertionEvent.getTsFile().getName(), fileName)) {
       final String errorMessage =
           String.format(
               "inconsistent file name, current is %s, incoming is %s, prefetching queue: %s",
               tsFileInsertionEvent.getTsFile().getName(), fileName, this);
       LOGGER.warn(errorMessage);
-      return generateSubscriptionEventWithTsFileErrorMessage(errorMessage, false);
+      return generateSubscriptionTsFileEventWithErrorMessage(errorMessage, false);
     }
 
     final SubscriptionPolledMessage polledMessage = event.getMessage();
-    if (Objects.isNull(polledMessage)) {
-      final String errorMessage =
-          String.format("unexpected polledMessage: %s, prefetching queue: %s", polledMessage, this);
-      LOGGER.warn(errorMessage);
-      return generateSubscriptionEventWithTsFileErrorMessage(errorMessage, false);
-    }
-
     final SubscriptionMessagePayload messagePayload = polledMessage.getMessagePayload();
-    if (Objects.isNull(messagePayload)) {
-      final String errorMessage =
-          String.format(
-              "unexpected messagePayload: %s, prefetching queue: %s", messagePayload, this);
-      LOGGER.warn(errorMessage);
-      return generateSubscriptionEventWithTsFileErrorMessage(errorMessage, false);
-    }
-
-    final SubscriptionCommitContext commitContext = polledMessage.getCommitContext();
-    if (Objects.isNull(commitContext)) {
-      final String errorMessage =
-          String.format("unexpected commitContext: %s, prefetching queue: %s", commitContext, this);
-      LOGGER.warn(errorMessage);
-      return generateSubscriptionEventWithTsFileErrorMessage(errorMessage, false);
-    }
 
     // 2. Check message type, file name and offset
     final short messageType = polledMessage.getMessageType();
@@ -192,11 +150,11 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
                     "inconsistent file name, current is %s, incoming is %s, prefetching queue: %s",
                     ((TsFileInitMessagePayload) messagePayload).getFileName(), fileName, this);
             LOGGER.warn(errorMessage);
-            return generateSubscriptionEventWithTsFileErrorMessage(errorMessage, false);
+            return generateSubscriptionTsFileEventWithErrorMessage(errorMessage, false);
           }
           // check offset
-          if (endWritingOffset != 0) {
-            LOGGER.warn("{} reset file {} offset to {}", this, fileName, endWritingOffset);
+          if (writingOffset != 0) {
+            LOGGER.warn("{} reset file {} offset to {}", this, fileName, writingOffset);
           }
           break;
         case TS_FILE_PIECE:
@@ -208,115 +166,81 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
                     "inconsistent file name, current is %s, incoming is %s, prefetching queue: %s",
                     ((TsFilePieceMessagePayload) messagePayload).getFileName(), fileName, this);
             LOGGER.warn(errorMessage);
-            return generateSubscriptionEventWithTsFileErrorMessage(errorMessage, false);
+            return generateSubscriptionTsFileEventWithErrorMessage(errorMessage, false);
           }
           // check offset
-          if (endWritingOffset
-              != ((TsFilePieceMessagePayload) messagePayload).getEndWritingOffset()) {
-            LOGGER.warn("{} reset file {} offset to {}", this, fileName, endWritingOffset);
+          if (writingOffset
+              != ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset()) {
+            LOGGER.warn("{} reset file {} offset to {}", this, fileName, writingOffset);
           }
           break;
         case TS_FILE_SEAL:
-          LOGGER.warn("{} reset file {} offset to {}", this, fileName, endWritingOffset);
-          // don't allow commit now
-          uncommittedEvents.remove(commitContext);
+          LOGGER.warn("{} reset file {} offset to {}", this, fileName, writingOffset);
           break;
         default:
           final String errorMessage = String.format("unexpected message type: %s", messageType);
           LOGGER.warn(errorMessage);
-          return generateSubscriptionEventWithTsFileErrorMessage(errorMessage, false);
+          return generateSubscriptionTsFileEventWithErrorMessage(errorMessage, false);
       }
     } else {
       final String errorMessage = String.format("unexpected message type: %s", messageType);
       LOGGER.warn(errorMessage);
-      return generateSubscriptionEventWithTsFileErrorMessage(errorMessage, false);
+      return generateSubscriptionTsFileEventWithErrorMessage(errorMessage, false);
     }
 
     // 3. Poll tsfile piece or tsfile seal
-    return pollTsFile(consumerId, tsFileInsertionEvent, endWritingOffset, commitContext);
+    return pollTsFile(consumerId, writingOffset, event);
   }
 
-  private @NonNull SubscriptionEvent pollTsFile(
-      String consumerId,
-      PipeTsFileInsertionEvent tsFileInsertionEvent,
-      long endWritingOffset,
-      SubscriptionCommitContext commitContext) {
-    final int readFileBufferSize =
-        SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
-    final byte[] readBuffer = new byte[readFileBufferSize];
-    try (final RandomAccessFile reader =
-        new RandomAccessFile(tsFileInsertionEvent.getTsFile(), "r")) {
-      while (true) {
-        reader.seek(endWritingOffset);
-        final int readLength = reader.read(readBuffer);
-        if (readLength == -1) {
-          break;
-        }
-
-        final byte[] filePiece =
-            readLength == readFileBufferSize
-                ? readBuffer
-                : Arrays.copyOfRange(readBuffer, 0, readLength);
-
-        // poll tsfile piece
-        final SubscriptionEvent newEvent =
-            new SubscriptionEvent(
-                Collections.singletonList(tsFileInsertionEvent),
-                new SubscriptionPolledMessage(
-                    SubscriptionPolledMessageType.TS_FILE_PIECE.getType(),
-                    new TsFilePieceMessagePayload(
-                        tsFileInsertionEvent.getTsFile().getName(),
-                        endWritingOffset + readLength,
-                        filePiece),
-                    commitContext));
-
-        consumerIdToCurrentEvents.put(consumerId, newEvent);
-        // don't allow commit now
-        newEvent.recordLastPolledConsumerId(consumerId);
-        newEvent.recordLastPolledTimestamp();
-        return newEvent;
+  private @NonNull SubscriptionTsFileEvent pollTsFile(
+      String consumerId, long writingOffset, SubscriptionTsFileEvent event) {
+    Pair<SubscriptionTsFileEvent, Boolean> newEventWithCommittable = event.matchNext(writingOffset);
+    if (Objects.isNull(newEventWithCommittable)) {
+      try {
+        newEventWithCommittable =
+            event.generateSubscriptionTsFileEventWithPieceOrSealPayload(writingOffset);
+      } catch (IOException e) {
+        final String errorMessage =
+            String.format(
+                "IOException occurred when %s transferring tsfile to consumer %s: %s",
+                this, consumerId, e.getMessage());
+        LOGGER.warn(errorMessage);
+        // assume retryable
+        return generateSubscriptionTsFileEventWithErrorMessage(errorMessage, true);
       }
-
-      // poll tsfile seal
-      final SubscriptionEvent newEvent =
-          new SubscriptionEvent(
-              Collections.singletonList(tsFileInsertionEvent),
-              new SubscriptionPolledMessage(
-                  SubscriptionPolledMessageType.TS_FILE_SEAL.getType(),
-                  new TsFileSealMessagePayload(
-                      tsFileInsertionEvent.getTsFile().getName(),
-                      tsFileInsertionEvent.getTsFile().length()),
-                  commitContext));
-
-      consumerIdToCurrentEvents.put(consumerId, newEvent);
-      // allow commit now
-      uncommittedEvents.put(commitContext, newEvent);
-      newEvent.recordLastPolledConsumerId(consumerId);
-      newEvent.recordLastPolledTimestamp();
-      return newEvent;
-    } catch (IOException e) {
-      final String errorMessage =
-          String.format(
-              "IOException occurred when %s transferring tsfile to consumer %s: %s",
-              this, consumerId, e.getMessage());
-      LOGGER.warn(errorMessage);
-      // allow retry
-      return generateSubscriptionEventWithTsFileErrorMessage(errorMessage, true);
     }
+
+    // remove outdated event
+    consumerIdToCurrentEventMap.remove(consumerId);
+    event.resetNext();
+
+    // update current event
+    final SubscriptionTsFileEvent newEvent = newEventWithCommittable.getLeft();
+    consumerIdToCurrentEventMap.put(consumerId, newEvent);
+    if (newEventWithCommittable.getRight()) {
+      uncommittedEvents.put(newEvent.getMessage().getCommitContext(), newEvent);
+    }
+
+    newEvent.recordLastPolledConsumerId(consumerId);
+    newEvent.recordLastPolledTimestamp();
+    return newEvent;
   }
 
   @Override
   public void executePrefetch() {
-    // do nothing now
+    consumerIdToCurrentEventMap.values().forEach(SubscriptionTsFileEvent::prefetchNext);
+    consumerIdToCurrentEventMap.values().forEach(SubscriptionTsFileEvent::serializeNext);
   }
 
   /////////////////////////////// utility ///////////////////////////////
 
-  private synchronized SubscriptionEvent checkPollableOnTheFlyTsFile(final String consumerId) {
-    for (final Map.Entry<String, SubscriptionEvent> entry : consumerIdToCurrentEvents.entrySet()) {
-      final SubscriptionEvent currentEvent = entry.getValue();
+  private synchronized SubscriptionTsFileEvent getPollableOnTheFlySubscriptionTsFileEvent(
+      final String consumerId) {
+    for (final Map.Entry<String, SubscriptionTsFileEvent> entry :
+        consumerIdToCurrentEventMap.entrySet()) {
+      final SubscriptionTsFileEvent currentEvent = entry.getValue();
       if (currentEvent.isCommitted()) {
-        consumerIdToCurrentEvents.remove(entry.getKey());
+        consumerIdToCurrentEventMap.remove(entry.getKey());
         continue;
       }
 
@@ -330,31 +254,27 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       }
 
       // uncommitted and pollable event
-      consumerIdToCurrentEvents.remove(entry.getKey());
 
-      final SubscriptionEvent subscriptionEvent =
-          new SubscriptionEvent(
-              Collections.singletonList(currentEvent.getEnrichedEvents().get(0)),
-              new SubscriptionPolledMessage(
-                  SubscriptionPolledMessageType.TS_FILE_INIT.getType(),
-                  new TsFileInitMessagePayload(
-                      ((PipeTsFileInsertionEvent) currentEvent.getEnrichedEvents().get(0))
-                          .getTsFile()
-                          .getName()),
-                  currentEvent.getMessage().getCommitContext()));
-      consumerIdToCurrentEvents.put(consumerId, subscriptionEvent);
-      // don't allow commit now
-      subscriptionEvent.recordLastPolledConsumerId(consumerId);
-      subscriptionEvent.recordLastPolledTimestamp();
-      return subscriptionEvent;
+      // remove outdated event
+      consumerIdToCurrentEventMap.remove(entry.getKey());
+      currentEvent.resetNext();
+
+      // update current event
+      final SubscriptionTsFileEvent newEvent =
+          currentEvent.generateSubscriptionTsFileEventWithInitPayload();
+      consumerIdToCurrentEventMap.put(consumerId, newEvent);
+
+      newEvent.recordLastPolledConsumerId(consumerId);
+      newEvent.recordLastPolledTimestamp();
+      return newEvent;
     }
 
     return null;
   }
 
-  private SubscriptionEvent generateSubscriptionEventWithTsFileErrorMessage(
+  private SubscriptionTsFileEvent generateSubscriptionTsFileEventWithErrorMessage(
       final String errorMessage, final boolean retryable) {
-    return new SubscriptionEvent(
+    return new SubscriptionTsFileEvent(
         Collections.emptyList(),
         new SubscriptionPolledMessage(
             SubscriptionPolledMessageType.TS_FILE_ERROR.getType(),
