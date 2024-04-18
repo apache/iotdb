@@ -91,7 +91,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<ColumnSchema> columnSchemas = new ArrayList<>(outputColumnCount);
     int[] columnsIndexArray = new int[outputColumnCount];
     Map<Symbol, ColumnSchema> columnSchemaMap = node.getAssignments();
-    Map<Symbol, Integer> idAndAttributeColumnsIndexMap = node.getAttributesMap();
+    Map<Symbol, Integer> idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
     List<String> measurementColumnNames = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     int measurementColumnCount = 0;
