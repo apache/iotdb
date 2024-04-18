@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.load.cache.region;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractStatistics;
 
 import java.util.Objects;
@@ -31,6 +32,12 @@ public class RegionStatistics extends AbstractStatistics {
 
   public RegionStatistics(long statisticsNanoTimestamp, RegionStatus regionStatus) {
     super(statisticsNanoTimestamp);
+    this.regionStatus = regionStatus;
+  }
+
+  @TestOnly
+  public RegionStatistics(RegionStatus regionStatus) {
+    super(System.nanoTime());
     this.regionStatus = regionStatus;
   }
 
