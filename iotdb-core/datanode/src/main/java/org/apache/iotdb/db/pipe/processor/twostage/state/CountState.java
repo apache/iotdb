@@ -29,6 +29,10 @@ public class CountState implements State {
 
   private long count;
 
+  public CountState() {
+    // For reflection
+  }
+
   public CountState(long count) {
     this.count = count;
   }

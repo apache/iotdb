@@ -268,7 +268,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
               Arrays.asList(EXTRACTOR_WATERMARK_INTERVAL_KEY, SOURCE_WATERMARK_INTERVAL_KEY),
               EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE);
       if (watermarkIntervalInMs > 0) {
-        watermarkInjector = new DataRegionWatermarkInjector(watermarkIntervalInMs);
+        watermarkInjector = new DataRegionWatermarkInjector(regionId, watermarkIntervalInMs);
         LOGGER.info(
             "Pipe {}@{}: Set watermark injector with interval {} ms.",
             pipeName,

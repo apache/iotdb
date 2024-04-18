@@ -38,9 +38,13 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class TwoStageAggregateSender implements AutoCloseable {
 
@@ -48,74 +52,107 @@ public class TwoStageAggregateSender implements AutoCloseable {
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
-  // TODO: Update the map periodically
-  private static final Map<TEndPoint, IoTDBSyncClient> ENDPOINT_SYNC_CLIENT_MAP =
+  // TODO: Update the endpoints periodically to handle node changes
+  private static final AtomicReference<TEndPoint[]> END_POINTS = new AtomicReference<>();
+
+  private TEndPoint[] endPoints;
+  private final Map<TEndPoint, IoTDBSyncClient> endPointIoTDBSyncClientMap =
       new ConcurrentHashMap<>();
-  private static final AtomicInteger REFERENCE_COUNT = new AtomicInteger(0);
 
-  // TODO: Update the end points periodically
-  private final TEndPoint[] endPoints;
+  public synchronized TPipeTransferResp request(long watermark, TPipeTransferReq req)
+      throws TException {
+    tryFetchEndPointsIfNecessary();
+    tryConstructClients();
 
-  public TwoStageAggregateSender() {
-    synchronized (ENDPOINT_SYNC_CLIENT_MAP) {
-      REFERENCE_COUNT.incrementAndGet();
-
-      if (ENDPOINT_SYNC_CLIENT_MAP.isEmpty()) {
-        try (final ConfigNodeClient configNodeClient =
-            ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-          final TShowDataNodesResp showDataNodesResp = configNodeClient.showDataNodes();
-          if (showDataNodesResp == null || showDataNodesResp.getDataNodesInfoList() == null) {
-            throw new PipeException("Failed to fetch data nodes");
-          }
-          // TODO: We assume that different data nodes will get the same data nodes' endpoints for
-          // now. Finally, we have to periodically update the data nodes' endpoints.
-          for (final TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
-            final TEndPoint endPoint =
-                new TEndPoint(dataNodeInfo.getRpcAddresss(), dataNodeInfo.getRpcPort());
-            ENDPOINT_SYNC_CLIENT_MAP.put(endPoint, constructIoTDBSyncClient(endPoint));
-          }
-        } catch (ClientManagerException | TException e) {
-          throw new PipeException("Failed to fetch data nodes", e);
-        }
-
-        LOGGER.info(
-            "Data nodes' endpoints for two-stage aggregation: {}",
-            ENDPOINT_SYNC_CLIENT_MAP.keySet());
-      }
-
-      endPoints = ENDPOINT_SYNC_CLIENT_MAP.keySet().stream().sorted().toArray(TEndPoint[]::new);
-    }
-  }
-
-  public TPipeTransferResp request(long watermark, TPipeTransferReq req) throws TException {
     final TEndPoint endPoint = endPoints[(int) watermark % endPoints.length];
-    IoTDBSyncClient client = ENDPOINT_SYNC_CLIENT_MAP.get(endPoint);
+    IoTDBSyncClient client = endPointIoTDBSyncClientMap.get(endPoint);
     if (client == null) {
       client = reconstructIoTDBSyncClient(endPoint);
     }
+
     try {
       return client.pipeTransfer(req);
     } catch (Exception e) {
-      reconstructIoTDBSyncClient(endPoint);
+      LOGGER.warn("Failed to send request {} (watermark = {}) to {}", req, watermark, endPoint, e);
+      try {
+        reconstructIoTDBSyncClient(endPoint);
+      } catch (Exception ex) {
+        LOGGER.warn(
+            "Failed to reconstruct IoTDBSyncClient {} after failure to send request {} (watermark = {})",
+            endPoint,
+            req,
+            watermark,
+            ex);
+      }
       throw e;
+    }
+  }
+
+  private void tryFetchEndPointsIfNecessary() {
+    if (END_POINTS.get() != null) {
+      return;
+    }
+
+    synchronized (END_POINTS) {
+      if (END_POINTS.get() != null) {
+        return;
+      }
+
+      final Set<TEndPoint> endPointSet = new HashSet<>();
+      try (final ConfigNodeClient configNodeClient =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        // TODO: We assume that different data nodes will get the same data nodes' endpoints
+        final TShowDataNodesResp showDataNodesResp = configNodeClient.showDataNodes();
+        if (showDataNodesResp == null || showDataNodesResp.getDataNodesInfoList() == null) {
+          throw new PipeException("Failed to fetch data nodes");
+        }
+        for (final TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
+          endPointSet.add(new TEndPoint(dataNodeInfo.getRpcAddresss(), dataNodeInfo.getRpcPort()));
+        }
+      } catch (ClientManagerException | TException e) {
+        throw new PipeException("Failed to fetch data nodes", e);
+      }
+
+      if (endPointSet.isEmpty()) {
+        throw new PipeException("No data nodes' endpoints fetched");
+      }
+
+      END_POINTS.set(endPointSet.toArray(new TEndPoint[0]));
+    }
+
+    LOGGER.info(
+        "Data nodes' endpoints for two-stage aggregation: {}", Arrays.toString(END_POINTS.get()));
+  }
+
+  private void tryConstructClients() {
+    if (Objects.isNull(endPoints)) {
+      endPoints = END_POINTS.get();
+    }
+
+    if (endPointIoTDBSyncClientMap.isEmpty()) {
+      for (final TEndPoint endPoint : endPoints) {
+        try {
+          endPointIoTDBSyncClientMap.put(endPoint, constructIoTDBSyncClient(endPoint));
+        } catch (TTransportException e) {
+          LOGGER.warn("Failed to construct IoTDBSyncClient", e);
+        }
+      }
     }
   }
 
   private IoTDBSyncClient reconstructIoTDBSyncClient(TEndPoint endPoint)
       throws TTransportException {
-    synchronized (ENDPOINT_SYNC_CLIENT_MAP) {
-      final IoTDBSyncClient oldClient = ENDPOINT_SYNC_CLIENT_MAP.remove(endPoint);
-      if (oldClient != null) {
-        try {
-          oldClient.close();
-        } catch (Exception e) {
-          LOGGER.warn("Failed to close old IoTDBSyncClient", e);
-        }
+    final IoTDBSyncClient oldClient = endPointIoTDBSyncClientMap.remove(endPoint);
+    if (oldClient != null) {
+      try {
+        oldClient.close();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to close old IoTDBSyncClient", e);
       }
-      final IoTDBSyncClient newClient = constructIoTDBSyncClient(endPoint);
-      ENDPOINT_SYNC_CLIENT_MAP.put(endPoint, newClient);
-      return newClient;
     }
+    final IoTDBSyncClient newClient = constructIoTDBSyncClient(endPoint);
+    endPointIoTDBSyncClientMap.put(endPoint, newClient);
+    return newClient;
   }
 
   private IoTDBSyncClient constructIoTDBSyncClient(TEndPoint endPoint) throws TTransportException {
@@ -134,20 +171,15 @@ public class TwoStageAggregateSender implements AutoCloseable {
 
   @Override
   public void close() {
-    synchronized (ENDPOINT_SYNC_CLIENT_MAP) {
-      if (REFERENCE_COUNT.decrementAndGet() > 0) {
-        return;
+    for (final IoTDBSyncClient client : endPointIoTDBSyncClientMap.values()) {
+      try {
+        client.close();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to close IoTDBSyncClient", e);
       }
-
-      for (final IoTDBSyncClient client : ENDPOINT_SYNC_CLIENT_MAP.values()) {
-        try {
-          client.close();
-        } catch (Exception e) {
-          LOGGER.warn("Failed to close IoTDBSyncClient", e);
-        }
-      }
-
-      ENDPOINT_SYNC_CLIENT_MAP.clear();
     }
+
+    endPointIoTDBSyncClientMap.clear();
+    endPoints = null;
   }
 }

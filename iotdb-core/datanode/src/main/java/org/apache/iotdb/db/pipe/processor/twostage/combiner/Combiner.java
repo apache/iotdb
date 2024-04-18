@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Combiner {
 
-  private static final int MAX_COMBINER_LIVE_TIME_IN_MS = 1000 * 60 * 30; // 30 minutes
+  private static final int MAX_COMBINER_LIVE_TIME_IN_MS = 1000 * 60 * 5; // 5 minutes
   private final long creationTimeInMs;
 
   private final Operator operator;

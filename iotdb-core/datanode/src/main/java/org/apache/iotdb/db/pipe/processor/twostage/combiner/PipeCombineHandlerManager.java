@@ -111,7 +111,7 @@ public class PipeCombineHandlerManager {
 
     pipeId2CombineHandlerSnapshot.forEach(
         (pipeId, handler) -> {
-          handler.fetchExpectedRegionIdSet();
+          handler.fetchAndUpdateExpectedRegionIdSet();
           handler.cleanOutdatedCombiner();
         });
   }

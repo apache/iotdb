@@ -89,6 +89,7 @@ public class CombineRequest extends TPipeTransferReq {
       ReadWriteIOUtils.write(pipeName, outputStream);
       ReadWriteIOUtils.write(creationTime, outputStream);
       ReadWriteIOUtils.write(regionId, outputStream);
+      ReadWriteIOUtils.write(combineId, outputStream);
 
       ReadWriteIOUtils.write(state.getClass().getName(), outputStream);
       state.serialize(outputStream);
@@ -115,5 +116,23 @@ public class CombineRequest extends TPipeTransferReq {
     body = transferReq.body;
 
     return this;
+  }
+
+  @Override
+  public String toString() {
+    return "CombineRequest{"
+        + "pipeName='"
+        + pipeName
+        + '\''
+        + ", creationTime="
+        + creationTime
+        + ", regionId="
+        + regionId
+        + ", combineId='"
+        + combineId
+        + '\''
+        + ", state="
+        + state
+        + '}';
   }
 }

@@ -39,12 +39,19 @@ public class StateProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
-  private final Map<String, Binary> state;
-  private final ProgressIndex innerProgressIndex;
+  private long version;
+  private Map<String, Binary> state;
+  private ProgressIndex innerProgressIndex;
 
-  public StateProgressIndex(Map<String, Binary> state, ProgressIndex innerProgressIndex) {
+  public StateProgressIndex(
+      long version, Map<String, Binary> state, ProgressIndex innerProgressIndex) {
+    this.version = version;
     this.state = state;
     this.innerProgressIndex = innerProgressIndex;
+  }
+
+  public long getVersion() {
+    return version;
   }
 
   public ProgressIndex getInnerProgressIndex() {
@@ -60,6 +67,8 @@ public class StateProgressIndex extends ProgressIndex {
     lock.readLock().lock();
     try {
       ProgressIndexType.STATE_PROGRESS_INDEX.serialize(byteBuffer);
+
+      ReadWriteIOUtils.write(version, byteBuffer);
 
       ReadWriteIOUtils.write(state.size(), byteBuffer);
       for (final Map.Entry<String, Binary> entry : state.entrySet()) {
@@ -78,6 +87,8 @@ public class StateProgressIndex extends ProgressIndex {
     lock.readLock().lock();
     try {
       ProgressIndexType.STATE_PROGRESS_INDEX.serialize(stream);
+
+      ReadWriteIOUtils.write(version, stream);
 
       ReadWriteIOUtils.write(state.size(), stream);
       for (final Map.Entry<String, Binary> entry : state.entrySet()) {
@@ -148,10 +159,16 @@ public class StateProgressIndex extends ProgressIndex {
   public ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(ProgressIndex progressIndex) {
     lock.writeLock().lock();
     try {
-      innerProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
-          progressIndex instanceof StateProgressIndex
-              ? ((StateProgressIndex) progressIndex).innerProgressIndex
-              : progressIndex);
+      innerProgressIndex =
+          innerProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+              progressIndex instanceof StateProgressIndex
+                  ? ((StateProgressIndex) progressIndex).innerProgressIndex
+                  : progressIndex);
+      if (progressIndex instanceof StateProgressIndex
+          && version <= ((StateProgressIndex) progressIndex).version) {
+        version = ((StateProgressIndex) progressIndex).version;
+        state = ((StateProgressIndex) progressIndex).state;
+      }
       return this;
     } finally {
       lock.writeLock().unlock();
@@ -169,6 +186,8 @@ public class StateProgressIndex extends ProgressIndex {
   }
 
   public static StateProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
+    final long version = ReadWriteIOUtils.readLong(byteBuffer);
+
     final Map<String, Binary> state = new HashMap<>();
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
@@ -179,10 +198,12 @@ public class StateProgressIndex extends ProgressIndex {
 
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(byteBuffer);
 
-    return new StateProgressIndex(state, progressIndex);
+    return new StateProgressIndex(version, state, progressIndex);
   }
 
   public static StateProgressIndex deserializeFrom(InputStream stream) throws IOException {
+    final long version = ReadWriteIOUtils.readLong(stream);
+
     final Map<String, Binary> state = new HashMap<>();
     final int size = ReadWriteIOUtils.readInt(stream);
     for (int i = 0; i < size; ++i) {
@@ -193,13 +214,15 @@ public class StateProgressIndex extends ProgressIndex {
 
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(stream);
 
-    return new StateProgressIndex(state, progressIndex);
+    return new StateProgressIndex(version, state, progressIndex);
   }
 
   @Override
   public String toString() {
     return "StateProgressIndex{"
-        + "state="
+        + "version="
+        + version
+        + ", state="
         + state
         + ", innerProgressIndex="
         + innerProgressIndex

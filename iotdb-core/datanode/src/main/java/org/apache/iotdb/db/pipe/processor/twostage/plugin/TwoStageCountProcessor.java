@@ -58,7 +58,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -108,8 +107,6 @@ public class TwoStageCountProcessor implements PipeProcessor {
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Illegal output series path: " + rawOutputSeries);
     }
-
-    // TODO: injection interval validation
   }
 
   @Override
@@ -128,7 +125,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
     if (Objects.nonNull(pipeTaskMeta) && Objects.nonNull(pipeTaskMeta.getProgressIndex())) {
       if (pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex) {
         pipeTaskMeta.updateProgressIndex(
-            new StateProgressIndex(new HashMap<>(), MinimumProgressIndex.INSTANCE));
+            new StateProgressIndex(Long.MIN_VALUE, new HashMap<>(), MinimumProgressIndex.INSTANCE));
       }
 
       final StateProgressIndex stateProgressIndex =
@@ -172,9 +169,10 @@ public class TwoStageCountProcessor implements PipeProcessor {
     // TODO: count the number of given points in the tablet
     localCount.incrementAndGet();
 
-    localCommitProgressIndex
-        .get()
-        .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex());
+    localCommitProgressIndex.set(
+        localCommitProgressIndex
+            .get()
+            .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
   }
 
   @Override
@@ -198,9 +196,10 @@ public class TwoStageCountProcessor implements PipeProcessor {
     // TODO: count the number of points in the TsFile
     localCount.incrementAndGet();
 
-    localCommitProgressIndex
-        .get()
-        .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex());
+    localCommitProgressIndex.set(
+        localCommitProgressIndex
+            .get()
+            .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
   }
 
   @Override
@@ -213,9 +212,9 @@ public class TwoStageCountProcessor implements PipeProcessor {
 
     if (event instanceof PipeWatermarkEvent) {
       triggerCombine(
-          ((PipeWatermarkEvent) event).getWatermark(),
-          localCount.get(),
-          localCommitProgressIndex.get());
+          new Pair<>(
+              new long[] {((PipeWatermarkEvent) event).getWatermark(), localCount.get()},
+              localCommitProgressIndex.get()));
     }
   }
 
@@ -236,9 +235,14 @@ public class TwoStageCountProcessor implements PipeProcessor {
     }
   }
 
-  private void commitLocalProgressIndexIfNecessary() throws TException, IOException {
-    while (!localCommitQueue.isEmpty()) {
+  private void commitLocalProgressIndexIfNecessary() {
+    final int currentQueueSize = localCommitQueue.size();
+    for (int i = 0; i < currentQueueSize; i++) {
       final Pair<long[], ProgressIndex> pair = localCommitQueue.poll();
+      if (Objects.isNull(pair)) {
+        break;
+      }
+
       try {
         // TODO: optimize the combine result fetching with batch fetching
         final FetchCombineResultResponse fetchCombineResultResponse =
@@ -249,52 +253,83 @@ public class TwoStageCountProcessor implements PipeProcessor {
                         pipeName,
                         creationTime,
                         Collections.singletonList(Long.toString(pair.left[0])))));
+
         if (fetchCombineResultResponse.getStatus().getCode()
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new PipeException(
               "Failed to fetch combine result: "
                   + fetchCombineResultResponse.getStatus().getMessage());
         }
-        fetchCombineResultResponse
-            .getCombineId2ResultType()
-            .forEach(
-                (combineId, resultType) -> {
-                  switch (resultType) {
-                    case OUTDATED:
-                      return;
-                    case INCOMPLETE:
-                      localCommitQueue.add(pair);
-                      return;
-                    case SUCCESS:
-                      final Map<String, Binary> state = new HashMap<>();
-                      state.put(
-                          LOCAL_COUNT_STATE_KEY,
-                          new Binary(Long.toString(pair.left[1]).getBytes()));
-                      pipeTaskMeta.updateProgressIndex(new StateProgressIndex(state, pair.right));
-                      return;
-                    default:
-                      throw new PipeException("Unknown combine result type: " + resultType);
-                  }
-                });
+
+        for (final Map.Entry<String, FetchCombineResultResponse.CombineResultType> entry :
+            fetchCombineResultResponse.getCombineId2ResultType().entrySet()) {
+          final String combineId = entry.getKey();
+          final FetchCombineResultResponse.CombineResultType resultType = entry.getValue();
+
+          switch (resultType) {
+            case OUTDATED:
+              LOGGER.warn(
+                  "Two stage combine (id = {}) outdated: timestamp={}, count={}, progressIndex={}",
+                  combineId,
+                  pair.left[0],
+                  pair.left[1],
+                  pair.right);
+              continue;
+            case INCOMPLETE:
+              LOGGER.info(
+                  "Two stage combine (id = {}) incomplete: timestamp={}, count={}, progressIndex={}",
+                  combineId,
+                  pair.left[0],
+                  pair.left[1],
+                  pair.right);
+              localCommitQueue.add(pair);
+              continue;
+            case SUCCESS:
+              // 1. Add a new global count result to the queue
+              globalCountQueue.add(new Pair<>(pair.left[0], pair.left[1]));
+              // 2. Update the local count state and progress index for commit
+              final Map<String, Binary> state = new HashMap<>();
+              state.put(LOCAL_COUNT_STATE_KEY, new Binary(Long.toString(pair.left[1]).getBytes()));
+              pipeTaskMeta.updateProgressIndex(
+                  new StateProgressIndex(pair.left[0], state, pair.right));
+              // 3. Log the success
+              LOGGER.info(
+                  "Two stage combine (id = {}) success: timestamp={}, count={}, progressIndex={}, committed progressIndex={}",
+                  combineId,
+                  pair.left[0],
+                  pair.left[1],
+                  pair.right,
+                  pipeTaskMeta.getProgressIndex());
+              continue;
+            default:
+              throw new PipeException("Unknown combine result type: " + resultType);
+          }
+        }
       } catch (Exception e) {
         localCommitQueue.add(pair);
-        throw e;
+        LOGGER.warn(
+            "Failure occurred when trying to commit progress index. timestamp={}, count={}, progressIndex={}",
+            pair.left[0],
+            pair.left[1],
+            pair.right,
+            e);
+        return;
       }
     }
   }
 
-  private void triggerCombineIfNecessary() throws TException, IOException {
+  private void triggerCombineIfNecessary() {
     while (!localRequestQueue.isEmpty()) {
-      final Pair<long[], ProgressIndex> timestampCountPair = localRequestQueue.poll();
-      triggerCombine(
-          timestampCountPair.left[0], timestampCountPair.left[1], timestampCountPair.right);
+      if (!triggerCombine(localRequestQueue.poll())) {
+        return;
+      }
     }
   }
 
-  private void triggerCombine(long watermark, long count, ProgressIndex progressIndex)
-      throws TException, IOException {
-    final Pair<long[], ProgressIndex> pair =
-        new Pair<>(new long[] {watermark, count}, progressIndex);
+  private boolean triggerCombine(Pair<long[], ProgressIndex> pair) {
+    final long watermark = pair.getLeft()[0];
+    final long count = pair.getLeft()[1];
+    final ProgressIndex progressIndex = pair.getRight();
     try {
       final TPipeTransferResp resp =
           twoStageAggregateSender.request(
@@ -309,9 +344,16 @@ public class TwoStageCountProcessor implements PipeProcessor {
         throw new PipeException("Failed to combine count: " + resp.getStatus().getMessage());
       }
       localCommitQueue.add(pair);
+      return true;
     } catch (Exception e) {
       localRequestQueue.add(pair);
-      throw e;
+      LOGGER.warn(
+          "Failed to trigger combine. watermark={}, count={}, progressIndex={}",
+          watermark,
+          count,
+          progressIndex,
+          e);
+      return false;
     }
   }
 

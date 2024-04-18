@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.twostage.exchange.payload;
 
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -65,6 +66,8 @@ public class FetchCombineResultResponse extends TPipeTransferResp {
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
+    response.status = RpcUtils.SUCCESS_STATUS;
+
     return response;
   }
 
@@ -72,6 +75,7 @@ public class FetchCombineResultResponse extends TPipeTransferResp {
     final FetchCombineResultResponse response = new FetchCombineResultResponse();
 
     response.status = transferResp.status;
+    response.body = transferResp.body;
 
     response.combineId2ResultType = new HashMap<>();
     if (response.isSetBody()) {
@@ -85,5 +89,10 @@ public class FetchCombineResultResponse extends TPipeTransferResp {
     }
 
     return response;
+  }
+
+  @Override
+  public String toString() {
+    return "FetchCombineResultResponse{" + "combineId2ResultType=" + combineId2ResultType + '}';
   }
 }

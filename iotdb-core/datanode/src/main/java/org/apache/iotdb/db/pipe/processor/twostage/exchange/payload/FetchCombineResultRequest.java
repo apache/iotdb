@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.twostage.exchange.payload;
 
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -68,6 +69,8 @@ public class FetchCombineResultRequest extends TPipeTransferReq {
     this.creationTime = creationTime;
     this.combineIdList = combineIdList;
 
+    this.version = IoTDBConnectorRequestVersion.VERSION_2.getVersion();
+    this.type = RequestType.FETCH_COMBINE_RESULT.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(pipeName, outputStream);
@@ -84,11 +87,9 @@ public class FetchCombineResultRequest extends TPipeTransferReq {
     return this;
   }
 
-  private FetchCombineResultRequest translateFromTPipeTransferReq(TPipeTransferReq transferReq)
-      throws Exception {
+  private FetchCombineResultRequest translateFromTPipeTransferReq(TPipeTransferReq transferReq) {
     pipeName = ReadWriteIOUtils.readString(transferReq.body);
     creationTime = ReadWriteIOUtils.readLong(transferReq.body);
-
     combineIdList = new ArrayList<>();
     final int combineIdListSize = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < combineIdListSize; i++) {
@@ -100,5 +101,18 @@ public class FetchCombineResultRequest extends TPipeTransferReq {
     body = transferReq.body;
 
     return this;
+  }
+
+  @Override
+  public String toString() {
+    return "FetchCombineResultRequest{"
+        + "pipeName='"
+        + pipeName
+        + '\''
+        + ", creationTime="
+        + creationTime
+        + ", combineIdList="
+        + combineIdList
+        + '}';
   }
 }

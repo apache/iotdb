@@ -28,12 +28,15 @@ public class DataRegionWatermarkInjector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataRegionWatermarkInjector.class);
 
-  public static final long MIN_INJECTION_INTERVAL_IN_MS = 1000 * 60 * 5; // 5 minutes
+  public static final long MIN_INJECTION_INTERVAL_IN_MS = 30 * 1000; // 30s
+
+  private final int regionId;
 
   private final long injectionIntervalInMs;
   private long nextInjectionTime;
 
-  public DataRegionWatermarkInjector(long injectionIntervalInMs) {
+  public DataRegionWatermarkInjector(int regionId, long injectionIntervalInMs) {
+    this.regionId = regionId;
     this.injectionIntervalInMs =
         Math.max(injectionIntervalInMs, MIN_INJECTION_INTERVAL_IN_MS)
             / MIN_INJECTION_INTERVAL_IN_MS
@@ -59,9 +62,10 @@ public class DataRegionWatermarkInjector {
       nextInjectionTime = calculateNextInjectionTime(injectionIntervalInMs);
       return watermarkEvent;
     } finally {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Injected watermark event with timestamp: {}", nextInjectionTime);
-      }
+      LOGGER.info(
+          "Data region {}: Injected watermark event with timestamp: {}",
+          regionId,
+          nextInjectionTime);
     }
   }
 

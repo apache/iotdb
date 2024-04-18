@@ -19,10 +19,21 @@
 
 package org.apache.iotdb.db.pipe.processor.twostage.combiner;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.FetchCombineResultResponse;
 import org.apache.iotdb.db.pipe.processor.twostage.operator.Operator;
 import org.apache.iotdb.db.pipe.processor.twostage.state.State;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import org.apache.thrift.TException;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -32,6 +43,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 public class PipeCombineHandler {
@@ -41,6 +53,8 @@ public class PipeCombineHandler {
 
   private final Function<String, Operator> /* <combineId, operator> */ operatorConstructor;
 
+  private static final Set<Integer> ALL_REGION_ID_SET = new HashSet<>();
+  private static final AtomicLong ALL_REGION_ID_SET_LAST_UPDATE_TIME = new AtomicLong(0);
   private final Set<Integer> expectedRegionIdSet;
 
   private final ConcurrentMap<String, Combiner> combineId2Combiner;
@@ -53,7 +67,7 @@ public class PipeCombineHandler {
     this.operatorConstructor = operatorConstructor;
 
     expectedRegionIdSet = new HashSet<>();
-    fetchExpectedRegionIdSet();
+    fetchAndUpdateExpectedRegionIdSet();
 
     combineId2Combiner = new ConcurrentHashMap<>();
   }
@@ -96,9 +110,44 @@ public class PipeCombineHandler {
     return FetchCombineResultResponse.toTPipeTransferResp(combineId2ResultType);
   }
 
-  public synchronized void fetchExpectedRegionIdSet() {
+  public void fetchAndUpdateExpectedRegionIdSet() {
+    updateExpectedRegionIdSet(fetchExpectedRegionIdSet());
+  }
+
+  private Set<Integer> fetchExpectedRegionIdSet() {
+    synchronized (ALL_REGION_ID_SET) {
+      if (System.currentTimeMillis() - ALL_REGION_ID_SET_LAST_UPDATE_TIME.get()
+          > 5 * 60 * 1000) { // 5 minutes
+        ALL_REGION_ID_SET.clear();
+
+        try (final ConfigNodeClient configNodeClient =
+            ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+          final TShowRegionResp showRegionResp =
+              configNodeClient.showRegion(
+                  new TShowRegionReq().setConsensusGroupType(TConsensusGroupType.DataRegion));
+          if (showRegionResp == null || !showRegionResp.isSetRegionInfoList()) {
+            throw new PipeException("Failed to fetch data region ids");
+          }
+          for (final TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
+            ALL_REGION_ID_SET.add(regionInfo.getConsensusGroupId().getId());
+          }
+        } catch (ClientManagerException | TException e) {
+          throw new PipeException("Failed to fetch data nodes", e);
+        }
+
+        ALL_REGION_ID_SET_LAST_UPDATE_TIME.set(System.currentTimeMillis());
+      }
+    }
+
+    final Set<Integer> pipeRelatedRegionIdSet =
+        new HashSet<>(PipeAgent.task().getPipeTaskRegionIdSet(pipeName, creationTime));
+    pipeRelatedRegionIdSet.removeIf(regionId -> !ALL_REGION_ID_SET.contains(regionId));
+    return pipeRelatedRegionIdSet;
+  }
+
+  private synchronized void updateExpectedRegionIdSet(Set<Integer> newRegionIdSet) {
     expectedRegionIdSet.clear();
-    expectedRegionIdSet.addAll(PipeAgent.task().getPipeTaskRegionIdSet(pipeName, creationTime));
+    expectedRegionIdSet.addAll(newRegionIdSet);
   }
 
   public synchronized void cleanOutdatedCombiner() {

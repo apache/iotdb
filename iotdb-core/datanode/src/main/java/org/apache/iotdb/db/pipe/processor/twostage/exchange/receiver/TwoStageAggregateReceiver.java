@@ -59,11 +59,13 @@ public class TwoStageAggregateReceiver implements IoTDBReceiver {
         }
       }
 
+      LOGGER.warn("Unknown request type {}: {}.", rawRequestType, req);
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TYPE_ERROR,
               String.format("Unknown request type %s.", rawRequestType)));
     } catch (Exception e) {
+      LOGGER.warn("Error occurs when receiving request: {}.", req, e);
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_ERROR,
