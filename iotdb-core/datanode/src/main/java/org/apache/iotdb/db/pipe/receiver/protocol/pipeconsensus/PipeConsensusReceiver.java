@@ -27,6 +27,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,8 +55,29 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
 
   private TPipeConsensusTransferResp loadEvent(final TPipeConsensusTransferReq req) {
     // synchronized load event
-    // TODO: use DataRegionStateMachine to impl it.
+    TPipeTransferReq originalPipeTransferReq = toTPipeTransferReq(req);
+
+    // TODO: use DataRegionStateMachine to impl it. here will invoke @sc's impl interface
+    // TODO: check memory when logging wal
+    // TODO: check disk(read-only etc.) when writing tsfile
     return null;
+  }
+
+  // WIP
+  private TPipeTransferReq toTPipeTransferReq(TPipeConsensusTransferReq req) {
+    TPipeTransferReq result = new TPipeTransferReq();
+    result.body = req.body;
+    result.version = req.getVersion();
+    result.type = req.getType();
+    return result;
+  }
+
+  // WIP
+  private TPipeConsensusTransferResp toTPipeConsensusTransferResp(TPipeTransferResp resp) {
+    TPipeConsensusTransferResp result = new TPipeConsensusTransferResp();
+    result.body = resp.body;
+    result.status = resp.getStatus();
+    return result;
   }
 
   /**
@@ -68,7 +91,7 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
     private final Lock lock;
     private final Condition condition;
     private int onSyncedCommitIndex = -1;
-    private int connectorRebootTimes = 0;
+    private int connectorRebootTimes = 1;
 
     public RequestExecutor() {
       reqBuffer =
@@ -83,18 +106,31 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
     private TPipeConsensusTransferResp onRequest(final TPipeConsensusTransferReq req) {
       lock.lock();
       WrappedRequest wrappedReq = new WrappedRequest(req);
+      // if a req is deprecated, we will discard it
+      // This case may happen in this scenario: leader has transferred {1,2} and is intending to
+      // transfer {3, 4, 5, 6}. And in one moment, follower has received {4, 5, 6}, {3} is still
+      // transferring due to some network latency.
+      // At this time, leader restarts, and it will resend {3, 4, 5, 6} with incremental
+      // rebootTimes. If the {3} sent before the leader restart arrives after the follower receives
+      // the request with incremental rebootTimes, the {3} sent before the leader restart needs to
+      // be discarded.
+      if (wrappedReq.getRebootTime() < connectorRebootTimes) {
+        final TSStatus status =
+            new TSStatus(
+                RpcUtils.getStatus(
+                    TSStatusCode.PIPE_CONSENSUS_CONNECTOR_RESTART_ERROR,
+                    "PipeConsensus receiver identified the restart of connector, thus reset itself and reject event load temporarily"));
+        return new TPipeConsensusTransferResp(status);
+      }
       try {
         reqBuffer.offer(wrappedReq);
         // Judge whether connector has rebooted or not, if the rebootTimes increases compared to
         // connectorRebootTimes, need to reset receiver because connector has been restarted.
         if (wrappedReq.getRebootTime() > connectorRebootTimes) {
           reset(connectorRebootTimes);
-          final TSStatus status =
-              new TSStatus(
-                  RpcUtils.getStatus(
-                      TSStatusCode.PIPE_CONSENSUS_CONNECTOR_RESTART_ERROR,
-                      "PipeConsensus receiver identified the restart of connector, thus reset itself and reject event load temporarily"));
-          return new TPipeConsensusTransferResp(status);
+          // TODO：如果发送端重启，接收端堆积的请求怎么办？考虑 reset 时的堆积请求
+          // TODO: 如：1,1 1,2 1,3 1,4 1,5 / 1,6 1,7 1,8（follwer 得想办法知道 leader 是否发满了/前置请求是否发完了）
+          // TODO: RPC 60s 超时问题；如果存储引擎等非共识层写入超时，会导致已接收的副本重发，从而导致堆积。
         }
 
         // Polling to process
@@ -151,6 +187,7 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
     private void reset(int connectorRebootTimes) {
       this.reqBuffer.clear();
       this.onSyncedCommitIndex = -1;
+      // sync the follower's connectorRebootTimes with connector's actual rebootTimes
       this.connectorRebootTimes = connectorRebootTimes;
     }
   }
