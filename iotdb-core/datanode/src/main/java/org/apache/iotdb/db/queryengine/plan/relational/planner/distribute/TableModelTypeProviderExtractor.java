@@ -45,6 +45,7 @@ public class TableModelTypeProviderExtractor {
 
     @Override
     public Void visitProject(ProjectNode node, Void context) {
+      node.getChild().accept(this, context);
       // TODO add expression process logic
       //            node.getAssignments().forEach((k,v) -> typeProvider.putTableModelType(k,
       //                    v.getType()));
@@ -53,11 +54,13 @@ public class TableModelTypeProviderExtractor {
 
     @Override
     public Void visitFilter(FilterNode node, Void context) {
+      node.getChild().accept(this, context);
       return null;
     }
 
     @Override
     public Void visitOutput(OutputNode node, Void context) {
+      node.getChild().accept(this, context);
       return null;
     }
   }
