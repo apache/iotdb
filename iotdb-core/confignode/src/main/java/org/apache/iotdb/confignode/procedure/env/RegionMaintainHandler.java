@@ -660,20 +660,13 @@ public class RegionMaintainHandler {
    *
    * @param regionId The region to be migrated
    * @param originalDataNode The DataNode where the region locates
-   * @param migrateDestDataNode The DataNode where the region is to be migrated
    */
-  public void changeRegionLeader(
-      TConsensusGroupId regionId,
-      TDataNodeLocation originalDataNode,
-      TDataNodeLocation migrateDestDataNode) {
+  public void changeRegionLeader(TConsensusGroupId regionId, TDataNodeLocation originalDataNode) {
     Optional<TDataNodeLocation> newLeaderNode =
         filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
 
     if (TConsensusGroupType.DataRegion.equals(regionId.getType())
         && IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
-      if (CONF.getDataReplicationFactor() == 1) {
-        newLeaderNode = Optional.of(migrateDestDataNode);
-      }
       if (newLeaderNode.isPresent()) {
         configManager
             .getLoadManager()
