@@ -19,26 +19,11 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
 
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.pipe.api.event.Event;
 
 public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatchReqBuilder {
 
-  public IoTDBThriftSyncPipeTransferBatchReqBuilder(PipeParameters parameters) {
+  public IoTDBThriftSyncPipeTransferBatchReqBuilder(final PipeParameters parameters) {
     super(parameters);
-  }
-
-  @Override
-  public synchronized void onSuccess() {
-    for (final Event event : events) {
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event)
-            .decreaseReferenceCount(
-                IoTDBThriftSyncPipeTransferBatchReqBuilder.class.getName(), true);
-      }
-    }
-
-    super.onSuccess();
   }
 }

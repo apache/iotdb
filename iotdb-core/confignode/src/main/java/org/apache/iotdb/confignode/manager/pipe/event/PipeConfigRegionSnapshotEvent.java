@@ -32,7 +32,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collection;
@@ -126,7 +125,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
         templateFilePath = resourceManager.increaseSnapshotReference(templateFilePath);
       }
       return true;
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOGGER.warn(
           String.format(
               "Increase reference count for snapshot %s error. Holder Message: %s",

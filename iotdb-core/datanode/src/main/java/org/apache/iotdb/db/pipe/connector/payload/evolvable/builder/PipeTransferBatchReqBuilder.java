@@ -43,7 +43,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_KEY;
@@ -71,9 +70,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
   protected final PipeMemoryBlock allocatedMemoryBlock;
   protected long totalBufferSize = 0;
 
-  private final AtomicBoolean isClosed = new AtomicBoolean(true);
-
-  protected PipeTransferBatchReqBuilder(PipeParameters parameters) {
+  protected PipeTransferBatchReqBuilder(final PipeParameters parameters) {
     maxDelayInMs =
         parameters.getIntOrDefault(
                 Arrays.asList(CONNECTOR_IOTDB_BATCH_DELAY_KEY, SINK_IOTDB_BATCH_DELAY_KEY),
@@ -107,8 +104,6 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
           requestMaxBatchSizeInBytes,
           getMaxBatchSizeInBytes());
     }
-
-    isClosed.set(false);
   }
 
   /**
@@ -117,7 +112,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
    * @param event the given {@link Event}
    * @return {@link true} if the batch can be transferred
    */
-  public synchronized boolean onEvent(TabletInsertionEvent event)
+  public synchronized boolean onEvent(final TabletInsertionEvent event)
       throws IOException, WALPipeException {
     if (!(event instanceof EnrichedEvent)) {
       return false;
@@ -141,9 +136,8 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
           firstEventProcessingTime = System.currentTimeMillis();
         }
       } else {
-        LOGGER.error(
-            "TabletInsertionEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
-            ((EnrichedEvent) event).coreReportMessage());
+        ((EnrichedEvent) event)
+            .decreaseReferenceCount(PipeTransferBatchReqBuilder.class.getName(), false);
       }
     }
 
@@ -181,7 +175,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
     return new ArrayList<>(events);
   }
 
-  protected int buildTabletInsertionBuffer(TabletInsertionEvent event)
+  protected int buildTabletInsertionBuffer(final TabletInsertionEvent event)
       throws IOException, WALPipeException {
     final ByteBuffer buffer;
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
@@ -214,17 +208,23 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   @Override
   public synchronized void close() {
-    isClosed.set(true);
-
-    for (final Event event : events) {
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).clearReferenceCount(this.getClass().getName());
-      }
-    }
+    clearEventsReferenceCount(PipeTransferBatchReqBuilder.class.getName());
     allocatedMemoryBlock.close();
   }
 
-  public boolean isClosed() {
-    return isClosed.get();
+  public void decreaseEventsReferenceCount(final String holderMessage, final boolean shouldReport) {
+    for (final Event event : events) {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).decreaseReferenceCount(holderMessage, shouldReport);
+      }
+    }
+  }
+
+  public void clearEventsReferenceCount(final String holderMessage) {
+    for (final Event event : events) {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).clearReferenceCount(holderMessage);
+      }
+    }
   }
 }

@@ -60,7 +60,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   private IoTDBThriftSyncPipeTransferBatchReqBuilder tabletBatchBuilder;
 
   @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
 
@@ -72,18 +73,18 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   @Override
   protected PipeTransferFilePieceReq getTransferSingleFilePieceReq(
-      String fileName, long position, byte[] payLoad) throws IOException {
+      final String fileName, final long position, final byte[] payLoad) throws IOException {
     return PipeTransferTsFilePieceReq.toTPipeTransferReq(fileName, position, payLoad);
   }
 
   @Override
   protected PipeTransferFilePieceReq getTransferMultiFilePieceReq(
-      String fileName, long position, byte[] payLoad) throws IOException {
+      final String fileName, final long position, final byte[] payLoad) throws IOException {
     return PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(fileName, position, payLoad);
   }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+  public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
@@ -102,12 +103,12 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         }
       } else {
         if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-          doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+          doTransferWrapper((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
         } else {
-          doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+          doTransferWrapper((PipeRawTabletInsertionEvent) tabletInsertionEvent);
         }
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new PipeConnectionException(
           String.format(
               "Failed to transfer tablet insertion event %s, because %s.",
@@ -117,7 +118,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   }
 
   @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+  public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     // PipeProcessor can change the type of tsFileInsertionEvent
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
@@ -132,8 +133,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         doTransfer();
       }
 
-      doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
-    } catch (Exception e) {
+      doTransferWrapper((PipeTsFileInsertionEvent) tsFileInsertionEvent);
+    } catch (final Exception e) {
       throw new PipeConnectionException(
           String.format(
               "Failed to transfer tsfile insertion event %s, because %s.",
@@ -143,9 +144,9 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   }
 
   @Override
-  public void transfer(Event event) throws Exception {
+  public void transfer(final Event event) throws Exception {
     if (event instanceof PipeSchemaRegionWritePlanEvent) {
-      doTransfer((PipeSchemaRegionWritePlanEvent) event);
+      doTransferWrapper((PipeSchemaRegionWritePlanEvent) event);
       return;
     }
 
@@ -165,7 +166,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     final TPipeTransferResp resp;
     try {
       resp = clientAndStatus.getLeft().pipeTransfer(tabletBatchBuilder.toTPipeTransferReq());
-    } catch (Exception e) {
+    } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format("Network error when transfer tablet batch, because %s.", e.getMessage()),
@@ -182,10 +183,29 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           tabletBatchBuilder.deepCopyEvents().toString());
     }
 
+    tabletBatchBuilder.decreaseEventsReferenceCount(
+        IoTDBDataRegionSyncConnector.class.getName(), true);
     tabletBatchBuilder.onSuccess();
   }
 
-  private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
+  private void doTransferWrapper(
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
+      throws PipeException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+          IoTDBDataRegionSyncConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeInsertNodeTabletInsertionEvent);
+    } finally {
+      pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
+          IoTDBDataRegionSyncConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransfer(
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException {
     final InsertNode insertNode;
     Pair<IoTDBSyncClient, Boolean> clientAndStatus = null;
@@ -209,7 +229,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                     PipeTransferTabletBinaryReq.toTPipeTransferReq(
                         pipeInsertNodeTabletInsertionEvent.getByteBuffer()));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       if (clientAndStatus != null) {
         clientAndStatus.setRight(false);
       }
@@ -237,7 +257,22 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     }
   }
 
-  private void doTransfer(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+  private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+      throws PipeException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
+          IoTDBDataRegionSyncConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeRawTabletInsertionEvent);
+    } finally {
+      pipeRawTabletInsertionEvent.decreaseReferenceCount(
+          IoTDBDataRegionSyncConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransfer(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
         clientManager.getClient(pipeRawTabletInsertionEvent.getDeviceId());
@@ -251,7 +286,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                   PipeTransferTabletRawReq.toTPipeTransferReq(
                       pipeRawTabletInsertionEvent.convertToTablet(),
                       pipeRawTabletInsertionEvent.isAligned()));
-    } catch (Exception e) {
+    } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
@@ -277,7 +312,22 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     }
   }
 
-  private void doTransfer(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
+  private void doTransferWrapper(final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
+      throws PipeException, IOException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeTsFileInsertionEvent.increaseReferenceCount(
+          IoTDBDataRegionSyncConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeTsFileInsertionEvent);
+    } finally {
+      pipeTsFileInsertionEvent.decreaseReferenceCount(
+          IoTDBDataRegionSyncConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransfer(final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
     final File modFile = pipeTsFileInsertionEvent.getModFile();
@@ -296,7 +346,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                 .pipeTransfer(
                     PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
                         modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length()));
-      } catch (Exception e) {
+      } catch (final Exception e) {
         clientAndStatus.setRight(false);
         throw new PipeConnectionException(
             String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()),
@@ -312,7 +362,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                 .pipeTransfer(
                     PipeTransferTsFileSealReq.toTPipeTransferReq(
                         tsFile.getName(), tsFile.length()));
-      } catch (Exception e) {
+      } catch (final Exception e) {
         clientAndStatus.setRight(false);
         throw new PipeConnectionException(
             String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()),
