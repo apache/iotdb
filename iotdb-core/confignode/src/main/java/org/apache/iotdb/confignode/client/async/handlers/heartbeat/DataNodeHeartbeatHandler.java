@@ -100,7 +100,8 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
                       new RegionHeartbeatSample(
                           heartbeatResp.getHeartbeatTimestamp(),
                           // Region will inherit DataNode's status
-                          RegionStatus.parse(heartbeatResp.getStatus())));
+                          RegionStatus.valueOf(heartbeatResp.getStatus())),
+                      false);
 
               if (((TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
                           && SCHEMA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE)

@@ -201,10 +201,13 @@ public class LoadCache {
    * @param sample the latest heartbeat sample
    */
   public void cacheRegionHeartbeatSample(
-      TConsensusGroupId regionGroupId, int nodeId, RegionHeartbeatSample sample) {
+      TConsensusGroupId regionGroupId,
+      int nodeId,
+      RegionHeartbeatSample sample,
+      boolean overwrite) {
     regionGroupCacheMap
         .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache())
-        .cacheHeartbeatSample(nodeId, sample);
+        .cacheHeartbeatSample(nodeId, sample, overwrite);
   }
 
   /**

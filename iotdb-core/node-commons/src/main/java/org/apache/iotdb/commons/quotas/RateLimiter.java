@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.rescon.quotas;
+package org.apache.iotdb.commons.quotas;
 
 public abstract class RateLimiter {
 
@@ -71,7 +71,7 @@ public abstract class RateLimiter {
    * @param limit Maximum available resource units that can be refilled to.
    * @return how many resource units may be refilled ?
    */
-  abstract long refill(long limit);
+  protected abstract long refill(long limit);
 
   /**
    * Time in milliseconds to wait for before requesting to consume 'amount' resource.
@@ -81,7 +81,7 @@ public abstract class RateLimiter {
    * @param amount Resources for which time interval to calculate for
    * @return estimate of the ms required to wait before being able to provide 'amount' resources.
    */
-  abstract long getWaitInterval(long limit, long available, long amount);
+  protected abstract long getWaitInterval(long limit, long available, long amount);
 
   public synchronized long getTimeUnitInMillis() {
     return tunit;
