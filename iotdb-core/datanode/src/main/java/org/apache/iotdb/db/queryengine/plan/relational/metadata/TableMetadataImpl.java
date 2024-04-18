@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.TableModelSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
@@ -255,7 +256,12 @@ public class TableMetadataImpl implements Metadata {
       QualifiedObjectName tableName,
       List<Expression> expressionList,
       List<String> attributeColumns) {
-    return null;
+    return TableModelSchemaFetcher.getInstance()
+        .fetchDeviceSchema(
+            tableName.getDatabaseName(),
+            tableName.getObjectName(),
+            expressionList,
+            attributeColumns);
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

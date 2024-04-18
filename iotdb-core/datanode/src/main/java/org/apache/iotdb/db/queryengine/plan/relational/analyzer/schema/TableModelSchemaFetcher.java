@@ -29,8 +29,12 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.CreateTableDeviceStatement;
+import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import java.util.List;
 
 public class TableModelSchemaFetcher {
 
@@ -74,5 +78,13 @@ public class TableModelSchemaFetcher {
           new IoTDBException(
               executionResult.status.getMessage(), executionResult.status.getCode()));
     }
+  }
+
+  public List<DeviceEntry> fetchDeviceSchema(
+      String database,
+      String table,
+      List<Expression> expressionList,
+      List<String> attributeColumns) {
+    return null;
   }
 }
