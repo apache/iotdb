@@ -52,7 +52,7 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
   protected IoTDBDataNodeSyncClientManager clientManager;
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
 
     final IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
@@ -80,19 +80,19 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
 
   @Override
   protected IoTDBSyncClientManager constructClient(
-      List<TEndPoint> nodeUrls,
-      boolean useSSL,
-      String trustStorePath,
-      String trustStorePwd,
-      boolean useLeaderCache,
-      String loadBalanceStrategy) {
+      final List<TEndPoint> nodeUrls,
+      final boolean useSSL,
+      final String trustStorePath,
+      final String trustStorePwd,
+      final boolean useLeaderCache,
+      final String loadBalanceStrategy) {
     clientManager =
         new IoTDBDataNodeSyncClientManager(
             nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache, loadBalanceStrategy);
     return clientManager;
   }
 
-  protected void doTransfer(PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+  protected void doTransfer(final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException {
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
 
@@ -104,7 +104,7 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
               .pipeTransfer(
                   PipeTransferPlanNodeReq.toTPipeTransferReq(
                       pipeSchemaRegionWritePlanEvent.getPlanNode()));
-    } catch (Exception e) {
+    } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
@@ -123,6 +123,10 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
               "Transfer data node write plan %s error, result status %s.",
               pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), status),
           pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
+    }
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Successfully transferred schema event {}.", pipeSchemaRegionWritePlanEvent);
     }
   }
 }

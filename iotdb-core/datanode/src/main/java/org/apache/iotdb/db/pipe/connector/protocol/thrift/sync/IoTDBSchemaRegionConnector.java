@@ -47,19 +47,19 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSchemaRegionConnector.class);
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+  public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
         "IoTDBSchemaRegionConnector can't transfer TabletInsertionEvent.");
   }
 
   @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+  public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
         "IoTDBSchemaRegionConnector can't transfer TsFileInsertionEvent.");
   }
 
   @Override
-  public void transfer(Event event) throws Exception {
+  public void transfer(final Event event) throws Exception {
     if (event instanceof PipeSchemaRegionWritePlanEvent) {
       doTransfer((PipeSchemaRegionWritePlanEvent) event);
     } else if (event instanceof PipeSchemaRegionSnapshotEvent) {
@@ -70,7 +70,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
     }
   }
 
-  private void doTransfer(PipeSchemaRegionSnapshotEvent snapshotEvent)
+  private void doTransfer(final PipeSchemaRegionSnapshotEvent snapshotEvent)
       throws PipeException, IOException {
     final File mTreeSnapshotFile = snapshotEvent.getMTreeSnapshotFile();
     final File tagLogSnapshotFile = snapshotEvent.getTagLogSnapshotFile();
@@ -95,7 +95,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
                       Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
                       snapshotEvent.getDatabaseName(),
                       snapshotEvent.toSealTypeString()));
-    } catch (Exception e) {
+    } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
@@ -120,14 +120,14 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
 
   @Override
   protected PipeTransferFilePieceReq getTransferSingleFilePieceReq(
-      String fileName, long position, byte[] payLoad) {
+      final String fileName, final long position, final byte[] payLoad) {
     throw new UnsupportedOperationException(
         "The schema region connector does not support transferring single file piece req.");
   }
 
   @Override
   protected PipeTransferFilePieceReq getTransferMultiFilePieceReq(
-      String fileName, long position, byte[] payLoad) throws IOException {
+      final String fileName, final long position, final byte[] payLoad) throws IOException {
     return PipeTransferSchemaSnapshotPieceReq.toTPipeTransferReq(fileName, position, payLoad);
   }
 }
