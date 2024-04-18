@@ -127,7 +127,7 @@ public class PipeCombineHandlerManager {
         .registerPeriodicalJob(
             "CombineHandlerManager#fetchExpectedRegionIdSetAndCleanOutdatedCombiner",
             this::fetchExpectedRegionIdSetAndCleanOutdatedCombiner,
-            600);
+            60);
   }
 
   private static class CombineHandlerManagerHolder {

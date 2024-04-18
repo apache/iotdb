@@ -22,11 +22,16 @@ package org.apache.iotdb.db.pipe.processor.twostage.combiner;
 import org.apache.iotdb.db.pipe.processor.twostage.operator.Operator;
 import org.apache.iotdb.db.pipe.processor.twostage.state.State;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Combiner {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(Combiner.class);
 
   private static final int MAX_COMBINER_LIVE_TIME_IN_MS = 1000 * 60 * 5; // 5 minutes
   private final long creationTimeInMs;
@@ -48,18 +53,31 @@ public class Combiner {
   }
 
   public void combine(int regionId, State state) {
-    if (expectedRegionIdSet.contains(regionId)) {
-      return;
-    }
-
     receivedRegionIdSet.add(regionId);
     operator.combine(state);
 
-    if (receivedRegionIdSet.equals(expectedRegionIdSet)) {
-      operator.onComplete();
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Combiner combine: regionId: {}, state: {}, receivedRegionIdSet: {}, expectedRegionIdSet: {}",
+          regionId,
+          state,
+          receivedRegionIdSet,
+          expectedRegionIdSet);
     }
 
-    isComplete.set(true);
+    if (receivedRegionIdSet.containsAll(expectedRegionIdSet)) {
+      operator.onComplete();
+      isComplete.set(true);
+
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Combiner combine completed: regionId: {}, state: {}, receivedRegionIdSet: {}, expectedRegionIdSet: {}",
+            regionId,
+            state,
+            receivedRegionIdSet,
+            expectedRegionIdSet);
+      }
+    }
   }
 
   public boolean isOutdated() {

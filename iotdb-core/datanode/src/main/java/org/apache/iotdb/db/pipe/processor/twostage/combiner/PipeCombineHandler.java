@@ -34,6 +34,8 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -47,6 +49,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 public class PipeCombineHandler {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeCombineHandler.class);
 
   private final String pipeName;
   private final long creationTime;
@@ -136,12 +140,24 @@ public class PipeCombineHandler {
         }
 
         ALL_REGION_ID_SET_LAST_UPDATE_TIME.set(System.currentTimeMillis());
+
+        LOGGER.info(
+            "Fetched data region ids {} at {}",
+            ALL_REGION_ID_SET,
+            ALL_REGION_ID_SET_LAST_UPDATE_TIME.get());
       }
     }
 
     final Set<Integer> pipeRelatedRegionIdSet =
         new HashSet<>(PipeAgent.task().getPipeTaskRegionIdSet(pipeName, creationTime));
     pipeRelatedRegionIdSet.removeIf(regionId -> !ALL_REGION_ID_SET.contains(regionId));
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Pipe (pipeName={}, creationTime={} related region ids {}",
+          pipeName,
+          creationTime,
+          pipeRelatedRegionIdSet);
+    }
     return pipeRelatedRegionIdSet;
   }
 
@@ -151,7 +167,19 @@ public class PipeCombineHandler {
   }
 
   public synchronized void cleanOutdatedCombiner() {
-    combineId2Combiner.entrySet().removeIf(entry -> entry.getValue().isOutdated());
+    combineId2Combiner
+        .entrySet()
+        .removeIf(
+            entry -> {
+              if (!entry.getValue().isComplete()) {
+                LOGGER.info(
+                    "Clean outdated incomplete combiner: pipeName={}, creationTime={}, combineId={}",
+                    pipeName,
+                    creationTime,
+                    entry.getKey());
+              }
+              return entry.getValue().isOutdated();
+            });
   }
 
   public synchronized void close() {
