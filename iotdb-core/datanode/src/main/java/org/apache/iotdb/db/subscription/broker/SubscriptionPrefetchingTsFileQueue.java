@@ -196,6 +196,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       String consumerId, long writingOffset, SubscriptionTsFileEvent event) {
     Pair<SubscriptionTsFileEvent, Boolean> newEventWithCommittable = event.matchNext(writingOffset);
     if (Objects.isNull(newEventWithCommittable)) {
+      event.resetNext();
       try {
         newEventWithCommittable =
             event.generateSubscriptionTsFileEventWithPieceOrSealPayload(writingOffset);
