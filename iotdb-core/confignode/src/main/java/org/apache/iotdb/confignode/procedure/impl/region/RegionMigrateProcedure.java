@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
@@ -105,11 +104,6 @@ public class RegionMigrateProcedure
                 getProcId());
             return Flow.NO_MORE_STATE;
           }
-          setNextState(RegionTransitionState.CHANGE_REGION_LEADER);
-          break;
-        case CHANGE_REGION_LEADER:
-          handler.changeRegionLeader(consensusGroupId, originalDataNode, destDataNode);
-          KillPoint.setKillPoint(state);
           setNextState(RegionTransitionState.REMOVE_REGION_PEER);
           break;
         case REMOVE_REGION_PEER:
@@ -123,7 +117,8 @@ public class RegionMigrateProcedure
               .getPartitionManager()
               .isDataNodeContainsRegion(originalDataNode.getDataNodeId(), consensusGroupId)) {
             LOGGER.warn(
-                "RegionMigrateProcedure success, but you may need to manually clean the old region to make everything works fine");
+                "[pid{}][MigrateRegion] success, but you may need to manually clean the old region to make everything works fine",
+                getProcId());
           } else {
             LOGGER.info(
                 "[pid{}][MigrateRegion] success, region {} has been migrated from DataNode {} to {}. Procedure took {} (started at {})",
@@ -140,11 +135,11 @@ public class RegionMigrateProcedure
           throw new ProcedureException("Unsupported state: " + state.name());
       }
     } catch (Exception e) {
-      LOGGER.error("RegionMigrateProcedure state {} fail", state, e);
+      LOGGER.error("[pid{}][MigrateRegion] state {} fail", getProcId(), state, e);
       // meets exception in region migrate process terminate the process
       return Flow.NO_MORE_STATE;
     }
-    LOGGER.info("RegionMigrateProcedure state {} complete", state);
+    LOGGER.info("[pid{}][MigrateRegion] state {} complete", getProcId(), state);
     return Flow.HAS_MORE_STATE;
   }
 

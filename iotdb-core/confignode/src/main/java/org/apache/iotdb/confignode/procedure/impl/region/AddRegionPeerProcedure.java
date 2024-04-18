@@ -88,7 +88,7 @@ public class AddRegionPeerProcedure
       switch (state) {
         case CREATE_NEW_REGION_PEER:
           LOGGER.info(
-              "[pid{}][AddRegionPeer] started, region {} will be added to DataNode {}.",
+              "[pid{}][AddRegion] started, region {} will be added to DataNode {}.",
               getProcId(),
               consensusGroupId.getId(),
               destDataNode.getDataNodeId());
@@ -111,7 +111,7 @@ public class AddRegionPeerProcedure
             if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
               throw new ProcedureException(
                   String.format(
-                      "[pid%d][AddRegionPeer] failed to submit task to DataNode, procedure failed",
+                      "[pid%d][AddRegion] failed to submit task to DataNode, procedure failed",
                       getProcId()));
             }
           }
@@ -122,7 +122,7 @@ public class AddRegionPeerProcedure
             case FAIL:
               // maybe some DataNode crash
               LOGGER.warn(
-                  "[pid{}][AddRegionPeer] {} result is {}, procedure failed. Will try to reset peer list automatically...",
+                  "[pid{}][AddRegion] {} result is {}, procedure failed. Will try to reset peer list automatically...",
                   getProcId(),
                   state,
                   result.getTaskStatus());
@@ -143,9 +143,9 @@ public class AddRegionPeerProcedure
         case UPDATE_REGION_LOCATION_CACHE:
           handler.updateRegionCache(consensusGroupId, destDataNode, RegionStatus.Running);
           setKillPoint(state);
-          LOGGER.info("[pid{}][AddRegionPeer] state {} complete", getProcId(), state);
+          LOGGER.info("[pid{}][AddRegion] state {} complete", getProcId(), state);
           LOGGER.info(
-              "[pid{}][AddRegionPeer] success, region {} has been added to DataNode {}. Procedure took {} (start at {}).",
+              "[pid{}][AddRegion] success, region {} has been added to DataNode {}. Procedure took {} (start at {}).",
               getProcId(),
               consensusGroupId.getId(),
               destDataNode.getDataNodeId(),
@@ -157,10 +157,10 @@ public class AddRegionPeerProcedure
           throw new ProcedureException("Unsupported state: " + state.name());
       }
     } catch (Exception e) {
-      LOGGER.error("[pid{}][AddRegionPeer] state {} failed", getProcId(), state, e);
+      LOGGER.error("[pid{}][AddRegion] state {} failed", getProcId(), state, e);
       return Flow.NO_MORE_STATE;
     }
-    LOGGER.info("[pid{}][AddRegionPeer] state {} complete", getProcId(), state);
+    LOGGER.info("[pid{}][AddRegion] state {} complete", getProcId(), state);
     return Flow.HAS_MORE_STATE;
   }
 
@@ -189,7 +189,7 @@ public class AddRegionPeerProcedure
     relatedDataNodeLocations.forEach(
         location -> relatedDataNodeLocationMap.put(location.dataNodeId, location));
     LOGGER.info(
-        "[pid{}][AddRegionPeer] Will reset peer list of consensus group {} on DataNode {}",
+        "[pid{}][AddRegion] Will reset peer list of consensus group {} on DataNode {}",
         getProcId(),
         consensusGroupId,
         relatedDataNodeLocations.stream()
@@ -204,7 +204,7 @@ public class AddRegionPeerProcedure
         (dataNodeId, resetResult) -> {
           if (resetResult.getCode() == SUCCESS_STATUS.getStatusCode()) {
             LOGGER.info(
-                "[pid{}][AddRegionPeer] reset peer list: peer list of consensus group {} on DataNode {} has been successfully to {}",
+                "[pid{}][AddRegion] reset peer list: peer list of consensus group {} on DataNode {} has been successfully to {}",
                 getProcId(),
                 consensusGroupId,
                 dataNodeId,
@@ -212,7 +212,7 @@ public class AddRegionPeerProcedure
           } else {
             // TODO: more precise
             LOGGER.warn(
-                "[pid{}][AddRegionPeer] reset peer list: peer list of consensus group {} on DataNode {} failed to reset to {}, you may manually reset it",
+                "[pid{}][AddRegion] reset peer list: peer list of consensus group {} on DataNode {} failed to reset to {}, you may manually reset it",
                 getProcId(),
                 consensusGroupId,
                 dataNodeId,
