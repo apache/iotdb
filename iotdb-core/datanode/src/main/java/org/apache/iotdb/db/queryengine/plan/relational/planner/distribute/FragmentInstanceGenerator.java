@@ -144,7 +144,7 @@ public class FragmentInstanceGenerator {
         });
 
     if (analysis.getStatement() instanceof Query) {
-      fragmentInstance.getFragment().generateTypeProvider(queryContext.getTypeProvider());
+      fragmentInstance.getFragment().generateTableModelTypeProvider(queryContext.getTypeProvider());
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
     fragmentInstanceList.add(fragmentInstance);

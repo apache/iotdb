@@ -45,4 +45,8 @@ public class ProjectNode extends SingleChildProcessNode {
   public List<Symbol> getOutputSymbols() {
     return assignments.getOutputs();
   }
+
+  public Assignments getAssignments() {
+    return this.assignments;
+  }
 }

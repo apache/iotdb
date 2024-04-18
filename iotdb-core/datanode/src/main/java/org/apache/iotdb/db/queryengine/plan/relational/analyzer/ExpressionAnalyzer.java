@@ -322,7 +322,7 @@ public class ExpressionAnalyzer {
       //          return setExpressionType(node, resolvedField.get().getType());
       //        }
       //      }
-      Type type = symbolTypes.get(Symbol.from(node));
+      Type type = symbolTypes.getTableModelType(Symbol.from(node));
       return setExpressionType(node, type);
     }
 

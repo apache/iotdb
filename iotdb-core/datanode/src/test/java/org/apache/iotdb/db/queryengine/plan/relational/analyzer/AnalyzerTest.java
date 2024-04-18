@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
@@ -151,8 +152,8 @@ public class AnalyzerTest {
 
     RelationalDistributionPlanner distributionPlanner =
         new RelationalDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
-    // DistributedQueryPlan distributedQueryPlan = distributionPlanner.plan();
-    // System.out.println(distributedQueryPlan);
+    DistributedQueryPlan distributedQueryPlan = distributionPlanner.plan();
+    System.out.println(distributedQueryPlan);
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {
