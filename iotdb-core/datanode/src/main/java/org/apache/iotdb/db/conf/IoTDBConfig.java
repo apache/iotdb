@@ -1078,6 +1078,7 @@ public class IoTDBConfig {
   private int maxSizePerBatch = 16 * 1024 * 1024;
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
+  private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
 
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
@@ -1125,6 +1126,15 @@ public class IoTDBConfig {
 
   public void setMaxLogEntriesNumPerBatch(int maxLogEntriesNumPerBatch) {
     this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
+  }
+
+  public long getRegionMigrationSpeedLimitBytesPerSecond() {
+    return regionMigrationSpeedLimitBytesPerSecond;
+  }
+
+  public void setRegionMigrationSpeedLimitBytesPerSecond(
+      long regionMigrationSpeedLimitBytesPerSecond) {
+    this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
   }
 
   public void setMaxSizePerBatch(int maxSizePerBatch) {

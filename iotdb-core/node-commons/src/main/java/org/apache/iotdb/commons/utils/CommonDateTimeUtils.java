@@ -59,6 +59,13 @@ public class CommonDateTimeUtils {
   }
 
   public static String convertMillisecondToDurationStr(long millisecond) {
+    StringBuilder stringBuilder = new StringBuilder();
+    boolean minus = false;
+    if (millisecond < 0) {
+      minus = true;
+      millisecond = -millisecond;
+      stringBuilder.append("-(");
+    }
     Duration duration = Duration.ofMillis(millisecond);
     long days = duration.toDays();
     long years = days / 365;
@@ -69,11 +76,10 @@ public class CommonDateTimeUtils {
     long minutes = duration.toMinutes() % 60;
     long seconds = duration.getSeconds() % 60;
     long ms = millisecond % 1000;
-    StringBuilder result = new StringBuilder();
     BiConsumer<Long, String> append =
         (value, unit) -> {
           if (value > 0) {
-            result.append(value).append(" ").append(unit).append(" ");
+            stringBuilder.append(value).append(" ").append(unit).append(" ");
           }
         };
     append.accept(years, "year");
@@ -83,7 +89,16 @@ public class CommonDateTimeUtils {
     append.accept(minutes, "minute");
     append.accept(seconds, "second");
     append.accept(ms, "ms");
-    result.delete(result.length() - 1, result.length());
-    return result.toString();
+    String result = stringBuilder.toString();
+    if (result.endsWith(" ")) {
+      result = result.substring(0, result.length() - 1);
+    }
+    if (minus) {
+      result += ")";
+    }
+    if (result.isEmpty()) {
+      result = "0 ms";
+    }
+    return result;
   }
 }
