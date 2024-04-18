@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -417,7 +418,8 @@ public class RegionMaintainHandler {
     return report;
   }
 
-  public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {
+  public void addRegionLocation(
+      TConsensusGroupId regionId, TDataNodeLocation newLocation, RegionStatus regionStatus) {
     AddRegionLocationPlan req = new AddRegionLocationPlan(regionId, newLocation);
     TSStatus status = configManager.getPartitionManager().addRegionLocation(req);
     LOGGER.info(
@@ -425,7 +427,16 @@ public class RegionMaintainHandler {
         regionId,
         getIdWithRpcEndpoint(newLocation),
         status);
-    configManager.getLoadManager().forceAddRegionCache(regionId, newLocation.getDataNodeId());
+    configManager
+        .getLoadManager()
+        .forceAddRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
+  }
+
+  public void updateRegionCache(
+      TConsensusGroupId regionId, TDataNodeLocation newLocation, RegionStatus regionStatus) {
+    configManager
+        .getLoadManager()
+        .forceAddRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
   }
 
   public void removeRegionLocation(

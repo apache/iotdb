@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.region;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -84,6 +85,7 @@ public class AddRegionPeerProcedure
       outerSwitch:
       switch (state) {
         case CREATE_NEW_REGION_PEER:
+          handler.addRegionLocation(consensusGroupId, destDataNode, RegionStatus.Adding);
           TSStatus status = handler.createNewRegionPeer(consensusGroupId, destDataNode);
           setKillPoint(state);
           if (status.getCode() != SUCCESS_STATUS.getStatusCode()) {
@@ -92,6 +94,7 @@ public class AddRegionPeerProcedure
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
+          handler.updateRegionCache(consensusGroupId, destDataNode, RegionStatus.Adding);
           // We don't want to re-submit AddRegionPeerTask when leader change or ConfigNode reboot
           if (!this.isStateDeserialized()) {
             TSStatus tsStatus =
@@ -127,7 +130,7 @@ public class AddRegionPeerProcedure
               throw new UnsupportedOperationException(msg);
           }
         case UPDATE_REGION_LOCATION_CACHE:
-          handler.addRegionLocation(consensusGroupId, destDataNode);
+          handler.updateRegionCache(consensusGroupId, destDataNode, RegionStatus.Running);
           setKillPoint(state);
           LOGGER.info("AddRegionPeer state {} complete", state);
           LOGGER.info(
@@ -147,6 +150,8 @@ public class AddRegionPeerProcedure
   }
 
   private void rollback(ConfigNodeProcedureEnv env, RegionMaintainHandler handler) {
+    handler.removeRegionLocation(consensusGroupId, destDataNode);
+
     List<TDataNodeLocation> correctDataNodeLocations =
         env.getConfigManager().getPartitionManager().getAllReplicaSets().stream()
             .filter(tRegionReplicaSet -> tRegionReplicaSet.getRegionId().equals(consensusGroupId))

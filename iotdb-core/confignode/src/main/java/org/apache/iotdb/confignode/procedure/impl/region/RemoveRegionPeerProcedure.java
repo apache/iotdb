@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -79,6 +80,7 @@ public class RemoveRegionPeerProcedure
     try {
       switch (state) {
         case REMOVE_REGION_PEER:
+          handler.updateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
           tsStatus =
               handler.submitRemoveRegionPeerTask(
                   this.getProcId(), targetDataNode, consensusGroupId, coordinator);
@@ -100,6 +102,7 @@ public class RemoveRegionPeerProcedure
           setNextState(DELETE_OLD_REGION_PEER);
           break;
         case DELETE_OLD_REGION_PEER:
+          handler.updateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
           tsStatus =
               handler.submitDeleteOldRegionPeerTask(
                   this.getProcId(), targetDataNode, consensusGroupId);

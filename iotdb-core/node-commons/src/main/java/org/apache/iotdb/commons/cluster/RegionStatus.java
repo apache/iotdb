@@ -27,6 +27,9 @@ public enum RegionStatus {
   /** Region connection failure */
   Unknown("Unknown"),
 
+  /** Region is the destination during an AddRegionPeerProcedure */
+  Adding("Adding"),
+
   /** Region is in removing */
   Removing("Removing"),
 
@@ -41,15 +44,6 @@ public enum RegionStatus {
 
   public String getStatus() {
     return status;
-  }
-
-  public static RegionStatus parse(String status) {
-    for (RegionStatus regionStatus : RegionStatus.values()) {
-      if (regionStatus.status.equals(status)) {
-        return regionStatus;
-      }
-    }
-    throw new RuntimeException(String.format("RegionStatus %s doesn't exist.", status));
   }
 
   public static boolean isNormalStatus(RegionStatus status) {
