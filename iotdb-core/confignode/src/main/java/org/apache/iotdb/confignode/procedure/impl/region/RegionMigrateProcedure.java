@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.region;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -31,6 +32,7 @@ import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +47,6 @@ public class RegionMigrateProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, RegionTransitionState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RegionMigrateProcedure.class);
-  private static final int RETRY_THRESHOLD = 5;
 
   /** Wait region migrate finished */
   private TConsensusGroupId consensusGroupId;
@@ -54,8 +55,6 @@ public class RegionMigrateProcedure
   private TDataNodeLocation destDataNode;
   private TDataNodeLocation coordinatorForAddPeer;
   private TDataNodeLocation coordinatorForRemovePeer;
-
-  private String migrateResult = "";
 
   public RegionMigrateProcedure() {
     super();
@@ -84,6 +83,12 @@ public class RegionMigrateProcedure
     try {
       switch (state) {
         case REGION_MIGRATE_PREPARE:
+          LOGGER.info(
+              "[pid{}][MigrateRegion] started, region {} will be migrated from DataNode {} to {}.",
+              getProcId(),
+              consensusGroupId.getId(),
+              originalDataNode.getDataNodeId(),
+              destDataNode.getDataNodeId());
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
@@ -96,10 +101,10 @@ public class RegionMigrateProcedure
               .getPartitionManager()
               .isDataNodeContainsRegion(destDataNode.getDataNodeId(), consensusGroupId)) {
             LOGGER.warn(
-                "sub-procedure AddRegionPeerProcedure fail, RegionMigrateProcedure will not continue");
+                "[pid{}][MigrateRegion] sub-procedure AddRegionPeerProcedure fail, RegionMigrateProcedure will not continue",
+                getProcId());
             return Flow.NO_MORE_STATE;
           }
-          LOGGER.info("sub-procedure AddRegionPeerProcedure success");
           setNextState(RegionTransitionState.CHANGE_REGION_LEADER);
           break;
         case CHANGE_REGION_LEADER:
@@ -121,10 +126,14 @@ public class RegionMigrateProcedure
                 "RegionMigrateProcedure success, but you may need to manually clean the old region to make everything works fine");
           } else {
             LOGGER.info(
-                "RegionMigrateProcedure success, region {} has been migrated from DataNode {} to {}",
+                "[pid{}][MigrateRegion] success, region {} has been migrated from DataNode {} to {}. Procedure took {} (started at {})",
+                getProcId(),
                 consensusGroupId.getId(),
                 originalDataNode.getDataNodeId(),
-                destDataNode.getDataNodeId());
+                destDataNode.getDataNodeId(),
+                CommonDateTimeUtils.convertMillisecondToDurationStr(
+                    System.currentTimeMillis() - getSubmittedTime()),
+                DateTimeUtils.convertLongToDate(getSubmittedTime()));
           }
           return Flow.NO_MORE_STATE;
         default:
@@ -142,11 +151,6 @@ public class RegionMigrateProcedure
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, RegionTransitionState state)
       throws IOException, InterruptedException, ProcedureException {}
-
-  @Override
-  protected boolean isRollbackSupported(RegionTransitionState state) {
-    return false;
-  }
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {

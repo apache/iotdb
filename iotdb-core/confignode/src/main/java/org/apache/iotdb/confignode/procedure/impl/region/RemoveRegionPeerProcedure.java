@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
@@ -34,6 +35,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 
 import org.slf4j.Logger;
@@ -80,6 +82,11 @@ public class RemoveRegionPeerProcedure
     try {
       switch (state) {
         case REMOVE_REGION_PEER:
+          LOGGER.info(
+              "[pid{}][RemoveRegionPeer] started, region {} will be removed from DataNode {}.",
+              getProcId(),
+              consensusGroupId.getId(),
+              targetDataNode.getDataNodeId());
           handler.updateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
           tsStatus =
               handler.submitRemoveRegionPeerTask(
@@ -87,7 +94,8 @@ public class RemoveRegionPeerProcedure
           setKillPoint(state);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
             LOGGER.warn(
-                "{} task submitted failed, procedure will continue. You should manually clear peer list.",
+                "[pid{}][RemoveRegionPeer] {} task submitted failed, procedure will continue. You should manually clear peer list.",
+                getProcId(),
                 state);
             setNextState(DELETE_OLD_REGION_PEER);
             break;
@@ -96,7 +104,8 @@ public class RemoveRegionPeerProcedure
               handler.waitTaskFinish(this.getProcId(), coordinator);
           if (removeRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
             LOGGER.warn(
-                "{} executed failed, procedure will continue. You should manually clear peer list.",
+                "[pid{}][RemoveRegionPeer] {} executed failed, procedure will continue. You should manually clear peer list.",
+                getProcId(),
                 state);
           }
           setNextState(DELETE_OLD_REGION_PEER);
@@ -109,7 +118,8 @@ public class RemoveRegionPeerProcedure
           setKillPoint(state);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
             LOGGER.warn(
-                "DELETE_OLD_REGION_PEER task submitted failed, procedure will continue. You should manually delete region file.");
+                "[pid{}][RemoveRegionPeer] DELETE_OLD_REGION_PEER task submitted failed, procedure will continue. You should manually delete region file.",
+                getProcId());
             setNextState(REMOVE_REGION_LOCATION_CACHE);
             break;
           }
@@ -117,7 +127,8 @@ public class RemoveRegionPeerProcedure
               handler.waitTaskFinish(this.getProcId(), targetDataNode);
           if (deleteOldRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
             LOGGER.warn(
-                "DELETE_OLD_REGION_PEER executed failed, procedure will continue. You should manually delete region file.");
+                "[pid{}][RemoveRegionPeer] DELETE_OLD_REGION_PEER executed failed, procedure will continue. You should manually delete region file.",
+                getProcId());
           }
           setNextState(REMOVE_REGION_LOCATION_CACHE);
           break;
@@ -126,9 +137,13 @@ public class RemoveRegionPeerProcedure
           setKillPoint(state);
           LOGGER.info("RemoveRegionPeer state {} success", state);
           LOGGER.info(
-              "RemoveRegionPeerProcedure success, region {} has been removed from DataNode {}",
+              "[pid{}][RemoveRegionPeer] success, region {} has been removed from DataNode {}. Procedure takes {} (started at {})",
+              getProcId(),
               consensusGroupId.getId(),
-              targetDataNode.getDataNodeId());
+              targetDataNode.getDataNodeId(),
+              CommonDateTimeUtils.convertMillisecondToDurationStr(
+                  System.currentTimeMillis() - getSubmittedTime()),
+              DateTimeUtils.convertLongToDate(getSubmittedTime()));
           return Flow.NO_MORE_STATE;
         default:
           throw new ProcedureException("Unsupported state: " + state.name());
@@ -137,7 +152,7 @@ public class RemoveRegionPeerProcedure
       LOGGER.error("RemoveRegionPeer state {} failed", state, e);
       return Flow.NO_MORE_STATE;
     }
-    LOGGER.info("RemoveRegionPeer state {} success", state);
+    LOGGER.info("[pid{}][RemoveRegionPeer] state {} success", getProcId(), state);
     return Flow.HAS_MORE_STATE;
   }
 
