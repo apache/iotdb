@@ -70,7 +70,7 @@ public class PlainDeviceTimeIndex extends ArrayDeviceTimeIndex implements ITimeI
           DataNodeDevicePathCache.getInstance()
               .getDeviceId(ReadWriteIOUtils.readString(inputStream));
       int index = ReadWriteIOUtils.readInt(inputStream);
-      deviceToIndex.put(new PlainDeviceID(path), index);
+      deviceToIndex.put(IDeviceID.Factory.DEFAULT_FACTORY.create(path), index);
     }
     return this;
   }
@@ -92,7 +92,7 @@ public class PlainDeviceTimeIndex extends ArrayDeviceTimeIndex implements ITimeI
       String path =
           DataNodeDevicePathCache.getInstance().getDeviceId(ReadWriteIOUtils.readString(buffer));
       int index = buffer.getInt();
-      deviceToIndex.put(new PlainDeviceID(path), index);
+      deviceToIndex.put(IDeviceID.Factory.DEFAULT_FACTORY.create(path), index);
     }
     return this;
   }
@@ -112,7 +112,7 @@ public class PlainDeviceTimeIndex extends ArrayDeviceTimeIndex implements ITimeI
           DataNodeDevicePathCache.getInstance()
               .getDeviceId(ReadWriteIOUtils.readString(inputStream));
       ReadWriteIOUtils.skip(inputStream, ReadWriteIOUtils.INT_LEN);
-      devices.add(new PlainDeviceID(path));
+      devices.add(IDeviceID.Factory.DEFAULT_FACTORY.create(path));
     }
     return devices;
   }

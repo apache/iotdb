@@ -205,7 +205,7 @@ public interface ITimeIndex {
   /**
    * Get TimeIndex Type
    *
-   * @return V012FileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2
+   * @return V012FileTimeIndex = 0, plainDeviceTimeIndex = 1, fileTimeIndex = 2, arrayDeviceTimeIndex = 3
    */
   byte getTimeIndexType();
 
