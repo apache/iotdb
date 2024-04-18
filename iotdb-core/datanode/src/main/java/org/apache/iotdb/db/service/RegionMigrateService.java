@@ -217,7 +217,8 @@ public class RegionMigrateService implements IService {
 
     private RegionMigratePool() {
       this.pool =
-          IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.REGION_MIGRATE.getName());
+          IoTDBThreadPoolFactory.newFixedThreadPool(
+              Runtime.getRuntime().availableProcessors() / 2, ThreadName.REGION_MIGRATE.getName());
     }
 
     @Override
