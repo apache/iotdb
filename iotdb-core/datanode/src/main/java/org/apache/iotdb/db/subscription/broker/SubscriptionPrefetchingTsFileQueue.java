@@ -176,6 +176,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
           break;
         case TS_FILE_SEAL:
           LOGGER.warn("{} reset file {} offset to {}", this, fileName, writingOffset);
+          uncommittedEvents.remove(polledMessage.getCommitContext());
           break;
         default:
           final String errorMessage = String.format("unexpected message type: %s", messageType);

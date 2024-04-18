@@ -88,7 +88,7 @@ public class TsFilePieceMessagePayload implements SubscriptionMessagePayload {
 
   @Override
   public int hashCode() {
-    return Objects.hash(fileName, nextWritingOffset, filePiece);
+    return Objects.hash(fileName, nextWritingOffset, Arrays.hashCode(filePiece));
   }
 
   @Override
