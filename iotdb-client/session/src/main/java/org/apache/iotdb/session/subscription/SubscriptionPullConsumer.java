@@ -330,6 +330,18 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
               fileWriter.write(((TsFilePieceMessagePayload) messagePayload).getFilePiece());
               fileWriter.getFD().sync();
 
+              // check offset
+              if (!Objects.equals(
+                  fileWriter.length(),
+                  ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset())) {
+                LOGGER.warn(
+                    "inconsistent file offset, current is {}, incoming is {}, consumer: {}",
+                    fileWriter.length(),
+                    ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset(),
+                    this);
+                return new Pair<>(null, false);
+              }
+
               // update offset
               writingOffset = ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset();
               break;
