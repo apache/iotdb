@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -146,6 +147,26 @@ public class Analysis implements IAnalysis {
   private final Map<NodeRef<Relation>, QualifiedName> relationNames = new LinkedHashMap<>();
 
   private final Set<NodeRef<Relation>> aliasedRelations = new LinkedHashSet<>();
+
+  private Expression globalTableModelTimePredicate;
+
+  private DataPartition dataPartition;
+
+  public Expression getGlobalTableModelTimePredicate() {
+    return this.globalTableModelTimePredicate;
+  }
+
+  public void setGlobalTableModelTimePredicate(Expression globalTableModelTimePredicate) {
+    this.globalTableModelTimePredicate = globalTableModelTimePredicate;
+  }
+
+  public DataPartition getDataPartition() {
+    return dataPartition;
+  }
+
+  public void setDataPartition(DataPartition dataPartition) {
+    this.dataPartition = dataPartition;
+  }
 
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
     this.root = root;

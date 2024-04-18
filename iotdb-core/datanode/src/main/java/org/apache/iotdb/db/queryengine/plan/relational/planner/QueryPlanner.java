@@ -243,7 +243,9 @@ public class QueryPlanner {
       return subPlan;
     }
 
-    Pair<Expression, Boolean> ret = extractGlobalTimePredicate(predicate, true, true);
+    Pair<Expression, Boolean> resultPair = extractGlobalTimePredicate(predicate, true, true);
+    Expression globalTimePredicate = resultPair.left;
+    analysis.setGlobalTableModelTimePredicate(globalTimePredicate);
 
     return subPlan.withNewRoot(
         new FilterNode(idAllocator.genPlanNodeId(), subPlan.getRoot(), predicate));

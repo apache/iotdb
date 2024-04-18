@@ -24,16 +24,16 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
-import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.TreeModelTimePredicate;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.TableModelTimePredicate;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.relational.sql.tree.Query;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -95,14 +95,12 @@ public class FragmentInstanceGenerator {
   }
 
   private void produceFragmentInstance(PlanFragment fragment) {
-    // TODO fix globalTimePredicate
-    // Expression globalTimePredicate = analysis.getGlobalTimePredicate();
-    Expression globalTimePredicate = null;
+    Expression globalTimePredicate = analysis.getGlobalTableModelTimePredicate();
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             fragment,
             fragment.getId().genFragmentInstanceId(),
-            globalTimePredicate == null ? null : new TreeModelTimePredicate(globalTimePredicate),
+            globalTimePredicate == null ? null : new TableModelTimePredicate(globalTimePredicate),
             QueryType.READ,
             queryContext.getTimeOut(),
             queryContext.getSession(),

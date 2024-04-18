@@ -160,4 +160,8 @@ public class TableScanNode extends PlanNode {
   public TRegionReplicaSet getRegionReplicaSet() {
     return this.regionReplicaSet;
   }
+
+  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
+  }
 }

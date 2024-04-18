@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -134,7 +135,7 @@ public class AnalyzerTest {
   @Test
   public void testSingleTableQuery() throws IoTDBException {
     // no sort
-    String sql = "SELECT tag1 as tt, tag2, attr1, s1+1 FROM table1 where time>1 and s1>1";
+    String sql = "SELECT tag1, s1 FROM table1";
     // + "WHERE time>1 AND tag1='A' OR s2>3";
     Metadata metadata = new TestMatadata();
 
@@ -144,7 +145,14 @@ public class AnalyzerTest {
 
     QueryId queryId = new QueryId("tmp_query");
     MPPQueryContext context = new MPPQueryContext(queryId);
-    SessionInfo sessionInfo = new SessionInfo(1L, "iotdb", ZoneId.systemDefault());
+    SessionInfo sessionInfo =
+        new SessionInfo(
+            1L,
+            "iotdb-user",
+            ZoneId.systemDefault(),
+            IoTDBConstant.ClientVersion.V_1_0,
+            "db",
+            IClientSession.SqlDialect.TABLE);
     WarningCollector warningCollector = WarningCollector.NOOP;
     LogicalPlanner logicalPlanner =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector);
