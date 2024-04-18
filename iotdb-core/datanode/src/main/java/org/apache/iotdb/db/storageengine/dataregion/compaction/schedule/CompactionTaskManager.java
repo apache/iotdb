@@ -69,6 +69,7 @@ public class CompactionTaskManager implements IService {
   // The thread pool that executes the compaction task. The default number of threads for this pool
   // is 10.
   private WrappedThreadPoolExecutor taskExecutionPool;
+  private volatile boolean stopAllCompactionWorker = false;
 
   // The thread pool that executes the sub compaction task.
   private WrappedThreadPoolExecutor subCompactionTaskExecutionPool;
@@ -88,6 +89,10 @@ public class CompactionTaskManager implements IService {
 
   public static CompactionTaskManager getInstance() {
     return INSTANCE;
+  }
+
+  public boolean isStopAllCompactionWorker() {
+    return stopAllCompactionWorker;
   }
 
   @Override
@@ -125,6 +130,7 @@ public class CompactionTaskManager implements IService {
 
   @Override
   public void stop() {
+    stopAllCompactionWorker = true;
     if (taskExecutionPool != null) {
       subCompactionTaskExecutionPool.shutdownNow();
       taskExecutionPool.shutdownNow();
@@ -137,6 +143,7 @@ public class CompactionTaskManager implements IService {
 
   @Override
   public void waitAndStop(long milliseconds) {
+    stopAllCompactionWorker = true;
     if (taskExecutionPool != null) {
       awaitTermination(subCompactionTaskExecutionPool, milliseconds);
       awaitTermination(taskExecutionPool, milliseconds);
@@ -412,6 +419,7 @@ public class CompactionTaskManager implements IService {
   }
 
   public void restart() throws InterruptedException {
+    stopAllCompactionWorker = true;
     if (IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0) {
       if (subCompactionTaskExecutionPool != null) {
         this.subCompactionTaskExecutionPool.shutdownNow();
@@ -438,6 +446,7 @@ public class CompactionTaskManager implements IService {
       init = true;
     }
     init = true;
+    stopAllCompactionWorker = false;
     logger.info("Compaction task manager started.");
   }
 
