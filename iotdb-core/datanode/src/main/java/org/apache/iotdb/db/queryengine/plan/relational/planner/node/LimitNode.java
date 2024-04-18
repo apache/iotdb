@@ -46,4 +46,8 @@ public class LimitNode extends SingleChildProcessNode {
   public List<Symbol> getOutputSymbols() {
     return child.getOutputSymbols();
   }
+
+  public long getCount() {
+    return count;
+  }
 }

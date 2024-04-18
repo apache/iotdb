@@ -22,9 +22,13 @@ package org.apache.iotdb.db.protocol.session;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.Set;
 import java.util.TimeZone;
@@ -159,7 +163,33 @@ public abstract class IClientSession {
   }
 
   public enum SqlDialect {
-    TREE,
-    TABLE
+    TREE((byte) 0),
+    TABLE((byte) 1);
+
+    private final byte dialect;
+
+    SqlDialect(byte dialect) {
+      this.dialect = dialect;
+    }
+
+    public byte getDialect() {
+      return dialect;
+    }
+
+    public void serialize(DataOutputStream stream) throws IOException {
+      ReadWriteIOUtils.write(dialect, stream);
+    }
+
+    public static SqlDialect deserializeFrom(ByteBuffer buffer) {
+      byte b = ReadWriteIOUtils.readByte(buffer);
+      switch (b) {
+        case 0:
+          return TREE;
+        case 1:
+          return TABLE;
+        default:
+          throw new IllegalArgumentException(String.format("Unknown sql dialect: %s", b));
+      }
+    }
   }
 }

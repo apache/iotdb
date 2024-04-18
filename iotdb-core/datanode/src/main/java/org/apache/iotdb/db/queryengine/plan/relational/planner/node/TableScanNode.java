@@ -125,10 +125,6 @@ public class TableScanNode extends PlanNode {
     return this.qualifiedTableName;
   }
 
-  public List<DeviceEntry> getDeviceEntries() {
-    return this.deviceEntries;
-  }
-
   public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
     this.deviceEntries = deviceEntries;
   }
@@ -143,6 +139,10 @@ public class TableScanNode extends PlanNode {
 
   public Ordering getScanOrder() {
     return this.scanOrder;
+  }
+
+  public List<DeviceEntry> getDeviceEntries() {
+    return deviceEntries;
   }
 
   public Expression getPushDownPredicate() {
