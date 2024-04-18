@@ -42,6 +42,8 @@ public abstract class EnrichedEvent implements Event {
   private static final Logger LOGGER = LoggerFactory.getLogger(EnrichedEvent.class);
 
   protected final AtomicInteger referenceCount;
+  // This variable is used to indicate whether the event's reference count has ever been decreased
+  // to zero.
   protected final AtomicBoolean isReleased;
 
   protected final String pipeName;
@@ -85,25 +87,24 @@ public abstract class EnrichedEvent implements Event {
    *
    * @param holderMessage the message of the invoker
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is increased successfully,
-   *     {@code false} otherwise
+   *     {@code false} otherwise; {@link EnrichedEvent#referenceCount} will be incremented
+   *     regardless of the circumstances
    */
   public boolean increaseReferenceCount(final String holderMessage) {
     boolean isSuccessful = true;
     synchronized (this) {
+      // Increase the reference count before internal increase to avoid unchecked exceptions.
+      final int newReferenceCount = referenceCount.incrementAndGet();
       if (isReleased.get()) {
         LOGGER.warn(
             "re-increase reference count to event that has already been released: {}, stack trace: {}",
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
-        // Here we still increase the reference count, to remain consistent with the behavior after
-        // internal increase failure.
-        referenceCount.incrementAndGet();
         isSuccessful = false;
       } else {
-        if (referenceCount.get() == 0) {
+        if (newReferenceCount == 1) {
           isSuccessful = internallyIncreaseResourceReferenceCount(holderMessage);
         }
-        referenceCount.incrementAndGet();
       }
     }
     if (!isSuccessful) {
@@ -131,28 +132,28 @@ public abstract class EnrichedEvent implements Event {
    *
    * @param holderMessage the message of the invoker
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully,
-   *     {@code false} otherwise
+   *     {@code false} otherwise; {@link EnrichedEvent#referenceCount} will be decremented
+   *     regardless of the circumstances
    */
   public boolean decreaseReferenceCount(final String holderMessage, final boolean shouldReport) {
     boolean isSuccessful = true;
     synchronized (this) {
-      if (referenceCount.get() == 1 && !isReleased.get()) {
-        isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
-        if (!shouldReport) {
-          shouldReportOnCommit = false;
-        }
-        PipeEventCommitManager.getInstance().commit(this, committerKey);
-      }
+      // Decrease the reference count before internal decrease to avoid unchecked exceptions.
       final int newReferenceCount = referenceCount.decrementAndGet();
-      if (newReferenceCount == 0) {
-        isReleased.set(true);
-      }
       if (newReferenceCount < 0) {
         LOGGER.warn(
             "reference count is decreased to {}, event: {}, stack trace: {}",
             newReferenceCount,
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
+      }
+      if (newReferenceCount == 0 && !isReleased.get()) {
+        isReleased.set(true);
+        isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
+        if (!shouldReport) {
+          shouldReportOnCommit = false;
+        }
+        PipeEventCommitManager.getInstance().commit(this, committerKey);
       }
     }
     if (!isSuccessful) {
@@ -167,17 +168,18 @@ public abstract class EnrichedEvent implements Event {
    * data stored in the {@link EnrichedEvent} may not be safe to use.
    *
    * @param holderMessage the message of the invoker
-   * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully,
-   *     {@code false} otherwise
+   * @return {@code true} if the {@link EnrichedEvent#referenceCount} is cleared successfully,
+   *     {@code false} otherwise; {@link EnrichedEvent#referenceCount} will be reset to zero
+   *     regardless of the circumstances
    */
   public boolean clearReferenceCount(final String holderMessage) {
     boolean isSuccessful = true;
     synchronized (this) {
-      if (referenceCount.get() >= 1 && !isReleased.get()) {
+      final int oldReferenceCount = referenceCount.getAndSet(0);
+      if (oldReferenceCount >= 1 && !isReleased.get()) {
+        isReleased.set(true);
         isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
       }
-      referenceCount.set(0);
-      isReleased.set(true);
     }
     if (!isSuccessful) {
       LOGGER.warn("clear reference count failed, EnrichedEvent: {}", coreReportMessage());
