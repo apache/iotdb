@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 
 import java.util.Map;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
+
 public class TableDeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
 
   private int attributePointer = -1;
@@ -80,7 +82,7 @@ public class TableDeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
 
   @Override
   public int getSchemaTemplateId() {
-    return 0;
+    return NON_TEMPLATE;
   }
 
   @Override
@@ -104,7 +106,7 @@ public class TableDeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
 
   @Override
   public Boolean isAligned() {
-    return null;
+    return true;
   }
 
   @Override
