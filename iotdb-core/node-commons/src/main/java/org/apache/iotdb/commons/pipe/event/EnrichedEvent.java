@@ -95,6 +95,9 @@ public abstract class EnrichedEvent implements Event {
             "re-increase reference count to event that has already been released: {}, stack trace: {}",
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
+        // Here we still increase the reference count, to remain consistent with the behavior after
+        // internal increase failure.
+        referenceCount.incrementAndGet();
         isSuccessful = false;
       } else {
         if (referenceCount.get() == 0) {
@@ -133,7 +136,7 @@ public abstract class EnrichedEvent implements Event {
   public boolean decreaseReferenceCount(String holderMessage, boolean shouldReport) {
     boolean isSuccessful = true;
     synchronized (this) {
-      if (referenceCount.get() == 1) {
+      if (referenceCount.get() == 1 && !isReleased.get()) {
         isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
         if (!shouldReport) {
           shouldReportOnCommit = false;
@@ -170,7 +173,7 @@ public abstract class EnrichedEvent implements Event {
   public boolean clearReferenceCount(String holderMessage) {
     boolean isSuccessful = true;
     synchronized (this) {
-      if (referenceCount.get() >= 1) {
+      if (referenceCount.get() >= 1 && !isReleased.get()) {
         isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
       }
       referenceCount.set(0);
@@ -310,6 +313,10 @@ public abstract class EnrichedEvent implements Event {
     if (shouldReportOnCommit) {
       reportProgress();
     }
+  }
+
+  public boolean isReleased() {
+    return isReleased.get();
   }
 
   @Override

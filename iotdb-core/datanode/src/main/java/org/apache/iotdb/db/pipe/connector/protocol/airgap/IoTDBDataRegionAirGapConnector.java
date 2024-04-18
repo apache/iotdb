@@ -72,29 +72,9 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
 
     try {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
-            (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
-        // We increase the reference count for this event to determine if the event may be released.
-        if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
-            IoTDBDataRegionAirGapConnector.class.getName())) {
-          return;
-        }
-
-        doTransfer(socket, pipeInsertNodeTabletInsertionEvent);
-        pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
-            IoTDBDataRegionAirGapConnector.class.getName(), false);
+        doTransferWrapper(socket, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
       } else {
-        final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
-            (PipeRawTabletInsertionEvent) tabletInsertionEvent;
-        // We increase the reference count for this event to determine if the event may be released.
-        if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
-            IoTDBDataRegionAirGapConnector.class.getName())) {
-          return;
-        }
-
-        doTransfer(socket, pipeRawTabletInsertionEvent);
-        pipeRawTabletInsertionEvent.decreaseReferenceCount(
-            IoTDBDataRegionAirGapConnector.class.getName(), false);
+        doTransferWrapper(socket, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
       }
     } catch (IOException e) {
       isSocketAlive.set(socketIndex, false);
@@ -128,17 +108,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
     final Socket socket = sockets.get(socketIndex);
 
     try {
-      final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
-          (PipeTsFileInsertionEvent) tsFileInsertionEvent;
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeTsFileInsertionEvent.increaseReferenceCount(
-          IoTDBDataRegionAirGapConnector.class.getName())) {
-        return;
-      }
-
-      doTransfer(socket, pipeTsFileInsertionEvent);
-      pipeTsFileInsertionEvent.decreaseReferenceCount(
-          IoTDBDataRegionAirGapConnector.class.getName(), false);
+      doTransferWrapper(socket, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (IOException e) {
       isSocketAlive.set(socketIndex, false);
 
@@ -157,17 +127,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
 
     try {
       if (event instanceof PipeSchemaRegionWritePlanEvent) {
-        final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent =
-            (PipeSchemaRegionWritePlanEvent) event;
-        // We increase the reference count for this event to determine if the event may be released.
-        if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
-            IoTDBDataRegionAirGapConnector.class.getName())) {
-          return;
-        }
-
-        doTransfer(socket, pipeSchemaRegionWritePlanEvent);
-        pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
-            IoTDBDataRegionAirGapConnector.class.getName(), false);
+        doTransferWrapper(socket, (PipeSchemaRegionWritePlanEvent) event);
       } else if (!(event instanceof PipeHeartbeatEvent)) {
         LOGGER.warn(
             "IoTDBDataRegionAirGapConnector does not support transferring generic event: {}.",
@@ -180,6 +140,22 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
           String.format(
               "Network error when transfer tsfile event %s, because %s.", event, e.getMessage()),
           e);
+    }
+  }
+
+  private void doTransferWrapper(
+      Socket socket, PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
+      throws PipeException, WALPipeException, IOException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+          IoTDBDataRegionAirGapConnector.class.getName())) {
+        return;
+      }
+      doTransfer(socket, pipeInsertNodeTabletInsertionEvent);
+    } finally {
+      pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
+          IoTDBDataRegionAirGapConnector.class.getName(), false);
     }
   }
 
@@ -207,6 +183,22 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
     }
   }
 
+  private void doTransferWrapper(
+      Socket socket, PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+      throws PipeException, IOException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
+          IoTDBDataRegionAirGapConnector.class.getName())) {
+        return;
+      }
+      doTransfer(socket, pipeRawTabletInsertionEvent);
+    } finally {
+      pipeRawTabletInsertionEvent.decreaseReferenceCount(
+          IoTDBDataRegionAirGapConnector.class.getName(), false);
+    }
+  }
+
   private void doTransfer(Socket socket, PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, IOException {
     if (!send(
@@ -223,6 +215,21 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
               .setMessage(errorMessage),
           errorMessage,
           pipeRawTabletInsertionEvent.toString());
+    }
+  }
+
+  private void doTransferWrapper(Socket socket, PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
+      throws PipeException, IOException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeTsFileInsertionEvent.increaseReferenceCount(
+          IoTDBDataRegionAirGapConnector.class.getName())) {
+        return;
+      }
+      doTransfer(socket, pipeTsFileInsertionEvent);
+    } finally {
+      pipeTsFileInsertionEvent.decreaseReferenceCount(
+          IoTDBDataRegionAirGapConnector.class.getName(), false);
     }
   }
 

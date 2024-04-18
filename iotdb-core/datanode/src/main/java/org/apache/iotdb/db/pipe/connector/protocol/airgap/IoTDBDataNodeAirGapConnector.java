@@ -105,7 +105,23 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
     return PipeTransferDataNodeHandshakeV2Req.toTPipeTransferBytes(params);
   }
 
-  protected void doTransfer(
+  protected void doTransferWrapper(
+      Socket socket, PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+      throws PipeException, IOException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
+          IoTDBDataNodeAirGapConnector.class.getName())) {
+        return;
+      }
+      doTransfer(socket, pipeSchemaRegionWritePlanEvent);
+    } finally {
+      pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
+          IoTDBDataNodeAirGapConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransfer(
       Socket socket, PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException, IOException {
     if (!send(

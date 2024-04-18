@@ -93,32 +93,27 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
   @Override
   public void transfer(Event event) throws Exception {
     if (event instanceof PipeConfigRegionWritePlanEvent) {
-      final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent =
-          (PipeConfigRegionWritePlanEvent) event;
+      doTransferWrapper((PipeConfigRegionWritePlanEvent) event);
+    } else if (event instanceof PipeConfigRegionSnapshotEvent) {
+      doTransferWrapper((PipeConfigRegionSnapshotEvent) event);
+    } else if (!(event instanceof PipeHeartbeatEvent)) {
+      LOGGER.warn(
+          "IoTDBConfigRegionConnector does not support transferring generic event: {}.", event);
+    }
+  }
+
+  private void doTransferWrapper(PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent)
+      throws PipeException {
+    try {
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeConfigRegionWritePlanEvent.increaseReferenceCount(
           IoTDBConfigRegionConnector.class.getName())) {
         return;
       }
-
       doTransfer(pipeConfigRegionWritePlanEvent);
+    } finally {
       pipeConfigRegionWritePlanEvent.decreaseReferenceCount(
           IoTDBConfigRegionConnector.class.getName(), false);
-    } else if (event instanceof PipeConfigRegionSnapshotEvent) {
-      final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent =
-          (PipeConfigRegionSnapshotEvent) event;
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeConfigRegionSnapshotEvent.increaseReferenceCount(
-          IoTDBConfigRegionConnector.class.getName())) {
-        return;
-      }
-
-      doTransfer(pipeConfigRegionSnapshotEvent);
-      pipeConfigRegionSnapshotEvent.decreaseReferenceCount(
-          IoTDBConfigRegionConnector.class.getName(), false);
-    } else if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn(
-          "IoTDBConfigRegionConnector does not support transferring generic event: {}.", event);
     }
   }
 
@@ -156,6 +151,21 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
               "Transfer config region write plan %s error, result status %s.",
               writePlanEvent.getConfigPhysicalPlan().getType(), status),
           writePlanEvent.getConfigPhysicalPlan().toString());
+    }
+  }
+
+  private void doTransferWrapper(PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
+      throws PipeException, IOException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeConfigRegionSnapshotEvent.increaseReferenceCount(
+          IoTDBConfigRegionConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeConfigRegionSnapshotEvent);
+    } finally {
+      pipeConfigRegionSnapshotEvent.decreaseReferenceCount(
+          IoTDBConfigRegionConnector.class.getName(), false);
     }
   }
 

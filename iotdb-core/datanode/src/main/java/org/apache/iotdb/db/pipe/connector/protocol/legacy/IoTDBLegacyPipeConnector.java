@@ -263,29 +263,9 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
-          (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
-          IoTDBLegacyPipeConnector.class.getName())) {
-        return;
-      }
-
-      doTransfer(pipeInsertNodeTabletInsertionEvent);
-      pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
-          IoTDBLegacyPipeConnector.class.getName(), false);
+      doTransferWrapper((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
-          (PipeRawTabletInsertionEvent) tabletInsertionEvent;
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
-          IoTDBLegacyPipeConnector.class.getName())) {
-        return;
-      }
-
-      doTransfer(pipeRawTabletInsertionEvent);
-      pipeRawTabletInsertionEvent.decreaseReferenceCount(
-          IoTDBLegacyPipeConnector.class.getName(), false);
+      doTransferWrapper((PipeRawTabletInsertionEvent) tabletInsertionEvent);
     } else {
       throw new NotImplementedException(
           "IoTDBLegacyPipeConnector only support "
@@ -308,17 +288,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     }
 
     try {
-      final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
-          (PipeTsFileInsertionEvent) tsFileInsertionEvent;
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeTsFileInsertionEvent.increaseReferenceCount(
-          IoTDBLegacyPipeConnector.class.getName())) {
-        return;
-      }
-
-      doTransfer(pipeTsFileInsertionEvent);
-      pipeTsFileInsertionEvent.decreaseReferenceCount(
-          IoTDBLegacyPipeConnector.class.getName(), false);
+      doTransferWrapper((PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
       throw new PipeConnectionException(
           String.format(
@@ -335,6 +305,21 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     }
   }
 
+  private void doTransferWrapper(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeInsertNodeInsertionEvent.increaseReferenceCount(
+          IoTDBLegacyPipeConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeInsertNodeInsertionEvent);
+    } finally {
+      pipeInsertNodeInsertionEvent.decreaseReferenceCount(
+          IoTDBLegacyPipeConnector.class.getName(), false);
+    }
+  }
+
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
       throws IoTDBConnectionException, StatementExecutionException {
     final Tablet tablet = pipeInsertNodeInsertionEvent.convertToTablet();
@@ -345,6 +330,21 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     }
   }
 
+  private void doTransferWrapper(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+      throws PipeException, IoTDBConnectionException, StatementExecutionException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
+          IoTDBLegacyPipeConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeRawTabletInsertionEvent);
+    } finally {
+      pipeRawTabletInsertionEvent.decreaseReferenceCount(
+          IoTDBLegacyPipeConnector.class.getName(), false);
+    }
+  }
+
   private void doTransfer(PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
       throws PipeException, IoTDBConnectionException, StatementExecutionException {
     final Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
@@ -352,6 +352,21 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
       sessionPool.insertAlignedTablet(tablet);
     } else {
       sessionPool.insertTablet(tablet);
+    }
+  }
+
+  private void doTransferWrapper(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
+      throws PipeException, TException, IOException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeTsFileInsertionEvent.increaseReferenceCount(
+          IoTDBLegacyPipeConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeTsFileInsertionEvent);
+    } finally {
+      pipeTsFileInsertionEvent.decreaseReferenceCount(
+          IoTDBLegacyPipeConnector.class.getName(), false);
     }
   }
 

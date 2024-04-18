@@ -64,29 +64,9 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
 
     try {
       if (event instanceof PipeSchemaRegionWritePlanEvent) {
-        final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent =
-            (PipeSchemaRegionWritePlanEvent) event;
-        // We increase the reference count for this event to determine if the event may be released.
-        if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
-            IoTDBSchemaRegionAirGapConnector.class.getName())) {
-          return;
-        }
-
-        doTransfer(socket, pipeSchemaRegionWritePlanEvent);
-        pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
-            IoTDBSchemaRegionAirGapConnector.class.getName(), false);
+        doTransferWrapper(socket, (PipeSchemaRegionWritePlanEvent) event);
       } else if (event instanceof PipeSchemaRegionSnapshotEvent) {
-        final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent =
-            (PipeSchemaRegionSnapshotEvent) event;
-        // We increase the reference count for this event to determine if the event may be released.
-        if (!pipeSchemaRegionSnapshotEvent.increaseReferenceCount(
-            IoTDBSchemaRegionAirGapConnector.class.getName())) {
-          return;
-        }
-
-        doTransfer(socket, pipeSchemaRegionSnapshotEvent);
-        pipeSchemaRegionSnapshotEvent.decreaseReferenceCount(
-            IoTDBSchemaRegionAirGapConnector.class.getName(), false);
+        doTransferWrapper(socket, (PipeSchemaRegionSnapshotEvent) event);
       } else if (!(event instanceof PipeHeartbeatEvent)) {
         LOGGER.warn(
             "IoTDBSchemaRegionAirGapConnector does not support transferring generic event: {}.",
@@ -98,6 +78,22 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
       throw new PipeConnectionException(
           String.format("Network error when transfer event %s, because %s.", event, e.getMessage()),
           e);
+    }
+  }
+
+  private void doTransferWrapper(
+      final Socket socket, final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
+      throws PipeException, IOException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeSchemaRegionSnapshotEvent.increaseReferenceCount(
+          IoTDBSchemaRegionAirGapConnector.class.getName())) {
+        return;
+      }
+      doTransfer(socket, pipeSchemaRegionSnapshotEvent);
+    } finally {
+      pipeSchemaRegionSnapshotEvent.decreaseReferenceCount(
+          IoTDBSchemaRegionAirGapConnector.class.getName(), false);
     }
   }
 

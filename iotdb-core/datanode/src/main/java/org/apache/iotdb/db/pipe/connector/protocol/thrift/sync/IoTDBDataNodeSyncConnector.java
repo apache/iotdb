@@ -92,7 +92,22 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
     return clientManager;
   }
 
-  protected void doTransfer(PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+  protected void doTransferWrapper(PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+      throws PipeException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
+          IoTDBDataNodeSyncConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeSchemaRegionWritePlanEvent);
+    } finally {
+      pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
+          IoTDBDataNodeSyncConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransfer(PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException {
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
 

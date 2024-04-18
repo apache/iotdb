@@ -61,32 +61,27 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
   @Override
   public void transfer(Event event) throws Exception {
     if (event instanceof PipeSchemaRegionWritePlanEvent) {
-      final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent =
-          (PipeSchemaRegionWritePlanEvent) event;
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
-          IoTDBSchemaRegionConnector.class.getName())) {
-        return;
-      }
-
-      doTransfer(pipeSchemaRegionWritePlanEvent);
-      pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
-          IoTDBSchemaRegionConnector.class.getName(), false);
+      doTransferWrapper((PipeSchemaRegionWritePlanEvent) event);
     } else if (event instanceof PipeSchemaRegionSnapshotEvent) {
-      final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent =
-          (PipeSchemaRegionSnapshotEvent) event;
+      doTransferWrapper((PipeSchemaRegionSnapshotEvent) event);
+    } else if (!(event instanceof PipeHeartbeatEvent)) {
+      LOGGER.warn(
+          "IoTDBSchemaRegionConnector does not support transferring generic event: {}.", event);
+    }
+  }
+
+  private void doTransferWrapper(PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
+      throws PipeException, IOException {
+    try {
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeSchemaRegionSnapshotEvent.increaseReferenceCount(
           IoTDBSchemaRegionConnector.class.getName())) {
         return;
       }
-
       doTransfer(pipeSchemaRegionSnapshotEvent);
+    } finally {
       pipeSchemaRegionSnapshotEvent.decreaseReferenceCount(
           IoTDBSchemaRegionConnector.class.getName(), false);
-    } else if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn(
-          "IoTDBSchemaRegionConnector does not support transferring generic event: {}.", event);
     }
   }
 

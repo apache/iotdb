@@ -169,26 +169,38 @@ public class OpcUaConnector implements PipeConnector {
     }
 
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
-          (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
+      transferTabletWrapper(server, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+    } else {
+      transferTabletWrapper(server, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
+    }
+  }
+
+  private void transferTabletWrapper(
+      OpcUaServer server, PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
+      throws UaException {
+    try {
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
           OpcUaConnector.class.getName())) {
         return;
       }
-
       transferTablet(server, pipeInsertNodeTabletInsertionEvent.convertToTablet());
+    } finally {
       pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
           OpcUaConnector.class.getName(), false);
-    } else {
-      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
-          (PipeRawTabletInsertionEvent) tabletInsertionEvent;
+    }
+  }
+
+  private void transferTabletWrapper(
+      OpcUaServer server, PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+      throws UaException {
+    try {
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeRawTabletInsertionEvent.increaseReferenceCount(OpcUaConnector.class.getName())) {
         return;
       }
-
       transferTablet(server, pipeRawTabletInsertionEvent.convertToTablet());
+    } finally {
       pipeRawTabletInsertionEvent.decreaseReferenceCount(OpcUaConnector.class.getName(), false);
     }
   }
