@@ -364,7 +364,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return node.getChildren().stream()
         .map(PlanNode::getOutputSymbols)
         .flatMap(List::stream)
-        .map(s -> getTSDataType(typeProvider.get(s)))
+        .map(s -> getTSDataType(typeProvider.getTableModelType(s)))
         .collect(Collectors.toList());
   }
 

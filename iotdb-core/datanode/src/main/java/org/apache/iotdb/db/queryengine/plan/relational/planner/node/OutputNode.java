@@ -2,6 +2,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
@@ -25,6 +26,11 @@ public class OutputNode extends SingleChildProcessNode {
     this.child = child;
     this.columnNames = ImmutableList.copyOf(columnNames);
     this.outputs = ImmutableList.copyOf(outputs);
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitOutput(this, context);
   }
 
   @Override
