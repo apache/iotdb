@@ -14,6 +14,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
@@ -54,6 +56,8 @@ public class IndexScan implements RelationalPlanOptimizer {
 
   static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
+  private MPPQueryContext mppQueryContext;
+
   @Override
   public PlanNode optimize(
       PlanNode planNode,
@@ -61,6 +65,7 @@ public class IndexScan implements RelationalPlanOptimizer {
       Metadata metadata,
       SessionInfo sessionInfo,
       MPPQueryContext context) {
+
     return planNode.accept(
         new Rewriter(), new RewriterContext(null, metadata, sessionInfo, analysis));
   }
@@ -159,11 +164,28 @@ public class IndexScan implements RelationalPlanOptimizer {
       sgNameToQueryParamsMap.computeIfAbsent(database, key -> new ArrayList<>()).add(queryParam);
     }
 
+    //    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+    //            dataPartitionMap = new HashMap<>();
+    //    dataPartitionMap.put("root.db", Collections.singletonMap(new TSeriesPartitionSlot(1),
+    //            Collections.singletonMap(new TTimePartitionSlot(1),
+    //                    Collections.singletonList(new TRegionReplicaSet(
+    //                            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
+    //                            Arrays.asList(genDataNodeLocation(1, "127.0.0.1")))))));
+    //    return new DataPartition(dataPartitionMap, "hkb", 1);
+
     if (res.right.left || res.right.right) {
       return partitionFetcher.getDataPartitionWithUnclosedTimeRange(sgNameToQueryParamsMap);
     } else {
       return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
     }
+  }
+
+  private static TDataNodeLocation genDataNodeLocation(int dataNodeId, String ip) {
+    return new TDataNodeLocation()
+        .setDataNodeId(dataNodeId)
+        .setClientRpcEndPoint(new TEndPoint(ip, 9000))
+        .setMPPDataExchangeEndPoint(new TEndPoint(ip, 9001))
+        .setInternalEndPoint(new TEndPoint(ip, 9002));
   }
 
   private static class RewriterContext {

@@ -20,6 +20,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.iotdb.tsfile.read.common.type.BinaryType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
@@ -266,7 +267,8 @@ public class TestMatadata implements Metadata {
       QualifiedObjectName tableName,
       List<Expression> expressionList,
       List<String> attributeColumns) {
-    return null;
+    return Arrays.asList(
+        new DeviceEntry(new StringArrayDeviceID("t1", "t2", "t3"), Arrays.asList("a1", "a2")));
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
