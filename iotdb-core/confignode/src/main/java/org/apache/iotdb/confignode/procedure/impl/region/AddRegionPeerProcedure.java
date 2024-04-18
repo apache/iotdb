@@ -151,7 +151,7 @@ public class AddRegionPeerProcedure
               destDataNode.getDataNodeId(),
               CommonDateTimeUtils.convertMillisecondToDurationStr(
                   System.currentTimeMillis() - getSubmittedTime()),
-              DateTimeUtils.convertLongToDate(getSubmittedTime()));
+              DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
           return Flow.NO_MORE_STATE;
         default:
           throw new ProcedureException("Unsupported state: " + state.name());
