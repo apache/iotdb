@@ -279,6 +279,17 @@ public class PredicateUtils {
     return predicate.accept(new ConvertPredicateToTimeFilterVisitor(), null);
   }
 
+  public static Filter convertPredicateToTimeFilter(
+      org.apache.iotdb.db.relational.sql.tree.Expression predicate) {
+    if (predicate == null) {
+      return null;
+    }
+    return predicate.accept(
+        new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
+            .ConvertPredicateToTimeFilterVisitor(),
+        null);
+  }
+
   public static Filter convertPredicateToFilter(
       Expression predicate,
       List<String> allMeasurements,

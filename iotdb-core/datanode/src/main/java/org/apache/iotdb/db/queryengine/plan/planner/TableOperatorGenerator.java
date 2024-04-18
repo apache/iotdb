@@ -24,10 +24,13 @@ import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -63,6 +66,8 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
@@ -170,8 +175,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     if (!predicateCanPushIntoScan) {
 
-      return constructFilterOperator(
-          pushDownPredicate,
+      return constructFilterAndProjectOperator(
+          Optional.of(pushDownPredicate),
           tableScanOperator,
           node.getOutputSymbols().stream()
               .map(Symbol::toSymbolReference)
@@ -221,11 +226,24 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   @Override
   public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
-    return super.visitFilter(node, context);
+    TypeProvider typeProvider = context.getTypeProvider();
+    Optional<Expression> predicate = Optional.of(node.getPredicate());
+    Operator inputOperator = node.getChild().accept(this, context);
+    List<TSDataType> inputDataTypes = getInputColumnTypes(node, typeProvider);
+    Map<Symbol, List<InputLocation>> inputLocations = makeLayout(node.getChildren());
+
+    return constructFilterAndProjectOperator(
+        predicate,
+        inputOperator,
+        node.getOutputSymbols().stream().map(Symbol::toSymbolReference).toArray(Expression[]::new),
+        inputDataTypes,
+        inputLocations,
+        node.getPlanNodeId(),
+        context);
   }
 
-  private Operator constructFilterOperator(
-      Expression predicate,
+  private Operator constructFilterAndProjectOperator(
+      Optional<Expression> predicate,
       Operator inputOperator,
       Expression[] projectExpressions,
       List<TSDataType> inputDataTypes,
@@ -238,35 +256,40 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     // records LeafColumnTransformer of filter
     List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
 
-    // records common ColumnTransformer between filter and project expressions
-    List<ColumnTransformer> commonTransformerList = new ArrayList<>();
-
-    // records LeafColumnTransformer of project expressions
-    List<LeafColumnTransformer> projectLeafColumnTransformerList = new ArrayList<>();
-
     // records subexpression -> ColumnTransformer for filter
     Map<Expression, ColumnTransformer> filterExpressionColumnTransformerMap = new HashMap<>();
 
     ColumnTransformerBuilder visitor = new ColumnTransformerBuilder();
 
-    ColumnTransformerBuilder.Context filterColumnTransformerContext =
-        new ColumnTransformerBuilder.Context(
-            context.getDriverContext().getFragmentInstanceContext().getSessionInfo(),
-            filterLeafColumnTransformerList,
-            inputLocations,
-            filterExpressionColumnTransformerMap,
-            ImmutableMap.of(),
-            ImmutableList.of(),
-            ImmutableList.of(),
-            0,
-            context.getTypeProvider());
-
     ColumnTransformer filterOutputTransformer =
-        visitor.process(predicate, filterColumnTransformerContext);
+        predicate
+            .map(
+                p -> {
+                  ColumnTransformerBuilder.Context filterColumnTransformerContext =
+                      new ColumnTransformerBuilder.Context(
+                          context.getDriverContext().getFragmentInstanceContext().getSessionInfo(),
+                          filterLeafColumnTransformerList,
+                          inputLocations,
+                          filterExpressionColumnTransformerMap,
+                          ImmutableMap.of(),
+                          ImmutableList.of(),
+                          ImmutableList.of(),
+                          0,
+                          context.getTypeProvider());
+
+                  return visitor.process(p, filterColumnTransformerContext);
+                })
+            .orElse(null);
+
+    // records LeafColumnTransformer of project expressions
+    List<LeafColumnTransformer> projectLeafColumnTransformerList = new ArrayList<>();
 
     List<ColumnTransformer> projectOutputTransformerList = new ArrayList<>();
 
     Map<Expression, ColumnTransformer> projectExpressionColumnTransformerMap = new HashMap<>();
+
+    // records common ColumnTransformer between filter and project expressions
+    List<ColumnTransformer> commonTransformerList = new ArrayList<>();
 
     ColumnTransformerBuilder.Context projectColumnTransformerContext =
         new ColumnTransformerBuilder.Context(
@@ -304,33 +327,73 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         projectLeafColumnTransformerList,
         projectOutputTransformerList,
         false,
-        true);
+        predicate.isPresent());
   }
 
   @Override
   public Operator visitProject(ProjectNode node, LocalExecutionPlanContext context) {
+    TypeProvider typeProvider = context.getTypeProvider();
+    Optional<Expression> predicate;
+    Operator inputOperator;
+    List<TSDataType> inputDataTypes;
+    Map<Symbol, List<InputLocation>> inputLocations;
     if (node.getChild() instanceof FilterNode) {
       FilterNode filterNode = (FilterNode) node.getChild();
-      return constructFilterOperator(
-          filterNode.getPredicate(),
-          filterNode.getChild().accept(this, context),
-          node.getAssignments().getExpressions().toArray(new Expression[0]),
-          tableScanOperator.getResultDataTypes(),
-          makeLayout(Collections.singletonList(filterNode.getChild())),
-          node.getPlanNodeId(),
-          context);
+      predicate = Optional.of(filterNode.getPredicate());
+      inputOperator = filterNode.getChild().accept(this, context);
+      inputDataTypes = getInputColumnTypes(filterNode, typeProvider);
+      inputLocations = makeLayout(filterNode.getChildren());
+    } else {
+      predicate = Optional.empty();
+      inputOperator = node.getChild().accept(this, context);
+      inputDataTypes = getInputColumnTypes(node, typeProvider);
+      inputLocations = makeLayout(node.getChildren());
     }
-    return super.visitProject(node, context);
+
+    return constructFilterAndProjectOperator(
+        predicate,
+        inputOperator,
+        node.getAssignments().getExpressions().toArray(new Expression[0]),
+        inputDataTypes,
+        inputLocations,
+        node.getPlanNodeId(),
+        context);
+  }
+
+  private List<TSDataType> getInputColumnTypes(PlanNode node, TypeProvider typeProvider) {
+    return node.getChildren().stream()
+        .map(PlanNode::getOutputSymbols)
+        .flatMap(List::stream)
+        .map(s -> getTSDataType(typeProvider.get(s)))
+        .collect(Collectors.toList());
   }
 
   @Override
   public Operator visitLimit(LimitNode node, LocalExecutionPlanContext context) {
-    return super.visitLimit(node, context);
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                LimitOperator.class.getSimpleName());
+
+    return new LimitOperator(operatorContext, node.getCount(), child);
   }
 
   @Override
   public Operator visitOffset(OffsetNode node, LocalExecutionPlanContext context) {
-    return super.visitOffset(node, context);
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                OffsetOperator.class.getSimpleName());
+
+    return new OffsetOperator(operatorContext, node.getCount(), child);
   }
 
   @Override

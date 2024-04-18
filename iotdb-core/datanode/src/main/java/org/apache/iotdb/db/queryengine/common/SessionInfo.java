@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.common;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
-import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.relational.security.Identity;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -40,6 +40,8 @@ public class SessionInfo {
 
   @Nullable private final String databaseName;
 
+  private final IClientSession.SqlDialect sqlDialect;
+
   private ClientVersion version = ClientVersion.V_1_0;
 
   public SessionInfo(long sessionId, String userName, ZoneId zoneId) {
@@ -47,12 +49,16 @@ public class SessionInfo {
     this.userName = userName;
     this.zoneId = zoneId;
     this.databaseName = null;
+    this.sqlDialect = IClientSession.SqlDialect.TREE;
   }
 
-  @TestOnly
   public SessionInfo(
-      long sessionId, String userName, ZoneId zoneId, @Nullable String databaseName) {
-    this(sessionId, userName, zoneId, ClientVersion.V_1_0, databaseName);
+      long sessionId,
+      String userName,
+      ZoneId zoneId,
+      @Nullable String databaseName,
+      IClientSession.SqlDialect sqlDialect) {
+    this(sessionId, userName, zoneId, ClientVersion.V_1_0, databaseName, sqlDialect);
   }
 
   public SessionInfo(
@@ -60,12 +66,14 @@ public class SessionInfo {
       String userName,
       ZoneId zoneId,
       ClientVersion version,
-      @Nullable String databaseName) {
+      @Nullable String databaseName,
+      IClientSession.SqlDialect sqlDialect) {
     this.sessionId = sessionId;
     this.userName = userName;
     this.zoneId = zoneId;
     this.version = version;
     this.databaseName = databaseName;
+    this.sqlDialect = sqlDialect;
   }
 
   public long getSessionId() {
@@ -92,16 +100,33 @@ public class SessionInfo {
     return Optional.ofNullable(databaseName);
   }
 
+  public IClientSession.SqlDialect getSqlDialect() {
+    return sqlDialect;
+  }
+
   public static SessionInfo deserializeFrom(ByteBuffer buffer) {
     long sessionId = ReadWriteIOUtils.readLong(buffer);
     String userName = ReadWriteIOUtils.readString(buffer);
     ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)));
-    return new SessionInfo(sessionId, userName, zoneId);
+    boolean hasDatabaseName = ReadWriteIOUtils.readBool(buffer);
+    String databaseName = null;
+    if (hasDatabaseName) {
+      databaseName = ReadWriteIOUtils.readString(buffer);
+    }
+    IClientSession.SqlDialect sqlDialect1 = IClientSession.SqlDialect.deserializeFrom(buffer);
+    return new SessionInfo(sessionId, userName, zoneId, databaseName, sqlDialect1);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(sessionId, stream);
     ReadWriteIOUtils.write(userName, stream);
     ReadWriteIOUtils.write(zoneId.getId(), stream);
+    if (databaseName == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      ReadWriteIOUtils.write(databaseName, stream);
+    }
+    sqlDialect.serialize(stream);
   }
 }

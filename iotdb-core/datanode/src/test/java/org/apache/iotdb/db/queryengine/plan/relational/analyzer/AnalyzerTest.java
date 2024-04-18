@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -154,7 +155,9 @@ public class AnalyzerTest {
   private Analysis analyzeSQL(String sql, Metadata metadata) {
     try {
       Statement statement = sqlParser.createStatement(sql);
-      SessionInfo session = new SessionInfo(0, "test", ZoneId.systemDefault(), "testdb");
+      SessionInfo session =
+          new SessionInfo(
+              0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
       StatementAnalyzerFactory statementAnalyzerFactory =
           new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
 
