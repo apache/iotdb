@@ -18,17 +18,22 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.relational.sql.tree.DefaultTraversalVisitor;
+import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
 
-import java.util.Collections;
+import com.google.common.collect.ImmutableList;
+
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-public class RemoveRedundantIdentityProjections implements RelationalPlanOptimizer {
-
+public class PruneTableScanColumns implements RelationalPlanOptimizer {
   @Override
   public PlanNode optimize(
       PlanNode planNode,
@@ -42,36 +47,27 @@ public class RemoveRedundantIdentityProjections implements RelationalPlanOptimiz
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
-      PlanNode newNode = node.clone();
       for (PlanNode child : node.getChildren()) {
-        context.setParent(node);
-        newNode.addChild(child.accept(this, context));
+        child.accept(this, context);
       }
-      return newNode;
+      return node;
     }
 
     @Override
-    public PlanNode visitProject(ProjectNode projectNode, RewriterContext context) {
-      // TODO change the impl using the method of context.getParent()
-      if (projectNode.getOutputSymbols().equals(projectNode.getChild().getOutputSymbols())) {
-        if (context.getParent() instanceof SingleChildProcessNode) {
-          ((SingleChildProcessNode) context.getParent()).setChild(projectNode.getChild());
-        } else {
-          List<PlanNode> children = context.getParent().getChildren();
-          for (int i = 0; i < children.size(); i++) {
-            PlanNode child = children.get(i);
-            if (child.getPlanNodeId().equals(projectNode.getPlanNodeId())) {
-              Collections.swap(children, i, children.size() - 1);
-              children.remove(children.size() - 1);
-              break;
-            }
-          }
-        }
-        return projectNode.getChild().accept(this, context);
-      } else {
-        projectNode.getChild().accept(this, context);
-        return projectNode;
-      }
+    public PlanNode visitProject(ProjectNode node, RewriterContext context) {
+      context.symbolHashSet.addAll(node.getOutputSymbols());
+      node.getChild().accept(this, context);
+      return node;
+    }
+
+    @Override
+    public PlanNode visitFilter(FilterNode node, RewriterContext context) {
+      ImmutableList.Builder<Symbol> symbolBuilder = ImmutableList.builder();
+      new SymbolBuilderVisitor().process(node.getPredicate(), ImmutableList.builder());
+      List<Symbol> ret = symbolBuilder.build();
+      context.symbolHashSet.addAll(ret);
+      node.getChild().accept(this, context);
+      return node;
     }
 
     @Override
@@ -80,17 +76,17 @@ public class RemoveRedundantIdentityProjections implements RelationalPlanOptimiz
     }
   }
 
+  private static class SymbolBuilderVisitor
+      extends DefaultTraversalVisitor<ImmutableList.Builder<Symbol>> {
+    @Override
+    protected Void visitSymbolReference(
+        SymbolReference node, ImmutableList.Builder<Symbol> builder) {
+      builder.add(Symbol.from(node));
+      return null;
+    }
+  }
+
   private static class RewriterContext {
-    private PlanNode parent;
-
-    public RewriterContext() {}
-
-    public PlanNode getParent() {
-      return this.parent;
-    }
-
-    public void setParent(PlanNode parent) {
-      this.parent = parent;
-    }
+    Set<Symbol> symbolHashSet = new HashSet<>();
   }
 }

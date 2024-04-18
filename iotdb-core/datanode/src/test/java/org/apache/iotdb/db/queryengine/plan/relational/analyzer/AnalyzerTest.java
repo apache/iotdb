@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.RelationalDistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
@@ -61,9 +62,7 @@ import static org.mockito.ArgumentMatchers.eq;
 
 public class AnalyzerTest {
 
-  private final SqlParser sqlParser = new SqlParser();
-
-  private final NopAccessControl nopAccessControl = new NopAccessControl();
+  private static final NopAccessControl nopAccessControl = new NopAccessControl();
 
   @Test
   public void testMockQuery() throws OperatorNotFoundException {
@@ -134,7 +133,7 @@ public class AnalyzerTest {
   @Test
   public void testSingleTableQuery() throws IoTDBException {
     // no sort
-    String sql = "SELECT tag1 as tt, tag2, attr1, s1+1 FROM table1 ";
+    String sql = "SELECT tag1 as tt, tag2, attr1, s1+1 FROM table1 where time>1 and s1>1";
     // + "WHERE time>1 AND tag1='A' OR s2>3";
     Metadata metadata = new TestMatadata();
 
@@ -148,12 +147,18 @@ public class AnalyzerTest {
     WarningCollector warningCollector = WarningCollector.NOOP;
     LogicalPlanner logicalPlanner =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector);
-    LogicalQueryPlan result = logicalPlanner.plan(actualAnalysis);
-    System.out.println(result);
+    LogicalQueryPlan logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    System.out.println(logicalQueryPlan);
+
+    RelationalDistributionPlanner distributionPlanner =
+        new RelationalDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    // DistributedQueryPlan distributedQueryPlan = distributionPlanner.plan();
+    // System.out.println(distributedQueryPlan);
   }
 
-  private Analysis analyzeSQL(String sql, Metadata metadata) {
+  public static Analysis analyzeSQL(String sql, Metadata metadata) {
     try {
+      SqlParser sqlParser = new SqlParser();
       Statement statement = sqlParser.createStatement(sql);
       SessionInfo session =
           new SessionInfo(

@@ -24,6 +24,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.IndexScan;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PruneTableScanColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RelationalPlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SimplifyExpressions;
@@ -60,13 +62,18 @@ public class LogicalPlanner {
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
 
     this.relationalPlanOptimizers =
-        Arrays.asList(new SimplifyExpressions(), new RemoveRedundantIdentityProjections());
+        Arrays.asList(
+            new SimplifyExpressions(),
+            new RemoveRedundantIdentityProjections(),
+            new PruneTableScanColumns(),
+            new IndexScan());
   }
 
   public LogicalQueryPlan plan(Analysis analysis) throws IoTDBException {
     PlanNode planNode = planStatement(analysis, analysis.getStatement());
 
-    relationalPlanOptimizers.forEach(optimizer -> optimizer.optimize(planNode, analysis, context));
+    relationalPlanOptimizers.forEach(
+        optimizer -> optimizer.optimize(planNode, analysis, metadata, sessionInfo, context));
 
     return new LogicalQueryPlan(context, planNode);
   }

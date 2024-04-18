@@ -15,9 +15,11 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
@@ -28,7 +30,12 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.Normali
 public class SimplifyExpressions implements RelationalPlanOptimizer {
 
   @Override
-  public PlanNode optimize(PlanNode planNode, Analysis analysis, MPPQueryContext context) {
+  public PlanNode optimize(
+      PlanNode planNode,
+      Analysis analysis,
+      Metadata metadata,
+      SessionInfo sessionInfo,
+      MPPQueryContext context) {
     // TODO add query statement pruning
     return planNode.accept(new Rewriter(), new RewriterContext());
   }

@@ -117,7 +117,9 @@ public class RelationalModelPlanner implements IPlanner {
 
   @Override
   public DistributedQueryPlan doDistributionPlan(IAnalysis analysis, LogicalQueryPlan logicalPlan) {
-    return new RelationalDistributionPlanner((Analysis) analysis, logicalPlan).planFragments();
+    return new RelationalDistributionPlanner(
+            (Analysis) analysis, logicalPlan, logicalPlan.getContext())
+        .plan();
   }
 
   @Override

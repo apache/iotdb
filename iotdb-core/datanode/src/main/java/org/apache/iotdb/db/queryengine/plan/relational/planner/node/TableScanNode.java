@@ -10,6 +10,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 
+import com.google.common.collect.ImmutableList;
+
 import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
@@ -28,7 +30,7 @@ public class TableScanNode extends PlanNode {
   private final Map<Symbol, ColumnSchema> assignments;
 
   private List<DeviceEntry> deviceEntries;
-  private Map<Symbol, Integer> attributesMap;
+  private Map<Symbol, Integer> idAndAttributeIndexMap;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
@@ -65,7 +67,7 @@ public class TableScanNode extends PlanNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return ImmutableList.of();
   }
 
   @Override
@@ -121,6 +123,18 @@ public class TableScanNode extends PlanNode {
 
   public String getQualifiedTableName() {
     return this.qualifiedTableName;
+  }
+
+  public List<DeviceEntry> getDeviceEntries() {
+    return this.deviceEntries;
+  }
+
+  public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
+    this.deviceEntries = deviceEntries;
+  }
+
+  public Map<Symbol, Integer> getIdAndAttributeIndexMap() {
+    return this.idAndAttributeIndexMap;
   }
 
   public Map<Symbol, ColumnSchema> getAssignments() {

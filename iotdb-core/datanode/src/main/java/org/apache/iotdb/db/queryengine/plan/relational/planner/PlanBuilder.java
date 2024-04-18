@@ -20,6 +20,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
+import org.apache.iotdb.db.relational.sql.tree.FieldReference;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -29,16 +30,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.google.common.base.Verify.verify;
 import static java.util.Objects.requireNonNull;
 
 public class PlanBuilder {
 
   private final PlanNode root;
 
-  public PlanBuilder(PlanNode root) {
+  // current mappings of underlying field -> symbol for translating direct field references
+  private final Symbol[] fieldSymbols;
+
+  public PlanBuilder(PlanNode root, Symbol[] fieldSymbols) {
     requireNonNull(root, "root is null");
 
     this.root = root;
+    this.fieldSymbols = fieldSymbols;
   }
 
   public static PlanBuilder newPlanBuilder(
@@ -51,19 +57,39 @@ public class PlanBuilder {
       Analysis analysis,
       Map<ScopeAware<Expression>, Symbol> mappings,
       SessionInfo session) {
-    return new PlanBuilder(plan.getRoot());
+    return new PlanBuilder(plan.getRoot(), plan.getFieldMappings().toArray(new Symbol[0]));
   }
 
   public PlanBuilder withNewRoot(PlanNode root) {
-    return new PlanBuilder(root);
+    return new PlanBuilder(root, fieldSymbols);
   }
 
   public PlanBuilder withScope(Scope scope, List<Symbol> fields) {
-    return new PlanBuilder(root);
+    return new PlanBuilder(root, fields.toArray(new Symbol[0]));
   }
 
   public PlanNode getRoot() {
     return root;
+  }
+
+  public Symbol[] getFieldSymbols() {
+    return this.fieldSymbols;
+  }
+
+  public Symbol translate(Analysis analysis, Expression expression) {
+    verify(
+        analysis.isAnalyzed(expression),
+        "Expression is not analyzed (%s): %s",
+        expression.getClass().getName(),
+        expression);
+    Expression ret = translate(expression, true);
+    return Symbol.from(ret);
+  }
+
+  private Expression translate(Expression expression, boolean isRoot) {
+    if (expression instanceof FieldReference) {}
+
+    return expression;
   }
 
   public <T extends Expression> PlanBuilder appendProjections(
@@ -85,7 +111,9 @@ public class PlanBuilder {
     for (T expression : expressions) {
       // Skip any expressions that have already been translated and recorded in the
       // translation map, or that are duplicated in the list of exp
-      if (!mappings.containsKey(expression) && !set.contains(expression.toString())) {
+      if (!mappings.containsKey(expression)
+          && !set.contains(expression.toString())
+          && !(expression instanceof FieldReference)) {
         set.add(expression.toString());
         Symbol symbol = symbolAllocator.newSymbol("expr", analysis.getType(expression));
         projections.put(symbol, expression);
@@ -93,6 +121,7 @@ public class PlanBuilder {
       }
     }
 
-    return new PlanBuilder(new ProjectNode(idAllocator.genPlanNodeId(), root, projections.build()));
+    return new PlanBuilder(
+        new ProjectNode(idAllocator.genPlanNodeId(), root, projections.build()), fieldSymbols);
   }
 }

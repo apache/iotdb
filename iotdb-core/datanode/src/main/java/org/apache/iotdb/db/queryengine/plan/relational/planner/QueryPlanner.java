@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.relational.sql.tree.Delete;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
+import org.apache.iotdb.db.relational.sql.tree.FieldReference;
 import org.apache.iotdb.db.relational.sql.tree.Node;
 import org.apache.iotdb.db.relational.sql.tree.Offset;
 import org.apache.iotdb.db.relational.sql.tree.OrderBy;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.relational.sql.tree.QueryBody;
 import org.apache.iotdb.db.relational.sql.tree.QuerySpecification;
 import org.apache.iotdb.db.relational.sql.tree.SortItem;
 import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -47,6 +49,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTranslator.sortItemToSortOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.PredicateUtils.extractGlobalTimePredicate;
 
 public class QueryPlanner {
   private final Analysis analysis;
@@ -104,7 +107,7 @@ public class QueryPlanner {
     builder = builder.appendProjections(outputs, analysis, symbolAllocator, idAllocator);
 
     return new RelationPlan(
-        builder.getRoot(), analysis.getScope(query), computeOutputs(builder, outputs));
+        builder.getRoot(), analysis.getScope(query), computeOutputs(builder, analysis, outputs));
   }
 
   public RelationPlan plan(QuerySpecification node) {
@@ -171,7 +174,7 @@ public class QueryPlanner {
     builder = builder.appendProjections(outputs, analysis, symbolAllocator, idAllocator);
 
     return new RelationPlan(
-        builder.getRoot(), analysis.getScope(node), computeOutputs(builder, outputs));
+        builder.getRoot(), analysis.getScope(node), computeOutputs(builder, analysis, outputs));
 
     // TODO handle aggregate, having, distinct, subQuery later
   }
@@ -201,10 +204,17 @@ public class QueryPlanner {
   }
 
   private static List<Symbol> computeOutputs(
-      PlanBuilder builder, List<Expression> outputExpressions) {
+      PlanBuilder builder, Analysis analysis, List<Expression> outputExpressions) {
     ImmutableList.Builder<Symbol> outputSymbols = ImmutableList.builder();
     for (Expression expression : outputExpressions) {
-      outputSymbols.add(new Symbol(expression.toString()));
+      // Symbol symbol = builder.translate(analysis, expression);
+      // outputSymbols.add(symbol);
+      Symbol symbol = null;
+      if (expression instanceof FieldReference) {
+        FieldReference reference = (FieldReference) expression;
+        symbol = builder.getFieldSymbols()[reference.getFieldIndex()];
+      }
+      outputSymbols.add(symbol != null ? symbol : new Symbol(expression.toString()));
     }
     return outputSymbols.build();
   }
@@ -233,10 +243,12 @@ public class QueryPlanner {
       return subPlan;
     }
 
-    // subPlan = subqueryPlanner.handleSubqueries(subPlan, predicate, analysis.getSubqueries(node));
+    Pair<Expression, Boolean> ret = extractGlobalTimePredicate(predicate, true, true);
 
     return subPlan.withNewRoot(
         new FilterNode(idAllocator.genPlanNodeId(), subPlan.getRoot(), predicate));
+
+    // subPlan = subqueryPlanner.handleSubqueries(subPlan, predicate, analysis.getSubqueries(node));
   }
 
   public static Expression coerceIfNecessary(
