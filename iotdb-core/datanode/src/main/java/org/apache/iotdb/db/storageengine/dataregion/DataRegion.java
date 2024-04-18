@@ -1872,7 +1872,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.isSatisfied(
-          singleDeviceId == null ? null : new PlainDeviceID(singleDeviceId),
+          singleDeviceId == null ? null : IDeviceID.Factory.DEFAULT_FACTORY.create(singleDeviceId),
           globalTimeFilter,
           isSeq,
           dataTTL,
