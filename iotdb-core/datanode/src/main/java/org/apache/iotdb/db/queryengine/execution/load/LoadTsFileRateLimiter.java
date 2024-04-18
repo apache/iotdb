@@ -23,12 +23,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import com.google.common.util.concurrent.RateLimiter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class LoadTsFileRateLimiter {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileRateLimiter.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -46,18 +42,18 @@ public class LoadTsFileRateLimiter {
     loadWriteRateLimiter.setRate(throughout);
   }
 
-  public void acquireWrittenPointCountWithLoadWriteRateLimiter(long writtenDataSize) {
+  public void acquireWrittenBytesWithLoadWriteRateLimiter(long writtenDataSizeInBytes) {
     if (throughoutMbPerSec != CONFIG.getLoadWriteThroughputMbPerSecond()) {
       throughoutMbPerSec = CONFIG.getLoadWriteThroughputMbPerSecond();
       setWritePointRate(throughoutMbPerSec);
     }
 
-    while (writtenDataSize > 0) {
-      if (writtenDataSize > Integer.MAX_VALUE) {
+    while (writtenDataSizeInBytes > 0) {
+      if (writtenDataSizeInBytes > Integer.MAX_VALUE) {
         loadWriteRateLimiter.acquire(Integer.MAX_VALUE);
-        writtenDataSize -= Integer.MAX_VALUE;
+        writtenDataSizeInBytes -= Integer.MAX_VALUE;
       } else {
-        loadWriteRateLimiter.acquire((int) writtenDataSize);
+        loadWriteRateLimiter.acquire((int) writtenDataSizeInBytes);
         return;
       }
     }

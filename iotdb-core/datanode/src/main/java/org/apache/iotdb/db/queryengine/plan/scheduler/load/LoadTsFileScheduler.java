@@ -395,7 +395,7 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     LoadTsFileRateLimiter.getInstance()
-        .acquireWrittenPointCountWithLoadWriteRateLimiter(node.getWritePointCount());
+        .acquireWrittenBytesWithLoadWriteRateLimiter(node.getTsFileResource().getTsFileSize());
 
     // add metrics
     DataRegion dataRegion =
