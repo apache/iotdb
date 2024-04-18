@@ -72,7 +72,7 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
             "IoTDBSchemaRegionAirGapConnector does not support transferring generic event: {}.",
             event);
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       isSocketAlive.set(socketIndex, false);
 
       throw new PipeConnectionException(

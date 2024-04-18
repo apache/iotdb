@@ -23,7 +23,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatchReqBuilder {
 
-  public IoTDBThriftSyncPipeTransferBatchReqBuilder(PipeParameters parameters) {
+  public IoTDBThriftSyncPipeTransferBatchReqBuilder(final PipeParameters parameters) {
     super(parameters);
   }
 }

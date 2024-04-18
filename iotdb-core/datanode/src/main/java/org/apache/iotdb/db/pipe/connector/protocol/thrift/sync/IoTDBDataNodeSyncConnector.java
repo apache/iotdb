@@ -67,7 +67,7 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
                     .filter(tEndPoint -> tEndPoint.getPort() == iotdbConfig.getRpcPort())
                     .map(TEndPoint::getIp)
                     .collect(Collectors.toList()));
-          } catch (UnknownHostException e) {
+          } catch (final UnknownHostException e) {
             LOGGER.warn("Unknown host when checking pipe sink IP.", e);
             return false;
           }
@@ -92,8 +92,8 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
     return clientManager;
   }
 
-  protected void doTransferWrapper(PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
-      throws PipeException {
+  protected void doTransferWrapper(
+      final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent) throws PipeException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(

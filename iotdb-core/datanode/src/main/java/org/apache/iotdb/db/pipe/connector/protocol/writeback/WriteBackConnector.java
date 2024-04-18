@@ -59,12 +59,13 @@ public class WriteBackConnector implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(WriteBackConnector.class);
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     // Do nothing
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     // Do nothing
   }
@@ -80,7 +81,7 @@ public class WriteBackConnector implements PipeConnector {
   }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+  public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
@@ -100,14 +101,14 @@ public class WriteBackConnector implements PipeConnector {
   }
 
   @Override
-  public void transfer(Event event) throws Exception {
+  public void transfer(final Event event) throws Exception {
     if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn("WriteBackConnector does not support transferring generic event: {}.", event);
     }
   }
 
   private void doTransferWrapper(
-      PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
@@ -122,7 +123,8 @@ public class WriteBackConnector implements PipeConnector {
     }
   }
 
-  private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
+  private void doTransfer(
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException {
     final TSStatus status;
 
@@ -137,7 +139,7 @@ public class WriteBackConnector implements PipeConnector {
                       pipeInsertNodeTabletInsertionEvent.getByteBuffer()))
               .getStatus();
     } else {
-      InsertBaseStatement statement =
+      final InsertBaseStatement statement =
           PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(insertNode).constructStatement();
       status = statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeStatement(statement);
     }
@@ -150,7 +152,7 @@ public class WriteBackConnector implements PipeConnector {
     }
   }
 
-  private void doTransferWrapper(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+  private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
@@ -163,7 +165,7 @@ public class WriteBackConnector implements PipeConnector {
     }
   }
 
-  private void doTransfer(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+  private void doTransfer(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
     final InsertBaseStatement statement =
         PipeTransferTabletRawReq.toTPipeTransferRawReq(
@@ -181,7 +183,7 @@ public class WriteBackConnector implements PipeConnector {
     }
   }
 
-  private TSStatus executeStatement(InsertBaseStatement statement) {
+  private TSStatus executeStatement(final InsertBaseStatement statement) {
     return Coordinator.getInstance()
         .executeForTreeModel(
             new PipeEnrichedStatement(statement),

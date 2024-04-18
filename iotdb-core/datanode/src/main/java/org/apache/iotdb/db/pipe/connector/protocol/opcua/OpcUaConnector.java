@@ -83,12 +83,13 @@ public class OpcUaConnector implements PipeConnector {
   private OpcUaServer server;
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     // All the parameters are optional
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     final int tcpBindPort =
         parameters.getIntOrDefault(
@@ -131,7 +132,7 @@ public class OpcUaConnector implements PipeConnector {
                               .build();
                       newServer.startup();
                       return new Pair<>(new AtomicInteger(0), newServer);
-                    } catch (Exception e) {
+                    } catch (final Exception e) {
                       throw new PipeException("Failed to build and startup OpcUaServer", e);
                     }
                   })
@@ -151,12 +152,12 @@ public class OpcUaConnector implements PipeConnector {
   }
 
   @Override
-  public void transfer(Event event) throws Exception {
+  public void transfer(final Event event) throws Exception {
     // Do nothing when receive heartbeat or other events
   }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+  public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
@@ -176,7 +177,8 @@ public class OpcUaConnector implements PipeConnector {
   }
 
   private void transferTabletWrapper(
-      OpcUaServer server, PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
+      final OpcUaServer server,
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws UaException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
@@ -192,7 +194,7 @@ public class OpcUaConnector implements PipeConnector {
   }
 
   private void transferTabletWrapper(
-      OpcUaServer server, PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+      final OpcUaServer server, final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws UaException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
@@ -213,7 +215,7 @@ public class OpcUaConnector implements PipeConnector {
    * @param tablet the tablet to send
    * @throws UaException if failed to create {@link Event}
    */
-  private void transferTablet(OpcUaServer server, Tablet tablet) throws UaException {
+  private void transferTablet(final OpcUaServer server, final Tablet tablet) throws UaException {
     // There is no nameSpace, so that nameSpaceIndex is always 0
     final int pseudoNameSpaceIndex = 0;
     final BaseEventTypeNode eventNode =
@@ -290,7 +292,7 @@ public class OpcUaConnector implements PipeConnector {
     eventNode.delete();
   }
 
-  private NodeId convertToOpcDataType(TSDataType type) {
+  private NodeId convertToOpcDataType(final TSDataType type) {
     switch (type) {
       case BOOLEAN:
         return Identifiers.Boolean;

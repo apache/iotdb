@@ -70,7 +70,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
     }
   }
 
-  private void doTransferWrapper(PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
+  private void doTransferWrapper(final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
       throws PipeException, IOException {
     try {
       // We increase the reference count for this event to determine if the event may be released.

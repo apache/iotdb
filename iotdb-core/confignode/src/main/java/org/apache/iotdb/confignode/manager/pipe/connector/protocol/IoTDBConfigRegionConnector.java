@@ -102,8 +102,8 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     }
   }
 
-  private void doTransferWrapper(PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent)
-      throws PipeException {
+  private void doTransferWrapper(
+      final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent) throws PipeException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeConfigRegionWritePlanEvent.increaseReferenceCount(
@@ -159,7 +159,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     }
   }
 
-  private void doTransferWrapper(PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
+  private void doTransferWrapper(final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
       throws PipeException, IOException {
     try {
       // We increase the reference count for this event to determine if the event may be released.

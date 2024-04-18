@@ -50,11 +50,11 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataNodeAirGapConnector.class);
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
 
     final PipeConfig pipeConfig = PipeConfig.getInstance();
-    Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
+    final Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
 
     validator.validate(
         empty -> {
@@ -68,7 +68,7 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
                                 tEndPoint.getPort() == pipeConfig.getPipeAirGapReceiverPort())
                         .map(TEndPoint::getIp)
                         .collect(Collectors.toList())));
-          } catch (UnknownHostException e) {
+          } catch (final UnknownHostException e) {
             LOGGER.warn("Unknown host when checking pipe sink IP.", e);
             return false;
           }
@@ -106,7 +106,7 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
   }
 
   protected void doTransferWrapper(
-      Socket socket, PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+      final Socket socket, final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException, IOException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
@@ -122,7 +122,7 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
   }
 
   private void doTransfer(
-      Socket socket, PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+      final Socket socket, final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException, IOException {
     if (!send(
         socket,

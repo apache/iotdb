@@ -62,11 +62,11 @@ public abstract class EnrichedEvent implements Event {
   protected boolean shouldReportOnCommit = true;
 
   protected EnrichedEvent(
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pipePattern,
-      long startTime,
-      long endTime) {
+      final String pipeName,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pipePattern,
+      final long startTime,
+      final long endTime) {
     referenceCount = new AtomicInteger(0);
     isReleased = new AtomicBoolean(false);
     this.pipeName = pipeName;
@@ -87,7 +87,7 @@ public abstract class EnrichedEvent implements Event {
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is increased successfully,
    *     {@code false} otherwise
    */
-  public boolean increaseReferenceCount(String holderMessage) {
+  public boolean increaseReferenceCount(final String holderMessage) {
     boolean isSuccessful = true;
     synchronized (this) {
       if (isReleased.get()) {
@@ -133,7 +133,7 @@ public abstract class EnrichedEvent implements Event {
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully,
    *     {@code false} otherwise
    */
-  public boolean decreaseReferenceCount(String holderMessage, boolean shouldReport) {
+  public boolean decreaseReferenceCount(final String holderMessage, final boolean shouldReport) {
     boolean isSuccessful = true;
     synchronized (this) {
       if (referenceCount.get() == 1 && !isReleased.get()) {
@@ -170,7 +170,7 @@ public abstract class EnrichedEvent implements Event {
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully,
    *     {@code false} otherwise
    */
-  public boolean clearReferenceCount(String holderMessage) {
+  public boolean clearReferenceCount(final String holderMessage) {
     boolean isSuccessful = true;
     synchronized (this) {
       if (referenceCount.get() >= 1 && !isReleased.get()) {
@@ -212,7 +212,7 @@ public abstract class EnrichedEvent implements Event {
     shouldReportOnCommit = false;
   }
 
-  public void bindProgressIndex(ProgressIndex progressIndex) {
+  public void bindProgressIndex(final ProgressIndex progressIndex) {
     throw new UnsupportedOperationException("This event does not support binding progressIndex.");
   }
 
@@ -296,7 +296,7 @@ public abstract class EnrichedEvent implements Event {
 
   public abstract boolean mayEventTimeOverlappedWithTimeRange();
 
-  public void setCommitterKeyAndCommitId(String committerKey, long commitId) {
+  public void setCommitterKeyAndCommitId(final String committerKey, final long commitId) {
     this.committerKey = committerKey;
     this.commitId = commitId;
   }

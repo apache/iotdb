@@ -109,7 +109,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   private SessionPool sessionPool;
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     final PipeParameters parameters = validator.getParameters();
     final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
     final Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
@@ -138,7 +138,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
                         .filter(tEndPoint -> tEndPoint.getPort() == ioTDBConfig.getRpcPort())
                         .map(TEndPoint::getIp)
                         .collect(Collectors.toList()));
-              } catch (UnknownHostException e) {
+              } catch (final UnknownHostException e) {
                 LOGGER.warn("Unknown host when checking pipe sink IP.", e);
                 return false;
               }
@@ -159,7 +159,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
             parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
   }
 
-  private Set<TEndPoint> parseNodeUrls(PipeParameters parameters) {
+  private Set<TEndPoint> parseNodeUrls(final PipeParameters parameters) {
     final Set<TEndPoint> givenNodeUrls = new HashSet<>();
 
     if (parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY)
@@ -182,7 +182,8 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     ipAddress = parameters.getStringByKeys(CONNECTOR_IOTDB_IP_KEY, SINK_IOTDB_IP_KEY);
     port = parameters.getIntByKeys(CONNECTOR_IOTDB_PORT_KEY, SINK_IOTDB_PORT_KEY);
@@ -237,7 +238,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
         LOGGER.warn(errorMsg);
         throw new PipeRuntimeCriticalException(errorMsg);
       }
-    } catch (TException e) {
+    } catch (final TException e) {
       throw new PipeConnectionException(
           String.format(PipeConnectionException.CONNECTION_ERROR_FORMATTER, ipAddress, port), e);
     }
@@ -261,7 +262,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+  public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
       doTransferWrapper((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
@@ -274,7 +275,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   }
 
   @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+  public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       throw new NotImplementedException(
           "IoTDBLegacyPipeConnector only support PipeTsFileInsertionEvent.");
@@ -289,7 +290,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
     try {
       doTransferWrapper((PipeTsFileInsertionEvent) tsFileInsertionEvent);
-    } catch (TException e) {
+    } catch (final TException e) {
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer tsFile insertion event: %s.", tsFileInsertionEvent),
@@ -298,14 +299,15 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   }
 
   @Override
-  public void transfer(Event event) throws Exception {
+  public void transfer(final Event event) throws Exception {
     if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn(
           "IoTDBLegacyPipeConnector does not support transferring generic event: {}.", event);
     }
   }
 
-  private void doTransferWrapper(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
+  private void doTransferWrapper(
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
       throws IoTDBConnectionException, StatementExecutionException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
@@ -320,7 +322,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     }
   }
 
-  private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
+  private void doTransfer(final PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
       throws IoTDBConnectionException, StatementExecutionException {
     final Tablet tablet = pipeInsertNodeInsertionEvent.convertToTablet();
     if (pipeInsertNodeInsertionEvent.isAligned()) {
@@ -330,7 +332,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     }
   }
 
-  private void doTransferWrapper(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+  private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, IoTDBConnectionException, StatementExecutionException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
@@ -345,7 +347,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     }
   }
 
-  private void doTransfer(PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
+  private void doTransfer(final PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
       throws PipeException, IoTDBConnectionException, StatementExecutionException {
     final Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
     if (pipeTabletInsertionEvent.isAligned()) {
@@ -355,7 +357,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     }
   }
 
-  private void doTransferWrapper(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
+  private void doTransferWrapper(final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, TException, IOException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
@@ -370,20 +372,20 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     }
   }
 
-  private void doTransfer(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
+  private void doTransfer(final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, TException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
     transportSingleFilePieceByPiece(tsFile);
     client.sendPipeData(ByteBuffer.wrap(new TsFilePipeData("", tsFile.getName(), -1).serialize()));
   }
 
-  private void transportSingleFilePieceByPiece(File file) throws IOException {
+  private void transportSingleFilePieceByPiece(final File file) throws IOException {
     // Cut the file into pieces to send
     long position = 0;
 
     // Try small piece to rebase the file position.
     final byte[] buffer = new byte[PipeConfig.getInstance().getPipeConnectorReadFileBufferSize()];
-    try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
+    try (final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
       while (true) {
         final int dataLength = randomAccessFile.read(buffer);
         if (dataLength == -1) {
@@ -410,7 +412,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
           throw new PipeConnectionException(errorMsg);
         }
       }
-    } catch (TException e) {
+    } catch (final TException e) {
       throw new PipeConnectionException(
           String.format(
               "Cannot send pipe data to receiver %s:%s, because: %s.",

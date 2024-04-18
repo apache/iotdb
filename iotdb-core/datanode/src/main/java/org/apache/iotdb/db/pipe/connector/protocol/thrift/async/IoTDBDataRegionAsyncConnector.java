@@ -97,7 +97,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
     retryConnector.validate(validator);
 
@@ -112,7 +112,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
 
@@ -148,7 +149,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+  public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     transferQueuedEventsIfNecessary();
 
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
@@ -217,41 +218,43 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
   }
 
-  private void transfer(PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler) {
+  private void transfer(
+      final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler) {
     AsyncPipeDataTransferServiceClient client = null;
     try {
       client = clientManager.borrowClient();
       pipeTransferTabletBatchEventHandler.transfer(client);
-    } catch (Exception ex) {
+    } catch (final Exception ex) {
       logOnClientException(client, ex);
       pipeTransferTabletBatchEventHandler.onError(ex);
     }
   }
 
-  private void transfer(PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler) {
+  private void transfer(
+      final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler) {
     AsyncPipeDataTransferServiceClient client = null;
     try {
       client = clientManager.borrowClient();
       pipeTransferInsertNodeReqHandler.transfer(client);
-    } catch (Exception ex) {
+    } catch (final Exception ex) {
       logOnClientException(client, ex);
       pipeTransferInsertNodeReqHandler.onError(ex);
     }
   }
 
-  private void transfer(PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler) {
+  private void transfer(final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler) {
     AsyncPipeDataTransferServiceClient client = null;
     try {
       client = clientManager.borrowClient();
       pipeTransferTabletReqHandler.transfer(client);
-    } catch (Exception ex) {
+    } catch (final Exception ex) {
       logOnClientException(client, ex);
       pipeTransferTabletReqHandler.onError(ex);
     }
   }
 
   @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+  public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     transferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
 
@@ -284,19 +287,19 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   private void transfer(
-      PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler) {
+      final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler) {
     AsyncPipeDataTransferServiceClient client = null;
     try {
       client = clientManager.borrowClient();
       pipeTransferTsFileInsertionEventHandler.transfer(client);
-    } catch (Exception ex) {
+    } catch (final Exception ex) {
       logOnClientException(client, ex);
       pipeTransferTsFileInsertionEventHandler.onError(ex);
     }
   }
 
   @Override
-  public void transfer(Event event) throws Exception {
+  public void transfer(final Event event) throws Exception {
     transferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
 
@@ -312,13 +315,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   //////////////////////////// Leader cache update ////////////////////////////
 
-  public void updateLeaderCache(String deviceId, TEndPoint endPoint) {
+  public void updateLeaderCache(final String deviceId, final TEndPoint endPoint) {
     clientManager.updateLeaderCache(deviceId, endPoint);
   }
 
   //////////////////////////// Exception handlers ////////////////////////////
 
-  private void logOnClientException(AsyncPipeDataTransferServiceClient client, Exception e) {
+  private void logOnClientException(
+      final AsyncPipeDataTransferServiceClient client, final Exception e) {
     if (client == null) {
       LOGGER.warn(THRIFT_ERROR_FORMATTER_WITHOUT_ENDPOINT, e);
     } else {
@@ -387,7 +391,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    *
    * @param event event to retry
    */
-  public synchronized void addFailureEventToRetryQueue(Event event) {
+  public synchronized void addFailureEventToRetryQueue(final Event event) {
     if (isClosed.get()) {
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
@@ -406,7 +410,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    *
    * @param events events to retry
    */
-  public synchronized void addFailureEventsToRetryQueue(Iterable<Event> events) {
+  public synchronized void addFailureEventsToRetryQueue(final Iterable<Event> events) {
     for (final Event event : events) {
       addFailureEventToRetryQueue(event);
     }
@@ -431,7 +435,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
    * its queued events in the output pipe connector.
    */
-  public synchronized void discardEventsOfPipe(String pipeNameToDrop) {
+  public synchronized void discardEventsOfPipe(final String pipeNameToDrop) {
     retryEventQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
