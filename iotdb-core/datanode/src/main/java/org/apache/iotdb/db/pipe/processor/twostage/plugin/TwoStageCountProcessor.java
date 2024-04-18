@@ -269,7 +269,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
           switch (resultType) {
             case OUTDATED:
               LOGGER.warn(
-                  "Two stage combine (id = {}) outdated: timestamp={}, count={}, progressIndex={}",
+                  "Two stage combine (region id = {}, combine id = {}) outdated: timestamp={}, count={}, progressIndex={}",
+                  regionId,
                   combineId,
                   pair.left[0],
                   pair.left[1],
@@ -277,7 +278,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
               continue;
             case INCOMPLETE:
               LOGGER.info(
-                  "Two stage combine (id = {}) incomplete: timestamp={}, count={}, progressIndex={}",
+                  "Two stage combine (region id = {}, combine id = {}) incomplete: timestamp={}, count={}, progressIndex={}",
+                  regionId,
                   combineId,
                   pair.left[0],
                   pair.left[1],
@@ -285,16 +287,13 @@ public class TwoStageCountProcessor implements PipeProcessor {
               localCommitQueue.add(pair);
               continue;
             case SUCCESS:
-              // 1. Add a new global count result to the queue
-              globalCountQueue.add(new Pair<>(pair.left[0], pair.left[1]));
-              // 2. Update the local count state and progress index for commit
               final Map<String, Binary> state = new HashMap<>();
               state.put(LOCAL_COUNT_STATE_KEY, new Binary(Long.toString(pair.left[1]).getBytes()));
               pipeTaskMeta.updateProgressIndex(
                   new StateProgressIndex(pair.left[0], state, pair.right));
-              // 3. Log the success
               LOGGER.info(
-                  "Two stage combine (id = {}) success: timestamp={}, count={}, progressIndex={}, committed progressIndex={}",
+                  "Two stage combine (region id = {}, combine id = {}) success: timestamp={}, count={}, progressIndex={}, committed progressIndex={}",
+                  regionId,
                   combineId,
                   pair.left[0],
                   pair.left[1],
