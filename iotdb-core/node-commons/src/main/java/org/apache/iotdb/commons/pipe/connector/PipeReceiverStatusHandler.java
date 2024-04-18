@@ -88,7 +88,8 @@ public class PipeReceiverStatusHandler {
    *     that the same {@link Event} generates always the same record message, for instance, do not
    *     put any time-related info here
    */
-  public void handle(TSStatus status, String exceptionMessage, String recordMessage) {
+  public void handle(
+      final TSStatus status, final String exceptionMessage, final String recordMessage) {
     switch (status.getCode()) {
       case 200: // SUCCESS_STATUS
       case 400: // REDIRECTION_RECOMMEND
@@ -133,12 +134,14 @@ public class PipeReceiverStatusHandler {
 
           LOGGER.warn(
               "User conflict exception: will retry {}. status: {}",
-              (retryMaxMillisWhenConflictOccurs == Long.MAX_VALUE ? "forever" : "for at least ")
-                  + (retryMaxMillisWhenConflictOccurs
-                          + exceptionFirstEncounteredTime.get()
-                          - System.currentTimeMillis())
-                      / 1000.0
-                  + " seconds",
+              retryMaxMillisWhenConflictOccurs == Long.MAX_VALUE
+                  ? "forever"
+                  : "for at least "
+                      + (retryMaxMillisWhenConflictOccurs
+                              + exceptionFirstEncounteredTime.get()
+                              - System.currentTimeMillis())
+                          / 1000.0
+                      + " seconds",
               status);
           exceptionEventHasBeenRetried.set(true);
           throw new PipeRuntimeConnectorRetryTimesConfigurableException(
@@ -187,7 +190,7 @@ public class PipeReceiverStatusHandler {
     }
   }
 
-  private void recordExceptionStatusIfNecessary(String message) {
+  private void recordExceptionStatusIfNecessary(final String message) {
     if (!Objects.equals(exceptionRecordedMessage.get(), message)) {
       exceptionFirstEncounteredTime.set(System.currentTimeMillis());
       exceptionEventHasBeenRetried.set(false);
@@ -230,7 +233,7 @@ public class PipeReceiverStatusHandler {
    *     TSStatus} is to be found
    * @return the highest priority {@link TSStatus} from the input list
    */
-  public static TSStatus getPriorStatus(List<TSStatus> givenStatusList) {
+  public static TSStatus getPriorStatus(final List<TSStatus> givenStatusList) {
     final TSStatus resultStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     for (final TSStatus givenStatus : givenStatusList) {
       if (!STATUS_PRIORITY.contains(givenStatus.getCode())) {

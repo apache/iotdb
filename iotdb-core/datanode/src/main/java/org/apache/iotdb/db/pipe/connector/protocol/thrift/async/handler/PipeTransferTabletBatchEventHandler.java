@@ -49,11 +49,10 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
   private final TPipeTransferReq req;
 
   private final IoTDBDataRegionAsyncConnector connector;
-  private final IoTDBThriftAsyncPipeTransferBatchReqBuilder batchReqBuilder;
 
   public PipeTransferTabletBatchEventHandler(
-      IoTDBThriftAsyncPipeTransferBatchReqBuilder batchBuilder,
-      IoTDBDataRegionAsyncConnector connector)
+      final IoTDBThriftAsyncPipeTransferBatchReqBuilder batchBuilder,
+      final IoTDBDataRegionAsyncConnector connector)
       throws IOException {
     // Deep copy to keep Ids' and events' reference
     requestCommitIds = batchBuilder.deepCopyRequestCommitIds();
@@ -61,15 +60,14 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
     req = batchBuilder.toTPipeTransferReq();
 
     this.connector = connector;
-    this.batchReqBuilder = batchBuilder;
   }
 
-  public void transfer(AsyncPipeDataTransferServiceClient client) throws TException {
+  public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
     client.pipeTransfer(req, this);
   }
 
   @Override
-  public void onComplete(TPipeTransferResp response) {
+  public void onComplete(final TPipeTransferResp response) {
     // Just in case
     if (response == null) {
       onError(new PipeException("TPipeTransferResp is null"));
@@ -85,25 +83,19 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
             .statusHandler()
             .handle(status, response.getStatus().getMessage(), events.toString());
       }
-      final boolean isClosed = batchReqBuilder.isClosed();
       for (final Event event : events) {
         if (event instanceof EnrichedEvent) {
-          if (isClosed) {
-            ((EnrichedEvent) event)
-                .clearReferenceCount(PipeTransferTabletBatchEventHandler.class.getName());
-          } else {
-            ((EnrichedEvent) event)
-                .decreaseReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
-          }
+          ((EnrichedEvent) event)
+              .decreaseReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
         }
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       onError(e);
     }
   }
 
   @Override
-  public void onError(Exception exception) {
+  public void onError(final Exception exception) {
     LOGGER.warn(
         "Failed to transfer TabletInsertionEvent batch {} (request commit ids={}).",
         events.stream()
@@ -116,8 +108,6 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
         requestCommitIds,
         exception);
 
-    for (final Event event : events) {
-      connector.addFailureEventToRetryQueue(event);
-    }
+    connector.addFailureEventsToRetryQueue(events);
   }
 }
