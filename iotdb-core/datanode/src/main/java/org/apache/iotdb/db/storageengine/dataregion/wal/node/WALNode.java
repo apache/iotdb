@@ -461,6 +461,9 @@ public class WALNode implements IWALNode {
         logger.error("Fail to get data region processor for {}", oldestTsFile, e);
         return false;
       }
+      if (dataRegion == null) {
+        return false;
+      }
 
       // snapshot or flush memTable, flush memTable when it belongs to an old time partition, or
       // it's snapshot count or size reach threshold.
