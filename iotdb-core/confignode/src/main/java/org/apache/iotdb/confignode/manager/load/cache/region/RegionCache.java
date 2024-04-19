@@ -20,57 +20,56 @@
 package org.apache.iotdb.confignode.manager.load.cache.region;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.manager.load.cache.AbstractLoadCache;
 
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-
-import static org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache.HEARTBEAT_TIMEOUT_TIME_IN_NS;
-import static org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache.MAXIMUM_WINDOW_SIZE;
-
-public class RegionCache {
-
-  private final List<RegionHeartbeatSample> slidingWindow;
+/**
+ * RegionCache caches the RegionHeartbeatSamples of a Region. Update and cache the current
+ * statistics of the Region based on the latest RegionHeartbeatSample.
+ */
+public class RegionCache extends AbstractLoadCache {
 
   public RegionCache() {
-    this.slidingWindow = Collections.synchronizedList(new LinkedList<>());
+    super();
+    this.currentStatistics.set(RegionStatistics.generateDefaultRegionStatistics());
   }
 
-  public void cacheHeartbeatSample(RegionHeartbeatSample newHeartbeatSample) {
-    synchronized (slidingWindow) {
-      // Only sequential HeartbeatSamples are accepted.
-      // And un-sequential HeartbeatSamples will be discarded.
-      if (slidingWindow.isEmpty()
-          || getLastSample().getSendTimestamp() < newHeartbeatSample.getSendTimestamp()) {
-        slidingWindow.add(newHeartbeatSample);
-      }
-
-      if (slidingWindow.size() > MAXIMUM_WINDOW_SIZE) {
-        slidingWindow.remove(0);
-      }
-    }
-  }
-
-  public RegionStatistics getRegionStatistics() {
+  @Override
+  public synchronized void updateCurrentStatistics() {
     RegionHeartbeatSample lastSample;
     synchronized (slidingWindow) {
-      lastSample = getLastSample();
+      lastSample = (RegionHeartbeatSample) getLastSample();
     }
 
-    // TODO: Optimize judge logic
     RegionStatus status;
-    if (RegionStatus.Removing.equals(lastSample.getStatus())) {
-      status = RegionStatus.Removing;
-    } else if (System.nanoTime() - lastSample.getSendTimestamp() > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
+    long currentNanoTime = System.nanoTime();
+    if (lastSample == null) {
+      status = RegionStatus.Unknown;
+    } else if (currentNanoTime - lastSample.getSampleLogicalTimestamp()
+        > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
+      // TODO: Optimize Unknown judge logic
       status = RegionStatus.Unknown;
     } else {
       status = lastSample.getStatus();
     }
-
-    return new RegionStatistics(status);
+    this.currentStatistics.set(new RegionStatistics(currentNanoTime, status));
   }
 
-  private RegionHeartbeatSample getLastSample() {
-    return slidingWindow.get(slidingWindow.size() - 1);
+  public RegionStatistics getCurrentStatistics() {
+    return (RegionStatistics) currentStatistics.get();
+  }
+
+  public void cacheHeartbeatSample(RegionHeartbeatSample newHeartbeatSample, boolean overwrite) {
+    if (overwrite || getLastSample() == null) {
+      super.cacheHeartbeatSample(newHeartbeatSample);
+      return;
+    }
+    RegionStatus lastStatus = ((RegionHeartbeatSample) getLastSample()).getStatus();
+    if (lastStatus.equals(RegionStatus.Adding) || lastStatus.equals(RegionStatus.Removing)) {
+      RegionHeartbeatSample fakeHeartbeatSample =
+          new RegionHeartbeatSample(newHeartbeatSample.getSampleLogicalTimestamp(), lastStatus);
+      super.cacheHeartbeatSample(fakeHeartbeatSample);
+    } else {
+      super.cacheHeartbeatSample(newHeartbeatSample);
+    }
   }
 }

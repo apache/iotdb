@@ -217,6 +217,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -433,7 +434,7 @@ public class ConfigManager implements IManager {
           .forceUpdateNodeCache(
               NodeType.DataNode,
               dataNodeLocation.getDataNodeId(),
-              NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+              new NodeHeartbeatSample(NodeStatus.Unknown));
       LOGGER.info(
           "[ShutdownHook] The DataNode-{} will be shutdown soon, mark it as Unknown",
           dataNodeLocation.getDataNodeId());
@@ -1303,7 +1304,7 @@ public class ConfigManager implements IManager {
           .forceUpdateNodeCache(
               NodeType.ConfigNode,
               configNodeLocation.getConfigNodeId(),
-              NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+              new NodeHeartbeatSample(NodeStatus.Unknown));
       LOGGER.info(
           "[ShutdownHook] The ConfigNode-{} will be shutdown soon, mark it as Unknown",
           configNodeLocation.getConfigNodeId());
@@ -1509,14 +1510,40 @@ public class ConfigManager implements IManager {
 
   @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() {
+    final long retryIntervalInMS = 100;
     TSStatus status = confirmLeader();
     TRegionRouteMapResp resp = new TRegionRouteMapResp(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      for (int retry = 0;
+          retry < CONF.getHeartbeatIntervalInMs() * 4L / retryIntervalInMS;
+          retry++) {
+        AtomicBoolean containsAllRegionGroups = new AtomicBoolean(true);
+        Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap =
+            getLoadManager().getRegionPriorityMap();
+        getPartitionManager()
+            .getAllReplicaSets()
+            .forEach(
+                replicaSet -> {
+                  if (!regionPriorityMap.containsKey(replicaSet.getRegionId())) {
+                    containsAllRegionGroups.set(false);
+                  }
+                });
+        if (containsAllRegionGroups.get()) {
+          break;
+        }
+
+        try {
+          TimeUnit.MILLISECONDS.sleep(retryIntervalInMS);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          LOGGER.warn("Unexpected interruption during retry getting latest region route map");
+        }
+      }
+
       resp.setTimestamp(System.currentTimeMillis());
       resp.setRegionRouteMap(getLoadManager().getRegionPriorityMap());
     }
-
     return resp;
   }
 

@@ -17,41 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.rescon.quotas;
+package org.apache.iotdb.commons.quotas;
 
 /**
- * This limiter will refill resources at every TimeUnit/resources interval. For example: For a
- * limiter configured with 10resources/second, then 1 resource will be refilled after every 100ms
- * (1sec/10resources). Copy from hbase.
+ * With this limiter resources will be refilled only after a fixed interval of time. Copy from
+ * hbase.
  */
-public class AverageIntervalRateLimiter extends RateLimiter {
+public class FixedIntervalRateLimiter extends RateLimiter {
 
   private long nextRefillTime = -1L;
 
   @Override
   public long refill(long limit) {
     final long now = System.currentTimeMillis();
-    if (nextRefillTime == -1) {
-      // Till now no resource has been consumed.
-      nextRefillTime = System.currentTimeMillis();
-      return limit;
+    if (now < nextRefillTime) {
+      return 0;
     }
-
-    long timeInterval = now - nextRefillTime;
-    long delta = 0;
-    long timeUnitInMillis = super.getTimeUnitInMillis();
-    if (timeInterval >= timeUnitInMillis) {
-      delta = limit;
-    } else if (timeInterval > 0) {
-      double r = ((double) timeInterval / (double) timeUnitInMillis) * limit;
-      delta = (long) r;
-    }
-
-    if (delta > 0) {
-      this.nextRefillTime = now;
-    }
-
-    return delta;
+    nextRefillTime = now + super.getTimeUnitInMillis();
+    return limit;
   }
 
   @Override
@@ -59,17 +42,16 @@ public class AverageIntervalRateLimiter extends RateLimiter {
     if (nextRefillTime == -1) {
       return 0;
     }
-
-    double r = ((double) (amount - available)) * super.getTimeUnitInMillis() / limit;
-    return (long) r;
-  }
-
-  // This method is for strictly testing purpose only
-  public void setNextRefillTime(long nextRefillTime) {
-    this.nextRefillTime = nextRefillTime;
+    final long now = System.currentTimeMillis();
+    final long refillTime = nextRefillTime;
+    return refillTime - now;
   }
 
   public long getNextRefillTime() {
-    return this.nextRefillTime;
+    return nextRefillTime;
+  }
+
+  public void setNextRefillTime(long nextRefillTime) {
+    this.nextRefillTime = nextRefillTime;
   }
 }

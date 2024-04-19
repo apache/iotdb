@@ -50,14 +50,22 @@ public class CompactionWorker implements Runnable {
   @SuppressWarnings("squid:S2142")
   @Override
   public void run() {
-    while (!Thread.currentThread().isInterrupted()) {
+    while (true) {
+      if (Thread.currentThread().isInterrupted()) {
+        // If the interrupt is caused by `drop database`, clear the status
+        if (!CompactionTaskManager.getInstance().isStopAllCompactionWorker()) {
+          Thread.interrupted();
+          continue;
+        }
+        return;
+      }
       AbstractCompactionTask task;
       try {
         task = compactionTaskQueue.take();
       } catch (InterruptedException e) {
         LOGGER.warn("CompactionThread-{} terminates because interruption", threadId);
         Thread.currentThread().interrupt();
-        return;
+        continue;
       }
       processOneCompactionTask(task);
     }

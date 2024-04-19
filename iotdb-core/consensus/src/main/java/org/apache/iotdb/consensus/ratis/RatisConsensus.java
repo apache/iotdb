@@ -622,6 +622,18 @@ class RatisConsensus implements IConsensus {
     }
   }
 
+  @Override
+  public long getLogicalClock(ConsensusGroupId groupId) {
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    try {
+      return server.getDivision(raftGroupId).getInfo().getCurrentTerm();
+    } catch (IOException exception) {
+      // if the read fails, simply return 0
+      logger.info("getLogicalClock request failed with exception: ", exception);
+      return 0;
+    }
+  }
+
   private boolean waitUntilLeaderReady(RaftGroupId groupId) {
     DivisionInfo divisionInfo;
     try {
