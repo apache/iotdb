@@ -41,6 +41,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -115,7 +116,7 @@ public class ChunkCacheTest {
               false);
 
       ChunkMetadata chunkMetadataKey =
-          new ChunkMetadata("sensor0", TSDataType.DOUBLE, 25, new DoubleStatistics());
+          new ChunkMetadata("sensor0", TSDataType.DOUBLE, null, null, 25, new DoubleStatistics());
       chunkMetadataKey.setVersion(0);
 
       // get cache
@@ -176,7 +177,7 @@ public class ChunkCacheTest {
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (String deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }

@@ -37,6 +37,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 
@@ -147,7 +148,7 @@ public class AlignedSeriesTestUtil {
 
       TSRecord record = new TSRecord(i, device0);
       int index = 0;
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
         record.addTuple(
             DataPoint.getDataPoint(
                 measurementSchema.getType(),

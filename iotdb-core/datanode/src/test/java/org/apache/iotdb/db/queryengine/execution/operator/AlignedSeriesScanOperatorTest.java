@@ -104,7 +104,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedPath(
               SERIES_SCAN_OPERATOR_TEST_SG + ".device0",
               measurementSchemas.stream()
-                  .map(MeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),
               measurementSchemas.stream()
                   .map(m -> (IMeasurementSchema) m)
@@ -184,7 +184,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedPath(
               SERIES_SCAN_OPERATOR_TEST_SG + ".device0",
               measurementSchemas.stream()
-                  .map(MeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),
               measurementSchemas.stream()
                   .map(m -> (IMeasurementSchema) m)
@@ -236,7 +236,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedPath(
               SERIES_SCAN_OPERATOR_TEST_SG + ".device1",
               measurementSchemas.stream()
-                  .map(MeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),
               measurementSchemas.stream()
                   .map(m -> (IMeasurementSchema) m)
@@ -480,7 +480,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedPath(
               SERIES_SCAN_OPERATOR_TEST_SG + ".device0",
               measurementSchemas.stream()
-                  .map(MeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),
               measurementSchemas.stream()
                   .map(m -> (IMeasurementSchema) m)
@@ -532,7 +532,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedPath(
               SERIES_SCAN_OPERATOR_TEST_SG + ".device1",
               measurementSchemas.stream()
-                  .map(MeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),
               measurementSchemas.stream()
                   .map(m -> (IMeasurementSchema) m)

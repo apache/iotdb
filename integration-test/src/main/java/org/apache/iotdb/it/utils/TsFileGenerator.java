@@ -242,7 +242,7 @@ public class TsFileGenerator implements AutoCloseable {
       for (int i = 0; i < number; i++) {
         int endTime = random.nextInt((int) (maxTime)) + 1;
         int startTime = random.nextInt(endTime);
-        for (MeasurementSchema measurementSchema : device2MeasurementSchema.get(device)) {
+        for (IMeasurementSchema measurementSchema : device2MeasurementSchema.get(device)) {
           Deletion deletion =
               new Deletion(
                   new PartialPath(

@@ -37,6 +37,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 
@@ -163,8 +164,8 @@ public class SeriesReaderTestUtil {
       Assert.assertTrue(file.getParentFile().mkdirs());
     }
     TsFileWriter fileWriter = new TsFileWriter(file);
-    Map<String, MeasurementSchema> template = new HashMap<>();
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
+    Map<String, IMeasurementSchema> template = new HashMap<>();
+    for (IMeasurementSchema measurementSchema : measurementSchemas) {
       template.put(measurementSchema.getMeasurementId(), measurementSchema);
     }
     fileWriter.registerSchemaTemplate("template0", template, false);
@@ -174,7 +175,7 @@ public class SeriesReaderTestUtil {
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (String deviceId : deviceIds) {
         TSRecord record = new TSRecord(i, deviceId);
-        for (MeasurementSchema measurementSchema : measurementSchemas) {
+        for (IMeasurementSchema measurementSchema : measurementSchemas) {
           record.addTuple(
               DataPoint.getDataPoint(
                   measurementSchema.getType(),

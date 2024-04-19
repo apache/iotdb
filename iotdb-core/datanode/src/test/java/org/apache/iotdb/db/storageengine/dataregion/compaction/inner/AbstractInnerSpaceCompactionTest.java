@@ -191,7 +191,7 @@ public abstract class AbstractInnerSpaceCompactionTest {
       throws IOException, WriteProcessException {
     try (TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile()); ) {
       for (String deviceId : deviceIds) {
-        for (MeasurementSchema measurementSchema : measurementSchemas) {
+        for (IMeasurementSchema measurementSchema : measurementSchemas) {
           fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
         }
       }

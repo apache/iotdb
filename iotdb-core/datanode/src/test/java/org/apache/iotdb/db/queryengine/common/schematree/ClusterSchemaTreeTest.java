@@ -36,6 +36,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -708,7 +709,7 @@ public class ClusterSchemaTreeTest {
     Assert.assertEquals(
         measurements,
         deviceSchemaInfo.getMeasurementSchemaList().stream()
-            .map(MeasurementSchema::getMeasurementId)
+            .map(IMeasurementSchema::getMeasurementId)
             .collect(Collectors.toList()));
 
     devicePath = new PartialPath("root.sg.d2.a");
@@ -721,7 +722,7 @@ public class ClusterSchemaTreeTest {
     Assert.assertEquals(
         measurements,
         deviceSchemaInfo.getMeasurementSchemaList().stream()
-            .map(MeasurementSchema::getMeasurementId)
+            .map(IMeasurementSchema::getMeasurementId)
             .collect(Collectors.toList()));
   }
 

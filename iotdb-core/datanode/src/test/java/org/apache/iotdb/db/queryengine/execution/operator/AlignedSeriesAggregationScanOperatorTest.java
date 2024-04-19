@@ -710,7 +710,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         new AlignedPath(
             SERIES_AGGREGATION_SCAN_OPERATOR_TEST_SG + ".device0",
             measurementSchemas.stream()
-                .map(MeasurementSchema::getMeasurementId)
+                .map(IMeasurementSchema::getMeasurementId)
                 .collect(Collectors.toList()),
             measurementSchemas.stream()
                 .map(m -> (IMeasurementSchema) m)

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -68,6 +69,12 @@ public class AlignedPath extends PartialPath {
       PathUtils.isLegalPath(subSensor);
     }
     this.measurementList = subSensorsList;
+  }
+
+  public AlignedPath(
+      String vectorPath, List<String> measurementList, List<IMeasurementSchema> schemaList)
+      throws IllegalPathException {
+    this(Factory.DEFAULT_FACTORY.create(vectorPath), measurementList, schemaList);
   }
 
   public AlignedPath(

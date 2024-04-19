@@ -235,7 +235,7 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
     List<IMeasurementSchema> schemas = tablet.getSchemas();
     int rowSize = tablet.rowSize;
     HashMap<String, Pair<BitMap, List<Object>>> values = new HashMap<>();
-    for (MeasurementSchema schema : schemas) {
+    for (IMeasurementSchema schema : schemas) {
       String timeseries = String.format("%s.%s", tablet.getDeviceId(), schema.getMeasurementId());
       TSDataType iotdbType = schema.getType();
       int index = timeseriesList.indexOf(timeseries);
