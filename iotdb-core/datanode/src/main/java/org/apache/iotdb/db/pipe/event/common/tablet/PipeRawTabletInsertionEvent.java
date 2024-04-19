@@ -224,6 +224,11 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     return dataContainer.convertToTablet();
   }
 
+  public long count() {
+    final Tablet covertedTablet = shouldParseTimeOrPattern() ? convertToTablet() : tablet;
+    return (long) covertedTablet.rowSize * covertedTablet.values.length;
+  }
+
   /////////////////////////// parsePatternOrTime ///////////////////////////
 
   public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {
