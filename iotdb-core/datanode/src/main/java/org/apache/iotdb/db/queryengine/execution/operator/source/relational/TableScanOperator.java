@@ -168,6 +168,8 @@ public class TableScanOperator extends AbstractDataSourceOperator {
     // append id column and attribute column
     if (!isEmpty(measurementDataBlock)) {
       constructResultTsBlock();
+    } else {
+      return null;
     }
     measurementDataBlock = null;
     return checkTsBlockSizeAndGetResult();

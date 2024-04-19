@@ -40,7 +40,7 @@ public class OutputNode extends SingleChildProcessNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return this.columnNames;
   }
 
   @Override
@@ -48,6 +48,10 @@ public class OutputNode extends SingleChildProcessNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+
+  public List<String> getColumnNames() {
+    return this.columnNames;
+  }
 
   public List<Symbol> getOutputSymbols() {
     return outputs;

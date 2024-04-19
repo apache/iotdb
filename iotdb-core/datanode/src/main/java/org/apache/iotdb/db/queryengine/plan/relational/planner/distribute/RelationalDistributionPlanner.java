@@ -14,13 +14,17 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 
+import java.util.Collections;
 import java.util.List;
 
 public class RelationalDistributionPlanner {
@@ -52,7 +56,43 @@ public class RelationalDistributionPlanner {
     List<FragmentInstance> fragmentInstances =
         new FragmentInstanceGenerator(subPlan, analysis, context).plan();
 
+    // Only execute this step for READ operation
+    if (context.getQueryType() == QueryType.READ) {
+      setSinkForRootInstance(subPlan, fragmentInstances);
+    }
+
     return new DistributedQueryPlan(
         logicalQueryPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
+  }
+
+  public void setSinkForRootInstance(SubPlan subPlan, List<FragmentInstance> instances) {
+    FragmentInstance rootInstance = null;
+    for (FragmentInstance instance : instances) {
+      if (instance.getFragment().getId().equals(subPlan.getPlanFragment().getId())) {
+        rootInstance = instance;
+        break;
+      }
+    }
+    // root should not be null during normal process
+    if (rootInstance == null) {
+      return;
+    }
+
+    IdentitySinkNode sinkNode =
+        new IdentitySinkNode(
+            context.getQueryId().genPlanNodeId(),
+            Collections.singletonList(rootInstance.getFragment().getPlanNodeTree()),
+            Collections.singletonList(
+                new DownStreamChannelLocation(
+                    context.getLocalDataBlockEndpoint(),
+                    context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                    context.getResultNodeContext().getVirtualResultNodeId().getId())));
+    context
+        .getResultNodeContext()
+        .setUpStream(
+            rootInstance.getHostDataNode().mPPDataExchangeEndPoint,
+            rootInstance.getId(),
+            sinkNode.getPlanNodeId());
+    rootInstance.getFragment().setPlanNodeTree(sinkNode);
   }
 }

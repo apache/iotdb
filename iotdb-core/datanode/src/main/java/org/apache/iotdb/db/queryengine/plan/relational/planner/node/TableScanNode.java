@@ -4,6 +4,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -22,7 +23,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class TableScanNode extends PlanNode {
+public class TableScanNode extends SourceNode {
 
   // db.tablename
   private final String qualifiedTableName;
@@ -100,6 +101,12 @@ public class TableScanNode extends PlanNode {
   }
 
   @Override
+  public void open() throws Exception {}
+
+  @Override
+  public void close() throws Exception {}
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -131,6 +138,10 @@ public class TableScanNode extends PlanNode {
 
   public Map<Symbol, Integer> getIdAndAttributeIndexMap() {
     return this.idAndAttributeIndexMap;
+  }
+
+  public void setIdAndAttributeIndexMap(Map<Symbol, Integer> idAndAttributeIndexMap) {
+    this.idAndAttributeIndexMap = idAndAttributeIndexMap;
   }
 
   public Map<Symbol, ColumnSchema> getAssignments() {

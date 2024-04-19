@@ -108,7 +108,7 @@ public class RelationalModelPlanner implements IPlanner {
   @Override
   public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
     try {
-      return new LogicalPlanner(context, metadata, null, warningCollector)
+      return new LogicalPlanner(context, metadata, context.getSession(), warningCollector)
           .plan((Analysis) analysis);
     } catch (IoTDBException e) {
       throw new RuntimeException(e);
