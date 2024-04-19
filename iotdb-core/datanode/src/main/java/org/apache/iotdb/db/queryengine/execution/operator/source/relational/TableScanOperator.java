@@ -169,6 +169,7 @@ public class TableScanOperator extends AbstractDataSourceOperator {
     if (!isEmpty(measurementDataBlock)) {
       constructResultTsBlock();
     }
+    measurementDataBlock = null;
     return checkTsBlockSizeAndGetResult();
   }
 
