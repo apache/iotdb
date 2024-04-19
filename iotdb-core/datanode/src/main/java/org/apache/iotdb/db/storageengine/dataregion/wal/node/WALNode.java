@@ -325,13 +325,15 @@ public class WALNode implements IWALNode {
       // calculate effective information ratio
       long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
       MemTableInfo oldestUnpinnedMemTableInfo = checkpointManager.getOldestUnpinnedMemTableInfo();
+      long avgFileSize =
+          getFileNum() != 0
+              ? getTotalSize() / getFileNum()
+              : config.getWalFileSizeThresholdInByte();
       long totalCost =
           oldestUnpinnedMemTableInfo == null
               ? costOfActiveMemTables
-              : (getCurrentWALFileVersion()
-                      - oldestUnpinnedMemTableInfo.getFirstFileVersionId()
-                      + 1)
-                  * config.getWalFileSizeThresholdInByte();
+              : (getCurrentWALFileVersion() - oldestUnpinnedMemTableInfo.getFirstFileVersionId())
+                  * avgFileSize;
       if (totalCost == 0) {
         return;
       }
@@ -576,7 +578,7 @@ public class WALNode implements IWALNode {
       // If this set is empty, there is a case where WalEntry has been logged but not persisted,
       // because WalEntry is persisted asynchronously. In this case, the file cannot be deleted
       // directly, so it is considered active
-      if (memTableIdsOfCurrentWal == null || memTableIdsOfCurrentWal.isEmpty()) {
+      if (memTableIdsOfCurrentWal == null) {
         return true;
       }
       return !Collections.disjoint(
