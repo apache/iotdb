@@ -30,7 +30,6 @@ import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
-
 import org.apache.tsfile.write.record.Tablet;
 import org.awaitility.Awaitility;
 import org.junit.Test;
