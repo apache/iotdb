@@ -240,10 +240,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
           commitSync(pollResults);
         }
 
-      } catch (TException
-          | IOException
-          | StatementExecutionException
-          | IoTDBConnectionException e) {
+      } catch (SubscriptionException e) {
         LOGGER.warn("Exception occurred when auto polling: ", e);
       }
     }
