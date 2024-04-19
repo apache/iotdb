@@ -77,8 +77,6 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private static final IoTDBConnectionException NO_PROVIDERS_EXCEPTION =
       new IoTDBConnectionException("Cluster has no available subscription providers to connect");
 
-  private static final int ON_THE_FLY_TS_FILE_RETRY_LIMIT = 3;
-
   private final List<TEndPoint> initialEndpoints;
 
   private final String username;
@@ -111,23 +109,14 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     return consumerGroupId;
   }
 
-  /////////////////////////////// object ///////////////////////////////
-
-  @Override
-  public String toString() {
-    return "SubscriptionConsumer{consumerId="
-        + consumerId
-        + ", consumerGroupId="
-        + consumerGroupId
-        + "}";
-  }
-
   /////////////////////////////// tsfile ///////////////////////////////
 
-  protected final Map<String, OnTheFlyTsFileInfo> topicNameToOnTheFlyTsFileInfo =
+  private static final int ON_THE_FLY_TS_FILE_RETRY_LIMIT = 3;
+
+  private final Map<String, OnTheFlyTsFileInfo> topicNameToOnTheFlyTsFileInfo =
       new ConcurrentHashMap<>();
 
-  protected static class OnTheFlyTsFileInfo {
+  private static class OnTheFlyTsFileInfo {
 
     SubscriptionCommitContext commitContext;
     File file;
@@ -165,53 +154,14 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  protected OnTheFlyTsFileInfo getOnTheFlyTsFileInfo(String topicName) {
-    final OnTheFlyTsFileInfo info = topicNameToOnTheFlyTsFileInfo.get(topicName);
-    if (Objects.isNull(info)) {
-      return null;
-    }
-
-    if (!info.file.exists()) {
-      try {
-        info.fileWriter.close();
-      } catch (final IOException e) {
-        LOGGER.warn(e.getMessage());
-      }
-      topicNameToOnTheFlyTsFileInfo.remove(topicName);
-      return null;
-    }
-
-    return info;
+  private Path getTsFileDir(final String topicName) throws IOException {
+    final Path dirPath =
+        Paths.get(tsFileBaseDir).resolve(consumerGroupId).resolve(consumerId).resolve(topicName);
+    Files.createDirectories(dirPath);
+    return dirPath;
   }
 
-  protected void removeOnTheFlyTsFileInfo(String topicName) {
-    final OnTheFlyTsFileInfo info = topicNameToOnTheFlyTsFileInfo.get(topicName);
-    if (Objects.isNull(info)) {
-      return;
-    }
-
-    try {
-      info.fileWriter.close();
-    } catch (final IOException e) {
-      LOGGER.warn(e.getMessage());
-    }
-
-    LOGGER.info("consumer {} remove on the fly tsfile info {}", this, info);
-    topicNameToOnTheFlyTsFileInfo.remove(topicName);
-  }
-
-  protected void increaseOnTheFlyTsFileInfoRetryCountOrRemove(String topicName) {
-    final OnTheFlyTsFileInfo info = topicNameToOnTheFlyTsFileInfo.get(topicName);
-    if (Objects.isNull(info)) {
-      return;
-    }
-
-    if (info.increaseRetryCountAndCheckIfExceedRetryLimit()) {
-      removeOnTheFlyTsFileInfo(topicName);
-    }
-  }
-
-  protected OnTheFlyTsFileInfo createOnTheFlyTsFileInfo(
+  private OnTheFlyTsFileInfo createOnTheFlyTsFileInfo(
       SubscriptionCommitContext commitContext, String fileName) {
     try {
       final String topicName = commitContext.getTopicName();
@@ -231,11 +181,50 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  public Path getTsFileDir(final String topicName) throws IOException {
-    final Path dirPath =
-        Paths.get(tsFileBaseDir).resolve(consumerGroupId).resolve(consumerId).resolve(topicName);
-    Files.createDirectories(dirPath);
-    return dirPath;
+  private OnTheFlyTsFileInfo getOnTheFlyTsFileInfo(String topicName) {
+    final OnTheFlyTsFileInfo info = topicNameToOnTheFlyTsFileInfo.get(topicName);
+    if (Objects.isNull(info)) {
+      return null;
+    }
+
+    if (!info.file.exists()) {
+      try {
+        info.fileWriter.close();
+      } catch (final IOException e) {
+        LOGGER.warn(e.getMessage());
+      }
+      topicNameToOnTheFlyTsFileInfo.remove(topicName);
+      return null;
+    }
+
+    return info;
+  }
+
+  private void removeOnTheFlyTsFileInfo(String topicName) {
+    final OnTheFlyTsFileInfo info = topicNameToOnTheFlyTsFileInfo.get(topicName);
+    if (Objects.isNull(info)) {
+      return;
+    }
+
+    try {
+      info.fileWriter.close();
+    } catch (final IOException e) {
+      LOGGER.warn(e.getMessage());
+    }
+
+    LOGGER.info("consumer {} remove on the fly tsfile info {}", this, info);
+    topicNameToOnTheFlyTsFileInfo.remove(topicName);
+  }
+
+  private void increaseOnTheFlyTsFileInfoRetryCountOrRemove(String topicName) {
+    final OnTheFlyTsFileInfo info = topicNameToOnTheFlyTsFileInfo.get(topicName);
+    if (Objects.isNull(info)) {
+      return;
+    }
+
+    if (info.increaseRetryCountAndCheckIfExceedRetryLimit()) {
+      removeOnTheFlyTsFileInfo(topicName);
+    }
   }
 
   /////////////////////////////// ctor ///////////////////////////////
@@ -951,7 +940,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// redirection ///////////////////////////////
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  public void subscribeWithRedirection(final Set<String> topicNames)
+  private void subscribeWithRedirection(final Set<String> topicNames)
       throws IoTDBConnectionException {
     for (final SubscriptionProvider provider : getAllAvailableProviders()) {
       try {
@@ -969,7 +958,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  public void unsubscribeWithRedirection(final Set<String> topicNames)
+  private void unsubscribeWithRedirection(final Set<String> topicNames)
       throws IoTDBConnectionException {
     for (final SubscriptionProvider provider : getAllAvailableProviders()) {
       try {
@@ -987,7 +976,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  public Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection()
+  Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection()
       throws IoTDBConnectionException {
     Map<Integer, TEndPoint> endPoints = null;
     for (final SubscriptionProvider provider : getAllAvailableProviders()) {
@@ -1108,5 +1097,16 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         callback.onFailure(e);
       }
     }
+  }
+
+  /////////////////////////////// object ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionConsumer{consumerId="
+        + consumerId
+        + ", consumerGroupId="
+        + consumerGroupId
+        + "}";
   }
 }
