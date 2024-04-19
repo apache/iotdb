@@ -40,21 +40,21 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   private Map<String, String[]> device2Measurements;
 
   public PipeRealtimeEvent(
-      EnrichedEvent event,
-      TsFileEpoch tsFileEpoch,
-      Map<String, String[]> device2Measurements,
-      PipePattern pattern) {
+      final EnrichedEvent event,
+      final TsFileEpoch tsFileEpoch,
+      final Map<String, String[]> device2Measurements,
+      final PipePattern pattern) {
     this(event, tsFileEpoch, device2Measurements, null, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   public PipeRealtimeEvent(
-      EnrichedEvent event,
-      TsFileEpoch tsFileEpoch,
-      Map<String, String[]> device2Measurements,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime) {
+      final EnrichedEvent event,
+      final TsFileEpoch tsFileEpoch,
+      final Map<String, String[]> device2Measurements,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime) {
     // PipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
     // is only used in the realtime event extractor, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
@@ -82,7 +82,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean increaseReferenceCount(String holderMessage) {
+  public boolean increaseReferenceCount(final String holderMessage) {
     // This method must be overridden, otherwise during the real-time data extraction stage, the
     // current PipeRealtimeEvent rather than the member variable EnrichedEvent will increase
     // the reference count, resulting in errors in the reference count of the EnrichedEvent
@@ -91,12 +91,12 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     return event.internallyIncreaseResourceReferenceCount(holderMessage);
   }
 
   @Override
-  public boolean decreaseReferenceCount(String holderMessage, boolean shouldReport) {
+  public boolean decreaseReferenceCount(final String holderMessage, final boolean shouldReport) {
     // This method must be overridden, otherwise during the real-time data extraction stage, the
     // current PipeRealtimeEvent rather than the member variable EnrichedEvent will decrease
     // the reference count, resulting in errors in the reference count of the EnrichedEvent
@@ -105,15 +105,16 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean clearReferenceCount(String holderMessage) {
+  public boolean clearReferenceCount(final String holderMessage) {
     // This method must be overridden, otherwise during the real-time data extraction stage, the
     // current PipeRealtimeEvent rather than the member variable EnrichedEvent will clear
-    // the reference count.
+    // the reference count, resulting in errors in the reference count of the EnrichedEvent
+    // contained in this PipeRealtimeEvent during the processor and connector stages.
     return event.clearReferenceCount(holderMessage);
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     return event.internallyDecreaseResourceReferenceCount(holderMessage);
   }
 
@@ -138,11 +139,11 @@ public class PipeRealtimeEvent extends EnrichedEvent {
 
   @Override
   public PipeRealtimeEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime) {
+      final String pipeName,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime) {
     return new PipeRealtimeEvent(
         event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
             pipeName, pipeTaskMeta, pattern, startTime, endTime),

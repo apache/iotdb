@@ -55,54 +55,70 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
   @Override
   protected IoTDBSyncClientManager constructClient(
-      List<TEndPoint> nodeUrls,
-      boolean useSSL,
-      String trustStorePath,
-      String trustStorePwd,
-      boolean useLeaderCache,
-      String loadBalanceStrategy) {
+      final List<TEndPoint> nodeUrls,
+      final boolean useSSL,
+      final String trustStorePath,
+      final String trustStorePwd,
+      final boolean useLeaderCache,
+      final String loadBalanceStrategy) {
     return new IoTDBConfigNodeSyncClientManager(
         nodeUrls, useSSL, trustStorePath, trustStorePwd, loadBalanceStrategy);
   }
 
   @Override
   protected PipeTransferFilePieceReq getTransferSingleFilePieceReq(
-      String fileName, long position, byte[] payLoad) {
+      final String fileName, final long position, final byte[] payLoad) {
     throw new UnsupportedOperationException(
         "The config region connector does not support transferring single file piece req.");
   }
 
   @Override
   protected PipeTransferFilePieceReq getTransferMultiFilePieceReq(
-      String fileName, long position, byte[] payLoad) throws IOException {
+      final String fileName, final long position, final byte[] payLoad) throws IOException {
     return PipeTransferConfigSnapshotPieceReq.toTPipeTransferReq(fileName, position, payLoad);
   }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+  public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
         "IoTDBConfigRegionConnector can't transfer TabletInsertionEvent.");
   }
 
   @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+  public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
         "IoTDBConfigRegionConnector can't transfer TsFileInsertionEvent.");
   }
 
   @Override
-  public void transfer(Event event) throws Exception {
+  public void transfer(final Event event) throws Exception {
     if (event instanceof PipeConfigRegionWritePlanEvent) {
-      doTransfer((PipeConfigRegionWritePlanEvent) event);
+      doTransferWrapper((PipeConfigRegionWritePlanEvent) event);
     } else if (event instanceof PipeConfigRegionSnapshotEvent) {
-      doTransfer((PipeConfigRegionSnapshotEvent) event);
+      doTransferWrapper((PipeConfigRegionSnapshotEvent) event);
     } else if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn(
           "IoTDBConfigRegionConnector does not support transferring generic event: {}.", event);
     }
   }
 
-  private void doTransfer(PipeConfigRegionWritePlanEvent writePlanEvent) throws PipeException {
+  private void doTransferWrapper(
+      final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent) throws PipeException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeConfigRegionWritePlanEvent.increaseReferenceCount(
+          IoTDBConfigRegionConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeConfigRegionWritePlanEvent);
+    } finally {
+      pipeConfigRegionWritePlanEvent.decreaseReferenceCount(
+          IoTDBConfigRegionConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransfer(final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent)
+      throws PipeException {
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
 
     final TPipeTransferResp resp;
@@ -112,13 +128,13 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
               .getLeft()
               .pipeTransfer(
                   PipeTransferConfigPlanReq.toTPipeTransferReq(
-                      writePlanEvent.getConfigPhysicalPlan()));
-    } catch (Exception e) {
+                      pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()));
+    } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer config region write plan %s, because %s.",
-              writePlanEvent.getConfigPhysicalPlan().getType(), e.getMessage()),
+              pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), e.getMessage()),
           e);
     }
 
@@ -134,12 +150,31 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
           status,
           String.format(
               "Transfer config region write plan %s error, result status %s.",
-              writePlanEvent.getConfigPhysicalPlan().getType(), status),
-          writePlanEvent.getConfigPhysicalPlan().toString());
+              pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), status),
+          pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().toString());
+    }
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Successfully transferred config event {}.", pipeConfigRegionWritePlanEvent);
     }
   }
 
-  private void doTransfer(PipeConfigRegionSnapshotEvent snapshotEvent)
+  private void doTransferWrapper(final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
+      throws PipeException, IOException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeConfigRegionSnapshotEvent.increaseReferenceCount(
+          IoTDBConfigRegionConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeConfigRegionSnapshotEvent);
+    } finally {
+      pipeConfigRegionSnapshotEvent.decreaseReferenceCount(
+          IoTDBConfigRegionConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransfer(final PipeConfigRegionSnapshotEvent snapshotEvent)
       throws PipeException, IOException {
     final File snapshotFile = snapshotEvent.getSnapshotFile();
     final File templateFile = snapshotEvent.getTemplateFile();
@@ -164,7 +199,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
                       Objects.nonNull(templateFile) ? templateFile.length() : 0,
                       snapshotEvent.getFileType(),
                       snapshotEvent.toSealTypeString()));
-    } catch (Exception e) {
+    } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
@@ -188,6 +223,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
               snapshotFile, resp.getStatus()),
           snapshotFile.toString());
     }
+
     LOGGER.info("Successfully transferred config region snapshot {}.", snapshotFile);
   }
 }
