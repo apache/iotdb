@@ -38,6 +38,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
@@ -176,7 +178,8 @@ public class IoTDBStartCheck {
       // write properties to system.properties
       try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
         systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
-        properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
+        properties.store(
+            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
       }
       isFirstStart = true;
       return true;
@@ -266,7 +269,8 @@ public class IoTDBStartCheck {
       // overwrite system.properties when first start
       try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
         systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
-        properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
+        properties.store(
+            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
       }
       if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
           && config.getWalMode().equals(WALMode.DISABLE)) {
@@ -309,7 +313,8 @@ public class IoTDBStartCheck {
           });
       properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
       properties.setProperty(COMMIT_ID_STRING, IoTDBConstant.BUILD_INFO);
-      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
+      properties.store(
+          new OutputStreamWriter(tmpFOS, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
       // upgrade finished, delete old system.properties file
       if (propertiesFile.exists()) {
         Files.delete(propertiesFile.toPath());
@@ -380,7 +385,8 @@ public class IoTDBStartCheck {
     try {
       properties.setProperty(IoTDBConstant.CLUSTER_NAME, clusterName);
       properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
-      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
+      properties.store(
+          new OutputStreamWriter(tmpFOS, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file
       if (propertiesFile.exists()) {
         Files.delete(propertiesFile.toPath());
@@ -417,7 +423,8 @@ public class IoTDBStartCheck {
     if (needsSerialize) {
       try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
         systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
-        properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
+        properties.store(
+            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
       }
     }
     long endTime = System.currentTimeMillis();

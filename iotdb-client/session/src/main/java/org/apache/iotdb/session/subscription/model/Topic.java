@@ -21,8 +21,8 @@ package org.apache.iotdb.session.subscription.model;
 
 public class Topic {
 
-  private String topicName;
-  private String topicAttributes;
+  private final String topicName;
+  private final String topicAttributes;
 
   public Topic(String topicName, String topicAttributes) {
     this.topicName = topicName;

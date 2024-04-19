@@ -183,9 +183,6 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public void abort() {
-    if (aborted || closed) {
-      return;
-    }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("[StartAbortLocalSourceHandle]");
@@ -208,9 +205,6 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public void abort(Throwable t) {
-    if (aborted || closed) {
-      return;
-    }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("[StartAbortLocalSourceHandle]");
@@ -233,9 +227,6 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public void close() {
-    if (aborted || closed) {
-      return;
-    }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("[StartCloseLocalSourceHandle]");

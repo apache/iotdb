@@ -27,8 +27,8 @@ import org.apache.tsfile.utils.Pair;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.Vector;
-import java.util.concurrent.ConcurrentHashMap;
 
 /** The GreedyPriorityBalancer always pick the Replica with the lowest loadScore */
 public class GreedyPriorityBalancer implements IPriorityBalancer {
@@ -43,7 +43,7 @@ public class GreedyPriorityBalancer implements IPriorityBalancer {
       Map<TConsensusGroupId, Integer> regionLeaderMap,
       Map<Integer, Long> dataNodeLoadScoreMap) {
 
-    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap = new ConcurrentHashMap<>();
+    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap = new TreeMap<>();
 
     replicaSets.forEach(
         replicaSet -> {

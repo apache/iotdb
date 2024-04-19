@@ -102,7 +102,7 @@ public class StabilityTest {
     try {
       consensusImpl.createLocalPeer(
           dataRegionId,
-          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
     } catch (ConsensusException e) {
       Assert.fail();
     }
@@ -110,7 +110,7 @@ public class StabilityTest {
     try {
       consensusImpl.createLocalPeer(
           dataRegionId,
-          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
       Assert.fail();
     } catch (ConsensusException e) {
       assertTrue(e instanceof ConsensusGroupAlreadyExistException);
@@ -126,7 +126,7 @@ public class StabilityTest {
     try {
       consensusImpl.createLocalPeer(
           dataRegionId,
-          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.1", 6667))));
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.1", basePort))));
       Assert.fail();
     } catch (ConsensusException e) {
       assertTrue(e instanceof IllegalPeerEndpointException);
@@ -150,7 +150,7 @@ public class StabilityTest {
     try {
       consensusImpl.createLocalPeer(
           dataRegionId,
-          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
       consensusImpl.deleteLocalPeer(dataRegionId);
     } catch (ConsensusException e) {
       Assert.fail();
@@ -177,8 +177,8 @@ public class StabilityTest {
   public void transferLeader() {
     try {
       consensusImpl.transferLeader(
-          dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
-      Assert.fail("Can't transfer leader in SimpleConsensus.");
+          dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort)));
+      Assert.fail("Can't transfer leader in IoTConsensus.");
     } catch (ConsensusException e) {
       // not handle
     }

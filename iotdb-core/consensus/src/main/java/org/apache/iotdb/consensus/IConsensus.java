@@ -185,6 +185,14 @@ public interface IConsensus {
   boolean isLeader(ConsensusGroupId groupId);
 
   /**
+   * Returns the logic clock of the current consensus group
+   *
+   * @param groupId the consensus group
+   * @return long
+   */
+  long getLogicalClock(ConsensusGroupId groupId);
+
+  /**
    * Determine if the current peer is the leader and already able to provide services in the
    * corresponding consensus group.
    *
@@ -207,4 +215,23 @@ public interface IConsensus {
    * @return consensusGroupId list
    */
   List<ConsensusGroupId> getAllConsensusGroupIds();
+
+  /**
+   * Return all consensus group ids from disk.
+   *
+   * <p>We need to parse all the RegionGroupIds from the disk directory before starting the
+   * consensus layer, and {@link #getAllConsensusGroupIds()} returns an empty list, so we need to
+   * add a new interface.
+   *
+   * @return consensusGroupId list
+   */
+  List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting();
+
+  /**
+   * Return the region directory of the corresponding consensus group.
+   *
+   * @param groupId the consensus group
+   * @return region directory
+   */
+  String getRegionDirFromConsensusGroupId(ConsensusGroupId groupId);
 }

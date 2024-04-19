@@ -92,6 +92,10 @@ public class RepairDataFileScanUtil {
       if (Thread.currentThread().isInterrupted()) {
         return;
       }
+      // source file may be deleted
+      if (!resource.tsFileExists()) {
+        return;
+      }
       logger.warn("Meet error when read tsfile {}", tsfile.getAbsolutePath(), e);
       isBrokenFile = true;
     }

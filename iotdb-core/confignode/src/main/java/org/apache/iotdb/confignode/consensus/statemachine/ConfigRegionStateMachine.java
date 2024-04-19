@@ -265,6 +265,9 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       // Shutdown leader related service for config pipe
       PipeConfigNodeAgent.runtime().notifyLeaderUnavailable();
 
+      // Clean receiver file dir
+      PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
+
       LOGGER.info(
           "Current node [nodeId:{}, ip:port: {}] is not longer the leader, "
               + "all services on old leader are unavailable now.",

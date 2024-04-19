@@ -261,40 +261,52 @@ public class DeviceTimeIndex implements ITimeIndex {
     }
   }
 
-  /** @return the time partition id, if spans multi time partitions, return -1. */
-  private long getTimePartitionWithCheck() {
-    long partitionId = SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
-    for (int index : deviceToIndex.values()) {
-      long p = TimePartitionUtils.getTimePartitionId(startTimes[index]);
-      if (partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID) {
-        partitionId = p;
-      } else {
-        if (partitionId != p) {
-          return SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
-        }
-      }
-
-      p = TimePartitionUtils.getTimePartitionId(endTimes[index]);
-      if (partitionId != p) {
-        return SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
-      }
-    }
-    return partitionId;
-  }
-
   @Override
   public long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException {
-    long partitionId = getTimePartitionWithCheck();
-    if (partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID) {
+    try {
+      return getTimePartitionWithCheck();
+    } catch (PartitionViolationException e) {
       throw new PartitionViolationException(tsFilePath);
     }
-    return partitionId;
   }
 
   @Override
   public boolean isSpanMultiTimePartitions() {
-    long partitionId = getTimePartitionWithCheck();
-    return partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
+    try {
+      getTimePartitionWithCheck();
+      return false;
+    } catch (PartitionViolationException e) {
+      return true;
+    }
+  }
+
+  private long getTimePartitionWithCheck() throws PartitionViolationException {
+    Long partitionId = null;
+
+    for (final int index : deviceToIndex.values()) {
+      final long startTimePartitionId = TimePartitionUtils.getTimePartitionId(startTimes[index]);
+      final long endTimePartitionId = TimePartitionUtils.getTimePartitionId(endTimes[index]);
+
+      if (startTimePartitionId != endTimePartitionId) {
+        throw new PartitionViolationException();
+      }
+
+      if (partitionId == null) {
+        partitionId = startTimePartitionId;
+        continue;
+      }
+
+      if (partitionId != startTimePartitionId) {
+        throw new PartitionViolationException();
+      }
+    }
+
+    // Just in case
+    if (partitionId == null) {
+      throw new PartitionViolationException();
+    }
+
+    return partitionId;
   }
 
   @Override

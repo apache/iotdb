@@ -223,9 +223,9 @@ public class MemoryPool {
       String planNodeId,
       long bytesToReserve,
       long maxBytesCanReserve) {
-    Validate.notNull(queryId);
-    Validate.notNull(fragmentInstanceId);
-    Validate.notNull(planNodeId);
+    Validate.notNull(queryId, "queryId can not be null.");
+    Validate.notNull(fragmentInstanceId, "fragmentInstanceId can not be null.");
+    Validate.notNull(planNodeId, "planNodeId can not be null.");
     Validate.isTrue(
         bytesToReserve > 0L && bytesToReserve <= maxBytesPerFragmentInstance,
         "bytesToReserve should be in (0,maxBytesPerFI]. maxBytesPerFI: %d",
@@ -263,9 +263,9 @@ public class MemoryPool {
       String planNodeId,
       long bytesToReserve,
       long maxBytesCanReserve) {
-    Validate.notNull(queryId);
-    Validate.notNull(fragmentInstanceId);
-    Validate.notNull(planNodeId);
+    Validate.notNull(queryId, "queryId can not be null.");
+    Validate.notNull(fragmentInstanceId, "fragmentInstanceId can not be null.");
+    Validate.notNull(planNodeId, "planNodeId can not be null.");
     Validate.isTrue(
         bytesToReserve > 0L && bytesToReserve <= maxBytesPerFragmentInstance,
         "bytesToReserve should be in (0,maxBytesPerFI]. maxBytesPerFI: %d",
@@ -288,10 +288,10 @@ public class MemoryPool {
    */
   @SuppressWarnings("squid:S2445")
   public synchronized long tryCancel(ListenableFuture<Void> future) {
+    Validate.notNull(future, "The future to be cancelled can not be null.");
     // add synchronized on the future to avoid that the future is concurrently completed by
     // MemoryPool.free() which may lead to memory leak.
     synchronized (future) {
-      Validate.notNull(future, "The future to be cancelled can not be null.");
       // If the future is not a MemoryReservationFuture, it must have been completed.
       if (future.isDone()) {
         return 0L;

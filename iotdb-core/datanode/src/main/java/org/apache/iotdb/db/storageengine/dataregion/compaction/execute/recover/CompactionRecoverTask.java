@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover;
 
-import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -113,10 +111,7 @@ public class CompactionRecoverTask {
       LOGGER.error("Recover compaction error", e);
     } finally {
       if (!recoverSuccess) {
-        LOGGER.error(
-            "{} [Compaction][Recover] Failed to recover compaction, set allowCompaction to false",
-            fullStorageGroupName);
-        tsFileManager.setAllowCompaction(false);
+        LOGGER.error("{} [Compaction][Recover] Failed to recover compaction", fullStorageGroupName);
       } else {
         if (compactionLogFile.exists()) {
           try {
@@ -127,12 +122,10 @@ public class CompactionRecoverTask {
             FileUtils.delete(compactionLogFile);
           } catch (IOException e) {
             LOGGER.error(
-                "{} [Compaction][Recover] Exception occurs while deleting log file {}, "
-                    + "set allowCompaction to false",
+                "{} [Compaction][Recover] Exception occurs while deleting log file {}",
                 fullStorageGroupName,
                 compactionLogFile,
                 e);
-            tsFileManager.setAllowCompaction(false);
           }
         }
       }
@@ -190,8 +183,7 @@ public class CompactionRecoverTask {
       CompactionUtils.deleteCompactionModsFile(sourceTsFileResourceList, Collections.emptyList());
     } catch (IOException e) {
       LOGGER.error(
-          "{} [Compaction][Recover] Exception occurs while deleting compaction mods file, "
-              + "set allowCompaction to false",
+          "{} [Compaction][Recover] Exception occurs while deleting compaction mods file",
           fullStorageGroupName,
           e);
       return false;
@@ -265,11 +257,9 @@ public class CompactionRecoverTask {
           || !TsFileUtils.isTsFileComplete(new TsFileResource(targetFile).getTsFile())) {
         LOGGER.error(
             "{} [Compaction][ExceptionHandler] target file {} is not complete, "
-                + "and some source files is lost, do nothing. "
-                + "Set allowCompaction to false",
+                + "and some source files is lost, do nothing.",
             fullStorageGroupName,
             targetFileIdentifier.getFilePath());
-        CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
         return false;
       }
     }

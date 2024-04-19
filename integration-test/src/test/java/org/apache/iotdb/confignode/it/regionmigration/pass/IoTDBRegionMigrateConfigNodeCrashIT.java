@@ -19,61 +19,119 @@
 
 package org.apache.iotdb.confignode.it.regionmigration.pass;
 
+import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+@RunWith(IoTDBTestRunner.class)
 public class IoTDBRegionMigrateConfigNodeCrashIT extends IoTDBRegionMigrateReliabilityITFramework {
   @Test
   @Ignore
-  public void cnCrashDuringPreCheck() throws Exception {
-    successTest(1, 1, 1, 2, buildSet(RegionTransitionState.REGION_MIGRATE_PREPARE), noKillPoints());
-  }
-
-  @Test
-  public void cnCrashDuringCreatePeer() throws Exception {
-    successTest(1, 1, 1, 2, buildSet(AddRegionPeerState.CREATE_NEW_REGION_PEER), noKillPoints());
-  }
-
-  @Test
-  public void cnCrashDuringDoAddPeer() throws Exception {
-    successTest(1, 1, 1, 2, buildSet(AddRegionPeerState.DO_ADD_REGION_PEER), noKillPoints());
-  }
-
-  @Test
-  public void cnCrashDuringUpdateCache() throws Exception {
+  public void cnCrashDuringPreCheckTest() throws Exception {
     successTest(
-        1, 1, 1, 2, buildSet(AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE), noKillPoints());
+        1,
+        1,
+        1,
+        2,
+        buildSet(RegionTransitionState.REGION_MIGRATE_PREPARE),
+        noKillPoints(),
+        KillNode.CONFIG_NODE);
   }
 
   @Test
-  public void cnCrashDuringChangeRegionLeader() throws Exception {
-    successTest(1, 1, 1, 2, buildSet(RegionTransitionState.CHANGE_REGION_LEADER), noKillPoints());
-  }
-
-  @Test
-  public void cnCrashDuringRemoveRegionPeer() throws Exception {
-    successTest(1, 1, 1, 2, buildSet(RemoveRegionPeerState.REMOVE_REGION_PEER), noKillPoints());
-  }
-
-  @Test
-  public void cnCrashDuringDeleteOldRegionPeer() throws Exception {
-    successTest(1, 1, 1, 2, buildSet(RemoveRegionPeerState.DELETE_OLD_REGION_PEER), noKillPoints());
-  }
-
-  @Test
-  public void cnCrashDuringRemoveRegionLocationCache() throws Exception {
+  public void cnCrashDuringCreatePeerTest() throws Exception {
     successTest(
-        1, 1, 1, 2, buildSet(RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE), noKillPoints());
+        1,
+        1,
+        1,
+        2,
+        buildSet(AddRegionPeerState.CREATE_NEW_REGION_PEER),
+        noKillPoints(),
+        KillNode.CONFIG_NODE);
+  }
+
+  @Test
+  public void testCnCrashDuringDoAddPeer() throws Exception {
+    successTest(
+        1,
+        1,
+        1,
+        2,
+        buildSet(AddRegionPeerState.DO_ADD_REGION_PEER),
+        noKillPoints(),
+        KillNode.CONFIG_NODE);
+  }
+
+  @Test
+  public void cnCrashDuringUpdateCacheTest() throws Exception {
+    successTest(
+        1,
+        1,
+        1,
+        2,
+        buildSet(AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE),
+        noKillPoints(),
+        KillNode.CONFIG_NODE);
+  }
+
+  @Test
+  public void cnCrashDuringChangeRegionLeaderTest() throws Exception {
+    successTest(
+        1,
+        1,
+        1,
+        2,
+        buildSet(RemoveRegionPeerState.TRANSFER_REGION_LEADER),
+        noKillPoints(),
+        KillNode.CONFIG_NODE);
+  }
+
+  @Test
+  public void cnCrashDuringRemoveRegionPeerTest() throws Exception {
+    successTest(
+        1,
+        1,
+        1,
+        2,
+        buildSet(RemoveRegionPeerState.REMOVE_REGION_PEER),
+        noKillPoints(),
+        KillNode.CONFIG_NODE);
+  }
+
+  @Test
+  public void cnCrashDuringDeleteOldRegionPeerTest() throws Exception {
+    successTest(
+        1,
+        1,
+        1,
+        2,
+        buildSet(RemoveRegionPeerState.DELETE_OLD_REGION_PEER),
+        noKillPoints(),
+        KillNode.CONFIG_NODE);
+  }
+
+  @Test
+  public void cnCrashDuringRemoveRegionLocationCacheTest() throws Exception {
+    successTest(
+        1,
+        1,
+        1,
+        2,
+        buildSet(RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE),
+        noKillPoints(),
+        KillNode.CONFIG_NODE);
   }
 
   @Test
@@ -87,6 +145,6 @@ public class IoTDBRegionMigrateConfigNodeCrashIT extends IoTDBRegionMigrateRelia
         Arrays.stream(RemoveRegionPeerState.values())
             .map(KillPoint::enumToString)
             .collect(Collectors.toList()));
-    successTest(1, 1, 1, 2, killConfigNodeKeywords, noKillPoints());
+    successTest(1, 1, 1, 2, killConfigNodeKeywords, noKillPoints(), KillNode.CONFIG_NODE);
   }
 }

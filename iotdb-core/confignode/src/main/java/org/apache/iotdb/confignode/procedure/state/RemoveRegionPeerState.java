@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.state;
 
 public enum RemoveRegionPeerState {
+  TRANSFER_REGION_LEADER,
   REMOVE_REGION_PEER,
   DELETE_OLD_REGION_PEER,
   REMOVE_REGION_LOCATION_CACHE,

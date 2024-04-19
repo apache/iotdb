@@ -214,7 +214,6 @@ public class PipeTsFileResourceManager {
    * delete the file. if the given file is not a hardlink or copied file, do nothing.
    *
    * @param hardlinkOrCopiedFile the copied or hardlinked file
-   * @throws IOException when delete file failed
    */
   public void decreaseFileReference(File hardlinkOrCopiedFile) {
     lock.lock();

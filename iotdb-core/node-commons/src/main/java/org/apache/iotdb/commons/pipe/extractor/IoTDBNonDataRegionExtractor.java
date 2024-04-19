@@ -140,7 +140,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     // Realtime
     EnrichedEvent realtimeEvent;
     do {
-      realtimeEvent = (EnrichedEvent) iterator.next(0);
+      realtimeEvent = (EnrichedEvent) iterator.next(getMaxBlockingTimeMs());
       if (Objects.isNull(realtimeEvent)) {
         return null;
       }
@@ -154,6 +154,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     realtimeEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
     return realtimeEvent;
   }
+
+  protected abstract long getMaxBlockingTimeMs();
 
   protected abstract boolean isTypeListened(Event event);
 

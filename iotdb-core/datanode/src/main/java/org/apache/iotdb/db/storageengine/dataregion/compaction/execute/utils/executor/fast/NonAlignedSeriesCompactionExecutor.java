@@ -35,7 +35,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
 import org.apache.tsfile.exception.write.PageException;
-import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -173,23 +172,13 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
     updateSummary(chunkMetadataElement, ChunkStatus.DESERIALIZE_CHUNK);
     Chunk chunk = chunkMetadataElement.chunk;
     CompactionChunkReader chunkReader = new CompactionChunkReader(chunk);
-    ByteBuffer chunkDataBuffer = chunk.getData();
-    ChunkHeader chunkHeader = chunk.getHeader();
-    while (chunkDataBuffer.remaining() > 0) {
-      // deserialize a PageHeader from chunkDataBuffer
-      PageHeader pageHeader;
-      if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunk.getChunkStatistic());
-      } else {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
-      }
-      ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
-
-      boolean isLastPage = chunkDataBuffer.remaining() <= 0;
+    List<Pair<PageHeader, ByteBuffer>> pages = chunkReader.readPageDataWithoutUncompressing();
+    for (int i = 0; i < pages.size(); i++) {
+      boolean isLastPage = i == pages.size() - 1;
       pageQueue.add(
           new NonAlignedPageElement(
-              pageHeader,
-              compressedPageData,
+              pages.get(i).left,
+              pages.get(i).right,
               chunkReader,
               chunkMetadataElement,
               isLastPage,

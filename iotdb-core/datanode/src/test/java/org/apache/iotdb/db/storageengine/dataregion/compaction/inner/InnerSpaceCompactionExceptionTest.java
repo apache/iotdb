@@ -215,8 +215,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
   }
 
   /**
-   * Test some source files are lost and target file is not complete. System should be set to read
-   * only at this time.
+   * Test some source files are lost and target file is not complete.
    *
    * @throws Exception
    */
@@ -265,8 +264,6 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
       Assert.assertTrue(resource.resourceFileExists());
       Assert.assertTrue(resource.getTsFile().exists());
     }
-
-    Assert.assertFalse(tsFileManager.isAllowCompaction());
   }
 
   /**

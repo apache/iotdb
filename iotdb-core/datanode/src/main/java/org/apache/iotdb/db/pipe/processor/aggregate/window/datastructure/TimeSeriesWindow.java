@@ -56,7 +56,8 @@ public class TimeSeriesWindow {
   private Object customizedRuntimeValue;
   private final AbstractWindowingProcessor processor;
 
-  public TimeSeriesWindow(AbstractWindowingProcessor processor, Object customizedRuntimeValue) {
+  public TimeSeriesWindow(
+      final AbstractWindowingProcessor processor, final Object customizedRuntimeValue) {
     this.processor = processor;
     this.customizedRuntimeValue = customizedRuntimeValue;
   }
@@ -67,7 +68,7 @@ public class TimeSeriesWindow {
     return timestamp;
   }
 
-  public void setTimestamp(long timestamp) {
+  public void setTimestamp(final long timestamp) {
     this.timestamp = timestamp;
   }
 
@@ -75,17 +76,18 @@ public class TimeSeriesWindow {
     return customizedRuntimeValue;
   }
 
-  public void setCustomizedRuntimeValue(Object customizedRuntimeValue) {
+  public void setCustomizedRuntimeValue(final Object customizedRuntimeValue) {
     this.customizedRuntimeValue = customizedRuntimeValue;
   }
 
   /////////////////////////////// Calculation ///////////////////////////////
 
   public void initWindow(
-      Map<String, Supplier<IntermediateResultOperator>> intermediateResult2OperatorSupplierMap,
-      Map<String, AggregatedResultOperator> aggregatedResultOperatorMap,
-      Map<String, String> systemParameters) {
-    for (Map.Entry<String, Supplier<IntermediateResultOperator>> entry :
+      final Map<String, Supplier<IntermediateResultOperator>>
+          intermediateResult2OperatorSupplierMap,
+      final Map<String, AggregatedResultOperator> aggregatedResultOperatorMap,
+      final Map<String, String> systemParameters) {
+    for (final Map.Entry<String, Supplier<IntermediateResultOperator>> entry :
         intermediateResult2OperatorSupplierMap.entrySet()) {
       intermediateResultName2tsTypeAndOperatorMap.put(
           entry.getKey(), new Pair<>(TSDataType.UNKNOWN, entry.getValue().get()));
@@ -100,7 +102,8 @@ public class TimeSeriesWindow {
 
   // Return the output and state of the window.
   // Return null if the state is normal to avoid boxing.
-  public Pair<WindowState, WindowOutput> updateIntermediateResult(long timestamp, boolean value) {
+  public Pair<WindowState, WindowOutput> updateIntermediateResult(
+      final long timestamp, final boolean value) {
     final Pair<WindowState, WindowOutput> stateOutputPair =
         processor.updateAndMaySetWindowState(this, timestamp, value);
     final WindowState state = stateOutputPair.getLeft();
@@ -155,7 +158,8 @@ public class TimeSeriesWindow {
   }
 
   // The same logic is repeated because java does not support basic type template :-)
-  public Pair<WindowState, WindowOutput> updateIntermediateResult(long timestamp, int value) {
+  public Pair<WindowState, WindowOutput> updateIntermediateResult(
+      final long timestamp, final int value) {
     final Pair<WindowState, WindowOutput> stateOutputPair =
         processor.updateAndMaySetWindowState(this, timestamp, value);
     final WindowState state = stateOutputPair.getLeft();
@@ -209,7 +213,8 @@ public class TimeSeriesWindow {
     return state.isEmit() ? stateOutputPair : null;
   }
 
-  public Pair<WindowState, WindowOutput> updateIntermediateResult(long timestamp, long value) {
+  public Pair<WindowState, WindowOutput> updateIntermediateResult(
+      final long timestamp, final long value) {
     final Pair<WindowState, WindowOutput> stateOutputPair =
         processor.updateAndMaySetWindowState(this, timestamp, value);
     final WindowState state = stateOutputPair.getLeft();
@@ -263,7 +268,8 @@ public class TimeSeriesWindow {
     return state.isEmit() ? stateOutputPair : null;
   }
 
-  public Pair<WindowState, WindowOutput> updateIntermediateResult(long timestamp, float value) {
+  public Pair<WindowState, WindowOutput> updateIntermediateResult(
+      final long timestamp, final float value) {
     final Pair<WindowState, WindowOutput> stateOutputPair =
         processor.updateAndMaySetWindowState(this, timestamp, value);
     final WindowState state = stateOutputPair.getLeft();
@@ -317,7 +323,8 @@ public class TimeSeriesWindow {
     return state.isEmit() ? stateOutputPair : null;
   }
 
-  public Pair<WindowState, WindowOutput> updateIntermediateResult(long timestamp, double value) {
+  public Pair<WindowState, WindowOutput> updateIntermediateResult(
+      final long timestamp, final double value) {
     final Pair<WindowState, WindowOutput> stateOutputPair =
         processor.updateAndMaySetWindowState(this, timestamp, value);
     final WindowState state = stateOutputPair.getLeft();
@@ -370,7 +377,8 @@ public class TimeSeriesWindow {
     return state.isEmit() ? stateOutputPair : null;
   }
 
-  public Pair<WindowState, WindowOutput> updateIntermediateResult(long timestamp, String value) {
+  public Pair<WindowState, WindowOutput> updateIntermediateResult(
+      final long timestamp, final String value) {
     final Pair<WindowState, WindowOutput> stateOutputPair =
         processor.updateAndMaySetWindowState(this, timestamp, value);
     final WindowState state = stateOutputPair.getLeft();
@@ -434,7 +442,7 @@ public class TimeSeriesWindow {
                     .orElse(TSDataType.UNKNOWN)));
   }
 
-  private Map<String, Pair<TSDataType, Object>> getAggregatedResults(TSDataType dataType) {
+  private Map<String, Pair<TSDataType, Object>> getAggregatedResults(final TSDataType dataType) {
     // The remaining intermediate results' datatype shall all be equal to this
     // If not, return nothing
     if (dataType == TSDataType.UNKNOWN
@@ -457,10 +465,10 @@ public class TimeSeriesWindow {
 
   /////////////////////////////// Ser/De logics ///////////////////////////////
 
-  public void serialize(DataOutputStream outputStream) throws IOException {
+  public void serialize(final DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(timestamp, outputStream);
     ReadWriteIOUtils.write(intermediateResultName2tsTypeAndOperatorMap.size(), outputStream);
-    for (Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry :
+    for (final Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry :
         intermediateResultName2tsTypeAndOperatorMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       entry.getValue().getLeft().serializeTo(outputStream);
@@ -475,7 +483,7 @@ public class TimeSeriesWindow {
   // WARNING: We do not support removing intermediate values (e.g. intermediate values are
   // less after the aggregators decreased) or altering windowing processor in altering aggregate
   // processor, only adding intermediate values is permitted.
-  public void deserialize(ByteBuffer byteBuffer) throws IOException {
+  public void deserialize(final ByteBuffer byteBuffer) throws IOException {
     timestamp = ReadWriteIOUtils.readLong(byteBuffer);
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; i++) {
