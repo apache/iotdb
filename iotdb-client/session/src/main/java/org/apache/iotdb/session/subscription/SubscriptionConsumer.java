@@ -111,7 +111,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// tsfile ///////////////////////////////
 
-  private static final int ON_THE_FLY_TS_FILE_RETRY_LIMIT = 3;
+  private static final int POLL_TS_FILE_RETRY_LIMIT = 3;
 
   private final Map<String, SubscriptionTsFileInfo> topicNameToSubscriptionTsFileInfo =
       new ConcurrentHashMap<>();
@@ -138,7 +138,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     /** @return {@code true} if exceed retry limit */
     boolean increaseRetryCountAndCheckIfExceedRetryLimit() {
       retryCount++;
-      return retryCount > ON_THE_FLY_TS_FILE_RETRY_LIMIT;
+      return retryCount > POLL_TS_FILE_RETRY_LIMIT;
     }
 
     @Override
@@ -162,24 +162,18 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private SubscriptionTsFileInfo createSubscriptionTsFileInfoTsFileInfo(
-      SubscriptionCommitContext commitContext, String fileName) {
-    try {
-      final String topicName = commitContext.getTopicName();
-      final Path filePath = getTsFileDir(topicName).resolve(fileName);
+      SubscriptionCommitContext commitContext, String fileName) throws IOException {
+    final String topicName = commitContext.getTopicName();
+    final Path filePath = getTsFileDir(topicName).resolve(fileName);
 
-      Files.createFile(filePath);
-      final File file = filePath.toFile();
-      final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw");
+    Files.createFile(filePath);
+    final File file = filePath.toFile();
+    final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw");
 
-      final SubscriptionTsFileInfo info =
-          new SubscriptionTsFileInfo(commitContext, file, fileWriter);
-      topicNameToSubscriptionTsFileInfo.put(topicName, info);
-      LOGGER.info("consumer {} create subscription TsFile info {}", this, info);
-      return info;
-    } catch (final IOException e) {
-      LOGGER.warn(e.getMessage());
-      return null;
-    }
+    final SubscriptionTsFileInfo info = new SubscriptionTsFileInfo(commitContext, file, fileWriter);
+    topicNameToSubscriptionTsFileInfo.put(topicName, info);
+    LOGGER.info("consumer {} create subscription TsFile info {}", this, info);
+    return info;
   }
 
   private SubscriptionTsFileInfo getSubscriptionTsFileInfoTsFileInfo(String topicName) {
@@ -682,9 +676,6 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     SubscriptionTsFileInfo info = getSubscriptionTsFileInfoTsFileInfo(topicName);
     if (Objects.isNull(info)) {
       info = createSubscriptionTsFileInfoTsFileInfo(commitContext, fileName);
-    }
-    if (Objects.isNull(info)) {
-      return new Pair<>(null, false);
     }
 
     final File file = info.file;
