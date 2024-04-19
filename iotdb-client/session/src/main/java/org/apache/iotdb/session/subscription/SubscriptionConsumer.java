@@ -113,17 +113,17 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final int ON_THE_FLY_TS_FILE_RETRY_LIMIT = 3;
 
-  private final Map<String, OnTheFlyTsFileInfo> topicNameToOnTheFlyTsFileInfo =
+  private final Map<String, SubscriptionTsFileInfo> topicNameToSubscriptionTsFileInfo =
       new ConcurrentHashMap<>();
 
-  private static class OnTheFlyTsFileInfo {
+  private static class SubscriptionTsFileInfo {
 
     SubscriptionCommitContext commitContext;
     File file;
     RandomAccessFile fileWriter;
     int retryCount;
 
-    OnTheFlyTsFileInfo(
+    SubscriptionTsFileInfo(
         SubscriptionCommitContext commitContext, File file, RandomAccessFile fileWriter) {
       this.commitContext = commitContext;
       this.file = file;
@@ -143,7 +143,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
     @Override
     public String toString() {
-      return "OnTheFlyTsFileInfo{"
+      return "SubscriptionTsFileInfo{"
           + "commitContext="
           + commitContext
           + ", file="
@@ -161,7 +161,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     return dirPath;
   }
 
-  private OnTheFlyTsFileInfo createOnTheFlyTsFileInfo(
+  private SubscriptionTsFileInfo createSubscriptionTsFileInfoTsFileInfo(
       SubscriptionCommitContext commitContext, String fileName) {
     try {
       final String topicName = commitContext.getTopicName();
@@ -171,9 +171,10 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       final File file = filePath.toFile();
       final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw");
 
-      final OnTheFlyTsFileInfo info = new OnTheFlyTsFileInfo(commitContext, file, fileWriter);
-      topicNameToOnTheFlyTsFileInfo.put(topicName, info);
-      LOGGER.info("consumer {} create on the fly tsfile info {}", this, info);
+      final SubscriptionTsFileInfo info =
+          new SubscriptionTsFileInfo(commitContext, file, fileWriter);
+      topicNameToSubscriptionTsFileInfo.put(topicName, info);
+      LOGGER.info("consumer {} create subscription TsFile info {}", this, info);
       return info;
     } catch (final IOException e) {
       LOGGER.warn(e.getMessage());
@@ -181,8 +182,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  private OnTheFlyTsFileInfo getOnTheFlyTsFileInfo(String topicName) {
-    final OnTheFlyTsFileInfo info = topicNameToOnTheFlyTsFileInfo.get(topicName);
+  private SubscriptionTsFileInfo getSubscriptionTsFileInfoTsFileInfo(String topicName) {
+    final SubscriptionTsFileInfo info = topicNameToSubscriptionTsFileInfo.get(topicName);
     if (Objects.isNull(info)) {
       return null;
     }
@@ -193,15 +194,15 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       } catch (final IOException e) {
         LOGGER.warn(e.getMessage());
       }
-      topicNameToOnTheFlyTsFileInfo.remove(topicName);
+      topicNameToSubscriptionTsFileInfo.remove(topicName);
       return null;
     }
 
     return info;
   }
 
-  private void removeOnTheFlyTsFileInfo(String topicName) {
-    final OnTheFlyTsFileInfo info = topicNameToOnTheFlyTsFileInfo.get(topicName);
+  private void removeSubscriptionTsFileInfo(String topicName) {
+    final SubscriptionTsFileInfo info = topicNameToSubscriptionTsFileInfo.get(topicName);
     if (Objects.isNull(info)) {
       return;
     }
@@ -212,18 +213,18 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       LOGGER.warn(e.getMessage());
     }
 
-    LOGGER.info("consumer {} remove on the fly tsfile info {}", this, info);
-    topicNameToOnTheFlyTsFileInfo.remove(topicName);
+    LOGGER.info("consumer {} remove subscription TsFile info {}", this, info);
+    topicNameToSubscriptionTsFileInfo.remove(topicName);
   }
 
-  private void increaseOnTheFlyTsFileInfoRetryCountOrRemove(String topicName) {
-    final OnTheFlyTsFileInfo info = topicNameToOnTheFlyTsFileInfo.get(topicName);
+  private void increaseSubscriptionTsFileInfoRetryCountOrRemove(String topicName) {
+    final SubscriptionTsFileInfo info = topicNameToSubscriptionTsFileInfo.get(topicName);
     if (Objects.isNull(info)) {
       return;
     }
 
     if (info.increaseRetryCountAndCheckIfExceedRetryLimit()) {
-      removeOnTheFlyTsFileInfo(topicName);
+      removeSubscriptionTsFileInfo(topicName);
     }
   }
 
@@ -591,8 +592,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     final List<SubscriptionMessage> messages = new ArrayList<>();
 
     // poll on the fly tsfile
-    for (final OnTheFlyTsFileInfo info :
-        topicNameToOnTheFlyTsFileInfo.values().stream()
+    for (final SubscriptionTsFileInfo info :
+        topicNameToSubscriptionTsFileInfo.values().stream()
             .filter(
                 info -> {
                   if (topicNames.isEmpty()) {
@@ -640,15 +641,15 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       final Pair<SubscriptionMessage, Boolean> messageWithRetryable =
           pollTsFileInternal(commitContext, fileName, timeoutMs);
       if (Objects.nonNull(messageWithRetryable.getLeft())) {
-        removeOnTheFlyTsFileInfo(commitContext.getTopicName());
+        removeSubscriptionTsFileInfo(commitContext.getTopicName());
         return Optional.of(messageWithRetryable.getLeft());
       }
       if (!messageWithRetryable.getRight()) {
         // non-retryable
-        removeOnTheFlyTsFileInfo(commitContext.getTopicName());
+        removeSubscriptionTsFileInfo(commitContext.getTopicName());
       } else {
         // retryable
-        increaseOnTheFlyTsFileInfoRetryCountOrRemove(commitContext.getTopicName());
+        increaseSubscriptionTsFileInfoRetryCountOrRemove(commitContext.getTopicName());
       }
     } catch (IOException e) {
       LOGGER.warn(
@@ -658,7 +659,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
           commitContext,
           e.getMessage());
       // assume retryable
-      increaseOnTheFlyTsFileInfoRetryCountOrRemove(commitContext.getTopicName());
+      increaseSubscriptionTsFileInfoRetryCountOrRemove(commitContext.getTopicName());
     } catch (TException | IoTDBConnectionException | StatementExecutionException e) {
       LOGGER.warn(
           "Exception occurred when {} polling TsFile {} with commit context {}: {}",
@@ -667,7 +668,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
           commitContext,
           e.getMessage());
       // assume non-retryable
-      removeOnTheFlyTsFileInfo(commitContext.getTopicName());
+      removeSubscriptionTsFileInfo(commitContext.getTopicName());
     }
     return Optional.empty();
   }
@@ -678,9 +679,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     final int dataNodeId = commitContext.getDataNodeId();
     final String topicName = commitContext.getTopicName();
 
-    OnTheFlyTsFileInfo info = getOnTheFlyTsFileInfo(topicName);
+    SubscriptionTsFileInfo info = getSubscriptionTsFileInfoTsFileInfo(topicName);
     if (Objects.isNull(info)) {
-      info = createOnTheFlyTsFileInfo(commitContext, fileName);
+      info = createSubscriptionTsFileInfoTsFileInfo(commitContext, fileName);
     }
     if (Objects.isNull(info)) {
       return new Pair<>(null, false);
@@ -850,7 +851,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       if (Objects.isNull(provider) || !provider.isAvailable()) {
         throw new IoTDBConnectionException(
             String.format(
-                "something unexpected happened when poll tsfile from subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                "something unexpected happened when poll TsFile from subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
                 dataNodeId));
       }
       return provider
