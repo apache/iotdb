@@ -13,6 +13,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -44,8 +45,6 @@ import java.util.List;
 import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.relational.sql.tree.ColumnDefinition.ColumnCategory.ATTRIBUTE;
-import static org.apache.iotdb.db.relational.sql.tree.ColumnDefinition.ColumnCategory.ID;
 
 public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   private final Analysis analysis;
@@ -99,6 +98,10 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     Collection<Field> fields = scope.getRelationType().getAllFields();
     int IDIdx = 0, attributeIdx = 0;
     for (Field field : fields) {
+      if ("time".equalsIgnoreCase(field.getName().get())) {
+        // TODO consider time ColumnCategory
+        continue;
+      }
       Symbol symbol = symbolAllocator.newSymbol(field);
       outputSymbolsBuilder.add(symbol);
       symbolToColumnSchema.put(
@@ -106,9 +109,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           new ColumnSchema(
               field.getName().get(), field.getType(), field.isHidden(), field.getColumnCategory()));
 
-      if (ID.equals(field.getColumnCategory())) {
+      if (TsTableColumnCategory.ID.equals(field.getColumnCategory())) {
         idAndAttributeIndexMap.put(symbol, IDIdx++);
-      } else if (ATTRIBUTE.equals(field.getColumnCategory())) {
+      } else if (TsTableColumnCategory.ATTRIBUTE.equals(field.getColumnCategory())) {
         idAndAttributeIndexMap.put(symbol, attributeIdx++);
       }
     }

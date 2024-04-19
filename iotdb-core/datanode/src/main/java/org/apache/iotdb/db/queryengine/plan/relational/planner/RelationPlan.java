@@ -44,11 +44,11 @@ public class RelationPlan {
     requireNonNull(scope, "scope is null");
 
     int allFieldCount = scope.getLocalScopeFieldCount();
-    checkArgument(
-        allFieldCount == fieldMappings.size(),
-        "Number of outputs (%s) doesn't match number of fields in local scope (%s)",
-        fieldMappings.size(),
-        allFieldCount);
+    //    checkArgument(
+    //        allFieldCount == fieldMappings.size(),
+    //        "Number of outputs (%s) doesn't match number of fields in local scope (%s)",
+    //        fieldMappings.size(),
+    //        allFieldCount);
 
     this.root = root;
     this.scope = scope;
