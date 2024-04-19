@@ -138,6 +138,7 @@ public class WALMetaData implements SerializedSize {
     channel.read(metadataBuf, position - metadataSize);
     metadataBuf.flip();
     WALMetaData metaData = WALMetaData.deserialize(metadataBuf);
+    // versions before V1.3, should recover memTable ids from entries
     if (metaData.memTablesId.isEmpty()) {
       int offset = Byte.BYTES;
       for (int size : metaData.buffersSize) {
