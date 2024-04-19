@@ -92,7 +92,7 @@ import static org.mockito.Mockito.when;
 public class TopKOperatorTest {
   private static final String TOP_K_OPERATOR_TEST_SG = "root.TopKOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
-  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();

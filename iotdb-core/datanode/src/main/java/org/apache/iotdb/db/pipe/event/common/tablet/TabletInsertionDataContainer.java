@@ -280,7 +280,7 @@ public class TabletInsertionDataContainer {
     final int originColumnSize = tablet.getSchemas().size();
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
-    this.deviceId = tablet.deviceId;
+    this.deviceId = tablet.getDeviceId();
     this.isAligned = isAligned;
 
     final long[] originTimestampColumn =
@@ -289,7 +289,7 @@ public class TabletInsertionDataContainer {
     List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
 
-    final List<MeasurementSchema> originMeasurementSchemaList = tablet.getSchemas();
+    final List<IMeasurementSchema> originMeasurementSchemaList = tablet.getSchemas();
     final String[] originMeasurementList = new String[originMeasurementSchemaList.size()];
     for (int i = 0; i < originMeasurementSchemaList.size(); i++) {
       originMeasurementList[i] = originMeasurementSchemaList.get(i).getMeasurementId();

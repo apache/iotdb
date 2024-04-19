@@ -84,7 +84,7 @@ public class TsFileSelfCheckToolTest {
       // the number of values to include in the tablet
       int sensorNum = 10;
 
-      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
         MeasurementSchema measurementSchema =

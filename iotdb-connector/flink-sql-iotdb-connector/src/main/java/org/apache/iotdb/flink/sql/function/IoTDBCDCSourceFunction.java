@@ -232,11 +232,11 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
   }
 
   public void collectTablet(Tablet tablet, SourceContext<RowData> ctx) {
-    List<MeasurementSchema> schemas = tablet.getSchemas();
+    List<IMeasurementSchema> schemas = tablet.getSchemas();
     int rowSize = tablet.rowSize;
     HashMap<String, Pair<BitMap, List<Object>>> values = new HashMap<>();
     for (MeasurementSchema schema : schemas) {
-      String timeseries = String.format("%s.%s", tablet.deviceId, schema.getMeasurementId());
+      String timeseries = String.format("%s.%s", tablet.getDeviceId(), schema.getMeasurementId());
       TSDataType iotdbType = schema.getType();
       int index = timeseriesList.indexOf(timeseries);
       if (index == -1) {

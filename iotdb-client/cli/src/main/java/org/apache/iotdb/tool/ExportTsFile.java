@@ -323,7 +323,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     }
     HashSet<String> deviceFilterSet = new HashSet<>();
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
-      Map<String, List<MeasurementSchema>> schemaMap = new LinkedHashMap<>();
+      Map<String, List<IMeasurementSchema>> schemaMap = new LinkedHashMap<>();
       for (int i = 0; i < columnNames.size(); i++) {
         String column = columnNames.get(i);
         if (!column.startsWith("root.")) {
@@ -352,13 +352,13 @@ public class ExportTsFile extends AbstractTsFileTool {
         schemaMap.computeIfAbsent(deviceId, key -> new ArrayList<>()).add(measurementSchema);
       }
       List<Tablet> tabletList = new ArrayList<>();
-      for (Map.Entry<String, List<MeasurementSchema>> stringListEntry : schemaMap.entrySet()) {
+      for (Map.Entry<String, List<IMeasurementSchema>> stringListEntry : schemaMap.entrySet()) {
         String deviceId = stringListEntry.getKey();
-        List<MeasurementSchema> schemaList = stringListEntry.getValue();
+        List<IMeasurementSchema> schemaList = stringListEntry.getValue();
         Tablet tablet = new Tablet(deviceId, schemaList);
         tablet.initBitMaps();
-        Path path = new Path(tablet.deviceId);
-        if (deviceFilterSet.contains(tablet.deviceId)) {
+        Path path = new Path(tablet.getDeviceId());
+        if (deviceFilterSet.contains(tablet.getDeviceId())) {
           tsFileWriter.registerAlignedTimeseries(path, schemaList);
         } else {
           tsFileWriter.registerTimeseries(path, schemaList);
@@ -377,7 +377,7 @@ public class ExportTsFile extends AbstractTsFileTool {
           for (Tablet tablet : tabletList) {
             int rowIndex = tablet.rowSize++;
             tablet.addTimestamp(rowIndex, rowRecord.getTimestamp());
-            List<MeasurementSchema> schemas = tablet.getSchemas();
+            List<IMeasurementSchema> schemas = tablet.getSchemas();
             for (int j = 0; j < schemas.size(); j++) {
               MeasurementSchema measurementSchema = schemas.get(j);
               Object value = fields.get(i).getObjectValue(measurementSchema.getType());
@@ -407,7 +407,7 @@ public class ExportTsFile extends AbstractTsFileTool {
   private static void writeToTsfile(
       HashSet<String> deviceFilterSet, TsFileWriter tsFileWriter, Tablet tablet)
       throws IOException, WriteProcessException {
-    if (deviceFilterSet.contains(tablet.deviceId)) {
+    if (deviceFilterSet.contains(tablet.getDeviceId())) {
       tsFileWriter.writeAligned(tablet);
     } else {
       tsFileWriter.write(tablet);

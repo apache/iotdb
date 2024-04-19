@@ -36,7 +36,7 @@ public class LoggerTrigger implements Trigger {
 
   @Override
   public boolean fire(Tablet tablet) throws Exception {
-    List<MeasurementSchema> measurementSchemaList = tablet.getSchemas();
+    List<IMeasurementSchema> measurementSchemaList = tablet.getSchemas();
     for (int i = 0, n = measurementSchemaList.size(); i < n; i++) {
       if (measurementSchemaList.get(i).getType().equals(TSDataType.DOUBLE)) {
         logDouble((double[]) tablet.values[i]);

@@ -79,7 +79,7 @@ public class DataDriverTest {
 
   private static final String DATA_DRIVER_TEST_SG = "root.DataDriverTest";
   private final List<String> deviceIds = new ArrayList<>();
-  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();

@@ -291,7 +291,7 @@ public class IoTDBSessionAlignedInsertIT {
       throws IoTDBConnectionException, StatementExecutionException {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 

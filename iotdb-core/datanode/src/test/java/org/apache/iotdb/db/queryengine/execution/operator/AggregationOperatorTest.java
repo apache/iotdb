@@ -74,7 +74,7 @@ public class AggregationOperatorTest {
 
   private static final String AGGREGATION_OPERATOR_TEST_SG = "root.AggregationOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
-  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();

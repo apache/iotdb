@@ -146,7 +146,7 @@ public class IoTDBPartialInsertionIT {
           "root.sg1.d1.s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
       session.createTimeseries(
           "root.sg1.d1.s2", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));

@@ -78,7 +78,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-  private static final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private static final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private static final List<TsFileResource> seqResources = new ArrayList<>();
   private static final List<TsFileResource> unSeqResources = new ArrayList<>();

@@ -77,7 +77,7 @@ import static org.junit.Assert.fail;
 public class AlignedSeriesScanOperatorTest {
 
   private static final String SERIES_SCAN_OPERATOR_TEST_SG = "root.AlignedSeriesScanOperatorTest";
-  private static final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private static final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private static final List<TsFileResource> seqResources = new ArrayList<>();
   private static final List<TsFileResource> unSeqResources = new ArrayList<>();

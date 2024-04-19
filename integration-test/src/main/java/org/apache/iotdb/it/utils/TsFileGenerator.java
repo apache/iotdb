@@ -49,7 +49,7 @@ public class TsFileGenerator implements AutoCloseable {
   private final File tsFile;
   private final TsFileWriter writer;
   private final Map<String, TreeSet<Long>> device2TimeSet;
-  private final Map<String, List<MeasurementSchema>> device2MeasurementSchema;
+  private final Map<String, List<IMeasurementSchema>> device2MeasurementSchema;
   private Random random;
 
   public TsFileGenerator(File tsFile) throws IOException {
@@ -68,7 +68,7 @@ public class TsFileGenerator implements AutoCloseable {
     random = new Random(seed);
   }
 
-  public void registerTimeseries(String path, List<MeasurementSchema> measurementSchemaList) {
+  public void registerTimeseries(String path, List<IMeasurementSchema> measurementSchemaList) {
     if (device2MeasurementSchema.containsKey(path)) {
       LOGGER.error("Register same device {}.", path);
       return;
@@ -78,7 +78,7 @@ public class TsFileGenerator implements AutoCloseable {
     device2MeasurementSchema.put(path, measurementSchemaList);
   }
 
-  public void registerAlignedTimeseries(String path, List<MeasurementSchema> measurementSchemaList)
+  public void registerAlignedTimeseries(String path, List<IMeasurementSchema> measurementSchemaList)
       throws WriteProcessException {
     if (device2MeasurementSchema.containsKey(path)) {
       LOGGER.error("Register same device {}.", path);
@@ -91,7 +91,7 @@ public class TsFileGenerator implements AutoCloseable {
 
   public void generateData(String device, int number, long timeGap, boolean isAligned)
       throws IOException, WriteProcessException {
-    List<MeasurementSchema> schemas = device2MeasurementSchema.get(device);
+    List<IMeasurementSchema> schemas = device2MeasurementSchema.get(device);
     TreeSet<Long> timeSet = device2TimeSet.get(device);
     Tablet tablet = new Tablet(device, schemas);
     long[] timestamps = tablet.timestamps;
@@ -133,7 +133,7 @@ public class TsFileGenerator implements AutoCloseable {
   public void generateData(
       String device, int number, long timeGap, boolean isAligned, long startTimestamp)
       throws IOException, WriteProcessException {
-    List<MeasurementSchema> schemas = device2MeasurementSchema.get(device);
+    List<IMeasurementSchema> schemas = device2MeasurementSchema.get(device);
     TreeSet<Long> timeSet = device2TimeSet.get(device);
     Tablet tablet = new Tablet(device, schemas);
     long[] timestamps = tablet.timestamps;

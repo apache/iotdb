@@ -72,7 +72,7 @@ public class HorizontallyConcatOperatorTest {
   private static final String HORIZONTALLY_CONCAT_OPERATOR_TEST_SG =
       "root.HorizontallyConcatOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
-  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();

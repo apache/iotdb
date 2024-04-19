@@ -196,7 +196,7 @@ public class PipeMemoryManager {
     }
 
     // values
-    final List<MeasurementSchema> timeseries = tablet.getSchemas();
+    final List<IMeasurementSchema> timeseries = tablet.getSchemas();
     if (timeseries != null) {
       for (int column = 0; column < timeseries.size(); column++) {
         final MeasurementSchema measurementSchema = timeseries.get(column);

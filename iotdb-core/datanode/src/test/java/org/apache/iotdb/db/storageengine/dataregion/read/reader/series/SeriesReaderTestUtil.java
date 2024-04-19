@@ -85,7 +85,7 @@ public class SeriesReaderTestUtil {
   private static TSEncoding encoding = TSEncoding.PLAIN;
 
   public static void setUp(
-      List<MeasurementSchema> measurementSchemas,
+      List<IMeasurementSchema> measurementSchemas,
       List<String> deviceIds,
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
@@ -109,7 +109,7 @@ public class SeriesReaderTestUtil {
   private static void prepareFiles(
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
-      List<MeasurementSchema> measurementSchemas,
+      List<IMeasurementSchema> measurementSchemas,
       List<String> deviceIds,
       String sgName)
       throws IOException, WriteProcessException {
@@ -155,7 +155,7 @@ public class SeriesReaderTestUtil {
       long timeOffset,
       long ptNum,
       long valueOffset,
-      List<MeasurementSchema> measurementSchemas,
+      List<IMeasurementSchema> measurementSchemas,
       List<String> deviceIds)
       throws IOException, WriteProcessException {
     File file = tsFileResource.getTsFile();
@@ -193,7 +193,7 @@ public class SeriesReaderTestUtil {
   }
 
   private static void prepareSeries(
-      List<MeasurementSchema> measurementSchemas, List<String> deviceIds, String sgName) {
+      List<IMeasurementSchema> measurementSchemas, List<String> deviceIds, String sgName) {
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas.add(
           new MeasurementSchema(

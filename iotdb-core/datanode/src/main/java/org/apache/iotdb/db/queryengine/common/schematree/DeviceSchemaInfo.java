@@ -64,7 +64,7 @@ public class DeviceSchemaInfo {
     return templateId;
   }
 
-  public List<MeasurementSchema> getMeasurementSchemaList() {
+  public List<IMeasurementSchema> getMeasurementSchemaList() {
     return measurementSchemaInfoList.stream()
         .map(
             measurementSchemaInfo ->

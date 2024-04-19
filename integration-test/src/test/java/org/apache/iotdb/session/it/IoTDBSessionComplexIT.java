@@ -274,7 +274,7 @@ public class IoTDBSessionComplexIT {
   private void insertTablet(ISession session, String deviceId)
       throws IoTDBConnectionException, StatementExecutionException {
 
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
@@ -374,7 +374,7 @@ public class IoTDBSessionComplexIT {
   private void insertMultiTablets(ISession session, List<String> deviceIdList)
       throws IoTDBConnectionException, StatementExecutionException {
     long timePartition = CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));

@@ -64,7 +64,7 @@ public class PipeRowCollector implements RowCollector {
 
     if (tablet == null) {
       final String deviceId = pipeRow.getDeviceId();
-      final List<MeasurementSchema> measurementSchemaList =
+      final List<IMeasurementSchema> measurementSchemaList =
           new ArrayList<>(Arrays.asList(measurementSchemaArray));
       tablet =
           new Tablet(

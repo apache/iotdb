@@ -55,7 +55,7 @@ public class TsFileHelper {
 
       Schema schema = new Schema();
 
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
 
       // the number of rows to include in the tablet
       int rowNum = 1000000;

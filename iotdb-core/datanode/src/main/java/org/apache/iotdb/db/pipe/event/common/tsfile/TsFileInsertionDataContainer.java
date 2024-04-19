@@ -239,7 +239,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
             final Tablet tablet = tabletIterator.next();
             final boolean isAligned =
-                deviceIsAlignedMap.getOrDefault(new PlainDeviceID(tablet.deviceId), false);
+                deviceIsAlignedMap.getOrDefault(new PlainDeviceID(tablet.getDeviceId()), false);
 
             final TabletInsertionEvent next;
             if (!hasNext()) {

@@ -148,7 +148,7 @@ public class TabletExample {
       measureTSTypeInfos.put("s3", TSDataType.DOUBLE);
       measureTSTypeInfos.put("s4", TSDataType.INT64);
       measureTSTypeInfos.put("s5", TSDataType.TEXT);
-      List<MeasurementSchema> schemas = new ArrayList<>();
+      List<IMeasurementSchema> schemas = new ArrayList<>();
       measureTSTypeInfos.forEach((mea, type) -> schemas.add(new MeasurementSchema(mea, type)));
 
       System.out.println(

@@ -70,7 +70,7 @@ public class CompactionValidationTest {
       }
 
       try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
-        List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+        List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
         measurementSchemas.add(new MeasurementSchema(SENSOR_1, TSDataType.TEXT, TSEncoding.PLAIN));
         measurementSchemas.add(new MeasurementSchema(SENSOR_2, TSDataType.TEXT, TSEncoding.PLAIN));
         measurementSchemas.add(new MeasurementSchema(SENSOR_3, TSDataType.TEXT, TSEncoding.PLAIN));
@@ -78,7 +78,7 @@ public class CompactionValidationTest {
         // register nonAligned timeseries
         tsFileWriter.registerTimeseries(new Path(DEVICE_1), measurementSchemas);
 
-        List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
+        List<IMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
         // example 1
         writeMeasurementScheams.add(measurementSchemas.get(0));
         writeMeasurementScheams.add(measurementSchemas.get(1));
@@ -93,7 +93,7 @@ public class CompactionValidationTest {
   private void writeWithTablet(
       TsFileWriter tsFileWriter,
       String deviceId,
-      List<MeasurementSchema> schemas,
+      List<IMeasurementSchema> schemas,
       long rowNum,
       long startTime,
       long startValue)

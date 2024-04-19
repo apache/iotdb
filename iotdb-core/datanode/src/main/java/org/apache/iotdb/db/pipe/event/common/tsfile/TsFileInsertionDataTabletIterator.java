@@ -110,7 +110,7 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
   }
 
   private Tablet buildNextTablet() throws IOException {
-    final List<MeasurementSchema> schemas = new ArrayList<>();
+    final List<IMeasurementSchema> schemas = new ArrayList<>();
     for (final String measurement : measurements) {
       final TSDataType dataType =
           measurementDataTypeMap.get(deviceId + TsFileConstant.PATH_SEPARATOR + measurement);

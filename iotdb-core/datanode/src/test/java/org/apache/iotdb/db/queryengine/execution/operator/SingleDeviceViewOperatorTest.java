@@ -65,7 +65,7 @@ public class SingleDeviceViewOperatorTest {
   private static final String SINGLE_DEVICE_MERGE_OPERATOR_TEST_SG =
       "root.SingleDeviceViewOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
-  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();

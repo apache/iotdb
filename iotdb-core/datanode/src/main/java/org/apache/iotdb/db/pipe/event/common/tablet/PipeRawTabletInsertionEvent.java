@@ -183,7 +183,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   public String getDeviceId() {
-    return tablet.deviceId;
+    return tablet.getDeviceId();
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////

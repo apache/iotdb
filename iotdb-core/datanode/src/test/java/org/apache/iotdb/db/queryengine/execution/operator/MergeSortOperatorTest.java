@@ -98,7 +98,7 @@ public class MergeSortOperatorTest {
 
   private static final String MERGE_SORT_OPERATOR_TEST_SG = "root.MergeSortOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
-  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();

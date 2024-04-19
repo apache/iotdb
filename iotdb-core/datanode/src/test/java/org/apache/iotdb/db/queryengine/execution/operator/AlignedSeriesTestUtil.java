@@ -59,7 +59,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 public class AlignedSeriesTestUtil {
 
   public static void setUp(
-      List<MeasurementSchema> measurementSchemas,
+      List<IMeasurementSchema> measurementSchemas,
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
       String sgName)
@@ -82,7 +82,7 @@ public class AlignedSeriesTestUtil {
   private static void prepareFiles(
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
-      List<MeasurementSchema> measurementSchemas,
+      List<IMeasurementSchema> measurementSchemas,
       String sgName)
       throws IOException, WriteProcessException {
     int seqFileNum = 5;
@@ -128,7 +128,7 @@ public class AlignedSeriesTestUtil {
       long timeOffset,
       long ptNum,
       long valueOffset,
-      List<MeasurementSchema> measurementSchemas)
+      List<IMeasurementSchema> measurementSchemas)
       throws IOException, WriteProcessException {
     File file = tsFileResource.getTsFile();
     if (!file.getParentFile().exists()) {
@@ -179,7 +179,7 @@ public class AlignedSeriesTestUtil {
     fileWriter.close();
   }
 
-  private static void prepareSeries(List<MeasurementSchema> measurementSchemas, String sgName)
+  private static void prepareSeries(List<IMeasurementSchema> measurementSchemas, String sgName)
       throws MetadataException {
 
     measurementSchemas.add(

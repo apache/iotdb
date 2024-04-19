@@ -141,7 +141,7 @@ public class PipeDataNodeThriftRequestTest {
   @Test
   public void testPipeTransferTabletReq() {
     try {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s3", TSDataType.FLOAT));
@@ -203,7 +203,7 @@ public class PipeDataNodeThriftRequestTest {
     binaryBuffers.add(ByteBuffer.wrap(new byte[] {'a', 'b'}));
 
     // Raw buffer
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.FLOAT));

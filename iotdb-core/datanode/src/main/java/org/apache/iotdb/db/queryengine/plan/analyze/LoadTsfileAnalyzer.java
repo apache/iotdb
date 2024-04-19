@@ -545,7 +545,7 @@ public class LoadTsfileAnalyzer {
       for (final Map.Entry<IDeviceID, Set<MeasurementSchema>> entry :
           schemaCache.getDevice2TimeSeries().entrySet()) {
         final IDeviceID device = entry.getKey();
-        final List<MeasurementSchema> tsfileTimeseriesSchemas = new ArrayList<>(entry.getValue());
+        final List<IMeasurementSchema> tsfileTimeseriesSchemas = new ArrayList<>(entry.getValue());
         final DeviceSchemaInfo iotdbDeviceSchemaInfo =
             schemaTree.searchDeviceSchemaInfo(
                 new PartialPath(device),
@@ -574,7 +574,7 @@ public class LoadTsfileAnalyzer {
         }
 
         // check timeseries schema
-        final List<MeasurementSchema> iotdbTimeseriesSchemas =
+        final List<IMeasurementSchema> iotdbTimeseriesSchemas =
             iotdbDeviceSchemaInfo.getMeasurementSchemaList();
         for (int i = 0, n = iotdbTimeseriesSchemas.size(); i < n; i++) {
           final MeasurementSchema tsFileSchema = tsfileTimeseriesSchemas.get(i);

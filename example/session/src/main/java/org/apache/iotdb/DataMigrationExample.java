@@ -128,7 +128,7 @@ public class DataMigrationExample {
         DataIterator dataIter = dataSet.iterator();
         List<String> columnNameList = dataIter.getColumnNameList();
         List<String> columnTypeList = dataIter.getColumnTypeList();
-        List<MeasurementSchema> schemaList = new ArrayList<>();
+        List<IMeasurementSchema> schemaList = new ArrayList<>();
         for (int j = 1; j < columnNameList.size(); j++) {
           PartialPath currentPath = new PartialPath(columnNameList.get(j));
           schemaList.add(

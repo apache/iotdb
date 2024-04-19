@@ -172,7 +172,7 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
 
   private void generateDataTypeNotMatchFilesWithAlignedSeries()
       throws IOException, WriteProcessException {
-    List<MeasurementSchema> measurementSchemas1 = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemas1 = new ArrayList<>();
     measurementSchemas1.add(new MeasurementSchema("s1", TSDataType.INT32));
     measurementSchemas1.add(new MeasurementSchema("s2", TSDataType.INT32));
 
@@ -191,7 +191,7 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     resource1.serialize();
     seqResources.add(resource1);
 
-    List<MeasurementSchema> measurementSchemas2 = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemas2 = new ArrayList<>();
     measurementSchemas2.add(new MeasurementSchema("s1", TSDataType.BOOLEAN));
     measurementSchemas2.add(new MeasurementSchema("s2", TSDataType.BOOLEAN));
     TsFileResource resource2 = createEmptyFileAndResource(true);

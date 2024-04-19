@@ -393,7 +393,7 @@ public class SessionExample {
      */
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
@@ -457,7 +457,7 @@ public class SessionExample {
      */
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
@@ -471,7 +471,7 @@ public class SessionExample {
     insertTablet2(schemaList, tablet);
   }
 
-  private static void insertTablet1(List<MeasurementSchema> schemaList, Tablet tablet)
+  private static void insertTablet1(List<IMeasurementSchema> schemaList, Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
     tablet.initBitMaps();
 
@@ -500,7 +500,7 @@ public class SessionExample {
     }
   }
 
-  private static void insertTablet2(List<MeasurementSchema> schemaList, Tablet tablet)
+  private static void insertTablet2(List<IMeasurementSchema> schemaList, Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
@@ -536,7 +536,7 @@ public class SessionExample {
   private static void insertTablets() throws IoTDBConnectionException, StatementExecutionException {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
@@ -641,7 +641,7 @@ public class SessionExample {
     }
 
     // insertTablet example
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s2", TSDataType.TEXT));
     Tablet tablet = new Tablet(device, schemaList, 100);
     for (int i = 0; i < datas.size(); i++) {
