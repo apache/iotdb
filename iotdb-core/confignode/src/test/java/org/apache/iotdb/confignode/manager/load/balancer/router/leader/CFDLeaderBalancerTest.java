@@ -23,6 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -35,7 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -63,21 +66,37 @@ public class CFDLeaderBalancerTest {
     // The result will be unbalanced if select DataNode-2 as leader for RegionGroup-0
     // and select DataNode-3 as leader for RegionGroup-1
     List<TRegionReplicaSet> regionReplicaSets = new ArrayList<>();
+    Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap = new TreeMap<>();
     regionReplicaSets.add(
         new TRegionReplicaSet(
             regionGroupIds.get(0),
             Arrays.asList(
                 dataNodeLocations.get(0), dataNodeLocations.get(1), dataNodeLocations.get(2))));
+    Map<Integer, RegionStatistics> region0 = new TreeMap<>();
+    region0.put(0, new RegionStatistics(RegionStatus.Unknown));
+    region0.put(1, new RegionStatistics(RegionStatus.Running));
+    region0.put(2, new RegionStatistics(RegionStatus.Running));
+    regionStatisticsMap.put(regionGroupIds.get(0), region0);
     regionReplicaSets.add(
         new TRegionReplicaSet(
             regionGroupIds.get(1),
             Arrays.asList(
                 dataNodeLocations.get(0), dataNodeLocations.get(1), dataNodeLocations.get(3))));
+    Map<Integer, RegionStatistics> region1 = new TreeMap<>();
+    region1.put(0, new RegionStatistics(RegionStatus.Unknown));
+    region1.put(1, new RegionStatistics(RegionStatus.Running));
+    region1.put(3, new RegionStatistics(RegionStatus.Running));
+    regionStatisticsMap.put(regionGroupIds.get(1), region1);
     regionReplicaSets.add(
         new TRegionReplicaSet(
             regionGroupIds.get(2),
             Arrays.asList(
                 dataNodeLocations.get(0), dataNodeLocations.get(2), dataNodeLocations.get(3))));
+    Map<Integer, RegionStatistics> region2 = new TreeMap<>();
+    region2.put(0, new RegionStatistics(RegionStatus.Unknown));
+    region2.put(2, new RegionStatistics(RegionStatus.Running));
+    region2.put(3, new RegionStatistics(RegionStatus.Running));
+    regionStatisticsMap.put(regionGroupIds.get(2), region2);
 
     // Prepare input parameters
     Map<String, List<TConsensusGroupId>> databaseRegionGroupMap = new TreeMap<>();
@@ -89,13 +108,20 @@ public class CFDLeaderBalancerTest {
     Map<TConsensusGroupId, Integer> regionLeaderMap = new TreeMap<>();
     regionReplicaSets.forEach(
         regionReplicaSet -> regionLeaderMap.put(regionReplicaSet.getRegionId(), 0));
-    Set<Integer> disabledDataNodeSet = new HashSet<>();
-    disabledDataNodeSet.add(0);
+    Map<Integer, NodeStatistics> dataNodeStatisticsMap = new TreeMap<>();
+    dataNodeStatisticsMap.put(0, new NodeStatistics(NodeStatus.Unknown));
+    dataNodeStatisticsMap.put(1, new NodeStatistics(NodeStatus.Running));
+    dataNodeStatisticsMap.put(2, new NodeStatistics(NodeStatus.Running));
+    dataNodeStatisticsMap.put(3, new NodeStatistics(NodeStatus.Running));
 
     // Do balancing
     Map<TConsensusGroupId, Integer> leaderDistribution =
         BALANCER.generateOptimalLeaderDistribution(
-            databaseRegionGroupMap, regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
+            databaseRegionGroupMap,
+            regionReplicaSetMap,
+            regionLeaderMap,
+            dataNodeStatisticsMap,
+            regionStatisticsMap);
     // All RegionGroup got a leader
     Assert.assertEquals(3, leaderDistribution.size());
     // Each DataNode has exactly one leader
@@ -125,15 +151,25 @@ public class CFDLeaderBalancerTest {
     regionReplicaSetMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
     Map<TConsensusGroupId, Integer> regionLeaderMap = new TreeMap<>();
     regionLeaderMap.put(regionReplicaSet.getRegionId(), 1);
-    Set<Integer> disabledDataNodeSet = new HashSet<>();
-    disabledDataNodeSet.add(0);
-    disabledDataNodeSet.add(1);
-    disabledDataNodeSet.add(2);
+    Map<Integer, NodeStatistics> nodeStatisticsMap = new TreeMap<>();
+    nodeStatisticsMap.put(0, new NodeStatistics(NodeStatus.Unknown));
+    nodeStatisticsMap.put(1, new NodeStatistics(NodeStatus.ReadOnly));
+    nodeStatisticsMap.put(2, new NodeStatistics(NodeStatus.Removing));
+    Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap = new TreeMap<>();
+    Map<Integer, RegionStatistics> regionStatistics = new TreeMap<>();
+    regionStatistics.put(0, new RegionStatistics(RegionStatus.Running));
+    regionStatistics.put(1, new RegionStatistics(RegionStatus.Running));
+    regionStatistics.put(2, new RegionStatistics(RegionStatus.Running));
+    regionStatisticsMap.put(regionReplicaSet.getRegionId(), regionStatistics);
 
     // Do balancing
     Map<TConsensusGroupId, Integer> leaderDistribution =
         BALANCER.generateOptimalLeaderDistribution(
-            databaseRegionGroupMap, regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
+            databaseRegionGroupMap,
+            regionReplicaSetMap,
+            regionLeaderMap,
+            nodeStatisticsMap,
+            regionStatisticsMap);
     Assert.assertEquals(1, leaderDistribution.size());
     Assert.assertEquals(1, new HashSet<>(leaderDistribution.values()).size());
     // Leader remains the same
@@ -146,6 +182,55 @@ public class CFDLeaderBalancerTest {
     Assert.assertEquals(0, BALANCER.getMinimumCost());
   }
 
+  @Test
+  public void migrateTest() {
+    // All DataNodes are in Running status
+    Map<Integer, NodeStatistics> nodeStatisticsMap = new TreeMap<>();
+    nodeStatisticsMap.put(0, new NodeStatistics(NodeStatus.Running));
+    nodeStatisticsMap.put(1, new NodeStatistics(NodeStatus.Running));
+    // Prepare RegionGroups
+    Map<String, List<TConsensusGroupId>> databaseRegionGroupMap = new TreeMap<>();
+    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new TreeMap<>();
+    Map<TConsensusGroupId, Integer> regionLeaderMap = new TreeMap<>();
+    Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap = new TreeMap<>();
+    for (int i = 0; i < 5; i++) {
+      TConsensusGroupId regionGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, i);
+      databaseRegionGroupMap
+          .computeIfAbsent(DATABASE, empty -> new ArrayList<>())
+          .add(regionGroupId);
+      TRegionReplicaSet regionReplicaSet =
+          new TRegionReplicaSet(
+              regionGroupId,
+              Arrays.asList(
+                  new TDataNodeLocation().setDataNodeId(0),
+                  new TDataNodeLocation().setDataNodeId(1)));
+      regionReplicaSetMap.put(regionGroupId, regionReplicaSet);
+      regionLeaderMap.put(regionGroupId, 0);
+      // Assuming all Regions are migrating from DataNode-1 to DataNode-2
+      Map<Integer, RegionStatistics> regionStatistics = new TreeMap<>();
+      regionStatistics.put(0, new RegionStatistics(RegionStatus.Removing));
+      regionStatistics.put(1, new RegionStatistics(RegionStatus.Running));
+      regionStatisticsMap.put(regionGroupId, regionStatistics);
+    }
+
+    // Do balancing
+    Map<TConsensusGroupId, Integer> leaderDistribution =
+        BALANCER.generateOptimalLeaderDistribution(
+            databaseRegionGroupMap,
+            regionReplicaSetMap,
+            regionLeaderMap,
+            nodeStatisticsMap,
+            regionStatisticsMap);
+    for (int i = 0; i < 5; i++) {
+      // All RegionGroups' leader should be DataNode-1
+      Assert.assertEquals(
+          1,
+          leaderDistribution
+              .get(new TConsensusGroupId(TConsensusGroupType.DataRegion, i))
+              .intValue());
+    }
+  }
+
   /**
    * In this case shows the balance ability for big cluster.
    *
@@ -156,6 +241,10 @@ public class CFDLeaderBalancerTest {
     final int regionGroupNum = 1500;
     final int dataNodeNum = 300;
     final int replicationFactor = 3;
+    Map<Integer, NodeStatistics> dataNodeStatisticsMap = new TreeMap<>();
+    for (int i = 0; i < dataNodeNum; i++) {
+      dataNodeStatisticsMap.put(i, new NodeStatistics(NodeStatus.Running));
+    }
 
     // The loadCost for each DataNode are the same
     int x = regionGroupNum / dataNodeNum;
@@ -168,16 +257,20 @@ public class CFDLeaderBalancerTest {
     databaseRegionGroupMap.put(DATABASE, new ArrayList<>());
     Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new TreeMap<>();
     Map<TConsensusGroupId, Integer> regionLeaderMap = new TreeMap<>();
+    Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap = new TreeMap<>();
     for (int i = 0; i < regionGroupNum; i++) {
       TConsensusGroupId regionGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, i);
       int leaderId = (dataNodeId + random.nextInt(replicationFactor)) % dataNodeNum;
 
       TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
       regionReplicaSet.setRegionId(regionGroupId);
+      Map<Integer, RegionStatistics> regionStatistics = new TreeMap<>();
       for (int j = 0; j < 3; j++) {
         regionReplicaSet.addToDataNodeLocations(new TDataNodeLocation().setDataNodeId(dataNodeId));
+        regionStatistics.put(dataNodeId, new RegionStatistics(RegionStatus.Running));
         dataNodeId = (dataNodeId + 1) % dataNodeNum;
       }
+      regionStatisticsMap.put(regionGroupId, regionStatistics);
 
       databaseRegionGroupMap.get(DATABASE).add(regionGroupId);
       regionReplicaSetMap.put(regionGroupId, regionReplicaSet);
@@ -187,7 +280,11 @@ public class CFDLeaderBalancerTest {
     // Do balancing
     Map<TConsensusGroupId, Integer> leaderDistribution =
         BALANCER.generateOptimalLeaderDistribution(
-            databaseRegionGroupMap, regionReplicaSetMap, regionLeaderMap, new HashSet<>());
+            databaseRegionGroupMap,
+            regionReplicaSetMap,
+            regionLeaderMap,
+            dataNodeStatisticsMap,
+            regionStatisticsMap);
     // All RegionGroup got a leader
     Assert.assertEquals(regionGroupNum, leaderDistribution.size());
 

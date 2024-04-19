@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
-import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -354,8 +354,8 @@ public class ConfigNodeDescriptor {
         properties
             .getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy())
             .trim();
-    if (ILeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
-        || ILeaderBalancer.CFD_POLICY.equals(leaderDistributionPolicy)) {
+    if (AbstractLeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
+        || AbstractLeaderBalancer.CFD_POLICY.equals(leaderDistributionPolicy)) {
       conf.setLeaderDistributionPolicy(leaderDistributionPolicy);
     } else {
       throw new IOException(
