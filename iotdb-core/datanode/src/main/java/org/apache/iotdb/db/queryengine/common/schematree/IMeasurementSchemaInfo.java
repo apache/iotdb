@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.queryengine.common.schematree;
 
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Map;
 

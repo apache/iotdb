@@ -21,10 +21,10 @@ package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableBinaryTVList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableTVList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 import org.junit.After;
 import org.junit.Before;
 

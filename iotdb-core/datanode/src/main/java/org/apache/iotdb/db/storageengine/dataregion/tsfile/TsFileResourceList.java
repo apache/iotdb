@@ -21,7 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
+
+import org.apache.tsfile.exception.NotImplementedException;
 
 import java.io.IOException;
 import java.util.ArrayList;

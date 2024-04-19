@@ -21,7 +21,8 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.tsfile.utils.TimeDuration;
+
+import org.apache.tsfile.utils.TimeDuration;
 
 import java.time.DateTimeException;
 import java.time.Instant;

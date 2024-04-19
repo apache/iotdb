@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.udf.api.utils;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.type.Binary;
 import org.apache.iotdb.udf.api.type.Type;
+
+import org.apache.tsfile.enums.TSDataType;
 
 public class RowImpl implements Row {
 
@@ -69,7 +70,7 @@ public class RowImpl implements Row {
 
   @Override
   public Binary getBinary(int columnIndex) {
-    return transformToUDFBinary((org.apache.iotdb.tsfile.utils.Binary) rowRecord[columnIndex]);
+    return transformToUDFBinary((org.apache.tsfile.utils.Binary) rowRecord[columnIndex]);
   }
 
   @Override
@@ -96,7 +97,7 @@ public class RowImpl implements Row {
     this.rowRecord = rowRecord;
   }
 
-  public static Binary transformToUDFBinary(org.apache.iotdb.tsfile.utils.Binary binary) {
+  public static Binary transformToUDFBinary(org.apache.tsfile.utils.Binary binary) {
     return binary == null ? null : new Binary(binary.getValues());
   }
 

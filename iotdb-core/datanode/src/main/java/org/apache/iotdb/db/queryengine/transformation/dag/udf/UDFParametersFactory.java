@@ -22,8 +22,9 @@ package org.apache.iotdb.db.queryengine.transformation.dag.udf;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+
+import org.apache.tsfile.enums.TSDataType;
 
 import java.util.HashMap;
 import java.util.List;

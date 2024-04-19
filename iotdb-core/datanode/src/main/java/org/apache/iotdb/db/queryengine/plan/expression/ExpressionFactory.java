@@ -45,8 +45,9 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.TimeDuration;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.TimeDuration;
 
 import java.util.Arrays;
 import java.util.Collections;

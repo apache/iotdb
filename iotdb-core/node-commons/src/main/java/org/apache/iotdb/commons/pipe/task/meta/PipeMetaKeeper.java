@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.task.meta;
 
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
