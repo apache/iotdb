@@ -73,7 +73,10 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
                 try {
                   return generateSubscriptionTsFileEventWithPieceOrSealPayload(0);
                 } catch (IOException e) {
-                  LOGGER.warn(e.getMessage());
+                  LOGGER.warn(
+                      "IOException occurred when prefetching next SubscriptionTsFileEvent: {}, current SubscriptionTsFileEvent: {}",
+                      e.getMessage(),
+                      this);
                   return null;
                 }
               case TS_FILE_PIECE:
@@ -81,10 +84,14 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
                   return generateSubscriptionTsFileEventWithPieceOrSealPayload(
                       ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset());
                 } catch (IOException e) {
-                  LOGGER.warn(e.getMessage());
+                  LOGGER.warn(
+                      "IOException occurred when prefetching next SubscriptionTsFileEvent: {}, current SubscriptionTsFileEvent: {}",
+                      e.getMessage(),
+                      this);
                   return null;
                 }
               case TS_FILE_SEAL:
+                // not need to prefetch
                 return null;
               default:
                 LOGGER.warn("unexpected message type: {}", messageType);
@@ -125,6 +132,7 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
                 if (Objects.equals(writingOffset, 0)) {
                   return nextEventWithCommittable;
                 }
+                // reset next SubscriptionTsFileEvent
                 return null;
               case TS_FILE_PIECE:
                 if (Objects.equals(
@@ -132,6 +140,7 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
                     ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset())) {
                   return nextEventWithCommittable;
                 }
+                // reset next SubscriptionTsFileEvent
                 return null;
               case TS_FILE_SEAL:
                 return null;
