@@ -415,6 +415,7 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.node-urls", nodeUrlsBuilder.toString());
 
+      extractorAttributes.put("source.inclusion", "all");
       extractorAttributes.put("source.mods.enable", "true");
 
       // Test forced-log mode, in open releases this might be "file"

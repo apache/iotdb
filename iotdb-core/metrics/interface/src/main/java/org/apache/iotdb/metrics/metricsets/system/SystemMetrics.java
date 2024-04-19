@@ -20,37 +20,47 @@
 package org.apache.iotdb.metrics.metricsets.system;
 
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.MetricConstant;
+import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.utils.FileStoreUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.metrics.utils.SystemTag;
+import org.apache.iotdb.metrics.utils.SystemType;
 import org.apache.iotdb.tsfile.utils.FSUtils;
 
 import com.sun.management.OperatingSystemMXBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.nio.file.FileStore;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class SystemMetrics implements IMetricSet {
   private static final Logger logger = LoggerFactory.getLogger(SystemMetrics.class);
-  private static final String SYSTEM = "system";
+  private static final MetricConfig CONFIG = MetricConfigDescriptor.getInstance().getMetricConfig();
+  private final Runtime runtime = Runtime.getRuntime();
+  private final String[] getSystemMemoryCommand = new String[] {"/bin/sh", "-c", "free"};
+  private final String[] linuxMemoryTitles =
+      new String[] {"Total", "Used", "Free", "Shared", "Buff/Cache", "Available"};
+  private long lastUpdateTime = 0L;
+  private volatile long usedMemory = 0L;
+  private volatile long sharedMemory = 0L;
+  private volatile long buffCacheMemory = 0L;
+  private volatile long availableMemory = 0L;
+
+  static final String SYSTEM = "system";
   private final com.sun.management.OperatingSystemMXBean osMxBean;
-  private final Set<FileStore> fileStores = new HashSet<>();
-  private final AtomicReference<List<String>> diskDirs =
-      new AtomicReference<>(Collections.emptyList());
+  private Set<FileStore> fileStores = new HashSet<>();
   private static final String FAILED_TO_STATISTIC = "Failed to statistic the size of {}, because";
 
   public SystemMetrics() {
@@ -62,29 +72,22 @@ public class SystemMetrics implements IMetricSet {
         .getMetricConfig()
         .getMetricLevel()
         .equals(MetricLevel.OFF)) {
-      this.diskDirs.set(diskDirs);
-      for (String diskDir : this.diskDirs.get()) {
-        if (!FSUtils.isLocal(diskDir)) {
-          continue;
-        }
-        Path path = Paths.get(diskDir);
-        FileStore fileStore = null;
-        try {
-          fileStore = Files.getFileStore(path);
-        } catch (IOException e) {
-          // check parent if path is not exists
-          path = path.getParent();
-          try {
-            fileStore = Files.getFileStore(path);
-          } catch (IOException innerException) {
-            logger.error("Failed to get storage path of {}, because", diskDir, innerException);
-          }
-        }
-        if (null != fileStore) {
-          fileStores.add(fileStore);
-        }
+      this.fileStores = getFileStores(diskDirs);
+    }
+  }
+
+  public static Set<FileStore> getFileStores(List<String> dirs) {
+    Set<FileStore> fileStoreSet = new HashSet<>();
+    for (String diskDir : dirs) {
+      if (!FSUtils.isLocal(diskDir)) {
+        continue;
+      }
+      FileStore fileStore = FileStoreUtils.getFileStore(diskDir);
+      if (fileStore != null) {
+        fileStoreSet.add(fileStore);
       }
     }
+    return fileStoreSet;
   }
 
   @Override
@@ -166,6 +169,79 @@ public class SystemMetrics implements IMetricSet {
         a -> osMxBean.getCommittedVirtualMemorySize(),
         SystemTag.NAME.toString(),
         SYSTEM);
+    if (CONFIG.getSystemType() == SystemType.LINUX) {
+      metricService.createAutoGauge(
+          SystemMetric.LINUX_MEMORY_SIZE.toString(),
+          MetricLevel.CORE,
+          this,
+          a -> {
+            updateLinuxSystemMemInfo();
+            return usedMemory;
+          },
+          SystemTag.NAME.toString(),
+          linuxMemoryTitles[1]);
+      metricService.createAutoGauge(
+          SystemMetric.LINUX_MEMORY_SIZE.toString(),
+          MetricLevel.CORE,
+          this,
+          a -> {
+            updateLinuxSystemMemInfo();
+            return sharedMemory;
+          },
+          SystemTag.NAME.toString(),
+          linuxMemoryTitles[3]);
+      metricService.createAutoGauge(
+          SystemMetric.LINUX_MEMORY_SIZE.toString(),
+          MetricLevel.CORE,
+          this,
+          a -> {
+            updateLinuxSystemMemInfo();
+            return buffCacheMemory;
+          },
+          SystemTag.NAME.toString(),
+          linuxMemoryTitles[4]);
+      metricService.createAutoGauge(
+          SystemMetric.LINUX_MEMORY_SIZE.toString(),
+          MetricLevel.CORE,
+          this,
+          a -> {
+            updateLinuxSystemMemInfo();
+            return availableMemory;
+          },
+          SystemTag.NAME.toString(),
+          linuxMemoryTitles[5]);
+    }
+  }
+
+  private void updateLinuxSystemMemInfo() {
+    long time = System.currentTimeMillis();
+    if (time - lastUpdateTime > MetricConstant.UPDATE_INTERVAL) {
+      lastUpdateTime = time;
+      try {
+        Process process = runtime.exec(getSystemMemoryCommand);
+        StringBuilder result = new StringBuilder();
+        try (BufferedReader input =
+            new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+          String line;
+          while ((line = input.readLine()) != null) {
+            result.append(line).append("\n");
+          }
+        }
+        String[] lines = result.toString().split("\n");
+        // if failed to get result
+        if (lines.length >= 2) {
+          String[] memParts = lines[1].trim().split("\\s+");
+          if (memParts.length == linuxMemoryTitles.length) {
+            usedMemory = Long.parseLong(memParts[2]) * 1024;
+            sharedMemory = Long.parseLong(memParts[4]) * 1024;
+            buffCacheMemory = Long.parseLong(memParts[5]) * 1024;
+            availableMemory = Long.parseLong(memParts[6]) * 1024;
+          }
+        }
+      } catch (IOException e) {
+        logger.debug("Failed to get memory, because ", e);
+      }
+    }
   }
 
   private void removeSystemMemInfo(AbstractMetricService metricService) {
@@ -194,6 +270,15 @@ public class SystemMetrics implements IMetricSet {
         SystemMetric.SYS_COMMITTED_VM_SIZE.toString(),
         SystemTag.NAME.toString(),
         SYSTEM);
+    if (CONFIG.getSystemType() == SystemType.LINUX) {
+      for (String title : linuxMemoryTitles) {
+        metricService.remove(
+            MetricType.GAUGE,
+            SystemMetric.LINUX_MEMORY_SIZE.toString(),
+            SystemTag.NAME.toString(),
+            title);
+      }
+    }
   }
 
   private void collectSystemDiskInfo(AbstractMetricService metricService) {
@@ -236,8 +321,6 @@ public class SystemMetrics implements IMetricSet {
         SystemMetric.SYS_DISK_AVAILABLE_SPACE.toString(),
         SystemTag.NAME.toString(),
         SYSTEM);
-
-    diskDirs.get().clear();
     fileStores.clear();
   }
 

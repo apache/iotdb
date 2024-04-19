@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.confignode.manager.load.cache;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupCache;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
@@ -28,109 +26,93 @@ import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class RegionGroupCacheTest {
 
   @Test
   public void getRegionStatusTest() {
     long currentTime = System.nanoTime();
-    RegionGroupCache regionGroupCache =
-        new RegionGroupCache(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
+    RegionGroupCache regionGroupCache = new RegionGroupCache();
     regionGroupCache.cacheHeartbeatSample(
-        0, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
+        0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     regionGroupCache.cacheHeartbeatSample(
-        1, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Unknown));
+        1, new RegionHeartbeatSample(currentTime, RegionStatus.Unknown));
     regionGroupCache.cacheHeartbeatSample(
-        2, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Removing));
+        2, new RegionHeartbeatSample(currentTime, RegionStatus.Removing));
     regionGroupCache.cacheHeartbeatSample(
-        3, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.ReadOnly));
-    Assert.assertTrue(regionGroupCache.periodicUpdate());
+        3, new RegionHeartbeatSample(currentTime, RegionStatus.ReadOnly));
+    regionGroupCache.updateCurrentStatistics();
 
-    Assert.assertEquals(RegionStatus.Running, regionGroupCache.getStatistics().getRegionStatus(0));
-    Assert.assertEquals(RegionStatus.Unknown, regionGroupCache.getStatistics().getRegionStatus(1));
-    Assert.assertEquals(RegionStatus.Removing, regionGroupCache.getStatistics().getRegionStatus(2));
-    Assert.assertEquals(RegionStatus.ReadOnly, regionGroupCache.getStatistics().getRegionStatus(3));
+    Assert.assertEquals(
+        RegionStatus.Running, regionGroupCache.getCurrentStatistics().getRegionStatus(0));
+    Assert.assertEquals(
+        RegionStatus.Unknown, regionGroupCache.getCurrentStatistics().getRegionStatus(1));
+    Assert.assertEquals(
+        RegionStatus.Removing, regionGroupCache.getCurrentStatistics().getRegionStatus(2));
+    Assert.assertEquals(
+        RegionStatus.ReadOnly, regionGroupCache.getCurrentStatistics().getRegionStatus(3));
   }
 
   @Test
   public void getRegionGroupStatusTest() {
     long currentTime = System.nanoTime();
-    RegionGroupCache runningRegionGroup =
-        new RegionGroupCache(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
+    RegionGroupCache runningRegionGroup = new RegionGroupCache();
     runningRegionGroup.cacheHeartbeatSample(
-        0, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
+        0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     runningRegionGroup.cacheHeartbeatSample(
-        1, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
+        1, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     runningRegionGroup.cacheHeartbeatSample(
-        2, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
-    Assert.assertTrue(runningRegionGroup.periodicUpdate());
+        2, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
+    runningRegionGroup.updateCurrentStatistics();
     Assert.assertEquals(
-        RegionGroupStatus.Running, runningRegionGroup.getStatistics().getRegionGroupStatus());
+        RegionGroupStatus.Running,
+        runningRegionGroup.getCurrentStatistics().getRegionGroupStatus());
 
-    RegionGroupCache availableRegionGroup =
-        new RegionGroupCache(new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
+    RegionGroupCache availableRegionGroup = new RegionGroupCache();
     availableRegionGroup.cacheHeartbeatSample(
-        0, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
+        0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     availableRegionGroup.cacheHeartbeatSample(
-        1, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Unknown));
+        1, new RegionHeartbeatSample(currentTime, RegionStatus.Unknown));
     availableRegionGroup.cacheHeartbeatSample(
-        2, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
-    Assert.assertTrue(availableRegionGroup.periodicUpdate());
+        2, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
+    availableRegionGroup.updateCurrentStatistics();
     Assert.assertEquals(
-        RegionGroupStatus.Available, availableRegionGroup.getStatistics().getRegionGroupStatus());
+        RegionGroupStatus.Available,
+        availableRegionGroup.getCurrentStatistics().getRegionGroupStatus());
 
-    RegionGroupCache disabledRegionGroup0 =
-        new RegionGroupCache(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2));
+    RegionGroupCache disabledRegionGroup0 = new RegionGroupCache();
     disabledRegionGroup0.cacheHeartbeatSample(
-        0, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
+        0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     disabledRegionGroup0.cacheHeartbeatSample(
-        1, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.ReadOnly));
+        1, new RegionHeartbeatSample(currentTime, RegionStatus.ReadOnly));
     disabledRegionGroup0.cacheHeartbeatSample(
-        2, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
-    Assert.assertTrue(disabledRegionGroup0.periodicUpdate());
+        2, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
+    disabledRegionGroup0.updateCurrentStatistics();
     Assert.assertEquals(
-        RegionGroupStatus.Discouraged, disabledRegionGroup0.getStatistics().getRegionGroupStatus());
+        RegionGroupStatus.Discouraged,
+        disabledRegionGroup0.getCurrentStatistics().getRegionGroupStatus());
 
-    RegionGroupCache disabledRegionGroup1 =
-        new RegionGroupCache(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 3));
+    RegionGroupCache disabledRegionGroup1 = new RegionGroupCache();
     disabledRegionGroup1.cacheHeartbeatSample(
-        0, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
+        0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     disabledRegionGroup1.cacheHeartbeatSample(
-        1, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Unknown));
+        1, new RegionHeartbeatSample(currentTime, RegionStatus.Unknown));
     disabledRegionGroup1.cacheHeartbeatSample(
-        2, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Unknown));
-    Assert.assertTrue(disabledRegionGroup1.periodicUpdate());
+        2, new RegionHeartbeatSample(currentTime, RegionStatus.Unknown));
+    disabledRegionGroup1.updateCurrentStatistics();
     Assert.assertEquals(
-        RegionGroupStatus.Disabled, disabledRegionGroup1.getStatistics().getRegionGroupStatus());
+        RegionGroupStatus.Disabled,
+        disabledRegionGroup1.getCurrentStatistics().getRegionGroupStatus());
 
-    RegionGroupCache disabledRegionGroup2 =
-        new RegionGroupCache(new TConsensusGroupId(TConsensusGroupType.DataRegion, 4));
+    RegionGroupCache disabledRegionGroup2 = new RegionGroupCache();
     disabledRegionGroup2.cacheHeartbeatSample(
-        0, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
+        0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     disabledRegionGroup2.cacheHeartbeatSample(
-        1, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
+        1, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     disabledRegionGroup2.cacheHeartbeatSample(
-        2, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Removing));
-    Assert.assertTrue(disabledRegionGroup2.periodicUpdate());
+        2, new RegionHeartbeatSample(currentTime, RegionStatus.Removing));
+    disabledRegionGroup2.updateCurrentStatistics();
     Assert.assertEquals(
-        RegionGroupStatus.Disabled, disabledRegionGroup2.getStatistics().getRegionGroupStatus());
-  }
-
-  @Test
-  public void forceUpdateTest() {
-    long currentTime = System.nanoTime();
-    Map<Integer, RegionHeartbeatSample> heartbeatSampleMap = new HashMap<>();
-    for (int i = 0; i < 3; i++) {
-      heartbeatSampleMap.put(
-          i, new RegionHeartbeatSample(currentTime, currentTime, RegionStatus.Running));
-    }
-
-    RegionGroupCache regionGroupCache =
-        new RegionGroupCache(new TConsensusGroupId(TConsensusGroupType.DataRegion, 10));
-    regionGroupCache.forceUpdate(heartbeatSampleMap);
-    Assert.assertEquals(
-        RegionGroupStatus.Running, regionGroupCache.getStatistics().getRegionGroupStatus());
+        RegionGroupStatus.Disabled,
+        disabledRegionGroup2.getCurrentStatistics().getRegionGroupStatus());
   }
 }

@@ -155,7 +155,11 @@ public class SessionDataSet implements ISessionDataSet {
 
   @Override
   public boolean hasNext() throws StatementExecutionException, IoTDBConnectionException {
-    return ioTDBRpcDataSet.next();
+    if (ioTDBRpcDataSet.hasCachedRecord) {
+      return true;
+    } else {
+      return ioTDBRpcDataSet.next();
+    }
   }
 
   private RowRecord constructRowRecordFromValueArray() throws StatementExecutionException {

@@ -44,7 +44,7 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
   private long slidingInterval;
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     final PipeParameters parameters = validator.getParameters();
     validator.validate(
         args -> (long) args > 0,
@@ -54,7 +54,8 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeProcessorRuntimeConfiguration configuration)
       throws Exception {
     slidingBoundaryTime =
         parameters.hasAnyAttributes(PROCESSOR_SLIDING_BOUNDARY_TIME_KEY)
@@ -69,7 +70,8 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
   }
 
   @Override
-  public Set<TimeSeriesWindow> mayAddWindow(List<TimeSeriesWindow> windowList, long timeStamp) {
+  public Set<TimeSeriesWindow> mayAddWindow(
+      final List<TimeSeriesWindow> windowList, final long timeStamp) {
     final long lastTime =
         windowList.isEmpty()
             ? slidingBoundaryTime
@@ -87,7 +89,7 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
 
   @Override
   public Pair<WindowState, WindowOutput> updateAndMaySetWindowState(
-      TimeSeriesWindow window, long timeStamp) {
+      final TimeSeriesWindow window, final long timeStamp) {
     if (timeStamp < window.getTimestamp()) {
       return new Pair<>(WindowState.IGNORE_VALUE, null);
     }
@@ -102,7 +104,7 @@ public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProce
   }
 
   @Override
-  public WindowOutput forceOutput(TimeSeriesWindow window) {
+  public WindowOutput forceOutput(final TimeSeriesWindow window) {
     return new WindowOutput()
         .setTimestamp(window.getTimestamp())
         .setProgressTime(window.getTimestamp() + slidingInterval);
