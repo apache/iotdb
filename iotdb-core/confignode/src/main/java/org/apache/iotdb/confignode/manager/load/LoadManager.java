@@ -437,4 +437,8 @@ public class LoadManager {
   public LoadCache getLoadCache() {
     return loadCache;
   }
+
+  public RouteBalancer getRouteBalancer() {
+    return routeBalancer;
+  }
 }

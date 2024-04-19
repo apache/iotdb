@@ -574,7 +574,27 @@ public class ProcedureManager {
       TDataNodeLocation destDataNode,
       TDataNodeLocation coordinatorForAddPeer) {
     String failMessage = null;
-    if (originalDataNode == null) {
+    Optional<Procedure<ConfigNodeProcedureEnv>> anotherMigrateProcedure =
+        this.executor.getProcedures().values().stream()
+            .filter(
+                procedure -> {
+                  if (procedure instanceof RegionMigrateProcedure) {
+                    return ((RegionMigrateProcedure) procedure)
+                        .getConsensusGroupId()
+                        .equals(regionGroupId);
+                  }
+                  return false;
+                })
+            .findAny();
+    if (anotherMigrateProcedure.isPresent()) {
+      failMessage =
+          String.format(
+              "Submit RegionMigrateProcedure failed, "
+                  + "because another RegionMigrateProcedure of the same consensus group %d is already in processing. "
+                  + "A consensus group is able to have at most 1 RegionMigrateProcedure at the same time"
+                  + "For further information, you can search [pid%d] in log.",
+              regionGroupId, anotherMigrateProcedure.get().getProcId());
+    } else if (originalDataNode == null) {
       failMessage =
           String.format(
               "Submit RegionMigrateProcedure failed, because no original DataNode %d",
@@ -626,7 +646,7 @@ public class ProcedureManager {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public TSStatus migrateRegion(TMigrateRegionReq migrateRegionReq) {
+  public synchronized TSStatus migrateRegion(TMigrateRegionReq migrateRegionReq) {
     TConsensusGroupId regionGroupId;
     Optional<TConsensusGroupId> optional =
         configManager
