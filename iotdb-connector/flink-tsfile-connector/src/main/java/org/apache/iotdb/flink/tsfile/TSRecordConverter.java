@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.flink.tsfile;
 
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.Schema;
-
 import org.apache.flink.util.Collector;
+import org.apache.tsfile.write.record.TSRecord;
+import org.apache.tsfile.write.schema.Schema;
 
 import java.io.Serializable;
 

@@ -30,9 +30,9 @@ import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPl
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

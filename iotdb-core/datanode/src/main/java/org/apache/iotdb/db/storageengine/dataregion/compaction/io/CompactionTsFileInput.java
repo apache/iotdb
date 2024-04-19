@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 
-import org.apache.iotdb.tsfile.exception.StopReadTsFileByInterruptException;
-import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
+import org.apache.tsfile.read.reader.TsFileInput;
 
 import java.io.IOException;
 import java.io.InputStream;

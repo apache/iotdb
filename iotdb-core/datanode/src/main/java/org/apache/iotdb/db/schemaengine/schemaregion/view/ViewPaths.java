@@ -25,7 +25,8 @@ import org.apache.iotdb.db.exception.metadata.view.ViewContainsAggregationExcept
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CollectAggregationExpressionsVisitor;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -28,7 +28,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 
 import java.util.ArrayList;
 import java.util.Collections;

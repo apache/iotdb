@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.binary;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.tsfile.read.common.type.Type;
-import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
+
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeEnum;
 
 public abstract class LogicBinaryColumnTransformer extends BinaryColumnTransformer {
   protected LogicBinaryColumnTransformer(

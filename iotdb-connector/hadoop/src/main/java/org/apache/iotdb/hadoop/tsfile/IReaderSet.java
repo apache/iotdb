@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.TsFileSequenceReader;
 
 import java.util.List;
 

@@ -29,7 +29,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.imp
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl.CachedBasicInternalMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl.CachedDatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl.CachedMeasurementMNode;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 @MNodeFactory
 public class CacheMNodeFactory implements IMNodeFactory<ICachedMNode> {

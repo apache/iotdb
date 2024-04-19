@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.read.common.Chunk;
 
 import java.util.List;
 

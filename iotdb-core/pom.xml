@@ -36,6 +36,5 @@
         <module>datanode</module>
         <module>metrics</module>
         <module>node-commons</module>
-        <module>tsfile</module>
     </modules>
 </project>

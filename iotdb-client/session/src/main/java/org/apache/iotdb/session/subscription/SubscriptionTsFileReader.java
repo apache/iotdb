@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.tsfile.read.TsFileReader;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.TsFileReader;
+import org.apache.tsfile.read.TsFileSequenceReader;
 
 import java.io.IOException;
 

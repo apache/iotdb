@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -29,6 +27,8 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.utils.Pair;
 
 import java.io.File;
 import java.util.ArrayList;
