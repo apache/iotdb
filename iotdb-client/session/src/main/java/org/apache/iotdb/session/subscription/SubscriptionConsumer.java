@@ -976,8 +976,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection()
-      throws IoTDBConnectionException {
+  Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection() throws IoTDBConnectionException {
     Map<Integer, TEndPoint> endPoints = null;
     for (final SubscriptionProvider provider : getAllAvailableProviders()) {
       try {
