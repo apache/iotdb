@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 
-import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
-
 import com.google.common.util.concurrent.RateLimiter;
+import org.apache.tsfile.write.writer.TsFileOutput;
 
 import java.io.IOException;
 import java.io.OutputStream;
