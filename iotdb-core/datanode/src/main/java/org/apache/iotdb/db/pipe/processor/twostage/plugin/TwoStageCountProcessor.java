@@ -166,8 +166,11 @@ public class TwoStageCountProcessor implements PipeProcessor {
     final EnrichedEvent event = (EnrichedEvent) tabletInsertionEvent;
     event.skipReportOnCommit();
 
-    // TODO: count the number of given points in the tablet
-    localCount.incrementAndGet();
+    final long count =
+        (event instanceof PipeInsertNodeTabletInsertionEvent)
+            ? ((PipeInsertNodeTabletInsertionEvent) event).count()
+            : ((PipeRawTabletInsertionEvent) event).count();
+    localCount.accumulateAndGet(count, Long::sum);
 
     localCommitProgressIndex.set(
         localCommitProgressIndex
@@ -193,8 +196,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
       return;
     }
 
-    // TODO: count the number of points in the TsFile
-    localCount.incrementAndGet();
+    final long count = event.count(true);
+    localCount.accumulateAndGet(count, Long::sum);
 
     localCommitProgressIndex.set(
         localCommitProgressIndex

@@ -597,9 +597,4 @@ public class TabletInsertionDataContainer {
 
     return tablet;
   }
-
-  public long count() {
-    final Tablet covertedTablet = convertToTablet();
-    return (long) covertedTablet.rowSize * covertedTablet.values.length;
-  }
 }

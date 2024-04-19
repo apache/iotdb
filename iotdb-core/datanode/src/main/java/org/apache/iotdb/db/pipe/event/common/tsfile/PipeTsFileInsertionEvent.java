@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -321,6 +322,27 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
     }
+  }
+
+  public long count(boolean skipReportOnCommit) {
+    long count = 0;
+
+    if (shouldParseTime()) {
+      try {
+        for (final TabletInsertionEvent event : toTabletInsertionEvents()) {
+          final PipeRawTabletInsertionEvent rawEvent = ((PipeRawTabletInsertionEvent) event);
+          count += rawEvent.count();
+          if (skipReportOnCommit) {
+            rawEvent.skipReportOnCommit();
+          }
+        }
+        return count;
+      } finally {
+        close();
+      }
+    }
+
+    return 0;
   }
 
   /** Release the resource of {@link TsFileInsertionDataContainer}. */
