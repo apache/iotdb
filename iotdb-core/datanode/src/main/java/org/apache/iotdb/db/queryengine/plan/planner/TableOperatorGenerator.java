@@ -114,6 +114,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           measurementSchemas.add(
               new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
           break;
+        case TIME:
+          columnsIndexArray[i] = -1;
+          break;
         default:
           throw new IllegalArgumentException(
               "Unexpected column category: " + schema.getColumnCategory());
@@ -193,15 +196,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Map<Symbol, List<InputLocation>> outputMappings = new LinkedHashMap<>();
     int tsBlockIndex = 0;
     for (PlanNode childNode : children) {
-      outputMappings
-          .computeIfAbsent(new Symbol(TIMESTAMP_EXPRESSION_STRING), key -> new ArrayList<>())
-          .add(new InputLocation(tsBlockIndex, -1));
+
       int valueColumnIndex = 0;
       for (Symbol columnName : childNode.getOutputSymbols()) {
-        outputMappings
-            .computeIfAbsent(columnName, key -> new ArrayList<>())
-            .add(new InputLocation(tsBlockIndex, valueColumnIndex));
-        valueColumnIndex++;
+        if (!TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(columnName.getName())) {
+          outputMappings
+              .computeIfAbsent(columnName, key -> new ArrayList<>())
+              .add(new InputLocation(tsBlockIndex, valueColumnIndex));
+          valueColumnIndex++;
+        } else {
+          outputMappings
+              .computeIfAbsent(columnName, key -> new ArrayList<>())
+              .add(new InputLocation(tsBlockIndex, -1));
+        }
       }
       tsBlockIndex++;
     }
