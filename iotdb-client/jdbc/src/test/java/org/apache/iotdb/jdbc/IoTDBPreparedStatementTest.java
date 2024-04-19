@@ -381,7 +381,7 @@ public class IoTDBPreparedStatementTest {
     String sql = "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(?,?,?,?,?,?,?)";
 
     IoTDBPreparedStatement ps =
-            new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
     ps.setObject(1, "2020-01-01 10:10:10", Types.TIMESTAMP, -1);
     ps.setObject(2, false, Types.BOOLEAN, -1);
     ps.setObject(3, 123, Types.INTEGER, -1);
@@ -392,10 +392,10 @@ public class IoTDBPreparedStatementTest {
     ps.execute();
 
     ArgumentCaptor<TSExecuteStatementReq> argument =
-            ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatementV2(argument.capture());
     assertEquals(
-            "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(2020-01-01T10:10:10,false,123,123234345,123.423,-1323.0,\"abc\")",
-            argument.getValue().getStatement());
+        "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(2020-01-01T10:10:10,false,123,123234345,123.423,-1323.0,\"abc\")",
+        argument.getValue().getStatement());
   }
 }
