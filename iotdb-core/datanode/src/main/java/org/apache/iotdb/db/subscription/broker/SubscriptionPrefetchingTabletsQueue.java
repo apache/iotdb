@@ -34,8 +34,8 @@ import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContex
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessageType;
 import org.apache.iotdb.rpc.subscription.payload.common.TabletsMessagePayload;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

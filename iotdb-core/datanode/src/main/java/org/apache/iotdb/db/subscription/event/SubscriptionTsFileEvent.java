@@ -29,8 +29,8 @@ import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessag
 import org.apache.iotdb.rpc.subscription.payload.common.TsFileInitMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.TsFilePieceMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.TsFileSealMessagePayload;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

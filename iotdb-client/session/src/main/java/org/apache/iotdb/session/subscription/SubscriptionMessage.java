@@ -20,7 +20,8 @@
 package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
-import org.apache.iotdb.tsfile.write.record.Tablet;
+
+import org.apache.tsfile.write.record.Tablet;
 
 import java.util.List;
 import java.util.Objects;
