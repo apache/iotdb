@@ -113,6 +113,7 @@ public class FragmentInstanceContext extends QueryContext {
     return instanceContext;
   }
 
+  // This method is only used in groupby
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,

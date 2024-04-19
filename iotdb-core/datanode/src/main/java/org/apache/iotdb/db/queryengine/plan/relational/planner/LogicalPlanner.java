@@ -16,6 +16,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -32,11 +34,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Sim
 import org.apache.iotdb.db.relational.sql.tree.Query;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
 import org.apache.iotdb.db.relational.sql.tree.Table;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.airlift.log.Logger;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -109,8 +113,20 @@ public class LogicalPlanner {
       columnNumber++;
     }
 
-    return new OutputNode(
-        context.getQueryId().genPlanNodeId(), plan.getRoot(), names.build(), outputs.build());
+    OutputNode outputNode =
+        new OutputNode(
+            context.getQueryId().genPlanNodeId(), plan.getRoot(), names.build(), outputs.build());
+
+    //    List<ColumnHeader> columnHeaders =
+    //            outputNode.getOutputColumnNames().stream().map(column -> new ColumnHeader(column,
+    // TSDataType.DOUBLE)).collect(Collectors.toList());
+    List<ColumnHeader> columnHeaders = new ArrayList<>();
+    for (String columnName : outputNode.getColumnNames()) {
+      columnHeaders.add(new ColumnHeader(columnName, TSDataType.DOUBLE));
+    }
+    DatasetHeader respDatasetHeader = new DatasetHeader(columnHeaders, false);
+    analysis.setRespDatasetHeader(respDatasetHeader);
+    return outputNode;
   }
 
   private RelationPlan createRelationPlan(Analysis analysis, Query query) {

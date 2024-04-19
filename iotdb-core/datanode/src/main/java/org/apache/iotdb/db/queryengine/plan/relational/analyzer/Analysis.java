@@ -152,6 +152,8 @@ public class Analysis implements IAnalysis {
 
   private DataPartition dataPartition;
 
+  private DatasetHeader respDatasetHeader;
+
   public Expression getGlobalTableModelTimePredicate() {
     return this.globalTableModelTimePredicate;
   }
@@ -593,7 +595,11 @@ public class Analysis implements IAnalysis {
 
   @Override
   public DatasetHeader getRespDatasetHeader() {
-    return null;
+    return respDatasetHeader;
+  }
+
+  public void setRespDatasetHeader(DatasetHeader respDatasetHeader) {
+    this.respDatasetHeader = respDatasetHeader;
   }
 
   @Override
