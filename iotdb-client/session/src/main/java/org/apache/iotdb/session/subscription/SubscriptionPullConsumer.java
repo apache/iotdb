@@ -23,6 +23,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.session.subscription.SubscriptionConsumer.Builder;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -62,7 +63,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// ctor ///////////////////////////////
 
-  public SubscriptionPullConsumer(SubscriptionPullConsumer.Builder builder) {
+  protected SubscriptionPullConsumer(SubscriptionPullConsumer.Builder builder) {
     super(builder);
 
     this.autoCommit = builder.autoCommit;
@@ -215,7 +216,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
               return t;
             });
     autoCommitWorkerExecutor.scheduleAtFixedRate(
-        new PullConsumerAutoCommitWorker(this), 0, autoCommitIntervalMs, TimeUnit.MILLISECONDS);
+        new AutoCommitWorker(), 0, autoCommitIntervalMs, TimeUnit.MILLISECONDS);
   }
 
   private void shutdownAutoCommitWorker() {
@@ -232,14 +233,6 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
         LOGGER.warn("something unexpected happened when commit messages during close", e);
       }
     }
-  }
-
-  long getAutoCommitIntervalMs() {
-    return autoCommitIntervalMs;
-  }
-
-  SortedMap<Long, Set<SubscriptionMessage>> getUncommittedMessages() {
-    return uncommittedMessages;
   }
 
   /////////////////////////////// builder ///////////////////////////////
@@ -319,6 +312,33 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     public SubscriptionPushConsumer buildPushConsumer() {
       throw new SubscriptionException(
           "SubscriptionPullConsumer.Builder do not support build push consumer.");
+    }
+  }
+
+  /////////////////////////////// auto commit worker ///////////////////////////////
+
+  class AutoCommitWorker implements Runnable {
+    @Override
+    public void run() {
+      if (isClosed()) {
+        return;
+      }
+
+      long currentTimestamp = System.currentTimeMillis();
+      long index = currentTimestamp / autoCommitIntervalMs;
+      if (currentTimestamp % autoCommitIntervalMs == 0) {
+        index -= 1;
+      }
+
+      for (Map.Entry<Long, Set<SubscriptionMessage>> entry :
+          uncommittedMessages.headMap(index).entrySet()) {
+        try {
+          commitSync(entry.getValue());
+          uncommittedMessages.remove(entry.getKey());
+        } catch (final Exception e) {
+          LOGGER.warn("something unexpected happened when auto commit messages...", e);
+        }
+      }
     }
   }
 }

@@ -44,7 +44,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
   private final AckStrategy ackStrategy;
   private final ConsumeListener consumeListener;
 
-  private ScheduledExecutorService workerExecutor;
+  private ScheduledExecutorService autoPollWorkerExecutor;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
@@ -96,7 +96,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
 
     try {
-      shutdownWorker();
+      shutdownAutoPollWorker();
       super.close();
     } finally {
       isClosed.set(true);
@@ -108,11 +108,11 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     return isClosed.get();
   }
 
-  /////////////////////////////// auto poll worker ///////////////////////////////
+  /////////////////////////////// auto poll ///////////////////////////////
 
   @SuppressWarnings("unsafeThreadSchedule")
   private void launchAutoPollWorker() {
-    workerExecutor =
+    autoPollWorkerExecutor =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
               Thread t =
@@ -125,16 +125,16 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
               }
               return t;
             });
-    workerExecutor.scheduleAtFixedRate(
-        new PushConsumerWorker(),
+    autoPollWorkerExecutor.scheduleAtFixedRate(
+        new AutoPollWorker(),
         0,
         ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_INTERVAL_MS,
         TimeUnit.MILLISECONDS);
   }
 
-  private void shutdownWorker() {
-    workerExecutor.shutdown();
-    workerExecutor = null;
+  private void shutdownAutoPollWorker() {
+    autoPollWorkerExecutor.shutdown();
+    autoPollWorkerExecutor = null;
   }
 
   /////////////////////////////// builder ///////////////////////////////
@@ -174,6 +174,21 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       return this;
     }
 
+    public SubscriptionPushConsumer.Builder heartbeatIntervalMs(long heartbeatIntervalMs) {
+      super.heartbeatIntervalMs(heartbeatIntervalMs);
+      return this;
+    }
+
+    public SubscriptionPushConsumer.Builder endpointsSyncIntervalMs(long endpointsSyncIntervalMs) {
+      super.endpointsSyncIntervalMs(endpointsSyncIntervalMs);
+      return this;
+    }
+
+    public SubscriptionPushConsumer.Builder tsFileBaseDir(String tsFileBaseDir) {
+      this.tsFileBaseDir = tsFileBaseDir;
+      return this;
+    }
+
     public SubscriptionPushConsumer.Builder ackStrategy(AckStrategy ackStrategy) {
       this.ackStrategy = ackStrategy;
       return this;
@@ -196,7 +211,9 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
   }
 
-  class PushConsumerWorker implements Runnable {
+  /////////////////////////////// auto poll worker ///////////////////////////////
+
+  class AutoPollWorker implements Runnable {
     @Override
     public void run() {
       if (isClosed()) {

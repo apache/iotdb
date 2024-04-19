@@ -124,6 +124,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// tsfile ///////////////////////////////
 
+  protected final Map<String, OnTheFlyTsFileInfo> topicNameToOnTheFlyTsFileInfo =
+      new ConcurrentHashMap<>();
+
   protected static class OnTheFlyTsFileInfo {
 
     SubscriptionCommitContext commitContext;
@@ -161,9 +164,6 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
           + "}";
     }
   }
-
-  protected final Map<String, OnTheFlyTsFileInfo> topicNameToOnTheFlyTsFileInfo =
-      new ConcurrentHashMap<>();
 
   protected OnTheFlyTsFileInfo getOnTheFlyTsFileInfo(String topicName) {
     final OnTheFlyTsFileInfo info = topicNameToOnTheFlyTsFileInfo.get(topicName);
@@ -334,7 +334,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       // shutdown endpoints syncer
       shutdownEndpointsSyncer();
 
-      // shutdown workers
+      // shutdown workers: heartbeat worker and async commit executor
       shutdownWorkers();
 
       // close subscription providers
@@ -539,7 +539,63 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  /////////////////////////////// poll & commit ///////////////////////////////
+  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
+  private void closeProviders() throws IoTDBConnectionException {
+    for (final SubscriptionProvider provider : getAllProviders()) {
+      provider.close();
+    }
+    subscriptionProviders.clear();
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
+  void addProvider(final int dataNodeId, final SubscriptionProvider provider) {
+    // the subscription provider is opened
+    LOGGER.info("add new subscription provider {}", provider);
+    subscriptionProviders.put(dataNodeId, provider);
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
+  void closeAndRemoveProvider(final int dataNodeId) throws IoTDBConnectionException {
+    if (!containsProvider(dataNodeId)) {
+      return;
+    }
+    final SubscriptionProvider provider = subscriptionProviders.get(dataNodeId);
+    try {
+      provider.close();
+    } finally {
+      LOGGER.info("close and remove stale subscription provider {}", provider);
+      subscriptionProviders.remove(dataNodeId);
+    }
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  boolean hasNoProviders() {
+    return subscriptionProviders.isEmpty();
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  boolean containsProvider(final int dataNodeId) {
+    return subscriptionProviders.containsKey(dataNodeId);
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  List<SubscriptionProvider> getAllAvailableProviders() {
+    return subscriptionProviders.values().stream()
+        .filter(SubscriptionProvider::isAvailable)
+        .collect(Collectors.toList());
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  List<SubscriptionProvider> getAllProviders() {
+    return new ArrayList<>(subscriptionProviders.values());
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  SubscriptionProvider getProvider(final int dataNodeId) {
+    return containsProvider(dataNodeId) ? subscriptionProviders.get(dataNodeId) : null;
+  }
+
+  /////////////////////////////// poll ///////////////////////////////
 
   protected List<SubscriptionMessage> poll(Set<String> topicNames, long timeoutMs)
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
@@ -820,6 +876,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
+  /////////////////////////////// commit sync ///////////////////////////////
+
   protected void commitSync(Iterable<SubscriptionMessage> messages)
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
@@ -835,12 +893,31 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
+  private void commitSyncInternal(
+      int dataNodeId, List<SubscriptionCommitContext> subscriptionCommitContexts)
+      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+    acquireReadLock();
+    try {
+      final SubscriptionProvider provider = getProvider(dataNodeId);
+      if (Objects.isNull(provider) || !provider.isAvailable()) {
+        throw new IoTDBConnectionException(
+            String.format(
+                "something unexpected happened when commit messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                dataNodeId));
+      }
+      provider.getSessionConnection().commitSync(subscriptionCommitContexts);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  /////////////////////////////// commit async ///////////////////////////////
+
   protected void commitAsync(Iterable<SubscriptionMessage> messages) {
     commitAsync(messages, new AsyncCommitCallback() {});
   }
 
   protected void commitAsync(Iterable<SubscriptionMessage> messages, AsyncCommitCallback callback) {
-
     // Initiate executor if needed
     if (asyncCommitExecutor == null) {
       synchronized (this) {
@@ -869,82 +946,6 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
 
     asyncCommitExecutor.submit(new AsyncCommitWorker(messages, callback));
-  }
-
-  /////////////////////////////// utility ///////////////////////////////
-
-  private void commitSyncInternal(
-      int dataNodeId, List<SubscriptionCommitContext> subscriptionCommitContexts)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
-    acquireReadLock();
-    try {
-      final SubscriptionProvider provider = getProvider(dataNodeId);
-      if (Objects.isNull(provider) || !provider.isAvailable()) {
-        throw new IoTDBConnectionException(
-            String.format(
-                "something unexpected happened when commit messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
-                dataNodeId));
-      }
-      provider.getSessionConnection().commitSync(subscriptionCommitContexts);
-    } finally {
-      releaseReadLock();
-    }
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  private void closeProviders() throws IoTDBConnectionException {
-    for (final SubscriptionProvider provider : getAllProviders()) {
-      provider.close();
-    }
-    subscriptionProviders.clear();
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void addProvider(final int dataNodeId, final SubscriptionProvider provider) {
-    // the subscription provider is opened
-    LOGGER.info("add new subscription provider {}", provider);
-    subscriptionProviders.put(dataNodeId, provider);
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void closeAndRemoveProvider(final int dataNodeId) throws IoTDBConnectionException {
-    if (!containsProvider(dataNodeId)) {
-      return;
-    }
-    final SubscriptionProvider provider = subscriptionProviders.get(dataNodeId);
-    try {
-      provider.close();
-    } finally {
-      LOGGER.info("close and remove stale subscription provider {}", provider);
-      subscriptionProviders.remove(dataNodeId);
-    }
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  boolean hasNoProviders() {
-    return subscriptionProviders.isEmpty();
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  boolean containsProvider(final int dataNodeId) {
-    return subscriptionProviders.containsKey(dataNodeId);
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  List<SubscriptionProvider> getAllAvailableProviders() {
-    return subscriptionProviders.values().stream()
-        .filter(SubscriptionProvider::isAvailable)
-        .collect(Collectors.toList());
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  List<SubscriptionProvider> getAllProviders() {
-    return new ArrayList<>(subscriptionProviders.values());
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  SubscriptionProvider getProvider(final int dataNodeId) {
-    return containsProvider(dataNodeId) ? subscriptionProviders.get(dataNodeId) : null;
   }
 
   /////////////////////////////// redirection ///////////////////////////////
@@ -1082,6 +1083,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
     public abstract SubscriptionPushConsumer buildPushConsumer();
   }
+
+  /////////////////////////////// commit async worker ///////////////////////////////
 
   class AsyncCommitWorker implements Runnable {
     private final Iterable<SubscriptionMessage> messages;
