@@ -43,6 +43,7 @@ import io.airlift.airline.ParseOptionMissingException;
 import io.airlift.airline.ParseOptionMissingValueException;
 import org.apache.commons.lang3.StringUtils;
 
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -57,6 +58,11 @@ public class CommonUtils {
   private CommonUtils() {}
 
   public static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
+    return parseValue(dataType, value, ZoneId.systemDefault());
+  }
+
+  public static Object parseValue(TSDataType dataType, String value, ZoneId zoneId)
+      throws QueryProcessException {
     try {
       if ("null".equals(value) || "NULL".equals(value)) {
         return null;
@@ -78,6 +84,31 @@ public class CommonUtils {
             throw new NumberFormatException(
                 "data type is not consistent, input " + value + ", registered " + dataType);
           }
+        case TIMESTAMP:
+          try {
+            return DateTimeUtils.parseDateTimeExpressionToLong(StringUtils.trim(value), zoneId);
+          } catch (Throwable e) {
+            throw new NumberFormatException(
+                "data type is not consistent, input "
+                    + value
+                    + ", registered "
+                    + dataType
+                    + " because "
+                    + e.getMessage());
+          }
+        case DATE:
+          try {
+            return DateTimeUtils.parseDateExpressionToInt(StringUtils.trim(value));
+          } catch (Throwable e) {
+            throw new NumberFormatException(
+                "data type is not consistent, input "
+                    + value
+                    + ", registered "
+                    + dataType
+                    + " because "
+                    + e.getMessage());
+          }
+
         case FLOAT:
           float f;
           try {

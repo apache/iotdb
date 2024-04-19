@@ -72,10 +72,13 @@ public abstract class Statistics<T extends Serializable> {
   public static Statistics<? extends Serializable> getStatsByType(TSDataType type) {
     switch (type) {
       case INT32:
+      case DATE:
         return new IntegerStatistics();
       case INT64:
+      case TIMESTAMP:
         return new LongStatistics();
       case TEXT:
+      case BYTEA:
         return new BinaryStatistics();
       case BOOLEAN:
         return new BooleanStatistics();
@@ -93,10 +96,13 @@ public abstract class Statistics<T extends Serializable> {
   public static long getSizeByType(TSDataType type) {
     switch (type) {
       case INT32:
+      case DATE:
         return IntegerStatistics.INSTANCE_SIZE;
       case INT64:
+      case TIMESTAMP:
         return LongStatistics.INSTANCE_SIZE;
       case TEXT:
+      case BYTEA:
         return BinaryStatistics.INSTANCE_SIZE;
       case BOOLEAN:
         return BooleanStatistics.INSTANCE_SIZE;

@@ -21,6 +21,7 @@ package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
@@ -50,6 +51,7 @@ import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.time.ZoneId;
 import java.util.BitSet;
 import java.util.Calendar;
 import java.util.List;
@@ -67,6 +69,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
   private String operationType = "";
   private List<String> columns = null;
   private List<String> sgColumns = null;
+  private ZoneId zoneId = ZoneId.systemDefault();
+  private String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   public IoTDBJDBCResultSet(
@@ -104,7 +108,9 @@ public class IoTDBJDBCResultSet implements ResultSet {
             statement.getFetchSize(),
             timeout,
             sgColumns,
-            aliasColumnMap);
+            aliasColumnMap,
+            zoneId,
+            timeFormat);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
     if (tracingInfo != null) {
@@ -146,7 +152,9 @@ public class IoTDBJDBCResultSet implements ResultSet {
             sessionId,
             dataSet,
             statement.getFetchSize(),
-            timeout);
+            timeout,
+            zoneId,
+            timeFormat);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
     if (tracingInfo != null) {
@@ -1256,5 +1264,9 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   public List<String> getSgColumns() {
     return sgColumns;
+  }
+
+  public void setZoneId(ZoneId zoneId) {
+    this.zoneId = zoneId;
   }
 }

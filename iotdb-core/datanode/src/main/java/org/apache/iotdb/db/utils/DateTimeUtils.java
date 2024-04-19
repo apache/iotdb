@@ -21,11 +21,21 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
+import org.apache.iotdb.db.qp.sql.SqlLexer;
+import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
+import org.apache.iotdb.db.queryengine.plan.parser.SqlParseError;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
+
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.atn.PredictionMode;
 
 import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -35,6 +45,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
+import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
 
@@ -44,6 +55,8 @@ public class DateTimeUtils {
     // forbidding instantiation
   }
 
+  private static final LocalDate BASE_DATE = LocalDate.of(1000, 1, 1);
+  private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
   public static final DateTimeFormatter ISO_LOCAL_DATE_WIDTH_1_2;
 
   static {
@@ -805,5 +818,34 @@ public class DateTimeUtils {
       }
     }
     return new TimeDuration((int) monthDuration, nonMonthDuration);
+  }
+
+  public static Long parseDateTimeExpressionToLong(String dateExpression, ZoneId zoneId) {
+    ASTVisitor astVisitor = new ASTVisitor();
+    astVisitor.setZoneId(zoneId);
+
+    CharStream charStream1 = CharStreams.fromString(dateExpression);
+
+    SqlLexer lexer1 = new SqlLexer(charStream1);
+    lexer1.removeErrorListeners();
+    lexer1.addErrorListener(SqlParseError.INSTANCE);
+
+    CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
+
+    IoTDBSqlParser parser1 = new IoTDBSqlParser(tokens1);
+    parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
+    parser1.removeErrorListeners();
+    parser1.addErrorListener(SqlParseError.INSTANCE);
+    return astVisitor.parseDateExpression(parser1.dateExpression());
+  }
+
+  public static Integer parseDateExpressionToInt(String dateExpression) {
+    try {
+      LocalDate date = LocalDate.parse(dateExpression, DATE_FORMATTER);
+      return (int) BASE_DATE.until(date, ChronoUnit.DAYS);
+    } catch (DateTimeParseException e) {
+      throw new DateTimeParseException(
+          "Invalid date format. Please use YYYY-MM-DD format.", dateExpression, 0);
+    }
   }
 }

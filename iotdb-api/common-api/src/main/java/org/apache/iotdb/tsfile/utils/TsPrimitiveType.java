@@ -36,14 +36,17 @@ public abstract class TsPrimitiveType implements Serializable {
       case BOOLEAN:
         return new TsPrimitiveType.TsBoolean();
       case INT32:
+      case DATE:
         return new TsPrimitiveType.TsInt();
       case INT64:
+      case TIMESTAMP:
         return new TsPrimitiveType.TsLong();
       case FLOAT:
         return new TsPrimitiveType.TsFloat();
       case DOUBLE:
         return new TsPrimitiveType.TsDouble();
       case TEXT:
+      case BYTEA:
         return new TsPrimitiveType.TsBinary();
       case VECTOR:
         return new TsPrimitiveType.TsVector();
@@ -63,14 +66,17 @@ public abstract class TsPrimitiveType implements Serializable {
       case BOOLEAN:
         return new TsPrimitiveType.TsBoolean((boolean) v);
       case INT32:
+      case DATE:
         return new TsPrimitiveType.TsInt((int) v);
       case INT64:
+      case TIMESTAMP:
         return new TsPrimitiveType.TsLong((long) v);
       case FLOAT:
         return new TsPrimitiveType.TsFloat((float) v);
       case DOUBLE:
         return new TsPrimitiveType.TsDouble((double) v);
       case TEXT:
+      case BYTEA:
         return new TsPrimitiveType.TsBinary((Binary) v);
       case VECTOR:
         return new TsPrimitiveType.TsVector((TsPrimitiveType[]) v);

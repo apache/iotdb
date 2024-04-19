@@ -28,6 +28,7 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import java.lang.reflect.Proxy;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -54,6 +55,9 @@ public class RpcUtils {
   public static final int MAX_BUFFER_OVERSIZE_TIME = 5;
 
   public static final long MIN_SHRINK_INTERVAL = 60_000L;
+
+  private static final LocalDate BASE_DATE = LocalDate.of(1000, 1, 1);
+  private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
   private RpcUtils() {
     // util class
@@ -233,6 +237,11 @@ public class RpcUtils {
         dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
         return dateTime.format(DateTimeFormatter.ofPattern(timeFormat));
     }
+  }
+
+  public static String formatDate(int dateSinceBase) {
+    LocalDate targetDate = BASE_DATE.plusDays(dateSinceBase);
+    return targetDate.format(DATE_FORMATTER);
   }
 
   public static String formatDatetimeStr(String datetime, StringBuilder digits) {

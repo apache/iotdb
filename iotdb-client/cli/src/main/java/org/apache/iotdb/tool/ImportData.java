@@ -128,6 +128,9 @@ public class ImportData extends AbstractDataTool {
   private static final String DATATYPE_LONG = "long";
   private static final String DATATYPE_FLOAT = "float";
   private static final String DATATYPE_DOUBLE = "double";
+  private static final String DATATYPE_TIMESTAMP = "timestamp";
+  private static final String DATATYPE_DATE = "date";
+  private static final String DATATYPE_BYTEA = "bytea";
   private static final String DATATYPE_NAN = "NaN";
   private static final String DATATYPE_TEXT = "text";
 
@@ -144,6 +147,9 @@ public class ImportData extends AbstractDataTool {
     TYPE_INFER_KEY_DICT.put(DATATYPE_LONG, TSDataType.DOUBLE);
     TYPE_INFER_KEY_DICT.put(DATATYPE_FLOAT, TSDataType.FLOAT);
     TYPE_INFER_KEY_DICT.put(DATATYPE_DOUBLE, TSDataType.DOUBLE);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_TIMESTAMP, TSDataType.TIMESTAMP);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_DATE, TSDataType.TIMESTAMP);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_BYTEA, TSDataType.TEXT);
     TYPE_INFER_KEY_DICT.put(DATATYPE_NAN, TSDataType.DOUBLE);
   }
 
@@ -155,6 +161,9 @@ public class ImportData extends AbstractDataTool {
     TYPE_INFER_VALUE_DICT.put(DATATYPE_LONG, TSDataType.INT64);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_FLOAT, TSDataType.FLOAT);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_DOUBLE, TSDataType.DOUBLE);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_TIMESTAMP, TSDataType.TIMESTAMP);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_DATE, TSDataType.TIMESTAMP);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_BYTEA, TSDataType.TEXT);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_TEXT, TSDataType.TEXT);
   }
 

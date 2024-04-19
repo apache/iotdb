@@ -2091,7 +2091,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   // Literals ========================================================================
 
-  public long parseDateFormat(String timestampStr) {
+  public long parseDateTimeFormat(String timestampStr) {
     if (timestampStr == null || "".equals(timestampStr.trim())) {
       throw new SemanticException("input timestamp cannot be empty");
     }
@@ -2110,7 +2110,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  public long parseDateFormat(String timestampStr, long currentTime) {
+  public long parseDateTimeFormat(String timestampStr, long currentTime) {
     if (timestampStr == null || "".equals(timestampStr.trim())) {
       throw new SemanticException("input timestamp cannot be empty");
     }
@@ -3064,9 +3064,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
    *
    * <p>eg. now() + 1d - 2h
    */
-  private Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx) {
+  public Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx) {
     long time;
-    time = parseDateFormat(ctx.getChild(0).getText());
+    time = parseDateTimeFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
         time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
@@ -3079,7 +3079,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx, long currentTime) {
     long time;
-    time = parseDateFormat(ctx.getChild(0).getText(), currentTime);
+    time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
         time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
@@ -3104,7 +3104,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.dateExpression() != null) {
       return parseDateExpression(ctx.dateExpression(), currentTime);
     } else {
-      return parseDateFormat(ctx.datetimeLiteral().getText(), currentTime);
+      return parseDateTimeFormat(ctx.datetimeLiteral().getText(), currentTime);
     }
   }
 

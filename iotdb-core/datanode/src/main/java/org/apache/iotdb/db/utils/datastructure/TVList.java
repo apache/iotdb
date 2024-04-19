@@ -71,12 +71,15 @@ public abstract class TVList implements WALEntryValue {
   public static TVList newList(TSDataType dataType) {
     switch (dataType) {
       case TEXT:
+      case BYTEA:
         return BinaryTVList.newList();
       case FLOAT:
         return FloatTVList.newList();
       case INT32:
+      case DATE:
         return IntTVList.newList();
       case INT64:
+      case TIMESTAMP:
         return LongTVList.newList();
       case DOUBLE:
         return DoubleTVList.newList();

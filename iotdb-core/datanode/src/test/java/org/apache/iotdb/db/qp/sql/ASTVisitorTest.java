@@ -50,7 +50,7 @@ public class ASTVisitorTest {
 
   @Test
   public void testParseTimeFormatNow() {
-    long now = visitor.parseDateFormat(SqlConstant.NOW_FUNC);
+    long now = visitor.parseDateTimeFormat(SqlConstant.NOW_FUNC);
     for (int i = 0; i <= 12; i++) {
       ZoneOffset offset1, offset2;
       if (i < 10) {
@@ -73,15 +73,15 @@ public class ASTVisitorTest {
   public void testParseTimeFormatNowPrecision() {
     String timePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
     CommonDescriptor.getInstance().getConfig().setTimestampPrecision("ms");
-    long now_ms = visitor.parseDateFormat(SqlConstant.NOW_FUNC);
+    long now_ms = visitor.parseDateTimeFormat(SqlConstant.NOW_FUNC);
     String ms_str = String.valueOf(now_ms);
 
     CommonDescriptor.getInstance().getConfig().setTimestampPrecision("us");
-    long now_us = visitor.parseDateFormat(SqlConstant.NOW_FUNC);
+    long now_us = visitor.parseDateTimeFormat(SqlConstant.NOW_FUNC);
     String us_str = String.valueOf(now_us);
 
     CommonDescriptor.getInstance().getConfig().setTimestampPrecision("ns");
-    long now_ns = visitor.parseDateFormat(SqlConstant.NOW_FUNC);
+    long now_ns = visitor.parseDateTimeFormat(SqlConstant.NOW_FUNC);
     String ns_str = String.valueOf(now_ns);
 
     assertEquals(ms_str.length() + 3, (us_str).length());
@@ -91,11 +91,11 @@ public class ASTVisitorTest {
 
   @Test(expected = SemanticException.class)
   public void testParseTimeFormatFail1() {
-    visitor.parseDateFormat(null);
+    visitor.parseDateTimeFormat(null);
   }
 
   @Test(expected = SemanticException.class)
   public void testParseTimeFormatFail2() {
-    visitor.parseDateFormat("");
+    visitor.parseDateTimeFormat("");
   }
 }

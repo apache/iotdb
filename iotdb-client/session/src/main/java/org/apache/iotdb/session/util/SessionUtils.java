@@ -142,6 +142,7 @@ public class SessionUtils {
           ReadWriteIOUtils.write((Integer) values.get(i), buffer);
           break;
         case INT64:
+        case TIMESTAMP:
           ReadWriteIOUtils.write((Long) values.get(i), buffer);
           break;
         case FLOAT:
@@ -189,6 +190,7 @@ public class SessionUtils {
         }
         break;
       case INT64:
+      case TIMESTAMP:
         long[] longValues = (long[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
           if (tablet.bitMaps == null

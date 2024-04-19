@@ -308,6 +308,7 @@ public class SingleSeriesCompactionExecutor {
   private void writeTimeAndValueToChunkWriter(TimeValuePair timeValuePair) {
     switch (chunkWriter.getDataType()) {
       case TEXT:
+      case BYTEA:
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
         break;
       case FLOAT:
@@ -320,9 +321,11 @@ public class SingleSeriesCompactionExecutor {
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
         break;
       case INT64:
+      case TIMESTAMP:
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
         break;
       case INT32:
+      case DATE:
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
         break;
       default:

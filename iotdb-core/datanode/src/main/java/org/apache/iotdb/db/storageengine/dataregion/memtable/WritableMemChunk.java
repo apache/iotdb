@@ -64,9 +64,11 @@ public class WritableMemChunk implements IWritableMemChunk {
         putBoolean(insertTime, (boolean) objectValue);
         break;
       case INT32:
+      case DATE:
         putInt(insertTime, (int) objectValue);
         break;
       case INT64:
+      case TIMESTAMP:
         putLong(insertTime, (long) objectValue);
         break;
       case FLOAT:
@@ -76,6 +78,7 @@ public class WritableMemChunk implements IWritableMemChunk {
         putDouble(insertTime, (double) objectValue);
         break;
       case TEXT:
+      case BYTEA:
         return putBinaryWithFlushCheck(insertTime, (Binary) objectValue);
       default:
         throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
@@ -352,9 +355,11 @@ public class WritableMemChunk implements IWritableMemChunk {
           chunkWriterImpl.write(time, list.getBoolean(sortedRowIndex));
           break;
         case INT32:
+        case DATE:
           chunkWriterImpl.write(time, list.getInt(sortedRowIndex));
           break;
         case INT64:
+        case TIMESTAMP:
           chunkWriterImpl.write(time, list.getLong(sortedRowIndex));
           break;
         case FLOAT:
@@ -364,6 +369,7 @@ public class WritableMemChunk implements IWritableMemChunk {
           chunkWriterImpl.write(time, list.getDouble(sortedRowIndex));
           break;
         case TEXT:
+        case BYTEA:
           chunkWriterImpl.write(time, list.getBinary(sortedRowIndex));
           break;
         default:

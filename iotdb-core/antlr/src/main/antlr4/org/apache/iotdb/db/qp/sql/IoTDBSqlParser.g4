@@ -1306,6 +1306,7 @@ attributeKey
 attributeValue
     : identifier
     | constant
+    | TIMESTAMP
     ;
 
 alias

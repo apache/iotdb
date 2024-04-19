@@ -134,12 +134,14 @@ public class PageReader implements IPageReader {
           }
           break;
         case INT32:
+        case DATE:
           int anInt = valueDecoder.readInt(valueBuffer);
           if (!isDeleted(timestamp) && (allSatisfy || recordFilter.satisfy(timestamp, anInt))) {
             pageData.putInt(timestamp, anInt);
           }
           break;
         case INT64:
+        case TIMESTAMP:
           long aLong = valueDecoder.readLong(valueBuffer);
           if (!isDeleted(timestamp) && (allSatisfy || recordFilter.satisfy(timestamp, aLong))) {
             pageData.putLong(timestamp, aLong);
@@ -158,6 +160,7 @@ public class PageReader implements IPageReader {
           }
           break;
         case TEXT:
+        case BYTEA:
           Binary aBinary = valueDecoder.readBinary(valueBuffer);
           if (!isDeleted(timestamp) && (allSatisfy || recordFilter.satisfy(timestamp, aBinary))) {
             pageData.putBinary(timestamp, aBinary);
@@ -206,6 +209,7 @@ public class PageReader implements IPageReader {
         }
         break;
       case INT32:
+      case DATE:
         while (timeDecoder.hasNext(timeBuffer)) {
           long timestamp = timeDecoder.readLong(timeBuffer);
           int anInt = valueDecoder.readInt(valueBuffer);
@@ -227,6 +231,7 @@ public class PageReader implements IPageReader {
         }
         break;
       case INT64:
+      case TIMESTAMP:
         while (timeDecoder.hasNext(timeBuffer)) {
           long timestamp = timeDecoder.readLong(timeBuffer);
           long aLong = valueDecoder.readLong(valueBuffer);
@@ -290,6 +295,7 @@ public class PageReader implements IPageReader {
         }
         break;
       case TEXT:
+      case BYTEA:
         while (timeDecoder.hasNext(timeBuffer)) {
           long timestamp = timeDecoder.readLong(timeBuffer);
           Binary aBinary = valueDecoder.readBinary(valueBuffer);

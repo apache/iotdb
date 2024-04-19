@@ -594,9 +594,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           WALWriteUtils.write((Boolean) values[i], buffer);
           break;
         case INT32:
+        case DATE:
           WALWriteUtils.write((Integer) values[i], buffer);
           break;
         case INT64:
+        case TIMESTAMP:
           WALWriteUtils.write((Long) values[i], buffer);
           break;
         case FLOAT:
@@ -606,6 +608,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           WALWriteUtils.write((Double) values[i], buffer);
           break;
         case TEXT:
+        case BYTEA:
           WALWriteUtils.write((Binary) values[i], buffer);
           break;
         default:

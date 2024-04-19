@@ -428,6 +428,12 @@ public class ExportTsFile extends AbstractTsFileTool {
         return TSDataType.TEXT;
       case "BOOLEAN":
         return TSDataType.BOOLEAN;
+      case "TIMESTAMP":
+        return TSDataType.TIMESTAMP;
+      case "DATE":
+        return TSDataType.DATE;
+      case "BYTEA":
+        return TSDataType.BYTEA;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }

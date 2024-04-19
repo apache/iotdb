@@ -203,10 +203,12 @@ public class BatchData {
         booleanRet.add(new boolean[capacity]);
         break;
       case INT32:
+      case DATE:
         intRet = new ArrayList<>();
         intRet.add(new int[capacity]);
         break;
       case INT64:
+      case TIMESTAMP:
         longRet = new ArrayList<>();
         longRet.add(new long[capacity]);
         break;
@@ -219,6 +221,7 @@ public class BatchData {
         doubleRet.add(new double[capacity]);
         break;
       case TEXT:
+      case BYTEA:
         binaryRet = new ArrayList<>();
         binaryRet.add(new Binary[capacity]);
         break;

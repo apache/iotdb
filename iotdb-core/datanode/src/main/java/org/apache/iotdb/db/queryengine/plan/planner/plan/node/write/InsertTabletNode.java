@@ -821,12 +821,14 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       TSDataType dataType, Object column, IWALByteBufferView buffer, int start, int end) {
     switch (dataType) {
       case INT32:
+      case DATE:
         int[] intValues = (int[]) column;
         for (int j = start; j < end; j++) {
           buffer.putInt(intValues[j]);
         }
         break;
       case INT64:
+      case TIMESTAMP:
         long[] longValues = (long[]) column;
         for (int j = start; j < end; j++) {
           buffer.putLong(longValues[j]);
@@ -851,6 +853,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         }
         break;
       case TEXT:
+      case BYTEA:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = start; j < end; j++) {
           buffer.putInt(binaryValues[j].getLength());
