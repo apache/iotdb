@@ -96,7 +96,7 @@ public class FileLoaderUtils {
                     resource.getTsFilePath(),
                     new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
                         resource.getTsFileID(),
-                        new PlainDeviceID(seriesPath.getDevice()),
+                        new PlainDeviceID(seriesPath.getIDeviceID()),
                         seriesPath.getMeasurement()),
                     allSensors,
                     resource.getTimeIndexType() != 1,

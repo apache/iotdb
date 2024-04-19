@@ -244,7 +244,7 @@ public class LogicalPlanBuilder {
               (sourceExpression.isViewExpression()
                   ? sourceExpression.getViewPath()
                   : ((TimeSeriesOperand) sourceExpression).getPath());
-      String outputDevice = outputPath.getDevice();
+      String outputDevice = outputPath.getIDeviceID();
       outputPathToSourceExpressionMap
           .computeIfAbsent(
               outputDevice,
@@ -540,7 +540,7 @@ public class LogicalPlanBuilder {
         PartialPath path = ts.getPath();
         Pair<List<String>, List<IMeasurementSchema>> pair =
             map.computeIfAbsent(
-                path.getDevice(), k -> new Pair<>(new ArrayList<>(), new ArrayList<>()));
+                path.getIDeviceID(), k -> new Pair<>(new ArrayList<>(), new ArrayList<>()));
         pair.left.add(path.getMeasurement());
         try {
           pair.right.add(path.getMeasurementSchema());

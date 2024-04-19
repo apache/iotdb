@@ -3045,11 +3045,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           if (logicalViewSchema.isWritable()) {
             sourcePathOfAliasSeries = logicalViewSchema.getSourcePathIfWritable();
             deletePatternSet.add(sourcePathOfAliasSeries);
-            deduplicatedDevicePaths.add(sourcePathOfAliasSeries.getDevice());
+            deduplicatedDevicePaths.add(sourcePathOfAliasSeries.getIDeviceID());
           }
           deletePatternSet.remove(measurementPath);
         } else {
-          deduplicatedDevicePaths.add(measurementPath.getDevice());
+          deduplicatedDevicePaths.add(measurementPath.getIDeviceID());
         }
       }
       deleteDataStatement.setPathList(new ArrayList<>(deletePatternSet));

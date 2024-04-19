@@ -80,7 +80,7 @@ public class SingleSeriesCompactionExecutor {
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
       CompactionTsFileWriter fileWriter,
       TsFileResource targetResource) {
-    this.device = new PlainDeviceID(series.getDevice());
+    this.device = new PlainDeviceID(series.getIDeviceID());
     this.series = series;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
@@ -98,7 +98,7 @@ public class SingleSeriesCompactionExecutor {
       CompactionTsFileWriter fileWriter,
       TsFileResource targetResource,
       CompactionTaskSummary summary) {
-    this.device = new PlainDeviceID(series.getDevice());
+    this.device = new PlainDeviceID(series.getIDeviceID());
     this.series = series;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;

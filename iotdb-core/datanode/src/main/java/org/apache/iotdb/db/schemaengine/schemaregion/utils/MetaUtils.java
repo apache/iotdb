@@ -91,7 +91,7 @@ public class MetaUtils {
         result.add(measurementPath);
         alignedPath = null;
       } else {
-        if (alignedPath == null || !alignedPath.equals(measurementPath.getDevice())) {
+        if (alignedPath == null || !alignedPath.equals(measurementPath.getIDeviceID())) {
           alignedPath = new AlignedPath(measurementPath);
           result.add(alignedPath);
         } else {
@@ -140,7 +140,7 @@ public class MetaUtils {
       if (!measurementPath.isUnderAlignedEntity()) {
         result.add(measurementPath);
       } else {
-        String deviceName = measurementPath.getDevice();
+        String deviceName = measurementPath.getIDeviceID();
         if (!deviceToAlignedPathMap.containsKey(deviceName)) {
           AlignedPath alignedPath = new AlignedPath(measurementPath);
           deviceToAlignedPathMap.put(deviceName, alignedPath);
@@ -235,10 +235,10 @@ public class MetaUtils {
       } else if (((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
         // for without value filter
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
-        AlignedPath groupPath = temp.get(seriesPath.getDevice());
+        AlignedPath groupPath = temp.get(seriesPath.getIDeviceID());
         if (groupPath == null) {
           groupPath = new AlignedPath((MeasurementPath) seriesPath);
-          temp.put(seriesPath.getDevice(), groupPath);
+          temp.put(seriesPath.getIDeviceID(), groupPath);
           alignedPathToAggrIndexesMap
               .computeIfAbsent(groupPath, key -> new ArrayList<>())
               .add(indexes);
@@ -266,7 +266,7 @@ public class MetaUtils {
             .addAll(pathToAggregations.get(path));
       } else {
         deviceToAlignedPathsMap
-            .computeIfAbsent(path.getDevice(), key -> new ArrayList<>())
+            .computeIfAbsent(path.getIDeviceID(), key -> new ArrayList<>())
             .add(measurementPath);
       }
     }
