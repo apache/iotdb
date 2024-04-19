@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionChunkReader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
@@ -71,7 +73,12 @@ public class RepairDataFileScanUtil {
 
   public void scanTsFile() {
     File tsfile = resource.getTsFile();
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsfile.getPath())) {
+    try (TsFileSequenceReader reader =
+        new CompactionTsFileReader(
+            tsfile.getPath(),
+            resource.isSeq()
+                ? CompactionType.INNER_SEQ_COMPACTION
+                : CompactionType.INNER_UNSEQ_COMPACTION)) {
       TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
       while (deviceIterator.hasNext()) {
         Pair<String, Boolean> deviceIsAlignedPair = deviceIterator.next();

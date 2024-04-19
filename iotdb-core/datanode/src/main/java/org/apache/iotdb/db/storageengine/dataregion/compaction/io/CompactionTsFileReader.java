@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -70,6 +71,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
 
   @Override
   protected ByteBuffer readData(long position, int totalSize) throws IOException {
+    acquireReadDataSizeWithCompactionReadRateLimiter(totalSize);
     ByteBuffer buffer = super.readData(position, totalSize);
     readDataSize.addAndGet(totalSize);
     return buffer;
@@ -192,6 +194,11 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
     long dataSize = readDataSize.get() - before;
     CompactionMetrics.getInstance()
         .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
+  }
+
+  private void acquireReadDataSizeWithCompactionReadRateLimiter(int readDataSize) {
+    CompactionTaskManager.getInstance().getCompactionReadOperationRateLimiter().acquire(1);
+    CompactionTaskManager.getInstance().getCompactionReadRateLimiter().acquire(readDataSize);
   }
 
   @Override
