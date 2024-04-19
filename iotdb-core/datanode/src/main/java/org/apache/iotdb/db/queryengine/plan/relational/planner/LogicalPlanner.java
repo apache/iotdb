@@ -108,9 +108,11 @@ public class LogicalPlanner {
     RelationType outputDescriptor = analysis.getOutputDescriptor();
     for (Field field : outputDescriptor.getVisibleFields()) {
       String name = field.getName().orElse("_col" + columnNumber);
-      names.add(name);
-      columnHeaders.add(new ColumnHeader(name, transferTypeToTsDataType(field.getType())));
+      if (!"time".equalsIgnoreCase(name)) {
+        columnHeaders.add(new ColumnHeader(name, transferTypeToTsDataType(field.getType())));
+      }
 
+      names.add(name);
       int fieldIndex = outputDescriptor.indexOf(field);
       Symbol symbol = plan.getSymbol(fieldIndex);
       outputs.add(symbol);
@@ -124,6 +126,7 @@ public class LogicalPlanner {
 
     DatasetHeader respDatasetHeader = new DatasetHeader(columnHeaders, false);
     analysis.setRespDatasetHeader(respDatasetHeader);
+
     return outputNode;
   }
 

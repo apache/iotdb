@@ -323,6 +323,8 @@ public class TableScanOperator extends AbstractDataSourceOperator {
     for (ColumnSchema columnSchema : columnSchemas) {
       if (columnSchema.getColumnCategory() != TsTableColumnCategory.TIME) {
         resultDataTypes.add(getTSDataType(columnSchema.getType()));
+      } else {
+        throw new IllegalArgumentException("Should not have TimeColumnSchema");
       }
     }
     return resultDataTypes;

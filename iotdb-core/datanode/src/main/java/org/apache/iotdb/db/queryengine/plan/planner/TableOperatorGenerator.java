@@ -140,32 +140,41 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<String> measurementColumnNames = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     int measurementColumnCount = 0;
-    for (int i = 0; i < outputColumnCount; i++) {
-      Symbol columnName = outputColumnNames.get(i);
+    int idx = 0;
+    boolean hasTimeColumn = false;
+    for (Symbol columnName : outputColumnNames) {
       ColumnSchema schema =
           requireNonNull(columnSchemaMap.get(columnName), columnName + " is null");
-      columnSchemas.add(schema);
+
       switch (schema.getColumnCategory()) {
         case ID:
         case ATTRIBUTE:
-          columnsIndexArray[i] =
+          columnsIndexArray[idx++] =
               requireNonNull(
                   idAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
+          columnSchemas.add(schema);
           break;
         case MEASUREMENT:
-          columnsIndexArray[i] = measurementColumnCount;
+          columnsIndexArray[idx++] = measurementColumnCount;
           measurementColumnCount++;
           measurementColumnNames.add(columnName.getName());
           measurementSchemas.add(
               new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
+          columnSchemas.add(schema);
           break;
         case TIME:
-          columnsIndexArray[i] = -1;
+          hasTimeColumn = true;
+          // columnsIndexArray[i] = -1;
           break;
         default:
           throw new IllegalArgumentException(
               "Unexpected column category: " + schema.getColumnCategory());
       }
+    }
+
+    int[] newColumnsIndexArray = new int[outputColumnCount - 1];
+    if (hasTimeColumn) {
+      System.arraycopy(columnsIndexArray, 0, newColumnsIndexArray, 0, outputColumnCount - 1);
     }
 
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(context);
@@ -201,7 +210,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             operatorContext,
             node.getPlanNodeId(),
             columnSchemas,
-            columnsIndexArray,
+            newColumnsIndexArray,
             measurementColumnCount,
             node.getDeviceEntries(),
             node.getScanOrder(),
@@ -476,7 +485,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return constructFilterAndProjectOperator(
         predicate,
         inputOperator,
-        node.getOutputSymbols().stream().map(Symbol::toSymbolReference).toArray(Expression[]::new),
+        node.getOutputSymbols().stream()
+            .filter(e -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(e.getName()))
+            .map(Symbol::toSymbolReference)
+            .toArray(Expression[]::new),
         inputDataTypes,
         inputLocations,
         node.getPlanNodeId(),

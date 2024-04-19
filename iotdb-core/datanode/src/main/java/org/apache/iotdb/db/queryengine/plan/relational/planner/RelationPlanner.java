@@ -98,10 +98,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     Collection<Field> fields = scope.getRelationType().getAllFields();
     int IDIdx = 0, attributeIdx = 0;
     for (Field field : fields) {
-      if ("time".equalsIgnoreCase(field.getName().get())) {
-        // TODO consider time ColumnCategory
-        continue;
-      }
       Symbol symbol = symbolAllocator.newSymbol(field);
       outputSymbolsBuilder.add(symbol);
       symbolToColumnSchema.put(

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.ConstantCo
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.NullColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalAndMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalOrMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
@@ -578,12 +579,18 @@ public class ColumnTransformerBuilder
         context.cache.computeIfAbsent(
             node,
             e -> {
-              IdentityColumnTransformer identity =
-                  new IdentityColumnTransformer(
-                      context.getType(node),
-                      context.inputLocations.get(Symbol.from(node)).get(0).getValueColumnIndex());
-              context.leafList.add(identity);
-              return identity;
+              int valueIdx =
+                  context.inputLocations.get(Symbol.from(node)).get(0).getValueColumnIndex();
+              LeafColumnTransformer leafColumnTransformer;
+              if (valueIdx == -1) {
+                leafColumnTransformer = new TimeColumnTransformer(INT64);
+              } else {
+                leafColumnTransformer =
+                    new IdentityColumnTransformer(context.getType(node), valueIdx);
+              }
+
+              context.leafList.add(leafColumnTransformer);
+              return leafColumnTransformer;
             });
     res.addReferenceCount();
     return res;

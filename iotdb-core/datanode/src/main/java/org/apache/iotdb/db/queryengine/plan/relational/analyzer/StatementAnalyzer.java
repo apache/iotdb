@@ -879,20 +879,25 @@ public class StatementAnalyzer {
           });
 
       // TODO Auth control
-      //      tableFieldsMap.asMap().forEach((table, tableFields) -> {
-      //        Set<String> accessibleColumns = accessControl.filterColumns(
-      //                session.toSecurityContext(),
-      //                table.getCatalogName(),
-      //                ImmutableMap.of(
-      //                    table.asSchemaTableName(),
-      //                    tableFields.stream()
-      //                        .map(field -> field.getOriginColumnName().get())
-      //                        .collect(toImmutableSet())))
-      //            .getOrDefault(table.asSchemaTableName(), ImmutableSet.of());
-      //        accessibleFields.addAll(tableFields.stream()
-      //            .filter(field -> accessibleColumns.contains(field.getOriginColumnName().get()))
-      //            .collect(toImmutableList()));
-      //      });
+      tableFieldsMap
+          .asMap()
+          .forEach(
+              (table, tableFields) -> {
+                //              Set<String> accessibleColumns = accessControl.filterColumns(
+                //                      session.toSecurityContext(),
+                //                      table.getCatalogName(),
+                //                      ImmutableMap.of(
+                //                          table.asSchemaTableName(),
+                //                          tableFields.stream()
+                //                              .map(field -> field.getOriginColumnName().get())
+                //                              .collect(toImmutableSet())))
+                //                  .getOrDefault(table.asSchemaTableName(), ImmutableSet.of());
+                accessibleFields.addAll(
+                    tableFields.stream()
+                        // .filter(field ->
+                        // accessibleColumns.contains(field.getOriginColumnName().get()))
+                        .collect(toImmutableList()));
+              });
 
       return fields.stream().filter(accessibleFields.build()::contains).collect(toImmutableList());
     }
