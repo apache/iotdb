@@ -41,31 +41,31 @@ public class LocalTsFileOutput extends OutputStream implements TsFileOutput {
   }
 
   @Override
-  public synchronized void write(int b) throws IOException {
+  public void write(int b) throws IOException {
     bufferedStream.write(b);
     position++;
   }
 
   @Override
-  public synchronized void write(byte[] b) throws IOException {
+  public void write(byte[] b) throws IOException {
     bufferedStream.write(b);
     position += b.length;
   }
 
   @Override
-  public synchronized void write(byte b) throws IOException {
+  public void write(byte b) throws IOException {
     bufferedStream.write(b);
     position++;
   }
 
   @Override
-  public synchronized void write(byte[] buf, int start, int offset) throws IOException {
+  public void write(byte[] buf, int start, int offset) throws IOException {
     bufferedStream.write(buf, start, offset);
     position += offset;
   }
 
   @Override
-  public synchronized void write(ByteBuffer b) throws IOException {
+  public void write(ByteBuffer b) throws IOException {
     bufferedStream.write(b.array());
     position += b.array().length;
   }
