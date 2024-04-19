@@ -444,12 +444,22 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // commit
     final List<SubscriptionCommitContext> commitContexts = req.getCommitContexts();
-    SubscriptionAgent.broker().commit(consumerConfig, commitContexts);
+    final List<SubscriptionCommitContext> successfulCommitContexts =
+        SubscriptionAgent.broker().commit(consumerConfig, commitContexts);
 
-    LOGGER.info(
-        "Subscription: consumer commit {} successfully, commit contexts: {}",
-        consumerConfig,
-        commitContexts);
+    if (Objects.equals(successfulCommitContexts.size(), commitContexts.size())) {
+      LOGGER.info(
+          "Subscription: consumer {} commit successfully, commit contexts: {}",
+          consumerConfig,
+          commitContexts);
+    } else {
+      LOGGER.warn(
+          "Subscription: consumer {} commit partially successful, commit contexts: {}, successful commit contexts: {}",
+          consumerConfig,
+          commitContexts,
+          successfulCommitContexts);
+    }
+
     return PipeSubscribeCommitResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
@@ -463,7 +473,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
               e.getMessage(), req);
       LOGGER.warn(exceptionMessage);
       return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
-          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_COMMIT_ERROR, exceptionMessage));
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_CLOSE_ERROR, exceptionMessage));
     }
   }
 

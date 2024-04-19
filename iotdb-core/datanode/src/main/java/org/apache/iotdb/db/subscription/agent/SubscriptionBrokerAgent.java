@@ -24,12 +24,12 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtask;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -52,9 +52,11 @@ public class SubscriptionBrokerAgent {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
-      LOGGER.warn(
-          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
-      return Collections.emptyList();
+      final String errorMessage =
+          String.format(
+              "Subscription: broker bound to consumer group [%s] does not exist", consumerGroupId);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
     }
     // TODO: currently we fetch messages from all topics
     final String consumerId = consumerConfig.getConsumerId();
@@ -66,24 +68,29 @@ public class SubscriptionBrokerAgent {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
-      LOGGER.warn(
-          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
-      return Collections.emptyList();
+      final String errorMessage =
+          String.format(
+              "Subscription: broker bound to consumer group [%s] does not exist", consumerGroupId);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
     }
     final String consumerId = consumerConfig.getConsumerId();
     return broker.pollTsFile(consumerId, topicName, fileName, writingOffset);
   }
 
-  public void commit(
+  /** @return list of successful commit contexts */
+  public List<SubscriptionCommitContext> commit(
       final ConsumerConfig consumerConfig, final List<SubscriptionCommitContext> commitContexts) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
-      LOGGER.warn(
-          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
-      return;
+      final String errorMessage =
+          String.format(
+              "Subscription: broker bound to consumer group [%s] does not exist", consumerGroupId);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
     }
-    broker.commit(commitContexts);
+    return broker.commit(commitContexts);
   }
 
   /////////////////////////////// broker ///////////////////////////////

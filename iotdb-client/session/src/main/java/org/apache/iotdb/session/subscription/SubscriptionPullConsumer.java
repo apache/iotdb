@@ -166,13 +166,11 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// commit ///////////////////////////////
 
-  public void commitSync(SubscriptionMessage message)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+  public void commitSync(SubscriptionMessage message) throws SubscriptionException {
     super.commitSync(Collections.singletonList(message));
   }
 
-  public void commitSync(Iterable<SubscriptionMessage> messages)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+  public void commitSync(Iterable<SubscriptionMessage> messages) throws SubscriptionException {
     super.commitSync(messages);
   }
 

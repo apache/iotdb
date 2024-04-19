@@ -64,7 +64,8 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
         }
       }
     } catch (IOException e) {
-      resp.status = RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, e.getMessage());
+      resp.status =
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_SERIALIZATION_ERROR, e.getMessage());
     }
 
     return resp;

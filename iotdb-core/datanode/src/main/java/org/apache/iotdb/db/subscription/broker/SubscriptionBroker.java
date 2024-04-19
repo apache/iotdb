@@ -25,6 +25,7 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 
 import org.slf4j.Logger;
@@ -83,17 +84,28 @@ public class SubscriptionBroker {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
-      return Collections.emptyList();
+      final String errorMessage =
+          String.format(
+              "Subscription: prefetching queue bound to topic [%s] does not exist", topicName);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
     }
     if (!(prefetchingQueue instanceof SubscriptionPrefetchingTsFileQueue)) {
-      return Collections.emptyList();
+      final String errorMessage =
+          String.format(
+              "Subscription: prefetching queue bound to topic [%s] is invalid", topicName);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
     }
     return Collections.singletonList(
         ((SubscriptionPrefetchingTsFileQueue) prefetchingQueue)
             .pollTsFile(consumerId, fileName, writingOffset));
   }
 
-  public void commit(final List<SubscriptionCommitContext> commitContexts) {
+  /** @return list of successful commit contexts */
+  public List<SubscriptionCommitContext> commit(
+      final List<SubscriptionCommitContext> commitContexts) {
+    final List<SubscriptionCommitContext> successfulCommitContexts = new ArrayList<>();
     for (final SubscriptionCommitContext commitContext : commitContexts) {
       final String topicName = commitContext.getTopicName();
       final SubscriptionPrefetchingQueue prefetchingQueue =
@@ -103,8 +115,11 @@ public class SubscriptionBroker {
             "Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
         continue;
       }
-      prefetchingQueue.commit(commitContext);
+      if (prefetchingQueue.commit(commitContext)) {
+        successfulCommitContexts.add(commitContext);
+      }
     }
+    return successfulCommitContexts;
   }
 
   /////////////////////////////// prefetching queue ///////////////////////////////

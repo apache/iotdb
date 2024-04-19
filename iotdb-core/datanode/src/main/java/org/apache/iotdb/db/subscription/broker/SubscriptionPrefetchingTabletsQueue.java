@@ -94,7 +94,10 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
       }
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("Subscription: Interrupted while polling events.", e);
+      LOGGER.warn(
+          "Subscription: SubscriptionPrefetchingTabletsQueue {} interrupted while polling events.",
+          this,
+          e);
     }
 
     return null;
@@ -116,7 +119,10 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
     while (Objects.nonNull(
         event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll()))) {
       if (!(event instanceof EnrichedEvent)) {
-        LOGGER.warn("Subscription: Only support prefetch EnrichedEvent. Ignore {}.", event);
+        LOGGER.warn(
+            "Subscription: SubscriptionPrefetchingTabletsQueue {} only support prefetch EnrichedEvent. Ignore {}.",
+            this,
+            event);
         continue;
       }
 
@@ -148,7 +154,10 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
         //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
         //  - UserDefinedEnrichedEvent: ignored?
         //  - Others: events related to meta sync, safe to ignore
-        LOGGER.warn("Subscription: Ignore EnrichedEvent {} when prefetching.", event);
+        LOGGER.warn(
+            "Subscription: SubscriptionPrefetchingTabletsQueue {} ignore EnrichedEvent {} when prefetching.",
+            this,
+            event);
       }
     }
 
@@ -195,7 +204,10 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
       }
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("Subscription: Interrupted while serializing events.", e);
+      LOGGER.warn(
+          "Subscription: SubscriptionPrefetchingTabletsQueue {} interrupted while serializing events.",
+          this,
+          e);
     }
   }
 
@@ -209,7 +221,8 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
     }
 
     LOGGER.warn(
-        "Subscription: Only support convert PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent to tablet. Ignore {}.",
+        "Subscription: SubscriptionPrefetchingTabletsQueue {} only support convert PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent to tablet. Ignore {}.",
+        this,
         tabletInsertionEvent);
     return null;
   }

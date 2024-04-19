@@ -21,20 +21,20 @@ package org.apache.iotdb.rpc.subscription.exception;
 
 import java.util.Objects;
 
-public class SubscriptionPollTimeOutException extends SubscriptionException {
+public class SubscriptionConnectionException extends SubscriptionException {
 
-  public SubscriptionPollTimeOutException(String message) {
+  public SubscriptionConnectionException(String message) {
     super(message);
   }
 
-  public SubscriptionPollTimeOutException(String message, Throwable cause) {
+  public SubscriptionConnectionException(String message, Throwable cause) {
     super(message, cause);
   }
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof SubscriptionPollTimeOutException
-        && Objects.equals(getMessage(), ((SubscriptionPollTimeOutException) obj).getMessage())
-        && Objects.equals(getTimeStamp(), ((SubscriptionPollTimeOutException) obj).getTimeStamp());
+    return obj instanceof SubscriptionConnectionException
+        && Objects.equals(getMessage(), ((SubscriptionConnectionException) obj).getMessage())
+        && Objects.equals(getTimeStamp(), ((SubscriptionConnectionException) obj).getTimeStamp());
   }
 }

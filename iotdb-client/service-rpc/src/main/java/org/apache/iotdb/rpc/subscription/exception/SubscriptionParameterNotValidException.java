@@ -27,8 +27,8 @@ public class SubscriptionParameterNotValidException extends SubscriptionExceptio
     super(message);
   }
 
-  protected SubscriptionParameterNotValidException(String message, long timeStamp) {
-    super(message, timeStamp);
+  public SubscriptionParameterNotValidException(String message, Throwable cause) {
+    super(message, cause);
   }
 
   @Override
@@ -37,10 +37,5 @@ public class SubscriptionParameterNotValidException extends SubscriptionExceptio
         && Objects.equals(getMessage(), ((SubscriptionParameterNotValidException) obj).getMessage())
         && Objects.equals(
             getTimeStamp(), ((SubscriptionParameterNotValidException) obj).getTimeStamp());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(getMessage(), getTimeStamp());
   }
 }

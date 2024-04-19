@@ -25,18 +25,13 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessage;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
-import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatReq;
-import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
-import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
+import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionConnection;
@@ -92,6 +87,10 @@ public class SubscriptionSessionConnection extends SessionConnection {
     return endPoints;
   }
 
+  public TPipeSubscribeResp pipeSubscribe(TPipeSubscribeReq req) throws TException {
+    return client.pipeSubscribe(req);
+  }
+
   public int handshake(ConsumerConfig consumerConfig)
       throws TException, IOException, StatementExecutionException {
     TPipeSubscribeResp resp =
@@ -123,23 +122,6 @@ public class SubscriptionSessionConnection extends SessionConnection {
       throws TException, IOException, StatementExecutionException {
     TPipeSubscribeResp resp =
         client.pipeSubscribe(PipeSubscribeUnsubscribeReq.toTPipeSubscribeReq(topicNames));
-    RpcUtils.verifySuccess(resp.status);
-  }
-
-  public List<SubscriptionPolledMessage> poll(SubscriptionPollMessage pollMessage)
-      throws TException, IOException, StatementExecutionException {
-    TPipeSubscribeResp resp =
-        client.pipeSubscribe(PipeSubscribePollReq.toTPipeSubscribeReq(pollMessage));
-    RpcUtils.verifySuccess(resp.status);
-    PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
-    return pollResp.getMessages();
-  }
-
-  public void commitSync(List<SubscriptionCommitContext> subscriptionCommitContexts)
-      throws TException, IOException, StatementExecutionException {
-    TPipeSubscribeResp resp =
-        client.pipeSubscribe(
-            PipeSubscribeCommitReq.toTPipeSubscribeReq(subscriptionCommitContexts));
     RpcUtils.verifySuccess(resp.status);
   }
 }

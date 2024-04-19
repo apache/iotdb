@@ -63,16 +63,20 @@ public abstract class SubscriptionPrefetchingQueue {
 
   /////////////////////////////// commit ///////////////////////////////
 
-  public void commit(final SubscriptionCommitContext commitContext) {
+  /** @return {@code true} if commit successfully */
+  public boolean commit(final SubscriptionCommitContext commitContext) {
     final SubscriptionEvent event = uncommittedEvents.get(commitContext);
     if (Objects.isNull(event)) {
       LOGGER.warn(
-          "Subscription: subscription commit context [{}] does not exist, it may have been committed or something unexpected happened",
-          commitContext);
+          "Subscription: subscription commit context [{}] does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
+          commitContext,
+          this);
+      return false;
     }
     event.decreaseReferenceCount();
     event.recordCommittedTimestamp();
     uncommittedEvents.remove(commitContext);
+    return true;
   }
 
   protected SubscriptionCommitContext generateSubscriptionCommitContext() {

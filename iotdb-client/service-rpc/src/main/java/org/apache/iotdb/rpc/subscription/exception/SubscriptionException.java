@@ -29,8 +29,8 @@ public class SubscriptionException extends PipeException {
     super(message);
   }
 
-  protected SubscriptionException(String message, long timeStamp) {
-    super(message, timeStamp);
+  public SubscriptionException(String message, Throwable cause) {
+    super(message, cause);
   }
 
   @Override
