@@ -130,23 +130,21 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// poll & commit ///////////////////////////////
 
-  public List<SubscriptionMessage> poll(Duration timeoutMs)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+  public List<SubscriptionMessage> poll(Duration timeoutMs) throws SubscriptionException {
     return poll(Collections.emptySet(), timeoutMs.toMillis());
   }
 
-  public List<SubscriptionMessage> poll(long timeoutMs)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+  public List<SubscriptionMessage> poll(long timeoutMs) throws SubscriptionException {
     return poll(Collections.emptySet(), timeoutMs);
   }
 
   public List<SubscriptionMessage> poll(Set<String> topicNames, Duration timeoutMs)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+      throws SubscriptionException {
     return poll(topicNames, timeoutMs.toMillis());
   }
 
   public List<SubscriptionMessage> poll(Set<String> topicNames, long timeoutMs)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+      throws SubscriptionException {
     final List<SubscriptionMessage> messages = super.poll(topicNames, timeoutMs);
 
     // add to uncommitted messages
