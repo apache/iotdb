@@ -880,7 +880,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setString(int parameterIndex, String x) {
-    this.parameters.put(parameterIndex, "\"" + x + "\"");
+    if (!x.startsWith("\"") && !x.endsWith("'")) {
+      this.parameters.put(parameterIndex, "\"" + x + "\"");
+    } else {
+      this.parameters.put(parameterIndex, x);
+    }
   }
 
   @Override
