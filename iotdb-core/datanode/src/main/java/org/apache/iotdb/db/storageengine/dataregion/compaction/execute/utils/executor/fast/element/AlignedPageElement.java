@@ -33,9 +33,9 @@ public class AlignedPageElement extends PageElement {
   private final List<PageHeader> valuePageHeaders;
 
   // compressed page data
-  private final ByteBuffer timePageData;
+  private ByteBuffer timePageData;
 
-  private final List<ByteBuffer> valuePageDataList;
+  private List<ByteBuffer> valuePageDataList;
 
   private final CompactionAlignedChunkReader chunkReader;
 
@@ -64,6 +64,9 @@ public class AlignedPageElement extends PageElement {
     pointReader =
         chunkReader.getPagePointReader(
             timePageHeader, valuePageHeaders, timePageData, valuePageDataList);
+    // friendly for gc
+    timePageData = null;
+    valuePageDataList = null;
   }
 
   @Override
