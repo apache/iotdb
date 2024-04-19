@@ -37,8 +37,6 @@ public interface ITimeIndex {
   byte DEVICE_TIME_INDEX_TYPE = 1;
   byte FILE_TIME_INDEX_TYPE = 2;
 
-  int SPANS_MULTI_TIME_PARTITIONS_FLAG_ID = -1;
-
   /**
    * serialize to outputStream
    *

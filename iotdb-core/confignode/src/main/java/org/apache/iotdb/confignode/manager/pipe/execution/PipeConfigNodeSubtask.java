@@ -150,7 +150,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
 
       outputPipeConnector.transfer(event);
 
-      releaseLastEvent(true);
+      decreaseReferenceCountAndReleaseLastEvent(true);
     } catch (PipeException e) {
       if (!isClosed.get()) {
         throw e;
@@ -159,7 +159,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
             "{} in pipe transfer, ignored because pipe is dropped.",
             e.getClass().getSimpleName(),
             e);
-        releaseLastEvent(false);
+        clearReferenceCountAndReleaseLastEvent();
       }
     } catch (Exception e) {
       if (!isClosed.get()) {
@@ -169,16 +169,13 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
             e);
       } else {
         LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.", e);
-        releaseLastEvent(false);
+        clearReferenceCountAndReleaseLastEvent();
       }
     }
 
     return true;
   }
 
-  // synchronized for close() and releaseLastEvent(). make sure that the lastEvent
-  // will not be updated after pipeProcessor.close() to avoid resource leak
-  // because of the lastEvent is not released.
   @Override
   public void close() {
     isClosed.set(true);

@@ -22,7 +22,9 @@ package org.apache.iotdb.confignode.procedure.impl.region;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
@@ -32,6 +34,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 
 import org.slf4j.Logger;
@@ -40,6 +43,11 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
 import static org.apache.iotdb.confignode.procedure.state.AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE;
@@ -79,39 +87,46 @@ public class AddRegionPeerProcedure
       outerSwitch:
       switch (state) {
         case CREATE_NEW_REGION_PEER:
-          handler.createNewRegionPeer(consensusGroupId, destDataNode);
+          LOGGER.info(
+              "[pid{}][AddRegion] started, region {} will be added to DataNode {}.",
+              getProcId(),
+              consensusGroupId.getId(),
+              destDataNode.getDataNodeId());
+          handler.addRegionLocation(consensusGroupId, destDataNode, RegionStatus.Adding);
+          TSStatus status = handler.createNewRegionPeer(consensusGroupId, destDataNode);
           setKillPoint(state);
+          if (status.getCode() != SUCCESS_STATUS.getStatusCode()) {
+            rollback(env, handler);
+          }
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
-          TSStatus tsStatus =
-              handler.addRegionPeer(this.getProcId(), destDataNode, consensusGroupId, coordinator);
-          setKillPoint(state);
-          TRegionMigrateResult result;
-          if (tsStatus.getCode() == SUCCESS_STATUS.getStatusCode()) {
-            result = handler.waitTaskFinish(this.getProcId(), coordinator);
-          } else {
-            throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
+          handler.updateRegionCache(consensusGroupId, destDataNode, RegionStatus.Adding);
+          // We don't want to re-submit AddRegionPeerTask when leader change or ConfigNode reboot
+          if (!this.isStateDeserialized()) {
+            TSStatus tsStatus =
+                handler.submitAddRegionPeerTask(
+                    this.getProcId(), destDataNode, consensusGroupId, coordinator);
+            setKillPoint(state);
+            if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
+              throw new ProcedureException(
+                  String.format(
+                      "[pid%d][AddRegion] failed to submit task to DataNode, procedure failed",
+                      getProcId()));
+            }
           }
+          TRegionMigrateResult result = handler.waitTaskFinish(this.getProcId(), coordinator);
           switch (result.getTaskStatus()) {
             case TASK_NOT_EXIST:
               // coordinator crashed and lost its task table
             case FAIL:
               // maybe some DataNode crash
               LOGGER.warn(
-                  "result is {}, will use resetPeerList to clean in the future",
+                  "[pid{}][AddRegion] {} result is {}, procedure failed. Will try to reset peer list automatically...",
+                  getProcId(),
+                  state,
                   result.getTaskStatus());
-              //              List<TDataNodeLocation> correctDataNodeLocations =
-              //
-              // env.getConfigManager().getPartitionManager().getAllReplicaSets().stream()
-              //                      .filter(
-              //                          tRegionReplicaSet ->
-              //
-              // tRegionReplicaSet.getRegionId().equals(consensusGroupId))
-              //                      .findAny()
-              //                      .get()
-              //                      .getDataNodeLocations();
-              //              handler.resetPeerList(consensusGroupId, correctDataNodeLocations);
+              rollback(env, handler);
               return Flow.NO_MORE_STATE;
             case PROCESSING:
               // should never happen
@@ -126,23 +141,84 @@ public class AddRegionPeerProcedure
               throw new UnsupportedOperationException(msg);
           }
         case UPDATE_REGION_LOCATION_CACHE:
-          handler.addRegionLocation(consensusGroupId, destDataNode);
+          handler.updateRegionCache(consensusGroupId, destDataNode, RegionStatus.Running);
           setKillPoint(state);
-          LOGGER.info("AddRegionPeer state {} complete", state);
+          LOGGER.info("[pid{}][AddRegion] state {} complete", getProcId(), state);
           LOGGER.info(
-              "AddRegionPeerProcedure success, region {} has been added to DataNode {}",
+              "[pid{}][AddRegion] success, region {} has been added to DataNode {}. Procedure took {} (start at {}).",
+              getProcId(),
               consensusGroupId.getId(),
-              destDataNode.getDataNodeId());
+              destDataNode.getDataNodeId(),
+              CommonDateTimeUtils.convertMillisecondToDurationStr(
+                  System.currentTimeMillis() - getSubmittedTime()),
+              DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
           return Flow.NO_MORE_STATE;
         default:
           throw new ProcedureException("Unsupported state: " + state.name());
       }
     } catch (Exception e) {
-      LOGGER.error("AddRegionPeer state {} failed", state, e);
+      LOGGER.error("[pid{}][AddRegion] state {} failed", getProcId(), state, e);
       return Flow.NO_MORE_STATE;
     }
-    LOGGER.info("AddRegionPeer state {} complete", state);
+    LOGGER.info("[pid{}][AddRegion] state {} complete", getProcId(), state);
     return Flow.HAS_MORE_STATE;
+  }
+
+  private void rollback(ConfigNodeProcedureEnv env, RegionMaintainHandler handler)
+      throws ProcedureException {
+    handler.removeRegionLocation(consensusGroupId, destDataNode);
+
+    List<TDataNodeLocation> correctDataNodeLocations =
+        env.getConfigManager().getPartitionManager().getAllReplicaSets().stream()
+            .filter(tRegionReplicaSet -> tRegionReplicaSet.getRegionId().equals(consensusGroupId))
+            .findAny()
+            .orElseThrow(
+                () ->
+                    new ProcedureException(
+                        "Cannot roll back, because cannot find the correct locations"))
+            .getDataNodeLocations();
+
+    String correctStr =
+        correctDataNodeLocations.stream()
+            .map(TDataNodeLocation::getDataNodeId)
+            .collect(Collectors.toList())
+            .toString();
+    List<TDataNodeLocation> relatedDataNodeLocations = new ArrayList<>(correctDataNodeLocations);
+    relatedDataNodeLocations.add(destDataNode);
+    Map<Integer, TDataNodeLocation> relatedDataNodeLocationMap = new HashMap<>();
+    relatedDataNodeLocations.forEach(
+        location -> relatedDataNodeLocationMap.put(location.dataNodeId, location));
+    LOGGER.info(
+        "[pid{}][AddRegion] Will reset peer list of consensus group {} on DataNode {}",
+        getProcId(),
+        consensusGroupId,
+        relatedDataNodeLocations.stream()
+            .map(TDataNodeLocation::getDataNodeId)
+            .collect(Collectors.toList()));
+
+    Map<Integer, TSStatus> resultMap =
+        handler.resetPeerList(
+            consensusGroupId, correctDataNodeLocations, relatedDataNodeLocationMap);
+
+    resultMap.forEach(
+        (dataNodeId, resetResult) -> {
+          if (resetResult.getCode() == SUCCESS_STATUS.getStatusCode()) {
+            LOGGER.info(
+                "[pid{}][AddRegion] reset peer list: peer list of consensus group {} on DataNode {} has been successfully to {}",
+                getProcId(),
+                consensusGroupId,
+                dataNodeId,
+                correctStr);
+          } else {
+            // TODO: more precise
+            LOGGER.warn(
+                "[pid{}][AddRegion] reset peer list: peer list of consensus group {} on DataNode {} failed to reset to {}, you may manually reset it",
+                getProcId(),
+                consensusGroupId,
+                dataNodeId,
+                correctStr);
+          }
+        });
   }
 
   @Override

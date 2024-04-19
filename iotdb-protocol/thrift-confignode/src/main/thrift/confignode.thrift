@@ -730,6 +730,7 @@ struct TPipeConfigTransferReq {
   2: required i16 type
   3: required binary body
   4: required bool isAirGap
+  5: required string clientId
 }
 
 struct TPipeConfigTransferResp {
@@ -1450,11 +1451,14 @@ service IConfigNodeRPCService {
   /** Show Pipe by name, if name is empty, show all Pipe */
   TShowPipeResp showPipe(TShowPipeReq req)
 
-  /** Get all pipe information. It is used for DataNode registration and restart*/
+  /** Get all pipe information. It is used for DataNode registration and restart */
   TGetAllPipeInfoResp getAllPipeInfo()
 
- /** Execute schema language from external pipes */
+  /** Execute schema language from external pipes */
   TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
+
+  /** Handle client exit for ConfigNode receiver */
+  common.TSStatus handlePipeConfigClientExit(string clientId)
 
   // ======================================================
   // Subscription Topic

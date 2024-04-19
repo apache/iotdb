@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.extractor;
 
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
@@ -46,7 +47,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   // TODO: Delete this
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     if (ConfigNodeDescriptor.getInstance()
         .getConf()
         .getConfigNodeConsensusProtocolClass()
@@ -58,7 +59,8 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
     listenedTypeSet = ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters);
@@ -90,13 +92,20 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
-  protected boolean isTypeListened(Event event) {
+  protected long getMaxBlockingTimeMs() {
+    // The connector continues to submit and relies on the queue to sleep if empty
+    // Here we return with block to be consistent with the dataNode connector
+    return PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
+  }
+
+  @Override
+  protected boolean isTypeListened(final Event event) {
     return listenedTypeSet.contains(
         ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan().getType());
   }
 
   @Override
-  protected void confineHistoricalEventTransferTypes(PipeSnapshotEvent event) {
+  protected void confineHistoricalEventTransferTypes(final PipeSnapshotEvent event) {
     ((PipeConfigRegionSnapshotEvent) event).confineTransferredTypes(listenedTypeSet);
   }
 }

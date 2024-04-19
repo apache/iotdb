@@ -388,12 +388,13 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
                   list.getValueIndex(sortedRowIndex);
             }
             if (timeDuplicateInfo[sortedRowIndex]) {
-              if (!list.isNullValue(sortedRowIndex, columnIndex)) {
+              if (!list.isNullValue(list.getValueIndex(sortedRowIndex), columnIndex)) {
                 long recordSize =
                     MemUtils.getRecordSize(
                         tsDataType,
                         tsDataType == TSDataType.TEXT
-                            ? list.getBinaryByValueIndex(sortedRowIndex, columnIndex)
+                            ? list.getBinaryByValueIndex(
+                                list.getValueIndex(sortedRowIndex), columnIndex)
                             : null,
                         true);
                 CompressionRatio.decreaseDuplicatedMemorySize(recordSize);
