@@ -388,7 +388,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     TRegionReplicaSet regionReplicaSet =
-        analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(path.getIDeviceID());
+        analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(path.getIDeviceID().toString());
     setRegionReplicaSet(regionReplicaSet);
     return ImmutableList.of(this);
   }

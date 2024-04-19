@@ -76,6 +76,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -550,7 +551,7 @@ public class LoadTsfileAnalyzer {
             schemaTree.searchDeviceSchemaInfo(
                 new PartialPath(device),
                 tsfileTimeseriesSchemas.stream()
-                    .map(MeasurementSchema::getMeasurementId)
+                    .map(IMeasurementSchema::getMeasurementId)
                     .collect(Collectors.toList()));
 
         if (iotdbDeviceSchemaInfo == null) {
@@ -577,8 +578,8 @@ public class LoadTsfileAnalyzer {
         final List<IMeasurementSchema> iotdbTimeseriesSchemas =
             iotdbDeviceSchemaInfo.getMeasurementSchemaList();
         for (int i = 0, n = iotdbTimeseriesSchemas.size(); i < n; i++) {
-          final MeasurementSchema tsFileSchema = tsfileTimeseriesSchemas.get(i);
-          final MeasurementSchema iotdbSchema = iotdbTimeseriesSchemas.get(i);
+          final IMeasurementSchema tsFileSchema = tsfileTimeseriesSchemas.get(i);
+          final IMeasurementSchema iotdbSchema = iotdbTimeseriesSchemas.get(i);
           if (iotdbSchema == null) {
             throw new VerifyMetadataException(
                 String.format(

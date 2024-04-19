@@ -105,6 +105,7 @@ import org.apache.iotdb.db.utils.columngenerator.parameter.SlidingTimeColumnGene
 
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -244,7 +245,7 @@ public class LogicalPlanBuilder {
               (sourceExpression.isViewExpression()
                   ? sourceExpression.getViewPath()
                   : ((TimeSeriesOperand) sourceExpression).getPath());
-      String outputDevice = outputPath.getIDeviceID();
+      String outputDevice = outputPath.getIDeviceID().toString();
       outputPathToSourceExpressionMap
           .computeIfAbsent(
               outputDevice,
@@ -540,7 +541,8 @@ public class LogicalPlanBuilder {
         PartialPath path = ts.getPath();
         Pair<List<String>, List<IMeasurementSchema>> pair =
             map.computeIfAbsent(
-                path.getIDeviceID(), k -> new Pair<>(new ArrayList<>(), new ArrayList<>()));
+                path.getIDeviceID().toString(),
+                k -> new Pair<>(new ArrayList<>(), new ArrayList<>()));
         pair.left.add(path.getMeasurement());
         try {
           pair.right.add(path.getMeasurementSchema());
@@ -554,7 +556,8 @@ public class LogicalPlanBuilder {
         Pair<List<String>, List<IMeasurementSchema>> pair = entry.getValue();
         AlignedPath alignedPath = null;
         try {
-          alignedPath = new AlignedPath(device, pair.left, pair.right);
+          alignedPath =
+              new AlignedPath(Factory.DEFAULT_FACTORY.create(device), pair.left, pair.right);
         } catch (IllegalPathException e) {
           throw new RuntimeException(e);
         }

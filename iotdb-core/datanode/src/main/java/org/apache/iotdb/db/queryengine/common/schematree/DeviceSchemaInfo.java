@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;

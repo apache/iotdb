@@ -113,7 +113,7 @@ public class IntoOperator extends AbstractIntoOperator {
           new Binary(sourceTargetPathPair.right.toString(), TSFileConfig.STRING_CHARSET));
       columnBuilders[2].writeInt(
           findWritten(
-              sourceTargetPathPair.right.getIDeviceID(),
+              sourceTargetPathPair.right.getIDeviceID().toString(),
               sourceTargetPathPair.right.getMeasurement()));
       resultTsBlockBuilder.declarePosition();
     }

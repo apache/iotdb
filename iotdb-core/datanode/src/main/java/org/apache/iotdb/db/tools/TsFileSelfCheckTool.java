@@ -145,7 +145,8 @@ public class TsFileSelfCheckTool {
           }
           boolean currentChildLevelIsDevice = MetadataIndexNodeType.INTERNAL_DEVICE.equals(type);
           MetadataIndexNode metadataIndexNode =
-              MetadataIndexNode.deserializeFrom(buffer, currentChildLevelIsDevice);
+              getDeserializeContext()
+                  .deserializeMetadataIndexNode(buffer, currentChildLevelIsDevice);
           int metadataIndexListSize = metadataIndexNode.getChildren().size();
           for (int i = 0; i < metadataIndexListSize; i++) {
             long endOffset = metadataIndexNode.getEndOffset();
@@ -174,25 +175,28 @@ public class TsFileSelfCheckTool {
       if (tsFileMetaData == null) {
         readFileMetadata();
       }
-      MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
       Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
-      List<IMetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
-      for (int i = 0; i < metadataIndexEntryList.size(); i++) {
-        IMetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
-        long endOffset = tsFileMetaData.getMetadataIndex().getEndOffset();
-        if (i != metadataIndexEntryList.size() - 1) {
-          endOffset = metadataIndexEntryList.get(i + 1).getOffset();
+      for (MetadataIndexNode metadataIndexNode :
+          tsFileMetaData.getTableMetadataIndexNodeMap().values()) {
+        List<IMetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
+        for (int i = 0; i < metadataIndexEntryList.size(); i++) {
+          IMetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
+          long endOffset = metadataIndexNode.getEndOffset();
+          if (i != metadataIndexEntryList.size() - 1) {
+            endOffset = metadataIndexEntryList.get(i + 1).getOffset();
+          }
+          ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
+          generateMetadataIndexWithOffset(
+              metadataIndexEntry.getOffset(),
+              metadataIndexEntry,
+              buffer,
+              null,
+              metadataIndexNode.getNodeType(),
+              timeseriesMetadataMap,
+              false);
         }
-        ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
-        generateMetadataIndexWithOffset(
-            metadataIndexEntry.getOffset(),
-            metadataIndexEntry,
-            buffer,
-            null,
-            metadataIndexNode.getNodeType(),
-            timeseriesMetadataMap,
-            false);
       }
+
       return timeseriesMetadataMap;
     }
   }

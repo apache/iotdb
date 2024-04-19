@@ -37,6 +37,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
@@ -63,7 +64,7 @@ public class TabletInsertionDataContainer {
 
   private String deviceId;
   private boolean isAligned;
-  private MeasurementSchema[] measurementSchemaList;
+  private IMeasurementSchema[] measurementSchemaList;
   private String[] columnNameStringList;
 
   private long[] timestampColumn;

@@ -2066,7 +2066,7 @@ public class DataRegion implements IDataRegionForQuery {
             return true;
           }
         }
-        if (databaseName.contentEquals(device.getIDeviceID())) {
+        if (databaseName.contentEquals(device.getIDeviceID().toString())) {
           return false;
         }
         Pair<Long, Long> startAndEndTime =
