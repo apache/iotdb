@@ -352,9 +352,10 @@ public class IoTDBSubscriptionBasicIT {
     try {
       // Keep retrying if there are execution failures
       Awaitility.await()
-          .pollDelay(1, TimeUnit.SECONDS)
-          .pollInterval(1, TimeUnit.SECONDS)
-          .atMost(120, TimeUnit.SECONDS)
+          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+          .pollInterval(
+              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
           .untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
       Assert.assertTrue(commitSuccessCount.get() > lastCommitSuccessCount.get());
       Assert.assertEquals(0, commitFailureCount.get());
@@ -382,9 +383,10 @@ public class IoTDBSubscriptionBasicIT {
     try {
       // Keep retrying if there are execution failures
       Awaitility.await()
-          .pollDelay(1, TimeUnit.SECONDS)
-          .pollInterval(1, TimeUnit.SECONDS)
-          .atMost(120, TimeUnit.SECONDS)
+          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+          .pollInterval(
+              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
           .untilAsserted(() -> Assert.assertEquals(200, rowCount.get()));
       Assert.assertTrue(commitSuccessCount.get() > lastCommitSuccessCount.get());
       Assert.assertEquals(0, commitFailureCount.get());
@@ -451,9 +453,10 @@ public class IoTDBSubscriptionBasicIT {
 
       // The push consumer should automatically poll 10 rows of data by 1 onReceive()
       Awaitility.await()
-          .pollDelay(1, TimeUnit.SECONDS)
-          .pollInterval(1, TimeUnit.SECONDS)
-          .atMost(10, TimeUnit.SECONDS)
+          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+          .pollInterval(
+              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
                 Assert.assertEquals(10, rowCount.get());
@@ -472,9 +475,10 @@ public class IoTDBSubscriptionBasicIT {
       }
 
       Awaitility.await()
-          .pollDelay(1, TimeUnit.SECONDS)
-          .pollInterval(1, TimeUnit.SECONDS)
-          .atMost(10, TimeUnit.SECONDS)
+          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+          .pollInterval(
+              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
                 Assert.assertEquals(20, rowCount.get());
@@ -492,9 +496,10 @@ public class IoTDBSubscriptionBasicIT {
       }
 
       Awaitility.await()
-          .pollDelay(1, TimeUnit.SECONDS)
-          .pollInterval(1, TimeUnit.SECONDS)
-          .atMost(10, TimeUnit.SECONDS)
+          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+          .pollInterval(
+              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
                 Assert.assertEquals(30, rowCount.get());
