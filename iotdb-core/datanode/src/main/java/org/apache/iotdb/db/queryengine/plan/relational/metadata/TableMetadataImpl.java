@@ -239,8 +239,10 @@ public class TableMetadataImpl implements Metadata {
       List<String> attributeColumns) {
     // fixme, perfect the real metadata impl
     List<DeviceEntry> result = new ArrayList<>();
-    IDeviceID deviceID = new StringArrayDeviceID("db", "table1", "beijing", "a_1");
-    result.add(new DeviceEntry(deviceID, Arrays.asList("new", "low")));
+    IDeviceID deviceID1 = new StringArrayDeviceID("db", "table1", "beijing", "a_1");
+    IDeviceID deviceID2 = new StringArrayDeviceID("db", "table1", "beijing", "b_1");
+    result.add(new DeviceEntry(deviceID1, Arrays.asList("old", "low")));
+    result.add(new DeviceEntry(deviceID2, Arrays.asList("new", "high")));
     return result;
   }
 

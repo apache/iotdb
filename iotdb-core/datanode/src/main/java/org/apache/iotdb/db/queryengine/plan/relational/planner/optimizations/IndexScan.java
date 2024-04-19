@@ -106,22 +106,23 @@ public class IndexScan implements RelationalPlanOptimizer {
       node.setDeviceEntries(deviceEntries);
 
       // TODO getDataPartition, Change globalTimeFilter to Filter
+      String database = "root." + context.getSessionInfo().getDatabaseName().get();
       IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
       Filter globalTimeFilter = null;
       Set<String> deviceSet = new HashSet<>();
       for (DeviceEntry deviceEntry : deviceEntries) {
         StringArrayDeviceID arrayDeviceID = (StringArrayDeviceID) deviceEntry.getDeviceID();
         String device = arrayDeviceID.toString();
-        deviceSet.add(device);
+        deviceSet.add("root." + device);
       }
-      String database = "root." + context.getSessionInfo().getDatabaseName().get();
+
       DataPartition dataPartition =
           fetchDataPartitionByDevices(deviceSet, database, globalTimeFilter, partitionFetcher);
       context.getAnalysis().setDataPartition(dataPartition);
-      //      List<TRegionReplicaSet> regionReplicaList =
-      // dataPartition.getDataRegionReplicaSetWithTimeFilter
-      //                      (((StringArrayDeviceID)deviceEntries.get(0).getDeviceID().toString(),
-      // globalTimeFilter);
+
+      if (dataPartition.getDataPartitionMap().size() != 1) {
+        throw new IllegalStateException("Table model can only process data only in data region!");
+      }
 
       // TODO add the real impl
       TRegionReplicaSet regionReplicaSet =
