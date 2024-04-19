@@ -20,8 +20,6 @@ package org.apache.iotdb.hive;
 
 import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
 import org.apache.iotdb.hive.constant.TestConstant;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
@@ -29,6 +27,8 @@ import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.fileSystem.FSType;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

@@ -43,7 +43,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeCompo
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.tsfile.utils.TimeDuration;
+
+import org.apache.tsfile.utils.TimeDuration;
 
 import java.util.ArrayList;
 import java.util.Collections;

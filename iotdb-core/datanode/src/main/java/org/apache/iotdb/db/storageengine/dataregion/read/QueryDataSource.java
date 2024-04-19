@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.read;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
 import java.util.Comparator;

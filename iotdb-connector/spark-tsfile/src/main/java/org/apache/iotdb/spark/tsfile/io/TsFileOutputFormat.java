@@ -18,14 +18,13 @@
  */
 package org.apache.iotdb.spark.tsfile.io;
 
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.Schema;
-
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.tsfile.write.record.TSRecord;
+import org.apache.tsfile.write.schema.Schema;
 
 import java.io.IOException;
 

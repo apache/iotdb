@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener;
 
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.HashMap;

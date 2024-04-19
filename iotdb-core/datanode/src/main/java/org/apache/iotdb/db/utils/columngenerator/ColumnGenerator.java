@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils.columngenerator;
 
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.tsfile.block.column.Column;
 
 public abstract class ColumnGenerator {
   public ColumnGenerator() {}
