@@ -17,13 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
+package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+public enum AckStrategy {
+  BEFORE_CONSUME,
+  AFTER_CONSUME;
 
-public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatchReqBuilder {
-
-  public IoTDBThriftSyncPipeTransferBatchReqBuilder(final PipeParameters parameters) {
-    super(parameters);
+  public static AckStrategy defaultValue() {
+    // Use AFTER_CONSUME by default
+    return AFTER_CONSUME;
   }
 }

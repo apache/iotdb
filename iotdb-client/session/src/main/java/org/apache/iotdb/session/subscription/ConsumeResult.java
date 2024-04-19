@@ -17,13 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
+package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-
-public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatchReqBuilder {
-
-  public IoTDBThriftSyncPipeTransferBatchReqBuilder(final PipeParameters parameters) {
-    super(parameters);
-  }
+public enum ConsumeResult {
+  SUCCESS,
+  FAILURE
 }

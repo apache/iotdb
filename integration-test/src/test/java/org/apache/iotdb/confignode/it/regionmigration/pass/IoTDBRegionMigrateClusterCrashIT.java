@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.it.regionmigration.pass;
 
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
-import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 
@@ -48,7 +47,7 @@ public class IoTDBRegionMigrateClusterCrashIT extends IoTDBRegionMigrateReliabil
 
   @Test
   public void clusterCrash4() throws Exception {
-    killClusterTest(buildSet(RegionTransitionState.CHANGE_REGION_LEADER), true);
+    killClusterTest(buildSet(RemoveRegionPeerState.TRANSFER_REGION_LEADER), true);
   }
 
   @Test

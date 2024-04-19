@@ -57,7 +57,7 @@ public abstract class PipeSubtask
   protected final AtomicInteger retryCount = new AtomicInteger(0);
   protected Event lastEvent;
 
-  protected PipeSubtask(String taskID, long creationTime) {
+  protected PipeSubtask(final String taskID, final long creationTime) {
     super();
     this.taskID = taskID;
     this.creationTime = creationTime;
@@ -91,7 +91,7 @@ public abstract class PipeSubtask
   }
 
   /** Should be synchronized with {@link PipeSubtask#decreaseReferenceCountAndReleaseLastEvent} */
-  protected synchronized void setLastEvent(Event event) {
+  protected synchronized void setLastEvent(final Event event) {
     lastEvent = event;
   }
 
@@ -106,7 +106,7 @@ public abstract class PipeSubtask
   protected abstract boolean executeOnce() throws Exception;
 
   @Override
-  public synchronized void onSuccess(Boolean hasAtLeastOneEventProcessed) {
+  public synchronized void onSuccess(final Boolean hasAtLeastOneEventProcessed) {
     final int totalRetryCount = retryCount.getAndSet(0);
 
     submitSelf();
@@ -151,10 +151,12 @@ public abstract class PipeSubtask
     clearReferenceCountAndReleaseLastEvent();
   }
 
-  protected synchronized void decreaseReferenceCountAndReleaseLastEvent(boolean shouldReport) {
+  protected synchronized void decreaseReferenceCountAndReleaseLastEvent(
+      final boolean shouldReport) {
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent) {
-        ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName(), shouldReport);
+        ((EnrichedEvent) lastEvent)
+            .decreaseReferenceCount(PipeSubtask.class.getName(), shouldReport);
       }
       lastEvent = null;
     }
@@ -163,7 +165,7 @@ public abstract class PipeSubtask
   protected synchronized void clearReferenceCountAndReleaseLastEvent() {
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent) {
-        ((EnrichedEvent) lastEvent).clearReferenceCount(this.getClass().getName());
+        ((EnrichedEvent) lastEvent).clearReferenceCount(PipeSubtask.class.getName());
       }
       lastEvent = null;
     }

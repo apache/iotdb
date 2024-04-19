@@ -17,13 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
+package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+public interface AsyncCommitCallback {
+  default void onComplete() {
+    // Do nothing
+  }
 
-public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatchReqBuilder {
-
-  public IoTDBThriftSyncPipeTransferBatchReqBuilder(final PipeParameters parameters) {
-    super(parameters);
+  default void onFailure(Throwable e) {
+    // Do nothing
   }
 }
