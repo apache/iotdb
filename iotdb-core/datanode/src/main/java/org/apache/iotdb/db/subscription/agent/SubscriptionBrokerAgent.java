@@ -64,7 +64,11 @@ public class SubscriptionBrokerAgent {
   }
 
   public List<SubscriptionEvent> pollTsFile(
-      ConsumerConfig consumerConfig, String topicName, String fileName, long writingOffset) {
+      final ConsumerConfig consumerConfig,
+      final String topicName,
+      final String fileName,
+      final long writingOffset,
+      final SubscriptionPollTimer timer) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
@@ -75,7 +79,7 @@ public class SubscriptionBrokerAgent {
       throw new SubscriptionException(errorMessage);
     }
     final String consumerId = consumerConfig.getConsumerId();
-    return broker.pollTsFile(consumerId, topicName, fileName, writingOffset);
+    return broker.pollTsFile(consumerId, topicName, fileName, writingOffset, timer);
   }
 
   /** @return list of successful commit contexts */

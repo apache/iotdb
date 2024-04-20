@@ -50,7 +50,7 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
   private final AtomicReference<Pair<SubscriptionTsFileEvent, Boolean>> nextEventWithCommittableRef;
 
   public SubscriptionTsFileEvent(
-      List<EnrichedEvent> enrichedEvents, SubscriptionPolledMessage message) {
+      final List<EnrichedEvent> enrichedEvents, final SubscriptionPolledMessage message) {
     super(enrichedEvents, message);
 
     this.nextEventWithCommittableRef = new AtomicReference<>();
@@ -72,7 +72,7 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
               case TS_FILE_INIT:
                 try {
                   return generateSubscriptionTsFileEventWithPieceOrSealPayload(0);
-                } catch (IOException e) {
+                } catch (final IOException e) {
                   LOGGER.warn(
                       "IOException occurred when prefetching next SubscriptionTsFileEvent: {}, current SubscriptionTsFileEvent: {}",
                       e.getMessage(),
@@ -83,7 +83,7 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
                 try {
                   return generateSubscriptionTsFileEventWithPieceOrSealPayload(
                       ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset());
-                } catch (IOException e) {
+                } catch (final IOException e) {
                   LOGGER.warn(
                       "IOException occurred when prefetching next SubscriptionTsFileEvent: {}, current SubscriptionTsFileEvent: {}",
                       e.getMessage(),
@@ -116,7 +116,8 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
         });
   }
 
-  public Pair<@NonNull SubscriptionTsFileEvent, Boolean> matchOrResetNext(long writingOffset) {
+  public Pair<@NonNull SubscriptionTsFileEvent, Boolean> matchOrResetNext(
+      final long writingOffset) {
     return nextEventWithCommittableRef.getAndUpdate(
         (nextEventWithCommittable) -> {
           if (Objects.isNull(nextEventWithCommittable)) {
@@ -156,7 +157,8 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
   }
 
   public static SubscriptionTsFileEvent generateSubscriptionTsFileEventWithInitPayload(
-      PipeTsFileInsertionEvent tsFileInsertionEvent, SubscriptionCommitContext commitContext) {
+      final PipeTsFileInsertionEvent tsFileInsertionEvent,
+      final SubscriptionCommitContext commitContext) {
     return new SubscriptionTsFileEvent(
         Collections.singletonList(tsFileInsertionEvent),
         new SubscriptionPolledMessage(
@@ -172,7 +174,8 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
   }
 
   public @NonNull Pair<@NonNull SubscriptionTsFileEvent, Boolean>
-      generateSubscriptionTsFileEventWithPieceOrSealPayload(long writingOffset) throws IOException {
+      generateSubscriptionTsFileEventWithPieceOrSealPayload(final long writingOffset)
+          throws IOException {
     final PipeTsFileInsertionEvent tsFileInsertionEvent =
         (PipeTsFileInsertionEvent) this.getEnrichedEvents().get(0);
     final SubscriptionCommitContext commitContext = this.getMessage().getCommitContext();

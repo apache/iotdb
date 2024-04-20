@@ -301,10 +301,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     try {
-      SubscriptionPollMessage pollMessage = req.getPollMessage();
-      short messageType = pollMessage.getMessageType();
+      final SubscriptionPollMessage pollMessage = req.getPollMessage();
+      final short messageType = pollMessage.getMessageType();
 
-      long timeoutMs = pollMessage.getTimeoutMs();
+      final long timeoutMs = pollMessage.getTimeoutMs();
       final SubscriptionPollTimer timer =
           new SubscriptionPollTimer(
               System.currentTimeMillis(),
@@ -339,9 +339,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private TPipeSubscribeResp handlePipeSubscribePollInternal(
-      ConsumerConfig consumerConfig,
-      PollMessagePayload messagePayload,
-      SubscriptionPollTimer timer) {
+      final ConsumerConfig consumerConfig,
+      final PollMessagePayload messagePayload,
+      final SubscriptionPollTimer timer) {
     Set<String> topicNames = messagePayload.getTopicNames();
     if (topicNames.isEmpty()) {
       // poll all subscribed topics
@@ -384,11 +384,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private TPipeSubscribeResp handlePipeSubscribePollTsFileInternal(
-      ConsumerConfig consumerConfig,
-      PollTsFileMessagePayload messagePayload,
-      SubscriptionPollTimer timer) {
-    // TODO: timer
-
+      final ConsumerConfig consumerConfig,
+      final PollTsFileMessagePayload messagePayload,
+      final SubscriptionPollTimer timer) {
     // poll
     final List<SubscriptionEvent> events =
         SubscriptionAgent.broker()
@@ -396,7 +394,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                 consumerConfig,
                 messagePayload.getTopicName(),
                 messagePayload.getFileName(),
-                messagePayload.getWritingOffset());
+                messagePayload.getWritingOffset(),
+                timer);
 
     final List<SubscriptionPolledMessage> polledMessages =
         events.stream().map(SubscriptionEvent::getMessage).collect(Collectors.toList());

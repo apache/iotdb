@@ -71,6 +71,11 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       return pollableEvent;
     }
 
+    timer.update();
+    if (timer.isExpired()) {
+      return null;
+    }
+
     Event event;
     while (Objects.nonNull(
         event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll()))) {
@@ -100,7 +105,10 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   }
 
   public synchronized @NonNull SubscriptionTsFileEvent pollTsFile(
-      String consumerId, String fileName, long writingOffset) {
+      final String consumerId,
+      final String fileName,
+      final long writingOffset,
+      final SubscriptionPollTimer timer) {
     // 1. Extract current event and check it
     final SubscriptionTsFileEvent event = consumerIdToCurrentEventMap.get(consumerId);
     if (Objects.isNull(event)) {
@@ -244,18 +252,32 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     }
 
     // 3. Poll tsfile piece or tsfile seal
-    return pollTsFile(consumerId, writingOffset, event);
+    return pollTsFile(consumerId, writingOffset, event, timer);
   }
 
   private synchronized @NonNull SubscriptionTsFileEvent pollTsFile(
-      String consumerId, long writingOffset, SubscriptionTsFileEvent event) {
+      final String consumerId,
+      final long writingOffset,
+      final SubscriptionTsFileEvent event,
+      final SubscriptionPollTimer timer) {
+    timer.update();
+    if (timer.isExpired()) {
+      final String errorMessage =
+          String.format(
+              "Timeout occurred when SubscriptionPrefetchingTsFileQueue %s transferring TsFile (with event %s) to consumer %s",
+              this, event, consumerId);
+      LOGGER.warn(errorMessage);
+      // assume retryable
+      return generateSubscriptionTsFileEventWithErrorMessage(errorMessage, true);
+    }
+
     Pair<SubscriptionTsFileEvent, Boolean> newEventWithCommittable =
         event.matchOrResetNext(writingOffset);
     if (Objects.isNull(newEventWithCommittable)) {
       try {
         newEventWithCommittable =
             event.generateSubscriptionTsFileEventWithPieceOrSealPayload(writingOffset);
-      } catch (IOException e) {
+      } catch (final IOException e) {
         final String errorMessage =
             String.format(
                 "IOException occurred when SubscriptionPrefetchingTsFileQueue %s transferring TsFile (with event %s) to consumer %s: %s",

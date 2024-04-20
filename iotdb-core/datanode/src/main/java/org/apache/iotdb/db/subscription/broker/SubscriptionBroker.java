@@ -80,7 +80,11 @@ public class SubscriptionBroker {
   }
 
   public List<SubscriptionEvent> pollTsFile(
-      String consumerId, String topicName, String fileName, long writingOffset) {
+      final String consumerId,
+      final String topicName,
+      final String fileName,
+      final long writingOffset,
+      final SubscriptionPollTimer timer) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
@@ -99,7 +103,7 @@ public class SubscriptionBroker {
     }
     return Collections.singletonList(
         ((SubscriptionPrefetchingTsFileQueue) prefetchingQueue)
-            .pollTsFile(consumerId, fileName, writingOffset));
+            .pollTsFile(consumerId, fileName, writingOffset, timer));
   }
 
   /** @return list of successful commit contexts */
