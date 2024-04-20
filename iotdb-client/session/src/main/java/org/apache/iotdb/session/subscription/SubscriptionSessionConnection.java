@@ -22,15 +22,7 @@ package org.apache.iotdb.session.subscription;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
-import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
-import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
-import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatReq;
-import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
-import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
-import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.session.Session;
@@ -38,12 +30,10 @@ import org.apache.iotdb.session.SessionConnection;
 
 import org.apache.thrift.TException;
 
-import java.io.IOException;
 import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Supplier;
 
 public class SubscriptionSessionConnection extends SessionConnection {
@@ -87,41 +77,7 @@ public class SubscriptionSessionConnection extends SessionConnection {
     return endPoints;
   }
 
-  public TPipeSubscribeResp pipeSubscribe(TPipeSubscribeReq req) throws TException {
+  public TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req) throws TException {
     return client.pipeSubscribe(req);
-  }
-
-  public int handshake(ConsumerConfig consumerConfig)
-      throws TException, IOException, StatementExecutionException {
-    TPipeSubscribeResp resp =
-        client.pipeSubscribe(PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig));
-    RpcUtils.verifySuccess(resp.status);
-    PipeSubscribeHandshakeResp handshakeResp =
-        PipeSubscribeHandshakeResp.fromTPipeSubscribeResp(resp);
-    return handshakeResp.getDataNodeId();
-  }
-
-  public void heartbeat() throws TException, StatementExecutionException {
-    TPipeSubscribeResp resp = client.pipeSubscribe(PipeSubscribeHeartbeatReq.toTPipeSubscribeReq());
-    RpcUtils.verifySuccess(resp.status);
-  }
-
-  public void closeConsumer() throws TException, StatementExecutionException {
-    TPipeSubscribeResp resp = client.pipeSubscribe(PipeSubscribeCloseReq.toTPipeSubscribeReq());
-    RpcUtils.verifySuccess(resp.status);
-  }
-
-  public void subscribe(Set<String> topicNames)
-      throws TException, IOException, StatementExecutionException {
-    TPipeSubscribeResp resp =
-        client.pipeSubscribe(PipeSubscribeSubscribeReq.toTPipeSubscribeReq(topicNames));
-    RpcUtils.verifySuccess(resp.status);
-  }
-
-  public void unsubscribe(Set<String> topicNames)
-      throws TException, IOException, StatementExecutionException {
-    TPipeSubscribeResp resp =
-        client.pipeSubscribe(PipeSubscribeUnsubscribeReq.toTPipeSubscribeReq(topicNames));
-    RpcUtils.verifySuccess(resp.status);
   }
 }

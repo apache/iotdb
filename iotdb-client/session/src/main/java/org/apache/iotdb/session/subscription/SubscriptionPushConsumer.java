@@ -48,14 +48,14 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
-  protected SubscriptionPushConsumer(Builder builder) {
+  protected SubscriptionPushConsumer(final Builder builder) {
     super(builder);
 
     this.ackStrategy = builder.ackStrategy;
     this.consumeListener = builder.consumeListener;
   }
 
-  public SubscriptionPushConsumer(Properties config) {
+  public SubscriptionPushConsumer(final Properties config) {
     this(
         config,
         (AckStrategy)
@@ -67,7 +67,9 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
   }
 
   private SubscriptionPushConsumer(
-      Properties config, AckStrategy ackStrategy, ConsumeListener consumeListener) {
+      final Properties config,
+      final AckStrategy ackStrategy,
+      final ConsumeListener consumeListener) {
     super(new Builder().ackStrategy(ackStrategy), config);
 
     this.ackStrategy = ackStrategy;
@@ -115,7 +117,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     autoPollWorkerExecutor =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
-              Thread t =
+              final Thread t =
                   new Thread(Thread.currentThread().getThreadGroup(), r, "PushConsumerWorker", 0);
               if (!t.isDaemon()) {
                 t.setDaemon(true);
@@ -144,57 +146,58 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     private AckStrategy ackStrategy = AckStrategy.defaultValue();
     private ConsumeListener consumeListener = message -> ConsumeResult.SUCCESS;
 
-    public SubscriptionPushConsumer.Builder host(String host) {
+    public SubscriptionPushConsumer.Builder host(final String host) {
       super.host(host);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder port(int port) {
+    public SubscriptionPushConsumer.Builder port(final int port) {
       super.port(port);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder username(String username) {
+    public SubscriptionPushConsumer.Builder username(final String username) {
       super.username(username);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder password(String password) {
+    public SubscriptionPushConsumer.Builder password(final String password) {
       super.password(password);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder consumerId(String consumerId) {
+    public SubscriptionPushConsumer.Builder consumerId(final String consumerId) {
       super.consumerId(consumerId);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder consumerGroupId(String consumerGroupId) {
+    public SubscriptionPushConsumer.Builder consumerGroupId(final String consumerGroupId) {
       super.consumerGroupId(consumerGroupId);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder heartbeatIntervalMs(long heartbeatIntervalMs) {
+    public SubscriptionPushConsumer.Builder heartbeatIntervalMs(final long heartbeatIntervalMs) {
       super.heartbeatIntervalMs(heartbeatIntervalMs);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder endpointsSyncIntervalMs(long endpointsSyncIntervalMs) {
+    public SubscriptionPushConsumer.Builder endpointsSyncIntervalMs(
+        final long endpointsSyncIntervalMs) {
       super.endpointsSyncIntervalMs(endpointsSyncIntervalMs);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder tsFileBaseDir(String tsFileBaseDir) {
+    public SubscriptionPushConsumer.Builder tsFileBaseDir(final String tsFileBaseDir) {
       this.tsFileBaseDir = tsFileBaseDir;
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder ackStrategy(AckStrategy ackStrategy) {
+    public SubscriptionPushConsumer.Builder ackStrategy(final AckStrategy ackStrategy) {
       this.ackStrategy = ackStrategy;
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder consumeListener(ConsumeListener consumeListener) {
+    public SubscriptionPushConsumer.Builder consumeListener(final ConsumeListener consumeListener) {
       this.consumeListener = consumeListener;
       return this;
     }
@@ -222,15 +225,15 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
       try {
         // Poll all subscribed topics by passing an empty set
-        List<SubscriptionMessage> pollResults =
+        final List<SubscriptionMessage> pollResults =
             poll(Collections.emptySet(), ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_TIME_OUT_MS);
 
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
           commitSync(pollResults);
         }
 
-        for (SubscriptionMessage pollResult : pollResults) {
-          ConsumeResult consumeResult = consumeListener.onReceive(pollResult);
+        for (final SubscriptionMessage pollResult : pollResults) {
+          final ConsumeResult consumeResult = consumeListener.onReceive(pollResult);
           if (consumeResult.equals(ConsumeResult.FAILURE)) {
             LOGGER.warn("consumeListener failed when processing message: {}", pollResult);
           }
@@ -240,7 +243,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
           commitSync(pollResults);
         }
 
-      } catch (SubscriptionException e) {
+      } catch (final SubscriptionException e) {
         LOGGER.warn("Exception occurred when auto polling: ", e);
       }
     }

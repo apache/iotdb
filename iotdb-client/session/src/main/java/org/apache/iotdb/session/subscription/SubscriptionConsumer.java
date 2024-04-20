@@ -127,7 +127,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     int retryCount;
 
     SubscriptionTsFileInfo(
-        SubscriptionCommitContext commitContext, File file, RandomAccessFile fileWriter) {
+        final SubscriptionCommitContext commitContext,
+        final File file,
+        final RandomAccessFile fileWriter) {
       this.commitContext = commitContext;
       this.file = file;
       this.fileWriter = fileWriter;
@@ -165,23 +167,24 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private SubscriptionTsFileInfo getSubscriptionTsFileInfoTsFileInfo(
-      SubscriptionCommitContext commitContext, String fileName) throws IOException {
+      final SubscriptionCommitContext commitContext, final String fileName) throws IOException {
     final String topicName = commitContext.getTopicName();
     SubscriptionTsFileInfo info = topicNameToSubscriptionTsFileInfo.get(topicName);
     if (Objects.isNull(info)) {
       info = createSubscriptionTsFileInfoTsFileInfo(commitContext, fileName);
     } else {
       if (!info.file.exists()) {
-        try {
-          info.fileWriter.close();
-        } catch (final IOException e) {
-          LOGGER.warn(e.getMessage());
-        }
         LOGGER.info(
-            "consumer {} remove subscription TsFile info {} because the file does not exist",
-            this,
-            info);
-        topicNameToSubscriptionTsFileInfo.remove(topicName);
+            "file {} does not exist, remove corresponding subscription TsFile info...", fileName);
+        removeSubscriptionTsFileInfo(topicName);
+        info = createSubscriptionTsFileInfoTsFileInfo(commitContext, fileName);
+      }
+      if (!Objects.equals(info.file.getName(), fileName)) {
+        LOGGER.info(
+            "inconsistent file name, current is {}, incoming is {}, remove corresponding subscription TsFile info...",
+            info.file.getName(),
+            fileName);
+        removeSubscriptionTsFileInfo(topicName);
         info = createSubscriptionTsFileInfoTsFileInfo(commitContext, fileName);
       }
     }
@@ -190,7 +193,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private SubscriptionTsFileInfo createSubscriptionTsFileInfoTsFileInfo(
-      SubscriptionCommitContext commitContext, String fileName) throws IOException {
+      final SubscriptionCommitContext commitContext, final String fileName) throws IOException {
     final String topicName = commitContext.getTopicName();
     final Path filePath = getTsFileDir(topicName).resolve(fileName);
 
@@ -204,7 +207,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     return info;
   }
 
-  private void removeSubscriptionTsFileInfo(String topicName) {
+  private void removeSubscriptionTsFileInfo(final String topicName) {
     final SubscriptionTsFileInfo info = topicNameToSubscriptionTsFileInfo.get(topicName);
     if (Objects.isNull(info)) {
       return;
@@ -220,20 +223,29 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     topicNameToSubscriptionTsFileInfo.remove(topicName);
   }
 
-  private void increaseSubscriptionTsFileInfoRetryCountOrRemove(String topicName) {
+  private void removeAllSubscriptionTsFileInfo() {
+    for (final String topicName : topicNameToSubscriptionTsFileInfo.keySet()) {
+      removeSubscriptionTsFileInfo(topicName);
+    }
+  }
+
+  private void increaseSubscriptionTsFileInfoRetryCountOrRemove(final String topicName) {
     final SubscriptionTsFileInfo info = topicNameToSubscriptionTsFileInfo.get(topicName);
     if (Objects.isNull(info)) {
       return;
     }
 
     if (info.increaseRetryCountAndCheckIfExceedRetryLimit()) {
+      LOGGER.info(
+          "exceed retry limit {}, remove corresponding subscription TsFile info...",
+          POLL_TS_FILE_RETRY_LIMIT);
       removeSubscriptionTsFileInfo(topicName);
     }
   }
 
   /////////////////////////////// ctor ///////////////////////////////
 
-  protected SubscriptionConsumer(Builder builder) {
+  protected SubscriptionConsumer(final Builder builder) {
     this.initialEndpoints = new ArrayList<>();
     // From org.apache.iotdb.session.Session.getNodeUrls
     // Priority is given to `host:port` over `nodeUrls`.
@@ -255,7 +267,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     this.tsFileBaseDir = builder.tsFileBaseDir;
   }
 
-  protected SubscriptionConsumer(Builder builder, Properties properties) {
+  protected SubscriptionConsumer(final Builder builder, final Properties properties) {
     this(
         builder
             .host(
@@ -324,6 +336,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
 
     try {
+      // remove all subscription TsFile info
+      removeAllSubscriptionTsFileInfo();
+
       // shutdown endpoints syncer
       shutdownEndpointsSyncer();
 
@@ -366,17 +381,17 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// subscribe & unsubscribe ///////////////////////////////
 
-  public void subscribe(String topicName)
+  public void subscribe(final String topicName)
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     subscribe(Collections.singleton(topicName));
   }
 
-  public void subscribe(String... topicNames)
+  public void subscribe(final String... topicNames)
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     subscribe(new HashSet<>(Arrays.asList(topicNames)));
   }
 
-  public void subscribe(Set<String> topicNames)
+  public void subscribe(final Set<String> topicNames)
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     acquireReadLock();
     try {
@@ -386,17 +401,17 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  public void unsubscribe(String topicName)
+  public void unsubscribe(final String topicName)
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     unsubscribe(Collections.singleton(topicName));
   }
 
-  public void unsubscribe(String... topicNames)
+  public void unsubscribe(final String... topicNames)
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     unsubscribe(new HashSet<>(Arrays.asList(topicNames)));
   }
 
-  public void unsubscribe(Set<String> topicNames)
+  public void unsubscribe(final Set<String> topicNames)
       throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
     acquireReadLock();
     try {
@@ -413,7 +428,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     heartbeatWorkerExecutor =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
-              Thread t =
+              final Thread t =
                   new Thread(
                       Thread.currentThread().getThreadGroup(), r, "ConsumerHeartbeatWorker", 0);
               if (!t.isDaemon()) {
@@ -449,7 +464,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     endpointsSyncerExecutor =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
-              Thread t =
+              final Thread t =
                   new Thread(
                       Thread.currentThread().getThreadGroup(), r, "SubscriptionEndpointsSyncer", 0);
               if (!t.isDaemon()) {
@@ -590,7 +605,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// poll ///////////////////////////////
 
-  protected List<SubscriptionMessage> poll(Set<String> topicNames, long timeoutMs)
+  protected List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
     final List<SubscriptionMessage> messages = new ArrayList<>();
 
@@ -639,13 +654,13 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private Optional<SubscriptionMessage> pollTsFile(
-      SubscriptionCommitContext commitContext, String fileName, long timeoutMs)
+      final SubscriptionCommitContext commitContext, final String fileName, final long timeoutMs)
       throws SubscriptionException {
     try {
       final SubscriptionMessage message = pollTsFileInternal(commitContext, fileName, timeoutMs);
       removeSubscriptionTsFileInfo(commitContext.getTopicName());
       return Optional.of(message);
-    } catch (IOException | SubscriptionRetryableException e) {
+    } catch (final IOException | SubscriptionRetryableException e) {
       LOGGER.warn(
           "IOException or SubscriptionRetryableException occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}: {}",
           this,
@@ -654,7 +669,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
           e.getMessage());
       // assume retryable
       increaseSubscriptionTsFileInfoRetryCountOrRemove(commitContext.getTopicName());
-    } catch (SubscriptionNonRetryableException e) {
+    } catch (final SubscriptionNonRetryableException e) {
       LOGGER.warn(
           "SubscriptionNonRetryableException occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}: {}",
           this,
@@ -663,13 +678,15 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
           e.getMessage());
       // assume non-retryable
       removeSubscriptionTsFileInfo(commitContext.getTopicName());
+      // TODO: Consider mid-process failures.
+      // rethrow
       throw e;
     }
     return Optional.empty();
   }
 
   private SubscriptionMessage pollTsFileInternal(
-      SubscriptionCommitContext commitContext, String fileName, long timeoutMs)
+      final SubscriptionCommitContext commitContext, final String fileName, final long timeoutMs)
       throws IOException, SubscriptionException {
     final int dataNodeId = commitContext.getDataNodeId();
     final String topicName = commitContext.getTopicName();
@@ -690,6 +707,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       final List<SubscriptionPolledMessage> polledMessages =
           pollTsFileInternal(dataNodeId, topicName, fileName, writingOffset, timeoutMs);
 
+      // It's agreed that the server will always return at least one message, even in case of
+      // failure.
       if (polledMessages.isEmpty()) {
         final String errorMessage =
             String.format("SubscriptionConsumer %s poll empty tsfile message", this);
@@ -699,6 +718,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
       final SubscriptionPolledMessage polledMessage = polledMessages.get(0);
       final SubscriptionMessagePayload messagePayload = polledMessage.getMessagePayload();
+
+      // check commit context
       final SubscriptionCommitContext incomingCommitContext = polledMessage.getCommitContext();
       if (Objects.isNull(incomingCommitContext)
           || !Objects.equals(commitContext, incomingCommitContext)) {
@@ -818,8 +839,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  private List<SubscriptionPolledMessage> pollInternal(Set<String> topicNames, long timeoutMs)
-      throws SubscriptionException {
+  private List<SubscriptionPolledMessage> pollInternal(
+      final Set<String> topicNames, final long timeoutMs) throws SubscriptionException {
     final List<SubscriptionPolledMessage> polledMessages = new ArrayList<>();
 
     acquireReadLock();
@@ -832,8 +853,22 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
                       SubscriptionPollMessageType.POLL.getType(),
                       new PollMessagePayload(topicNames),
                       timeoutMs)));
-        } catch (final Exception e) {
-          LOGGER.warn(e.getMessage());
+        } catch (final SubscriptionRetryableException e) {
+          LOGGER.warn(
+              "SubscriptionRetryableException occurred when SubscriptionConsumer {} polling from SubscriptionProvider {}: {}",
+              this,
+              provider,
+              e.getMessage());
+          // ignore
+        } catch (final SubscriptionNonRetryableException e) {
+          LOGGER.warn(
+              "SubscriptionNonRetryableException occurred when SubscriptionConsumer {} polling from SubscriptionProvider {}: {}",
+              this,
+              provider,
+              e.getMessage());
+          // TODO: Consider mid-process failures.
+          // rethrow
+          throw e;
         }
       }
     } finally {
@@ -844,7 +879,11 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private List<SubscriptionPolledMessage> pollTsFileInternal(
-      int dataNodeId, String topicName, String fileName, long writingOffset, long timeoutMs)
+      final int dataNodeId,
+      final String topicName,
+      final String fileName,
+      final long writingOffset,
+      final long timeoutMs)
       throws SubscriptionException {
     acquireReadLock();
     try {
@@ -867,22 +906,23 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// commit sync ///////////////////////////////
 
-  protected void commitSync(Iterable<SubscriptionMessage> messages) throws SubscriptionException {
-    Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
+  protected void commitSync(final Iterable<SubscriptionMessage> messages)
+      throws SubscriptionException {
+    final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
         new HashMap<>();
-    for (SubscriptionMessage message : messages) {
+    for (final SubscriptionMessage message : messages) {
       dataNodeIdToSubscriptionCommitContexts
           .computeIfAbsent(message.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
           .add(message.getCommitContext());
     }
-    for (Map.Entry<Integer, List<SubscriptionCommitContext>> entry :
+    for (final Map.Entry<Integer, List<SubscriptionCommitContext>> entry :
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
       commitSyncInternal(entry.getKey(), entry.getValue());
     }
   }
 
   private void commitSyncInternal(
-      int dataNodeId, List<SubscriptionCommitContext> subscriptionCommitContexts)
+      final int dataNodeId, final List<SubscriptionCommitContext> subscriptionCommitContexts)
       throws SubscriptionException {
     acquireReadLock();
     try {
@@ -901,11 +941,12 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// commit async ///////////////////////////////
 
-  protected void commitAsync(Iterable<SubscriptionMessage> messages) {
+  protected void commitAsync(final Iterable<SubscriptionMessage> messages) {
     commitAsync(messages, new AsyncCommitCallback() {});
   }
 
-  protected void commitAsync(Iterable<SubscriptionMessage> messages, AsyncCommitCallback callback) {
+  protected void commitAsync(
+      final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
     // Initiate executor if needed
     if (asyncCommitExecutor == null) {
       synchronized (this) {
@@ -916,7 +957,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         asyncCommitExecutor =
             Executors.newSingleThreadExecutor(
                 r -> {
-                  Thread t =
+                  final Thread t =
                       new Thread(
                           Thread.currentThread().getThreadGroup(),
                           r,
@@ -943,7 +984,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       throws IoTDBConnectionException {
     for (final SubscriptionProvider provider : getAllAvailableProviders()) {
       try {
-        provider.getSessionConnection().subscribe(topicNames);
+        provider.subscribe(topicNames);
         return;
       } catch (final Exception e) {
         LOGGER.warn(
@@ -961,7 +1002,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       throws IoTDBConnectionException {
     for (final SubscriptionProvider provider : getAllAvailableProviders()) {
       try {
-        provider.getSessionConnection().unsubscribe(topicNames);
+        provider.unsubscribe(topicNames);
         return;
       } catch (final Exception e) {
         LOGGER.warn(
@@ -1014,54 +1055,54 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
     protected String tsFileBaseDir = ConsumerConstant.TS_FILE_BASE_DIR_DEFAULT_VALUE;
 
-    public Builder host(String host) {
+    public Builder host(final String host) {
       this.host = host;
       return this;
     }
 
-    public Builder port(int port) {
+    public Builder port(final int port) {
       this.port = port;
       return this;
     }
 
-    public Builder nodeUrls(List<String> nodeUrls) {
+    public Builder nodeUrls(final List<String> nodeUrls) {
       this.nodeUrls = nodeUrls;
       return this;
     }
 
-    public Builder username(String username) {
+    public Builder username(final String username) {
       this.username = username;
       return this;
     }
 
-    public Builder password(String password) {
+    public Builder password(final String password) {
       this.password = password;
       return this;
     }
 
-    public Builder consumerId(String consumerId) {
+    public Builder consumerId(final String consumerId) {
       this.consumerId = consumerId;
       return this;
     }
 
-    public Builder consumerGroupId(String consumerGroupId) {
+    public Builder consumerGroupId(final String consumerGroupId) {
       this.consumerGroupId = consumerGroupId;
       return this;
     }
 
-    public Builder heartbeatIntervalMs(long heartbeatIntervalMs) {
+    public Builder heartbeatIntervalMs(final long heartbeatIntervalMs) {
       this.heartbeatIntervalMs =
           Math.max(heartbeatIntervalMs, ConsumerConstant.HEARTBEAT_INTERVAL_MS_MIN_VALUE);
       return this;
     }
 
-    public Builder endpointsSyncIntervalMs(long endpointsSyncIntervalMs) {
+    public Builder endpointsSyncIntervalMs(final long endpointsSyncIntervalMs) {
       this.endpointsSyncIntervalMs =
           Math.max(endpointsSyncIntervalMs, ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE);
       return this;
     }
 
-    public Builder tsFileBaseDir(String tsFileBaseDir) {
+    public Builder tsFileBaseDir(final String tsFileBaseDir) {
       this.tsFileBaseDir = tsFileBaseDir;
       return this;
     }
@@ -1077,7 +1118,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     private final Iterable<SubscriptionMessage> messages;
     private final AsyncCommitCallback callback;
 
-    public AsyncCommitWorker(Iterable<SubscriptionMessage> messages, AsyncCommitCallback callback) {
+    public AsyncCommitWorker(
+        final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
       this.messages = messages;
       this.callback = callback;
     }
@@ -1091,7 +1133,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       try {
         commitSync(messages);
         callback.onComplete();
-      } catch (Exception e) {
+      } catch (final Exception e) {
         callback.onFailure(e);
       }
     }

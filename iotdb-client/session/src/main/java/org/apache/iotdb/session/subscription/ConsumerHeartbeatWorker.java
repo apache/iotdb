@@ -49,7 +49,7 @@ public class ConsumerHeartbeatWorker implements Runnable {
   private void heartbeatInternal() {
     for (final SubscriptionProvider provider : consumer.getAllProviders()) {
       try {
-        provider.getSessionConnection().heartbeat();
+        provider.heartbeat();
         provider.setAvailable();
       } catch (final Exception e) {
         LOGGER.warn(

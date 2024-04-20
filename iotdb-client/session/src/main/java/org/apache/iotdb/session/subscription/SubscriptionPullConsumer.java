@@ -62,14 +62,14 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// ctor ///////////////////////////////
 
-  protected SubscriptionPullConsumer(SubscriptionPullConsumer.Builder builder) {
+  protected SubscriptionPullConsumer(final SubscriptionPullConsumer.Builder builder) {
     super(builder);
 
     this.autoCommit = builder.autoCommit;
     this.autoCommitIntervalMs = builder.autoCommitIntervalMs;
   }
 
-  public SubscriptionPullConsumer(Properties properties) {
+  public SubscriptionPullConsumer(final Properties properties) {
     this(
         properties,
         (Boolean)
@@ -82,7 +82,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   }
 
   private SubscriptionPullConsumer(
-      Properties properties, boolean autoCommit, long autoCommitIntervalMs) {
+      final Properties properties, final boolean autoCommit, final long autoCommitIntervalMs) {
     super(
         new Builder().autoCommit(autoCommit).autoCommitIntervalMs(autoCommitIntervalMs),
         properties);
@@ -130,20 +130,20 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// poll & commit ///////////////////////////////
 
-  public List<SubscriptionMessage> poll(Duration timeoutMs) throws SubscriptionException {
+  public List<SubscriptionMessage> poll(final Duration timeoutMs) throws SubscriptionException {
     return poll(Collections.emptySet(), timeoutMs.toMillis());
   }
 
-  public List<SubscriptionMessage> poll(long timeoutMs) throws SubscriptionException {
+  public List<SubscriptionMessage> poll(final long timeoutMs) throws SubscriptionException {
     return poll(Collections.emptySet(), timeoutMs);
   }
 
-  public List<SubscriptionMessage> poll(Set<String> topicNames, Duration timeoutMs)
+  public List<SubscriptionMessage> poll(final Set<String> topicNames, final Duration timeoutMs)
       throws SubscriptionException {
     return poll(topicNames, timeoutMs.toMillis());
   }
 
-  public List<SubscriptionMessage> poll(Set<String> topicNames, long timeoutMs)
+  public List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
     final List<SubscriptionMessage> messages = super.poll(topicNames, timeoutMs);
 
@@ -164,27 +164,29 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// commit ///////////////////////////////
 
-  public void commitSync(SubscriptionMessage message) throws SubscriptionException {
+  public void commitSync(final SubscriptionMessage message) throws SubscriptionException {
     super.commitSync(Collections.singletonList(message));
   }
 
-  public void commitSync(Iterable<SubscriptionMessage> messages) throws SubscriptionException {
+  public void commitSync(final Iterable<SubscriptionMessage> messages)
+      throws SubscriptionException {
     super.commitSync(messages);
   }
 
-  public void commitAsync(SubscriptionMessage message) {
+  public void commitAsync(final SubscriptionMessage message) {
     super.commitAsync(Collections.singletonList(message));
   }
 
-  public void commitAsync(Iterable<SubscriptionMessage> messages) {
+  public void commitAsync(final Iterable<SubscriptionMessage> messages) {
     super.commitAsync(messages);
   }
 
-  public void commitAsync(SubscriptionMessage message, AsyncCommitCallback callback) {
+  public void commitAsync(final SubscriptionMessage message, final AsyncCommitCallback callback) {
     super.commitAsync(Collections.singletonList(message), callback);
   }
 
-  public void commitAsync(Iterable<SubscriptionMessage> messages, AsyncCommitCallback callback) {
+  public void commitAsync(
+      final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
     super.commitAsync(messages, callback);
   }
 
@@ -196,7 +198,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     autoCommitWorkerExecutor =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
-              Thread t =
+              final Thread t =
                   new Thread(
                       Thread.currentThread().getThreadGroup(),
                       r,
@@ -220,7 +222,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   }
 
   private void commitAllUncommittedMessages() {
-    for (Map.Entry<Long, Set<SubscriptionMessage>> entry : uncommittedMessages.entrySet()) {
+    for (final Map.Entry<Long, Set<SubscriptionMessage>> entry : uncommittedMessages.entrySet()) {
       try {
         commitSync(entry.getValue());
         uncommittedMessages.remove(entry.getKey());
@@ -237,62 +239,62 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     private boolean autoCommit = ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE;
     private long autoCommitIntervalMs = ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE;
 
-    public Builder host(String host) {
+    public Builder host(final String host) {
       super.host(host);
       return this;
     }
 
-    public Builder port(int port) {
+    public Builder port(final int port) {
       super.port(port);
       return this;
     }
 
-    public Builder nodeUrls(List<String> nodeUrls) {
+    public Builder nodeUrls(final List<String> nodeUrls) {
       super.nodeUrls(nodeUrls);
       return this;
     }
 
-    public Builder username(String username) {
+    public Builder username(final String username) {
       super.username(username);
       return this;
     }
 
-    public Builder password(String password) {
+    public Builder password(final String password) {
       super.password(password);
       return this;
     }
 
-    public Builder consumerId(String consumerId) {
+    public Builder consumerId(final String consumerId) {
       super.consumerId(consumerId);
       return this;
     }
 
-    public Builder consumerGroupId(String consumerGroupId) {
+    public Builder consumerGroupId(final String consumerGroupId) {
       super.consumerGroupId(consumerGroupId);
       return this;
     }
 
-    public Builder heartbeatIntervalMs(long heartbeatIntervalMs) {
+    public Builder heartbeatIntervalMs(final long heartbeatIntervalMs) {
       super.heartbeatIntervalMs(heartbeatIntervalMs);
       return this;
     }
 
-    public Builder endpointsSyncIntervalMs(long endpointsSyncIntervalMs) {
+    public Builder endpointsSyncIntervalMs(final long endpointsSyncIntervalMs) {
       super.endpointsSyncIntervalMs(endpointsSyncIntervalMs);
       return this;
     }
 
-    public Builder tsFileBaseDir(String tsFileBaseDir) {
+    public Builder tsFileBaseDir(final String tsFileBaseDir) {
       super.tsFileBaseDir(tsFileBaseDir);
       return this;
     }
 
-    public Builder autoCommit(boolean autoCommit) {
+    public Builder autoCommit(final boolean autoCommit) {
       this.autoCommit = autoCommit;
       return this;
     }
 
-    public Builder autoCommitIntervalMs(long autoCommitIntervalMs) {
+    public Builder autoCommitIntervalMs(final long autoCommitIntervalMs) {
       this.autoCommitIntervalMs =
           Math.max(autoCommitIntervalMs, ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_MIN_VALUE);
       return this;
@@ -319,13 +321,13 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
         return;
       }
 
-      long currentTimestamp = System.currentTimeMillis();
+      final long currentTimestamp = System.currentTimeMillis();
       long index = currentTimestamp / autoCommitIntervalMs;
       if (currentTimestamp % autoCommitIntervalMs == 0) {
         index -= 1;
       }
 
-      for (Map.Entry<Long, Set<SubscriptionMessage>> entry :
+      for (final Map.Entry<Long, Set<SubscriptionMessage>> entry :
           uncommittedMessages.headMap(index).entrySet()) {
         try {
           commitSync(entry.getValue());

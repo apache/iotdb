@@ -45,11 +45,12 @@ import java.util.stream.Collectors;
 
 public class SubscriptionSession extends Session {
 
-  public SubscriptionSession(String host, int port) {
+  public SubscriptionSession(final String host, final int port) {
     this(host, port, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
 
-  public SubscriptionSession(String host, int port, String username, String password) {
+  public SubscriptionSession(
+      final String host, final int port, final String username, final String password) {
     // TODO: more configs control
     super(
         new Session.Builder()
@@ -65,7 +66,8 @@ public class SubscriptionSession extends Session {
 
   @Override
   public SessionConnection constructSessionConnection(
-      Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
+      final Session session, final TEndPoint endpoint, final ZoneId zoneId)
+      throws IoTDBConnectionException {
     if (Objects.isNull(endpoint)) {
       throw new SubscriptionParameterNotValidException(
           "Subscription session must be configured with an endpoint.");
@@ -76,13 +78,13 @@ public class SubscriptionSession extends Session {
 
   /////////////////////////////// topic ///////////////////////////////
 
-  public void createTopic(String topicName)
+  public void createTopic(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
     final String sql = String.format("CREATE TOPIC %s", topicName);
     executeNonQueryStatement(sql);
   }
 
-  public void createTopic(String topicName, Properties properties)
+  public void createTopic(final String topicName, final Properties properties)
       throws IoTDBConnectionException, StatementExecutionException {
     if (properties.isEmpty()) {
       createTopic(topicName);
@@ -105,7 +107,7 @@ public class SubscriptionSession extends Session {
     executeNonQueryStatement(sql);
   }
 
-  public void dropTopic(String topicName)
+  public void dropTopic(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
     final String sql = String.format("DROP TOPIC %s", topicName);
     executeNonQueryStatement(sql);
@@ -113,16 +115,16 @@ public class SubscriptionSession extends Session {
 
   public Set<Topic> getTopics() throws IoTDBConnectionException, StatementExecutionException {
     final String sql = "SHOW TOPICS";
-    try (SessionDataSet dataSet = executeQueryStatement(sql)) {
+    try (final SessionDataSet dataSet = executeQueryStatement(sql)) {
       return convertDataSetToTopics(dataSet);
     }
   }
 
-  public Optional<Topic> getTopic(String topicName)
+  public Optional<Topic> getTopic(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
     final String sql = String.format("SHOW TOPIC %s", topicName);
-    try (SessionDataSet dataSet = executeQueryStatement(sql)) {
-      Set<Topic> topics = convertDataSetToTopics(dataSet);
+    try (final SessionDataSet dataSet = executeQueryStatement(sql)) {
+      final Set<Topic> topics = convertDataSetToTopics(dataSet);
       if (topics.isEmpty()) {
         return Optional.empty();
       }
@@ -135,27 +137,27 @@ public class SubscriptionSession extends Session {
   public Set<Subscription> getSubscriptions()
       throws IoTDBConnectionException, StatementExecutionException {
     final String sql = "SHOW SUBSCRIPTIONS";
-    try (SessionDataSet dataSet = executeQueryStatement(sql)) {
+    try (final SessionDataSet dataSet = executeQueryStatement(sql)) {
       return convertDataSetToSubscriptions(dataSet);
     }
   }
 
-  public Set<Subscription> getSubscriptions(String topicName)
+  public Set<Subscription> getSubscriptions(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
     final String sql = String.format("SHOW SUBSCRIPTIONS ON %s", topicName);
-    try (SessionDataSet dataSet = executeQueryStatement(sql)) {
+    try (final SessionDataSet dataSet = executeQueryStatement(sql)) {
       return convertDataSetToSubscriptions(dataSet);
     }
   }
 
   /////////////////////////////// utility ///////////////////////////////
 
-  public Set<Topic> convertDataSetToTopics(SessionDataSet dataSet)
+  public Set<Topic> convertDataSetToTopics(final SessionDataSet dataSet)
       throws IoTDBConnectionException, StatementExecutionException {
-    Set<Topic> topics = new HashSet<>();
+    final Set<Topic> topics = new HashSet<>();
     while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      List<Field> fields = record.getFields();
+      final RowRecord record = dataSet.next();
+      final List<Field> fields = record.getFields();
       if (fields.size() != 2) {
         throw new SubscriptionException(
             String.format(
@@ -167,12 +169,12 @@ public class SubscriptionSession extends Session {
     return topics;
   }
 
-  public Set<Subscription> convertDataSetToSubscriptions(SessionDataSet dataSet)
+  public Set<Subscription> convertDataSetToSubscriptions(final SessionDataSet dataSet)
       throws IoTDBConnectionException, StatementExecutionException {
-    Set<Subscription> subscriptions = new HashSet<>();
+    final Set<Subscription> subscriptions = new HashSet<>();
     while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      List<Field> fields = record.getFields();
+      final RowRecord record = dataSet.next();
+      final List<Field> fields = record.getFields();
       if (fields.size() != 3) {
         throw new SubscriptionException(
             String.format(

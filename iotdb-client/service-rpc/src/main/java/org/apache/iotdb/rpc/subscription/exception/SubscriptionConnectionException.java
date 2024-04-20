@@ -21,7 +21,7 @@ package org.apache.iotdb.rpc.subscription.exception;
 
 import java.util.Objects;
 
-public class SubscriptionConnectionException extends SubscriptionException {
+public class SubscriptionConnectionException extends SubscriptionNonRetryableException {
 
   public SubscriptionConnectionException(String message) {
     super(message);

@@ -28,7 +28,7 @@ public class SubscriptionTsFileReader implements SubscriptionMessagePayload {
 
   private final String filePath;
 
-  public SubscriptionTsFileReader(String filePath) {
+  public SubscriptionTsFileReader(final String filePath) {
     this.filePath = filePath;
   }
 

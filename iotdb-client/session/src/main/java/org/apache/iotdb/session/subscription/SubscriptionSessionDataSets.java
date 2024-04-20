@@ -32,7 +32,7 @@ public class SubscriptionSessionDataSets
 
   private final List<Tablet> tablets;
 
-  public SubscriptionSessionDataSets(List<Tablet> tablets) {
+  public SubscriptionSessionDataSets(final List<Tablet> tablets) {
     this.dataSetList = new ArrayList<>();
     this.tablets = tablets;
     tablets.forEach((tablet -> this.dataSetList.add(new SubscriptionSessionDataSet(tablet))));

@@ -90,7 +90,7 @@ public class SubscriptionEndpointsSyncer implements Runnable {
       } else {
         // existing provider
         try {
-          provider.getSessionConnection().heartbeat();
+          provider.heartbeat();
           provider.setAvailable();
         } catch (final Exception e) {
           LOGGER.warn(
