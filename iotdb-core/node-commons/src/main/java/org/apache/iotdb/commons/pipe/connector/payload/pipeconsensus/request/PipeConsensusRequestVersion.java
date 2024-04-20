@@ -1,4 +1,4 @@
-package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
+package org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request;
 
 public enum PipeConsensusRequestVersion {
   VERSION_1((byte) 1),
