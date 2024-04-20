@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -7,19 +26,23 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusHandshakeReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusHandshakeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -30,7 +53,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>Note: This class is shared by all pipeConsensusTasks of one leader to its peers in a consensus
  * group.
  */
-public class PipeConsensusSyncClientManager {
+public class PipeConsensusSyncClientManager implements Closeable {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConsensusSyncClientManager.class);
 
@@ -46,7 +69,13 @@ public class PipeConsensusSyncClientManager {
     // do nothing
   }
 
-  public SyncDataNodeInternalServiceClient borrowClient(final TEndPoint endPoint) {
+  public Pair<SyncDataNodeInternalServiceClient, Boolean> borrowClient(final TEndPoint endPoint)
+      throws PipeException {
+    if (endPoint == null) {
+      throw new PipeException(
+          "PipeConsensus: sync client manager can't borrow clients for a null TEndPoint. Please set the url of receiver correctly!");
+    }
+
     Pair<SyncDataNodeInternalServiceClient, Boolean> clientAndStatus =
         endPoint2ClientAndStatus.getOrDefault(endPoint, null);
     // If the client don't exist due to eviction by ClientManager's KeyObjectPool or other reasons,
@@ -57,7 +86,7 @@ public class PipeConsensusSyncClientManager {
       sendHandshakeReq(clientAndStatus);
       endPoint2ClientAndStatus.putIfAbsent(endPoint, clientAndStatus);
     }
-    return clientAndStatus.getLeft();
+    return clientAndStatus;
   }
 
   /**
@@ -91,11 +120,13 @@ public class PipeConsensusSyncClientManager {
       try {
         clientAndStatus.getLeft().invalidate();
       } catch (Exception e) {
-        LOGGER.warn(
-            "Failed to close client with target server ip: {}, port: {}, because: {}. Ignore it.",
-            endPoint.getIp(),
-            endPoint.getPort(),
-            e.getMessage());
+        if (LOGGER.isWarnEnabled()) {
+          LOGGER.warn(
+              "Failed to close client with target server ip: {}, port: {}, because: {}. Ignore it.",
+              endPoint.getIp(),
+              endPoint.getPort(),
+              e.getMessage());
+        }
       }
     }
 
@@ -130,14 +161,16 @@ public class PipeConsensusSyncClientManager {
       // Try to handshake by PipeConsensusHandshakeReq
       PipeConsensusHandshakeReq handshakeReq = new PipeConsensusHandshakeReq();
       TPipeConsensusTransferResp resp =
-          client.pipeConsensusTransfer(handshakeReq.convertToTPipeTransferReq(params));
+          client.pipeConsensusTransfer(handshakeReq.convertToTPipeConsensusTransferReq(params));
 
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "PipeConsensus handshake error with target server ip: {}, port: {}, because: {}.",
-            client.getTEndpoint().getIp(),
-            client.getTEndpoint().getPort(),
-            resp.getStatus());
+        if (LOGGER.isWarnEnabled()) {
+          LOGGER.warn(
+              "PipeConsensus handshake error with target server ip: {}, port: {}, because: {}.",
+              client.getTEndpoint().getIp(),
+              client.getTEndpoint().getPort(),
+              resp.getStatus());
+        }
       } else {
         clientAndStatus.setRight(true);
         client.setTimeout((int) PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
@@ -147,13 +180,46 @@ public class PipeConsensusSyncClientManager {
             client.getTEndpoint().getPort());
       }
     } catch (Exception e) {
-      LOGGER.warn(
-          "PipeConsensus handshake error with target server ip: {}, port: {}, because: {}.",
-          client.getTEndpoint().getIp(),
-          client.getTEndpoint().getPort(),
-          e.getMessage(),
-          e);
+      if (LOGGER.isWarnEnabled()) {
+        LOGGER.warn(
+            "PipeConsensus handshake error with target server ip: {}, port: {}, because: {}.",
+            client.getTEndpoint().getIp(),
+            client.getTEndpoint().getPort(),
+            e.getMessage(),
+            e);
+      }
     }
+  }
+
+  @Override
+  public void close() throws IOException {
+    endPoint2ClientAndStatus.entrySet().stream()
+        .filter(Objects::nonNull)
+        .forEach(
+            entry -> {
+              final TEndPoint endPoint = entry.getKey();
+              final Pair<SyncDataNodeInternalServiceClient, Boolean> clientAndStatus =
+                  entry.getValue();
+
+              try {
+                if (clientAndStatus.getLeft() != null) {
+                  clientAndStatus.getLeft().close();
+                  clientAndStatus.setLeft(null);
+                }
+                LOGGER.info("Client {}:{} closed.", endPoint.getIp(), endPoint.getPort());
+              } catch (Exception e) {
+                if (LOGGER.isWarnEnabled()) {
+                  LOGGER.warn(
+                      "Failed to close client {}:{}, because: {}.",
+                      endPoint.getIp(),
+                      endPoint.getPort(),
+                      e.getMessage(),
+                      e);
+                }
+              } finally {
+                clientAndStatus.setRight(false);
+              }
+            });
   }
 
   //////////////////////////// singleton ////////////////////////////
