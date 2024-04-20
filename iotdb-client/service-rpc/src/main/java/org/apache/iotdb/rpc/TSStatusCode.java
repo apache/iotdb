@@ -256,6 +256,7 @@ public enum TSStatusCode {
   // Pipe Consensus
   PIPE_CONSENSUS_CONNECTOR_RESTART_ERROR(2200),
   PIPE_CONSENSUS_VERSION_ERROR(2201),
+  PIPE_CONSENSUS_DEPRECATED_REQUEST(2202),
   ;
 
   private final int statusCode;

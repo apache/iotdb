@@ -118,8 +118,8 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
         final TSStatus status =
             new TSStatus(
                 RpcUtils.getStatus(
-                    TSStatusCode.PIPE_CONSENSUS_CONNECTOR_RESTART_ERROR,
-                    "PipeConsensus receiver identified the restart of connector, thus reset itself and reject event load temporarily"));
+                    TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST,
+                    "PipeConsensus receiver received a deprecated request, which may be sent before the connector restart. Consider to discard it"));
         return new TPipeConsensusTransferResp(status);
       }
       try {
