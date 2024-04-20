@@ -26,13 +26,12 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -105,7 +104,7 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
         tagLogSnapshotPath = resourceManager.increaseSnapshotReference(tagLogSnapshotPath);
       }
       return true;
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOGGER.warn(
           String.format(
               "Increase reference count for mTree snapshot %s or tLog %s error. Holder Message: %s",

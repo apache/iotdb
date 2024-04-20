@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.commons.path;
 
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.Path;
 
 import java.nio.ByteBuffer;
 

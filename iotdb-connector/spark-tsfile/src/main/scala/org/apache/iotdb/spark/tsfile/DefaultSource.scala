@@ -25,11 +25,11 @@ import org.apache.hadoop.mapreduce.Job
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput
 import org.apache.iotdb.spark.tsfile.DefaultSource.SerializableConfiguration
 import org.apache.iotdb.spark.tsfile.qp.Executor
-import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID
-import org.apache.iotdb.tsfile.read.common.Field
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet
-import org.apache.iotdb.tsfile.read.{TsFileReader, TsFileSequenceReader}
+import org.apache.tsfile.common.constant.QueryConstant
+import org.apache.tsfile.file.metadata.PlainDeviceID
+import org.apache.tsfile.read.common.Field
+import org.apache.tsfile.read.query.dataset.QueryDataSet
+import org.apache.tsfile.read.{TsFileReader, TsFileSequenceReader}
 import org.apache.spark.TaskContext
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
@@ -59,7 +59,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
 
     //check if the path is given
     options.getOrElse(DefaultSource.path, throw new TSFileDataSourceException(
-      s"${DefaultSource.path} must be specified for org.apache.iotdb.tsfile DataSource"))
+      s"${DefaultSource.path} must be specified for org.apache.tsfile DataSource"))
 
     if (options.getOrElse(DefaultSource.isNarrowForm, "").equals("narrow_form")) {
       val tsfileSchema = NarrowConverter.getUnionSeries(files, conf)
@@ -187,7 +187,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
                 rowBuffer(index) = deviceName
               }
               else {
-                val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(deviceName,
+                val pos = paths.indexOf(new org.apache.tsfile.read.common.Path(deviceName,
                   field.name, true))
                 var curField: Field = null
                 if (pos != -1) {
@@ -239,7 +239,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
               if (field.name == QueryConstant.RESERVED_TIME) {
                 rowBuffer(index) = curRecord.getTimestamp
               } else {
-                val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(field.name, true))
+                val pos = paths.indexOf(new org.apache.tsfile.read.common.Path(field.name, true))
                 var curField: Field = null
                 if (pos != -1) {
                   curField = fields.get(pos)

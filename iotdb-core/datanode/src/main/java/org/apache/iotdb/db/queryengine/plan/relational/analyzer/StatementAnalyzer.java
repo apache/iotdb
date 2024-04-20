@@ -97,8 +97,6 @@ import org.apache.iotdb.db.relational.sql.tree.Use;
 import org.apache.iotdb.db.relational.sql.tree.Values;
 import org.apache.iotdb.db.relational.sql.tree.With;
 import org.apache.iotdb.db.relational.sql.tree.WithQuery;
-import org.apache.iotdb.tsfile.read.common.type.RowType;
-import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -108,6 +106,8 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
+import org.apache.tsfile.read.common.type.RowType;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -147,7 +147,7 @@ import static org.apache.iotdb.db.relational.sql.tree.Join.Type.INNER;
 import static org.apache.iotdb.db.relational.sql.tree.Join.Type.LEFT;
 import static org.apache.iotdb.db.relational.sql.tree.Join.Type.RIGHT;
 import static org.apache.iotdb.db.relational.sql.util.AstUtil.preOrder;
-import static org.apache.iotdb.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class StatementAnalyzer {
 
@@ -879,20 +879,25 @@ public class StatementAnalyzer {
           });
 
       // TODO Auth control
-      //      tableFieldsMap.asMap().forEach((table, tableFields) -> {
-      //        Set<String> accessibleColumns = accessControl.filterColumns(
-      //                session.toSecurityContext(),
-      //                table.getCatalogName(),
-      //                ImmutableMap.of(
-      //                    table.asSchemaTableName(),
-      //                    tableFields.stream()
-      //                        .map(field -> field.getOriginColumnName().get())
-      //                        .collect(toImmutableSet())))
-      //            .getOrDefault(table.asSchemaTableName(), ImmutableSet.of());
-      //        accessibleFields.addAll(tableFields.stream()
-      //            .filter(field -> accessibleColumns.contains(field.getOriginColumnName().get()))
-      //            .collect(toImmutableList()));
-      //      });
+      tableFieldsMap
+          .asMap()
+          .forEach(
+              (table, tableFields) -> {
+                //              Set<String> accessibleColumns = accessControl.filterColumns(
+                //                      session.toSecurityContext(),
+                //                      table.getCatalogName(),
+                //                      ImmutableMap.of(
+                //                          table.asSchemaTableName(),
+                //                          tableFields.stream()
+                //                              .map(field -> field.getOriginColumnName().get())
+                //                              .collect(toImmutableSet())))
+                //                  .getOrDefault(table.asSchemaTableName(), ImmutableSet.of());
+                accessibleFields.addAll(
+                    tableFields.stream()
+                        // .filter(field ->
+                        // accessibleColumns.contains(field.getOriginColumnName().get()))
+                        .collect(toImmutableList()));
+              });
 
       return fields.stream().filter(accessibleFields.build()::contains).collect(toImmutableList());
     }

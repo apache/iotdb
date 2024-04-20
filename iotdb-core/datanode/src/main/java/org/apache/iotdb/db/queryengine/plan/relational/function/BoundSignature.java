@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.function;
 
-import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
 import java.util.Objects;

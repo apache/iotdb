@@ -18,10 +18,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.relational.sql.tree.FunctionCall;
 import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
-import org.apache.iotdb.tsfile.read.common.type.LongType;
-import org.apache.iotdb.tsfile.read.common.type.Type;
 
-import com.google.common.primitives.Ints;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -55,10 +53,6 @@ public class SymbolAllocator {
     return newSymbol(nameHint, type, null);
   }
 
-  public Symbol newHashSymbol() {
-    return newSymbol("$hashValue", LongType.getInstance());
-  }
-
   public Symbol newSymbol(String nameHint, Type type, String suffix) {
     requireNonNull(nameHint, "nameHint is null");
     requireNonNull(type, "type is null");
@@ -67,15 +61,15 @@ public class SymbolAllocator {
     nameHint = nameHint.toLowerCase(ENGLISH);
 
     // don't strip the tail if the only _ is the first character
-    int index = nameHint.lastIndexOf("_");
-    if (index > 0) {
-      String tail = nameHint.substring(index + 1);
-
-      // only strip if tail is numeric or _ is the last character
-      if (Ints.tryParse(tail) != null || index == nameHint.length() - 1) {
-        nameHint = nameHint.substring(0, index);
-      }
-    }
+    //    int index = nameHint.lastIndexOf("_");
+    //    if (index > 0) {
+    //      String tail = nameHint.substring(index + 1);
+    //
+    //      // only strip if tail is numeric or _ is the last character
+    //      if (Ints.tryParse(tail) != null || index == nameHint.length() - 1) {
+    //        nameHint = nameHint.substring(0, index);
+    //      }
+    //    }
 
     String unique = nameHint;
 

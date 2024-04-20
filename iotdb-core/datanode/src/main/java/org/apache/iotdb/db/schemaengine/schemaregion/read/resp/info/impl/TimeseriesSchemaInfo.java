@@ -21,7 +21,8 @@ package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.Map;
 

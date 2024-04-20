@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
@@ -34,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.RelationalDistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
@@ -50,10 +54,10 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
-import static org.apache.iotdb.tsfile.read.common.type.BooleanType.BOOLEAN;
-import static org.apache.iotdb.tsfile.read.common.type.DoubleType.DOUBLE;
-import static org.apache.iotdb.tsfile.read.common.type.IntType.INT32;
-import static org.apache.iotdb.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.eq;
@@ -131,7 +135,7 @@ public class AnalyzerTest {
   @Test
   public void testSingleTableQuery() throws IoTDBException {
     // no sort
-    String sql = "SELECT tag1 as tt, tag2, attr1, s1+1 FROM table1 where time>1 and s1>1";
+    String sql = "SELECT tag1, s1 FROM table1";
     // + "WHERE time>1 AND tag1='A' OR s2>3";
     Metadata metadata = new TestMatadata();
 
@@ -141,19 +145,33 @@ public class AnalyzerTest {
 
     QueryId queryId = new QueryId("tmp_query");
     MPPQueryContext context = new MPPQueryContext(queryId);
-    SessionInfo sessionInfo = new SessionInfo(1L, "iotdb", ZoneId.systemDefault());
+    SessionInfo sessionInfo =
+        new SessionInfo(
+            1L,
+            "iotdb-user",
+            ZoneId.systemDefault(),
+            IoTDBConstant.ClientVersion.V_1_0,
+            "db",
+            IClientSession.SqlDialect.TABLE);
     WarningCollector warningCollector = WarningCollector.NOOP;
     LogicalPlanner logicalPlanner =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector);
-    LogicalQueryPlan result = logicalPlanner.plan(actualAnalysis);
-    System.out.println(result);
+    LogicalQueryPlan logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    System.out.println(logicalQueryPlan);
+
+    RelationalDistributionPlanner distributionPlanner =
+        new RelationalDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    DistributedQueryPlan distributedQueryPlan = distributionPlanner.plan();
+    System.out.println(distributedQueryPlan);
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {
     try {
       SqlParser sqlParser = new SqlParser();
       Statement statement = sqlParser.createStatement(sql);
-      SessionInfo session = new SessionInfo(0, "test", ZoneId.systemDefault(), "testdb");
+      SessionInfo session =
+          new SessionInfo(
+              0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
       StatementAnalyzerFactory statementAnalyzerFactory =
           new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
 

@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.flink.tsfile;
 
-import org.apache.iotdb.tsfile.common.constant.QueryConstant;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.types.Row;
+import org.apache.tsfile.common.constant.QueryConstant;
+import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.RowRecord;
 
 import java.util.List;
 import java.util.stream.Collectors;

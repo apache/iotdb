@@ -11,10 +11,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -32,10 +31,7 @@ public class OrderingScheme {
   private final List<Symbol> orderBy;
   private final Map<Symbol, SortOrder> orderings;
 
-  @JsonCreator
-  public OrderingScheme(
-      @JsonProperty("orderBy") List<Symbol> orderBy,
-      @JsonProperty("orderings") Map<Symbol, SortOrder> orderings) {
+  public OrderingScheme(List<Symbol> orderBy, Map<Symbol, SortOrder> orderings) {
     requireNonNull(orderBy, "orderBy is null");
     requireNonNull(orderings, "orderings is null");
     checkArgument(!orderBy.isEmpty(), "orderBy is empty");
@@ -46,12 +42,10 @@ public class OrderingScheme {
     this.orderings = ImmutableMap.copyOf(orderings);
   }
 
-  @JsonProperty
   public List<Symbol> getOrderBy() {
     return orderBy;
   }
 
-  @JsonProperty
   public Map<Symbol, SortOrder> getOrderings() {
     return orderings;
   }

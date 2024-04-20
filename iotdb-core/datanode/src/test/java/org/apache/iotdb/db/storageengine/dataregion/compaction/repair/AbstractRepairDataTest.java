@@ -23,7 +23,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+
+import org.apache.tsfile.exception.write.WriteProcessException;
 
 import java.io.File;
 import java.io.IOException;

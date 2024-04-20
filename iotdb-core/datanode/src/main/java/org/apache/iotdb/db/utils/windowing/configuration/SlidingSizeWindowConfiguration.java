@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.utils.windowing.configuration;
 
 import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.tsfile.enums.TSDataType;
 
 public class SlidingSizeWindowConfiguration extends Configuration {
 

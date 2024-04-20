@@ -185,6 +185,14 @@ public interface IConsensus {
   boolean isLeader(ConsensusGroupId groupId);
 
   /**
+   * Returns the logic clock of the current consensus group
+   *
+   * @param groupId the consensus group
+   * @return long
+   */
+  long getLogicalClock(ConsensusGroupId groupId);
+
+  /**
    * Determine if the current peer is the leader and already able to provide services in the
    * corresponding consensus group.
    *

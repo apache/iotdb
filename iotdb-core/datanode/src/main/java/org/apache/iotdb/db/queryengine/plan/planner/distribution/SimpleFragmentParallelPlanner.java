@@ -43,9 +43,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -214,12 +214,12 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     if (availableDataNodes.isEmpty()) {
       String errorMsg =
           String.format(
-              "all replicas for region[%s] are not available in these DataNodes[%s]",
+              "All replicas for region[%s] are not available in these DataNodes[%s]",
               regionReplicaSet.getRegionId(), regionReplicaSet.getDataNodeLocations());
       throw new IllegalArgumentException(errorMsg);
     }
     if (regionReplicaSet.getDataNodeLocationsSize() != availableDataNodes.size()) {
-      logger.info("available replicas: " + availableDataNodes);
+      logger.info("available replicas: {}", availableDataNodes);
     }
     int targetIndex;
     if (!selectRandomDataNode || queryContext.getSession() == null) {

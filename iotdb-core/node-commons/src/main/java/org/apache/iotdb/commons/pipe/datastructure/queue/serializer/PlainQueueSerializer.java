@@ -20,7 +20,8 @@
 package org.apache.iotdb.commons.pipe.datastructure.queue.serializer;
 
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;

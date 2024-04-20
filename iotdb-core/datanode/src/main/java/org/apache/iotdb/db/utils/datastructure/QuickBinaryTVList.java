@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Binary;
 
 public class QuickBinaryTVList extends BinaryTVList implements QuickSort {
 

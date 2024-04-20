@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -46,8 +47,6 @@ import org.apache.iotdb.db.relational.sql.tree.Relation;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
 import org.apache.iotdb.db.relational.sql.tree.SubqueryExpression;
 import org.apache.iotdb.db.relational.sql.tree.Table;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -56,6 +55,8 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Streams;
 import com.google.errorprone.annotations.Immutable;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.type.Type;
 
 import javax.annotation.Nullable;
 
@@ -146,6 +147,28 @@ public class Analysis implements IAnalysis {
   private final Map<NodeRef<Relation>, QualifiedName> relationNames = new LinkedHashMap<>();
 
   private final Set<NodeRef<Relation>> aliasedRelations = new LinkedHashSet<>();
+
+  private Expression globalTableModelTimePredicate;
+
+  private DataPartition dataPartition;
+
+  private DatasetHeader respDatasetHeader;
+
+  public Expression getGlobalTableModelTimePredicate() {
+    return this.globalTableModelTimePredicate;
+  }
+
+  public void setGlobalTableModelTimePredicate(Expression globalTableModelTimePredicate) {
+    this.globalTableModelTimePredicate = globalTableModelTimePredicate;
+  }
+
+  public DataPartition getDataPartition() {
+    return dataPartition;
+  }
+
+  public void setDataPartition(DataPartition dataPartition) {
+    this.dataPartition = dataPartition;
+  }
 
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
     this.root = root;
@@ -572,7 +595,11 @@ public class Analysis implements IAnalysis {
 
   @Override
   public DatasetHeader getRespDatasetHeader() {
-    return null;
+    return respDatasetHeader;
+  }
+
+  public void setRespDatasetHeader(DatasetHeader respDatasetHeader) {
+    this.respDatasetHeader = respDatasetHeader;
   }
 
   @Override

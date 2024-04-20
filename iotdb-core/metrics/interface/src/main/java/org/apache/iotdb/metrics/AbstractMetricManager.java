@@ -33,7 +33,8 @@ import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;

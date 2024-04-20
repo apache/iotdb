@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.commons.sync;
 
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;

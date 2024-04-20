@@ -15,10 +15,12 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
@@ -28,7 +30,12 @@ import java.util.List;
 public class RemoveRedundantIdentityProjections implements RelationalPlanOptimizer {
 
   @Override
-  public PlanNode optimize(PlanNode planNode, Analysis analysis, MPPQueryContext context) {
+  public PlanNode optimize(
+      PlanNode planNode,
+      Analysis analysis,
+      Metadata metadata,
+      SessionInfo sessionInfo,
+      MPPQueryContext context) {
     return planNode.accept(new Rewriter(), new RewriterContext());
   }
 
@@ -60,8 +67,9 @@ public class RemoveRedundantIdentityProjections implements RelationalPlanOptimiz
             }
           }
         }
-        return projectNode.getChild();
+        return projectNode.getChild().accept(this, context);
       } else {
+        projectNode.getChild().accept(this, context);
         return projectNode;
       }
     }

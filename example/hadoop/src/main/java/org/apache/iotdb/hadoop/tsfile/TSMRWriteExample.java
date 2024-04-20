@@ -20,13 +20,6 @@
 package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -39,6 +32,13 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.write.record.datapoint.DataPoint;
+import org.apache.tsfile.write.record.datapoint.DoubleDataPoint;
+import org.apache.tsfile.write.record.datapoint.LongDataPoint;
+import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,14 +64,14 @@ public class TSMRWriteExample {
     // add measurements into file schema (all with INT64 data type)
     for (int i = 0; i < 2; i++) {
       schema.registerTimeseries(
-          new org.apache.iotdb.tsfile.read.common.Path(Constant.DEVICE_1),
+          new org.apache.tsfile.read.common.Path(Constant.DEVICE_1),
           new MeasurementSchema(
               Constant.SENSOR_PREFIX + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
     }
 
     for (int i = 2; i < sensorNum; i++) {
       schema.registerTimeseries(
-          new org.apache.iotdb.tsfile.read.common.Path(Constant.DEVICE_1),
+          new org.apache.tsfile.read.common.Path(Constant.DEVICE_1),
           new MeasurementSchema(
               Constant.SENSOR_PREFIX + (i + 1), TSDataType.DOUBLE, TSEncoding.TS_2DIFF));
     }

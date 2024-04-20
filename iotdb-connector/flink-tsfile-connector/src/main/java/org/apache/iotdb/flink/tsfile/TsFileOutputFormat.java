@@ -21,17 +21,17 @@ package org.apache.iotdb.flink.tsfile;
 
 import org.apache.iotdb.flink.tsfile.util.TSFileConfigUtil;
 import org.apache.iotdb.hadoop.fileSystem.HDFSOutput;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.writer.LocalTsFileOutput;
-import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
 import org.apache.flink.api.common.io.FileOutputFormat;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.util.HadoopUtils;
 import org.apache.flink.util.Preconditions;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.write.TsFileWriter;
+import org.apache.tsfile.write.schema.Schema;
+import org.apache.tsfile.write.writer.LocalTsFileOutput;
+import org.apache.tsfile.write.writer.TsFileOutput;
 
 import javax.annotation.Nullable;
 

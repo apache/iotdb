@@ -25,7 +25,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
-import org.apache.iotdb.tsfile.read.common.type.Type;
+
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
 import java.util.Optional;

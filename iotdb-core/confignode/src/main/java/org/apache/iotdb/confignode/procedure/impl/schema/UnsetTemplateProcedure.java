@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -42,24 +40,18 @@ import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
-import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
@@ -114,7 +106,7 @@ public class UnsetTemplateProcedure
           if (isFailed()) {
             return Flow.NO_MORE_STATE;
           }
-          if (checkDataNodeTemplateActivation(env) > 0) {
+          if (checkDataNodeTemplateActivation(env)) {
             setFailure(new ProcedureException(new TemplateIsInUseException(path.getFullPath())));
             return Flow.NO_MORE_STATE;
           } else {
@@ -180,84 +172,22 @@ public class UnsetTemplateProcedure
     }
   }
 
-  private long checkDataNodeTemplateActivation(ConfigNodeProcedureEnv env) {
+  private boolean checkDataNodeTemplateActivation(ConfigNodeProcedureEnv env) {
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(path);
     patternTree.appendPathPattern(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
-      patternTree.serialize(dataOutputStream);
-    } catch (IOException ignored) {
+      return SchemaUtils.checkDataNodeTemplateActivation(
+          env.getConfigManager(), patternTree, template);
+    } catch (MetadataException e) {
+      setFailure(
+          new ProcedureException(
+              new MetadataException(
+                  String.format(
+                      "Unset template %s from %s failed when [check DataNode template activation] because %s",
+                      template.getName(), path, e.getMessage()))));
+      return false;
     }
-    ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-
-    Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
-        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
-
-    List<TCountPathsUsingTemplateResp> respList = new ArrayList<>();
-    DataNodeRegionTaskExecutor<TCountPathsUsingTemplateReq, TCountPathsUsingTemplateResp>
-        regionTask =
-            new DataNodeRegionTaskExecutor<
-                TCountPathsUsingTemplateReq, TCountPathsUsingTemplateResp>(
-                env,
-                relatedSchemaRegionGroup,
-                false,
-                DataNodeRequestType.COUNT_PATHS_USING_TEMPLATE,
-                ((dataNodeLocation, consensusGroupIdList) ->
-                    new TCountPathsUsingTemplateReq(
-                        template.getId(), patternTreeBytes, consensusGroupIdList))) {
-
-              @Override
-              protected List<TConsensusGroupId> processResponseOfOneDataNode(
-                  TDataNodeLocation dataNodeLocation,
-                  List<TConsensusGroupId> consensusGroupIdList,
-                  TCountPathsUsingTemplateResp response) {
-                respList.add(response);
-                List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-                if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  return failedRegionList;
-                }
-
-                if (response.getStatus().getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-                  List<TSStatus> subStatus = response.getStatus().getSubStatus();
-                  for (int i = 0; i < subStatus.size(); i++) {
-                    if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                      failedRegionList.add(consensusGroupIdList.get(i));
-                    }
-                  }
-                } else {
-                  failedRegionList.addAll(consensusGroupIdList);
-                }
-                return failedRegionList;
-              }
-
-              @Override
-              protected void onAllReplicasetFailure(
-                  TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {
-                setFailure(
-                    new ProcedureException(
-                        new MetadataException(
-                            String.format(
-                                "Unset template %s from %s failed when [check DataNode template activation] because all replicaset of schemaRegion %s failed. %s",
-                                template.getName(),
-                                path,
-                                consensusGroupId.id,
-                                dataNodeLocationSet))));
-                interruptTask();
-              }
-            };
-    regionTask.execute();
-    if (isFailed()) {
-      return 0;
-    }
-
-    long result = 0;
-    for (TCountPathsUsingTemplateResp resp : respList) {
-      result += resp.getCount();
-    }
-
-    return result;
   }
 
   private void unsetTemplate(ConfigNodeProcedureEnv env) {

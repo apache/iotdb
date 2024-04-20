@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -44,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLo
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
@@ -51,6 +53,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -415,7 +418,8 @@ public class RegionMaintainHandler {
     return report;
   }
 
-  public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {
+  public void addRegionLocation(
+      TConsensusGroupId regionId, TDataNodeLocation newLocation, RegionStatus regionStatus) {
     AddRegionLocationPlan req = new AddRegionLocationPlan(regionId, newLocation);
     TSStatus status = configManager.getPartitionManager().addRegionLocation(req);
     LOGGER.info(
@@ -423,7 +427,16 @@ public class RegionMaintainHandler {
         regionId,
         getIdWithRpcEndpoint(newLocation),
         status);
-    updateRegionLocation(regionId);
+    configManager
+        .getLoadManager()
+        .forceAddRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
+  }
+
+  public void updateRegionCache(
+      TConsensusGroupId regionId, TDataNodeLocation newLocation, RegionStatus regionStatus) {
+    configManager
+        .getLoadManager()
+        .forceAddRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
   }
 
   public void removeRegionLocation(
@@ -435,18 +448,9 @@ public class RegionMaintainHandler {
         regionId,
         getIdWithRpcEndpoint(deprecatedLocation),
         status);
-    updateRegionLocation(regionId);
-  }
-
-  private void updateRegionLocation(TConsensusGroupId regionId) {
-    // Remove the RegionGroupCache of the regionId
-    configManager.getLoadManager().removeRegionGroupCache(regionId);
-    // force balance region leader to skip waiting for leader election
-    configManager.getLoadManager().forceBalanceRegionLeader();
-    // Wait for leader election
-    configManager.getLoadManager().waitForLeaderElection(Collections.singletonList(regionId));
-    // Broadcast the latest RegionRouteMap when Region migration finished
-    configManager.getLoadManager().broadcastLatestRegionRouteMap();
+    configManager
+        .getLoadManager()
+        .forceRemoveRegionCache(regionId, deprecatedLocation.getDataNodeId());
   }
 
   /**
@@ -656,25 +660,21 @@ public class RegionMaintainHandler {
    *
    * @param regionId The region to be migrated
    * @param originalDataNode The DataNode where the region locates
-   * @param migrateDestDataNode The DataNode where the region is to be migrated
    */
-  public void changeRegionLeader(
-      TConsensusGroupId regionId,
-      TDataNodeLocation originalDataNode,
-      TDataNodeLocation migrateDestDataNode) {
+  public void changeRegionLeader(TConsensusGroupId regionId, TDataNodeLocation originalDataNode) {
     Optional<TDataNodeLocation> newLeaderNode =
         filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
 
     if (TConsensusGroupType.DataRegion.equals(regionId.getType())
         && IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
-      if (CONF.getDataReplicationFactor() == 1) {
-        newLeaderNode = Optional.of(migrateDestDataNode);
-      }
       if (newLeaderNode.isPresent()) {
         configManager
             .getLoadManager()
-            .forceUpdateRegionLeader(regionId, newLeaderNode.get().getDataNodeId());
-
+            .forceUpdateConsensusGroupCache(
+                Collections.singletonMap(
+                    regionId,
+                    new ConsensusGroupHeartbeatSample(
+                        System.nanoTime(), newLeaderNode.get().getDataNodeId())));
         LOGGER.info(
             "{}, Change region leader finished for IOT_CONSENSUS, regionId: {}, newLeaderNode: {}",
             REGION_MIGRATE_PROCESS,
@@ -686,10 +686,19 @@ public class RegionMaintainHandler {
     }
 
     if (newLeaderNode.isPresent()) {
-      // TODO: Trigger event post after enhance RegionMigrate procedure
-      SyncDataNodeClientPool.getInstance()
-          .changeRegionLeader(
-              regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
+      TRegionLeaderChangeResp resp =
+          SyncDataNodeClientPool.getInstance()
+              .changeRegionLeader(
+                  regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        configManager
+            .getLoadManager()
+            .forceUpdateConsensusGroupCache(
+                Collections.singletonMap(
+                    regionId,
+                    new ConsensusGroupHeartbeatSample(
+                        resp.getConsensusLogicalTimestamp(), newLeaderNode.get().getDataNodeId())));
+      }
       LOGGER.info(
           "{}, Change region leader finished for RATIS_CONSENSUS, regionId: {}, newLeaderNode: {}",
           REGION_MIGRATE_PROCESS,

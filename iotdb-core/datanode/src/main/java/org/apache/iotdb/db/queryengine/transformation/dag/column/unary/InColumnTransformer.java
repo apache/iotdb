@@ -21,13 +21,20 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.unary;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.type.Type;
-import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
+import org.apache.iotdb.db.relational.sql.tree.BooleanLiteral;
+import org.apache.iotdb.db.relational.sql.tree.DoubleLiteral;
+import org.apache.iotdb.db.relational.sql.tree.Literal;
+import org.apache.iotdb.db.relational.sql.tree.LongLiteral;
+import org.apache.iotdb.db.relational.sql.tree.StringLiteral;
+
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeEnum;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class InColumnTransformer extends UnaryColumnTransformer {
@@ -49,6 +56,17 @@ public class InColumnTransformer extends UnaryColumnTransformer {
       Set<String> values) {
     super(returnType, childColumnTransformer);
     satisfy = isNotIn ? new NotInSatisfy() : new InSatisfy();
+    this.childType =
+        childColumnTransformer.getType() == null
+            ? null
+            : childColumnTransformer.getType().getTypeEnum();
+    initTypedSet(values);
+  }
+
+  public InColumnTransformer(
+      Type returnType, ColumnTransformer childColumnTransformer, List<Literal> values) {
+    super(returnType, childColumnTransformer);
+    satisfy = new InSatisfy();
     this.childType =
         childColumnTransformer.getType() == null
             ? null
@@ -144,6 +162,69 @@ public class InColumnTransformer extends UnaryColumnTransformer {
         break;
       case TEXT:
         stringSet = values;
+        break;
+      default:
+        throw new UnsupportedOperationException("unsupported data type: " + childType);
+    }
+  }
+
+  private void initTypedSet(List<Literal> values) {
+    if (childType == null) {
+      return;
+    }
+    String errorMsg = "\"%s\" cannot be cast to [%s]";
+    switch (childType) {
+      case INT32:
+        intSet = new HashSet<>();
+        for (Literal value : values) {
+          try {
+            intSet.add((int) ((LongLiteral) value).getParsedValue());
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(String.format(errorMsg, value, childType));
+          }
+        }
+        break;
+      case INT64:
+        longSet = new HashSet<>();
+        for (Literal value : values) {
+          try {
+            longSet.add((((LongLiteral) value).getParsedValue()));
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(String.format(errorMsg, value, childType));
+          }
+        }
+        break;
+      case FLOAT:
+        floatSet = new HashSet<>();
+        for (Literal value : values) {
+          try {
+            floatSet.add((float) ((DoubleLiteral) value).getValue());
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(String.format(errorMsg, value, childType));
+          }
+        }
+        break;
+      case DOUBLE:
+        doubleSet = new HashSet<>();
+        for (Literal value : values) {
+          try {
+            doubleSet.add(((DoubleLiteral) value).getValue());
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(String.format(errorMsg, value, childType));
+          }
+        }
+        break;
+      case BOOLEAN:
+        booleanSet = new HashSet<>();
+        for (Literal value : values) {
+          booleanSet.add(((BooleanLiteral) value).getValue());
+        }
+        break;
+      case TEXT:
+        stringSet = new HashSet<>();
+        for (Literal value : values) {
+          stringSet.add(((StringLiteral) value).getValue());
+        }
         break;
       default:
         throw new UnsupportedOperationException("unsupported data type: " + childType);

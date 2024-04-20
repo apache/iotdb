@@ -1,14 +1,31 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
+
+import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
 
@@ -20,7 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class TableScanNode extends PlanNode {
+public class TableScanNode extends SourceNode {
 
   // db.tablename
   private final String qualifiedTableName;
@@ -65,7 +82,7 @@ public class TableScanNode extends PlanNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return ImmutableList.of();
   }
 
   @Override
@@ -98,6 +115,12 @@ public class TableScanNode extends PlanNode {
   }
 
   @Override
+  public void open() throws Exception {}
+
+  @Override
+  public void close() throws Exception {}
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -123,12 +146,28 @@ public class TableScanNode extends PlanNode {
     return this.qualifiedTableName;
   }
 
+  public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
+    this.deviceEntries = deviceEntries;
+  }
+
+  public Map<Symbol, Integer> getIdAndAttributeIndexMap() {
+    return this.idAndAttributeIndexMap;
+  }
+
+  public void setIdAndAttributeIndexMap(Map<Symbol, Integer> idAndAttributeIndexMap) {
+    this.idAndAttributeIndexMap = idAndAttributeIndexMap;
+  }
+
   public Map<Symbol, ColumnSchema> getAssignments() {
     return this.assignments;
   }
 
   public Ordering getScanOrder() {
     return this.scanOrder;
+  }
+
+  public List<DeviceEntry> getDeviceEntries() {
+    return deviceEntries;
   }
 
   public Expression getPushDownPredicate() {
@@ -145,5 +184,9 @@ public class TableScanNode extends PlanNode {
 
   public TRegionReplicaSet getRegionReplicaSet() {
     return this.regionReplicaSet;
+  }
+
+  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
   }
 }
