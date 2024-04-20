@@ -13,14 +13,14 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.cost;
 
-import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.OptionalDouble;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.tsfile.read.common.type.BooleanType.BOOLEAN;
-import static org.apache.iotdb.tsfile.read.common.type.DoubleType.DOUBLE;
-import static org.apache.iotdb.tsfile.read.common.type.IntType.INT32;
+import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
 
 public final class StatsUtil {
   private StatsUtil() {}

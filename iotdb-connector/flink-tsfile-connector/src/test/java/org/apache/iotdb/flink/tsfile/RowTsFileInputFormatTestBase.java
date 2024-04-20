@@ -20,9 +20,9 @@
 package org.apache.iotdb.flink.tsfile;
 
 import org.apache.iotdb.flink.util.TsFileWriteUtil;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 
 import org.apache.flink.types.Row;
+import org.apache.tsfile.read.expression.QueryExpression;
 import org.junit.Before;
 
 import java.io.File;

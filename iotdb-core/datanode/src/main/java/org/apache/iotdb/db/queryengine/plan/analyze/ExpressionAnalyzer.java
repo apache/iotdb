@@ -55,7 +55,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatD
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatExpressionWithSuffixPathsVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+
+import org.apache.tsfile.common.constant.TsFileConstant;
 
 import java.util.ArrayList;
 import java.util.Collection;

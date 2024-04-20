@@ -18,10 +18,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.relational.sql.tree.FunctionCall;
 import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
-import org.apache.iotdb.tsfile.read.common.type.LongType;
-import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import com.google.common.primitives.Ints;
+import org.apache.tsfile.read.common.type.LongType;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.HashMap;
 import java.util.Map;

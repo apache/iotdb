@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.tsfile.read.common.type.Type;
+
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Objects;
 import java.util.StringJoiner;

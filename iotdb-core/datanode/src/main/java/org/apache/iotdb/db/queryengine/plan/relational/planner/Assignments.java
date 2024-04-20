@@ -15,8 +15,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
@@ -69,8 +67,7 @@ public class Assignments {
     return builder().put(symbol1, expression1).put(symbol2, expression2).build();
   }
 
-  @JsonCreator
-  public Assignments(@JsonProperty("assignments") Map<Symbol, Expression> assignments) {
+  public Assignments(Map<Symbol, Expression> assignments) {
     this.assignments = ImmutableMap.copyOf(requireNonNull(assignments, "assignments is null"));
   }
 
@@ -78,7 +75,6 @@ public class Assignments {
     return ImmutableList.copyOf(assignments.keySet());
   }
 
-  @JsonProperty("assignments")
   public Map<Symbol, Expression> getMap() {
     return assignments;
   }

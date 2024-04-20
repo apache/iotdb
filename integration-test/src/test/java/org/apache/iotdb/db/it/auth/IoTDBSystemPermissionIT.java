@@ -194,11 +194,6 @@ public class IoTDBSystemPermissionIT {
   @Test
   public void maintainOperationsTest() {
     assertNonQueryTestFail(
-        "show variables",
-        "803: No permissions for this operation, please add privilege MAINTAIN",
-        "test",
-        "test123");
-    assertNonQueryTestFail(
         "show queries",
         "803: No permissions for this operation, please add privilege MAINTAIN",
         "test",
@@ -221,7 +216,6 @@ public class IoTDBSystemPermissionIT {
 
     grantUserSystemPrivileges("test", PrivilegeType.MAINTAIN);
 
-    executeNonQuery("show variables", "test", "test123");
     executeNonQuery("show queries", "test", "test123");
     assertNonQueryTestFail(
         "kill query 'test'",

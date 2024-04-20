@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.web.grafana.service.impl;
 
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.web.grafana.bean.TimeValues;
 import org.apache.iotdb.web.grafana.dao.BasicDao;
 import org.apache.iotdb.web.grafana.service.DatabaseConnectService;
 
+import org.apache.tsfile.utils.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

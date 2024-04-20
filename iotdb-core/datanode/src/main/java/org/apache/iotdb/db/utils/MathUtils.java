@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 
 import java.util.List;
 

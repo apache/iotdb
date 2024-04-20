@@ -21,9 +21,9 @@ package org.apache.iotdb.db.storageengine.dataregion.flush;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.utils.FilePathUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

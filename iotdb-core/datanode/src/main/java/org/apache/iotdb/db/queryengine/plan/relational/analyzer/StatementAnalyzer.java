@@ -97,8 +97,6 @@ import org.apache.iotdb.db.relational.sql.tree.Use;
 import org.apache.iotdb.db.relational.sql.tree.Values;
 import org.apache.iotdb.db.relational.sql.tree.With;
 import org.apache.iotdb.db.relational.sql.tree.WithQuery;
-import org.apache.iotdb.tsfile.read.common.type.RowType;
-import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -108,6 +106,8 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
+import org.apache.tsfile.read.common.type.RowType;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -147,7 +147,7 @@ import static org.apache.iotdb.db.relational.sql.tree.Join.Type.INNER;
 import static org.apache.iotdb.db.relational.sql.tree.Join.Type.LEFT;
 import static org.apache.iotdb.db.relational.sql.tree.Join.Type.RIGHT;
 import static org.apache.iotdb.db.relational.sql.util.AstUtil.preOrder;
-import static org.apache.iotdb.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class StatementAnalyzer {
 

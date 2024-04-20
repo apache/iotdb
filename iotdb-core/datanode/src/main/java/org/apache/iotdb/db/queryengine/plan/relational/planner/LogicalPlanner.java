@@ -11,6 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -34,23 +35,24 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Sim
 import org.apache.iotdb.db.relational.sql.tree.Query;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
 import org.apache.iotdb.db.relational.sql.tree.Table;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import io.airlift.log.Logger;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.tsfile.read.common.type.IntType.INT32;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
 
 public class LogicalPlanner {
-  private static final Logger LOG = Logger.get(LogicalPlanner.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanner.class);
   private final MPPQueryContext context;
   private final SessionInfo sessionInfo;
   private final SymbolAllocator symbolAllocator = new SymbolAllocator();

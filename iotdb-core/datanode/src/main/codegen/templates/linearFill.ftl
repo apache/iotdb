@@ -24,9 +24,9 @@
   <@pp.changeOutputFile name="/org/apache/iotdb/db/queryengine/execution/operator/process/fill/linear/${className}.java" />
 package org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear;
 
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.${type.column};
-import org.apache.iotdb.tsfile.read.common.block.column.${type.column}Builder;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.read.common.block.column.${type.column};
+import org.apache.tsfile.read.common.block.column.${type.column}Builder;
 
 
 import java.util.Optional;

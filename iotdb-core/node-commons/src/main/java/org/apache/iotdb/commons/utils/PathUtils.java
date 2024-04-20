@@ -21,10 +21,11 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.exception.PathParseException;
-import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
-import org.apache.iotdb.tsfile.read.common.parser.PathVisitor;
+
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.exception.PathParseException;
+import org.apache.tsfile.read.common.parser.PathNodesGenerator;
+import org.apache.tsfile.read.common.parser.PathVisitor;
 
 import java.util.ArrayList;
 import java.util.HashMap;

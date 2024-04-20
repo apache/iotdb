@@ -23,9 +23,9 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.io.LocalTextMod
 import org.apache.iotdb.db.storageengine.dataregion.modification.io.ModificationReader;
 import org.apache.iotdb.db.storageengine.dataregion.modification.io.ModificationWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

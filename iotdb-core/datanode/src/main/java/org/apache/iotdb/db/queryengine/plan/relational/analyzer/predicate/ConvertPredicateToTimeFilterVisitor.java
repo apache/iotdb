@@ -35,9 +35,10 @@ import org.apache.iotdb.db.relational.sql.tree.NullIfExpression;
 import org.apache.iotdb.db.relational.sql.tree.SearchedCaseExpression;
 import org.apache.iotdb.db.relational.sql.tree.SimpleCaseExpression;
 import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
+
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.factory.FilterFactory;
+import org.apache.tsfile.read.filter.factory.TimeFilterApi;
 
 import java.util.HashSet;
 import java.util.List;

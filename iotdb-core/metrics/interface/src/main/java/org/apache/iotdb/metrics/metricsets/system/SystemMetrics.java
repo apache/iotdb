@@ -30,9 +30,9 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.metrics.utils.SystemTag;
 import org.apache.iotdb.metrics.utils.SystemType;
-import org.apache.iotdb.tsfile.utils.FSUtils;
 
 import com.sun.management.OperatingSystemMXBean;
+import org.apache.tsfile.utils.FSUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

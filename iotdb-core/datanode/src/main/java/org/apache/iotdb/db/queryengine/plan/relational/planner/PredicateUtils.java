@@ -26,7 +26,8 @@ import org.apache.iotdb.db.relational.sql.tree.Identifier;
 import org.apache.iotdb.db.relational.sql.tree.InPredicate;
 import org.apache.iotdb.db.relational.sql.tree.LogicalExpression;
 import org.apache.iotdb.db.relational.sql.tree.LongLiteral;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Arrays;

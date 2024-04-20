@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -111,6 +112,7 @@ import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
+import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
@@ -199,8 +201,8 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1816,6 +1818,7 @@ public class ConfigManager implements IManager {
       boolean canOptimize = false;
       HashSet<TDatabaseSchema> deleteDatabaseSchemas = new HashSet<>();
       List<PartialPath> deleteTimeSeriesPatternPaths = new ArrayList<>();
+      List<PartialPath> deleteDatabasePatternPaths = new ArrayList<>();
       for (PartialPath path : rawPatternTree.getAllPathPatterns()) {
         if (PathPatternUtil.isMultiLevelMatchWildcard(path.getMeasurement())
             && !path.getDevicePath().hasWildcard()) {
@@ -1823,6 +1826,7 @@ public class ConfigManager implements IManager {
               getClusterSchemaManager().getMatchedDatabaseSchemasByPrefix(path.getDevicePath());
           if (!databaseSchemaMap.isEmpty()) {
             deleteDatabaseSchemas.addAll(databaseSchemaMap.values());
+            deleteDatabasePatternPaths.add(path);
             canOptimize = true;
             continue;
           }
@@ -1831,6 +1835,12 @@ public class ConfigManager implements IManager {
       }
       if (!canOptimize) {
         return procedureManager.deleteTimeSeries(queryId, rawPatternTree, isGeneratedByPipe);
+      }
+      // check if the database is using template
+      try {
+        SchemaUtils.checkSchemaRegionUsingTemplate(this, deleteDatabasePatternPaths);
+      } catch (MetadataException e) {
+        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
       }
       if (!deleteTimeSeriesPatternPaths.isEmpty()) {
         // 1. delete time series that can not be optimized

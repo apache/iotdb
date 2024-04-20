@@ -26,11 +26,12 @@ import org.apache.iotdb.db.relational.sql.tree.DoubleLiteral;
 import org.apache.iotdb.db.relational.sql.tree.Literal;
 import org.apache.iotdb.db.relational.sql.tree.LongLiteral;
 import org.apache.iotdb.db.relational.sql.tree.StringLiteral;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.type.Type;
-import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
+
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeEnum;
 
 import java.util.HashSet;
 import java.util.List;

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.tsfile.enums.TSDataType;
 
 public class MaxByAccumulator extends MaxMinByBaseAccumulator {
   protected MaxByAccumulator(TSDataType xDataType, TSDataType yDataType) {

@@ -418,6 +418,15 @@ struct TCountPathsUsingTemplateResp {
   2: optional i64 count
 }
 
+struct TCheckSchemaRegionUsingTemplateReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+}
+
+struct TCheckSchemaRegionUsingTemplateResp {
+  1: required common.TSStatus status
+  2: required bool result
+}
+
 struct TCheckTimeSeriesExistenceReq {
   1: required binary patternTree
   2: required list<common.TConsensusGroupId> schemaRegionIdList
@@ -910,6 +919,8 @@ service IDataNodeRPCService {
   common.TSStatus deactivateTemplate(TDeactivateTemplateReq req)
 
   TCountPathsUsingTemplateResp countPathsUsingTemplate(TCountPathsUsingTemplateReq req)
+
+  TCheckSchemaRegionUsingTemplateResp checkSchemaRegionUsingTemplate(TCheckSchemaRegionUsingTemplateReq req)
 
   TCheckTimeSeriesExistenceResp checkTimeSeriesExistence(TCheckTimeSeriesExistenceReq req)
 

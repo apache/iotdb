@@ -23,11 +23,11 @@ import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
-import org.apache.iotdb.tsfile.utils.TimeDuration;
 
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.factory.FilterFactory;
+import org.apache.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.tsfile.utils.TimeDuration;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -52,7 +52,7 @@ import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.notIn;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.or;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
-import static org.apache.iotdb.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
+import static org.apache.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
 
 public class ConvertPredicateToTimeFilterTest {
 
