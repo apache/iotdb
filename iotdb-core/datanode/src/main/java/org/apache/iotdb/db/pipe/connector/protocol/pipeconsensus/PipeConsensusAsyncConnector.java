@@ -25,7 +25,10 @@ import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.client.PipeConsensusAsyncClientManager;
-import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.client.PipeConsensusSyncClientManager;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -64,7 +67,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
   private final BlockingQueue<Event> transferBuffer =
       new LinkedBlockingDeque<>(COMMON_CONFIG.getPipeConsensusEventBufferSize());
 
-  private PipeConsensusSyncClientManager syncRetryAndHandshakeClientManager;
+  private PipeConsensusSyncConnector retryConnector;
 
   private PipeConsensusAsyncClientManager asyncTransferClientManager;
 
@@ -74,7 +77,11 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
-    syncRetryAndHandshakeClientManager = PipeConsensusSyncClientManager.onPeers(nodeUrls);
+
+    // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
+    // `nodeUrls` here actually is a singletonList that contains one peer's TEndPoint. But here we
+    // retain the implementation of list to cope with possible future expansion
+    retryConnector = new PipeConsensusSyncConnector(nodeUrls);
     asyncTransferClientManager = PipeConsensusAsyncClientManager.getInstance();
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new IoTDBThriftAsyncPipeTransferBatchReqBuilder(parameters);
@@ -90,8 +97,14 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
             transferBuffer.size(),
             COMMON_CONFIG.getPipeConsensusEventBufferSize());
       }
-      return transferBuffer.offer(
-          event, COMMON_CONFIG.getPipeConsensusEventEnqueueTimeoutInMs(), TimeUnit.SECONDS);
+      boolean result =
+          transferBuffer.offer(
+              event, COMMON_CONFIG.getPipeConsensusEventEnqueueTimeoutInMs(), TimeUnit.SECONDS);
+      // add reference
+      if (result) {
+        ((EnrichedEvent) event).increaseReferenceCount(PipeConsensusAsyncConnector.class.getName());
+      }
+      return result;
     } catch (InterruptedException e) {
       LOGGER.info("PipeConsensusConnector transferBuffer queue offer is interrupted.", e);
       Thread.currentThread().interrupt();
@@ -117,26 +130,21 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
         current = iterator.next();
       }
       iterator.remove();
+      // decrease reference count
+      ((EnrichedEvent) event)
+          .decreaseReferenceCount(PipeConsensusAsyncConnector.class.getName(), true);
     }
   }
 
-  /** handshake with all peers */
+  /** handshake with all peers , Synchronized to avoid close connector when transfer event */
   @Override
-  public void handshake() throws Exception {
-    syncRetryAndHandshakeClientManager.checkClientStatusAndTryReconstructIfNecessary(nodeUrls);
+  public synchronized void handshake() throws Exception {
+    retryConnector.handshake();
   }
 
   @Override
   public void heartbeat() throws Exception {
-    try {
-      handshake();
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to reconnect to target server, because: {}. Try to reconnect later.",
-          e.getMessage(),
-          e);
-      throw e;
-    }
+    retryConnector.heartbeat();
   }
 
   @Override
@@ -145,7 +153,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     if (!enqueueResult) {
       throw new PipeException(ENQUEUE_EXCEPTION_MSG);
     }
-    // TODO: 向集群所有副本 transfer
     // TODO：改造 request，加上 commitId 和 rebootTimes
     // TODO: 改造 handler，onComplete 的优化 + onComplete 加上出队逻辑
 
@@ -168,9 +175,61 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     }
   }
 
+  /**
+   * Transfer queued {@link Event}s which are waiting for retry.
+   *
+   * @throws Exception if an error occurs. The error will be handled by pipe framework, which will
+   *     retry the {@link Event} and mark the {@link Event} as failure and stop the pipe if the
+   *     retry times exceeds the threshold. TODO: pipe 框架对于 Consensus 改成无限重试，而不是超过次数后 停止
+   */
+  private synchronized void syncTransferQueuedEventsIfNecessary() throws Exception {
+    while (!retryEventQueue.isEmpty()) {
+      final Event peekedEvent = retryEventQueue.peek();
+      // do transfer
+      if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+        retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
+      } else if (peekedEvent instanceof PipeRawTabletInsertionEvent) {
+        retryConnector.transfer((PipeRawTabletInsertionEvent) peekedEvent);
+      } else if (peekedEvent instanceof PipeTsFileInsertionEvent) {
+        retryConnector.transfer((PipeTsFileInsertionEvent) peekedEvent);
+      } else {
+        if (LOGGER.isWarnEnabled()) {
+          LOGGER.warn(
+              "PipeConsensusAsyncConnector does not support transfer generic event: {}.",
+              peekedEvent);
+        }
+      }
+      // release resource
+      if (peekedEvent instanceof EnrichedEvent) {
+        ((EnrichedEvent) peekedEvent)
+            .decreaseReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), true);
+      }
+
+      final Event polledEvent = retryEventQueue.poll();
+      if (polledEvent != peekedEvent) {
+        if (LOGGER.isErrorEnabled()) {
+          LOGGER.error(
+              "The event polled from the queue is not the same as the event peeked from the queue. "
+                  + "Peeked event: {}, polled event: {}.",
+              peekedEvent,
+              polledEvent);
+        }
+      }
+      if (polledEvent != null && LOGGER.isDebugEnabled()) {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("Polled event {} from retry queue.", polledEvent);
+        }
+        // poll it from transferBuffer
+        removeEventFromBuffer(polledEvent);
+      }
+    }
+  }
+
   // synchronized to avoid close connector when transfer event
   @Override
   public synchronized void close() throws Exception {
+    retryConnector.close();
+
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();
     }
