@@ -1,5 +1,20 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -19,20 +34,22 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
-import org.apache.iotdb.tsfile.read.common.type.BinaryType;
-import org.apache.iotdb.tsfile.read.common.type.Type;
+
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.read.common.type.BinaryType;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
-import static org.apache.iotdb.tsfile.read.common.type.BinaryType.TEXT;
-import static org.apache.iotdb.tsfile.read.common.type.BooleanType.BOOLEAN;
-import static org.apache.iotdb.tsfile.read.common.type.DoubleType.DOUBLE;
-import static org.apache.iotdb.tsfile.read.common.type.FloatType.FLOAT;
-import static org.apache.iotdb.tsfile.read.common.type.IntType.INT32;
-import static org.apache.iotdb.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
+import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
 
 public class TestMatadata implements Metadata {
 
@@ -70,14 +87,22 @@ public class TestMatadata implements Metadata {
   public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
     List<ColumnSchema> columnSchemas =
         Arrays.asList(
-            ColumnSchema.builder(TIME_CM).build(),
-            ColumnSchema.builder(TAG1_CM).build(),
-            ColumnSchema.builder(TAG2_CM).build(),
-            ColumnSchema.builder(TAG3_CM).build(),
-            ColumnSchema.builder(ATTR1_CM).build(),
-            ColumnSchema.builder(ATTR2_CM).build(),
-            ColumnSchema.builder(S1_CM).build(),
-            ColumnSchema.builder(S2_CM).build());
+            ColumnSchema.builder(TIME_CM).setColumnCategory(TsTableColumnCategory.TIME).build(),
+            ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
+            ColumnSchema.builder(TAG2_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
+            ColumnSchema.builder(TAG3_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
+            ColumnSchema.builder(ATTR1_CM)
+                .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
+                .build(),
+            ColumnSchema.builder(ATTR2_CM)
+                .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
+                .build(),
+            ColumnSchema.builder(S1_CM)
+                .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+                .build(),
+            ColumnSchema.builder(S2_CM)
+                .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+                .build());
 
     return Optional.of(new TableSchema(TABLE1, columnSchemas));
   }
@@ -257,7 +282,8 @@ public class TestMatadata implements Metadata {
       QualifiedObjectName tableName,
       List<Expression> expressionList,
       List<String> attributeColumns) {
-    return null;
+    return Arrays.asList(
+        new DeviceEntry(new StringArrayDeviceID("t1", "t2", "t3"), Arrays.asList("a1", "a2")));
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

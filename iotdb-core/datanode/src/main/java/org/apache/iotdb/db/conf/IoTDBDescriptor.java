@@ -49,18 +49,19 @@ import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
+import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalMemoryReporter;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.NodeType;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
-import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.fileSystem.FSType;
+import org.apache.tsfile.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,11 +73,13 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileStore;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.ServiceLoader;
+import java.util.Set;
 
 public class IoTDBDescriptor {
 
@@ -85,6 +88,14 @@ public class IoTDBDescriptor {
   private final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
 
   private final IoTDBConfig conf = new IoTDBConfig();
+
+  private static final long MAX_THROTTLE_THRESHOLD = 600 * 1024 * 1024 * 1024L;
+
+  private static final long MIN_THROTTLE_THRESHOLD = 50 * 1024 * 1024 * 1024L;
+
+  private static final double MAX_DIR_USE_PROPORTION = 0.8;
+
+  private static final double MIN_DIR_USE_PROPORTION = 0.5;
 
   protected IoTDBDescriptor() {
     loadProps();
@@ -326,8 +337,6 @@ public class IoTDBDescriptor {
                 .trim()));
 
     initMemoryAllocate(properties);
-
-    loadWALProps(properties);
 
     String systemDir = properties.getProperty("dn_system_dir");
     if (systemDir == null) {
@@ -660,6 +669,18 @@ public class IoTDBDescriptor {
                 "compaction_write_throughput_mb_per_sec",
                 Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
+    conf.setCompactionReadThroughputMbPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_read_throughput_mb_per_sec",
+                Integer.toString(conf.getCompactionReadThroughputMbPerSec()))));
+
+    conf.setCompactionReadOperationPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_read_operation_per_sec",
+                Integer.toString(conf.getCompactionReadOperationPerSec()))));
+
     conf.setEnableTsFileValidation(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -971,6 +992,8 @@ public class IoTDBDescriptor {
     commonDescriptor.loadCommonProps(properties);
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());
 
+    loadWALProps(properties);
+
     // Timed flush memtable
     loadTimedService(properties);
 
@@ -1056,6 +1079,13 @@ public class IoTDBDescriptor {
                     "data_region_iot_max_memory_ratio_for_queue",
                     String.valueOf(conf.getMaxMemoryRatioForQueue()))
                 .trim()));
+    conf.setRegionMigrationSpeedLimitBytesPerSecond(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "region_migration_speed_limit_bytes_per_second",
+                    String.valueOf(conf.getRegionMigrationSpeedLimitBytesPerSecond()))
+                .trim()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1119,6 +1149,35 @@ public class IoTDBDescriptor {
     if (restartCompactionTaskManager) {
       CompactionTaskManager.getInstance().restart();
     }
+    // hot load compaction rate limit configurations
+
+    // update merge_write_throughput_mb_per_sec
+    conf.setCompactionWriteThroughputMbPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "merge_write_throughput_mb_per_sec",
+                Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
+
+    // update compaction_read_operation_per_sec
+    conf.setCompactionReadOperationPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_read_operation_per_sec",
+                Integer.toString(conf.getCompactionReadOperationPerSec()))));
+
+    // update compaction_read_throughput_mb_per_sec
+    conf.setCompactionReadThroughputMbPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_read_throughput_mb_per_sec",
+                Integer.toString(conf.getCompactionReadThroughputMbPerSec()))));
+
+    CompactionTaskManager.getInstance()
+        .setCompactionReadOperationRate(conf.getCompactionReadOperationPerSec());
+    CompactionTaskManager.getInstance()
+        .setCompactionReadThroughputRate(conf.getCompactionReadThroughputMbPerSec());
+    CompactionTaskManager.getInstance()
+        .setWriteMergeRate(conf.getCompactionWriteThroughputMbPerSec());
   }
 
   private boolean loadCompactionThreadCountHotModifiedProps(Properties properties) {
@@ -1271,7 +1330,7 @@ public class IoTDBDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "iot_consensus_throttle_threshold_in_byte",
-                Long.toString(conf.getThrottleThreshold())));
+                Long.toString(getThrottleThresholdWithDirs())));
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
     }
@@ -1284,6 +1343,33 @@ public class IoTDBDescriptor {
     if (cacheWindowInMs > 0) {
       conf.setCacheWindowTimeInMs(cacheWindowInMs);
     }
+  }
+
+  public long getThrottleThresholdWithDirs() {
+    ArrayList<String> dataDiskDirs = new ArrayList<>(Arrays.asList(conf.getDataDirs()));
+    ArrayList<String> walDiskDirs =
+        new ArrayList<>(Arrays.asList(commonDescriptor.getConfig().getWalDirs()));
+    Set<FileStore> dataFileStores = SystemMetrics.getFileStores(dataDiskDirs);
+    Set<FileStore> walFileStores = SystemMetrics.getFileStores(walDiskDirs);
+    double dirUseProportion = 0;
+    dataFileStores.retainAll(walFileStores);
+    // if there is no common disk between data and wal, use more usableSpace.
+    if (dataFileStores.isEmpty()) {
+      dirUseProportion = MAX_DIR_USE_PROPORTION;
+    } else {
+      dirUseProportion = MIN_DIR_USE_PROPORTION;
+    }
+    long newThrottleThreshold = Long.MAX_VALUE;
+    for (FileStore fileStore : walFileStores) {
+      try {
+        newThrottleThreshold = Math.min(newThrottleThreshold, fileStore.getUsableSpace());
+      } catch (IOException e) {
+        LOGGER.error("Failed to get file size of {}, because", fileStore, e);
+      }
+    }
+    newThrottleThreshold = (long) (newThrottleThreshold * dirUseProportion * walFileStores.size());
+    // the new throttle threshold should between MIN_THROTTLE_THRESHOLD and MAX_THROTTLE_THRESHOLD
+    return Math.max(Math.min(newThrottleThreshold, MAX_THROTTLE_THRESHOLD), MIN_THROTTLE_THRESHOLD);
   }
 
   private void loadAutoCreateSchemaProps(Properties properties) {
@@ -1571,13 +1657,6 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty(
                   "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
-      // update merge_write_throughput_mb_per_sec
-      conf.setCompactionWriteThroughputMbPerSec(
-          Integer.parseInt(
-              properties.getProperty(
-                  "merge_write_throughput_mb_per_sec",
-                  Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
-
       // update select into operation max buffer size
       conf.setIntoOperationBufferSizeInByte(
           Long.parseLong(

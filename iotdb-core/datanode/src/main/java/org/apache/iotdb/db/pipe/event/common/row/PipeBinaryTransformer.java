@@ -21,13 +21,13 @@ package org.apache.iotdb.db.pipe.event.common.row;
 
 public class PipeBinaryTransformer {
 
-  public static org.apache.iotdb.tsfile.utils.Binary transformToBinary(
+  public static org.apache.tsfile.utils.Binary transformToBinary(
       org.apache.iotdb.pipe.api.type.Binary binary) {
-    return binary == null ? null : new org.apache.iotdb.tsfile.utils.Binary(binary.getValues());
+    return binary == null ? null : new org.apache.tsfile.utils.Binary(binary.getValues());
   }
 
   public static org.apache.iotdb.pipe.api.type.Binary transformToPipeBinary(
-      org.apache.iotdb.tsfile.utils.Binary binary) {
+      org.apache.tsfile.utils.Binary binary) {
     return binary == null ? null : new org.apache.iotdb.pipe.api.type.Binary(binary.getValues());
   }
 

@@ -45,13 +45,13 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaTestUtils;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.writer.TsFileOutput;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -73,7 +73,7 @@ import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.ut
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_DELETED_TARGET_FILES;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_SOURCE_FILES;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_TARGET_FILES;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
 public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactionTest {

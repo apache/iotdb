@@ -26,13 +26,12 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.manager.pipe.resource.snapshot.PipeConfigNodeSnapshotResourceManager;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collection;
@@ -126,7 +125,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
         templateFilePath = resourceManager.increaseSnapshotReference(templateFilePath);
       }
       return true;
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOGGER.warn(
           String.format(
               "Increase reference count for snapshot %s error. Holder Message: %s",

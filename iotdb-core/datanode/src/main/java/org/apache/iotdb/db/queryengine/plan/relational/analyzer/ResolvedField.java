@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import com.google.errorprone.annotations.Immutable;
+import org.apache.tsfile.read.common.type.Type;
 
 import static java.util.Objects.requireNonNull;
 

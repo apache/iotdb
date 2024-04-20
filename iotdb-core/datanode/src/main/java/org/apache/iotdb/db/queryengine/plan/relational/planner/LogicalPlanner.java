@@ -11,11 +11,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -35,15 +38,21 @@ import org.apache.iotdb.db.relational.sql.tree.Table;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import io.airlift.log.Logger;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
 
 public class LogicalPlanner {
-  private static final Logger LOG = Logger.get(LogicalPlanner.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanner.class);
   private final MPPQueryContext context;
   private final SessionInfo sessionInfo;
   private final SymbolAllocator symbolAllocator = new SymbolAllocator();
@@ -94,14 +103,18 @@ public class LogicalPlanner {
   private PlanNode createOutputPlan(RelationPlan plan, Analysis analysis) {
     ImmutableList.Builder<Symbol> outputs = ImmutableList.builder();
     ImmutableList.Builder<String> names = ImmutableList.builder();
+    List<ColumnHeader> columnHeaders = new ArrayList<>();
 
     int columnNumber = 0;
     // TODO perfect the logic of outputDescriptor
     RelationType outputDescriptor = analysis.getOutputDescriptor();
     for (Field field : outputDescriptor.getVisibleFields()) {
       String name = field.getName().orElse("_col" + columnNumber);
-      names.add(name);
+      if (!"time".equalsIgnoreCase(name)) {
+        columnHeaders.add(new ColumnHeader(name, transferTypeToTsDataType(field.getType())));
+      }
 
+      names.add(name);
       int fieldIndex = outputDescriptor.indexOf(field);
       Symbol symbol = plan.getSymbol(fieldIndex);
       outputs.add(symbol);
@@ -109,8 +122,14 @@ public class LogicalPlanner {
       columnNumber++;
     }
 
-    return new OutputNode(
-        context.getQueryId().genPlanNodeId(), plan.getRoot(), names.build(), outputs.build());
+    OutputNode outputNode =
+        new OutputNode(
+            context.getQueryId().genPlanNodeId(), plan.getRoot(), names.build(), outputs.build());
+
+    DatasetHeader respDatasetHeader = new DatasetHeader(columnHeaders, false);
+    analysis.setRespDatasetHeader(respDatasetHeader);
+
+    return outputNode;
   }
 
   private RelationPlan createRelationPlan(Analysis analysis, Query query) {
@@ -124,6 +143,26 @@ public class LogicalPlanner {
   private RelationPlanner getRelationPlanner(Analysis analysis) {
     return new RelationPlanner(
         analysis, symbolAllocator, context.getQueryId(), sessionInfo, ImmutableMap.of());
+  }
+
+  public TSDataType transferTypeToTsDataType(Type type) {
+    switch (type.getTypeEnum()) {
+      case INT32:
+        return TSDataType.INT32;
+      case INT64:
+        return TSDataType.INT64;
+      case BOOLEAN:
+        return TSDataType.BOOLEAN;
+      case FLOAT:
+        return TSDataType.FLOAT;
+      case DOUBLE:
+        return TSDataType.DOUBLE;
+      case TEXT:
+        return TSDataType.TEXT;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Cannot transfer type: %s to TSDataType.", type.getTypeEnum()));
+    }
   }
 
   private enum Stage {

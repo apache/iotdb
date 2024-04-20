@@ -20,12 +20,19 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
@@ -34,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -50,14 +58,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -69,6 +77,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
@@ -83,6 +92,42 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     throw new UnsupportedOperationException("should call the concrete visitXX() method");
   }
 
+  private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
+      MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
+
+  @Override
+  public Operator visitIdentitySink(IdentitySinkNode node, LocalExecutionPlanContext context) {
+    context.addExchangeSumNum(1);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                IdentitySinkOperator.class.getSimpleName());
+
+    checkArgument(
+        MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
+    FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
+    DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
+    ISinkHandle sinkHandle =
+        MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
+            node.getDownStreamChannelLocationList(),
+            downStreamChannelIndex,
+            ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+            localInstanceId.toThrift(),
+            node.getPlanNodeId().getId(),
+            context.getInstanceContext());
+    sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
+    context.getDriverContext().setSink(sinkHandle);
+
+    // List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
+    Operator child = node.getChildren().get(0).accept(this, context);
+    List<Operator> children = new ArrayList<>(1);
+    children.add(child);
+    return new IdentitySinkOperator(operatorContext, children, downStreamChannelIndex, sinkHandle);
+  }
+
   @Override
   public Operator visitTableScan(TableScanNode node, LocalExecutionPlanContext context) {
 
@@ -95,29 +140,41 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<String> measurementColumnNames = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     int measurementColumnCount = 0;
-    for (int i = 0; i < outputColumnCount; i++) {
-      Symbol columnName = outputColumnNames.get(i);
+    int idx = 0;
+    boolean hasTimeColumn = false;
+    for (Symbol columnName : outputColumnNames) {
       ColumnSchema schema =
           requireNonNull(columnSchemaMap.get(columnName), columnName + " is null");
-      columnSchemas.add(schema);
+
       switch (schema.getColumnCategory()) {
         case ID:
         case ATTRIBUTE:
-          columnsIndexArray[i] =
+          columnsIndexArray[idx++] =
               requireNonNull(
                   idAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
+          columnSchemas.add(schema);
           break;
         case MEASUREMENT:
-          columnsIndexArray[i] = measurementColumnCount;
+          columnsIndexArray[idx++] = measurementColumnCount;
           measurementColumnCount++;
           measurementColumnNames.add(columnName.getName());
           measurementSchemas.add(
               new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
+          columnSchemas.add(schema);
+          break;
+        case TIME:
+          hasTimeColumn = true;
+          // columnsIndexArray[i] = -1;
           break;
         default:
           throw new IllegalArgumentException(
               "Unexpected column category: " + schema.getColumnCategory());
       }
+    }
+
+    int[] newColumnsIndexArray = new int[outputColumnCount - 1];
+    if (hasTimeColumn) {
+      System.arraycopy(columnsIndexArray, 0, newColumnsIndexArray, 0, outputColumnCount - 1);
     }
 
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(context);
@@ -153,7 +210,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             operatorContext,
             node.getPlanNodeId(),
             columnSchemas,
-            columnsIndexArray,
+            newColumnsIndexArray,
             measurementColumnCount,
             node.getDeviceEntries(),
             node.getScanOrder(),
@@ -193,15 +250,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Map<Symbol, List<InputLocation>> outputMappings = new LinkedHashMap<>();
     int tsBlockIndex = 0;
     for (PlanNode childNode : children) {
-      outputMappings
-          .computeIfAbsent(new Symbol(TIMESTAMP_EXPRESSION_STRING), key -> new ArrayList<>())
-          .add(new InputLocation(tsBlockIndex, -1));
+
       int valueColumnIndex = 0;
       for (Symbol columnName : childNode.getOutputSymbols()) {
-        outputMappings
-            .computeIfAbsent(columnName, key -> new ArrayList<>())
-            .add(new InputLocation(tsBlockIndex, valueColumnIndex));
-        valueColumnIndex++;
+        if (!TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(columnName.getName())) {
+          outputMappings
+              .computeIfAbsent(columnName, key -> new ArrayList<>())
+              .add(new InputLocation(tsBlockIndex, valueColumnIndex));
+          valueColumnIndex++;
+        } else {
+          outputMappings
+              .computeIfAbsent(columnName, key -> new ArrayList<>())
+              .add(new InputLocation(tsBlockIndex, -1));
+        }
       }
       tsBlockIndex++;
     }
@@ -403,7 +464,35 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   @Override
   public Operator visitOutput(OutputNode node, LocalExecutionPlanContext context) {
-    return super.visitOutput(node, context);
+    TypeProvider typeProvider = context.getTypeProvider();
+    Optional<Expression> predicate;
+    Operator inputOperator;
+    List<TSDataType> inputDataTypes;
+    Map<Symbol, List<InputLocation>> inputLocations;
+    if (node.getChild() instanceof FilterNode) {
+      FilterNode filterNode = (FilterNode) node.getChild();
+      predicate = Optional.of(filterNode.getPredicate());
+      inputOperator = filterNode.getChild().accept(this, context);
+      inputDataTypes = getInputColumnTypes(filterNode, typeProvider);
+      inputLocations = makeLayout(filterNode.getChildren());
+    } else {
+      predicate = Optional.empty();
+      inputOperator = node.getChild().accept(this, context);
+      inputDataTypes = getInputColumnTypes(node, typeProvider);
+      inputLocations = makeLayout(node.getChildren());
+    }
+
+    return constructFilterAndProjectOperator(
+        predicate,
+        inputOperator,
+        node.getOutputSymbols().stream()
+            .filter(e -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(e.getName()))
+            .map(Symbol::toSymbolReference)
+            .toArray(Expression[]::new),
+        inputDataTypes,
+        inputLocations,
+        node.getPlanNodeId(),
+        context);
   }
 
   @Override

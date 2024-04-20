@@ -41,13 +41,14 @@ import org.apache.iotdb.db.relational.sql.tree.SearchedCaseExpression;
 import org.apache.iotdb.db.relational.sql.tree.SimpleCaseExpression;
 import org.apache.iotdb.db.relational.sql.tree.StringLiteral;
 import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.read.common.type.Type;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
-import org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators;
-import org.apache.iotdb.tsfile.utils.Binary;
+
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.factory.FilterFactory;
+import org.apache.tsfile.read.filter.factory.ValueFilterApi;
+import org.apache.tsfile.read.filter.operator.ValueFilterOperators;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.HashMap;
 import java.util.HashSet;

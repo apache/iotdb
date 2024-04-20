@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
@@ -30,19 +31,20 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -74,7 +76,7 @@ public class TableScanOperator extends AbstractDataSourceOperator {
 
   private final List<TSDataType> measurementColumnTSDataTypes;
 
-  private final TsBlockBuilder measurementDataBuilder;
+  private TsBlockBuilder measurementDataBuilder;
 
   private final int maxTsBlockLineNum;
 
@@ -119,9 +121,6 @@ public class TableScanOperator extends AbstractDataSourceOperator {
     this.maxTsBlockLineNum = maxTsBlockLineNum;
 
     this.seriesScanUtil = constructAlignedSeriesScanUtil(deviceEntries.get(currentDeviceIndex));
-
-    this.measurementDataBuilder = new TsBlockBuilder(this.measurementColumnTSDataTypes);
-    this.resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
   }
 
   @Override
@@ -170,7 +169,10 @@ public class TableScanOperator extends AbstractDataSourceOperator {
     // append id column and attribute column
     if (!isEmpty(measurementDataBlock)) {
       constructResultTsBlock();
+    } else {
+      return null;
     }
+    measurementDataBlock = null;
     return checkTsBlockSizeAndGetResult();
   }
 
@@ -265,6 +267,8 @@ public class TableScanOperator extends AbstractDataSourceOperator {
         case MEASUREMENT:
           valueColumns[i] = measurementDataBlock.getColumn(columnsIndexArray[i]);
           break;
+        case TIME:
+          break;
         default:
           throw new IllegalArgumentException(
               "Unexpected column category: " + columnSchemas.get(i).getColumnCategory());
@@ -318,7 +322,11 @@ public class TableScanOperator extends AbstractDataSourceOperator {
   public List<TSDataType> getResultDataTypes() {
     List<TSDataType> resultDataTypes = new ArrayList<>(columnSchemas.size());
     for (ColumnSchema columnSchema : columnSchemas) {
-      resultDataTypes.add(getTSDataType(columnSchema.getType()));
+      if (columnSchema.getColumnCategory() != TsTableColumnCategory.TIME) {
+        resultDataTypes.add(getTSDataType(columnSchema.getType()));
+      } else {
+        throw new IllegalArgumentException("Should not have TimeColumnSchema");
+      }
     }
     return resultDataTypes;
   }
@@ -329,6 +337,8 @@ public class TableScanOperator extends AbstractDataSourceOperator {
     this.seriesScanUtil.initQueryDataSource(dataSource);
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
     this.resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
+    this.measurementDataBuilder = new TsBlockBuilder(this.measurementColumnTSDataTypes);
+    this.measurementDataBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
   }
 
   private void prepareForNextDevice() {

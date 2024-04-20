@@ -23,11 +23,11 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.relational.sql.tree.Node;
 import org.apache.iotdb.db.relational.sql.tree.QualifiedName;
-import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
 import java.util.Optional;

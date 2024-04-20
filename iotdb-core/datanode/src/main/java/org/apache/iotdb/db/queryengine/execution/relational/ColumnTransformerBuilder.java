@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.ConstantCo
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.NullColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalAndMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalOrMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
@@ -79,14 +80,15 @@ import org.apache.iotdb.db.relational.sql.tree.SimpleCaseExpression;
 import org.apache.iotdb.db.relational.sql.tree.StringLiteral;
 import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
 import org.apache.iotdb.db.relational.sql.tree.Trim;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
-import org.apache.iotdb.tsfile.read.common.type.Type;
-import org.apache.iotdb.tsfile.utils.Binary;
+
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.BooleanColumn;
+import org.apache.tsfile.read.common.block.column.DoubleColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -95,12 +97,12 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.tsfile.read.common.type.BinaryType.TEXT;
-import static org.apache.iotdb.tsfile.read.common.type.BooleanType.BOOLEAN;
-import static org.apache.iotdb.tsfile.read.common.type.DoubleType.DOUBLE;
-import static org.apache.iotdb.tsfile.read.common.type.LongType.INT64;
-import static org.apache.iotdb.tsfile.utils.RegexUtils.compileRegex;
-import static org.apache.iotdb.tsfile.utils.RegexUtils.parseLikePatternToRegex;
+import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
+import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.utils.RegexUtils.compileRegex;
+import static org.apache.tsfile.utils.RegexUtils.parseLikePatternToRegex;
 
 public class ColumnTransformerBuilder
     extends AstVisitor<ColumnTransformer, ColumnTransformerBuilder.Context> {
@@ -578,12 +580,18 @@ public class ColumnTransformerBuilder
         context.cache.computeIfAbsent(
             node,
             e -> {
-              IdentityColumnTransformer identity =
-                  new IdentityColumnTransformer(
-                      context.getType(node),
-                      context.inputLocations.get(Symbol.from(node)).get(0).getValueColumnIndex());
-              context.leafList.add(identity);
-              return identity;
+              int valueIdx =
+                  context.inputLocations.get(Symbol.from(node)).get(0).getValueColumnIndex();
+              LeafColumnTransformer leafColumnTransformer;
+              if (valueIdx == -1) {
+                leafColumnTransformer = new TimeColumnTransformer(INT64);
+              } else {
+                leafColumnTransformer =
+                    new IdentityColumnTransformer(context.getType(node), valueIdx);
+              }
+
+              context.leafList.add(leafColumnTransformer);
+              return leafColumnTransformer;
             });
     res.addReferenceCount();
     return res;

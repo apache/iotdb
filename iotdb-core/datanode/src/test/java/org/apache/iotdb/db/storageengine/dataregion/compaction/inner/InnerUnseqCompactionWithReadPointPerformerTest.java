@@ -36,9 +36,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionO
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTimeseriesType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

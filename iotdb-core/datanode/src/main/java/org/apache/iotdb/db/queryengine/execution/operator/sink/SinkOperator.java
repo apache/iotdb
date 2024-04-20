@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.sink;
 
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
+import org.apache.tsfile.read.common.block.TsBlock;
 
 public interface SinkOperator extends Operator {
 

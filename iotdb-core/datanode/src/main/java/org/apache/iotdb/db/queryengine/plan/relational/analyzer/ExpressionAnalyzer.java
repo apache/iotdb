@@ -74,15 +74,15 @@ import org.apache.iotdb.db.relational.sql.tree.SubqueryExpression;
 import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
 import org.apache.iotdb.db.relational.sql.tree.Trim;
 import org.apache.iotdb.db.relational.sql.tree.WhenClause;
-import org.apache.iotdb.tsfile.read.common.type.BinaryType;
-import org.apache.iotdb.tsfile.read.common.type.RowType;
-import org.apache.iotdb.tsfile.read.common.type.Type;
-import org.apache.iotdb.tsfile.read.common.type.UnknownType;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
+import org.apache.tsfile.read.common.type.BinaryType;
+import org.apache.tsfile.read.common.type.RowType;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.UnknownType;
 
 import javax.annotation.Nullable;
 
@@ -105,13 +105,13 @@ import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.relational.sql.tree.DereferenceExpression.isQualifiedAllFieldsReference;
-import static org.apache.iotdb.tsfile.read.common.type.BinaryType.TEXT;
-import static org.apache.iotdb.tsfile.read.common.type.BooleanType.BOOLEAN;
-import static org.apache.iotdb.tsfile.read.common.type.DoubleType.DOUBLE;
-import static org.apache.iotdb.tsfile.read.common.type.FloatType.FLOAT;
-import static org.apache.iotdb.tsfile.read.common.type.IntType.INT32;
-import static org.apache.iotdb.tsfile.read.common.type.LongType.INT64;
-import static org.apache.iotdb.tsfile.read.common.type.UnknownType.UNKNOWN;
+import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
+import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
 
 public class ExpressionAnalyzer {
 

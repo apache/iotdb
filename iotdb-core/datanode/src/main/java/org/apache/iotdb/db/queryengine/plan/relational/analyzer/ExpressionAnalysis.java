@@ -24,10 +24,10 @@ import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.relational.sql.tree.InPredicate;
 import org.apache.iotdb.db.relational.sql.tree.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.relational.sql.tree.SubqueryExpression;
-import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Map;
 import java.util.Set;

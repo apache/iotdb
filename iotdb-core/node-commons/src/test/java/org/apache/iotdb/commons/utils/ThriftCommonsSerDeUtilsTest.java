@@ -27,8 +27,8 @@ import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
+import org.apache.tsfile.utils.PublicBAOS;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
