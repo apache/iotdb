@@ -23,9 +23,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.relational.sql.tree.Query;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 
 public class RelationalDistributionPlanner {
   private final Analysis analysis;
@@ -48,6 +53,17 @@ public class RelationalDistributionPlanner {
 
     if (distributedPlanNodeResult.size() != 1) {
       throw new IllegalStateException("root node must return only one");
+    }
+
+    PlanNode outputNode = distributedPlanNodeResult.get(0);
+    if (analysis.getStatement() != null && analysis.getStatement() instanceof Query) {
+      analysis
+          .getRespDatasetHeader()
+          .setColumnToTsBlockIndexMap(
+              outputNode.getOutputSymbols().stream()
+                  .map(Symbol::getName)
+                  .filter(e -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(e))
+                  .collect(Collectors.toList()));
     }
 
     SubPlan subPlan = new SubPlanGenerator().splitToSubPlan(logicalQueryPlan);
