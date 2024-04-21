@@ -112,7 +112,7 @@ public class PlanBuilder {
       // Skip any expressions that have already been translated and recorded in the
       // translation map, or that are duplicated in the list of exp
       if (!mappings.containsKey(expression)
-          && !set.contains(expression.toString())
+          && !set.contains(expression.toString().toLowerCase())
           && !(expression instanceof FieldReference)) {
         set.add(expression.toString());
         Symbol symbol = symbolAllocator.newSymbol("expr", analysis.getType(expression));
