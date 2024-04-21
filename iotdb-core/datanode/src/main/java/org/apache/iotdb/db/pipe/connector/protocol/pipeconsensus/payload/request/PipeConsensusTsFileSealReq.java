@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusTransferFileSealWithModReq;
+import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusTransferFileSealReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferReq;
 
 import java.io.IOException;
 
-public class PipeConsensusTsFileSealReq extends PipeConsensusTransferFileSealWithModReq {
+public class PipeConsensusTsFileSealReq extends PipeConsensusTransferFileSealReq {
   private PipeConsensusTsFileSealReq() {
     // Empty constructor
   }

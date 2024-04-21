@@ -19,4 +19,17 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder;
 
-public class PipeConsensusAsyncBatchReqBuilder {}
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class PipeConsensusAsyncBatchReqBuilder extends PipeConsensusTransferBatchReqBuilder {
+  public PipeConsensusAsyncBatchReqBuilder(PipeParameters parameters) {
+    super(parameters);
+  }
+
+  public List<Long> deepCopyRequestCommitIds() {
+    return new ArrayList<>(requestCommitIds);
+  }
+}

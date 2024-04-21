@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request;
 
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -34,7 +33,7 @@ public abstract class PipeConsensusTransferFileSealReq extends TPipeConsensusTra
   private transient String fileName;
   private transient long fileLength;
 
-  protected abstract PipeRequestType getPlanType();
+  protected abstract PipeConsensusRequestType getPlanType();
 
   /////////////////////////////// Thrift ///////////////////////////////
 
