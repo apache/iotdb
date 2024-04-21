@@ -20,6 +20,9 @@ package org.apache.iotdb.commons.schema.filter;
 
 import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
@@ -68,5 +71,17 @@ public abstract class SchemaFilterVisitor<C> {
 
   public boolean visitAndFilter(AndFilter andFilter, C context) {
     return andFilter.getLeft().accept(this, context) && andFilter.getRight().accept(this, context);
+  }
+
+  public boolean visitOrFilter(OrFilter orFilter, C context) {
+    return orFilter.getLeft().accept(this, context) || orFilter.getRight().accept(this, context);
+  }
+
+  public boolean visitDeviceIdFilter(DeviceIdFilter filter, C context) {
+    return visitFilter(filter, context);
+  }
+
+  public boolean visitDeviceAttributeFilter(DeviceAttributeFilter filter, C context) {
+    return visitDeviceAttributeFilter(filter, context);
   }
 }

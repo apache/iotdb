@@ -120,10 +120,15 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
 
   @Override
   public void alterAttribute(int pointer, List<String> nameList, List<String> valueList) {
-    Map<String, String> attributeMap = deviceAttributeList.get((int) pointer);
+    Map<String, String> attributeMap = deviceAttributeList.get(pointer);
     for (int i = 0; i < nameList.size(); i++) {
       attributeMap.put(nameList.get(i), valueList.get(i));
     }
+  }
+
+  @Override
+  public String getAttribute(int pointer, String name) {
+    return deviceAttributeList.get(pointer).get(name);
   }
 
   private void serialize(OutputStream outputStream) throws IOException {

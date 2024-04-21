@@ -21,6 +21,8 @@ package org.apache.iotdb.db.schemaengine.schemaregion.utils.filter;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
@@ -58,5 +60,15 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
     } else {
       return false;
     }
+  }
+
+  @Override
+  public boolean visitDeviceIdFilter(DeviceIdFilter filter, IDeviceSchemaInfo info) {
+    return info.getPartialPath().getNodes()[filter.getIndex() + 3].equals(filter.getValue());
+  }
+
+  @Override
+  public boolean visitDeviceAttributeFilter(DeviceAttributeFilter filter, IDeviceSchemaInfo info) {
+    return info.getAttributeValue(filter.getKey()).equals(filter.getValue());
   }
 }

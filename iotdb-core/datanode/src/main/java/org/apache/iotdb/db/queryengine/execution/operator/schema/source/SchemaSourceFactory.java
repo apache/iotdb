@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -97,5 +98,15 @@ public class SchemaSourceFactory {
       SchemaFilter schemaFilter,
       PathPatternTree scope) {
     return new LogicalViewSchemaSource(pathPattern, limit, offset, schemaFilter, scope);
+  }
+
+  public static ISchemaSource<IDeviceSchemaInfo> getTableDeviceSchemaSource(
+      String database,
+      String tableName,
+      List<SchemaFilter> idDeterminedFilterList,
+      List<SchemaFilter> idFuzzyFilterList,
+      List<ColumnHeader> columnHeaderList) {
+    return new TableDeviceSchemaSource(
+        database, tableName, idDeterminedFilterList, idFuzzyFilterList, columnHeaderList);
   }
 }

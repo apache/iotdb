@@ -21,10 +21,14 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -84,6 +88,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTableDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
@@ -93,6 +98,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalV
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.commons.lang3.StringUtils;
@@ -1021,5 +1027,39 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         createTableDeviceStatement.getPaths(),
         createTableDeviceStatement.getAttributeNameList(),
         createTableDeviceStatement.getAttributeValueList());
+  }
+
+  @Override
+  public PlanNode visitShowTableDevices(
+      ShowTableDevicesStatement statement, MPPQueryContext context) {
+    LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+
+    List<TsTableColumnSchema> columnSchemaList =
+        DataNodeTableCache.getInstance()
+            .getTable(statement.getDatabase(), statement.getTableName())
+            .getColumnList();
+
+    List<ColumnHeader> columnHeaderList = new ArrayList<>(columnSchemaList.size());
+    for (TsTableColumnSchema columnSchema : columnSchemaList) {
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)
+          || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
+        columnHeaderList.add(
+            new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()));
+      }
+    }
+
+    analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
+
+    planBuilder =
+        planBuilder
+            .planTableDeviceSource(
+                statement.getDatabase(),
+                statement.getTableName(),
+                statement.getIdDeterminedFilterList(),
+                statement.getIdFuzzyFilterList(),
+                columnHeaderList)
+            .planSchemaQueryMerge(false);
+
+    return planBuilder.getRoot();
   }
 }

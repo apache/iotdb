@@ -40,4 +40,14 @@ public class DeviceEntry {
   public List<String> getAttributeColumnValues() {
     return attributeColumnValues;
   }
+
+  @Override
+  public String toString() {
+    return "DeviceEntry{"
+        + "deviceID="
+        + deviceID
+        + ", attributeColumnValues="
+        + attributeColumnValues
+        + '}';
+  }
 }

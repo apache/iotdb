@@ -34,4 +34,6 @@ public interface IDeviceAttributeStore {
   int createAttribute(List<String> nameList, List<String> valueList);
 
   void alterAttribute(int pointer, List<String> nameList, List<String> valueList);
+
+  String getAttribute(int pointer, String name);
 }

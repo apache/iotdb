@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil;
@@ -54,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
@@ -1640,6 +1642,24 @@ public class LogicalPlanBuilder {
             this.getRoot(),
             0,
             new SlidingTimeColumnGeneratorParameter(groupByTimeParameter, ascending));
+    return this;
+  }
+
+  public LogicalPlanBuilder planTableDeviceSource(
+      String database,
+      String tableName,
+      List<SchemaFilter> idDeterminedFilterList,
+      List<SchemaFilter> idFuzzyFilterList,
+      List<ColumnHeader> columnHeaderList) {
+    this.root =
+        new TableDeviceScanNode(
+            context.getQueryId().genPlanNodeId(),
+            database,
+            tableName,
+            idDeterminedFilterList,
+            idFuzzyFilterList,
+            columnHeaderList,
+            null);
     return this;
   }
 }
