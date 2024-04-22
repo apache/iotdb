@@ -22,22 +22,24 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator.TsFileName;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import java.io.File;
 import java.io.IOException;
@@ -69,14 +71,15 @@ public class CompactionFileGeneratorUtils {
   }
 
   public static List<TsFileResource> getInnerCompactionTargetTsFileResources(
-      List<TsFileResource> fileResources, boolean seq) throws IOException {
+      List<TsFileResource> fileResources, boolean seq)
+      throws IOException, DiskSpaceInsufficientException {
     List<TsFileResource> resources = new ArrayList<>();
     resources.add(TsFileNameGenerator.getInnerCompactionTargetFileResource(fileResources, seq));
     return resources;
   }
 
   public static List<TsFileResource> getCrossCompactionTargetTsFileResources(
-      List<TsFileResource> seqFileResources) throws IOException {
+      List<TsFileResource> seqFileResources) throws IOException, DiskSpaceInsufficientException {
     return TsFileNameGenerator.getCrossCompactionTargetFileResources(seqFileResources);
   }
 
@@ -90,6 +93,8 @@ public class CompactionFileGeneratorUtils {
       return new TsFileResource(
           new File(
               TestConstant.BASE_OUTPUT_PATH
+                  .concat(File.separator)
+                  .concat("data")
                   .concat(File.separator)
                   .concat("sequence")
                   .concat(File.separator)
@@ -112,6 +117,8 @@ public class CompactionFileGeneratorUtils {
       return new TsFileResource(
           new File(
               TestConstant.BASE_OUTPUT_PATH
+                  .concat(File.separator)
+                  .concat("data")
                   .concat(File.separator)
                   .concat("unsequence")
                   .concat(File.separator)

@@ -28,9 +28,9 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCach
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 
+import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.read.TimeValuePair;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

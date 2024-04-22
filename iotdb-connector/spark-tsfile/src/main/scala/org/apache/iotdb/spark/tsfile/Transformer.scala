@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.spark.tsfile
 
-import org.apache.iotdb.tsfile.common.constant.QueryConstant
+import org.apache.tsfile.common.constant.QueryConstant
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{SparkSession, _}
 

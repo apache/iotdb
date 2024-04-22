@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -42,6 +43,7 @@ import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.log.GetConsensusReqReaderPlan;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher;
+import org.apache.iotdb.consensus.iot.snapshot.IoTConsensusRateLimiter;
 import org.apache.iotdb.consensus.iot.snapshot.SnapshotFragmentReader;
 import org.apache.iotdb.consensus.iot.thrift.TActivatePeerReq;
 import org.apache.iotdb.consensus.iot.thrift.TActivatePeerRes;
@@ -119,6 +121,8 @@ public class IoTConsensusServerImpl {
   private final IoTConsensusServerMetrics ioTConsensusServerMetrics;
   private final String consensusGroupId;
   private final ScheduledExecutorService backgroundTaskService;
+  private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
+      IoTConsensusRateLimiter.getInstance();
 
   public IoTConsensusServerImpl(
       String storageDir,
@@ -284,32 +288,71 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  public void transitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
+  public void transmitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
     File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<Path> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
-    logger.info("transit snapshots: {}", snapshotPaths);
+    AtomicLong snapshotSizeSumAtomic = new AtomicLong();
+    snapshotPaths.forEach(
+        snapshotPath -> {
+          try {
+            snapshotSizeSumAtomic.addAndGet(Files.size(snapshotPath));
+          } catch (IOException e) {
+            logger.error(
+                "[SNAPSHOT TRANSMISSION] Calculate snapshot file's size fail: {}", snapshotPath, e);
+          }
+        });
+    final long snapshotSizeSum = snapshotSizeSumAtomic.get();
+    long transitedSnapshotSizeSum = 0;
+    long transitedFilesNum = 0;
+    long startTime = System.nanoTime();
+    logger.info(
+        "[SNAPSHOT TRANSMISSION] Start to transmit snapshots ({} files, total size {}) from dir {}",
+        snapshotPaths.size(),
+        FileUtils.byteCountToDisplaySize(snapshotSizeSum),
+        snapshotDir);
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       for (Path path : snapshotPaths) {
         SnapshotFragmentReader reader = new SnapshotFragmentReader(newSnapshotDirName, path);
         try {
           while (reader.hasNext()) {
+            // TODO: zero copy ?
             TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
             req.setConsensusGroupId(targetPeer.getGroupId().convertToTConsensusGroupId());
+            ioTConsensusRateLimiter.acquireTransitDataSizeWithRateLimiter(req.getChunkLength());
             TSendSnapshotFragmentRes res = client.sendSnapshotFragment(req);
             if (!isSuccess(res.getStatus())) {
               throw new ConsensusGroupModifyPeerException(
-                  String.format("error when sending snapshot fragment to %s", targetPeer));
+                  String.format(
+                      "[SNAPSHOT TRANSMISSION] Error when transmitting snapshot fragment to %s",
+                      targetPeer));
             }
           }
+          transitedSnapshotSizeSum += reader.getTotalReadSize();
+          transitedFilesNum++;
+          logger.info(
+              "[SNAPSHOT TRANSMISSION] The overall progress for dir {}: files {}/{} done, size {}/{} done, time {} passed",
+              newSnapshotDirName,
+              transitedFilesNum,
+              snapshotPaths.size(),
+              FileUtils.byteCountToDisplaySize(transitedSnapshotSizeSum),
+              FileUtils.byteCountToDisplaySize(snapshotSizeSum),
+              CommonDateTimeUtils.convertMillisecondToDurationStr(
+                  (System.nanoTime() - startTime) / 1_000_000));
         } finally {
           reader.close();
         }
       }
     } catch (Exception e) {
       throw new ConsensusGroupModifyPeerException(
-          String.format("error when send snapshot file to %s", targetPeer), e);
+          String.format("[SNAPSHOT TRANSMISSION] Error when send snapshot file to %s", targetPeer),
+          e);
     }
+    logger.info(
+        "[SNAPSHOT TRANSMISSION] After {}, successfully transmit all snapshots from dir {}",
+        CommonDateTimeUtils.convertMillisecondToDurationStr(
+            (System.nanoTime() - startTime) / 1_000_000),
+        snapshotDir);
   }
 
   public void receiveSnapshotFragment(
@@ -534,14 +577,14 @@ public class IoTConsensusServerImpl {
                 new TWaitSyncLogCompleteReq(targetPeer.getGroupId().convertToTConsensusGroupId()));
         if (res.complete) {
           logger.info(
-              "{} SyncLog is completed. TargetIndex: {}, CurrentSyncIndex: {}",
+              "[WAIT LOG SYNC] {} SyncLog is completed. TargetIndex: {}, CurrentSyncIndex: {}",
               targetPeer,
               res.searchIndex,
               res.safeIndex);
           return;
         }
         logger.info(
-            "{} SyncLog is still in progress. TargetIndex: {}, CurrentSyncIndex: {}",
+            "[WAIT LOG SYNC] {} SyncLog is still in progress. TargetIndex: {}, CurrentSyncIndex: {}",
             targetPeer,
             res.searchIndex,
             res.safeIndex);

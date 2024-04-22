@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.spark.tsfile
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType
+import org.apache.tsfile.enums.TSDataType
 import java.util
-import org.apache.iotdb.tsfile.read.common.Field
+import org.apache.tsfile.read.common.Field
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 

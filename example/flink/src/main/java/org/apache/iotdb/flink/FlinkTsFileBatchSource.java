@@ -20,9 +20,6 @@ package org.apache.iotdb.flink;
 
 import org.apache.iotdb.flink.tsfile.RowRowRecordParser;
 import org.apache.iotdb.flink.tsfile.TsFileInputFormat;
-import org.apache.iotdb.tsfile.common.constant.QueryConstant;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -30,6 +27,9 @@ import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.types.Row;
+import org.apache.tsfile.common.constant.QueryConstant;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.expression.QueryExpression;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

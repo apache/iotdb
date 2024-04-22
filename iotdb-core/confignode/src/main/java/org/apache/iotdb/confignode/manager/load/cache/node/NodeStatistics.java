@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.load.cache.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractStatistics;
 
 import java.util.Objects;
@@ -40,6 +41,14 @@ public class NodeStatistics extends AbstractStatistics {
     this.status = status;
     this.statusReason = statusReason;
     this.loadScore = loadScore;
+  }
+
+  @TestOnly
+  public NodeStatistics(NodeStatus status) {
+    super(System.nanoTime());
+    this.status = status;
+    this.statusReason = null;
+    this.loadScore = Long.MAX_VALUE;
   }
 
   public static NodeStatistics generateDefaultNodeStatistics() {

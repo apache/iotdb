@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -415,7 +416,8 @@ public class RegionMaintainHandler {
     return report;
   }
 
-  public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {
+  public void addRegionLocation(
+      TConsensusGroupId regionId, TDataNodeLocation newLocation, RegionStatus regionStatus) {
     AddRegionLocationPlan req = new AddRegionLocationPlan(regionId, newLocation);
     TSStatus status = configManager.getPartitionManager().addRegionLocation(req);
     LOGGER.info(
@@ -423,7 +425,16 @@ public class RegionMaintainHandler {
         regionId,
         getIdWithRpcEndpoint(newLocation),
         status);
-    configManager.getLoadManager().forceAddRegionCache(regionId, newLocation.getDataNodeId());
+    configManager
+        .getLoadManager()
+        .forceAddRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
+  }
+
+  public void updateRegionCache(
+      TConsensusGroupId regionId, TDataNodeLocation newLocation, RegionStatus regionStatus) {
+    configManager
+        .getLoadManager()
+        .forceAddRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
   }
 
   public void removeRegionLocation(
@@ -647,20 +658,13 @@ public class RegionMaintainHandler {
    *
    * @param regionId The region to be migrated
    * @param originalDataNode The DataNode where the region locates
-   * @param migrateDestDataNode The DataNode where the region is to be migrated
    */
-  public void changeRegionLeader(
-      TConsensusGroupId regionId,
-      TDataNodeLocation originalDataNode,
-      TDataNodeLocation migrateDestDataNode) {
+  public void changeRegionLeader(TConsensusGroupId regionId, TDataNodeLocation originalDataNode) {
     Optional<TDataNodeLocation> newLeaderNode =
         filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
 
     if (TConsensusGroupType.DataRegion.equals(regionId.getType())
         && IOT_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
-      if (CONF.getDataReplicationFactor() == 1) {
-        newLeaderNode = Optional.of(migrateDestDataNode);
-      }
       if (newLeaderNode.isPresent()) {
         configManager
             .getLoadManager()

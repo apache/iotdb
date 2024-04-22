@@ -21,6 +21,9 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
+import java.time.Duration;
+import java.util.function.BiConsumer;
+
 public class CommonDateTimeUtils {
 
   public CommonDateTimeUtils() {
@@ -53,5 +56,49 @@ public class CommonDateTimeUtils {
       default:
         return System.currentTimeMillis();
     }
+  }
+
+  public static String convertMillisecondToDurationStr(long millisecond) {
+    StringBuilder stringBuilder = new StringBuilder();
+    boolean minus = false;
+    if (millisecond < 0) {
+      minus = true;
+      millisecond = -millisecond;
+      stringBuilder.append("-(");
+    }
+    Duration duration = Duration.ofMillis(millisecond);
+    long days = duration.toDays();
+    long years = days / 365;
+    days = days % 365;
+    long months = days / 30;
+    days %= 30;
+    long hours = duration.toHours() % 24;
+    long minutes = duration.toMinutes() % 60;
+    long seconds = duration.getSeconds() % 60;
+    long ms = millisecond % 1000;
+    BiConsumer<Long, String> append =
+        (value, unit) -> {
+          if (value > 0) {
+            stringBuilder.append(value).append(" ").append(unit).append(" ");
+          }
+        };
+    append.accept(years, "year");
+    append.accept(months, "month");
+    append.accept(days, "day");
+    append.accept(hours, "hour");
+    append.accept(minutes, "minute");
+    append.accept(seconds, "second");
+    append.accept(ms, "ms");
+    String result = stringBuilder.toString();
+    if (result.endsWith(" ")) {
+      result = result.substring(0, result.length() - 1);
+    }
+    if (minus) {
+      result += ")";
+    }
+    if (result.isEmpty()) {
+      result = "0 ms";
+    }
+    return result;
   }
 }

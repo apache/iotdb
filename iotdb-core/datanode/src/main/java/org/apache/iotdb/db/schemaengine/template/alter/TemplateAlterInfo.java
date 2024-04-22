@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.template.alter;
 
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;

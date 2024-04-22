@@ -30,9 +30,9 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
+import org.apache.tsfile.exception.TsFileRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
