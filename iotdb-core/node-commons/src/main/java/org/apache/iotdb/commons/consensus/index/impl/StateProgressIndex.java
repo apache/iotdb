@@ -55,7 +55,7 @@ public class StateProgressIndex extends ProgressIndex {
   }
 
   public ProgressIndex getInnerProgressIndex() {
-    return innerProgressIndex;
+    return innerProgressIndex == null ? MinimumProgressIndex.INSTANCE : innerProgressIndex;
   }
 
   public Map<String, Binary> getState() {
