@@ -82,6 +82,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -987,7 +988,14 @@ public class IoTConsensusServerImpl {
 
   public void removeDuplicateConfiguration() {
     Set<Peer> seen = new HashSet<>();
-    configuration.removeIf(peer -> !seen.add(peer));
+    Iterator<Peer> it = configuration.iterator();
+
+    while (it.hasNext()) {
+      Peer peer = it.next();
+      if (!seen.add(peer)) {
+        it.remove();
+      }
+    }
   }
 
   /**
