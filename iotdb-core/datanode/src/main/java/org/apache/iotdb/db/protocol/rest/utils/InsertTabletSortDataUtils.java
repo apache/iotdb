@@ -19,6 +19,7 @@ package org.apache.iotdb.db.protocol.rest.utils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,17 +34,12 @@ public class InsertTabletSortDataUtils {
   }
 
   public static int[] sortTimeStampList(List<Long> list) {
-    int n = list.size();
-    long[] arr = new long[n];
-    for (int i = 0; i < n; i++) {
-      arr[i] = list.get(i);
+    List<Integer> indexes = new ArrayList<>();
+    for (int i = 0; i < list.size(); i++) {
+      indexes.add(i);
     }
-    Arrays.sort(arr);
-    int[] indices = new int[n];
-    for (int i = 0; i < n; i++) {
-      indices[i] = list.indexOf(arr[i]);
-    }
-    return indices;
+    indexes.sort(Comparator.comparing(list::get));
+    return indexes.stream().mapToInt(Integer::intValue).toArray();
   }
 
   public static <T> List<List<T>> sortList(List<List<T>> values, int[] index, int num) {
