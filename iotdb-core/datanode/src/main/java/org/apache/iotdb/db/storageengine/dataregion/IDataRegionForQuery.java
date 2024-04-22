@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
@@ -38,7 +39,7 @@ public interface IDataRegionForQuery {
   /** Get satisfied QueryDataSource from DataRegion */
   QueryDataSource query(
       List<PartialPath> pathList,
-      String singleDeviceId,
+      IDeviceID singleDeviceId,
       QueryContext context,
       Filter globalTimeFilter,
       List<Long> timePartitions)

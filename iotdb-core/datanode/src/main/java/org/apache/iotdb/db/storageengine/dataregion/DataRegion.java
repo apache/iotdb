@@ -1780,7 +1780,7 @@ public class DataRegion implements IDataRegionForQuery {
   @Override
   public QueryDataSource query(
       List<PartialPath> pathList,
-      String singleDeviceId,
+      IDeviceID singleDeviceId,
       QueryContext context,
       Filter globalTimeFilter,
       List<Long> timePartitions)
@@ -1849,7 +1849,7 @@ public class DataRegion implements IDataRegionForQuery {
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources,
       List<PartialPath> pathList,
-      String singleDeviceId,
+      IDeviceID singleDeviceId,
       QueryContext context,
       Filter globalTimeFilter,
       boolean isSeq)
@@ -1872,11 +1872,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.isSatisfied(
-          singleDeviceId == null ? null : IDeviceID.Factory.DEFAULT_FACTORY.create(singleDeviceId),
-          globalTimeFilter,
-          isSeq,
-          dataTTL,
-          context.isDebug())) {
+          singleDeviceId, globalTimeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();

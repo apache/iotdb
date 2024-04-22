@@ -327,7 +327,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(node, context);
     scanOptionsBuilder.withAllSensors(
-        context.getAllSensors(seriesPath.getIDeviceID().toString(), seriesPath.getMeasurement()));
+        context.getAllSensors(seriesPath.getIDeviceID(), seriesPath.getMeasurement()));
     scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
     scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
 
@@ -547,7 +547,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(node, context);
     scanOptionsBuilder.withAllSensors(
-        context.getAllSensors(seriesPath.getIDeviceID().toString(), seriesPath.getMeasurement()));
+        context.getAllSensors(seriesPath.getIDeviceID(), seriesPath.getMeasurement()));
 
     OperatorContext operatorContext =
         context
@@ -2573,7 +2573,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(
-        context.getAllSensors(seriesPath.getIDeviceID().toString(), seriesPath.getMeasurement()));
+        context.getAllSensors(seriesPath.getIDeviceID(), seriesPath.getMeasurement()));
     scanOptionsBuilder.withGlobalTimeFilter(context.getGlobalTimeFilter());
 
     SeriesAggregationScanOperator seriesAggregationScanOperator =

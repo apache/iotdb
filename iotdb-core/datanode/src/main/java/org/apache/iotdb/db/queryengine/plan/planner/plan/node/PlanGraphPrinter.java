@@ -480,7 +480,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
               "%s -> %s %s",
               sourceTargetPathPair.left,
               sourceTargetPathPair.right,
-              targetDeviceToAlignedMap.get(sourceTargetPathPair.right.getIDeviceID())
+              targetDeviceToAlignedMap.get(sourceTargetPathPair.right.getIDeviceID().toString())
                   ? "[ALIGNED]"
                   : ""));
     }

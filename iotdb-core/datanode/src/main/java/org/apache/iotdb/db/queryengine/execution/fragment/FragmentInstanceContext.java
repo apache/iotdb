@@ -34,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManag
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -350,10 +351,10 @@ public class FragmentInstanceContext extends QueryContext {
     dataRegion.readLock();
     try {
       List<PartialPath> pathList = new ArrayList<>();
-      Set<String> selectedDeviceIdSet = new HashSet<>();
+      Set<IDeviceID> selectedDeviceIdSet = new HashSet<>();
       for (PartialPath path : sourcePaths) {
         pathList.add(path);
-        selectedDeviceIdSet.add(path.getIDeviceID().toString());
+        selectedDeviceIdSet.add(path.getIDeviceID());
       }
 
       this.sharedQueryDataSource =

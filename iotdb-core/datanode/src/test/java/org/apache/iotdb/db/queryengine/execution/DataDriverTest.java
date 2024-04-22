@@ -52,6 +52,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -177,7 +178,11 @@ public class DataDriverTest {
       String deviceId = DATA_DRIVER_TEST_SG + ".device0";
       Mockito.when(
               dataRegion.query(
-                  driverContext.getPaths(), deviceId, fragmentInstanceContext, null, null))
+                  driverContext.getPaths(),
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
+                  fragmentInstanceContext,
+                  null,
+                  null))
           .thenReturn(new QueryDataSource(seqResources, unSeqResources));
       fragmentInstanceContext.initQueryDataSource(driverContext.getPaths());
       fragmentInstanceContext.initializeNumOfDrivers(1);

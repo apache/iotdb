@@ -58,6 +58,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -220,7 +221,7 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             context,
             null,
             null);
@@ -297,7 +298,7 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             context,
             null,
             null);
@@ -379,7 +380,7 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             context,
             null,
             null);
@@ -460,7 +461,7 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             context,
             null,
             null);
@@ -495,7 +496,7 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             context,
             null,
             null);
@@ -536,7 +537,7 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             context,
             null,
             null);
@@ -580,7 +581,7 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             context,
             null,
             null);
@@ -670,7 +671,7 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             context,
             null,
             null);
@@ -759,7 +760,7 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             context,
             null,
             null);
@@ -848,7 +849,7 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             context,
             null,
             null);
@@ -885,7 +886,7 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion1.query(
             Collections.singletonList(new PartialPath("root.Rows", measurementId)),
-            "root.Rows",
+            IDeviceID.Factory.DEFAULT_FACTORY.create("root.Rows"),
             context,
             null,
             null);
@@ -921,7 +922,7 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion1.query(
             Collections.singletonList(new PartialPath("root.ln22", measurementId)),
-            "root.ln22",
+            IDeviceID.Factory.DEFAULT_FACTORY.create("root.ln22"),
             context,
             null,
             null);
@@ -994,7 +995,7 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             context,
             null,
             null);

@@ -50,6 +50,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -178,7 +179,7 @@ public class TTLTest {
     QueryDataSource dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
-            sg1,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(sg1),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -193,7 +194,7 @@ public class TTLTest {
     dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
-            sg1,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(sg1),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -224,7 +225,7 @@ public class TTLTest {
     dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
-            sg1,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(sg1),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);

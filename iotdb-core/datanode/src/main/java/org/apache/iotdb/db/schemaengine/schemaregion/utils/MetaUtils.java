@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
@@ -120,7 +121,7 @@ public class MetaUtils {
 
   public static List<PartialPath> groupAlignedSeriesWithOrder(
       List<PartialPath> fullPaths, Ordering timeseriesOrdering) {
-    Map<String, AlignedPath> deviceToAlignedPathMap = new HashMap<>();
+    Map<IDeviceID, AlignedPath> deviceToAlignedPathMap = new HashMap<>();
     List<PartialPath> res = groupAlignedSeries(fullPaths, deviceToAlignedPathMap);
     res.sort(
         timeseriesOrdering == Ordering.ASC ? Comparator.naturalOrder() : Comparator.reverseOrder());
@@ -134,14 +135,14 @@ public class MetaUtils {
   }
 
   private static List<PartialPath> groupAlignedSeries(
-      List<PartialPath> fullPaths, Map<String, AlignedPath> deviceToAlignedPathMap) {
+      List<PartialPath> fullPaths, Map<IDeviceID, AlignedPath> deviceToAlignedPathMap) {
     List<PartialPath> result = new ArrayList<>();
     for (PartialPath path : fullPaths) {
       MeasurementPath measurementPath = (MeasurementPath) path;
       if (!measurementPath.isUnderAlignedEntity()) {
         result.add(measurementPath);
       } else {
-        String deviceName = measurementPath.getIDeviceID().toString();
+        IDeviceID deviceName = measurementPath.getIDeviceID();
         if (!deviceToAlignedPathMap.containsKey(deviceName)) {
           AlignedPath alignedPath = new AlignedPath(measurementPath);
           deviceToAlignedPathMap.put(deviceName, alignedPath);
@@ -212,16 +213,16 @@ public class MetaUtils {
   public static Map<AlignedPath, List<List<Integer>>> groupAlignedSeriesWithAggregations(
       Map<PartialPath, List<Integer>> pathToAggrIndexesMap) {
     Map<AlignedPath, List<List<Integer>>> alignedPathToAggrIndexesMap = new HashMap<>();
-    Map<String, AlignedPath> temp = new HashMap<>();
+    Map<IDeviceID, AlignedPath> temp = new HashMap<>();
     List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
     for (PartialPath seriesPath : seriesPaths) {
       // for with value filter
       if (seriesPath instanceof AlignedPath) {
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
-        AlignedPath groupPath = temp.get(seriesPath.getFullPath());
+        AlignedPath groupPath = temp.get(seriesPath.getIDeviceID());
         if (groupPath == null) {
           groupPath = (AlignedPath) seriesPath.copy();
-          temp.put(groupPath.getFullPath(), groupPath);
+          temp.put(groupPath.getIDeviceID(), groupPath);
           alignedPathToAggrIndexesMap
               .computeIfAbsent(groupPath, key -> new ArrayList<>())
               .add(indexes);
@@ -236,10 +237,10 @@ public class MetaUtils {
       } else if (((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
         // for without value filter
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
-        AlignedPath groupPath = temp.get(seriesPath.getIDeviceID().toString());
+        AlignedPath groupPath = temp.get(seriesPath.getIDeviceID());
         if (groupPath == null) {
           groupPath = new AlignedPath((MeasurementPath) seriesPath);
-          temp.put(seriesPath.getIDeviceID().toString(), groupPath);
+          temp.put(seriesPath.getIDeviceID(), groupPath);
           alignedPathToAggrIndexesMap
               .computeIfAbsent(groupPath, key -> new ArrayList<>())
               .add(indexes);
