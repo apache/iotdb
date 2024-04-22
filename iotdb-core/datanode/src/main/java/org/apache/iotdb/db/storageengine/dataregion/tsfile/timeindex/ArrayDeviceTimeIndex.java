@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.PartitionViolationException;
@@ -402,22 +403,8 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
     long startTime = Long.MAX_VALUE;
     long endTime = Long.MIN_VALUE;
     for (Entry<IDeviceID, Integer> entry : deviceToIndex.entrySet()) {
-      if (deviceMatchInfo.contains(entry.getKey())) {
-        hasMatchedDevice = true;
-        if (startTimes[entry.getValue()] < startTime) {
-          startTime = startTimes[entry.getValue()];
-        }
-        if (endTimes[entry.getValue()] > endTime) {
-          endTime = endTimes[entry.getValue()];
-        }
-      } else {
-        IDeviceID deviceID = entry.getKey();
-        String[] devicePath = new String[deviceID.segmentNum()];
-        for (int i = 0; i < devicePath.length; i++) {
-          devicePath[i] = deviceID.segment(i).toString();
-        }
-        if (devicePattern.matchFullPath(new PartialPath(devicePath))) {
-          deviceMatchInfo.add(entry.getKey());
+      try {
+        if (deviceMatchInfo.contains(entry.getKey())) {
           hasMatchedDevice = true;
           if (startTimes[entry.getValue()] < startTime) {
             startTime = startTimes[entry.getValue()];
@@ -425,7 +412,20 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
           if (endTimes[entry.getValue()] > endTime) {
             endTime = endTimes[entry.getValue()];
           }
+        } else {
+          if (devicePattern.matchFullPath(new PartialPath(entry.getKey().toString()))) {
+            deviceMatchInfo.add(entry.getKey());
+            hasMatchedDevice = true;
+            if (startTimes[entry.getValue()] < startTime) {
+              startTime = startTimes[entry.getValue()];
+            }
+            if (endTimes[entry.getValue()] > endTime) {
+              endTime = endTimes[entry.getValue()];
+            }
+          }
         }
+      } catch (IllegalPathException e) {
+        // won't reach here
       }
     }
 
