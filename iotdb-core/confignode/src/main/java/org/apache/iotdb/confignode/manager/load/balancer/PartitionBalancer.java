@@ -109,6 +109,8 @@ public class PartitionBalancer {
    * Allocate DataPartitions
    *
    * @param unassignedDataPartitionSlotsMap DataPartitionSlots that should be assigned
+   * @throws DatabaseNotExistsException If some specific Databases don't exist
+   * @throws NoAvailableRegionGroupException If there are no available RegionGroups
    * @return Map<DatabaseName, DataPartitionTable>, the allocating result
    */
   public Map<String, DataPartitionTable> allocateDataPartition(
