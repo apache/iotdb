@@ -285,7 +285,7 @@ public class Util {
    * @param s input string
    * @return timestamp
    */
-  public static long zhparseTime(String s) {
+  public static long parseTime(String s) {
     long unit = 0;
     s = s.toLowerCase();
     s = s.replace(" ", "");
