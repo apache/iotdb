@@ -17,22 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request;
+package org.apache.iotdb.consensus.pipe.client.request;
 
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferReq;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public class PipeConsensusHandshakeReq extends TPipeConsensusTransferReq {
+public class PipeConsensusHandshakeReq
+    extends org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq {
   // Use map to store params to ensure scalability
   private transient Map<String, String> params;
 
@@ -45,15 +42,16 @@ public class PipeConsensusHandshakeReq extends TPipeConsensusTransferReq {
       Map<String, String> params) throws IOException {
     this.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     this.type = PipeConsensusRequestType.PIPE_CONSENSUS_HANDSHAKE.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(params.size(), outputStream);
-      for (final Map.Entry<String, String> entry : params.entrySet()) {
-        ReadWriteIOUtils.write(entry.getKey(), outputStream);
-        ReadWriteIOUtils.write(entry.getValue(), outputStream);
-      }
-      this.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    }
+    //    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    //        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+    //      ReadWriteIOUtils.write(params.size(), outputStream);
+    //      for (final Map.Entry<String, String> entry : params.entrySet()) {
+    //        ReadWriteIOUtils.write(entry.getKey(), outputStream);
+    //        ReadWriteIOUtils.write(entry.getValue(), outputStream);
+    //      }
+    //      this.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0,
+    // byteArrayOutputStream.size());
+    //    }
 
     this.params = params;
     return this;
@@ -62,12 +60,12 @@ public class PipeConsensusHandshakeReq extends TPipeConsensusTransferReq {
   public final PipeConsensusHandshakeReq translateFromTPipeConsensusTransferReq(
       TPipeConsensusTransferReq transferReq) {
     Map<String, String> params = new HashMap<>();
-    final int size = ReadWriteIOUtils.readInt(transferReq.body);
-    for (int i = 0; i < size; ++i) {
-      final String key = ReadWriteIOUtils.readString(transferReq.body);
-      final String value = ReadWriteIOUtils.readString(transferReq.body);
-      params.put(key, value);
-    }
+    //    final int size = ReadWriteIOUtils.readInt(transferReq.body);
+    //    for (int i = 0; i < size; ++i) {
+    //      final String key = ReadWriteIOUtils.readString(transferReq.body);
+    //      final String value = ReadWriteIOUtils.readString(transferReq.body);
+    //      params.put(key, value);
+    //    }
     this.params = params;
 
     version = transferReq.version;

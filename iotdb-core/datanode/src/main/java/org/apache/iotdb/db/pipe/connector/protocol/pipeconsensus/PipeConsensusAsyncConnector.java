@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.consensus.pipe.client.manager.PipeConsensusAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
-import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.client.PipeConsensusAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -155,7 +155,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     }
     // TODO：改造 request，加上 commitId 和 rebootTimes
     // TODO: 改造 handler，onComplete 的优化 + onComplete 加上出队逻辑
-
+    syncTransferQueuedEventsIfNecessary();
   }
 
   @Override
@@ -164,7 +164,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     if (!enqueueResult) {
       throw new PipeException(ENQUEUE_EXCEPTION_MSG);
     }
-    super.transfer(tsFileInsertionEvent);
+
+    syncTransferQueuedEventsIfNecessary();
   }
 
   @Override
@@ -173,6 +174,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     if (!enqueueResult) {
       throw new PipeException(ENQUEUE_EXCEPTION_MSG);
     }
+
+    syncTransferQueuedEventsIfNecessary();
   }
 
   /**

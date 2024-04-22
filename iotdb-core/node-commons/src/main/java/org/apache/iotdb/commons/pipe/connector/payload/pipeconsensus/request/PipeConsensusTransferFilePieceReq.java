@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request;
 
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;

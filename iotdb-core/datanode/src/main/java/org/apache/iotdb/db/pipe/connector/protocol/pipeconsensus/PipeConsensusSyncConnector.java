@@ -23,13 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.response.PipeConsensusTransferFilePieceResp;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
-import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.client.PipeConsensusSyncClientManager;
+import org.apache.iotdb.consensus.pipe.client.manager.PipeConsensusSyncClientManager;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder.PipeConsensusSyncBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
@@ -342,7 +338,9 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
   }
 
   protected void transferFilePieces(
-      File file, Pair<SyncDataNodeInternalServiceClient, Boolean> clientAndStatus, boolean isMultiFile)
+      File file,
+      Pair<SyncDataNodeInternalServiceClient, Boolean> clientAndStatus,
+      boolean isMultiFile)
       throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
@@ -365,10 +363,12 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                   clientAndStatus
                       .getLeft()
                       .pipeConsensusTransfer(
-                              // TODO: check SchemaRegion
+                          // TODO: check SchemaRegion
                           isMultiFile
-                              ? PipeConsensusTsFilePieceWithModReq.toTPipeConsensusTransferReq(file.getName(), position, payLoad)
-                              : PipeConsensusTsFilePieceReq.toTPipeConsensusTransferReq(file.getName(), position, payLoad)));
+                              ? PipeConsensusTsFilePieceWithModReq.toTPipeConsensusTransferReq(
+                                  file.getName(), position, payLoad)
+                              : PipeConsensusTsFilePieceReq.toTPipeConsensusTransferReq(
+                                  file.getName(), position, payLoad)));
         } catch (Exception e) {
           clientAndStatus.setRight(false);
           throw new PipeConnectionException(
