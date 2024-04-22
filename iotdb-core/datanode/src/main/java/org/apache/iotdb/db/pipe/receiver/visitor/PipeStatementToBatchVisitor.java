@@ -173,7 +173,7 @@ public class PipeStatementToBatchVisitor extends StatementVisitor<Optional<State
             ? Optional.of(getTimeSeriesBatchStatement())
             : Optional.empty(),
         !activateTemplateStatements.isEmpty()
-            ? Optional.of(getTimeSeriesBatchStatement())
+            ? Optional.of(getTemplateBatchStatement())
             : Optional.empty());
   }
 
