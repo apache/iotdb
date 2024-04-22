@@ -710,7 +710,6 @@ public class IoTConsensusServerImpl {
       configuration.add(Peer.deserialize(buffer));
     }
     persistConfiguration();
-    Files.delete(oldConfigurationPath);
   }
 
   public static String generateConfigurationDatFileName(int nodeId, String suffix) {
