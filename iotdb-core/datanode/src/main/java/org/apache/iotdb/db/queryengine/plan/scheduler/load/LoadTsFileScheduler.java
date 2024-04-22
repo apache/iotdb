@@ -67,7 +67,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.slf4j.Logger;
@@ -601,7 +600,7 @@ public class LoadTsFileScheduler implements IScheduler {
                 .map(
                     pair ->
                         dataPartition.getDataRegionReplicaSetForWriting(
-                            ((PlainDeviceID) pair.left).toStringID(), pair.right))
+                            pair.left.toString(), pair.right))
                 .collect(Collectors.toList()));
       }
       return replicaSets;
@@ -618,8 +617,7 @@ public class LoadTsFileScheduler implements IScheduler {
           .map(
               entry ->
                   new DataPartitionQueryParam(
-                      ((PlainDeviceID) entry.getKey()).toStringID(),
-                      new ArrayList<>(entry.getValue())))
+                      entry.getKey().toString(), new ArrayList<>(entry.getValue())))
           .collect(Collectors.toList());
     }
   }

@@ -28,7 +28,6 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
@@ -47,7 +46,7 @@ public class AlignedSingleColumnSeriesScanLimitOffsetPushDownTest
       throws IllegalPathException {
     AlignedPath scanPath =
         new AlignedPath(
-            ((PlainDeviceID) TEST_DEVICE).toStringID(),
+            TEST_DEVICE.toString(),
             Collections.singletonList("s1"),
             Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT32)));
 
