@@ -295,13 +295,20 @@ public class IoTConsensusServerImpl {
     File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<Path> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
     AtomicLong snapshotSizeSumAtomic = new AtomicLong();
+    StringBuilder allFilesStr = new StringBuilder();
     snapshotPaths.forEach(
-        snapshotPath -> {
+        path -> {
           try {
-            snapshotSizeSumAtomic.addAndGet(Files.size(snapshotPath));
+            long fileSize = Files.size(path);
+            snapshotSizeSumAtomic.addAndGet(fileSize);
+            allFilesStr
+                .append("\n")
+                .append(path)
+                .append(" ")
+                .append(FileUtils.byteCountToDisplaySize(fileSize));
           } catch (IOException e) {
             logger.error(
-                "[SNAPSHOT TRANSMISSION] Calculate snapshot file's size fail: {}", snapshotPath, e);
+                "[SNAPSHOT TRANSMISSION] Calculate snapshot file's size fail: {}", path, e);
           }
         });
     final long snapshotSizeSum = snapshotSizeSumAtomic.get();
@@ -313,6 +320,8 @@ public class IoTConsensusServerImpl {
         snapshotPaths.size(),
         FileUtils.byteCountToDisplaySize(snapshotSizeSum),
         snapshotDir);
+    logger.info(
+        "[SNAPSHOT TRANSMISSION] All the files below shell be transmitted: {}", allFilesStr);
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       for (Path path : snapshotPaths) {
@@ -334,7 +343,8 @@ public class IoTConsensusServerImpl {
           transitedSnapshotSizeSum += reader.getTotalReadSize();
           transitedFilesNum++;
           logger.info(
-              "[SNAPSHOT TRANSMISSION] The overall progress for dir {}: files {}/{} done, size {}/{} done, time {} passed",
+              "[SNAPSHOT TRANSMISSION] File {} done. The overall progress for dir {}: files {}/{} done, size {}/{} done, time {} passed",
+              path,
               newSnapshotDirName,
               transitedFilesNum,
               snapshotPaths.size(),
