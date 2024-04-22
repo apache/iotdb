@@ -21,11 +21,12 @@ package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.response.PipeConsensusTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
+import org.apache.iotdb.consensus.pipe.client.SyncPipeConsensusServiceClient;
 import org.apache.iotdb.consensus.pipe.client.manager.PipeConsensusSyncClientManager;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder.PipeConsensusSyncBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
@@ -39,7 +40,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -48,8 +48,8 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.commons.lang3.tuple.MutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -166,7 +166,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
   }
 
   private void doTransfer() {
-    final Pair<SyncDataNodeInternalServiceClient, Boolean> clientAndStatus =
+    final MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus =
         syncRetryAndHandshakeClientManager.borrowClient(getFollowerUrl());
     final TPipeConsensusTransferResp resp;
     try {
@@ -198,7 +198,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException {
     final InsertNode insertNode;
-    Pair<SyncDataNodeInternalServiceClient, Boolean> clientAndStatus = null;
+    MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus = null;
     final TPipeConsensusTransferResp resp;
 
     try {
@@ -245,7 +245,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
 
   private void doTransfer(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
-    final Pair<SyncDataNodeInternalServiceClient, Boolean> clientAndStatus =
+    final MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus =
         syncRetryAndHandshakeClientManager.borrowClient(getFollowerUrl());
     final TPipeConsensusTransferResp resp;
 
@@ -284,7 +284,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
       throws PipeException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
     final File modFile = pipeTsFileInsertionEvent.getModFile();
-    final Pair<SyncDataNodeInternalServiceClient, Boolean> clientAndStatus =
+    final MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus =
         syncRetryAndHandshakeClientManager.borrowClient(getFollowerUrl());
     final TPipeConsensusTransferResp resp;
 
@@ -339,7 +339,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
 
   protected void transferFilePieces(
       File file,
-      Pair<SyncDataNodeInternalServiceClient, Boolean> clientAndStatus,
+      MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus,
       boolean isMultiFile)
       throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();

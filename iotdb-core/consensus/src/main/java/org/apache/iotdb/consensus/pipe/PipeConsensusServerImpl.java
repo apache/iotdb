@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.consensus.pipe;
 
-import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferResp;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 
 public class PipeConsensusServerImpl {
   // mock interface

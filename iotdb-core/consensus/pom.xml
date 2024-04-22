@@ -121,7 +121,6 @@
             <groupId>org.apache.tsfile</groupId>
             <artifactId>tsfile</artifactId>
             <version>${tsfile.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

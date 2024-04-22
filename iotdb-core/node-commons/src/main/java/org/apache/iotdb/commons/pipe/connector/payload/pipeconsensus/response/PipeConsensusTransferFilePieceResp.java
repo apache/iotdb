@@ -20,9 +20,10 @@
 package org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferResp;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
+
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

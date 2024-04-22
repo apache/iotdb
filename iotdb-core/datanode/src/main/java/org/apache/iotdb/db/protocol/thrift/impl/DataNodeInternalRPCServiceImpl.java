@@ -189,8 +189,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
@@ -2142,11 +2140,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return new TSStatus(TSStatusCode.DROP_PIPE_PLUGIN_ON_DATANODE_ERROR.getStatusCode())
           .setMessage(e.getMessage());
     }
-  }
-
-  @Override
-  public TPipeConsensusTransferResp pipeConsensusTransfer(TPipeConsensusTransferReq req) {
-    return PipeAgent.receiver().pipeConsensus().receive(req);
   }
 
   private boolean isSucceed(TSStatus status) {

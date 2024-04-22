@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.reques
 
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusTransferFilePieceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferReq;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 
 import java.io.IOException;
 

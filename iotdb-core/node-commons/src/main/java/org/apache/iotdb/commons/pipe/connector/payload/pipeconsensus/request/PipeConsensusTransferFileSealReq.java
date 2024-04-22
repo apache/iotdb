@@ -19,16 +19,18 @@
 
 package org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request;
 
-import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferReq;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
+
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public abstract class PipeConsensusTransferFileSealReq extends TPipeConsensusTransferReq {
+public abstract class PipeConsensusTransferFileSealReq
+    extends org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq {
 
   private transient String fileName;
   private transient long fileLength;

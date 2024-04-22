@@ -34,6 +34,11 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
   /** TODO：添加发送端重启后，释放资源逻辑 */
   public void handleClientExit() {}
 
+  //  @Override
+  //  public TPipeConsensusTransferResp pipeConsensusTransfer(TPipeConsensusTransferReq req) {
+  //    return PipeAgent.receiver().pipeConsensus().receive(req);
+  //  }
+
   @Override
   public void pipeConsensusTransfer(
       TPipeConsensusTransferReq req,

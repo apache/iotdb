@@ -22,8 +22,8 @@ package org.apache.iotdb.db.pipe.receiver.protocol.pipeconsensus;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.consensus.pipe.PipeConsensusServerImpl;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferResp;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -48,7 +48,8 @@ public class PipeConsensusReceiverAgent extends PipeConsensusServerImpl {
         PipeConsensusRequestVersion.VERSION_1.getVersion(), PipeConsensusReceiver::new);
   }
 
-  public TPipeConsensusTransferResp receive(TPipeConsensusTransferReq req) {
+  public org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp receive(
+      TPipeConsensusTransferReq req) {
     final byte reqVersion = req.getVersion();
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
       return getReceiver(reqVersion).receive(req);

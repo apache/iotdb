@@ -304,19 +304,6 @@ struct TPipeHeartbeatResp {
   1: required list<binary> pipeMetaList
 }
 
-struct TPipeConsensusTransferReq {
-  1:required i8 version
-  2:required i16 type
-  3:required i32 commitIndex
-  4:required i32 rebootTimes
-  5:required binary body
-}
-
-struct TPipeConsensusTransferResp {
-  1:required common.TSStatus status
-  2:optional binary body
-}
-
 enum TSchemaLimitLevel{
     DEVICE,
     TIMESERIES
@@ -984,11 +971,6 @@ service IDataNodeRPCService {
   * ConfigNode will ask DataNode for pipe meta in every few seconds
   **/
   TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req)
-
-  /**
-  * Transfer data in a given ConsensusGroup, used by PipeConsensus
-  **/
-  TPipeConsensusTransferResp pipeConsensusTransfer(TPipeConsensusTransferReq req)
 
  /**
   * Execute CQ on DataNode
