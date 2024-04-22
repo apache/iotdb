@@ -103,7 +103,7 @@ public class TsFileSketchToolTest {
 
         // add measurements into TSFileWriter
         // construct the tablet
-        Tablet tablet = new Tablet(((PlainDeviceID) device).toStringID(), measurementSchemas);
+        Tablet tablet = new Tablet(device.toString(), measurementSchemas);
         long[] timestamps = tablet.timestamps;
         Object[] values = tablet.values;
         long timestamp = 1;
@@ -129,8 +129,7 @@ public class TsFileSketchToolTest {
 
         // add aligned measurements into TSFileWriter
         // construct the tablet
-        tablet =
-            new Tablet(((PlainDeviceID) alignedDevice).toStringID(), alignedMeasurementSchemas);
+        tablet = new Tablet(alignedDevice.toString(), alignedMeasurementSchemas);
         timestamps = tablet.timestamps;
         values = tablet.values;
         timestamp = 1;

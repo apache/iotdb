@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -86,7 +85,7 @@ public class MeasurementPath extends PartialPath {
 
   public MeasurementPath(IDeviceID device, String measurement, IMeasurementSchema measurementSchema)
       throws IllegalPathException {
-    this(((PlainDeviceID) device).toStringID(), measurement, measurementSchema);
+    this(device.toString(), measurement, measurementSchema);
   }
 
   public MeasurementPath(String device, String measurement, IMeasurementSchema measurementSchema)

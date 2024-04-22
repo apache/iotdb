@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -135,8 +134,7 @@ public class PlainDeviceTimeIndex extends ArrayDeviceTimeIndex implements ITimeI
           }
         } else {
           if (devicePattern.matchFullPath(
-              DataNodeDevicePathCache.getInstance()
-                  .getPartialPath(((PlainDeviceID) entry.getKey()).toStringID()))) {
+              DataNodeDevicePathCache.getInstance().getPartialPath(entry.getKey().toString()))) {
             deviceMatchInfo.add(entry.getKey());
             hasMatchedDevice = true;
             if (startTimes[entry.getValue()] < startTime) {
