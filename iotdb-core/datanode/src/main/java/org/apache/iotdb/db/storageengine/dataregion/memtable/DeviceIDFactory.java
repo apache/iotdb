@@ -29,7 +29,7 @@ import java.util.function.Function;
 
 /** factory to build device id according to configured algorithm */
 public class DeviceIDFactory {
-  private Function<String[], IDeviceID> getDeviceIDFunction;
+  private Function<String, IDeviceID> getDeviceIDFunction;
 
   // region DeviceIDFactory Singleton
   private static class DeviceIDFactoryHolder {
@@ -51,8 +51,7 @@ public class DeviceIDFactory {
   }
 
   private DeviceIDFactory() {
-    // TODO: provide a factory
-    getDeviceIDFunction = StringArrayDeviceID::new;
+    getDeviceIDFunction = IDeviceID.Factory.DEFAULT_FACTORY::create;
   }
   // endregion
 
@@ -63,7 +62,7 @@ public class DeviceIDFactory {
    * @return device id of the timeseries
    */
   public IDeviceID getDeviceID(PartialPath devicePath) {
-    return getDeviceIDFunction.apply(devicePath.getNodes());
+    return getDeviceIDFunction.apply(devicePath.getFullPath());
   }
 
   /** reset id method */
