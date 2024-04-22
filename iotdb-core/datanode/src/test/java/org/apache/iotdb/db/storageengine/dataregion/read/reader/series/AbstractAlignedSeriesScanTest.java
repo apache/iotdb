@@ -63,7 +63,8 @@ import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFi
 public abstract class AbstractAlignedSeriesScanTest {
 
   protected static final String TEST_DATABASE = "root.sg_pd";
-  protected static final IDeviceID TEST_DEVICE = new PlainDeviceID(TEST_DATABASE + ".d1_aligned");
+  protected static final IDeviceID TEST_DEVICE =
+      IDeviceID.Factory.DEFAULT_FACTORY.create(TEST_DATABASE + ".d1_aligned");
 
   /**
    * The data distribution is as follows.

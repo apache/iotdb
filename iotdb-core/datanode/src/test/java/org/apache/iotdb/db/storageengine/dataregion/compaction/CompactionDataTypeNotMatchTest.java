@@ -32,7 +32,6 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
@@ -51,7 +50,8 @@ import java.util.List;
 
 public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
   private final String oldThreadName = Thread.currentThread().getName();
-  private final IDeviceID device = new PlainDeviceID(COMPACTION_TEST_SG + ".d1");
+  private final IDeviceID device =
+      IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + ".d1");
 
   @Before
   public void setUp()

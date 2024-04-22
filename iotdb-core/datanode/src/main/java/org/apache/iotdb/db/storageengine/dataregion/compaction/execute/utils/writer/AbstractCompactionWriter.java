@@ -30,7 +30,6 @@ import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.Chunk;
@@ -312,9 +311,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected void checkPreviousTimestamp(long currentWritingTimestamp, int subTaskId) {
     if (currentWritingTimestamp <= lastTime[subTaskId]) {
       throw new CompactionLastTimeCheckFailedException(
-          ((PlainDeviceID) deviceId).toStringID()
-              + IoTDBConstant.PATH_SEPARATOR
-              + measurementId[subTaskId],
+          deviceId.toString() + IoTDBConstant.PATH_SEPARATOR + measurementId[subTaskId],
           currentWritingTimestamp,
           lastTime[subTaskId]);
     }

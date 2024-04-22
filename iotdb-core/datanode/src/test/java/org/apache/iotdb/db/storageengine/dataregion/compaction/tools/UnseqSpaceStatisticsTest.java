@@ -22,7 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.tools;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.Interval;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.UnseqSpaceStatistics;
 
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -32,48 +32,56 @@ public class UnseqSpaceStatisticsTest {
   public void test01() {
     UnseqSpaceStatistics unseqSpaceStatistics = new UnseqSpaceStatistics();
     unseqSpaceStatistics.updateMeasurement(
-        new PlainDeviceID("root.db.d1"), "s1", new Interval(1, 10));
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), "s1", new Interval(1, 10));
     unseqSpaceStatistics.updateMeasurement(
-        new PlainDeviceID("root.db.d1"), "s1", new Interval(5, 15));
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), "s1", new Interval(5, 15));
     unseqSpaceStatistics.updateMeasurement(
-        new PlainDeviceID("root.db.d1"), "s2", new Interval(1, 10));
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), "s2", new Interval(1, 10));
     unseqSpaceStatistics.updateMeasurement(
-        new PlainDeviceID("root.db.d2"), "s2", new Interval(1, 10));
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d2"), "s2", new Interval(1, 10));
 
     Assert.assertEquals(2, unseqSpaceStatistics.getChunkStatisticMap().size());
     Assert.assertEquals(
-        2, unseqSpaceStatistics.getChunkStatisticMap().get(new PlainDeviceID("root.db.d1")).size());
+        2,
+        unseqSpaceStatistics
+            .getChunkStatisticMap()
+            .get(IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"))
+            .size());
     Assert.assertEquals(
-        1, unseqSpaceStatistics.getChunkStatisticMap().get(new PlainDeviceID("root.db.d2")).size());
+        1,
+        unseqSpaceStatistics
+            .getChunkStatisticMap()
+            .get(IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d2"))
+            .size());
   }
 
   @Test
   public void test02() {
     UnseqSpaceStatistics unseqSpaceStatistics = new UnseqSpaceStatistics();
     unseqSpaceStatistics.updateMeasurement(
-        new PlainDeviceID("root.db.d1"), "s1", new Interval(1, 10));
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), "s1", new Interval(1, 10));
     unseqSpaceStatistics.updateMeasurement(
-        new PlainDeviceID("root.db.d1"), "s1", new Interval(5, 15));
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), "s1", new Interval(5, 15));
     unseqSpaceStatistics.updateMeasurement(
-        new PlainDeviceID("root.db.d1"), "s2", new Interval(1, 10));
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), "s2", new Interval(1, 10));
     unseqSpaceStatistics.updateMeasurement(
-        new PlainDeviceID("root.db.d2"), "s2", new Interval(1, 10));
+        IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d2"), "s2", new Interval(1, 10));
 
     Assert.assertTrue(
         unseqSpaceStatistics.chunkHasOverlap(
-            new PlainDeviceID("root.db.d1"), "s1", new Interval(1, 10)));
+            IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), "s1", new Interval(1, 10)));
     Assert.assertFalse(
         unseqSpaceStatistics.chunkHasOverlap(
-            new PlainDeviceID("root.db.d1"), "s4", new Interval(1, 10)));
+            IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), "s4", new Interval(1, 10)));
     Assert.assertFalse(
         unseqSpaceStatistics.chunkHasOverlap(
-            new PlainDeviceID("root.db.d2"), "s1", new Interval(1, 10)));
+            IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d2"), "s1", new Interval(1, 10)));
 
     Assert.assertFalse(
         unseqSpaceStatistics.chunkHasOverlap(
-            new PlainDeviceID("root.db.d3"), "s1", new Interval(1, 10)));
+            IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d3"), "s1", new Interval(1, 10)));
     Assert.assertFalse(
         unseqSpaceStatistics.chunkHasOverlap(
-            new PlainDeviceID("root.db.d1"), "s1", new Interval(21, 30)));
+            IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"), "s1", new Interval(21, 30)));
   }
 }

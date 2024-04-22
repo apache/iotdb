@@ -151,7 +151,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       // in this case, all data can be matched without checking the measurements
       if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
         if (!entry.getValue().isEmpty()) {
-          filteredDeviceMeasurementsMap.put(new PlainDeviceID(deviceId), entry.getValue());
+          filteredDeviceMeasurementsMap.put(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId), entry.getValue());
         }
       }
 
@@ -170,7 +171,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
         }
 
         if (!filteredMeasurements.isEmpty()) {
-          filteredDeviceMeasurementsMap.put(new PlainDeviceID(deviceId), filteredMeasurements);
+          filteredDeviceMeasurementsMap.put(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId), filteredMeasurements);
         }
       }
 
@@ -239,7 +241,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
             final Tablet tablet = tabletIterator.next();
             final boolean isAligned =
-                deviceIsAlignedMap.getOrDefault(new PlainDeviceID(tablet.getDeviceId()), false);
+                deviceIsAlignedMap.getOrDefault(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(tablet.getDeviceId()), false);
 
             final TabletInsertionEvent next;
             if (!hasNext()) {

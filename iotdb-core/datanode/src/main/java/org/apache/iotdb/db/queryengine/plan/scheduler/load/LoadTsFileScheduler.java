@@ -528,7 +528,8 @@ public class LoadTsFileScheduler implements IScheduler {
                   .map(
                       data ->
                           new Pair<>(
-                              (IDeviceID) new PlainDeviceID(data.getDevice()),
+                              (IDeviceID)
+                                  IDeviceID.Factory.DEFAULT_FACTORY.create(data.getDevice()),
                               data.getTimePartitionSlot()))
                   .collect(Collectors.toList()),
               scheduler.queryContext.getSession().getUserName());
