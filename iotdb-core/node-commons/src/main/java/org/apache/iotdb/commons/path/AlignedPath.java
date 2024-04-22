@@ -178,6 +178,10 @@ public class AlignedPath extends PartialPath {
     this.schemaList.addAll(schemas);
   }
 
+  public void setSchemaList(List<IMeasurementSchema> schemaList) {
+    this.schemaList = schemaList;
+  }
+
   public void addMeasurement(MeasurementPath measurementPath) {
     if (measurementList == null) {
       measurementList = new ArrayList<>();

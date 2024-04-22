@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -43,9 +44,21 @@ import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskVisitor;
+import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.RelationalModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.relational.sql.tree.CreateDB;
+import org.apache.iotdb.db.relational.sql.tree.CreateTable;
+import org.apache.iotdb.db.relational.sql.tree.DescribeTable;
+import org.apache.iotdb.db.relational.sql.tree.DropDB;
+import org.apache.iotdb.db.relational.sql.tree.DropTable;
+import org.apache.iotdb.db.relational.sql.tree.ShowDB;
+import org.apache.iotdb.db.relational.sql.tree.ShowTables;
+import org.apache.iotdb.db.relational.sql.tree.Use;
 import org.apache.iotdb.db.utils.SetThreadName;
 
 import org.slf4j.Logger;
@@ -211,6 +224,67 @@ public class Coordinator {
             scheduledExecutor,
             partitionFetcher,
             schemaFetcher,
+            SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+            ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
+    return new QueryExecution(treeModelPlanner, queryContext, executor);
+  }
+
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.db.relational.sql.tree.Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      Metadata metadata,
+      long timeOut) {
+    return execution(
+        queryId,
+        session,
+        sql,
+        ((queryContext, startTime) ->
+            createQueryExecutionForTableModel(
+                statement,
+                sqlParser,
+                clientSession,
+                queryContext,
+                metadata,
+                timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+                startTime)));
+  }
+
+  private IQueryExecution createQueryExecutionForTableModel(
+      org.apache.iotdb.db.relational.sql.tree.Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      MPPQueryContext queryContext,
+      Metadata metadata,
+      long timeOut,
+      long startTime) {
+    queryContext.setTimeOut(timeOut);
+    queryContext.setStartTime(startTime);
+    if (statement instanceof DropDB
+        || statement instanceof ShowDB
+        || statement instanceof CreateDB
+        || statement instanceof Use
+        || statement instanceof CreateTable
+        || statement instanceof DescribeTable
+        || statement instanceof ShowTables
+        || statement instanceof DropTable) {
+      return new ConfigExecution(
+          queryContext,
+          null,
+          executor,
+          statement.accept(new TableConfigTaskVisitor(clientSession, metadata), queryContext));
+    }
+    RelationalModelPlanner treeModelPlanner =
+        new RelationalModelPlanner(
+            statement,
+            sqlParser,
+            metadata,
+            executor,
+            writeOperationExecutor,
+            scheduledExecutor,
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
     return new QueryExecution(treeModelPlanner, queryContext, executor);

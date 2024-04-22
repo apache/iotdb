@@ -492,7 +492,8 @@ public class IoTDBConnection implements Connection {
     openReq.setUsername(params.getUsername());
     openReq.setPassword(params.getPassword());
     openReq.setZoneId(getTimeZone());
-    openReq.putToConfiguration("version", params.getVersion().toString());
+    openReq.putToConfiguration(Config.VERSION, params.getVersion().toString());
+    openReq.putToConfiguration(Config.SQL_DIALECT, params.getSqlDialect());
 
     TSOpenSessionResp openResp = null;
     try {

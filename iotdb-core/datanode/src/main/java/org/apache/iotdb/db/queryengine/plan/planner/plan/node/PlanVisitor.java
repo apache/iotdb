@@ -108,6 +108,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 @SuppressWarnings("java:S6539") // suppress "Monster class" warning
 public abstract class PlanVisitor<R, C> {
@@ -505,6 +506,51 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitPipeOperateSchemaQueueNode(PipeOperateSchemaQueueNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  // =============================== Used for Relation Model ====================================
+  public R visitFilter(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitTableScan(TableScanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitProject(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitLimit(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitOffset(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitMergeSort(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitOutput(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitSort(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTopK(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode node, C context) {
     return visitPlan(node, context);
   }
 }

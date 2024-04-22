@@ -20,19 +20,26 @@
 package org.apache.iotdb.db.queryengine.common;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.queryengine.plan.relational.security.Identity;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.Objects;
+import java.util.Optional;
 
 public class SessionInfo {
   private final long sessionId;
   private final String userName;
   private final ZoneId zoneId;
+
+  @Nullable private final String databaseName;
 
   private ClientVersion version = ClientVersion.V_1_0;
 
@@ -40,13 +47,26 @@ public class SessionInfo {
     this.sessionId = sessionId;
     this.userName = userName;
     this.zoneId = zoneId;
+    this.databaseName = null;
   }
 
-  public SessionInfo(long sessionId, String userName, ZoneId zoneId, ClientVersion version) {
+  @TestOnly
+  public SessionInfo(
+      long sessionId, String userName, ZoneId zoneId, @Nullable String databaseName) {
+    this(sessionId, userName, zoneId, ClientVersion.V_1_0, databaseName);
+  }
+
+  public SessionInfo(
+      long sessionId,
+      String userName,
+      ZoneId zoneId,
+      ClientVersion version,
+      @Nullable String databaseName) {
     this.sessionId = sessionId;
     this.userName = userName;
     this.zoneId = zoneId;
     this.version = version;
+    this.databaseName = databaseName;
   }
 
   public long getSessionId() {
@@ -63,6 +83,14 @@ public class SessionInfo {
 
   public ClientVersion getVersion() {
     return version;
+  }
+
+  public Identity getIdentity() {
+    return new Identity(userName);
+  }
+
+  public Optional<String> getDatabaseName() {
+    return Optional.ofNullable(databaseName);
   }
 
   public static SessionInfo deserializeFrom(ByteBuffer buffer) {

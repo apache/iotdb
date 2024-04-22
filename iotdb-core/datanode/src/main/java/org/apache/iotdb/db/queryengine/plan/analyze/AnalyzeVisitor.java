@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.table.TableAlreadyExistsException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIncompatibleException;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -139,6 +140,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatemen
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -2299,6 +2301,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setStatement(createTimeSeriesStatement);
 
+    checkIsTableCompatible(createTimeSeriesStatement.getPath(), context);
     checkIsTemplateCompatible(
         createTimeSeriesStatement.getPath(), createTimeSeriesStatement.getAlias(), context);
 
@@ -2343,6 +2346,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 templateInfo.left.getName(),
                 templateInfo.right));
       }
+    }
+  }
+
+  private void checkIsTableCompatible(PartialPath timeseriesPath, MPPQueryContext context) {
+    DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.TIMESERIES_VS_TABLE);
+    context.addAcquiredLockNum(SchemaLockType.TIMESERIES_VS_TABLE);
+    Pair<String, String> tableInfo =
+        DataNodeTableCache.getInstance().checkTableCreateAndPreCreateOnGivenPath(timeseriesPath);
+    if (tableInfo != null) {
+      throw new SemanticException(new TableAlreadyExistsException(tableInfo.left, tableInfo.right));
     }
   }
 
@@ -2395,6 +2408,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setStatement(createAlignedTimeSeriesStatement);
 
+    checkIsTableCompatible(createAlignedTimeSeriesStatement.getDevicePath(), context);
     checkIsTemplateCompatible(
         createAlignedTimeSeriesStatement.getDevicePath(),
         createAlignedTimeSeriesStatement.getMeasurements(),
@@ -2422,6 +2436,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Analysis analysis = new Analysis();
     analysis.setStatement(internalCreateTimeSeriesStatement);
+    checkIsTableCompatible(internalCreateTimeSeriesStatement.getDevicePath(), context);
     checkIsTemplateCompatible(
         internalCreateTimeSeriesStatement.getDevicePath(),
         internalCreateTimeSeriesStatement.getMeasurements(),
@@ -2454,6 +2469,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     PathPatternTree pathPatternTree = new PathPatternTree();
     for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> entry :
         internalCreateMultiTimeSeriesStatement.getDeviceMap().entrySet()) {
+      checkIsTableCompatible(entry.getKey(), context);
       checkIsTemplateCompatible(
           entry.getKey(), entry.getValue().right.getMeasurements(), null, context);
       pathPatternTree.appendFullPath(entry.getKey().concatNode(ONE_LEVEL_PATH_WILDCARD));
@@ -2479,6 +2495,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     List<PartialPath> timeseriesPathList = createMultiTimeSeriesStatement.getPaths();
     List<String> aliasList = createMultiTimeSeriesStatement.getAliasList();
     for (int i = 0; i < timeseriesPathList.size(); i++) {
+      checkIsTableCompatible(timeseriesPathList.get(i), context);
       checkIsTemplateCompatible(
           timeseriesPathList.get(i), aliasList == null ? null : aliasList.get(i), context);
     }
@@ -3589,6 +3606,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     // Make sure all paths are not under any templates
     try {
       for (PartialPath path : createLogicalViewStatement.getTargetPathList()) {
+        checkIsTableCompatible(path, context);
         checkIsTemplateCompatible(path, null, context);
       }
     } catch (Exception e) {

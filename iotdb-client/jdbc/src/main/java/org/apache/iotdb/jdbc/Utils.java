@@ -117,6 +117,10 @@ public class Utils {
       params.setTrustStorePwd(info.getProperty(Config.TRUST_STORE_PWD));
     }
 
+    if (info.containsKey(Config.SQL_DIALECT)) {
+      params.setSqlDialect(info.getProperty(Config.SQL_DIALECT));
+    }
+
     return params;
   }
 
@@ -154,6 +158,7 @@ public class Utils {
         case Config.TRUST_STORE_PWD:
         case Config.VERSION:
         case Config.NETWORK_TIMEOUT:
+        case Config.SQL_DIALECT:
           info.put(key, value);
           break;
         case Config.TIME_ZONE:

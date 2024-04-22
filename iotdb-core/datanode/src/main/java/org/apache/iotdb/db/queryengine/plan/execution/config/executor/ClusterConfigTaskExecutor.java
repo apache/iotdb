@@ -42,6 +42,8 @@ import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeT
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
@@ -108,12 +110,14 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -141,6 +145,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegion
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
@@ -199,8 +206,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.db.relational.sql.tree.CreateDB;
+import org.apache.iotdb.db.relational.sql.tree.DropDB;
+import org.apache.iotdb.db.relational.sql.tree.ShowDB;
+import org.apache.iotdb.db.relational.sql.tree.Use;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
@@ -247,7 +259,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR_CHAR;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
@@ -2674,6 +2690,172 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> showDatabases(ShowDB showDB) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Construct request using statement
+    List<String> databasePathPattern = Arrays.asList(ALL_RESULT_NODES);
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      TGetDatabaseReq req = new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize());
+      TShowDatabaseResp resp = client.showDatabase(req);
+      // build TSBlock
+      ShowDBTask.buildTSBlock(resp.getDatabaseInfoMap(), future);
+    } catch (IOException | ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> useDatabase(Use useDB, IClientSession clientSession) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Construct request using statement
+    List<String> databasePathPattern = Arrays.asList(ROOT, useDB.getDatabase().getValue());
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      TGetDatabaseReq req = new TGetDatabaseReq(databasePathPattern, ALL_MATCH_SCOPE.serialize());
+      TShowDatabaseResp resp = client.showDatabase(req);
+      if (!resp.getDatabaseInfoMap().isEmpty()) {
+        clientSession.setDatabaseName(useDB.getDatabase().getValue());
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        future.setException(
+            new IoTDBException(
+                String.format("Database %s doesn't exists.", useDB.getDatabase().getValue()),
+                TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()));
+      }
+    } catch (IOException | ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  private String transformDBName(String dbName) {
+    return ROOT + PATH_SEPARATOR_CHAR + dbName;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropDatabase(DropDB dropDB) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TDeleteDatabasesReq req =
+        new TDeleteDatabasesReq(
+            Collections.singletonList(transformDBName(dropDB.getDbName().getValue())));
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus = client.deleteDatabases(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.warn(
+            "Failed to execute delete database {} in config node, status is {}.",
+            dropDB.getDbName().getValue(),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.getCode()));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createDatabase(CreateDB createDB) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Construct request using statement
+    TDatabaseSchema databaseSchema = new TDatabaseSchema();
+    databaseSchema.setName(ROOT + PATH_SEPARATOR_CHAR + createDB.getDbName());
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
+      // Get response or throw exception
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        // If database already exists when loading, we do not throw exceptions to avoid printing too
+        // many logs
+        if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
+            && createDB.isSetIfNotExists()) {
+          future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        } else {
+          LOGGER.warn(
+              "Failed to execute create database {} in config node, status is {}.",
+              createDB.getDbName(),
+              tsStatus);
+          future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+        }
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createTable(
+      TsTable table, String database, boolean ifNotExists) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      TSStatus tsStatus;
+      do {
+        try {
+          tsStatus =
+              configNodeClient.createTable(
+                  ByteBuffer.wrap(TsTableInternalRPCUtil.serializeSingleTsTable(database, table)));
+        } catch (TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // Time out mainly caused by slow execution, just wait
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // Keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || (TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
+              && ifNotExists)) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        LOGGER.warn(
+            "Failed to create table {}.{} in config node, status is {}.",
+            database,
+            table.getTableName(),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> describeTable(String database, String tableName) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
+    if (table == null) {
+      future.setException(new TableNotExistsException(database, tableName));
+    } else {
+      DescribeTableTask.buildTsBlock(table, future);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showTables(String database) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    List<TsTable> tableList = DataNodeTableCache.getInstance().getTables(database);
+    ShowTablesTask.buildTsBlock(tableList, future);
+    return future;
+  }
+
   public void handlePipeConfigClientExit(String clientId) {
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {

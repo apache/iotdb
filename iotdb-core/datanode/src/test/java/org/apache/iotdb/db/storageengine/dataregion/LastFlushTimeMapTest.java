@@ -27,7 +27,7 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
@@ -201,7 +201,7 @@ public class LastFlushTimeMapTest {
     IDeviceID device = new PlainDeviceID("root.vehicle.d0");
     File unseqResourceFile1 = new File(unseqDirPath + File.separator + "4-4-0-0.tsfile.resource");
     TsFileResource unseqResource1 = new TsFileResource();
-    unseqResource1.setTimeIndex(new DeviceTimeIndex());
+    unseqResource1.setTimeIndex(new ArrayDeviceTimeIndex());
     unseqResource1.setFile(unseqResourceFile1);
     unseqResource1.updateStartTime(device, 1);
     unseqResource1.updateEndTime(device, 100);
@@ -209,7 +209,7 @@ public class LastFlushTimeMapTest {
 
     File unseqResourceFile2 = new File(unseqDirPath + File.separator + "5-5-0-0.tsfile.resource");
     TsFileResource unseqResource2 = new TsFileResource();
-    unseqResource2.setTimeIndex(new DeviceTimeIndex());
+    unseqResource2.setTimeIndex(new ArrayDeviceTimeIndex());
     unseqResource2.setFile(unseqResourceFile2);
     unseqResource2.updateStartTime(device, 1);
     unseqResource2.updateEndTime(device, 10);
@@ -217,7 +217,7 @@ public class LastFlushTimeMapTest {
 
     File unseqResourceFile3 = new File(unseqDirPath + File.separator + "6-6-0-0.tsfile.resource");
     TsFileResource unseqResource3 = new TsFileResource();
-    unseqResource3.setTimeIndex(new DeviceTimeIndex());
+    unseqResource3.setTimeIndex(new ArrayDeviceTimeIndex());
     unseqResource3.setFile(unseqResourceFile3);
     unseqResource3.updateStartTime(device, 1);
     unseqResource3.updateEndTime(device, 70);

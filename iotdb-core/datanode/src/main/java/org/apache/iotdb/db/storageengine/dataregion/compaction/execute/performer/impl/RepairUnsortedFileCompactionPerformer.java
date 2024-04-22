@@ -22,7 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.RepairUnsortedFileCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import java.io.File;
@@ -63,7 +63,7 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
     TsFileResource targetFile = targetFiles.get(0);
     Files.createLink(targetFile.getTsFile().toPath(), seqSourceFile.getTsFile().toPath());
     ITimeIndex timeIndex = seqSourceFile.getTimeIndex();
-    if (timeIndex instanceof DeviceTimeIndex) {
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
       targetFile.setTimeIndex(timeIndex);
     } else {
       targetFile.setTimeIndex(seqSourceFile.buildDeviceTimeIndex());

@@ -153,6 +153,8 @@ public class SessionPool implements ISessionPool {
 
   protected long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
 
+  protected String sqlDialect = SessionConfig.SQL_DIALECT;
+
   private static final String INSERT_RECORD_FAIL = "insertRecord failed";
 
   private static final String INSERT_RECORD_ERROR_MSG = "unexpected error in insertRecord";
@@ -487,6 +489,7 @@ public class SessionPool implements ISessionPool {
     this.trustStorePwd = builder.trustStorePwd;
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
+    this.sqlDialect = builder.sqlDialect;
 
     if (enableAutoFetch) {
       initThreadPool();
@@ -541,6 +544,7 @@ public class SessionPool implements ISessionPool {
               .trustStorePwd(trustStorePwd)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
+              .sqlDialect(sqlDialect)
               .build();
     } else {
       // Construct redirect-able Session
@@ -561,6 +565,7 @@ public class SessionPool implements ISessionPool {
               .trustStorePwd(trustStorePwd)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
+              .sqlDialect(sqlDialect)
               .build();
     }
     session.setEnableQueryRedirection(enableQueryRedirection);
@@ -3524,6 +3529,8 @@ public class SessionPool implements ISessionPool {
 
     private long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
 
+    private String sqlDialect = SessionConfig.SQL_DIALECT;
+
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
       return this;
@@ -3631,6 +3638,11 @@ public class SessionPool implements ISessionPool {
 
     public Builder retryIntervalInMs(long retryIntervalInMs) {
       this.retryIntervalInMs = retryIntervalInMs;
+      return this;
+    }
+
+    public Builder sqlDialect(String sqlDialect) {
+      this.sqlDialect = sqlDialect;
       return this;
     }
 

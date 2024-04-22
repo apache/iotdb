@@ -146,6 +146,11 @@ public enum ConfigPhysicalPlanType {
   CommitSetSchemaTemplate((short) 813),
   ExtendSchemaTemplate((short) 814),
 
+  /* Table */
+  PreCreateTable((short) 850),
+  RollbackCreateTable((short) 851),
+  CommitCreateTable((short) 852),
+
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated
   CreatePipeSinkV1((short) 900),

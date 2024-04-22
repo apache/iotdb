@@ -23,7 +23,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionChunkReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -228,7 +228,7 @@ public class RepairDataFileScanUtil {
           || resource.getStatus() == TsFileResourceStatus.DELETED) {
         continue;
       }
-      DeviceTimeIndex deviceTimeIndex;
+      ArrayDeviceTimeIndex deviceTimeIndex;
       try {
         deviceTimeIndex = getDeviceTimeIndex(resource);
       } catch (Exception ignored) {
@@ -263,10 +263,11 @@ public class RepairDataFileScanUtil {
     return overlapResources;
   }
 
-  private static DeviceTimeIndex getDeviceTimeIndex(TsFileResource resource) throws IOException {
+  private static ArrayDeviceTimeIndex getDeviceTimeIndex(TsFileResource resource)
+      throws IOException {
     ITimeIndex timeIndex = resource.getTimeIndex();
-    if (timeIndex instanceof DeviceTimeIndex) {
-      return (DeviceTimeIndex) timeIndex;
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      return (ArrayDeviceTimeIndex) timeIndex;
     }
     return resource.buildDeviceTimeIndex();
   }

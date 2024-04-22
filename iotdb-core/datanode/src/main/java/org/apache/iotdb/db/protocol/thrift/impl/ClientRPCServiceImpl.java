@@ -81,6 +81,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationSt
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -101,6 +103,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSc
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -230,6 +233,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private final ISchemaFetcher schemaFetcher;
 
+  private final Metadata metadata;
+
+  private final SqlParser relationSqlParser;
+
   private final TsBlockSerde serde = new TsBlockSerde();
 
   private final DataNodeSchemaCache DATA_NODE_SCHEMA_CACHE = DataNodeSchemaCache.getInstance();
@@ -263,6 +270,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public ClientRPCServiceImpl() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
+    metadata = new TableMetadataImpl();
+    relationSqlParser = new SqlParser();
   }
 
   private TSExecuteStatementResp executeStatementInternal(
@@ -281,38 +290,65 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     StatementType statementType = null;
     Throwable t = null;
     try {
-      Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
-
-      if (s == null) {
-        return RpcUtils.getTSExecuteStatementResp(
-            RpcUtils.getStatus(
-                TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
-      }
-      // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return RpcUtils.getTSExecuteStatementResp(status);
-      }
-
-      quota =
-          DataNodeThrottleQuotaManager.getInstance()
-              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
-      statementType = s.getType();
-      if (ENABLE_AUDIT_LOG) {
-        AuditLogger.log(statement, s);
-      }
-
-      queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
       // create and cache dataset
-      ExecutionResult result =
-          COORDINATOR.executeForTreeModel(
-              s,
-              queryId,
-              SESSION_MANAGER.getSessionInfo(clientSession),
-              statement,
-              partitionFetcher,
-              schemaFetcher,
-              req.getTimeout());
+      ExecutionResult result;
+      if (clientSession.getSqlDialect() == IClientSession.SqlDialect.TREE) {
+        Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
+
+        if (s == null) {
+          return RpcUtils.getTSExecuteStatementResp(
+              RpcUtils.getStatus(
+                  TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+        }
+        // permission check
+        TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return RpcUtils.getTSExecuteStatementResp(status);
+        }
+
+        quota =
+            DataNodeThrottleQuotaManager.getInstance()
+                .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+        statementType = s.getType();
+        if (ENABLE_AUDIT_LOG) {
+          AuditLogger.log(statement, s);
+        }
+
+        queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+
+        result =
+            COORDINATOR.executeForTreeModel(
+                s,
+                queryId,
+                SESSION_MANAGER.getSessionInfo(clientSession),
+                statement,
+                partitionFetcher,
+                schemaFetcher,
+                req.getTimeout());
+      } else {
+        org.apache.iotdb.db.relational.sql.tree.Statement s =
+            relationSqlParser.createStatement(statement);
+
+        if (s == null) {
+          return RpcUtils.getTSExecuteStatementResp(
+              RpcUtils.getStatus(
+                  TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+        }
+
+        queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+
+        // TODO audit log, quota, StatementType
+        result =
+            COORDINATOR.executeForTableModel(
+                s,
+                relationSqlParser,
+                clientSession,
+                queryId,
+                SESSION_MANAGER.getSessionInfo(clientSession),
+                statement,
+                metadata,
+                req.getTimeout());
+      }
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -328,7 +364,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setStatus(result.status);
           finished = setResult.apply(resp, queryExecution, req.fetchSize);
           resp.setMoreData(!finished);
-          quota.addReadResult(resp.getQueryResult());
+          if (quota != null) {
+            quota.addReadResult(resp.getQueryResult());
+          }
         } else {
           finished = true;
           resp = RpcUtils.getTSExecuteStatementResp(result.status);
@@ -1118,6 +1156,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
+    IClientSession.SqlDialect sqlDialect;
+    try {
+      sqlDialect = parseSqlDialect(req);
+    } catch (IllegalArgumentException e) {
+      TSStatus tsStatus = RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_SQL_DIALECT, e.getMessage());
+      TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
+      return resp.setSessionId(-1);
+    }
     BasicOpenSessionResp openSessionResp =
         SESSION_MANAGER.login(
             SESSION_MANAGER.getCurrSession(),
@@ -1125,7 +1171,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             req.password,
             req.zoneId,
             req.client_protocol,
-            clientVersion);
+            clientVersion,
+            sqlDialect);
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     return resp.setSessionId(openSessionResp.getSessionId());
@@ -1137,6 +1184,22 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return IoTDBConstant.ClientVersion.valueOf(configuration.get("version"));
     }
     return IoTDBConstant.ClientVersion.V_0_12;
+  }
+
+  private IClientSession.SqlDialect parseSqlDialect(TSOpenSessionReq req) {
+    Map<String, String> configuration = req.configuration;
+    if (configuration != null && configuration.containsKey("sql_dialect")) {
+      String sqlDialect = configuration.get("sql_dialect");
+      if ("tree".equalsIgnoreCase(sqlDialect)) {
+        return IClientSession.SqlDialect.TREE;
+      } else if ("table".equalsIgnoreCase(sqlDialect)) {
+        return IClientSession.SqlDialect.TABLE;
+      } else {
+        throw new IllegalArgumentException("Unknown sql_dialect: " + sqlDialect);
+      }
+    } else {
+      return IClientSession.SqlDialect.TREE;
+    }
   }
 
   @Override

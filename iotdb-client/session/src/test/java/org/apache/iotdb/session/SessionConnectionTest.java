@@ -172,7 +172,8 @@ public class SessionConnectionTest {
             ZoneId.systemDefault(),
             () -> Collections.singletonList(new TEndPoint("local", 12)),
             SessionConfig.MAX_RETRY_COUNT,
-            SessionConfig.RETRY_INTERVAL_IN_MS);
+            SessionConfig.RETRY_INTERVAL_IN_MS,
+            "tree");
   }
 
   @Test(expected = IoTDBConnectionException.class)
@@ -192,7 +193,8 @@ public class SessionConnectionTest {
             ZoneId.systemDefault(),
             () -> Collections.singletonList(new TEndPoint("local", 12)),
             SessionConfig.MAX_RETRY_COUNT,
-            SessionConfig.RETRY_INTERVAL_IN_MS);
+            SessionConfig.RETRY_INTERVAL_IN_MS,
+            "tree");
   }
 
   @Test

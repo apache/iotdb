@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -44,6 +45,9 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -92,6 +96,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE_PATTERN;
 
 /**
@@ -1038,6 +1043,76 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
     return schemaMap;
   }
+
+  // region table management
+
+  public TSStatus preCreateTable(PreCreateTablePlan preCreateTablePlan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.preCreateTable(
+          new PartialPath(new String[] {ROOT, preCreateTablePlan.getDatabase()}),
+          preCreateTablePlan.getTable());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus rollbackCreateTable(RollbackCreateTablePlan rollbackCreateTablePlan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.rollbackCreateTable(
+          new PartialPath(new String[] {ROOT, rollbackCreateTablePlan.getDatabase()}),
+          rollbackCreateTablePlan.getTableName());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus commitCreateTable(CommitCreateTablePlan commitCreateTablePlan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.commitCreateTable(
+          new PartialPath(new String[] {ROOT, commitCreateTablePlan.getDatabase()}),
+          commitCreateTablePlan.getTableName());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public Map<String, List<TsTable>> getAllUsingTables() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return mTree.getAllUsingTables();
+    } catch (MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      throw new RuntimeException(e);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public Map<String, List<TsTable>> getAllPreCreateTables() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return mTree.getAllPreCreateTables();
+    } catch (MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      throw new RuntimeException(e);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  // endregion
 
   @TestOnly
   public void clear() {

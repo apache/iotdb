@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
@@ -216,7 +216,7 @@ public class CompactionValidationTest {
   public void testTsFileResourceIsDeletedByOtherCompactionTaskWhenValidateOverlap1() {
     TsFileResource resource1 = new TsFileResource();
     resource1.setFile(new File(dir + File.separator + "1-1-0-0.tsfile"));
-    resource1.setTimeIndex(new DeviceTimeIndex());
+    resource1.setTimeIndex(new ArrayDeviceTimeIndex());
     resource1.updateStartTime(new PlainDeviceID("d1"), 1);
     resource1.updateEndTime(new PlainDeviceID("d1"), 2);
 
@@ -226,7 +226,7 @@ public class CompactionValidationTest {
 
     TsFileResource resource3 = new TsFileResource();
     resource3.setFile(new File(dir + File.separator + "3-3-0-0.tsfile"));
-    resource3.setTimeIndex(new DeviceTimeIndex());
+    resource3.setTimeIndex(new ArrayDeviceTimeIndex());
     resource3.updateStartTime(new PlainDeviceID("d1"), 4);
     resource3.updateEndTime(new PlainDeviceID("d1"), 5);
 
@@ -238,7 +238,7 @@ public class CompactionValidationTest {
   @Test
   public void testTsFileResourceIsDeletedByOtherCompactionTaskWhenValidateOverlap2() {
     TsFileResource resource1 = new TsFileResource();
-    resource1.setTimeIndex(new DeviceTimeIndex());
+    resource1.setTimeIndex(new ArrayDeviceTimeIndex());
     resource1.setFile(new File(dir + File.separator + "1-1-0-0.tsfile"));
     resource1.updateStartTime(new PlainDeviceID("d1"), 1);
     resource1.updateEndTime(new PlainDeviceID("d1"), 2);
@@ -249,7 +249,7 @@ public class CompactionValidationTest {
 
     TsFileResource resource3 = new TsFileResource();
     resource3.setFile(new File(dir + File.separator + "3-3-0-0.tsfile"));
-    resource3.setTimeIndex(new DeviceTimeIndex());
+    resource3.setTimeIndex(new ArrayDeviceTimeIndex());
     resource3.updateStartTime(new PlainDeviceID("d1"), 1);
     resource3.updateEndTime(new PlainDeviceID("d1"), 5);
 
@@ -261,7 +261,7 @@ public class CompactionValidationTest {
   @Test
   public void testTsFileResourceIsBrokenWhenValidateOverlap1() throws IOException {
     TsFileResource resource1 = new TsFileResource();
-    resource1.setTimeIndex(new DeviceTimeIndex());
+    resource1.setTimeIndex(new ArrayDeviceTimeIndex());
     resource1.setFile(new File(dir + File.separator + "1-1-0-0.tsfile"));
     resource1.updateStartTime(new PlainDeviceID("d1"), 1);
     resource1.updateEndTime(new PlainDeviceID("d1"), 2);
@@ -276,7 +276,7 @@ public class CompactionValidationTest {
 
     TsFileResource resource3 = new TsFileResource();
     resource3.setFile(new File(dir + File.separator + "3-3-0-0.tsfile"));
-    resource3.setTimeIndex(new DeviceTimeIndex());
+    resource3.setTimeIndex(new ArrayDeviceTimeIndex());
     resource3.updateStartTime(new PlainDeviceID("d1"), 4);
     resource3.updateEndTime(new PlainDeviceID("d1"), 5);
 
@@ -288,7 +288,7 @@ public class CompactionValidationTest {
   @Test
   public void testTsFileResourceIsBrokenWhenValidateOverlap2() throws IOException {
     TsFileResource resource1 = new TsFileResource();
-    resource1.setTimeIndex(new DeviceTimeIndex());
+    resource1.setTimeIndex(new ArrayDeviceTimeIndex());
     resource1.setFile(new File(dir + File.separator + "1-1-0-0.tsfile"));
     resource1.updateStartTime(new PlainDeviceID("d1"), 1);
     resource1.updateEndTime(new PlainDeviceID("d1"), 2);
@@ -303,7 +303,7 @@ public class CompactionValidationTest {
 
     TsFileResource resource3 = new TsFileResource();
     resource3.setFile(new File(dir + File.separator + "3-3-0-0.tsfile"));
-    resource3.setTimeIndex(new DeviceTimeIndex());
+    resource3.setTimeIndex(new ArrayDeviceTimeIndex());
     resource3.updateStartTime(new PlainDeviceID("d1"), 1);
     resource3.updateEndTime(new PlainDeviceID("d1"), 5);
 

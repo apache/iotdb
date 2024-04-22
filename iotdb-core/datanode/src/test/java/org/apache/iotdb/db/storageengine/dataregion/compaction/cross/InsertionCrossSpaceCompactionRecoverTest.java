@@ -33,7 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionF
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -348,7 +348,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
   private TsFileResource createTsFileResource(String name, boolean seq) {
     String filePath = (seq ? SEQ_DIRS : UNSEQ_DIRS) + File.separator + name;
     TsFileResource resource = new TsFileResource();
-    resource.setTimeIndex(new DeviceTimeIndex());
+    resource.setTimeIndex(new ArrayDeviceTimeIndex());
     resource.setFile(new File(filePath));
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
     resource.setSeq(seq);

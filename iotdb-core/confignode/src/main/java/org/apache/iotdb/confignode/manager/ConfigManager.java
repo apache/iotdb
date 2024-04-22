@@ -44,6 +44,8 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -2271,5 +2273,16 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? clusterQuotaManager.getThrottleQuota()
         : new TThrottleQuotaResp(status);
+  }
+
+  public TSStatus createTable(ByteBuffer tableInfo) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      Pair<String, TsTable> pair =
+          TsTableInternalRPCUtil.deserializeSingleTsTable(tableInfo.array());
+      return procedureManager.createTable(pair.left, pair.right);
+    } else {
+      return status;
+    }
   }
 }

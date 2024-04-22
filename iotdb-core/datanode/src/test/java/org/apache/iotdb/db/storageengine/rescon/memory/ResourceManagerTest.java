@@ -183,7 +183,7 @@ public class ResourceManagerTest {
     prepareFile(tsFileResource, 0, ptNum, 0);
     long previousRamSize = tsFileResource.calculateRamSize();
     assertEquals(
-        TimeIndexLevel.DEVICE_TIME_INDEX,
+        TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
     long reducedMemory = tsFileResource.degradeTimeIndex();
     assertEquals(previousRamSize - tsFileResource.calculateRamSize(), reducedMemory);
@@ -209,7 +209,7 @@ public class ResourceManagerTest {
     tsFileResource.updatePlanIndexes((long) 0);
     prepareFile(tsFileResource, 0, ptNum, 0);
     assertEquals(
-        TimeIndexLevel.DEVICE_TIME_INDEX,
+        TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
     long curTimeIndexMemoryThreshold = 322;
     tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
@@ -236,7 +236,7 @@ public class ResourceManagerTest {
     tsFileResource.updatePlanIndexes((long) 0);
     prepareFile(tsFileResource, 0, ptNum, 0);
     assertEquals(
-        TimeIndexLevel.DEVICE_TIME_INDEX,
+        TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
     long previousRamSize = tsFileResource.calculateRamSize();
     long curTimeIndexMemoryThreshold = 3221;
@@ -244,7 +244,7 @@ public class ResourceManagerTest {
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
     assertEquals(0, previousRamSize - tsFileResource.calculateRamSize());
     assertEquals(
-        TimeIndexLevel.DEVICE_TIME_INDEX,
+        TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
   }
 
@@ -266,13 +266,13 @@ public class ResourceManagerTest {
     tsFileResource1.updatePlanIndexes((long) 0);
     prepareFile(tsFileResource1, 0, ptNum, 0);
     assertEquals(
-        TimeIndexLevel.DEVICE_TIME_INDEX,
+        TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource1.getTimeIndexType()));
     long curTimeIndexMemoryThreshold = 3221;
     tsFileResourceManager.setTimeIndexMemoryThreshold(curTimeIndexMemoryThreshold);
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource1);
     assertEquals(
-        TimeIndexLevel.DEVICE_TIME_INDEX,
+        TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource1.getTimeIndexType()));
     File file2 =
         new File(
@@ -290,13 +290,13 @@ public class ResourceManagerTest {
     tsFileResource2.updatePlanIndexes((long) 1);
     prepareFile(tsFileResource2, ptNum, ptNum, 0);
     assertEquals(
-        TimeIndexLevel.DEVICE_TIME_INDEX,
+        TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource2.getTimeIndexType()));
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource2);
     assertEquals(
         TimeIndexLevel.FILE_TIME_INDEX, TimeIndexLevel.valueOf(tsFileResource1.getTimeIndexType()));
     assertEquals(
-        TimeIndexLevel.DEVICE_TIME_INDEX,
+        TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
         TimeIndexLevel.valueOf(tsFileResource2.getTimeIndexType()));
   }
 
@@ -320,7 +320,7 @@ public class ResourceManagerTest {
       tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
       tsFileResource.updatePlanIndexes((long) i);
       assertEquals(
-          TimeIndexLevel.DEVICE_TIME_INDEX,
+          TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
           TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
@@ -335,7 +335,7 @@ public class ResourceManagerTest {
             TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType()));
       } else {
         assertEquals(
-            TimeIndexLevel.DEVICE_TIME_INDEX,
+            TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
             TimeIndexLevel.valueOf(seqResources.get(i).getTimeIndexType()));
       }
     }
@@ -359,7 +359,7 @@ public class ResourceManagerTest {
                       + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       assertEquals(
-          TimeIndexLevel.DEVICE_TIME_INDEX,
+          TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX,
           TimeIndexLevel.valueOf(tsFileResource.getTimeIndexType()));
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);

@@ -49,7 +49,7 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
         boolean flag = false;
         // compare binary type
-        if (TypeEnum.BINARY.equals(leftTransformer.getType().getTypeEnum())) {
+        if (TypeEnum.TEXT.equals(leftTransformer.getType().getTypeEnum())) {
           flag =
               transform(
                   TransformUtils.compare(

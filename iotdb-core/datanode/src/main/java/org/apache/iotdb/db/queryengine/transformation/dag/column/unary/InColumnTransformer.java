@@ -77,7 +77,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
           case BOOLEAN:
             returnType.writeBoolean(columnBuilder, satisfy.of(column.getBoolean(i)));
             break;
-          case BINARY:
+          case TEXT:
             returnType.writeBoolean(
                 columnBuilder,
                 satisfy.of(column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET)));
@@ -143,7 +143,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
           booleanSet.add(strictCastToBool(value));
         }
         break;
-      case BINARY:
+      case TEXT:
         stringSet = values;
         break;
       default:
