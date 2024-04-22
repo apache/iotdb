@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.pipe.event.common.row;
 
 import org.apache.iotdb.pipe.api.type.Type;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.tsfile.enums.TSDataType;
 
 import java.util.List;
 import java.util.stream.Collectors;

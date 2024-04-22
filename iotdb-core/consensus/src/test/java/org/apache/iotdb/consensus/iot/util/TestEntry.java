@@ -21,7 +21,8 @@ package org.apache.iotdb.consensus.iot.util;
 
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
+
+import org.apache.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

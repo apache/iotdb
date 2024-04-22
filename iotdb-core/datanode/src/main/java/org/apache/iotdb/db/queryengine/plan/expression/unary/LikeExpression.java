@@ -22,15 +22,16 @@ package org.apache.iotdb.db.queryengine.plan.expression.unary;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.tsfile.utils.RegexUtils.compileRegex;
-import static org.apache.iotdb.tsfile.utils.RegexUtils.parseLikePatternToRegex;
+import static org.apache.tsfile.utils.RegexUtils.compileRegex;
+import static org.apache.tsfile.utils.RegexUtils.parseLikePatternToRegex;
 
 public class LikeExpression extends UnaryExpression {
 

@@ -31,9 +31,9 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.enums.TSDataType;
 
 import java.util.Collections;
 import java.util.List;

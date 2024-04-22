@@ -21,8 +21,8 @@ package org.apache.iotdb.db.trigger.example;
 
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.TriggerAttributes;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

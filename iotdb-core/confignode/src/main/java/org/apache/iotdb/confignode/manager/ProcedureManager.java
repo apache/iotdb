@@ -112,9 +112,9 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -682,10 +682,12 @@ public class ProcedureManager {
             coordinatorForAddPeer,
             coordinatorForRemovePeer));
     LOGGER.info(
-        "Submit RegionMigrateProcedure successfully, Region: {}, From: {}, To: {}",
-        migrateRegionReq.getRegionId(),
-        migrateRegionReq.getFromId(),
-        migrateRegionReq.getToId());
+        "Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}",
+        regionGroupId,
+        originalDataNode,
+        destDataNode,
+        coordinatorForAddPeer,
+        coordinatorForRemovePeer);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

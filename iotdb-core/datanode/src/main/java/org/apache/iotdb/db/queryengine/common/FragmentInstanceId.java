@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.queryengine.common;
 
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

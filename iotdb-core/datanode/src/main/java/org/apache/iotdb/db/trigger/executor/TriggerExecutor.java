@@ -25,8 +25,8 @@ import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.TriggerAttributes;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

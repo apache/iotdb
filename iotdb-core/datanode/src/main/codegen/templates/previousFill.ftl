@@ -26,13 +26,13 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFillFilter;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.${type.column};
-import org.apache.iotdb.tsfile.read.common.block.column.${type.column}Builder;
-import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.read.common.block.column.${type.column};
+import org.apache.tsfile.read.common.block.column.${type.column}Builder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 <#if type.dataType == "Binary">
-  import org.apache.iotdb.tsfile.utils.Binary;
+  import org.apache.tsfile.utils.Binary;
 </#if>
 
 import java.util.Optional;

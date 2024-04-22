@@ -21,8 +21,8 @@ package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.db.pipe.event.common.row.PipeDataTypeTransformer;
 import org.apache.iotdb.pipe.api.type.Type;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

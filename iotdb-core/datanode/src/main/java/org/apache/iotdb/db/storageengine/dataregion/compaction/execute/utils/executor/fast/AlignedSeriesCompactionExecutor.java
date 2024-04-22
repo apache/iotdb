@@ -35,18 +35,18 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFi
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
-import org.apache.iotdb.tsfile.exception.write.PageException;
-import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.exception.write.PageException;
+import org.apache.tsfile.file.header.ChunkHeader;
+import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -265,88 +265,53 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
   @SuppressWarnings("squid:S3776")
   void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
     updateSummary(chunkMetadataElement, ChunkStatus.DESERIALIZE_CHUNK);
-    List<PageHeader> timePageHeaders = new ArrayList<>();
-    List<ByteBuffer> compressedTimePageDatas = new ArrayList<>();
-    List<List<PageHeader>> valuePageHeaders = new ArrayList<>();
-    List<List<ByteBuffer>> compressedValuePageDatas = new ArrayList<>();
 
     // deserialize time chunk
     Chunk timeChunk = chunkMetadataElement.chunk;
 
     CompactionChunkReader chunkReader = new CompactionChunkReader(timeChunk);
-    ByteBuffer chunkDataBuffer = timeChunk.getData();
-    ChunkHeader chunkHeader = timeChunk.getHeader();
-    while (chunkDataBuffer.remaining() > 0) {
-      // deserialize a PageHeader from chunkDataBuffer
-      PageHeader pageHeader;
-      if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, timeChunk.getChunkStatistic());
-      } else {
-        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
-      }
-      ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
-      timePageHeaders.add(pageHeader);
-      compressedTimePageDatas.add(compressedPageData);
-    }
+    List<Pair<PageHeader, ByteBuffer>> timePages = chunkReader.readPageDataWithoutUncompressing();
 
     // deserialize value chunks
+    List<List<Pair<PageHeader, ByteBuffer>>> valuePagesList = new ArrayList<>();
     List<Chunk> valueChunks = chunkMetadataElement.valueChunks;
     for (int i = 0; i < valueChunks.size(); i++) {
       Chunk valueChunk = valueChunks.get(i);
       if (valueChunk == null) {
         // value chunk has been deleted completely
-        valuePageHeaders.add(null);
-        compressedValuePageDatas.add(null);
+        valuePagesList.add(null);
         continue;
       }
-      chunkReader = new CompactionChunkReader(valueChunk);
-      chunkDataBuffer = valueChunk.getData();
-      chunkHeader = valueChunk.getHeader();
 
-      valuePageHeaders.add(new ArrayList<>());
-      compressedValuePageDatas.add(new ArrayList<>());
-      while (chunkDataBuffer.remaining() > 0) {
-        // deserialize a PageHeader from chunkDataBuffer
-        PageHeader pageHeader;
-        if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, valueChunk.getChunkStatistic());
-        } else {
-          pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
-        }
-        if (pageHeader.getCompressedSize() == 0) {
-          // empty value page
-          valuePageHeaders.get(i).add(null);
-          compressedValuePageDatas.get(i).add(null);
-        } else {
-          ByteBuffer compressedPageData = chunkReader.readPageDataWithoutUncompressing(pageHeader);
-          valuePageHeaders.get(i).add(pageHeader);
-          compressedValuePageDatas.get(i).add(compressedPageData);
-        }
-      }
+      chunkReader = new CompactionChunkReader(valueChunk);
+      List<Pair<PageHeader, ByteBuffer>> valuesPages =
+          chunkReader.readPageDataWithoutUncompressing();
+      valuePagesList.add(valuesPages);
     }
 
     // add aligned pages into page queue
-    for (int i = 0; i < timePageHeaders.size(); i++) {
+    for (int i = 0; i < timePages.size(); i++) {
       List<PageHeader> alignedPageHeaders = new ArrayList<>();
       List<ByteBuffer> alignedPageDatas = new ArrayList<>();
-      for (int j = 0; j < valuePageHeaders.size(); j++) {
-        if (valuePageHeaders.get(j) == null) {
+      for (int j = 0; j < valuePagesList.size(); j++) {
+        if (valuePagesList.get(j) == null) {
           alignedPageHeaders.add(null);
           alignedPageDatas.add(null);
           continue;
         }
-        alignedPageHeaders.add(valuePageHeaders.get(j).get(i));
-        alignedPageDatas.add(compressedValuePageDatas.get(j).get(i));
+        Pair<PageHeader, ByteBuffer> valuePage = valuePagesList.get(j).get(i);
+        alignedPageHeaders.add(valuePage == null ? null : valuePage.left);
+        alignedPageDatas.add(valuePage == null ? null : valuePage.right);
       }
       pageQueue.add(
           new AlignedPageElement(
-              timePageHeaders.get(i),
+              timePages.get(i).left,
               alignedPageHeaders,
-              compressedTimePageDatas.get(i),
+              timePages.get(i).right,
               alignedPageDatas,
               new CompactionAlignedChunkReader(timeChunk, valueChunks),
               chunkMetadataElement,
-              i == timePageHeaders.size() - 1,
+              i == timePages.size() - 1,
               chunkMetadataElement.priority));
     }
     chunkMetadataElement.clearChunks();

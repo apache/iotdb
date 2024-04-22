@@ -712,7 +712,7 @@ public class WALBuffer extends AbstractWALBuffer {
 
   public Set<Long> getMemTableIds(long fileVersionId) {
     if (fileVersionId >= currentWALFileVersion) {
-      return Collections.emptySet();
+      return null;
     }
     return memTableIdsOfWal.computeIfAbsent(
         fileVersionId,

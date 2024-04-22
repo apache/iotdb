@@ -24,7 +24,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.io.IOException;
 import java.util.ArrayList;

@@ -26,19 +26,18 @@ import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyT
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MaxDiskUsableSpaceFirstStrategy;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.RandomOnDiskUsableSpaceStrategy;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
-import org.apache.iotdb.tsfile.utils.FSUtils;
+import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.fileSystem.FSType;
+import org.apache.tsfile.utils.FSUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileStore;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -262,20 +261,7 @@ public class TierManager {
           tierDiskSpace[tierLevel] = Long.MAX_VALUE;
           break;
         }
-        // get the FileStore of each local dir
-        Path path = Paths.get(dir);
-        FileStore fileStore = null;
-        try {
-          fileStore = Files.getFileStore(path);
-        } catch (IOException e) {
-          // check parent if path is not exists
-          path = path.getParent();
-          try {
-            fileStore = Files.getFileStore(path);
-          } catch (IOException innerException) {
-            logger.error("Failed to get storage path of {}, because", dir, innerException);
-          }
-        }
+        FileStore fileStore = FileStoreUtils.getFileStore(dir);
         // update space info
         if (fileStore != null && !tierFileStores.contains(fileStore)) {
           tierFileStores.add(fileStore);

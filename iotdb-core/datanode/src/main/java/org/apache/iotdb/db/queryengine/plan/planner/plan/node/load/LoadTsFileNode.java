@@ -27,7 +27,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
+
+import org.apache.tsfile.exception.NotImplementedException;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

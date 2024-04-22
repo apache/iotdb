@@ -22,7 +22,8 @@ import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 public interface IMNodeFactory<N extends IMNode<N>> {
   IMeasurementMNode<N> createMeasurementMNode(

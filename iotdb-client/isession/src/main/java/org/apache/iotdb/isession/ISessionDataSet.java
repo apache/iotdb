@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.isession;
 
-import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.RowRecord;
 
 import java.util.List;
 
