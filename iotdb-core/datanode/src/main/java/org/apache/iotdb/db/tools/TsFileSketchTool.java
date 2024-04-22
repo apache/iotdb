@@ -30,7 +30,6 @@ import org.apache.tsfile.file.metadata.DeviceMetadataIndexEntry;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.TsFileMetadata;
 import org.apache.tsfile.file.metadata.enums.MetadataIndexNodeType;
@@ -41,6 +40,7 @@ import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.BloomFilter;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.Schema;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -91,7 +91,8 @@ public class TsFileSketchTool {
       // get metadata information
       tsFileMetaData = reader.readFileMetadata();
       allChunkGroupMetadata = new ArrayList<>();
-      if (reader.selfCheck(null, allChunkGroupMetadata, false) != TsFileCheckStatus.COMPLETE_FILE) {
+      if (reader.selfCheck(new Schema(), allChunkGroupMetadata, false)
+          != TsFileCheckStatus.COMPLETE_FILE) {
         throw new IOException(
             String.format("Cannot load file %s because the file has crashed.", filename));
       }
@@ -295,7 +296,10 @@ public class TsFileSketchTool {
             reader.readChunkGroupHeader(nextChunkGroupHeaderPos, false);
         printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 0");
         printlnBoth(
-            pw, String.format("%20s", "") + "|\t\t[deviceID] " + chunkGroupHeader.getDeviceID());
+            pw,
+            String.format("%20s", "")
+                + "|\t\t[deviceID] "
+                + chunkGroupHeader.getDeviceID().toString());
         // chunk begins
         for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
           Chunk chunk = reader.readMemChunk(chunkMetadata);
@@ -375,12 +379,7 @@ public class TsFileSketchTool {
             break;
         }
 
-        printlnBoth(
-            pw,
-            splitStr
-                + " [Chunk Group] of "
-                + ((PlainDeviceID) chunkGroupMetadata.getDevice()).toStringID()
-                + " ends");
+        printlnBoth(pw, splitStr + " [Chunk Group] of " + chunkGroupMetadata.getDevice() + " ends");
       }
     } catch (IOException e) {
       e.printStackTrace();
