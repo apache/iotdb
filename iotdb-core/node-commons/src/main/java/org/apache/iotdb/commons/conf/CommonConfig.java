@@ -153,7 +153,7 @@ public class CommonConfig {
   private long timePartitionInterval = 604_800_000;
 
   /** This variable set timestamp precision as millisecond, microsecond or nanosecond. */
-  private String timestampPrecision = "ns";
+  private String timestampPrecision = "ms";
 
   private boolean timestampPrecisionCheckEnabled = true;
 
