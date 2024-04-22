@@ -52,7 +52,6 @@ import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
@@ -546,27 +545,6 @@ public class ProcedureManager {
   }
 
   // region region migration
-
-  private TConsensusGroupId regionIdToTConsensusGroupId(final int regionId)
-      throws ProcedureException {
-    if (configManager
-        .getPartitionManager()
-        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId))) {
-      return new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId);
-    }
-    if (configManager
-        .getPartitionManager()
-        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))) {
-      return new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId);
-    }
-    String msg =
-        String.format(
-            "Submit RegionMigrateProcedure failed, because RegionGroup: %s doesn't exist",
-            regionId);
-    LOGGER.warn(msg);
-    throw new ProcedureException(msg);
-  }
-
   private TSStatus checkRegionMigrate(
       TMigrateRegionReq migrateRegionReq,
       TConsensusGroupId regionGroupId,
@@ -579,9 +557,10 @@ public class ProcedureManager {
             .filter(
                 procedure -> {
                   if (procedure instanceof RegionMigrateProcedure) {
-                    return ((RegionMigrateProcedure) procedure)
-                        .getConsensusGroupId()
-                        .equals(regionGroupId);
+                    return !procedure.isFinished()
+                        && ((RegionMigrateProcedure) procedure)
+                            .getConsensusGroupId()
+                            .equals(regionGroupId);
                   }
                   return false;
                 })
