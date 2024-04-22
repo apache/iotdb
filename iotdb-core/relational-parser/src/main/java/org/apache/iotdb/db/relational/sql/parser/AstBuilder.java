@@ -43,7 +43,6 @@ import org.apache.iotdb.db.relational.sql.tree.CurrentTime;
 import org.apache.iotdb.db.relational.sql.tree.CurrentUser;
 import org.apache.iotdb.db.relational.sql.tree.DataType;
 import org.apache.iotdb.db.relational.sql.tree.DataTypeParameter;
-import org.apache.iotdb.db.relational.sql.tree.DecimalLiteral;
 import org.apache.iotdb.db.relational.sql.tree.Delete;
 import org.apache.iotdb.db.relational.sql.tree.DereferenceExpression;
 import org.apache.iotdb.db.relational.sql.tree.DescribeTable;
@@ -1357,7 +1356,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitDecimalLiteral(RelationalSqlParser.DecimalLiteralContext ctx) {
-    return new DecimalLiteral(getLocation(ctx), ctx.getText());
+    return new DoubleLiteral(getLocation(ctx), ctx.getText());
   }
 
   @Override

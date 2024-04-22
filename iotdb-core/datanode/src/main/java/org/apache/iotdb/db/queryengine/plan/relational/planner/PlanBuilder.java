@@ -25,6 +25,7 @@ import org.apache.iotdb.db.relational.sql.tree.ComparisonExpression;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.relational.sql.tree.FieldReference;
 import org.apache.iotdb.db.relational.sql.tree.Identifier;
+import org.apache.iotdb.db.relational.sql.tree.LogicalExpression;
 import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
 
 import com.google.common.collect.ImmutableMap;
@@ -37,6 +38,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.base.Verify.verify;
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 
 public class PlanBuilder {
@@ -106,6 +108,13 @@ public class PlanBuilder {
       return new ComparisonExpression(comparisonExpression.getOperator(), left, right);
     } else if (expression instanceof Identifier) {
       return getSymbolForColumn(expression).map(Symbol::toSymbolReference).get();
+    } else if (expression instanceof LogicalExpression) {
+      LogicalExpression logicalExpression = (LogicalExpression) expression;
+      return new LogicalExpression(
+          logicalExpression.getOperator(),
+          logicalExpression.getTerms().stream()
+              .map(e -> translate(e, false))
+              .collect(toImmutableList()));
     }
 
     return expression;
