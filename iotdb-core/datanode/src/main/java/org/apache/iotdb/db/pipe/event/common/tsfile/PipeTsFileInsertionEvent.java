@@ -324,7 +324,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     }
   }
 
-  public long count(boolean skipReportOnCommit) {
+  public long count(boolean skipReportOnCommit) throws IOException {
     long count = 0;
 
     if (shouldParseTime()) {
@@ -342,7 +342,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       }
     }
 
-    return 0;
+    try (final TsFileInsertionPointCounter counter =
+        new TsFileInsertionPointCounter(tsFile, pipePattern)) {
+      return counter.count();
+    }
   }
 
   /** Release the resource of {@link TsFileInsertionDataContainer}. */
