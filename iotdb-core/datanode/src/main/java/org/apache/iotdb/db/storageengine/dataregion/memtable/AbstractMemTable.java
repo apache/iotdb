@@ -42,7 +42,6 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -605,7 +604,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     int size = FIXED_SERIALIZED_SIZE;
     for (Map.Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
-      size += ReadWriteIOUtils.sizeToWrite(((PlainDeviceID) entry.getKey()).toStringID());
+      size += entry.getKey().serializedSize();
       size += Byte.BYTES;
       size += entry.getValue().serializedSize();
     }

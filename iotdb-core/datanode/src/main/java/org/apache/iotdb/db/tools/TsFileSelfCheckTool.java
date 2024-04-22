@@ -25,7 +25,6 @@ import org.apache.tsfile.file.IMetadataIndexEntry;
 import org.apache.tsfile.file.metadata.DeviceMetadataIndexEntry;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -132,10 +131,7 @@ public class TsFileSelfCheckTool {
             timeseriesMetadataMap.put(
                 pos,
                 new Pair<>(
-                    new Path(
-                        ((PlainDeviceID) deviceId).toStringID(),
-                        timeseriesMetadata.getMeasurementId(),
-                        true),
+                    new Path(deviceId, timeseriesMetadata.getMeasurementId(), true),
                     timeseriesMetadata));
           }
         } else {

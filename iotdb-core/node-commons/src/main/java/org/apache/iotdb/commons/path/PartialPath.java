@@ -29,7 +29,6 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -86,7 +85,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   public PartialPath(IDeviceID device, String measurement) throws IllegalPathException {
-    this(((PlainDeviceID) device).toStringID(), measurement);
+    this(device.toString(), measurement);
   }
 
   public PartialPath(String device, String measurement) throws IllegalPathException {
