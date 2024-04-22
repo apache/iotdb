@@ -88,7 +88,7 @@ public class PhysicalOptimizer {
       // if select deltaObject, then match with measurement
       List<String> actualDeltaObjects =
           in.getDeviceNameInRange(start, end).stream()
-              .map(deviceID -> ((PlainDeviceID) deviceID).toStringID())
+              .map(deviceID -> deviceID.toString())
               .collect(Collectors.toList());
       if (!selectColumns.isEmpty()) {
         combination(

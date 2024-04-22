@@ -26,7 +26,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.BitMap;
@@ -37,7 +36,7 @@ import java.util.Collections;
 
 public class MemTableTestUtils {
 
-  public static IDeviceID deviceId0 = new PlainDeviceID("d0");
+  public static IDeviceID deviceId0 = IDeviceID.Factory.DEFAULT_FACTORY.create("d0");
 
   public static String measurementId0 = "s0";
 

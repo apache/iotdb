@@ -54,7 +54,8 @@ import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFi
 public abstract class AbstractSeriesScanTest {
 
   protected static final String TEST_DATABASE = "root.sg_pd";
-  protected static final IDeviceID TEST_DEVICE = new PlainDeviceID(TEST_DATABASE + ".d1");
+  protected static final IDeviceID TEST_DEVICE =
+      IDeviceID.Factory.DEFAULT_FACTORY.create(TEST_DATABASE + ".d1");
   protected static final String TEST_PATH = ((PlainDeviceID) TEST_DEVICE).toStringID() + ".s1";
 
   /**

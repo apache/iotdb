@@ -42,7 +42,7 @@ import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -239,33 +239,45 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         0,
         targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+            .getStartTime(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
     assertEquals(
         0,
         targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+            .getStartTime(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
     assertEquals(
         250,
         targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+            .getStartTime(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
     assertEquals(
         600,
         targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+            .getStartTime(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
     assertEquals(
         600,
         targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
+            .getStartTime(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
     for (int i = 0; i < 5; i++) {
       assertEquals(
           749,
           targetResources
               .get(0)
-              .getEndTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i)));
+              .getEndTime(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i)));
     }
 
     for (int i = 0; i < 5; i++) {
@@ -392,33 +404,45 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
         0,
         targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+            .getStartTime(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
     assertEquals(
         0,
         targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+            .getStartTime(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
     assertEquals(
         250,
         targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+            .getStartTime(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
     assertEquals(
         600,
         targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+            .getStartTime(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
     assertEquals(
         600,
         targetResources
             .get(0)
-            .getStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
+            .getStartTime(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
     for (int i = 0; i < 5; i++) {
       assertEquals(
           749,
           targetResources
               .get(0)
-              .getEndTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i)));
+              .getEndTime(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i)));
     }
 
     for (int i = 0; i < 5; i++) {
@@ -2004,7 +2028,8 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     TsFileResource targetResource = tsFileManager.getTsFileList(false).get(0);
     try (TsFileSequenceReader reader = new TsFileSequenceReader(targetResource.getTsFilePath())) {
       List<AlignedChunkMetadata> chunkMetadataList =
-          reader.getAlignedChunkMetadata(new PlainDeviceID("root.testsg.d1"));
+          reader.getAlignedChunkMetadata(
+              IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"));
       for (AlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
         ChunkMetadata timeChunkMetadata =
             (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();

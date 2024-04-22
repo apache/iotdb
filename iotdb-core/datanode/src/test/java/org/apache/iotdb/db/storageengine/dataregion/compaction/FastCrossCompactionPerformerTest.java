@@ -49,7 +49,6 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.common.IBatchDataIterator;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.TsFileGeneratorUtils;
@@ -272,46 +271,66 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<IDeviceID> deviceIdList = new ArrayList<>();
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
     for (int i = 0; i < 2; i++) {
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 2; i < 4; i++) {
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
 
@@ -484,46 +503,66 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<IDeviceID> deviceIdList = new ArrayList<>();
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
     for (int i = 0; i < 2; i++) {
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 2; i < 4; i++) {
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
 
@@ -693,44 +732,62 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<IDeviceID> deviceIdList = new ArrayList<>();
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
     for (int i = 0; i < 2; i++) {
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 2; i < 4; i++) {
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
 
@@ -894,24 +951,33 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     targetResources.removeIf(x -> x.isDeleted());
     Assert.assertEquals(2, targetResources.size());
     List<IDeviceID> deviceIdList = new ArrayList<>();
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 0; i < 2; i++) {
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
 
@@ -1077,67 +1143,96 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     Assert.assertEquals(4, targetResources.size());
     List<IDeviceID> deviceIdList = new ArrayList<>();
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
     for (int i = 0; i < 2; i++) {
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 2; i < 3; i++) {
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
     deviceIdList.clear();
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 3; i < 4; i++) {
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
 
@@ -1231,77 +1326,113 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
       Assert.assertEquals(4, targetResources.size());
       List<IDeviceID> deviceIdList = new ArrayList<>();
-      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
-      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      deviceIdList.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      deviceIdList.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
       for (int i = 0; i < 2; i++) {
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
         check(targetResources.get(i), deviceIdList);
       }
-      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
-      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      deviceIdList.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      deviceIdList.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
       for (int i = 2; i < 3; i++) {
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
         check(targetResources.get(i), deviceIdList);
       }
-      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
-      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
-      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"));
-      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d5"));
+      deviceIdList.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      deviceIdList.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      deviceIdList.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"));
+      deviceIdList.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d5"));
       for (int i = 3; i < 4; i++) {
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d5")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d5")));
         check(targetResources.get(i), deviceIdList);
       }
     } catch (MetadataException
@@ -1336,46 +1467,66 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
       Assert.assertEquals(2, targetResources.size());
       List<IDeviceID> deviceIdList = new ArrayList<>();
-      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
-      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+      deviceIdList.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+      deviceIdList.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
       for (int i = 0; i < 1; i++) {
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
         check(targetResources.get(i), deviceIdList);
       }
-      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
-      deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+      deviceIdList.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+      deviceIdList.add(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
       for (int i = 1; i < 2; i++) {
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
         check(targetResources.get(i), deviceIdList);
       }
 
@@ -1823,46 +1974,66 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     Assert.assertEquals(4, targetResources.size());
     List<IDeviceID> deviceIdList = new ArrayList<>();
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10001"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10001"));
     for (int i = 0; i < 2; i++) {
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10001")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d10001")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10002")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d10002")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003")));
       check(targetResources.get(i), deviceIdList);
     }
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10002"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10002"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003"));
     for (int i = 2; i < 4; i++) {
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10001")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d10001")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10002")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d10002")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d10003")));
       check(targetResources.get(i), deviceIdList);
     }
 
@@ -2195,45 +2366,65 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(2, targetResources.size());
 
     List<IDeviceID> deviceIdList = new ArrayList<>();
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 0; i < 2; i++) {
       if (i == 0) {
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       } else {
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       }
       check(targetResources.get(i), deviceIdList);
     }
@@ -2337,75 +2528,110 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<IDeviceID> deviceIdList = new ArrayList<>();
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"));
     for (int i = 0; i < 3; i++) {
       if (i == 0) {
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
       } else if (i == 1) {
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
       } else {
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
       }
       check(targetResources.get(i), deviceIdList);
     }
@@ -2508,32 +2734,47 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<IDeviceID> deviceIdList = new ArrayList<>();
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"));
     for (int i = 0; i < 3; i++) {
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
       check(targetResources.get(i), deviceIdList);
     }
 
@@ -2638,45 +2879,65 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<IDeviceID> deviceIdList = new ArrayList<>();
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 0; i < 3; i++) {
       if (i < 2) {
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       } else {
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       }
       check(targetResources.get(i), deviceIdList);
     }
@@ -2793,45 +3054,65 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<IDeviceID> deviceIdList = new ArrayList<>();
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 0; i < 3; i++) {
       if (i < 2) {
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
         Assert.assertFalse(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       } else {
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
         Assert.assertTrue(
             targetResources
                 .get(i)
-                .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+                .isDeviceIdExist(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
+                        COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       }
       check(targetResources.get(i), deviceIdList);
     }
@@ -2974,25 +3255,25 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     List<IDeviceID> deviceIdList = new ArrayList<>();
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset())));
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1)));
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2)));
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
@@ -3003,7 +3284,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3012,7 +3293,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3021,7 +3302,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3030,7 +3311,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3040,7 +3321,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3049,7 +3330,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3058,7 +3339,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3067,7 +3348,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3077,7 +3358,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3086,7 +3367,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3095,7 +3376,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3104,7 +3385,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3236,31 +3517,31 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     List<IDeviceID> deviceIdList = new ArrayList<>();
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + TsFileGeneratorUtils.getAlignDeviceOffset()));
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1)));
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2)));
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)));
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
@@ -3271,7 +3552,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3280,7 +3561,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3289,7 +3570,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3298,7 +3579,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3307,7 +3588,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3317,7 +3598,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3326,7 +3607,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3335,7 +3616,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3344,7 +3625,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3353,7 +3634,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3363,7 +3644,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3372,7 +3653,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3381,7 +3662,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3390,7 +3671,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3399,7 +3680,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3529,31 +3810,31 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     List<IDeviceID> deviceIdList = new ArrayList<>();
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + TsFileGeneratorUtils.getAlignDeviceOffset()));
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1)));
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2)));
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 3)));
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
@@ -3563,7 +3844,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
           targetResources
               .get(i)
               .isDeviceIdExist(
-                  new PlainDeviceID(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
                       COMPACTION_TEST_SG
                           + PATH_SEPARATOR
                           + "d"
@@ -3572,7 +3853,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
           targetResources
               .get(i)
               .isDeviceIdExist(
-                  new PlainDeviceID(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
                       COMPACTION_TEST_SG
                           + PATH_SEPARATOR
                           + "d"
@@ -3581,7 +3862,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
           targetResources
               .get(i)
               .isDeviceIdExist(
-                  new PlainDeviceID(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
                       COMPACTION_TEST_SG
                           + PATH_SEPARATOR
                           + "d"
@@ -3590,7 +3871,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
           targetResources
               .get(i)
               .isDeviceIdExist(
-                  new PlainDeviceID(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
                       COMPACTION_TEST_SG
                           + PATH_SEPARATOR
                           + "d"
@@ -3599,7 +3880,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
           targetResources
               .get(i)
               .isDeviceIdExist(
-                  new PlainDeviceID(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
                       COMPACTION_TEST_SG
                           + PATH_SEPARATOR
                           + "d"
@@ -3734,25 +4015,25 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     List<IDeviceID> deviceIdList = new ArrayList<>();
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + TsFileGeneratorUtils.getAlignDeviceOffset()));
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 1)));
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
                 + (TsFileGeneratorUtils.getAlignDeviceOffset() + 2)));
     deviceIdList.add(
-        new PlainDeviceID(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
@@ -3763,7 +4044,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3772,7 +4053,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3781,7 +4062,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3790,7 +4071,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3800,7 +4081,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3809,7 +4090,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3818,7 +4099,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -3827,7 +4108,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             targetResources
                 .get(i)
                 .isDeviceIdExist(
-                    new PlainDeviceID(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(
                         COMPACTION_TEST_SG
                             + PATH_SEPARATOR
                             + "d"
@@ -4240,46 +4521,66 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             tsFileManager.getOrCreateSequenceListByTimePartition(0).getArrayList()));
 
     List<IDeviceID> deviceIdList = new ArrayList<>();
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"));
     for (int i = 0; i < 2; i++) {
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
       Assert.assertFalse(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
-    deviceIdList.add(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"));
+    deviceIdList.add(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"));
     for (int i = 2; i < 4; i++) {
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
       Assert.assertTrue(
           targetResources
               .get(i)
-              .isDeviceIdExist(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+              .isDeviceIdExist(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
       check(targetResources.get(i), deviceIdList);
     }
 
