@@ -81,9 +81,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -630,8 +632,8 @@ public class IoTConsensusServerImpl {
     // step 2, update configuration
     configuration.add(targetPeer);
     // step 3, persist configuration
-    logger.info("[IoTConsensus] persist new configuration: {}", configuration);
     persistConfiguration();
+    logger.info("[IoTConsensus] persist new configuration: {}", configuration);
   }
 
   public void removeSyncLogChannel(Peer targetPeer) throws ConsensusGroupModifyPeerException {
@@ -652,6 +654,7 @@ public class IoTConsensusServerImpl {
 
   public void persistConfiguration() {
     try {
+      removeDuplicateConfiguration();
       renameTmpConfigurationFileToRemoveSuffix();
       serializeConfigurationAndFsyncToDisk();
       deleteConfiguration();
@@ -981,6 +984,11 @@ public class IoTConsensusServerImpl {
                 }
               });
     }
+  }
+
+  public void removeDuplicateConfiguration() {
+    Set<Peer> seen = new HashSet<>();
+    configuration.removeIf(peer -> !seen.add(peer));
   }
 
   /**
