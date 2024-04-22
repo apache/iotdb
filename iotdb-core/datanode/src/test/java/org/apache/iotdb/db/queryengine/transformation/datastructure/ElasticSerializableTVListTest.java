@@ -125,7 +125,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     tvList =
         ElasticSerializableTVList.newElasticSerializableTVList(
             dataType, QUERY_ID, MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
-    assertEquals(0, tvList.size());
+    assertEquals(0, tvList.getPointCount());
   }
 
 //  private void testPut(TSDataType dataType) {

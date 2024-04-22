@@ -46,14 +46,4 @@ public class UDFQueryRowWindowTransformer extends UniversalUDFQueryTransformer {
     layerRowWindowReader.readyForNext();
     return YieldableState.YIELDABLE;
   }
-
-  @Override
-  protected boolean executeUDFOnce() throws QueryProcessException, IOException {
-    if (!layerRowWindowReader.next()) {
-      return false;
-    }
-    executor.execute(layerRowWindowReader.currentWindow());
-    layerRowWindowReader.readyForNext();
-    return true;
-  }
 }

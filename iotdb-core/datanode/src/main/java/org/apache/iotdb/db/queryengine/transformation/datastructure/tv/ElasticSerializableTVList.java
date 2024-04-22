@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.transformation.datastructure.tv;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.Cache;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.TVListForwardIterator;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -50,7 +51,8 @@ public class ElasticSerializableTVList {
   protected LRUCache cache;
   protected List<SerializableTVList> tvLists;
 
-  protected int size;
+  protected int pointCount;
+  protected int columnCount;
   protected int evictionUpperBound;
 
   protected ElasticSerializableTVList(
@@ -68,7 +70,8 @@ public class ElasticSerializableTVList {
 
     cache = new LRUCache(cacheSize);
     tvLists = new ArrayList<>();
-    size = 0;
+    pointCount = 0;
+    columnCount = 0;
     evictionUpperBound = 0;
   }
 
@@ -86,7 +89,8 @@ public class ElasticSerializableTVList {
 
     cache = new LRUCache(cacheSize);
     tvLists = new ArrayList<>();
-    size = 0;
+    pointCount = 0;
+    columnCount = 0;
     evictionUpperBound = 0;
   }
 
@@ -94,8 +98,12 @@ public class ElasticSerializableTVList {
     return dataType;
   }
 
-  public int size() {
-    return size;
+  public int getPointCount() {
+    return pointCount;
+  }
+
+  public int getColumnCount() {
+    return columnCount;
   }
 
   public boolean isNull(int index) throws IOException {
@@ -145,13 +153,57 @@ public class ElasticSerializableTVList {
         .getStringValue(TSFileConfig.STRING_CHARSET);
   }
 
+  public TimeColumn getTimeColumn(int externalIndex, int internalIndex) throws IOException {
+    return cache.get(externalIndex).getTimeColumn(internalIndex);
+  }
+
+  public Column getValueColumn(int externalIndex, int internalIndex) throws IOException {
+    return cache.get(externalIndex).getValueColumn(internalIndex);
+  }
+
+  public TVListForwardIterator constructIterator() {
+    return new TVListForwardIterator() {
+      private int externalIndex;  // Which tvList
+      private int internalIndex = -1;  // Which block in tvList
+
+      @Override
+      public TimeColumn currentTimes() throws IOException {
+        return getTimeColumn(externalIndex, internalIndex);
+      }
+
+      @Override
+      public Column currentValues() throws IOException {
+        return getValueColumn(externalIndex, internalIndex);
+      }
+
+      @Override
+      public boolean hasNext() {
+        // First time call, tvList has no data
+        if (tvLists.size() == 0) {
+          return false;
+        }
+        return externalIndex + 1 < tvLists.size() || internalIndex + 1 < tvLists.get(externalIndex).getColumnCount();
+      }
+
+      @Override
+      public void next() {
+        if (internalIndex + 1 == tvLists.get(externalIndex).getColumnCount()) {
+          internalIndex = 0;
+          externalIndex++;
+        } else {
+          internalIndex++;
+        }
+      }
+    };
+  }
+
   public void putColumn(TimeColumn timeColumn, Column valueColumn) throws IOException {
     checkExpansion();
 
     int begin = 0, end = 0;
     int total = timeColumn.getPositionCount();
     while (total > 0) {
-      int consumed = Math.min(total, internalTVListCapacity) - size % internalTVListCapacity;
+      int consumed = Math.min(total, internalTVListCapacity) - pointCount % internalTVListCapacity;
       end += consumed;
 
       // Construct sub-regions
@@ -159,10 +211,11 @@ public class ElasticSerializableTVList {
       Column subValueRegion = valueColumn.getRegion(begin, consumed);
 
       // Fill row record list
-      cache.get(size / internalTVListCapacity).putColumns(subTimeRegion, subValueRegion);
+      cache.get(pointCount / internalTVListCapacity).putColumns(subTimeRegion, subValueRegion);
 
       total -= consumed;
-      size += consumed;
+      pointCount += consumed;
+      columnCount++;
       begin = end;
 
       if (total > 0) {
@@ -172,90 +225,13 @@ public class ElasticSerializableTVList {
   }
 
   private void checkExpansion() {
-    if (size % internalTVListCapacity == 0) {
+    if (pointCount % internalTVListCapacity == 0) {
       doExpansion();
     }
   }
 
   private void doExpansion() {
     tvLists.add(SerializableTVList.newSerializableTVList(dataType, queryId));
-  }
-
-  public LayerPointReader constructPointReaderUsingTrivialEvictionStrategy() {
-
-    return new LayerPointReader() {
-
-      private int currentPointIndex = -1;
-
-      @Override
-      public boolean isConstantPointReader() {
-        return false;
-      }
-
-      @Override
-      public YieldableState yield() {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public boolean next() {
-        if (size - 1 <= currentPointIndex) {
-          return false;
-        }
-        ++currentPointIndex;
-        return true;
-      }
-
-      @Override
-      public void readyForNext() {
-        setEvictionUpperBound(currentPointIndex + 1);
-      }
-
-      @Override
-      public TSDataType getDataType() {
-        return dataType;
-      }
-
-      @Override
-      public long currentTime() throws IOException {
-        return getTime(currentPointIndex);
-      }
-
-      @Override
-      public int currentInt() throws IOException {
-        return getInt(currentPointIndex);
-      }
-
-      @Override
-      public long currentLong() throws IOException {
-        return getLong(currentPointIndex);
-      }
-
-      @Override
-      public float currentFloat() throws IOException {
-        return getFloat(currentPointIndex);
-      }
-
-      @Override
-      public double currentDouble() throws IOException {
-        return getDouble(currentPointIndex);
-      }
-
-      @Override
-      public boolean currentBoolean() throws IOException {
-        return getBoolean(currentPointIndex);
-      }
-
-      @Override
-      public org.apache.iotdb.tsfile.utils.Binary currentBinary() throws IOException {
-        return getBinary(currentPointIndex);
-      }
-
-      @Override
-      public boolean isCurrentNull() throws IOException {
-        return isNull(currentPointIndex);
-      }
-    };
   }
 
   /**

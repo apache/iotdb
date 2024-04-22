@@ -32,44 +32,18 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScal
 import org.apache.iotdb.db.queryengine.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.ternary.TernaryExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.plan.expression.unary.*;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.QueryDataSetInputLayer;
-import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.ConstantIntermediateLayer;
-import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.IntermediateLayer;
-import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.MultiInputColumnIntermediateLayer;
-import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
-import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.SingleInputColumnSingleReferenceIntermediateLayer;
+import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.*;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.ArithmeticAdditionTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.ArithmeticDivisionTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.ArithmeticModuloTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.ArithmeticMultiplicationTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.ArithmeticSubtractionTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.CompareEqualToTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.CompareGreaterEqualTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.CompareGreaterThanTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.CompareLessEqualTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.CompareLessThanTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.CompareNonEqualTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.LogicAndTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.LogicOrTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.*;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi.MappableUDFQueryRowTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi.UDFQueryRowTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi.UDFQueryTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.ternary.BetweenTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.ArithmeticNegationTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.InTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.IsNullTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.LogicNotTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.RegularTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.TransparentTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.*;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -99,12 +73,12 @@ public class IntermediateLayerVisitor
     if (!context.expressionIntermediateLayerMap.containsKey(unaryExpression)) {
       float memoryBudgetInMB = context.memoryAssigner.assign();
 
-      IntermediateLayer parentLayerPointReader =
+      IntermediateLayer intermediateLayer =
           this.process(unaryExpression.getExpression(), context);
 
       Transformer transformer =
           getConcreteUnaryTransformer(
-              unaryExpression, parentLayerPointReader.constructPointReader());
+              unaryExpression, intermediateLayer.constructReader());
 
       // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
       // yet. And since a ConstantLayerPointReader won't produce too much IO,
@@ -136,8 +110,8 @@ public class IntermediateLayerVisitor
       Transformer transformer =
           getConcreteBinaryTransformer(
               binaryExpression,
-              leftParentIntermediateLayer.constructPointReader(),
-              rightParentIntermediateLayer.constructPointReader());
+              leftParentIntermediateLayer.constructReader(),
+              rightParentIntermediateLayer.constructReader());
 
       // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
       // yet. And since a ConstantLayerPointReader won't produce too much IO,
@@ -170,9 +144,9 @@ public class IntermediateLayerVisitor
       Transformer transformer =
           getConcreteTernaryTransformer(
               ternaryExpression,
-              firstParentIntermediateLayer.constructPointReader(),
-              secondParentIntermediateLayer.constructPointReader(),
-              thirdParentIntermediateLayer.constructPointReader());
+              firstParentIntermediateLayer.constructReader(),
+              secondParentIntermediateLayer.constructReader(),
+              thirdParentIntermediateLayer.constructReader());
 
       // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
       // yet. And since a ConstantLayerPointReader won't produce too much IO,
@@ -199,7 +173,7 @@ public class IntermediateLayerVisitor
       if (functionExpression.isAggregationFunctionExpression()) {
         transformer =
             new TransparentTransformer(
-                context.rawTimeSeriesInputLayer.constructValuePointReader(
+                context.rawTimeSeriesInputLayer.constructValueReader(
                     functionExpression.getInputColumnIndex()));
       } else if (functionExpression.isBuiltInScalarFunctionExpression()) {
         transformer = getBuiltInScalarFunctionTransformer(functionExpression, context);
@@ -227,10 +201,10 @@ public class IntermediateLayerVisitor
   private Transformer getBuiltInScalarFunctionTransformer(
       FunctionExpression expression, IntermediateLayerVisitorContext context) {
 
-    LayerPointReader childPointReader =
-        this.process(expression.getExpressions().get(0), context).constructPointReader();
+    LayerReader childReader =
+        this.process(expression.getExpressions().get(0), context).constructReader();
     return BuiltInScalarFunctionHelperFactory.createHelper(expression.getFunctionName())
-        .getBuiltInScalarFunctionTransformer(expression, childPointReader);
+        .getBuiltInScalarFunctionTransformer(expression, childReader);
   }
 
   @Override
@@ -239,16 +213,16 @@ public class IntermediateLayerVisitor
     if (!context.expressionIntermediateLayerMap.containsKey(timestampOperand)) {
       float memoryBudgetInMB = context.memoryAssigner.assign();
 
-      LayerPointReader parentLayerPointReader =
-          context.rawTimeSeriesInputLayer.constructTimePointReader();
+      LayerReader parentLayerReader =
+          context.rawTimeSeriesInputLayer.constructTimeReader();
 
       context.expressionIntermediateLayerMap.put(
           timestampOperand,
           context.memoryAssigner.getReference(timestampOperand) == 1
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  timestampOperand, context.queryId, memoryBudgetInMB, parentLayerPointReader)
+                  timestampOperand, context.queryId, memoryBudgetInMB, parentLayerReader)
               : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  timestampOperand, context.queryId, memoryBudgetInMB, parentLayerPointReader));
+                  timestampOperand, context.queryId, memoryBudgetInMB, parentLayerReader));
     }
 
     return context.expressionIntermediateLayerMap.get(timestampOperand);
@@ -260,17 +234,17 @@ public class IntermediateLayerVisitor
     if (!context.expressionIntermediateLayerMap.containsKey(timeSeriesOperand)) {
       float memoryBudgetInMB = context.memoryAssigner.assign();
 
-      LayerPointReader parentLayerPointReader =
-          context.rawTimeSeriesInputLayer.constructValuePointReader(
+      LayerReader parentLayerReader =
+          context.rawTimeSeriesInputLayer.constructValueReader(
               timeSeriesOperand.getInputColumnIndex());
 
       context.expressionIntermediateLayerMap.put(
           timeSeriesOperand,
           context.memoryAssigner.getReference(timeSeriesOperand) == 1
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  timeSeriesOperand, context.queryId, memoryBudgetInMB, parentLayerPointReader)
+                  timeSeriesOperand, context.queryId, memoryBudgetInMB, parentLayerReader)
               : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  timeSeriesOperand, context.queryId, memoryBudgetInMB, parentLayerPointReader));
+                  timeSeriesOperand, context.queryId, memoryBudgetInMB, parentLayerReader));
     }
 
     return context.expressionIntermediateLayerMap.get(timeSeriesOperand);
@@ -300,24 +274,24 @@ public class IntermediateLayerVisitor
   }
 
   private Transformer getConcreteUnaryTransformer(
-      Expression expression, LayerPointReader pointReader) {
+      Expression expression, LayerReader parentReader) {
     switch (expression.getExpressionType()) {
       case IN:
         InExpression inExpression = (InExpression) expression;
-        return new InTransformer(pointReader, inExpression.isNotIn(), inExpression.getValues());
+        return new InTransformer(parentReader, inExpression.isNotIn(), inExpression.getValues());
       case IS_NULL:
         IsNullExpression isNullExpression = (IsNullExpression) expression;
-        return new IsNullTransformer(pointReader, isNullExpression.isNot());
+        return new IsNullTransformer(parentReader, isNullExpression.isNot());
       case LOGIC_NOT:
-        return new LogicNotTransformer(pointReader);
+        return new LogicNotTransformer(parentReader);
       case NEGATION:
-        return new ArithmeticNegationTransformer(pointReader);
+        return new ArithmeticNegationTransformer(parentReader);
       case LIKE:
         LikeExpression likeExpression = (LikeExpression) expression;
-        return new RegularTransformer(pointReader, likeExpression.getPattern());
+        return new RegularTransformer(parentReader, likeExpression.getPattern());
       case REGEXP:
         RegularExpression regularExpression = (RegularExpression) expression;
-        return new RegularTransformer(pointReader, regularExpression.getPattern());
+        return new RegularTransformer(parentReader, regularExpression.getPattern());
       default:
         throw new UnsupportedOperationException(
             "Unsupported Expression Type: " + expression.getExpressionType());
@@ -326,46 +300,46 @@ public class IntermediateLayerVisitor
 
   private Transformer getConcreteBinaryTransformer(
       Expression expression,
-      LayerPointReader leftParentLayerPointReader,
-      LayerPointReader rightParentLayerPointReader) {
+      LayerReader leftParentLayerReader,
+      LayerReader rightParentLayerReader) {
     switch (expression.getExpressionType()) {
       case ADDITION:
         return new ArithmeticAdditionTransformer(
-            leftParentLayerPointReader, rightParentLayerPointReader);
+            leftParentLayerReader, rightParentLayerReader);
       case SUBTRACTION:
         return new ArithmeticSubtractionTransformer(
-            leftParentLayerPointReader, rightParentLayerPointReader);
+            leftParentLayerReader, rightParentLayerReader);
       case MULTIPLICATION:
         return new ArithmeticMultiplicationTransformer(
-            leftParentLayerPointReader, rightParentLayerPointReader);
+            leftParentLayerReader, rightParentLayerReader);
       case DIVISION:
         return new ArithmeticDivisionTransformer(
-            leftParentLayerPointReader, rightParentLayerPointReader);
+            leftParentLayerReader, rightParentLayerReader);
       case MODULO:
         return new ArithmeticModuloTransformer(
-            leftParentLayerPointReader, rightParentLayerPointReader);
+            leftParentLayerReader, rightParentLayerReader);
       case EQUAL_TO:
         return new CompareEqualToTransformer(
-            leftParentLayerPointReader, rightParentLayerPointReader);
+            leftParentLayerReader, rightParentLayerReader);
       case NON_EQUAL:
         return new CompareNonEqualTransformer(
-            leftParentLayerPointReader, rightParentLayerPointReader);
+            leftParentLayerReader, rightParentLayerReader);
       case GREATER_THAN:
         return new CompareGreaterThanTransformer(
-            leftParentLayerPointReader, rightParentLayerPointReader);
+            leftParentLayerReader, rightParentLayerReader);
       case GREATER_EQUAL:
         return new CompareGreaterEqualTransformer(
-            leftParentLayerPointReader, rightParentLayerPointReader);
+            leftParentLayerReader, rightParentLayerReader);
       case LESS_THAN:
         return new CompareLessThanTransformer(
-            leftParentLayerPointReader, rightParentLayerPointReader);
+            leftParentLayerReader, rightParentLayerReader);
       case LESS_EQUAL:
         return new CompareLessEqualTransformer(
-            leftParentLayerPointReader, rightParentLayerPointReader);
+            leftParentLayerReader, rightParentLayerReader);
       case LOGIC_AND:
-        return new LogicAndTransformer(leftParentLayerPointReader, rightParentLayerPointReader);
+        return new LogicAndTransformer(leftParentLayerReader, rightParentLayerReader);
       case LOGIC_OR:
-        return new LogicOrTransformer(leftParentLayerPointReader, rightParentLayerPointReader);
+        return new LogicOrTransformer(leftParentLayerReader, rightParentLayerReader);
       default:
         throw new UnsupportedOperationException(
             "Unsupported Expression Type: " + expression.getExpressionType());
@@ -374,15 +348,15 @@ public class IntermediateLayerVisitor
 
   private Transformer getConcreteTernaryTransformer(
       Expression expression,
-      LayerPointReader firstParentLayerPointReader,
-      LayerPointReader secondParentLayerPointReader,
-      LayerPointReader thirdParentLayerPointReader) {
+      LayerReader firstParentLayerReader,
+      LayerReader secondParentLayerReader,
+      LayerReader thirdParentLayerReader) {
     if (expression.getExpressionType() == ExpressionType.BETWEEN) {
       BetweenExpression betweenExpression = (BetweenExpression) expression;
       return new BetweenTransformer(
-          firstParentLayerPointReader,
-          secondParentLayerPointReader,
-          thirdParentLayerPointReader,
+          firstParentLayerReader,
+          secondParentLayerReader,
+          thirdParentLayerReader,
           betweenExpression.isNotBetween());
     }
     throw new UnsupportedOperationException(
@@ -408,17 +382,18 @@ public class IntermediateLayerVisitor
     switch (accessStrategy.getAccessStrategyType()) {
       case MAPPABLE_ROW_BY_ROW:
         return new MappableUDFQueryRowTransformer(
-            udfInputIntermediateLayer.constructRowReader(), executor);
+            udfInputIntermediateLayer.constructReader(), executor);
       case ROW_BY_ROW:
-        return new UDFQueryRowTransformer(udfInputIntermediateLayer.constructRowReader(), executor);
+        return new UDFQueryRowTransformer(udfInputIntermediateLayer.constructReader(), executor);
       case SLIDING_SIZE_WINDOW:
       case SLIDING_TIME_WINDOW:
       case SESSION_TIME_WINDOW:
       case STATE_WINDOW:
-        return new UDFQueryRowWindowTransformer(
-            udfInputIntermediateLayer.constructRowWindowReader(
-                accessStrategy, context.memoryAssigner.assign()),
-            executor);
+        throw new UnsupportedOperationException("In development");
+//        return new UDFQueryRowWindowTransformer(
+//            udfInputIntermediateLayer.constructRowWindowReader(
+//                accessStrategy, context.memoryAssigner.assign()),
+//            executor);
       default:
         throw new UnsupportedOperationException("Unsupported transformer access strategy");
     }
@@ -437,7 +412,7 @@ public class IntermediateLayerVisitor
             context.queryId,
             context.memoryAssigner.assign(),
             intermediateLayers.stream()
-                .map(IntermediateLayer::constructPointReader)
+                .map(IntermediateLayer::constructReader)
                 .collect(Collectors.toList()));
   }
 

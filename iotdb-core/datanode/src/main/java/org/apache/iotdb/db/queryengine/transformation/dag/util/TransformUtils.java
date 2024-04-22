@@ -96,62 +96,62 @@ public class TransformUtils {
     switch (dataType) {
       case INT32:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordInt(tvList.getInt(tvList.size() - 2));
+          valueRecorder.recordInt(tvList.getInt(tvList.getPointCount() - 2));
           valueRecorder.setRecorded(true);
         }
-        res = Math.abs(tvList.getInt(tvList.size() - 1) - valueRecorder.getInt()) > delta;
+        res = Math.abs(tvList.getInt(tvList.getPointCount() - 1) - valueRecorder.getInt()) > delta;
         if (res) {
-          valueRecorder.recordInt(tvList.getInt(tvList.size() - 1));
+          valueRecorder.recordInt(tvList.getInt(tvList.getPointCount() - 1));
         }
         break;
       case INT64:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordLong(tvList.getLong(tvList.size() - 2));
+          valueRecorder.recordLong(tvList.getLong(tvList.getPointCount() - 2));
           valueRecorder.setRecorded(true);
         }
-        res = Math.abs(tvList.getLong(tvList.size() - 1) - valueRecorder.getLong()) > delta;
+        res = Math.abs(tvList.getLong(tvList.getPointCount() - 1) - valueRecorder.getLong()) > delta;
         if (res) {
-          valueRecorder.recordLong(tvList.getLong(tvList.size() - 1));
+          valueRecorder.recordLong(tvList.getLong(tvList.getPointCount() - 1));
         }
         break;
       case FLOAT:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordFloat(tvList.getFloat(tvList.size() - 2));
+          valueRecorder.recordFloat(tvList.getFloat(tvList.getPointCount() - 2));
           valueRecorder.setRecorded(true);
         }
-        res = Math.abs(tvList.getFloat(tvList.size() - 1) - valueRecorder.getFloat()) > delta;
+        res = Math.abs(tvList.getFloat(tvList.getPointCount() - 1) - valueRecorder.getFloat()) > delta;
         if (res) {
-          valueRecorder.recordFloat(tvList.getFloat(tvList.size() - 1));
+          valueRecorder.recordFloat(tvList.getFloat(tvList.getPointCount() - 1));
         }
         break;
       case DOUBLE:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordDouble(tvList.getDouble(tvList.size() - 2));
+          valueRecorder.recordDouble(tvList.getDouble(tvList.getPointCount() - 2));
           valueRecorder.setRecorded(true);
         }
-        res = Math.abs(tvList.getDouble(tvList.size() - 1) - valueRecorder.getDouble()) > delta;
+        res = Math.abs(tvList.getDouble(tvList.getPointCount() - 1) - valueRecorder.getDouble()) > delta;
         if (res) {
-          valueRecorder.recordDouble(tvList.getDouble(tvList.size() - 1));
+          valueRecorder.recordDouble(tvList.getDouble(tvList.getPointCount() - 1));
         }
         break;
       case BOOLEAN:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordBoolean(tvList.getBoolean(tvList.size() - 2));
+          valueRecorder.recordBoolean(tvList.getBoolean(tvList.getPointCount() - 2));
           valueRecorder.setRecorded(true);
         }
-        res = tvList.getBoolean(tvList.size() - 1) != valueRecorder.getBoolean();
+        res = tvList.getBoolean(tvList.getPointCount() - 1) != valueRecorder.getBoolean();
         if (res) {
-          valueRecorder.recordBoolean(tvList.getBoolean(tvList.size() - 1));
+          valueRecorder.recordBoolean(tvList.getBoolean(tvList.getPointCount() - 1));
         }
         break;
       case TEXT:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordString(tvList.getString(tvList.size() - 2));
+          valueRecorder.recordString(tvList.getString(tvList.getPointCount() - 2));
           valueRecorder.setRecorded(true);
         }
-        res = !tvList.getString(tvList.size() - 1).equals(valueRecorder.getString());
+        res = !tvList.getString(tvList.getPointCount() - 1).equals(valueRecorder.getString());
         if (res) {
-          valueRecorder.recordString(tvList.getString(tvList.size() - 1));
+          valueRecorder.recordString(tvList.getString(tvList.getPointCount() - 1));
         }
         break;
       default:

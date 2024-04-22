@@ -261,6 +261,10 @@ public class SerializableTVList implements SerializableList {
     size += timeColumn.getPositionCount();
   }
 
+  public int getColumnCount() {
+    return timeColumns.size();
+  }
+
   @Override
   public SerializationRecorder getSerializationRecorder() {
     return serializationRecorder;

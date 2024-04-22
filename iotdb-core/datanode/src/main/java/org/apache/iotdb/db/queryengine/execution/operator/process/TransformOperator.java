@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.builder.EvaluationDAGBuilder;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.QueryDataSetInputLayer;
@@ -41,7 +42,9 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -67,10 +70,12 @@ public class TransformOperator implements ProcessOperator {
 
   protected QueryDataSetInputLayer inputLayer;
   protected UDTFContext udtfContext;
-  protected LayerPointReader[] transformers;
+  protected LayerReader[] transformers;
   protected List<TSDataType> outputDataTypes;
 
   protected TimeSelector timeHeap;
+  protected TsBlock[] outputColumns;
+  protected int[] currentIndexes;
   protected boolean[] shouldIterateReadersToNextValid;
 
   private final String udtfQueryId;
@@ -97,6 +102,10 @@ public class TransformOperator implements ProcessOperator {
     initInputLayer(inputDataTypes);
     initUdtfContext(outputExpressions, zoneId);
     initTransformers(inputLocations, outputExpressions, expressionTypes);
+
+    outputColumns = new TsBlock[transformers.length];
+    currentIndexes = new int[transformers.length];
+
     timeHeap = new TimeSelector(transformers.length << 1, isAscending);
     shouldIterateReadersToNextValid = new boolean[outputExpressions.length];
     Arrays.fill(shouldIterateReadersToNextValid, true);
@@ -136,7 +145,7 @@ public class TransformOperator implements ProcessOperator {
               .buildLayerMemoryAssigner()
               .bindInputLayerColumnIndexWithExpression()
               .buildResultColumnPointReaders()
-              .getOutputPointReaders();
+              .getOutputReaders();
     } finally {
       UDFManagementService.getInstance().releaseLock();
     }
@@ -145,7 +154,7 @@ public class TransformOperator implements ProcessOperator {
   protected YieldableState iterateAllColumnsToNextValid() throws Exception {
     for (int i = 0, n = shouldIterateReadersToNextValid.length; i < n; ++i) {
       if (shouldIterateReadersToNextValid[i]) {
-        final YieldableState yieldableState = iterateReaderToNextValid(transformers[i]);
+        final YieldableState yieldableState = iterateReaderToNextValid(i);
         if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
           return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
         }
@@ -156,20 +165,42 @@ public class TransformOperator implements ProcessOperator {
   }
 
   @SuppressWarnings("squid:S135")
-  protected YieldableState iterateReaderToNextValid(LayerPointReader reader) throws Exception {
+  protected YieldableState iterateReaderToNextValid(int index) throws Exception {
     // Since a constant operand is not allowed to be a result column, the reader will not be
     // a ConstantLayerPointReader.
     // If keepNull is false, we must iterate the reader until a non-null row is returned.
-    YieldableState yieldableState;
-    while ((yieldableState = reader.yield()) == YieldableState.YIELDABLE) {
-      if (reader.isCurrentNull() && !keepNull) {
-        reader.readyForNext();
-        continue;
+    while (true) {
+      if (outputColumns[index] == null) {
+        YieldableState state = transformers[index].yield();
+        if (state != YieldableState.YIELDABLE) {
+          return state;
+        }
+
+        Column[] columns = transformers[index].current();
+        TsBlock block = new TsBlock((TimeColumn) columns[1], columns[0]);
+        outputColumns[index] = block;
+        currentIndexes[index] = 0;
       }
-      timeHeap.add(reader.currentTime());
-      break;
+
+      Column outputValueColumn = outputColumns[index].getColumn(0);
+      while (outputValueColumn.isNull(currentIndexes[index]) && !keepNull) {
+        currentIndexes[index]++;
+        if (currentIndexes[index] == outputValueColumn.getPositionCount()) {
+          transformers[index].consumedAll();
+          outputColumns[index] = null;
+          currentIndexes[index] = 0;
+          break;
+        }
+      }
+
+      if (outputColumns[index] != null) {
+        TimeColumn outputTimeColumn = outputColumns[index].getTimeColumn();
+        long time = outputTimeColumn.getLong(currentIndexes[index]);
+        timeHeap.add(time);
+        currentIndexes[index]++;
+        return YieldableState.YIELDABLE;
+      }
     }
-    return yieldableState;
   }
 
   @SuppressWarnings("squid:S112")
@@ -213,7 +244,7 @@ public class TransformOperator implements ProcessOperator {
 
         // values
         for (int i = 0; i < columnCount; ++i) {
-          yieldableState = collectDataPoint(transformers[i], columnBuilders[i], currentTime, i);
+          yieldableState = collectDataPoint(columnBuilders[i], currentTime, i);
           if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
             for (int j = 0; j <= i; ++j) {
               shouldIterateReadersToNextValid[j] = false;
@@ -248,8 +279,8 @@ public class TransformOperator implements ProcessOperator {
   protected void prepareTsBlockBuilder(TsBlockBuilder tsBlockBuilder) {
     if (outputDataTypes == null) {
       outputDataTypes = new ArrayList<>();
-      for (LayerPointReader reader : transformers) {
-        outputDataTypes.add(reader.getDataType());
+      for (LayerReader reader : transformers) {
+        outputDataTypes.add(reader.getDataTypes()[0]);
       }
     }
     tsBlockBuilder.buildValueColumnBuilders(outputDataTypes);
@@ -258,69 +289,56 @@ public class TransformOperator implements ProcessOperator {
   private void prepareEachColumn(int columnCount) {
     for (int i = 0; i < columnCount; ++i) {
       if (shouldIterateReadersToNextValid[i]) {
-        transformers[i].readyForNext();
+        currentIndexes[i]++;
+        if (currentIndexes[i] == outputColumns[i].getColumn(0).getPositionCount()) {
+          transformers[i].consumedAll();
+          outputColumns[i] = null;
+          currentIndexes[i] = 0;
+        }
       }
     }
   }
 
-  protected boolean collectReaderAppendIsNull(LayerPointReader reader, long currentTime)
-      throws Exception {
-    final YieldableState yieldableState = reader.yield();
-
-    if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
-      return true;
-    }
-
-    if (yieldableState != YieldableState.YIELDABLE) {
-      return false;
-    }
-
-    if (reader.currentTime() != currentTime) {
-      return true;
-    }
-
-    return reader.isCurrentNull();
-  }
-
-  protected YieldableState collectDataPoint(
-      LayerPointReader reader, ColumnBuilder writer, long currentTime, int readerIndex)
-      throws Exception {
-    final YieldableState yieldableState = reader.yield();
-    if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
+  protected YieldableState collectDataPoint(ColumnBuilder writer, long currentTime, int index) throws Exception {
+    YieldableState state = transformers[index].yield();
+    if (state == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
       writer.appendNull();
       return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
     }
-    if (yieldableState != YieldableState.YIELDABLE) {
-      return yieldableState;
+    if (state != YieldableState.YIELDABLE) {
+      return state;
     }
 
-    if (reader.currentTime() != currentTime) {
+    TimeColumn timeColumn = outputColumns[index].getTimeColumn();
+    Column valueColumn = outputColumns[index].getColumn(0);
+    int currentIndex = currentIndexes[index];
+    if (timeColumn.getLong(currentIndex) != currentTime) {
       writer.appendNull();
       return YieldableState.YIELDABLE;
     }
 
-    if (reader.isCurrentNull()) {
+    if (valueColumn.isNull(currentIndex)) {
       writer.appendNull();
     } else {
-      TSDataType type = reader.getDataType();
+      TSDataType type = transformers[index].getDataTypes()[0];
       switch (type) {
         case INT32:
-          writer.writeInt(reader.currentInt());
+          writer.writeInt(valueColumn.getInt(currentIndex));
           break;
         case INT64:
-          writer.writeLong(reader.currentLong());
+          writer.writeLong(valueColumn.getLong(currentIndex));
           break;
         case FLOAT:
-          writer.writeFloat(reader.currentFloat());
+          writer.writeFloat(valueColumn.getFloat(currentIndex));
           break;
         case DOUBLE:
-          writer.writeDouble(reader.currentDouble());
+          writer.writeDouble(valueColumn.getDouble(currentIndex));
           break;
         case BOOLEAN:
-          writer.writeBoolean(reader.currentBoolean());
+          writer.writeBoolean(valueColumn.getBoolean(currentIndex));
           break;
         case TEXT:
-          writer.writeBinary(reader.currentBinary());
+          writer.writeBinary(valueColumn.getBinary(currentIndex));
           break;
         default:
           throw new UnSupportedDataTypeException(
@@ -328,7 +346,7 @@ public class TransformOperator implements ProcessOperator {
       }
     }
 
-    shouldIterateReadersToNextValid[readerIndex] = true;
+    shouldIterateReadersToNextValid[index] = true;
 
     return YieldableState.YIELDABLE;
   }
@@ -380,7 +398,7 @@ public class TransformOperator implements ProcessOperator {
   }
 
   @TestOnly
-  public LayerPointReader[] getTransformers() {
+  public LayerReader[] getTransformers() {
     return transformers;
   }
 }

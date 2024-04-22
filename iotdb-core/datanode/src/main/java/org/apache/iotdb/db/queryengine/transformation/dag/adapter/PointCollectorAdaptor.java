@@ -11,9 +11,14 @@ import org.apache.iotdb.udf.api.type.Binary;
 import java.io.IOException;
 
 public class PointCollectorAdaptor implements PointCollector {
-  private ColumnBuilder timeColumnBuilder;
+  private final ColumnBuilder timeColumnBuilder;
 
-  private ColumnBuilder valueColumnBuilder;
+  private final ColumnBuilder valueColumnBuilder;
+
+  public PointCollectorAdaptor(ColumnBuilder timeColumnBuilder, ColumnBuilder valueColumnBuilder) {
+    this.timeColumnBuilder = timeColumnBuilder;
+    this.valueColumnBuilder = valueColumnBuilder;
+  }
 
   @Override
   public void putInt(long timestamp, int value) throws IOException {
@@ -54,7 +59,7 @@ public class PointCollectorAdaptor implements PointCollector {
   @Override
   public void putString(long timestamp, String value) throws IOException {
     timeColumnBuilder.writeLong(timestamp);
-    valueColumnBuilder.writeBinary( BytesUtils.valueOf(value));
+    valueColumnBuilder.writeBinary(BytesUtils.valueOf(value));
   }
 
   public void putNull(long timestamp) {

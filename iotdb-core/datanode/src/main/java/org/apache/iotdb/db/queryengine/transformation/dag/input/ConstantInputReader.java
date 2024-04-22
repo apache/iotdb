@@ -22,26 +22,26 @@ package org.apache.iotdb.db.queryengine.transformation.dag.input;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.column.*;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Optional;
 
-/** LayerPointReader for constants. */
-public class ConstantInputReader implements LayerPointReader {
-
+public class ConstantInputReader implements LayerReader {
+  private int count = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
   private final ConstantOperand expression;
+  private TSDataType dataType;
 
-  protected int cachedInt;
-  protected long cachedLong;
-  protected float cachedFloat;
-  protected double cachedDouble;
-  protected boolean cachedBoolean;
-  protected Binary cachedBinary;
+  private Column cachedColumn;
 
   public ConstantInputReader(ConstantOperand expression) throws QueryProcessException {
     this.expression = Validate.notNull(expression);
@@ -52,24 +52,37 @@ public class ConstantInputReader implements LayerPointReader {
           "Invalid constant operand: " + expression.getExpressionString());
     }
 
-    switch (expression.getDataType()) {
+    dataType = expression.getDataType();
+    switch (dataType) {
       case INT32:
-        cachedInt = (int) value;
+        int[] intArray = new int[count];
+        Arrays.fill(intArray, (int) value);
+        cachedColumn = new IntColumn(count, Optional.empty(), intArray);
         break;
       case INT64:
-        cachedLong = (long) value;
+        long[] longArray = new long[count];
+        Arrays.fill(longArray, (long) value);
+        cachedColumn = new LongColumn(count, Optional.empty(), longArray);
         break;
       case FLOAT:
-        cachedFloat = (float) value;
+        float[] floatArray = new float[count];
+        Arrays.fill(floatArray, (float) value);
+        cachedColumn = new FloatColumn(count, Optional.empty(), floatArray);
         break;
       case DOUBLE:
-        cachedDouble = (double) value;
+        double[] doubleArray = new double[count];
+        Arrays.fill(doubleArray, (double) value);
+        cachedColumn = new DoubleColumn(count, Optional.empty(), doubleArray);
         break;
       case TEXT:
-        cachedBinary = (Binary) value;
+        Binary[] binaryArray = new Binary[count];
+        Arrays.fill(binaryArray, value);
+        cachedColumn = new BinaryColumn(count, Optional.empty(), binaryArray);
         break;
       case BOOLEAN:
-        cachedBoolean = (boolean) value;
+        boolean[] booleanArray = new boolean[count];
+        Arrays.fill(booleanArray, (boolean) value);
+        cachedColumn = new BooleanColumn(count, Optional.empty(), booleanArray);
         break;
       default:
         throw new QueryProcessException("Unsupported type: " + expression.getDataType());
@@ -82,62 +95,29 @@ public class ConstantInputReader implements LayerPointReader {
   }
 
   @Override
-  public YieldableState yield() {
-    return YieldableState.YIELDABLE;
-  }
-
-  @Override
-  public boolean next() {
-    return true;
-  }
-
-  @Override
-  public void readyForNext() {
+  public void consumed(int consumed) {
     // Do nothing
   }
 
   @Override
-  public TSDataType getDataType() {
-    return expression.getDataType();
+  public void consumedAll() {
+    // Do nothing
   }
 
   @Override
-  public long currentTime() throws IOException {
-    throw new UnsupportedOperationException();
+  public Column[] current() throws IOException {
+    return new Column[]{cachedColumn};
   }
 
   @Override
-  public int currentInt() throws IOException {
-    return cachedInt;
+  public YieldableState yield() {
+    return YieldableState.YIELDABLE;
   }
 
-  @Override
-  public long currentLong() throws IOException {
-    return cachedLong;
-  }
 
   @Override
-  public float currentFloat() throws IOException {
-    return cachedFloat;
+  public TSDataType[] getDataTypes() {
+    return new TSDataType[]{dataType};
   }
 
-  @Override
-  public double currentDouble() throws IOException {
-    return cachedDouble;
-  }
-
-  @Override
-  public boolean currentBoolean() throws IOException {
-    return cachedBoolean;
-  }
-
-  @Override
-  public Binary currentBinary() throws IOException {
-    return cachedBinary;
-  }
-
-  @Override
-  public boolean isCurrentNull() {
-    return false;
-  }
 }

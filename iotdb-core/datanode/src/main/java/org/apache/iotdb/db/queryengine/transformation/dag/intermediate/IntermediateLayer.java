@@ -19,18 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerRowReader;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
-import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
-import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
-import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
-import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
-import org.apache.iotdb.udf.api.customizer.strategy.StateWindowAccessStrategy;
-
-import java.io.IOException;
+import org.apache.iotdb.db.queryengine.transformation.api.*;
 
 public abstract class IntermediateLayer {
 
@@ -48,46 +38,7 @@ public abstract class IntermediateLayer {
     this.memoryBudgetInMB = memoryBudgetInMB;
   }
 
-  public abstract LayerPointReader constructPointReader();
-
-  public abstract LayerRowReader constructRowReader();
-
-  public final LayerRowWindowReader constructRowWindowReader(
-      AccessStrategy strategy, float memoryBudgetInMB) throws QueryProcessException, IOException {
-    switch (strategy.getAccessStrategyType()) {
-      case SLIDING_TIME_WINDOW:
-        return constructRowSlidingTimeWindowReader(
-            (SlidingTimeWindowAccessStrategy) strategy, memoryBudgetInMB);
-      case SLIDING_SIZE_WINDOW:
-        return constructRowSlidingSizeWindowReader(
-            (SlidingSizeWindowAccessStrategy) strategy, memoryBudgetInMB);
-      case SESSION_TIME_WINDOW:
-        return constructRowSessionTimeWindowReader(
-            (SessionTimeWindowAccessStrategy) strategy, memoryBudgetInMB);
-      case STATE_WINDOW:
-        return constructRowStateWindowReader(
-            (StateWindowAccessStrategy) strategy, memoryBudgetInMB);
-      default:
-        throw new IllegalStateException(
-            "Unexpected access strategy: " + strategy.getAccessStrategyType());
-    }
-  }
-
-  protected abstract LayerRowWindowReader constructRowSlidingSizeWindowReader(
-      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB)
-      throws QueryProcessException;
-
-  protected abstract LayerRowWindowReader constructRowSlidingTimeWindowReader(
-      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
-      throws QueryProcessException, IOException;
-
-  protected abstract LayerRowWindowReader constructRowSessionTimeWindowReader(
-      SessionTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
-      throws QueryProcessException, IOException;
-
-  protected abstract LayerRowWindowReader constructRowStateWindowReader(
-      StateWindowAccessStrategy strategy, float memoryBudgetInMB)
-      throws QueryProcessException, IOException;
+  public abstract LayerReader constructReader();
 
   @Override
   public String toString() {

@@ -50,7 +50,7 @@ public abstract class UDFQueryTransformer extends Transformer {
   }
 
   @Override
-  public final TSDataType getDataType() {
-    return tsDataType;
+  public final TSDataType[] getDataTypes() {
+    return new TSDataType[]{tsDataType};
   }
 }

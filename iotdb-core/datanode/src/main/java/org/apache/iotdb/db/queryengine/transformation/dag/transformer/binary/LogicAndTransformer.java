@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary;
 
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 
 public class LogicAndTransformer extends LogicBinaryTransformer {
 
-  public LogicAndTransformer(LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
-    super(leftPointReader, rightPointReader);
+  public LogicAndTransformer(LayerReader leftReader, LayerReader rightReader) {
+    super(leftReader, rightReader);
   }
 
   @Override

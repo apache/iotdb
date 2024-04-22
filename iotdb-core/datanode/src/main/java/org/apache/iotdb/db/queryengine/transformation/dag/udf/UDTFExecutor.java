@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
@@ -35,6 +36,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
+import org.apache.iotdb.udf.api.utils.RowImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +55,7 @@ public class UDTFExecutor {
 
   protected ElasticSerializableTVList outputStorage;
   protected PointCollectorAdaptor collector;
-  protected Object currentValue;
+  protected Column[] cachedColumns;
 
   public UDTFExecutor(String functionName, ZoneId zoneId) {
     this.functionName = functionName;
@@ -117,17 +119,55 @@ public class UDTFExecutor {
       // Store output data
       TimeColumn timeColumn = collector.buildTimeColumn();
       Column valueColumn = collector.buildValueColumn();
+
+      cachedColumns = new Column[] { valueColumn, timeColumn };
       outputStorage.putColumn(timeColumn, valueColumn);
     } catch (Exception e) {
       onError("transform(Row, PointCollector)", e);
     }
   }
 
-  public void execute(Row row) {
+  public void execute(Column[] columns, TimeColumnBuilder timeColumnBuilder, ColumnBuilder valueColumnBuilder) throws Exception {
     try {
-      currentValue = udtf.transform(row);
+      udtf.transform(columns, timeColumnBuilder, valueColumnBuilder);
+
+      Column timeColumn = timeColumnBuilder.build();
+      Column valueColumn = valueColumnBuilder.build();
+
+      cachedColumns = new Column[]{valueColumn, timeColumn};
+      outputStorage.putColumn((TimeColumn) timeColumn, valueColumn);
+    } catch (UnsupportedOperationException e) {
+      int colCount = columns.length;
+      int rowCount = columns[0].getPositionCount();
+
+      // collect input data types from columns
+      TSDataType[] dataTypes = new TSDataType[colCount];
+      for (int i = 0; i < colCount; i++) {
+        dataTypes[i] = columns[i].getDataType();
+      }
+
+      PointCollectorAdaptor collector = new PointCollectorAdaptor(timeColumnBuilder, valueColumnBuilder);
+      // iterate each row
+      for (int i = 0; i < rowCount; i++) {
+        // collect values from columns
+        Object[] values = new Object[colCount];
+        for (int j = 0; j < colCount; j++) {
+          values[j] = columns[j].isNull(i) ? null : columns[j].getObject(i);
+        }
+        // construct input row for executor
+        RowImpl row = new RowImpl(dataTypes);
+        row.setRowRecord(values);
+        // transform each row by default
+        udtf.transform(row, collector);
+      }
+      // Store output data
+      TimeColumn timeColumn = collector.buildTimeColumn();
+      Column valueColumn = collector.buildValueColumn();
+
+      cachedColumns = new Column[] { valueColumn, timeColumn };
+      outputStorage.putColumn(timeColumn, valueColumn);
     } catch (Exception e) {
-      onError("transform(Row)", e);
+      onError("Mappable UDTF execution error", e);
     }
   }
 
@@ -152,8 +192,8 @@ public class UDTFExecutor {
     }
   }
 
-  public Object getCurrentValue() {
-    return currentValue;
+  public Column[] getCurrentBlock() {
+    return cachedColumns;
   }
 
   public void terminate() {

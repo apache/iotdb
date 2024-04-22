@@ -21,64 +21,28 @@ package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerRowReader;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
+import org.apache.iotdb.db.queryengine.transformation.api.*;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.ConstantInputReader;
-import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
-import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
-import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
-import org.apache.iotdb.udf.api.customizer.strategy.StateWindowAccessStrategy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+
+import java.io.IOException;
 
 /** IntermediateLayer for constants. */
 public class ConstantIntermediateLayer extends IntermediateLayer {
 
-  private final LayerPointReader constantLayerPointReaderCache;
+  private final LayerReader constantLayerReader;
 
   public ConstantIntermediateLayer(
       ConstantOperand expression, String queryId, float memoryBudgetInMB)
       throws QueryProcessException {
     super(expression, queryId, memoryBudgetInMB);
-    constantLayerPointReaderCache = new ConstantInputReader(expression);
+    constantLayerReader = new ConstantInputReader(expression);
   }
 
-  @Override
-  public LayerPointReader constructPointReader() {
-    return constantLayerPointReaderCache;
-  }
 
   @Override
-  public LayerRowReader constructRowReader() {
-    // Not allowed since the timestamp of a constant row is not defined.
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  protected LayerRowWindowReader constructRowSlidingSizeWindowReader(
-      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB) {
-    // Not allowed since the timestamp of a constant row is not defined.
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  protected LayerRowWindowReader constructRowSlidingTimeWindowReader(
-      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
-    // Not allowed since the timestamp of a constant row is not defined.
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  protected LayerRowWindowReader constructRowSessionTimeWindowReader(
-      SessionTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
-    // Not allowed since the timestamp of a constant row is not defined.
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  protected LayerRowWindowReader constructRowStateWindowReader(
-      StateWindowAccessStrategy strategy, float memoryBudgetInMB) {
-    // Not allowed since the timestamp of a constant row is not defined.
-    throw new UnsupportedOperationException(
-        "StateWindowAccessStrategy does not support pure constant input.");
+  public LayerReader constructReader() {
+    return constantLayerReader;
   }
 }

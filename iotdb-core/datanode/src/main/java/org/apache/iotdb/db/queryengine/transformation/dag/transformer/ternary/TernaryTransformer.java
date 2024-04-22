@@ -23,225 +23,200 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer.ternary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.io.IOException;
 
 public abstract class TernaryTransformer extends Transformer {
-  protected final LayerPointReader firstPointReader;
-  protected final LayerPointReader secondPointReader;
-  protected final LayerPointReader thirdPointReader;
+  protected final LayerReader firstReader;
+  protected final LayerReader secondReader;
+  protected final LayerReader thirdReader;
 
-  protected final TSDataType firstPointReaderDataType;
-  protected final TSDataType secondPointReaderDataType;
-  protected final TSDataType thirdPointReaderDataType;
+  protected final TSDataType firstReaderDataType;
+  protected final TSDataType secondReaderDataType;
+  protected final TSDataType thirdReaderDataType;
 
-  protected final boolean isFirstPointReaderConstant;
-  protected final boolean isSecondPointReaderConstant;
-  protected final boolean isThirdPointReaderConstant;
+  protected final boolean isFirstReaderConstant;
+  protected final boolean isSecondReaderConstant;
+  protected final boolean isThirdReaderConstant;
 
   protected final boolean isCurrentConstant;
 
-  @Override
-  protected YieldableState yieldValue() throws Exception {
-    final YieldableState firstYieldableState = firstPointReader.yield();
-    final YieldableState secondYieldableState = secondPointReader.yield();
-    final YieldableState thirdYieldableState = thirdPointReader.yield();
+  protected Column[] firstColumns;
+  protected Column[] secondColumns;
+  protected Column[] thirdColumns;
 
-    if (YieldableState.NOT_YIELDABLE_NO_MORE_DATA.equals(firstYieldableState)
-        || YieldableState.NOT_YIELDABLE_NO_MORE_DATA.equals(secondYieldableState)
-        || YieldableState.NOT_YIELDABLE_NO_MORE_DATA.equals(thirdYieldableState)) {
-      return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
-    }
-
-    if (YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA.equals(firstYieldableState)
-        || YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA.equals(secondYieldableState)
-        || YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA.equals(thirdYieldableState)) {
-      return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
-    }
-
-    final YieldableState timeYieldState = yieldTime();
-    if (!YieldableState.YIELDABLE.equals(timeYieldState)) {
-      return timeYieldState;
-    }
-
-    if (firstPointReader.isCurrentNull()
-        || secondPointReader.isCurrentNull()
-        || thirdPointReader.isCurrentNull()) {
-      currentNull = true;
-    } else {
-      transformAndCache();
-    }
-
-    firstPointReader.readyForNext();
-    secondPointReader.readyForNext();
-    thirdPointReader.readyForNext();
-    return YieldableState.YIELDABLE;
-  }
-
-  private YieldableState yieldTime() throws Exception {
-    if (isCurrentConstant) {
-      return YieldableState.YIELDABLE;
-    }
-
-    long firstTime = isFirstPointReaderConstant ? Long.MIN_VALUE : firstPointReader.currentTime();
-    long secondTime =
-        isSecondPointReaderConstant ? Long.MIN_VALUE : secondPointReader.currentTime();
-    long thirdTime = isThirdPointReaderConstant ? Long.MIN_VALUE : thirdPointReader.currentTime();
-
-    while (firstTime != secondTime || firstTime != thirdTime) { // the logic is similar to MergeSort
-      if (firstTime < secondTime) {
-        if (isFirstPointReaderConstant) {
-          firstTime = secondTime;
-        } else {
-          firstPointReader.readyForNext();
-          final YieldableState firstYieldableState = firstPointReader.yield();
-          if (!YieldableState.YIELDABLE.equals(firstYieldableState)) {
-            return firstYieldableState;
-          }
-          firstTime = firstPointReader.currentTime();
-        }
-      } else if (secondTime < thirdTime) {
-        if (isSecondPointReaderConstant) {
-          secondTime = thirdTime;
-        } else {
-          secondPointReader.readyForNext();
-          final YieldableState secondYieldableState = secondPointReader.yield();
-          if (!YieldableState.YIELDABLE.equals(secondYieldableState)) {
-            return secondYieldableState;
-          }
-          secondTime = secondPointReader.currentTime();
-        }
-      } else {
-        if (isThirdPointReaderConstant) {
-          thirdTime = firstTime;
-        } else {
-          thirdPointReader.readyForNext();
-          final YieldableState thirdYieldableState = thirdPointReader.yield();
-          if (!YieldableState.YIELDABLE.equals(thirdYieldableState)) {
-            return thirdYieldableState;
-          }
-          thirdTime = thirdPointReader.currentTime();
-        }
-      }
-    }
-
-    if (firstTime != Long.MIN_VALUE) {
-      cachedTime = firstTime;
-    }
-    return YieldableState.YIELDABLE;
-  }
+  protected int firstConsumed;
+  protected int secondConsumed;
+  protected int thirdConsumed;
 
   protected TernaryTransformer(
-      LayerPointReader firstPointReader,
-      LayerPointReader secondPointReader,
-      LayerPointReader thirdPointReader) {
-    this.firstPointReader = firstPointReader;
-    this.secondPointReader = secondPointReader;
-    this.thirdPointReader = thirdPointReader;
-    this.firstPointReaderDataType = firstPointReader.getDataType();
-    this.secondPointReaderDataType = secondPointReader.getDataType();
-    this.thirdPointReaderDataType = thirdPointReader.getDataType();
-    this.isFirstPointReaderConstant = firstPointReader.isConstantPointReader();
-    this.isSecondPointReaderConstant = secondPointReader.isConstantPointReader();
-    this.isThirdPointReaderConstant = thirdPointReader.isConstantPointReader();
+      LayerReader firstReader,
+      LayerReader secondReader,
+      LayerReader thirdReader) {
+    this.firstReader = firstReader;
+    this.secondReader = secondReader;
+    this.thirdReader = thirdReader;
+    this.firstReaderDataType = firstReader.getDataTypes()[0];
+    this.secondReaderDataType = secondReader.getDataTypes()[0];
+    this.thirdReaderDataType = thirdReader.getDataTypes()[0];
+    this.isFirstReaderConstant = firstReader.isConstantPointReader();
+    this.isSecondReaderConstant = secondReader.isConstantPointReader();
+    this.isThirdReaderConstant = thirdReader.isConstantPointReader();
     this.isCurrentConstant =
-        isFirstPointReaderConstant && isSecondPointReaderConstant && isThirdPointReaderConstant;
+        isFirstReaderConstant && isSecondReaderConstant && isThirdReaderConstant;
     checkType();
   }
 
   @Override
-  public boolean isConstantPointReader() {
-    return firstPointReader.isConstantPointReader()
-        && secondPointReader.isConstantPointReader()
-        && thirdPointReader.isConstantPointReader();
+  public YieldableState yieldValue() throws Exception {
+    if (firstColumns == null) {
+      YieldableState state = firstReader.yield();
+      if (state != YieldableState.YIELDABLE) {
+        return state;
+      }
+      firstColumns = firstReader.current();
+    }
+
+    if (secondColumns == null) {
+      YieldableState state = secondReader.yield();
+      if (state != YieldableState.YIELDABLE) {
+        return state;
+      }
+      secondColumns = secondReader.current();
+    }
+
+    if (thirdColumns == null) {
+      YieldableState state = thirdReader.yield();
+      if (state != YieldableState.YIELDABLE) {
+        return state;
+      }
+      thirdColumns = thirdReader.current();
+    }
+
+    int firstCount = firstColumns[0].getPositionCount() - firstConsumed;
+    int secondCount = secondColumns[0].getPositionCount() - secondConsumed;
+    int thirdCount = thirdColumns[0].getPositionCount() - thirdConsumed;
+
+    if (firstCount < secondCount && firstCount < thirdCount) {
+      // Consume all first columns
+      cachedColumns = mergeAndTransformColumns(firstCount);
+
+      // Clean up
+      firstColumns = null;
+      firstConsumed = 0;
+      firstReader.consumedAll();
+    } else if (secondCount < thirdCount) {
+      // Consume all second columns
+      cachedColumns = mergeAndTransformColumns(secondCount);
+
+      // Clean up
+      secondColumns = null;
+      secondConsumed = 0;
+      secondReader.consumedAll();
+    } else {
+      // Consume all third columns
+      cachedColumns = mergeAndTransformColumns(thirdCount);
+
+      // Clean up
+      thirdColumns = null;
+      thirdConsumed = 0;
+      thirdReader.consumedAll();
+    }
+
+    return YieldableState.YIELDABLE;
   }
 
   @Override
-  protected boolean cacheValue() throws QueryProcessException, IOException {
-    if (!firstPointReader.next() || !secondPointReader.next() || !thirdPointReader.next()) {
-      return false;
-    }
-
-    if (!cacheTime()) {
-      return false;
-    }
-
-    if (firstPointReader.isCurrentNull()
-        || secondPointReader.isCurrentNull()
-        || thirdPointReader.isCurrentNull()) {
-      currentNull = true;
-    } else {
-      transformAndCache();
-    }
-
-    firstPointReader.readyForNext();
-    secondPointReader.readyForNext();
-    thirdPointReader.readyForNext();
-    return true;
+  public boolean isConstantPointReader() {
+    return firstReader.isConstantPointReader()
+        && secondReader.isConstantPointReader()
+        && thirdReader.isConstantPointReader();
   }
 
-  protected abstract void transformAndCache() throws QueryProcessException, IOException;
+  protected Column[] mergeAndTransformColumns(int count) throws QueryProcessException, IOException {
+    // TODO: maybe we should choose more precise expectedEntries
+    TSDataType outputType = getDataTypes()[0];
+    ColumnBuilder timeBuilder = new TimeColumnBuilder(null, count);
+    ColumnBuilder valueBuilder = TypeUtils.initColumnBuilder(outputType, count);
 
-  protected abstract void checkType();
+    int firstEnd = firstColumns[0].getPositionCount();
+    int secondEnd = secondColumns[0].getPositionCount();
+    int thirdEnd = thirdColumns[0].getPositionCount();
 
-  /**
-   * finds the smallest, unconsumed, same timestamp that exists in {@code firstPointReader}, {@code
-   * secondPointReader} and {@code thirdPointReader}and then caches the timestamp in {@code
-   * cachedTime}.
-   *
-   * @return true if there has a timestamp that meets the requirements
-   */
-  private boolean cacheTime() throws IOException, QueryProcessException {
-    boolean isFirstConstant = firstPointReader.isConstantPointReader();
-    boolean isSecondConstant = secondPointReader.isConstantPointReader();
-    boolean isThirdConstant = thirdPointReader.isConstantPointReader();
-    long firstTime = isFirstConstant ? Long.MIN_VALUE : firstPointReader.currentTime();
-    long secondTime = isSecondConstant ? Long.MIN_VALUE : secondPointReader.currentTime();
-    long thirdTime = isThirdConstant ? Long.MIN_VALUE : secondPointReader.currentTime();
-    // Long.MIN_VALUE is used to determine whether (isFirstConstant and isSecondConstant and
-    // isThirdConstant) is true
-    while (firstTime != secondTime || firstTime != thirdTime) { // the logic is similar to MergeSort
-      if (firstTime < secondTime) {
-        if (isFirstConstant) {
-          firstTime = secondTime;
-        } else {
-          firstPointReader.readyForNext();
-          if (!firstPointReader.next()) {
-            return false;
+    while (firstConsumed < firstEnd && secondConsumed < secondEnd && thirdConsumed < thirdEnd) {
+      long firstTime = getTime(firstReader, firstColumns, firstConsumed);
+      long secondTime = getTime(secondReader, secondColumns, secondConsumed);
+      long thirdTime = getTime(thirdReader, thirdColumns, thirdConsumed);
+
+      while (firstTime != secondTime || secondTime != thirdTime) {
+        if (firstTime < secondTime) {
+          if (isFirstReaderConstant) {
+            firstTime = secondTime;
+          } else {
+            firstConsumed++;
+            if (firstConsumed < firstEnd) {
+              firstTime = getTime(firstReader, firstColumns, firstConsumed);
+            } else {
+              break;
+            }
           }
-          firstTime = firstPointReader.currentTime();
+        } else if (secondTime < thirdTime) {
+          if (isSecondReaderConstant) {
+            secondTime = thirdTime;
+          } else {
+            secondConsumed++;
+            if (secondConsumed < secondEnd) {
+              secondTime = getTime(secondReader, secondColumns, secondConsumed);
+            } else {
+              break;
+            }
+          }
+        } else {
+          if (isThirdReaderConstant) {
+            thirdTime = firstTime;
+          } else {
+            thirdConsumed++;
+            if (thirdConsumed < thirdEnd) {
+              thirdTime = getTime(thirdReader, thirdColumns, thirdConsumed);
+            } else {
+              break;
+            }
+          }
         }
-      } else if (secondTime < thirdTime) {
-        if (isSecondConstant) {
-          secondTime = thirdTime;
-        } else {
-          secondPointReader.readyForNext();
-          if (!secondPointReader.next()) {
-            return false;
+      }
+
+      if (firstConsumed < firstEnd && secondConsumed < secondEnd && thirdConsumed < thirdEnd) {
+        if (firstTime != Long.MIN_VALUE) {
+          timeBuilder.writeLong(firstTime);
+          if (firstColumns[0].isNull(firstConsumed) || secondColumns[0].isNull(secondConsumed) || thirdColumns[0].isNull(thirdConsumed)) {
+            valueBuilder.appendNull();
+          } else {
+            transformAndCache(firstColumns[0], firstConsumed, secondColumns[0], secondConsumed, thirdColumns[0], thirdConsumed, valueBuilder);
           }
-          secondTime = secondPointReader.currentTime();
-        }
-      } else {
-        if (isThirdConstant) {
-          thirdTime = firstTime;
-        } else {
-          thirdPointReader.readyForNext();
-          if (!thirdPointReader.next()) {
-            return false;
-          }
-          thirdTime = secondPointReader.currentTime();
         }
       }
     }
 
-    if (firstTime != Long.MIN_VALUE) {
-      cachedTime = firstTime;
-    }
-    return true;
+    Column times = timeBuilder.build();
+    Column values = valueBuilder.build();
+    return new Column[] { values, times };
   }
+
+  private long getTime(LayerReader reader, Column[] columns, int index) {
+    return reader.isConstantPointReader()? Long.MIN_VALUE : columns[1].getLong(index);
+  }
+
+  protected abstract void transformAndCache(Column firstValues, int firstIndex, Column secondValues, int secondIndex, Column thirdValues, int thirdIndex, ColumnBuilder builder) throws QueryProcessException, IOException;
+
+  protected abstract void checkType();
 
   protected static double castCurrentValueToDoubleOperand(
       LayerPointReader layerPointReader, TSDataType layerPointReaderDataType)

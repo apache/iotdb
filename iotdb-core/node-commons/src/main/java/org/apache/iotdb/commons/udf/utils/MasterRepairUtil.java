@@ -44,7 +44,7 @@ public class MasterRepairUtil {
     this.k = k;
   }
 
-  public boolean isNullRow(Row row) {
+  public boolean isNullRow(Row row) throws IOException {
     boolean flag = true;
     for (int i = 0; i < row.size(); i++) {
       if (!row.isNull(i)) {

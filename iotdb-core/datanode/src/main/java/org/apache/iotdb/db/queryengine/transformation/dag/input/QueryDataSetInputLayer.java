@@ -20,24 +20,21 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.input;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.SafetyLine;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.SafetyLine.SafetyPile;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowRecordList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.RowListForwardIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.utils.Binary;
-
-import java.io.IOException;
 
 public class QueryDataSetInputLayer {
 
   private TsBlockInputDataSet queryDataSet;
   private TSDataType[] dataTypes;
-  private int timestampIndex;
 
-  private ElasticSerializableRowRecordList rowRecordList;
+  private ElasticSerializableRowRecordList rowList;
   private SafetyLine safetyLine;
 
   public QueryDataSetInputLayer(
@@ -50,263 +47,104 @@ public class QueryDataSetInputLayer {
       throws QueryProcessException {
     this.queryDataSet = queryDataSet;
     dataTypes = queryDataSet.getDataTypes().toArray(new TSDataType[0]);
-    timestampIndex = dataTypes.length;
-    rowRecordList =
+    rowList =
         new ElasticSerializableRowRecordList(
             dataTypes, queryId, memoryBudgetInMB, 1 + dataTypes.length / 2);
     safetyLine = new SafetyLine();
   }
 
   public void updateRowRecordListEvictionUpperBound() {
-    rowRecordList.setEvictionUpperBound(safetyLine.getSafetyLine());
+    rowList.setEvictionUpperBound(safetyLine.getSafetyLine());
   }
 
-  public LayerPointReader constructTimePointReader() {
-    return new TimePointReader();
+  public BlockColumnReader constructValueReader(int columnIndex) {
+    return new BlockColumnReader(columnIndex);
   }
 
-  public LayerPointReader constructValuePointReader(int columnIndex) {
-    return new ValuePointReader(columnIndex);
+  public BlockColumnReader constructTimeReader() {
+    return new BlockColumnReader(dataTypes.length);
   }
 
-  private abstract class AbstractLayerPointReader implements LayerPointReader {
+  private class BlockColumnReader implements LayerReader {
 
-    protected final SafetyPile safetyPile;
+    private final SafetyPile safetyPile = safetyLine.addSafetyPile();
 
-    protected int currentRowIndex;
+    private final int columnIndex;
+    private Column[] cachedColumns = null;
+    private int cacheConsumed = 0;
 
-    protected int currentColumnIndex;
+    private RowListForwardIterator iterator = rowList.constructIterator();
 
-    protected Column[] cachedColumns;
-
-    // Indicate cached columns position
-    protected int cachedColumnsOffset;
-
-    protected int cachedColumnsLength;
-
-    AbstractLayerPointReader() {
-      safetyPile = safetyLine.addSafetyPile();
-
-      currentRowIndex = 0;
-      currentColumnIndex = -1;
-
-      cachedColumns = null;
-      cachedColumnsOffset = 0;
-      cachedColumnsLength = 0;
+    BlockColumnReader(int columnIndex) {
+      this.columnIndex = columnIndex;
     }
 
     @Override
     public final YieldableState yield() throws Exception {
       // Look up code-level cache
-      if (cachedColumns != null) {
+      if (cachedColumns != null && cacheConsumed < cachedColumns[0].getPositionCount()) {
         return YieldableState.YIELDABLE;
       }
 
       // Cache columns from row record list
-      if (currentColumnIndex + 1 < rowRecordList.getTotalBlockCount()) {
-        currentColumnIndex++;
-        cachedColumns = rowRecordList.getColumns(currentColumnIndex);
-        cachedColumnsLength = cachedColumns[0].getPositionCount();
+      if (iterator.hasNext()) {
+        iterator.next();
+        cachedColumns = iterator.currentBlock();
 
         return YieldableState.YIELDABLE;
       }
 
       // Cache columns from child operator
-      YieldableState yieldableState = queryDataSet.canYield();
+      YieldableState yieldableState = queryDataSet.yield();
       if (YieldableState.YIELDABLE.equals(yieldableState)) {
-        currentColumnIndex++;
-        cachedColumns = queryDataSet.nextColumns();
-        rowRecordList.put(cachedColumns);
-        cachedColumnsLength = cachedColumns[0].getPositionCount();
+        iterator.next();
+        cachedColumns = queryDataSet.currentBlock();
+        rowList.put(cachedColumns);
+        // No need to call `.consume()` like method in queryDataSet
       }
-
       return yieldableState;
     }
 
     @Override
-    public void readyForNext() {
-      // Invalid cache
-      if (currentRowIndex == cachedColumnsOffset + cachedColumnsLength - 1) {
-        cachedColumnsOffset += cachedColumnsLength;
+    public void consumed(int consumed) {
+      assert cachedColumns != null && cacheConsumed + consumed <= cachedColumns[0].getPositionCount();
+      cacheConsumed += consumed;
 
+      safetyPile.moveForward(consumed);
+      // Will be called by TransformOperator
+      // rowList.setEvictionUpperBound(safetyLine.getSafetyLine());
+
+      // Invalid cache
+      if (cacheConsumed == cachedColumns[0].getPositionCount()) {
+        cacheConsumed = 0;
         cachedColumns = null;
-        cachedColumnsLength = 0;
       }
-      // Increase row index
-      currentRowIndex++;
-      safetyPile.moveForwardTo(currentRowIndex);
     }
 
     @Override
-    public final long currentTime() {
-      Column timeColumn = cachedColumns[timestampIndex];
-      return timeColumn.getLong(currentRowIndex - cachedColumnsOffset);
+    public void consumedAll() {
+      int steps = cachedColumns[0].getPositionCount() - cacheConsumed;
+      safetyPile.moveForward(steps);
+
+      cacheConsumed = 0;
+      cachedColumns = null;
+    }
+
+    @Override
+    public Column[] current() {
+      Column valueColumn = cachedColumns[columnIndex];
+      Column timeColumn = cachedColumns[cachedColumns.length - 1];
+      return cacheConsumed == 0? new Column[] { valueColumn, timeColumn } : new Column[]{ valueColumn.subColumn(cacheConsumed), timeColumn.subColumn(cacheConsumed) };
+    }
+
+    @Override
+    public TSDataType[] getDataTypes() {
+      return new TSDataType[]{dataTypes[columnIndex]};
     }
 
     @Override
     public final boolean isConstantPointReader() {
       return false;
-    }
-  }
-
-  private class ValuePointReader extends AbstractLayerPointReader {
-
-    protected final int columnIndex;
-
-    ValuePointReader(int columnIndex) {
-      super();
-      this.columnIndex = columnIndex;
-    }
-
-    @Override
-    public boolean next() throws IOException, QueryProcessException {
-//      if (hasCachedRowRecord) {
-//        return true;
-//      }
-//
-//      for (int i = currentRowIndex + 1; i < rowRecordList.size(); ++i) {
-//        Object[] rowRecordCandidate = rowRecordList.getRowRecord(i);
-//        // If any field in the current row are null, we should treat this row as valid.
-//        // Because in a GROUP BY time read, we must return every time window record even if there's
-//        // no data.
-//        // Under the situation, if hasCachedRowRecord is false, this row will be skipped and the
-//        // result is not as our expected.
-//        if (rowRecordCandidate[columnIndex] != null || rowRecordList.fieldsHasAnyNull(i)) {
-//          hasCachedRowRecord = true;
-//          cachedRowRecord = rowRecordCandidate;
-//          currentRowIndex = i;
-//          break;
-//        }
-//      }
-//
-//      if (!hasCachedRowRecord) {
-//        while (queryDataSet.hasNextRowInObjects()) {
-//          Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
-//          rowRecordList.put(rowRecordCandidate);
-//          if (rowRecordCandidate[columnIndex] != null
-//              || rowRecordList.fieldsHasAnyNull(rowRecordList.size() - 1)) {
-//            hasCachedRowRecord = true;
-//            cachedRowRecord = rowRecordCandidate;
-//            currentRowIndex = rowRecordList.size() - 1;
-//            break;
-//          }
-//        }
-//      }
-//
-//      return hasCachedRowRecord;
-
-      return true;
-    }
-
-    @Override
-    public TSDataType getDataType() {
-      return dataTypes[columnIndex];
-    }
-
-    @Override
-    public int currentInt() {
-      return cachedColumns[columnIndex].getInt(currentRowIndex - cachedColumnsOffset);
-    }
-
-    @Override
-    public long currentLong() {
-      return cachedColumns[columnIndex].getLong(currentRowIndex - cachedColumnsOffset);
-    }
-
-    @Override
-    public float currentFloat() {
-      return cachedColumns[columnIndex].getFloat(currentRowIndex - cachedColumnsOffset);
-    }
-
-    @Override
-    public double currentDouble() {
-      return cachedColumns[columnIndex].getDouble(currentRowIndex - cachedColumnsOffset);
-    }
-
-    @Override
-    public boolean currentBoolean() {
-      return cachedColumns[columnIndex].getBoolean(currentRowIndex - cachedColumnsOffset);
-    }
-
-    @Override
-    public boolean isCurrentNull() {
-      return cachedColumns[columnIndex].isNull(currentRowIndex - cachedColumnsOffset);
-    }
-
-    @Override
-    public Binary currentBinary() {
-      return cachedColumns[columnIndex].getBinary(currentRowIndex - cachedColumnsOffset);
-    }
-  }
-
-  private class TimePointReader extends AbstractLayerPointReader {
-
-    @Override
-    public boolean next() throws QueryProcessException, IOException {
-//      if (hasCachedRowRecord) {
-//        return true;
-//      }
-//
-//      final int nextIndex = currentRowIndex + 1;
-//      if (nextIndex < rowRecordList.size()) {
-//        hasCachedRowRecord = true;
-//        cachedRowRecord = rowRecordList.getRowRecord(nextIndex);
-//        currentRowIndex = nextIndex;
-//        return true;
-//      }
-//
-//      if (queryDataSet.hasNextRowInObjects()) {
-//        Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
-//        rowRecordList.put(rowRecordCandidate);
-//
-//        hasCachedRowRecord = true;
-//        cachedRowRecord = rowRecordCandidate;
-//        currentRowIndex = rowRecordList.size() - 1;
-//        return true;
-//      }
-//
-//      return false;
-      return true;
-    }
-
-    @Override
-    public TSDataType getDataType() {
-      return TSDataType.INT64;
-    }
-
-    @Override
-    public int currentInt() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long currentLong() throws IOException {
-      return currentTime();
-    }
-
-    @Override
-    public float currentFloat() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public double currentDouble() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean currentBoolean() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean isCurrentNull() throws IOException {
-      return false;
-    }
-
-    @Override
-    public Binary currentBinary() throws IOException {
-      throw new UnsupportedOperationException();
     }
   }
 }

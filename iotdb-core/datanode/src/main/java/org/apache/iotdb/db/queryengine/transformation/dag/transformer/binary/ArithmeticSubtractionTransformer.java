@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary;
 
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 
 public class ArithmeticSubtractionTransformer extends ArithmeticBinaryTransformer {
 
-  public ArithmeticSubtractionTransformer(
-      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
-    super(leftPointReader, rightPointReader);
+  public ArithmeticSubtractionTransformer(LayerReader leftReader, LayerReader rightReader) {
+    super(leftReader, rightReader);
   }
 
   @Override

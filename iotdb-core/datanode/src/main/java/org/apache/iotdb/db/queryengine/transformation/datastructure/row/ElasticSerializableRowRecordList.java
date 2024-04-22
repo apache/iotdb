@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.InputRowUtils;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.Cache;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.RowListForwardIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
@@ -47,7 +48,7 @@ public class ElasticSerializableRowRecordList {
   protected int numCacheBlock;
 
   protected LRUCache cache;
-  protected List<SerializableRowRecordList> rowRecordLists;
+  protected List<SerializableRowRecordList> rowLists;
   /** Mark bitMaps of correct index when one row has at least one null field. */
   protected List<BitMap> bitMaps;
   protected List<Integer> blockCount;
@@ -89,7 +90,7 @@ public class ElasticSerializableRowRecordList {
     this.numCacheBlock = numCacheBlock;
 
     cache = new ElasticSerializableRowRecordList.LRUCache(numCacheBlock);
-    rowRecordLists = new ArrayList<>();
+    rowLists = new ArrayList<>();
     bitMaps = new ArrayList<>();
     blockCount = new ArrayList<>();
 
@@ -129,7 +130,7 @@ public class ElasticSerializableRowRecordList {
     this.numCacheBlock = numCacheBlock;
 
     cache = new ElasticSerializableRowRecordList.LRUCache(numCacheBlock);
-    rowRecordLists = new ArrayList<>();
+    rowLists = new ArrayList<>();
     bitMaps = new ArrayList<>();
     blockCount = new ArrayList<>();
 
@@ -150,8 +151,8 @@ public class ElasticSerializableRowRecordList {
   public int getTotalBlockCount() {
     int previous = blockCount.stream().mapToInt(Integer::intValue).sum();
     int current = 0;
-    if (rowRecordLists.size() != 0) {
-      current = rowRecordLists.get(rowRecordLists.size() - 1).getBlockCount();
+    if (rowLists.size() != 0) {
+      current = rowLists.get(rowLists.size() - 1).getBlockCount();
     }
 
     return previous + current;
@@ -169,15 +170,50 @@ public class ElasticSerializableRowRecordList {
         .getRow(index % internalRowRecordListCapacity);
   }
 
-  public Column[] getColumns(int index) throws IOException {
+  public Column[] getColumns(int blockIndex) throws IOException {
     int externalIndex = 0;
-    int internalIndex = index;
+    int internalIndex = blockIndex;
     while (externalIndex < blockCount.size() && internalIndex >= blockCount.get(externalIndex)) {
       internalIndex -= blockCount.get(externalIndex);
       externalIndex++;
     }
 
     return cache.get(externalIndex).getColumns(internalIndex);
+  }
+
+  public Column[] getColumns(int externalIndex, int internalIndex) throws IOException {
+    return cache.get(externalIndex).getColumns(internalIndex);
+  }
+
+  public RowListForwardIterator constructIterator() {
+    return new RowListForwardIterator() {
+      private int externalIndex;
+      private int internalIndex = -1;
+
+      @Override
+      public Column[] currentBlock() throws IOException {
+        return getColumns(externalIndex, internalIndex);
+      }
+
+      @Override
+      public boolean hasNext() {
+        // First time call, rowList has no data
+        if (rowLists.size() == 0) {
+          return false;
+        }
+        return externalIndex + 1 < rowLists.size() || internalIndex + 1 < rowLists.get(externalIndex).getBlockCount();
+      }
+
+      @Override
+      public void next() {
+        if (internalIndex + 1 == rowLists.get(externalIndex).getBlockCount()) {
+          internalIndex = 0;
+          externalIndex++;
+        } else {
+          internalIndex++;
+        }
+      }
+    };
   }
 
   /** true if any field except the timestamp in the current row is null. */
@@ -279,12 +315,12 @@ public class ElasticSerializableRowRecordList {
   }
 
   private void doExpansion() {
-    if (rowRecordLists.size() > 1) {
+    if (rowLists.size() > 1) {
       // Add last row record list's block count
-      blockCount.add(rowRecordLists.get(rowRecordLists.size() - 1).getBlockCount());
+      blockCount.add(rowLists.get(rowLists.size() - 1).getBlockCount());
     }
 
-    rowRecordLists.add(
+    rowLists.add(
         SerializableRowRecordList.newSerializableRowRecordList(
             queryId, dataTypes, internalRowRecordListCapacity));
     bitMaps.add(new BitMap(internalRowRecordListCapacity));
@@ -364,7 +400,7 @@ public class ElasticSerializableRowRecordList {
     newElasticSerializableRowRecordList.evictionUpperBound = evictionUpperBound;
     int internalListEvictionUpperBound = evictionUpperBound / newInternalRowRecordListCapacity;
     for (int i = 0; i < internalListEvictionUpperBound; ++i) {
-      newElasticSerializableRowRecordList.rowRecordLists.add(null);
+      newElasticSerializableRowRecordList.rowLists.add(null);
       newElasticSerializableRowRecordList.bitMaps.add(null);
     }
     newElasticSerializableRowRecordList.size =
@@ -381,7 +417,7 @@ public class ElasticSerializableRowRecordList {
 
     internalRowRecordListCapacity = newInternalRowRecordListCapacity;
     cache = newElasticSerializableRowRecordList.cache;
-    rowRecordLists = newElasticSerializableRowRecordList.rowRecordLists;
+    rowLists = newElasticSerializableRowRecordList.rowLists;
     bitMaps = newElasticSerializableRowRecordList.bitMaps;
 
     byteArrayLengthForMemoryControl = newByteArrayLengthForMemoryControl;
@@ -410,16 +446,16 @@ public class ElasticSerializableRowRecordList {
         if (cacheCapacity <= super.size()) {
           int lastIndex = getLast();
           if (lastIndex < evictionUpperBound / internalRowRecordListCapacity) {
-            rowRecordLists.set(lastIndex, null);
+            rowLists.set(lastIndex, null);
             bitMaps.set(lastIndex, null);
           } else {
-            rowRecordLists.get(lastIndex).serialize();
+            rowLists.get(lastIndex).serialize();
           }
         }
-        rowRecordLists.get(targetIndex).deserialize();
+        rowLists.get(targetIndex).deserialize();
       }
       putKey(targetIndex);
-      return rowRecordLists.get(targetIndex);
+      return rowLists.get(targetIndex);
     }
   }
 }

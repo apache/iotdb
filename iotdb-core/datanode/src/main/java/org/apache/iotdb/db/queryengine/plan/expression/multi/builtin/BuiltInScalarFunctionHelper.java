@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.multi.builtin;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -73,11 +73,11 @@ public interface BuiltInScalarFunctionHelper extends BuiltInFunctionHelper {
    * org.apache.iotdb.db.queryengine.plan.expression.visitor.IntermediateLayerVisitor}
    *
    * @param expression The FunctionExpression representing the scalar function
-   * @param layerPointReader input reader
+   * @param layerReader input reader
    * @return Specific Transformer of this scalar function
    */
   Transformer getBuiltInScalarFunctionTransformer(
-      FunctionExpression expression, LayerPointReader layerPointReader);
+      FunctionExpression expression, LayerReader layerReader);
 
   /**
    * Some built-in scalar functions may have a different header. This method will be called by

@@ -80,5 +80,9 @@ public class SafetyLine {
     public void moveForwardTo(int safetyPilePosition) {
       safetyPiles[safetyPileIndex] = safetyPilePosition;
     }
+
+    public void moveForward(int steps) {
+      safetyPiles[safetyPileIndex] += steps;
+    }
   }
 }
