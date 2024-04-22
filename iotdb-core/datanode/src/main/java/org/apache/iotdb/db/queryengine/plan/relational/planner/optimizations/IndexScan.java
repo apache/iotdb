@@ -20,6 +20,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -29,12 +30,14 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoIndexScanChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
+import org.apache.iotdb.db.relational.sql.tree.LogicalExpression;
 
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -95,7 +98,34 @@ public class IndexScan implements RelationalPlanOptimizer {
               .map(e -> e.getKey().getName())
               .collect(Collectors.toList());
 
-      // TODO extract predicate to expression list
+      Expression indexExpression = context.getPredicate();
+      if (indexExpression != null) {
+        Set<String> idOrAttributeColumnNames =
+            node.getAssignments().entrySet().stream()
+                .filter(
+                    e ->
+                        TsTableColumnCategory.ID.equals(e.getValue().getColumnCategory())
+                            || ATTRIBUTE.equals(e.getValue().getColumnCategory()))
+                .map(e -> e.getKey().getName())
+                .collect(Collectors.toSet());
+        if (indexExpression instanceof LogicalExpression) {
+          for (Expression subExpression : ((LogicalExpression) indexExpression).getTerms()) {
+            if (Boolean.FALSE.equals(
+                new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames)
+                    .process(subExpression))) {
+              indexExpression = null;
+              break;
+            }
+          }
+        } else {
+          if (Boolean.FALSE.equals(
+              new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames)
+                  .process(indexExpression))) {
+            indexExpression = null;
+          }
+        }
+      }
+
       List<DeviceEntry> deviceEntries =
           context
               .getMetadata()
@@ -103,7 +133,7 @@ public class IndexScan implements RelationalPlanOptimizer {
                   new QualifiedObjectName(
                       context.getSessionInfo().getDatabaseName().get(),
                       node.getQualifiedTableName()),
-                  Collections.singletonList(context.getPredicate()),
+                  Collections.singletonList(indexExpression),
                   attributeColumns);
       node.setDeviceEntries(deviceEntries);
 
