@@ -36,7 +36,6 @@ import org.apache.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -371,7 +370,7 @@ public class TsFileResourceUtils {
           logger.error(
               "Device {} is overlapped between {} and {}, "
                   + "end time in {} is {}, start time in {} is {}",
-              ((PlainDeviceID) device).toStringID(),
+              device.toString(),
               lastDeviceInfo.left,
               resource,
               lastDeviceInfo.left,

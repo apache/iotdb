@@ -229,9 +229,7 @@ public class TsFileValidationTool {
                 }
                 long currentChunkEndTime = Long.MIN_VALUE;
                 String measurementID =
-                    ((PlainDeviceID) deviceID).toStringID()
-                        + PATH_SEPARATOR
-                        + header.getMeasurementID();
+                    deviceID.toString() + PATH_SEPARATOR + header.getMeasurementID();
                 hasMeasurementPrintedDetails.computeIfAbsent(measurementID, k -> new boolean[4]);
                 measurementLastTime.computeIfAbsent(
                     measurementID,

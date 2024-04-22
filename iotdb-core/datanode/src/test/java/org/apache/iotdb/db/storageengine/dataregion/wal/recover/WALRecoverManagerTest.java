@@ -185,9 +185,7 @@ public class WALRecoverManagerTest {
     IMemTable targetMemTable = new PrimitiveMemTable(SG_NAME, DATA_REGION_ID);
     WALEntry walEntry =
         new WALInfoEntry(
-            targetMemTable.getMemTableId(),
-            getInsertRowNode(((PlainDeviceID) DEVICE2_NAME).toStringID(), 4L),
-            true);
+            targetMemTable.getMemTableId(), getInsertRowNode(DEVICE2_NAME.toString(), 4L), true);
     walBuffer.write(walEntry);
     walEntry.getWalFlushListener().waitForResult();
     // write .checkpoint file
@@ -246,7 +244,7 @@ public class WALRecoverManagerTest {
     // write normal .wal files
     long firstValidVersionId = walBuffer.getCurrentWALFileVersion();
     IMemTable targetMemTable = new PrimitiveMemTable(SG_NAME, DATA_REGION_ID);
-    InsertRowNode insertRowNode = getInsertRowNode(((PlainDeviceID) DEVICE2_NAME).toStringID(), 4L);
+    InsertRowNode insertRowNode = getInsertRowNode(DEVICE2_NAME.toString(), 4L);
     targetMemTable.insert(insertRowNode);
 
     WALEntry walEntry = new WALInfoEntry(targetMemTable.getMemTableId(), insertRowNode, true);

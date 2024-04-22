@@ -25,7 +25,6 @@ import org.apache.iotdb.spark.tsfile.qp.common.SingleQuery;
 import org.apache.iotdb.spark.tsfile.qp.common.TSQueryPlan;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 
@@ -88,7 +87,7 @@ public class PhysicalOptimizer {
       // if select deltaObject, then match with measurement
       List<String> actualDeltaObjects =
           in.getDeviceNameInRange(start, end).stream()
-              .map(deviceID -> ((PlainDeviceID) deviceID).toStringID())
+              .map(Object::toString)
               .collect(Collectors.toList());
       if (!selectColumns.isEmpty()) {
         combination(
@@ -103,7 +102,7 @@ public class PhysicalOptimizer {
     } else {
       validDeltaObjects.addAll(
           in.getDeviceNameInRange(start, end).stream()
-              .map(deviceID -> ((PlainDeviceID) deviceID).toStringID())
+              .map(Object::toString)
               .collect(Collectors.toList()));
     }
 
