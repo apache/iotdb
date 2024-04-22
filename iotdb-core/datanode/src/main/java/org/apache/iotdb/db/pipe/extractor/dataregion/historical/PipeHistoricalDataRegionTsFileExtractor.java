@@ -435,9 +435,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     if (startIndex instanceof StateProgressIndex) {
       // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
       // "equals" max progressIndex must be transmitted to avoid data loss
-      return !((StateProgressIndex) startIndex)
-          .getInnerProgressIndex()
-          .isAfter(resource.getMaxProgressIndexAfterClose());
+      final ProgressIndex innerProgressIndex =
+          ((StateProgressIndex) startIndex).getInnerProgressIndex();
+      return !innerProgressIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+          && !innerProgressIndex.equals(resource.getMaxProgressIndexAfterClose());
     }
 
     // Some different tsFiles may share the same max progressIndex, thus tsFiles with an

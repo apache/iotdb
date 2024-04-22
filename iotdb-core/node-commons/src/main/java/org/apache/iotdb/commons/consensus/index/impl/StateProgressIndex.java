@@ -119,7 +119,9 @@ public class StateProgressIndex extends ProgressIndex {
         return false;
       }
 
-      return innerProgressIndex.isAfter(((StateProgressIndex) progressIndex).innerProgressIndex);
+      return innerProgressIndex.isAfter(((StateProgressIndex) progressIndex).innerProgressIndex)
+          || (innerProgressIndex.equals(((StateProgressIndex) progressIndex).innerProgressIndex)
+              && version > ((StateProgressIndex) progressIndex).version);
     } finally {
       lock.readLock().unlock();
     }
