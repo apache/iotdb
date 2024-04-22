@@ -17,10 +17,15 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.ResolvedField;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.relational.sql.tree.ComparisonExpression;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.relational.sql.tree.FieldReference;
+import org.apache.iotdb.db.relational.sql.tree.Identifier;
+import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -28,6 +33,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.base.Verify.verify;
@@ -37,13 +43,16 @@ public class PlanBuilder {
 
   private final PlanNode root;
 
+  private final Analysis analysis;
+
   // current mappings of underlying field -> symbol for translating direct field references
   private final Symbol[] fieldSymbols;
 
-  public PlanBuilder(PlanNode root, Symbol[] fieldSymbols) {
+  public PlanBuilder(PlanNode root, Analysis analysis, Symbol[] fieldSymbols) {
     requireNonNull(root, "root is null");
 
     this.root = root;
+    this.analysis = analysis;
     this.fieldSymbols = fieldSymbols;
   }
 
@@ -57,15 +66,16 @@ public class PlanBuilder {
       Analysis analysis,
       Map<ScopeAware<Expression>, Symbol> mappings,
       SessionInfo session) {
-    return new PlanBuilder(plan.getRoot(), plan.getFieldMappings().toArray(new Symbol[0]));
+    return new PlanBuilder(
+        plan.getRoot(), analysis, plan.getFieldMappings().toArray(new Symbol[0]));
   }
 
   public PlanBuilder withNewRoot(PlanNode root) {
-    return new PlanBuilder(root, fieldSymbols);
+    return new PlanBuilder(root, this.analysis, this.fieldSymbols);
   }
 
   public PlanBuilder withScope(Scope scope, List<Symbol> fields) {
-    return new PlanBuilder(root, fields.toArray(new Symbol[0]));
+    return new PlanBuilder(root, this.analysis, fields.toArray(new Symbol[0]));
   }
 
   public PlanNode getRoot() {
@@ -76,20 +86,47 @@ public class PlanBuilder {
     return this.fieldSymbols;
   }
 
-  public Symbol translate(Analysis analysis, Expression expression) {
+  public Expression rewrite(Expression root, boolean isRoot) {
     verify(
-        analysis.isAnalyzed(expression),
+        analysis.isAnalyzed(root),
         "Expression is not analyzed (%s): %s",
-        expression.getClass().getName(),
-        expression);
-    Expression ret = translate(expression, true);
-    return Symbol.from(ret);
+        root.getClass().getName(),
+        root);
+    return translate(root, isRoot);
   }
 
   private Expression translate(Expression expression, boolean isRoot) {
-    if (expression instanceof FieldReference) {}
+    // TODO add more translate expressions impl
+    if (expression instanceof FieldReference) {
+      return new SymbolReference(getSymbolForColumn(expression).get().getName());
+    } else if (expression instanceof ComparisonExpression) {
+      ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
+      Expression left = translate(comparisonExpression.getLeft(), false);
+      Expression right = translate(comparisonExpression.getRight(), false);
+      return new ComparisonExpression(comparisonExpression.getOperator(), left, right);
+    } else if (expression instanceof Identifier) {
+      return getSymbolForColumn(expression).map(Symbol::toSymbolReference).get();
+    }
 
     return expression;
+  }
+
+  private Optional<Symbol> getSymbolForColumn(Expression expression) {
+    if (!analysis.isColumnReference(expression)) {
+      // Expression can be a reference to lambda argument (or DereferenceExpression based on lambda
+      // argument reference).
+      // In such case, the expression might still be resolvable with plan.getScope() but we should
+      // not resolve it.
+      return Optional.empty();
+    }
+
+    ResolvedField field = analysis.getColumnReferenceFields().get(NodeRef.of(expression));
+
+    if (field != null) {
+      return Optional.of(fieldSymbols[field.getHierarchyFieldIndex()]);
+    }
+
+    return Optional.empty();
   }
 
   public <T extends Expression> PlanBuilder appendProjections(
@@ -112,7 +149,7 @@ public class PlanBuilder {
       // Skip any expressions that have already been translated and recorded in the
       // translation map, or that are duplicated in the list of exp
       if (!mappings.containsKey(expression)
-          && !set.contains(expression.toString())
+          && !set.contains(expression.toString().toLowerCase())
           && !(expression instanceof FieldReference)) {
         set.add(expression.toString());
         Symbol symbol = symbolAllocator.newSymbol("expr", analysis.getType(expression));
@@ -122,6 +159,8 @@ public class PlanBuilder {
     }
 
     return new PlanBuilder(
-        new ProjectNode(idAllocator.genPlanNodeId(), root, projections.build()), fieldSymbols);
+        new ProjectNode(idAllocator.genPlanNodeId(), this.root, projections.build()),
+        this.analysis,
+        this.fieldSymbols);
   }
 }
