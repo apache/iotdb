@@ -98,6 +98,10 @@ final class SubscriptionProvider extends SubscriptionSession {
     return endPoint;
   }
 
+  SubscriptionSessionConnection getSessionConnection() {
+    return (SubscriptionSessionConnection) defaultSessionConnection;
+  }
+
   /////////////////////////////// open & close ///////////////////////////////
 
   synchronized int handshake() throws SubscriptionException, IoTDBConnectionException {
@@ -117,26 +121,7 @@ final class SubscriptionProvider extends SubscriptionSession {
     return dataNodeId;
   }
 
-  @Override
-  public synchronized void close() throws SubscriptionException, IoTDBConnectionException {
-    if (isClosed.get()) {
-      return;
-    }
-
-    try {
-      closeInternal();
-    } finally {
-      super.close();
-      setUnavailable();
-      isClosed.set(true);
-    }
-  }
-
-  SubscriptionSessionConnection getSessionConnection() {
-    return (SubscriptionSessionConnection) defaultSessionConnection;
-  }
-
-  public int handshake(final ConsumerConfig consumerConfig) throws SubscriptionException {
+  int handshake(final ConsumerConfig consumerConfig) throws SubscriptionException {
     final PipeSubscribeHandshakeReq req;
     try {
       req = PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig);
@@ -168,7 +153,22 @@ final class SubscriptionProvider extends SubscriptionSession {
     return handshakeResp.getDataNodeId();
   }
 
-  public void closeInternal() throws SubscriptionException {
+  @Override
+  public synchronized void close() throws SubscriptionException, IoTDBConnectionException {
+    if (isClosed.get()) {
+      return;
+    }
+
+    try {
+      closeInternal();
+    } finally {
+      super.close();
+      setUnavailable();
+      isClosed.set(true);
+    }
+  }
+
+  void closeInternal() throws SubscriptionException {
     final TPipeSubscribeResp resp;
     try {
       resp = getSessionConnection().pipeSubscribe(PipeSubscribeCloseReq.toTPipeSubscribeReq());
@@ -185,7 +185,9 @@ final class SubscriptionProvider extends SubscriptionSession {
     verifyPipeSubscribeSuccess(resp.status);
   }
 
-  public void heartbeat() throws SubscriptionException {
+  /////////////////////////////// subscription APIs ///////////////////////////////
+
+  void heartbeat() throws SubscriptionException {
     final TPipeSubscribeResp resp;
     try {
       resp = getSessionConnection().pipeSubscribe(PipeSubscribeHeartbeatReq.toTPipeSubscribeReq());
@@ -202,7 +204,7 @@ final class SubscriptionProvider extends SubscriptionSession {
     verifyPipeSubscribeSuccess(resp.status);
   }
 
-  public void subscribe(final Set<String> topicNames) throws SubscriptionException {
+  void subscribe(final Set<String> topicNames) throws SubscriptionException {
     final PipeSubscribeSubscribeReq req;
     try {
       req = PipeSubscribeSubscribeReq.toTPipeSubscribeReq(topicNames);
@@ -231,7 +233,7 @@ final class SubscriptionProvider extends SubscriptionSession {
     verifyPipeSubscribeSuccess(resp.status);
   }
 
-  public void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
+  void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
     final PipeSubscribeUnsubscribeReq req;
     try {
       req = PipeSubscribeUnsubscribeReq.toTPipeSubscribeReq(topicNames);
