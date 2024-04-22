@@ -119,7 +119,7 @@ public class LoadManager {
    */
   public Map<String, DataPartitionTable> allocateDataPartition(
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap)
-      throws NoAvailableRegionGroupException {
+      throws DatabaseNotExistsException, NoAvailableRegionGroupException {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 
