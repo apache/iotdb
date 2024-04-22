@@ -36,7 +36,6 @@ import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -96,7 +95,7 @@ public class FileLoaderUtils {
                     resource.getTsFilePath(),
                     new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
                         resource.getTsFileID(),
-                        new PlainDeviceID(seriesPath.getDevice()),
+                        seriesPath.getIDeviceID(),
                         seriesPath.getMeasurement()),
                     allSensors,
                     resource.getTimeIndexType() != 1,

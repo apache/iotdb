@@ -51,6 +51,7 @@ public class DeviceIDFactory {
   }
 
   private DeviceIDFactory() {
+    // TODO: provide a factory
     getDeviceIDFunction = StringArrayDeviceID::new;
   }
   // endregion

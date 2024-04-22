@@ -27,7 +27,7 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -196,10 +196,10 @@ public class PipeMemoryManager {
     }
 
     // values
-    final List<MeasurementSchema> timeseries = tablet.getSchemas();
+    final List<IMeasurementSchema> timeseries = tablet.getSchemas();
     if (timeseries != null) {
       for (int column = 0; column < timeseries.size(); column++) {
-        final MeasurementSchema measurementSchema = timeseries.get(column);
+        final IMeasurementSchema measurementSchema = timeseries.get(column);
         if (measurementSchema == null) {
           continue;
         }

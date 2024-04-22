@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -120,7 +120,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
     }
 
     for (int i = 0; i < deviceNum; i++) {
-      StringArrayDeviceID deviceID = StringArrayDeviceID.deserialize(inputStream);
+      IDeviceID deviceID = Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(inputStream);
       int index = ReadWriteIOUtils.readInt(inputStream);
       deviceToIndex.put(deviceID, index);
     }
@@ -141,7 +141,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
     }
 
     for (int i = 0; i < deviceNum; i++) {
-      StringArrayDeviceID deviceID = StringArrayDeviceID.deserialize(buffer);
+      IDeviceID deviceID = Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(buffer);
       int index = buffer.getInt();
       deviceToIndex.put(deviceID, index);
     }
@@ -174,7 +174,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
     ReadWriteIOUtils.skip(inputStream, 2L * deviceNum * ReadWriteIOUtils.LONG_LEN);
     Set<IDeviceID> devices = new HashSet<>();
     for (int i = 0; i < deviceNum; i++) {
-      StringArrayDeviceID deviceID = StringArrayDeviceID.deserialize(inputStream);
+      IDeviceID deviceID = Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(inputStream);
       ReadWriteIOUtils.skip(inputStream, ReadWriteIOUtils.INT_LEN);
       devices.add(deviceID);
     }
@@ -411,10 +411,10 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
           endTime = endTimes[entry.getValue()];
         }
       } else {
-        StringArrayDeviceID deviceID = (StringArrayDeviceID) entry.getKey();
+        IDeviceID deviceID = entry.getKey();
         String[] devicePath = new String[deviceID.segmentNum()];
         for (int i = 0; i < devicePath.length; i++) {
-          devicePath[i] = deviceID.segment(i);
+          devicePath[i] = deviceID.segment(i).toString();
         }
         if (devicePattern.matchFullPath(new PartialPath(devicePath))) {
           deviceMatchInfo.add(entry.getKey());

@@ -258,7 +258,7 @@ public class IoTDBSessionSyntaxConventionIT {
   @Test
   public void insertTabletWithIllegalMeasurementTest() {
     String deviceId = "root.sg1.d1";
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("wrong`", TSDataType.INT64, TSEncoding.RLE));
     schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE, TSEncoding.RLE));
     schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));

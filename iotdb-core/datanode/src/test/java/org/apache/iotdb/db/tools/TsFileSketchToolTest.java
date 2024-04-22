@@ -30,6 +30,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.MeasurementGroup;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
 import org.junit.After;
@@ -76,7 +77,7 @@ public class TsFileSketchToolTest {
 
       Schema schema = new Schema();
 
-      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
         MeasurementSchema measurementSchema =
@@ -87,8 +88,8 @@ public class TsFileSketchToolTest {
             new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
       }
       // add aligned measurements into file schema
-      List<MeasurementSchema> schemas = new ArrayList<>();
-      List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
+      List<IMeasurementSchema> schemas = new ArrayList<>();
+      List<IMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
       for (int i = 0; i < sensorNum; i++) {
         MeasurementSchema schema1 =
             new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.RLE);

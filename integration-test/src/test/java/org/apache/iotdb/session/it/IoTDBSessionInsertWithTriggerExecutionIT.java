@@ -297,7 +297,7 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
 
   private void insertTablet(ISession session, String device, List<String> measurementList)
       throws IoTDBConnectionException, StatementExecutionException {
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     measurementList.forEach(
         measurement -> schemaList.add(new MeasurementSchema(measurement, TSDataType.INT32)));
 

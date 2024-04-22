@@ -53,7 +53,6 @@ import org.apache.tsfile.read.common.block.column.FloatColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -77,7 +76,7 @@ import static org.junit.Assert.fail;
 public class AlignedSeriesScanOperatorTest {
 
   private static final String SERIES_SCAN_OPERATOR_TEST_SG = "root.AlignedSeriesScanOperatorTest";
-  private static final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private static final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private static final List<TsFileResource> seqResources = new ArrayList<>();
   private static final List<TsFileResource> unSeqResources = new ArrayList<>();
@@ -104,7 +103,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedPath(
               SERIES_SCAN_OPERATOR_TEST_SG + ".device0",
               measurementSchemas.stream()
-                  .map(MeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),
               measurementSchemas.stream()
                   .map(m -> (IMeasurementSchema) m)
@@ -184,7 +183,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedPath(
               SERIES_SCAN_OPERATOR_TEST_SG + ".device0",
               measurementSchemas.stream()
-                  .map(MeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),
               measurementSchemas.stream()
                   .map(m -> (IMeasurementSchema) m)
@@ -236,7 +235,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedPath(
               SERIES_SCAN_OPERATOR_TEST_SG + ".device1",
               measurementSchemas.stream()
-                  .map(MeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),
               measurementSchemas.stream()
                   .map(m -> (IMeasurementSchema) m)
@@ -480,7 +479,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedPath(
               SERIES_SCAN_OPERATOR_TEST_SG + ".device0",
               measurementSchemas.stream()
-                  .map(MeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),
               measurementSchemas.stream()
                   .map(m -> (IMeasurementSchema) m)
@@ -532,7 +531,7 @@ public class AlignedSeriesScanOperatorTest {
           new AlignedPath(
               SERIES_SCAN_OPERATOR_TEST_SG + ".device1",
               measurementSchemas.stream()
-                  .map(MeasurementSchema::getMeasurementId)
+                  .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),
               measurementSchemas.stream()
                   .map(m -> (IMeasurementSchema) m)

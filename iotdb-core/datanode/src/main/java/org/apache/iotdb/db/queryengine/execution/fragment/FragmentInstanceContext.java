@@ -353,7 +353,7 @@ public class FragmentInstanceContext extends QueryContext {
       Set<String> selectedDeviceIdSet = new HashSet<>();
       for (PartialPath path : sourcePaths) {
         pathList.add(path);
-        selectedDeviceIdSet.add(path.getDevice());
+        selectedDeviceIdSet.add(path.getIDeviceID().toString());
       }
 
       this.sharedQueryDataSource =

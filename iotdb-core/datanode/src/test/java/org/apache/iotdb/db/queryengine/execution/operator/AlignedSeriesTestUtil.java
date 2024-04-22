@@ -37,6 +37,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 
@@ -59,7 +60,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 public class AlignedSeriesTestUtil {
 
   public static void setUp(
-      List<MeasurementSchema> measurementSchemas,
+      List<IMeasurementSchema> measurementSchemas,
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
       String sgName)
@@ -82,7 +83,7 @@ public class AlignedSeriesTestUtil {
   private static void prepareFiles(
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
-      List<MeasurementSchema> measurementSchemas,
+      List<IMeasurementSchema> measurementSchemas,
       String sgName)
       throws IOException, WriteProcessException {
     int seqFileNum = 5;
@@ -128,7 +129,7 @@ public class AlignedSeriesTestUtil {
       long timeOffset,
       long ptNum,
       long valueOffset,
-      List<MeasurementSchema> measurementSchemas)
+      List<IMeasurementSchema> measurementSchemas)
       throws IOException, WriteProcessException {
     File file = tsFileResource.getTsFile();
     if (!file.getParentFile().exists()) {
@@ -147,7 +148,7 @@ public class AlignedSeriesTestUtil {
 
       TSRecord record = new TSRecord(i, device0);
       int index = 0;
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
         record.addTuple(
             DataPoint.getDataPoint(
                 measurementSchema.getType(),
@@ -179,7 +180,7 @@ public class AlignedSeriesTestUtil {
     fileWriter.close();
   }
 
-  private static void prepareSeries(List<MeasurementSchema> measurementSchemas, String sgName)
+  private static void prepareSeries(List<IMeasurementSchema> measurementSchemas, String sgName)
       throws MetadataException {
 
     measurementSchemas.add(

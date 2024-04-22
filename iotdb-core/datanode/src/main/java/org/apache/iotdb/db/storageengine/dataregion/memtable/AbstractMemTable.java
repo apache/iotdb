@@ -41,8 +41,8 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -648,7 +648,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
     int memTableMapSize = stream.readInt();
     for (int i = 0; i < memTableMapSize; ++i) {
-      IDeviceID deviceID = StringArrayDeviceID.deserialize(stream);
+      IDeviceID deviceID = Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(stream);
       boolean isAligned = ReadWriteIOUtils.readBool(stream);
       IWritableMemChunkGroup memChunkGroup;
       if (isAligned) {

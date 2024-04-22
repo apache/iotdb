@@ -28,6 +28,7 @@ import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,7 +129,7 @@ public class DataMigrationExample {
         DataIterator dataIter = dataSet.iterator();
         List<String> columnNameList = dataIter.getColumnNameList();
         List<String> columnTypeList = dataIter.getColumnTypeList();
-        List<MeasurementSchema> schemaList = new ArrayList<>();
+        List<IMeasurementSchema> schemaList = new ArrayList<>();
         for (int j = 1; j < columnNameList.size(); j++) {
           PartialPath currentPath = new PartialPath(columnNameList.get(j));
           schemaList.add(

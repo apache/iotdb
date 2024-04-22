@@ -149,10 +149,10 @@ public class MeasurementPath extends PartialPath {
 
   @Override
   public String getFullPathWithAlias() {
-    if (getDevice().isEmpty()) {
+    if (getIDeviceID().isEmpty()) {
       return measurementAlias;
     }
-    return getDevice() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
+    return getIDeviceID().toString() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
   }
 
   public boolean isUnderAlignedEntity() {
@@ -194,7 +194,8 @@ public class MeasurementPath extends PartialPath {
     MeasurementPath newMeasurementPath = null;
     try {
       newMeasurementPath =
-          new MeasurementPath(this.getDevice(), this.getMeasurement(), this.getMeasurementSchema());
+          new MeasurementPath(
+              this.getIDeviceID(), this.getMeasurement(), this.getMeasurementSchema());
       newMeasurementPath.setUnderAlignedEntity(this.isUnderAlignedEntity);
       newMeasurementPath.setMeasurementAlias(this.measurementAlias);
       if (tagMap != null) {
@@ -277,7 +278,7 @@ public class MeasurementPath extends PartialPath {
     measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBoolObject(byteBuffer);
     measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
     measurementPath.nodes = partialPath.getNodes();
-    measurementPath.device = partialPath.getDevice();
+    measurementPath.device = partialPath.getIDeviceID();
     measurementPath.fullPath = partialPath.getFullPath();
     return measurementPath;
   }

@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.utils.PathUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -71,6 +73,12 @@ public class AlignedPath extends PartialPath {
 
   public AlignedPath(
       String vectorPath, List<String> measurementList, List<IMeasurementSchema> schemaList)
+      throws IllegalPathException {
+    this(Factory.DEFAULT_FACTORY.create(vectorPath), measurementList, schemaList);
+  }
+
+  public AlignedPath(
+      IDeviceID vectorPath, List<String> measurementList, List<IMeasurementSchema> schemaList)
       throws IllegalPathException {
     super(vectorPath);
     // check whether measurement is legal
@@ -137,8 +145,8 @@ public class AlignedPath extends PartialPath {
   }
 
   @Override
-  public String getDevice() {
-    return getFullPath();
+  public IDeviceID getIDeviceID() {
+    return device;
   }
 
   @Override
@@ -283,7 +291,7 @@ public class AlignedPath extends PartialPath {
     try {
       alignedPath =
           new AlignedPath(
-              this.getDevice(),
+              this.getIDeviceID(),
               new ArrayList<>(this.measurementList),
               new ArrayList<>(this.schemaList));
     } catch (IllegalPathException e) {
@@ -363,7 +371,7 @@ public class AlignedPath extends PartialPath {
     alignedPath.measurementList = measurements;
     alignedPath.schemaList = measurementSchemas;
     alignedPath.nodes = partialPath.getNodes();
-    alignedPath.device = partialPath.getDevice();
+    alignedPath.device = partialPath.getIDeviceID();
     alignedPath.fullPath = partialPath.getFullPath();
     return alignedPath;
   }

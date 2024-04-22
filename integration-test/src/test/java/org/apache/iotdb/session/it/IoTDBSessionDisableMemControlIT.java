@@ -85,7 +85,7 @@ public class IoTDBSessionDisableMemControlIT {
         session.createTimeseries(
             "root.sg.d.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
       }
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
@@ -164,7 +164,7 @@ public class IoTDBSessionDisableMemControlIT {
           null,
           null,
           null);
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));

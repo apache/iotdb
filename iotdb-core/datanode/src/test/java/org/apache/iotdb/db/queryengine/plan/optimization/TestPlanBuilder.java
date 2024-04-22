@@ -343,7 +343,7 @@ public class TestPlanBuilder {
   public TestPlanBuilder into(String id, PartialPath sourcePath, PartialPath intoPath) {
     IntoPathDescriptor intoPathDescriptor = new IntoPathDescriptor();
     intoPathDescriptor.specifyTargetPath(sourcePath.toString(), "", intoPath);
-    intoPathDescriptor.specifyDeviceAlignment(intoPath.getDevice(), false);
+    intoPathDescriptor.specifyDeviceAlignment(intoPath.getIDeviceID().toString(), false);
     intoPathDescriptor.recordSourceColumnDataType(
         sourcePath.toString(), sourcePath.getSeriesType());
     this.root = new IntoNode(new PlanNodeId(id), getRoot(), intoPathDescriptor);

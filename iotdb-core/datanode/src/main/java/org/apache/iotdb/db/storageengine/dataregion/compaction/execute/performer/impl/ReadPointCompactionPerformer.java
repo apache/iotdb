@@ -44,7 +44,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.Pair;
@@ -252,9 +251,7 @@ public class ReadPointCompactionPerformer
       throws IllegalPathException {
     PartialPath seriesPath;
     if (isAlign) {
-      seriesPath =
-          new AlignedPath(
-              ((PlainDeviceID) deviceId).toStringID(), measurementIds, measurementSchemas);
+      seriesPath = new AlignedPath(deviceId, measurementIds, measurementSchemas);
     } else {
       seriesPath = new MeasurementPath(deviceId, measurementIds.get(0), measurementSchemas.get(0));
     }

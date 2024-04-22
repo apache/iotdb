@@ -201,7 +201,7 @@ public class DeviceUsingTemplateSchemaCache {
   public void invalidateCache(List<PartialPath> partialPathList) {
     for (PartialPath path : partialPathList) {
       for (PartialPath key : cache.asMap().keySet()) {
-        if (key.startsWith(path.getDevice())) {
+        if (key.startsWith(path.getIDeviceID().toString())) {
           cache.invalidate(key);
         }
       }

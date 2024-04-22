@@ -33,7 +33,6 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
@@ -170,7 +169,7 @@ public class CompactionFileGeneratorUtils {
       PartialPath partialPath = new PartialPath(fullPath);
       List<String> sensors =
           deviceMeasurementMap.computeIfAbsent(
-              new PlainDeviceID(partialPath.getDevice()), (s) -> new ArrayList<>());
+              partialPath.getIDeviceID(), (s) -> new ArrayList<>());
       sensors.add(partialPath.getMeasurement());
     }
     for (Entry<IDeviceID, List<String>> deviceMeasurementEntry : deviceMeasurementMap.entrySet()) {
@@ -228,7 +227,7 @@ public class CompactionFileGeneratorUtils {
       PartialPath partialPath = new PartialPath(fullPath);
       List<String> sensors =
           deviceMeasurementMap.computeIfAbsent(
-              new PlainDeviceID(partialPath.getDevice()), (s) -> new ArrayList<>());
+              partialPath.getIDeviceID(), (s) -> new ArrayList<>());
       sensors.add(partialPath.getMeasurement());
     }
     int currChunksIndex = 0;
@@ -320,7 +319,7 @@ public class CompactionFileGeneratorUtils {
       PartialPath partialPath = new PartialPath(fullPath);
       List<String> sensors =
           deviceMeasurementMap.computeIfAbsent(
-              new PlainDeviceID(partialPath.getDevice()), (s) -> new ArrayList<>());
+              partialPath.getIDeviceID(), (s) -> new ArrayList<>());
       sensors.add(partialPath.getMeasurement());
     }
     for (Entry<IDeviceID, List<String>> deviceMeasurementEntry : deviceMeasurementMap.entrySet()) {

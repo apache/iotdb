@@ -176,6 +176,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -734,7 +735,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     if (isAligned) {
       path =
           new AlignedPath(
-              device,
+              Factory.DEFAULT_FACTORY.create(device),
               Collections.singletonList(measurement),
               Collections.singletonList(measurementSchema));
       operator =

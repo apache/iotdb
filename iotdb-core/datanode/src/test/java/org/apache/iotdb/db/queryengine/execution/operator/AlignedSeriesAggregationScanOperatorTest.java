@@ -52,7 +52,6 @@ import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.tsfile.utils.TimeDuration;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -78,7 +77,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-  private static final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private static final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private static final List<TsFileResource> seqResources = new ArrayList<>();
   private static final List<TsFileResource> unSeqResources = new ArrayList<>();
@@ -710,7 +709,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
         new AlignedPath(
             SERIES_AGGREGATION_SCAN_OPERATOR_TEST_SG + ".device0",
             measurementSchemas.stream()
-                .map(MeasurementSchema::getMeasurementId)
+                .map(IMeasurementSchema::getMeasurementId)
                 .collect(Collectors.toList()),
             measurementSchemas.stream()
                 .map(m -> (IMeasurementSchema) m)

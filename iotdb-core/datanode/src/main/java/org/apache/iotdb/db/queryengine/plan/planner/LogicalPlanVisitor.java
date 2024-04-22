@@ -424,8 +424,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               return true;
             }
             if (StringUtils.isEmpty(alignedDeviceId)) {
-              alignedDeviceId = ts.getPath().getDevice();
-            } else if (!alignedDeviceId.equalsIgnoreCase(ts.getPath().getDevice())) {
+              alignedDeviceId = ts.getPath().getIDeviceID().toString();
+            } else if (!alignedDeviceId.equalsIgnoreCase(ts.getPath().getIDeviceID().toString())) {
               // count_time from only one aligned device can use AlignedSeriesAggScan
               return true;
             }

@@ -134,7 +134,7 @@ public class IOTDBLoadTsFileIT {
     return sql;
   }
 
-  private String convert2AlignedSQL(String device, List<MeasurementSchema> schemas) {
+  private String convert2AlignedSQL(String device, List<IMeasurementSchema> schemas) {
     String sql = String.format("create aligned timeseries %s(", device);
     for (int i = 0; i < schemas.size(); i++) {
       MeasurementSchema schema = schemas.get(i);
