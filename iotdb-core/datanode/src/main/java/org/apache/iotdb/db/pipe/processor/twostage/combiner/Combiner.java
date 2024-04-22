@@ -56,7 +56,9 @@ public class Combiner {
   }
 
   public TSStatus combine(int regionId, State state) {
-    if (expectedRegionIdSet.isEmpty()) {
+    final Set<Integer> finalExpectedRegionIdSet = new HashSet<>(expectedRegionIdSet);
+
+    if (finalExpectedRegionIdSet.isEmpty()) {
       return RpcUtils.getStatus(
           TSStatusCode.PIPE_ERROR, "Expected region id set is empty. Sender should try again.");
     }
@@ -70,10 +72,10 @@ public class Combiner {
           regionId,
           state,
           receivedRegionIdSet,
-          expectedRegionIdSet);
+          finalExpectedRegionIdSet);
     }
 
-    if (receivedRegionIdSet.containsAll(expectedRegionIdSet)) {
+    if (receivedRegionIdSet.containsAll(finalExpectedRegionIdSet)) {
       operator.onComplete();
       isComplete.set(true);
 
@@ -83,7 +85,7 @@ public class Combiner {
             regionId,
             state,
             receivedRegionIdSet,
-            expectedRegionIdSet);
+            finalExpectedRegionIdSet);
       }
     }
 
