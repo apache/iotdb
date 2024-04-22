@@ -299,8 +299,8 @@ public class ColumnTransformerBuilder
       ComparisonExpression node, Context context) {
     // fixme why using computeIfAbsent throw npe
     ColumnTransformer comparisonTransformer;
-    if (!context.cache.containsKey(node)) {
-      comparisonTransformer = getColumnTransformer(node, context);
+    if (context.cache.containsKey(node)) {
+      comparisonTransformer = context.cache.get(node);
     } else {
       comparisonTransformer = getColumnTransformer(node, context);
       context.cache.put(node, comparisonTransformer);
@@ -546,38 +546,41 @@ public class ColumnTransformerBuilder
 
   @Override
   protected ColumnTransformer visitLogicalExpression(LogicalExpression node, Context context) {
-    ColumnTransformer res =
-        context.cache.computeIfAbsent(
-            node,
-            n -> {
-              if (context.hasSeen.containsKey(node)) {
-                IdentityColumnTransformer identity =
-                    new IdentityColumnTransformer(
-                        BOOLEAN, context.originSize + context.commonTransformerList.size());
-                ColumnTransformer columnTransformer = context.hasSeen.get(node);
-                columnTransformer.addReferenceCount();
-                context.commonTransformerList.add(columnTransformer);
-                context.leafList.add(identity);
-                context.inputDataTypes.add(TSDataType.BOOLEAN);
-                return identity;
-              } else {
-                List<ColumnTransformer> children =
-                    node.getChildren().stream()
-                        .map(c -> process(c, context))
-                        .collect(Collectors.toList());
-                switch (node.getOperator()) {
-                  case OR:
-                    return new LogicalOrMultiColumnTransformer(BOOLEAN, children);
-                  case AND:
-                    return new LogicalAndMultiColumnTransformer(BOOLEAN, children);
-                  default:
-                    throw new UnsupportedOperationException(
-                        String.format(UNSUPPORTED_EXPRESSION, node.getOperator()));
-                }
-              }
-            });
-    res.addReferenceCount();
-    return res;
+    ColumnTransformer logicalTransformer;
+    if (context.cache.containsKey(node)) {
+      logicalTransformer = context.cache.get(node);
+    } else {
+      logicalTransformer = getColumnTransformer(node, context);
+      context.cache.put(node, logicalTransformer);
+    }
+    logicalTransformer.addReferenceCount();
+    return logicalTransformer;
+  }
+
+  private ColumnTransformer getColumnTransformer(LogicalExpression node, Context context) {
+    if (context.hasSeen.containsKey(node)) {
+      IdentityColumnTransformer identity =
+          new IdentityColumnTransformer(
+              BOOLEAN, context.originSize + context.commonTransformerList.size());
+      ColumnTransformer columnTransformer = context.hasSeen.get(node);
+      columnTransformer.addReferenceCount();
+      context.commonTransformerList.add(columnTransformer);
+      context.leafList.add(identity);
+      context.inputDataTypes.add(TSDataType.BOOLEAN);
+      return identity;
+    } else {
+      List<ColumnTransformer> children =
+          node.getChildren().stream().map(c -> process(c, context)).collect(Collectors.toList());
+      switch (node.getOperator()) {
+        case OR:
+          return new LogicalOrMultiColumnTransformer(BOOLEAN, children);
+        case AND:
+          return new LogicalAndMultiColumnTransformer(BOOLEAN, children);
+        default:
+          throw new UnsupportedOperationException(
+              String.format(UNSUPPORTED_EXPRESSION, node.getOperator()));
+      }
+    }
   }
 
   @Override

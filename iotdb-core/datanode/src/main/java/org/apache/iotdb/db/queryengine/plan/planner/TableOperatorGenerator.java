@@ -422,6 +422,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   private List<TSDataType> getInputColumnTypes(PlanNode node, TypeProvider typeProvider) {
+    // ignore "time" column
     return node.getChildren().stream()
         .map(PlanNode::getOutputSymbols)
         .flatMap(List::stream)
