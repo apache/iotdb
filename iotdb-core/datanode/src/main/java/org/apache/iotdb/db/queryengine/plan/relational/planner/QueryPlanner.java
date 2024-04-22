@@ -248,7 +248,8 @@ public class QueryPlanner {
     analysis.setGlobalTableModelTimePredicate(globalTimePredicate);
 
     return subPlan.withNewRoot(
-        new FilterNode(idAllocator.genPlanNodeId(), subPlan.getRoot(), predicate));
+        new FilterNode(
+            idAllocator.genPlanNodeId(), subPlan.getRoot(), subPlan.rewrite(predicate, true)));
 
     // subPlan = subqueryPlanner.handleSubqueries(subPlan, predicate, analysis.getSubqueries(node));
   }

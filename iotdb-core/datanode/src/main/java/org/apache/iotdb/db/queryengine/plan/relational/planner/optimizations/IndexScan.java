@@ -83,9 +83,7 @@ public class IndexScan implements RelationalPlanOptimizer {
     @Override
     public PlanNode visitFilter(FilterNode node, RewriterContext context) {
       context.setPredicate(node.getPredicate());
-      for (PlanNode child : node.getChildren()) {
-        child.accept(this, context);
-      }
+      node.getChild().accept(this, context);
       return node;
     }
 
