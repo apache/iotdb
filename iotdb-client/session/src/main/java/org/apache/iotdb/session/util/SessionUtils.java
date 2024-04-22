@@ -56,7 +56,7 @@ public class SessionUtils {
   public static ByteBuffer getValueBuffer(Tablet tablet) {
     ByteBuffer valueBuffer = ByteBuffer.allocate(tablet.getTotalValueOccupation());
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
-      MeasurementSchema schema = tablet.getSchemas().get(i);
+      MeasurementSchema schema = (MeasurementSchema) tablet.getSchemas().get(i);
       getValueBufferOfDataType(schema.getType(), tablet, i, valueBuffer);
     }
     if (tablet.bitMaps != null) {
