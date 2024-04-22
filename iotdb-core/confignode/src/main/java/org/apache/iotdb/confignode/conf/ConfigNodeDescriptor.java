@@ -96,6 +96,7 @@ public class ConfigNodeDescriptor {
     try {
       return new URL(urlString);
     } catch (MalformedURLException e) {
+      LOGGER.warn("get url failed", e);
       return null;
     }
   }
