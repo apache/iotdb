@@ -69,7 +69,6 @@ import org.apache.thrift.TException;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -680,7 +679,7 @@ public class LoadTsfileAnalyzer {
     public void addTimeSeries(IDeviceID device, MeasurementSchema measurementSchema) {
       long memoryUsageSizeInBytes = 0;
       if (!currentBatchDevice2TimeSeriesSchemas.containsKey(device)) {
-        memoryUsageSizeInBytes += estimateStringSize(((PlainDeviceID) device).toStringID());
+        memoryUsageSizeInBytes += device.ramBytesUsed();
       }
       if (currentBatchDevice2TimeSeriesSchemas
           .computeIfAbsent(device, k -> new HashSet<>())
@@ -698,7 +697,7 @@ public class LoadTsfileAnalyzer {
     public void addIsAlignedCache(IDeviceID device, boolean isAligned, boolean addIfAbsent) {
       long memoryUsageSizeInBytes = 0;
       if (!tsFileDevice2IsAligned.containsKey(device)) {
-        memoryUsageSizeInBytes += estimateStringSize(((PlainDeviceID) device).toStringID());
+        memoryUsageSizeInBytes += device.ramBytesUsed();
       }
       if (addIfAbsent
           ? (tsFileDevice2IsAligned.putIfAbsent(device, isAligned) == null)
@@ -760,8 +759,7 @@ public class LoadTsfileAnalyzer {
       while (iterator.hasNext()) {
         Map.Entry<IDeviceID, Boolean> entry = iterator.next();
         if (!timeSeriesCacheKeySet.contains(entry.getKey())) {
-          releaseMemoryInBytes +=
-              estimateStringSize(((PlainDeviceID) entry.getKey()).toStringID()) + Byte.BYTES;
+          releaseMemoryInBytes += entry.getKey().ramBytesUsed() + Byte.BYTES;
           iterator.remove();
         }
       }
@@ -787,20 +785,6 @@ public class LoadTsfileAnalyzer {
       currentBatchDevice2TimeSeriesSchemas = null;
       tsFileDevice2IsAligned = null;
       alreadySetDatabases = null;
-    }
-
-    /**
-     * String basic total, 32B
-     *
-     * <ul>
-     *   <li>Object header, 8B
-     *   <li>char[] reference + header + length, 8 + 4 + 8= 20B
-     *   <li>hash code, 4B
-     * </ul>
-     */
-    private static int estimateStringSize(String string) {
-      // each char takes 2B in Java
-      return string == null ? 0 : 32 + 2 * string.length();
     }
   }
 }
