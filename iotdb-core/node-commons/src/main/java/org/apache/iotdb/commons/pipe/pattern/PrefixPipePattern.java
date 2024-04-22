@@ -22,9 +22,9 @@ package org.apache.iotdb.commons.pipe.pattern;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.common.constant.TsFileConstant;
 
 import java.util.Arrays;
 

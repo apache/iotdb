@@ -38,9 +38,9 @@ import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

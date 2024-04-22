@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.RowRecord;
 
 public interface WatermarkEncoder {
   int encodeInt(int value, long time);

@@ -28,7 +28,8 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -139,7 +140,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     // Realtime
     EnrichedEvent realtimeEvent;
     do {
-      realtimeEvent = (EnrichedEvent) iterator.next(0);
+      realtimeEvent = (EnrichedEvent) iterator.next(getMaxBlockingTimeMs());
       if (Objects.isNull(realtimeEvent)) {
         return null;
       }
@@ -153,6 +154,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     realtimeEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
     return realtimeEvent;
   }
+
+  protected abstract long getMaxBlockingTimeMs();
 
   protected abstract boolean isTypeListened(Event event);
 

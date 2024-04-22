@@ -20,7 +20,8 @@
 package org.apache.iotdb.trigger.api;
 
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
-import org.apache.iotdb.tsfile.write.record.Tablet;
+
+import org.apache.tsfile.write.record.Tablet;
 
 public interface Trigger {
 

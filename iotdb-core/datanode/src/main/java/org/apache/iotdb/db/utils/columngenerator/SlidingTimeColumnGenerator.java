@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.utils.columngenerator;
 
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
+
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.read.common.block.column.LongColumn;
 
 import java.util.Optional;
 

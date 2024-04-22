@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.utils.Pair;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 

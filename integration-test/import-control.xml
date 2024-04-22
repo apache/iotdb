@@ -60,7 +60,7 @@
         <allow class="org.apache.iotdb.commons.path.PartialPath"/>
         <allow class="org.apache.iotdb.commons.path.PathPatternTree"/>
         <allow class="org.apache.iotdb.commons.path.PathDeserializeUtil"/>
-        <allow class="org.apache.iotdb.tsfile.utils.PublicBAOS"/>
+        <allow class="org.apache.tsfile.utils.PublicBAOS"/>
         <allow class="org.apache.iotdb.commons.exception.IllegalPathException"/>
         <allow class="org.apache.commons.codec.digest.DigestUtils"/>
         <allow class="org.apache.iotdb.commons.trigger.service.TriggerExecutableManager"/>
@@ -88,7 +88,7 @@
         <allow class="org.apache.iotdb.db.protocol.thrift.OperationType"/>
         <allow class="org.apache.iotdb.db.it.utils.AlignedWriteUtil"/>
         <allow class="org.apache.iotdb.commons.cluster.NodeStatus"/>
-        <allow class="org.apache.iotdb.tsfile.common.constant.TsFileConstant"/>
+        <allow class="org.apache.tsfile.common.constant.TsFileConstant"/>
         <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp"/>
         <allow class="org.apache.iotdb.service.rpc.thrift.TSConnectionType"/>
         <allow class="org.apache.iotdb.common.rpc.thrift.TAggregationType"/>

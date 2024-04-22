@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.metrics.utils;
 
-import org.apache.iotdb.tsfile.utils.Pair;
-
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -19,34 +19,40 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.compress.IUnCompressor;
-import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.compress.IUnCompressor;
+import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.MetaMarker;
+import org.apache.tsfile.file.header.ChunkHeader;
+import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.reader.page.PageReader;
+import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader.readCompressedPageData;
-import static org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader.uncompressPageData;
+import static org.apache.tsfile.read.reader.chunk.ChunkReader.readCompressedPageData;
+import static org.apache.tsfile.read.reader.chunk.ChunkReader.uncompressPageData;
 
 public class CompactionChunkReader {
 
   private final ChunkHeader chunkHeader;
-  private final ByteBuffer chunkDataBuffer;
+  private ByteBuffer chunkDataBuffer;
   private final IUnCompressor unCompressor;
   private final Decoder timeDecoder =
       Decoder.getDecoderByType(
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
           TSDataType.INT64);
+
+  private final Statistics chunkStatistic;
 
   // A list of deleted intervals.
   private final List<TimeRange> deleteIntervalList;
@@ -60,6 +66,7 @@ public class CompactionChunkReader {
     this.chunkDataBuffer = chunk.getData();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
     this.deleteIntervalList = chunk.getDeleteIntervalList();
+    this.chunkStatistic = chunk.getChunkStatistic();
   }
 
   /**
@@ -70,6 +77,30 @@ public class CompactionChunkReader {
    */
   public ByteBuffer readPageDataWithoutUncompressing(PageHeader pageHeader) throws IOException {
     return readCompressedPageData(pageHeader, chunkDataBuffer);
+  }
+
+  public List<Pair<PageHeader, ByteBuffer>> readPageDataWithoutUncompressing() throws IOException {
+    List<Pair<PageHeader, ByteBuffer>> pages = new ArrayList<>();
+    while (chunkDataBuffer.remaining() > 0) {
+      // deserialize a PageHeader from chunkDataBuffer
+      PageHeader pageHeader;
+      if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkStatistic);
+      } else {
+        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+      }
+      if (pageHeader.getCompressedSize() == 0) {
+        // empty value page
+        pages.add(null);
+      } else {
+        ByteBuffer compressedPageData = readCompressedPageData(pageHeader, chunkDataBuffer);
+        Pair<PageHeader, ByteBuffer> page = new Pair<>(pageHeader, compressedPageData);
+        pages.add(page);
+      }
+    }
+    // clear chunk data to release memory
+    chunkDataBuffer = null;
+    return pages;
   }
 
   /**
