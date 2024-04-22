@@ -667,6 +667,7 @@ public class RegionMaintainHandler {
     newLeaderNode.orElseThrow(() -> new ProcedureException("Cannot find the new leader"));
 
     // ratis needs DataNode to do election by itself
+    long timestamp = System.nanoTime();
     if (TConsensusGroupType.SchemaRegion.equals(regionId.getType())
         || TConsensusGroupType.DataRegion.equals(regionId.getType())
             && RATIS_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass())) {
@@ -678,6 +679,7 @@ public class RegionMaintainHandler {
                 .changeRegionLeader(
                     regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
         if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          timestamp = resp.getConsensusLogicalTimestamp();
           break;
         }
         if (retryTime++ > MAX_RETRY_TIME) {
@@ -692,8 +694,7 @@ public class RegionMaintainHandler {
         .forceUpdateConsensusGroupCache(
             Collections.singletonMap(
                 regionId,
-                new ConsensusGroupHeartbeatSample(
-                    System.nanoTime(), newLeaderNode.get().getDataNodeId())));
+                new ConsensusGroupHeartbeatSample(timestamp, newLeaderNode.get().getDataNodeId())));
     configManager.getLoadManager().getRouteBalancer().balanceRegionLeader();
     configManager.getLoadManager().getRouteBalancer().balanceRegionPriority();
 
