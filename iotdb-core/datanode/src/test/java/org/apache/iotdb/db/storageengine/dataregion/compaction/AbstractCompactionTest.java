@@ -52,7 +52,6 @@ import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkGroupHeader;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -359,14 +358,14 @@ public class AbstractCompactionTest {
       int deviceStartindex = isAlign ? TsFileGeneratorUtils.getAlignDeviceOffset() : 0;
       for (int j = 0; j < deviceIndexes.size(); j++) {
         resource.updateStartTime(
-            new PlainDeviceID(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
                 COMPACTION_TEST_SG
                     + PATH_SEPARATOR
                     + "d"
                     + (deviceIndexes.get(j) + deviceStartindex)),
             startTime + pointNum * i + timeInterval * i);
         resource.updateEndTime(
-            new PlainDeviceID(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
                 COMPACTION_TEST_SG
                     + PATH_SEPARATOR
                     + "d"
@@ -398,9 +397,11 @@ public class AbstractCompactionTest {
 
     for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
       resource.updateStartTime(
-          new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i), startTime);
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+          startTime);
       resource.updateEndTime(
-          new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i), endTime);
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+          endTime);
     }
 
     resource.updatePlanIndexes(fileVersion);
@@ -635,7 +636,7 @@ public class AbstractCompactionTest {
                   "Target file "
                       + targetResource.getTsFile().getPath()
                       + " contains empty chunk group "
-                      + ((PlainDeviceID) deviceID).toStringID());
+                      + deviceID.toString());
             }
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:

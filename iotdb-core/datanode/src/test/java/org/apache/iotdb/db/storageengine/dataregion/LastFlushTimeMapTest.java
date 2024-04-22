@@ -33,7 +33,6 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
 import org.junit.After;
@@ -95,7 +94,9 @@ public class LastFlushTimeMapTest {
     }
     Assert.assertEquals(
         10000,
-        dataRegion.getLastFlushTimeMap().getFlushedTime(0, new PlainDeviceID("root.vehicle.d0")));
+        dataRegion
+            .getLastFlushTimeMap()
+            .getFlushedTime(0, IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d0")));
   }
 
   @Test
@@ -123,18 +124,26 @@ public class LastFlushTimeMapTest {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertEquals(
         10000,
-        dataRegion.getLastFlushTimeMap().getFlushedTime(0, new PlainDeviceID("root.vehicle.d0")));
+        dataRegion
+            .getLastFlushTimeMap()
+            .getFlushedTime(0, IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d0")));
     Assert.assertEquals(
         9999,
-        dataRegion.getLastFlushTimeMap().getFlushedTime(0, new PlainDeviceID("root.vehicle.d1")));
+        dataRegion
+            .getLastFlushTimeMap()
+            .getFlushedTime(0, IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d1")));
 
     dataRegion.getLastFlushTimeMap().degradeLastFlushTime(0);
     Assert.assertEquals(
         10000,
-        dataRegion.getLastFlushTimeMap().getFlushedTime(0, new PlainDeviceID("root.vehicle.d0")));
+        dataRegion
+            .getLastFlushTimeMap()
+            .getFlushedTime(0, IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d0")));
     Assert.assertEquals(
         10000,
-        dataRegion.getLastFlushTimeMap().getFlushedTime(0, new PlainDeviceID("root.vehicle.d1")));
+        dataRegion
+            .getLastFlushTimeMap()
+            .getFlushedTime(0, IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d1")));
   }
 
   @Test
@@ -162,19 +171,27 @@ public class LastFlushTimeMapTest {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertEquals(
         604_800_000,
-        dataRegion.getLastFlushTimeMap().getFlushedTime(1, new PlainDeviceID("root.vehicle.d0")));
+        dataRegion
+            .getLastFlushTimeMap()
+            .getFlushedTime(1, IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d0")));
     Assert.assertEquals(
         604_799_999,
-        dataRegion.getLastFlushTimeMap().getFlushedTime(0, new PlainDeviceID("root.vehicle.d0")));
+        dataRegion
+            .getLastFlushTimeMap()
+            .getFlushedTime(0, IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d0")));
 
     // recover from disk
     dataRegion = new DataRegionTest.DummyDataRegion(systemDir, storageGroup);
     Assert.assertEquals(
         604_800_000,
-        dataRegion.getLastFlushTimeMap().getFlushedTime(1, new PlainDeviceID("root.vehicle.d0")));
+        dataRegion
+            .getLastFlushTimeMap()
+            .getFlushedTime(1, IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d0")));
     Assert.assertEquals(
         604_799_999,
-        dataRegion.getLastFlushTimeMap().getFlushedTime(0, new PlainDeviceID("root.vehicle.d0")));
+        dataRegion
+            .getLastFlushTimeMap()
+            .getFlushedTime(0, IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d0")));
   }
 
   @Test
@@ -198,7 +215,7 @@ public class LastFlushTimeMapTest {
     }
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
-    IDeviceID device = new PlainDeviceID("root.vehicle.d0");
+    IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d0");
     File unseqResourceFile1 = new File(unseqDirPath + File.separator + "4-4-0-0.tsfile.resource");
     TsFileResource unseqResource1 = new TsFileResource();
     unseqResource1.setTimeIndex(new ArrayDeviceTimeIndex());

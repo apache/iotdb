@@ -109,7 +109,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
@@ -2068,7 +2067,9 @@ public class DataRegion implements IDataRegionForQuery {
         Pair<Long, Long> startAndEndTime =
             tsFileResource.getPossibleStartTimeAndEndTime(
                 device,
-                deviceMatchInfo.stream().map(PlainDeviceID::new).collect(Collectors.toSet()));
+                deviceMatchInfo.stream()
+                    .map(IDeviceID.Factory.DEFAULT_FACTORY::create)
+                    .collect(Collectors.toSet()));
         if (startAndEndTime == null) {
           continue;
         }
@@ -2076,7 +2077,7 @@ public class DataRegion implements IDataRegionForQuery {
         deviceEndTime = startAndEndTime.getRight();
       } else {
         // TODO: DELETE
-        IDeviceID deviceId = new PlainDeviceID(device.getFullPath());
+        IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(device.getFullPath());
         if (tsFileResource.definitelyNotContains(deviceId)) {
           // resource does not contain this device
           continue;

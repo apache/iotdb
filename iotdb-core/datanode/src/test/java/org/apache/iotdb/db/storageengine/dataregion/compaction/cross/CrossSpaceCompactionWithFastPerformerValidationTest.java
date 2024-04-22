@@ -53,7 +53,6 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -2143,13 +2142,17 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     tsFileManager
         .getTsFileList(true)
         .get(0)
-        .updateEndTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"), 1100L);
+        .updateEndTime(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"),
+            1100L);
 
     // set the end time of d1 in the second seq file to 1200
     tsFileManager
         .getTsFileList(true)
         .get(1)
-        .updateStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"), 1200L);
+        .updateStartTime(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"),
+            1200L);
 
     for (int i = 1; i < seqResources.size(); i++) {
       tsFileManager.getTsFileList(true).get(i).degradeTimeIndex();

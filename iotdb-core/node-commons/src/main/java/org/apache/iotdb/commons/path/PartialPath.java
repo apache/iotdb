@@ -735,7 +735,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       return device;
     } else {
       if (nodes.length == 1) {
-        return Factory.DEFAULT_FACTORY.create("");
+        device = Factory.DEFAULT_FACTORY.create("");
+        return device;
       }
       StringBuilder s = new StringBuilder(nodes[0]);
       for (int i = 1; i < nodes.length - 1; i++) {

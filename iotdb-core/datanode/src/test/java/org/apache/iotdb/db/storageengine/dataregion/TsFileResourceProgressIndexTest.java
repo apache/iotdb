@@ -34,7 +34,6 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -71,14 +70,17 @@ public class TsFileResourceProgressIndexTest {
   @Before
   public void setUp() {
     IntStream.range(0, DEVICE_NUM)
-        .forEach(i -> deviceToIndex.put(new PlainDeviceID("root.sg.d" + i), i));
+        .forEach(
+            i -> deviceToIndex.put(IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i));
     ArrayDeviceTimeIndex deviceTimeIndex =
         new ArrayDeviceTimeIndex(deviceToIndex, startTimes, endTimes);
     IntStream.range(0, DEVICE_NUM)
         .forEach(
             i -> {
-              deviceTimeIndex.updateStartTime(new PlainDeviceID("root.sg.d" + i), i);
-              deviceTimeIndex.updateEndTime(new PlainDeviceID("root.sg.d" + i), i + 1);
+              deviceTimeIndex.updateStartTime(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i);
+              deviceTimeIndex.updateEndTime(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i + 1);
             });
     tsFileResource.setTimeIndex(deviceTimeIndex);
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);

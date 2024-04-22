@@ -35,7 +35,7 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -189,8 +189,8 @@ public abstract class InnerCompactionTest {
                   String.valueOf(i + valueOffset)));
         }
         fileWriter.write(record);
-        tsFileResource.updateStartTime(new PlainDeviceID(deviceIds[j]), i);
-        tsFileResource.updateEndTime(new PlainDeviceID(deviceIds[j]), i);
+        tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIds[j]), i);
+        tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIds[j]), i);
       }
       if ((i + 1) % flushInterval == 0) {
         fileWriter.flushAllChunkGroups();

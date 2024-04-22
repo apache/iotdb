@@ -41,7 +41,7 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
@@ -702,7 +702,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
             .add(new TimeValuePair(j, values[5]));
         alignedChunkWriter.write(j, values);
       }
-      writer.startChunkGroup(new PlainDeviceID("root.sg.d1"));
+      writer.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"));
       alignedChunkWriter.writeToFileWriter(writer);
       writer.endChunkGroup();
       writer.endFile();

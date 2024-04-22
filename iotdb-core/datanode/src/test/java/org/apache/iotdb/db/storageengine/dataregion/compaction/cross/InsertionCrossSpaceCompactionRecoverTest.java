@@ -38,7 +38,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDevice
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
@@ -77,8 +76,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
   @Test
   public void testRecoverWithTargetModFileNotExistedAndSourceModFileExisted()
       throws IOException, MergeException, IllegalPathException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -108,7 +107,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     unseqResource1.serialize();
 
     Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
-    deleteMap.put(((PlainDeviceID) d1).toStringID() + ".s1", new Pair<>(0L, 300L));
+    deleteMap.put(d1.toString() + ".s1", new Pair<>(0L, 300L));
     CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResource1, false);
 
     unseqResources.add(unseqResource1);
@@ -165,8 +164,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
   @Test
   public void testRecoverWithTargetModFileNotExistedAndSourceModNotExisted()
       throws IOException, MergeException, IllegalPathException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -196,7 +195,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     unseqResource1.serialize();
 
     Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
-    deleteMap.put(((PlainDeviceID) d1).toStringID() + ".s1", new Pair<>(0L, 300L));
+    deleteMap.put(d1.toString() + ".s1", new Pair<>(0L, 300L));
 
     unseqResources.add(unseqResource1);
 
@@ -255,8 +254,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
   @Test
   public void testRecoverWithAllTargetFileExisted()
       throws IllegalPathException, IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -286,7 +285,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     unseqResource1.serialize();
 
     Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
-    deleteMap.put(((PlainDeviceID) d1).toStringID() + ".s1", new Pair<>(0L, 300L));
+    deleteMap.put(d1.toString() + ".s1", new Pair<>(0L, 300L));
     CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResource1, false);
 
     unseqResources.add(unseqResource1);

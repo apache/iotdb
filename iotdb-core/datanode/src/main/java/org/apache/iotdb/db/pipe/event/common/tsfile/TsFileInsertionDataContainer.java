@@ -33,7 +33,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -145,13 +144,14 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       Map<IDeviceID, List<String>> originalDeviceMeasurementsMap) {
     final Map<IDeviceID, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
     for (Map.Entry<IDeviceID, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
-      final String deviceId = ((PlainDeviceID) entry.getKey()).toStringID();
+      final String deviceId = entry.getKey().toString();
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
       // in this case, all data can be matched without checking the measurements
       if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
         if (!entry.getValue().isEmpty()) {
-          filteredDeviceMeasurementsMap.put(new PlainDeviceID(deviceId), entry.getValue());
+          filteredDeviceMeasurementsMap.put(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId), entry.getValue());
         }
       }
 
@@ -170,7 +170,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
         }
 
         if (!filteredMeasurements.isEmpty()) {
-          filteredDeviceMeasurementsMap.put(new PlainDeviceID(deviceId), filteredMeasurements);
+          filteredDeviceMeasurementsMap.put(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId), filteredMeasurements);
         }
       }
 
@@ -218,7 +219,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
                     new TsFileInsertionDataTabletIterator(
                         tsFileReader,
                         measurementDataTypeMap,
-                        ((PlainDeviceID) entry.getKey()).toStringID(),
+                        entry.getKey().toString(),
                         entry.getValue(),
                         timeFilterExpression);
               } catch (IOException e) {
@@ -239,7 +240,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
             final Tablet tablet = tabletIterator.next();
             final boolean isAligned =
-                deviceIsAlignedMap.getOrDefault(new PlainDeviceID(tablet.getDeviceId()), false);
+                deviceIsAlignedMap.getOrDefault(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(tablet.getDeviceId()), false);
 
             final TabletInsertionEvent next;
             if (!hasNext()) {

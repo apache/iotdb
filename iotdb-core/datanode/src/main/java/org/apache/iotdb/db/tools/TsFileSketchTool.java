@@ -279,6 +279,7 @@ public class TsFileSketchTool {
 
   private void printChunk(List<ChunkGroupMetadata> allChunkGroupMetadata) {
     try {
+      reader.position(0);
       long nextChunkGroupHeaderPos =
           (long) TSFileConfig.MAGIC_STRING.getBytes().length + Byte.BYTES;
       // ChunkGroup begins

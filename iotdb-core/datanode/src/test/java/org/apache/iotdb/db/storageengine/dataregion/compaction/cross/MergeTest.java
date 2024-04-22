@@ -33,7 +33,6 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
@@ -98,7 +97,8 @@ abstract class MergeTest {
     }
     deviceIds = new IDeviceID[deviceNum];
     for (int i = 0; i < deviceNum; i++) {
-      deviceIds[i] = new PlainDeviceID(MERGE_TEST_SG + PATH_SEPARATOR + "device" + i);
+      deviceIds[i] =
+          IDeviceID.Factory.DEFAULT_FACTORY.create(MERGE_TEST_SG + PATH_SEPARATOR + "device" + i);
     }
   }
 
@@ -162,7 +162,7 @@ abstract class MergeTest {
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (int j = 0; j < deviceNum; j++) {
-        TSRecord record = new TSRecord(i, ((PlainDeviceID) deviceIds[j]).toStringID());
+        TSRecord record = new TSRecord(i, deviceIds[j].toString());
         for (int k = 0; k < measurementNum; k++) {
           record.addTuple(
               DataPoint.getDataPoint(

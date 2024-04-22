@@ -23,7 +23,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.common.Path;
@@ -59,8 +58,8 @@ public class TsFileSketchToolTest {
           .concat(File.separator)
           .concat("1-0-0-0.tsfile");
   String sketchOut = "sketch.out";
-  IDeviceID device = new PlainDeviceID("root.device_0");
-  IDeviceID alignedDevice = new PlainDeviceID("root.device_1");
+  IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.device_0");
+  IDeviceID alignedDevice = IDeviceID.Factory.DEFAULT_FACTORY.create("root.device_1");
   String sensorPrefix = "sensor_";
   // the number of rows to include in the tablet
   int rowNum = 1000000;

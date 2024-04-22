@@ -25,7 +25,6 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -93,9 +92,12 @@ public class TsFileResourceTest {
     Assert.assertEquals(ITimeIndex.FILE_TIME_INDEX_TYPE, tsFileResource.getTimeIndexType());
     Assert.assertEquals(deviceToIndex.keySet(), tsFileResource.getDevices());
     for (int i = 0; i < DEVICE_NUM; i++) {
-      Assert.assertEquals(tsFileResource.getStartTime(new PlainDeviceID("root.sg1.d" + i)), 0);
       Assert.assertEquals(
-          tsFileResource.getEndTime(new PlainDeviceID("root.sg1.d" + i)), DEVICE_NUM);
+          tsFileResource.getStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg1.d" + i)),
+          0);
+      Assert.assertEquals(
+          tsFileResource.getEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg1.d" + i)),
+          DEVICE_NUM);
     }
   }
 }

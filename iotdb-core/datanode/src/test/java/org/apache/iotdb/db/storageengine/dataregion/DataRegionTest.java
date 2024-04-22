@@ -59,7 +59,6 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -1381,7 +1380,9 @@ public class DataRegionTest {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertFalse(tsFileResource.getModFile().exists());
     Assert.assertFalse(
-        tsFileResource.getDevices().contains(new PlainDeviceID("root.vehicle.d199")));
+        tsFileResource
+            .getDevices()
+            .contains(IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d199")));
   }
 
   @Test
