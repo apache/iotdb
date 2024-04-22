@@ -19,4 +19,4 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler;
 
-public class PipeConsensusTabletInsertionEventHandler {}
+public class PipeConsensusTabletBatchEventHandler {}
