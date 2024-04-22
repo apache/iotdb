@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;

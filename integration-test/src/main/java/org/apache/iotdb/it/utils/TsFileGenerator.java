@@ -31,7 +31,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -172,7 +172,7 @@ public class TsFileGenerator implements AutoCloseable {
     LOGGER.info("Write {} points into device {}", number, device);
   }
 
-  private void generateDataPoint(Object obj, int row, MeasurementSchema schema) {
+  private void generateDataPoint(Object obj, int row, IMeasurementSchema schema) {
     switch (schema.getType()) {
       case INT32:
         generateINT32(obj, row);
