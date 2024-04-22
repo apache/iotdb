@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.iot.client;
+package org.apache.iotdb.consensus.pipe.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.consensus.iot.thrift.IoTConsensusIService;
+import org.apache.iotdb.consensus.pipe.thrift.PipeConsensusIService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -36,21 +36,21 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncClient
+public class AsyncPipeConsensusServiceClient extends PipeConsensusIService.AsyncClient
     implements ThriftClient {
 
   private static final Logger logger =
-      LoggerFactory.getLogger(AsyncIoTConsensusServiceClient.class);
+      LoggerFactory.getLogger(AsyncPipeConsensusServiceClient.class);
 
   private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
-  private final ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
+  private final ClientManager<TEndPoint, AsyncPipeConsensusServiceClient> clientManager;
 
-  public AsyncIoTConsensusServiceClient(
+  public AsyncPipeConsensusServiceClient(
       ThriftClientProperty property,
       TEndPoint endpoint,
       TAsyncClientManager tAsyncClientManager,
-      ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager)
+      ClientManager<TEndPoint, AsyncPipeConsensusServiceClient> clientManager)
       throws IOException {
     super(
         property.getProtocolFactory(),
@@ -121,14 +121,18 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
 
   @Override
   public String toString() {
-    return String.format("AsyncIoTConsensusServiceClient{%s}", endpoint);
+    return String.format("AsyncPipeConsensusServiceClient{%s}", endpoint);
+  }
+
+  public TEndPoint getTEndpoint() {
+    return endpoint;
   }
 
   public static class Factory
-      extends AsyncThriftClientFactory<TEndPoint, AsyncIoTConsensusServiceClient> {
+      extends AsyncThriftClientFactory<TEndPoint, AsyncPipeConsensusServiceClient> {
 
     public Factory(
-        ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
+        ClientManager<TEndPoint, AsyncPipeConsensusServiceClient> clientManager,
         ThriftClientProperty thriftClientProperty,
         String threadName) {
       super(clientManager, thriftClientProperty, threadName);
@@ -136,15 +140,15 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
 
     @Override
     public void destroyObject(
-        TEndPoint endPoint, PooledObject<AsyncIoTConsensusServiceClient> pooledObject) {
+        TEndPoint endPoint, PooledObject<AsyncPipeConsensusServiceClient> pooledObject) {
       pooledObject.getObject().close();
     }
 
     @Override
-    public PooledObject<AsyncIoTConsensusServiceClient> makeObject(TEndPoint endPoint)
+    public PooledObject<AsyncPipeConsensusServiceClient> makeObject(TEndPoint endPoint)
         throws Exception {
       return new DefaultPooledObject<>(
-          new AsyncIoTConsensusServiceClient(
+          new AsyncPipeConsensusServiceClient(
               thriftClientProperty,
               endPoint,
               tManagers[clientCnt.incrementAndGet() % tManagers.length],
@@ -153,7 +157,7 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
 
     @Override
     public boolean validateObject(
-        TEndPoint endPoint, PooledObject<AsyncIoTConsensusServiceClient> pooledObject) {
+        TEndPoint endPoint, PooledObject<AsyncPipeConsensusServiceClient> pooledObject) {
       return pooledObject.getObject().isReady();
     }
   }

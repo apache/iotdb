@@ -17,23 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.client;
+package org.apache.iotdb.consensus.pipe.client.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
-import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusHandshakeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeConsensusTransferResp;
+import org.apache.iotdb.consensus.pipe.client.PipeConsensusClientPool.PipeConsensusRPCConfig;
+import org.apache.iotdb.consensus.pipe.client.PipeConsensusClientPool.SyncPipeConsensusServiceClientPoolFactory;
+import org.apache.iotdb.consensus.pipe.client.SyncPipeConsensusServiceClient;
+import org.apache.iotdb.consensus.pipe.client.request.PipeConsensusHandshakeReq;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.commons.lang3.tuple.MutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,8 +47,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * This class is a simplified version of {@link
- * org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeSyncClientManager}, because pipeConsensus
+ * This class is a simplified version of IoTDBDataNodeSyncClientManager, because pipeConsensus
  * currently only needs to reuse the handshake function.
  *
  * <p>Note: This class is shared by all pipeConsensusTasks of one leader to its peers in a consensus
@@ -57,31 +57,31 @@ public class PipeConsensusSyncClientManager implements Closeable {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConsensusSyncClientManager.class);
 
-  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> SYNC_RETRY_CLIENT_MGR =
-      new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+  private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> SYNC_CLIENT_MANAGER =
+      new IClientManager.Factory<TEndPoint, SyncPipeConsensusServiceClient>()
           .createClientManager(
-              new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+              new SyncPipeConsensusServiceClientPoolFactory(new PipeConsensusRPCConfig()));
 
-  protected final Map<TEndPoint, Pair<SyncDataNodeInternalServiceClient, Boolean>>
+  protected final Map<TEndPoint, MutablePair<SyncPipeConsensusServiceClient, Boolean>>
       endPoint2ClientAndStatus = new ConcurrentHashMap<>();
 
   private PipeConsensusSyncClientManager() {
     // do nothing
   }
 
-  public Pair<SyncDataNodeInternalServiceClient, Boolean> borrowClient(final TEndPoint endPoint)
+  public MutablePair<SyncPipeConsensusServiceClient, Boolean> borrowClient(final TEndPoint endPoint)
       throws PipeException {
     if (endPoint == null) {
       throw new PipeException(
           "PipeConsensus: sync client manager can't borrow clients for a null TEndPoint. Please set the url of receiver correctly!");
     }
 
-    Pair<SyncDataNodeInternalServiceClient, Boolean> clientAndStatus =
+    MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus =
         endPoint2ClientAndStatus.getOrDefault(endPoint, null);
     // If the client don't exist due to eviction by ClientManager's KeyObjectPool or other reasons,
     // it needs to be reconstructed and handshake
     if (clientAndStatus == null) {
-      clientAndStatus = new Pair<>(null, false);
+      clientAndStatus = MutablePair.of(null, false);
       initClientAndStatus(clientAndStatus, endPoint);
       sendHandshakeReq(clientAndStatus);
       endPoint2ClientAndStatus.putIfAbsent(endPoint, clientAndStatus);
@@ -101,7 +101,7 @@ public class PipeConsensusSyncClientManager implements Closeable {
         .forEach(entry -> reconstructClient(entry.getKey()));
 
     // Check whether any peers clients are available
-    for (final Pair<SyncDataNodeInternalServiceClient, Boolean> clientAndStatus :
+    for (final MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus :
         endPoint2ClientAndStatus.values()) {
       if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
         return;
@@ -113,7 +113,7 @@ public class PipeConsensusSyncClientManager implements Closeable {
   }
 
   protected void reconstructClient(TEndPoint endPoint) {
-    final Pair<SyncDataNodeInternalServiceClient, Boolean> clientAndStatus =
+    final MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus =
         endPoint2ClientAndStatus.get(endPoint);
 
     if (clientAndStatus.getLeft() != null) {
@@ -135,10 +135,10 @@ public class PipeConsensusSyncClientManager implements Closeable {
   }
 
   private void initClientAndStatus(
-      final Pair<SyncDataNodeInternalServiceClient, Boolean> clientAndStatus,
+      final MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus,
       final TEndPoint endPoint) {
     try {
-      clientAndStatus.setLeft(SYNC_RETRY_CLIENT_MGR.borrowClient(endPoint));
+      clientAndStatus.setLeft(SYNC_CLIENT_MANAGER.borrowClient(endPoint));
     } catch (ClientManagerException e) {
       throw new PipeConnectionException(
           String.format(
@@ -150,8 +150,8 @@ public class PipeConsensusSyncClientManager implements Closeable {
   }
 
   public void sendHandshakeReq(
-      final Pair<SyncDataNodeInternalServiceClient, Boolean> clientAndStatus) {
-    final SyncDataNodeInternalServiceClient client = clientAndStatus.getLeft();
+      final MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus) {
+    final SyncPipeConsensusServiceClient client = clientAndStatus.getLeft();
     try {
       final HashMap<String, String> params = new HashMap<>();
       params.put(
@@ -198,7 +198,7 @@ public class PipeConsensusSyncClientManager implements Closeable {
         .forEach(
             entry -> {
               final TEndPoint endPoint = entry.getKey();
-              final Pair<SyncDataNodeInternalServiceClient, Boolean> clientAndStatus =
+              final MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus =
                   entry.getValue();
 
               try {
@@ -233,7 +233,7 @@ public class PipeConsensusSyncClientManager implements Closeable {
     /** Add one leader's own peers to the manager */
     private static void construct(List<TEndPoint> peers) {
       for (final TEndPoint endPoint : peers) {
-        INSTANCE.endPoint2ClientAndStatus.putIfAbsent(endPoint, new Pair<>(null, false));
+        INSTANCE.endPoint2ClientAndStatus.putIfAbsent(endPoint, MutablePair.of(null, false));
       }
     }
   }

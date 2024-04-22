@@ -17,13 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.client;
+package org.apache.iotdb.consensus.pipe.client.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.consensus.pipe.client.AsyncPipeConsensusServiceClient;
+import org.apache.iotdb.consensus.pipe.client.PipeConsensusClientPool.AsyncPipeConsensusServiceClientPoolFactory;
+import org.apache.iotdb.consensus.pipe.client.PipeConsensusClientPool.PipeConsensusRPCConfig;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -35,11 +36,10 @@ public class PipeConsensusAsyncClientManager {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConsensusAsyncClientManager.class);
 
-  private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
-      ASYNC_TRANSFER_CLIENT_MGR =
-          new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
-              .createClientManager(
-                  new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory());
+  private final IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> ASYNC_CLIENT_MANAGER =
+      new IClientManager.Factory<TEndPoint, AsyncPipeConsensusServiceClient>()
+          .createClientManager(
+              new AsyncPipeConsensusServiceClientPoolFactory(new PipeConsensusRPCConfig()));
 
   private PipeConsensusAsyncClientManager() {
     // do nothing
@@ -47,15 +47,15 @@ public class PipeConsensusAsyncClientManager {
 
   // TODO: Since each peer will have a sync handshake in advance, do we need to handshake the async
   // client again?
-  public AsyncDataNodeInternalServiceClient borrowClient(final TEndPoint endPoint)
+  public AsyncPipeConsensusServiceClient borrowClient(final TEndPoint endPoint)
       throws PipeException {
     if (endPoint == null) {
       throw new PipeException(
-          "PipeConsensus: sync client manager can't borrow clients for a null TEndPoint. Please set the url of receiver correctly!");
+          "PipeConsensus: async client manager can't borrow clients for a null TEndPoint. Please set the url of receiver correctly!");
     }
 
     try {
-      return ASYNC_TRANSFER_CLIENT_MGR.borrowClient(endPoint);
+      return ASYNC_CLIENT_MANAGER.borrowClient(endPoint);
     } catch (ClientManagerException e) {
       throw new PipeConnectionException(
           String.format(
