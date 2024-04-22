@@ -30,9 +30,9 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeExcepti
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +70,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
   protected final PipeMemoryBlock allocatedMemoryBlock;
   protected long totalBufferSize = 0;
 
-  protected PipeTransferBatchReqBuilder(PipeParameters parameters) {
+  protected PipeTransferBatchReqBuilder(final PipeParameters parameters) {
     maxDelayInMs =
         parameters.getIntOrDefault(
                 Arrays.asList(CONNECTOR_IOTDB_BATCH_DELAY_KEY, SINK_IOTDB_BATCH_DELAY_KEY),
@@ -112,7 +112,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
    * @param event the given {@link Event}
    * @return {@link true} if the batch can be transferred
    */
-  public synchronized boolean onEvent(TabletInsertionEvent event)
+  public synchronized boolean onEvent(final TabletInsertionEvent event)
       throws IOException, WALPipeException {
     if (!(event instanceof EnrichedEvent)) {
       return false;
@@ -123,17 +123,22 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
     // The deduplication logic here is to avoid the accumulation of the same event in a batch when
     // retrying.
     if ((events.isEmpty() || !events.get(events.size() - 1).equals(event))) {
-      events.add(event);
-      requestCommitIds.add(requestCommitId);
-      final int bufferSize = buildTabletInsertionBuffer(event);
+      // We increase the reference count for this event to determine if the event may be released.
+      if (((EnrichedEvent) event)
+          .increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName())) {
+        events.add(event);
+        requestCommitIds.add(requestCommitId);
 
-      ((EnrichedEvent) event).increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName());
+        final int bufferSize = buildTabletInsertionBuffer(event);
+        totalBufferSize += bufferSize;
 
-      if (firstEventProcessingTime == Long.MIN_VALUE) {
-        firstEventProcessingTime = System.currentTimeMillis();
+        if (firstEventProcessingTime == Long.MIN_VALUE) {
+          firstEventProcessingTime = System.currentTimeMillis();
+        }
+      } else {
+        ((EnrichedEvent) event)
+            .decreaseReferenceCount(PipeTransferBatchReqBuilder.class.getName(), false);
       }
-
-      totalBufferSize += bufferSize;
     }
 
     return totalBufferSize >= getMaxBatchSizeInBytes()
@@ -170,7 +175,7 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
     return new ArrayList<>(events);
   }
 
-  protected int buildTabletInsertionBuffer(TabletInsertionEvent event)
+  protected int buildTabletInsertionBuffer(final TabletInsertionEvent event)
       throws IOException, WALPipeException {
     final ByteBuffer buffer;
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
@@ -203,11 +208,23 @@ public abstract class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   @Override
   public synchronized void close() {
+    clearEventsReferenceCount(PipeTransferBatchReqBuilder.class.getName());
+    allocatedMemoryBlock.close();
+  }
+
+  public void decreaseEventsReferenceCount(final String holderMessage, final boolean shouldReport) {
     for (final Event event : events) {
       if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).clearReferenceCount(this.getClass().getName());
+        ((EnrichedEvent) event).decreaseReferenceCount(holderMessage, shouldReport);
       }
     }
-    allocatedMemoryBlock.close();
+  }
+
+  public void clearEventsReferenceCount(final String holderMessage) {
+    for (final Event event : events) {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).clearReferenceCount(holderMessage);
+      }
+    }
   }
 }

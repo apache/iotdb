@@ -22,10 +22,11 @@ package org.apache.iotdb.db.queryengine.transformation.dag.adapter;
 import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.type.Binary;
 import org.apache.iotdb.udf.api.type.Type;
+
+import org.apache.tsfile.common.conf.TSFileConfig;
 
 import java.io.IOException;
 

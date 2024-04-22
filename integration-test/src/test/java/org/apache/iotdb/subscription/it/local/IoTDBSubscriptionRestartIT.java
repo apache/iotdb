@@ -88,9 +88,10 @@ public class IoTDBSubscriptionRestartIT {
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
     // Create topic
+    final String topicName = "topic1";
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
-      session.createTopic("topic1");
+      session.createTopic(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -107,7 +108,7 @@ public class IoTDBSubscriptionRestartIT {
               .autoCommit(false)
               .buildPullConsumer();
       consumer.open();
-      consumer.subscribe("topic1");
+      consumer.subscribe(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -181,7 +182,7 @@ public class IoTDBSubscriptionRestartIT {
                   }
                   consumer.commitSync(messages);
                 }
-                consumer.unsubscribe("topic1");
+                consumer.unsubscribe(topicName);
               } catch (final Exception e) {
                 e.printStackTrace();
                 // Avoid failure
@@ -215,9 +216,10 @@ public class IoTDBSubscriptionRestartIT {
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
     // Create topic
+    final String topicName = "topic2";
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
-      session.createTopic("topic1");
+      session.createTopic(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -237,7 +239,7 @@ public class IoTDBSubscriptionRestartIT {
               .endpointsSyncIntervalMs(5000) // narrow endpoints sync interval
               .buildPullConsumer();
       consumer.open();
-      consumer.subscribe("topic1");
+      consumer.subscribe(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -294,7 +296,7 @@ public class IoTDBSubscriptionRestartIT {
                     // Auto commit
                   }
                 }
-                consumerRef.unsubscribe("topic1");
+                consumerRef.unsubscribe(topicName);
               } catch (final Exception e) {
                 e.printStackTrace();
                 // Avoid failure
@@ -346,9 +348,10 @@ public class IoTDBSubscriptionRestartIT {
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
     // Create topic
+    final String topicName = "topic3";
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
-      session.createTopic("topic1");
+      session.createTopic(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -368,7 +371,7 @@ public class IoTDBSubscriptionRestartIT {
               .endpointsSyncIntervalMs(5000) // narrow endpoints sync interval
               .buildPullConsumer();
       consumer.open();
-      consumer.subscribe("topic1");
+      consumer.subscribe(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -420,7 +423,7 @@ public class IoTDBSubscriptionRestartIT {
                     // Auto commit
                   }
                 }
-                consumerRef.unsubscribe("topic1");
+                consumerRef.unsubscribe(topicName);
               } catch (final Exception e) {
                 e.printStackTrace();
                 // Avoid failure

@@ -20,9 +20,6 @@ package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
 import org.apache.iotdb.hadoop.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import org.apache.hadoop.io.BooleanWritable;
 import org.apache.hadoop.io.DoubleWritable;
@@ -35,6 +32,9 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.fileSystem.FSType;
+import org.apache.tsfile.read.TsFileSequenceReader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

@@ -20,7 +20,8 @@
 package org.apache.iotdb.it.env.cluster.env;
 
 import org.apache.iotdb.it.env.cluster.EnvUtils;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.utils.Pair;
 
 public class MultiClusterEnv extends AbstractEnv {
 

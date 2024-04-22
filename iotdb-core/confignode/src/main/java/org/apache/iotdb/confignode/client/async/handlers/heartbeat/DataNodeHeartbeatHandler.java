@@ -19,16 +19,20 @@
 
 package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.PipeRuntimeCoordinator;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 
@@ -37,9 +41,15 @@ import java.util.function.Consumer;
 
 public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHeartbeatResp> {
 
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final boolean SCHEMA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE =
+      ConsensusFactory.RATIS_CONSENSUS.equals(CONF.getSchemaRegionConsensusProtocolClass());
+  private static final boolean DATA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE =
+      ConsensusFactory.RATIS_CONSENSUS.equals(CONF.getDataRegionConsensusProtocolClass());
+
   private final int nodeId;
 
-  private final LoadCache loadCache;
+  private final LoadManager loadManager;
 
   private final Map<Integer, Long> deviceNum;
   private final Map<Integer, Long> timeSeriesNum;
@@ -52,7 +62,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
 
   public DataNodeHeartbeatHandler(
       int nodeId,
-      LoadCache loadCache,
+      LoadManager loadManager,
       Map<Integer, Long> deviceNum,
       Map<Integer, Long> timeSeriesNum,
       Map<Integer, Long> regionDisk,
@@ -61,7 +71,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
       PipeRuntimeCoordinator pipeRuntimeCoordinator) {
 
     this.nodeId = nodeId;
-    this.loadCache = loadCache;
+    this.loadManager = loadManager;
     this.deviceNum = deviceNum;
     this.timeSeriesNum = timeSeriesNum;
     this.regionDisk = regionDisk;
@@ -72,30 +82,39 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
 
   @Override
   public void onComplete(TDataNodeHeartbeatResp heartbeatResp) {
-    long receiveTime = System.nanoTime();
-
     // Update NodeCache
-    loadCache.cacheDataNodeHeartbeatSample(
-        nodeId, new NodeHeartbeatSample(heartbeatResp, receiveTime));
+    loadManager
+        .getLoadCache()
+        .cacheDataNodeHeartbeatSample(nodeId, new NodeHeartbeatSample(heartbeatResp));
 
     heartbeatResp
         .getJudgedLeaders()
         .forEach(
             (regionGroupId, isLeader) -> {
               // Update RegionGroupCache
-              loadCache.cacheRegionHeartbeatSample(
-                  regionGroupId,
-                  nodeId,
-                  new RegionHeartbeatSample(
-                      heartbeatResp.getHeartbeatTimestamp(),
-                      receiveTime,
-                      // Region will inherit DataNode's status
-                      RegionStatus.parse(heartbeatResp.getStatus())));
+              loadManager
+                  .getLoadCache()
+                  .cacheRegionHeartbeatSample(
+                      regionGroupId,
+                      nodeId,
+                      new RegionHeartbeatSample(
+                          heartbeatResp.getHeartbeatTimestamp(),
+                          // Region will inherit DataNode's status
+                          RegionStatus.valueOf(heartbeatResp.getStatus())),
+                      false);
 
-              if (Boolean.TRUE.equals(isLeader)) {
-                // Update leaderCache
-                loadCache.cacheLeaderSample(
-                    regionGroupId, new Pair<>(heartbeatResp.getHeartbeatTimestamp(), nodeId));
+              if (((TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
+                          && SCHEMA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE)
+                      || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
+                          && DATA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE))
+                  && Boolean.TRUE.equals(isLeader)) {
+                // Update ConsensusGroupCache when necessary
+                loadManager
+                    .getLoadCache()
+                    .cacheConsensusSample(
+                        regionGroupId,
+                        new ConsensusGroupHeartbeatSample(
+                            heartbeatResp.getConsensusLogicalTimeMap().get(regionGroupId), nodeId));
               }
             });
 
@@ -114,16 +133,19 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
       pipeRuntimeCoordinator.parseHeartbeat(nodeId, heartbeatResp.getPipeMetaList());
     }
     if (heartbeatResp.isSetConfirmedConfigNodeEndPoints()) {
-      loadCache.updateConfirmedConfigNodeEndPoints(
-          nodeId, heartbeatResp.getConfirmedConfigNodeEndPoints());
+      loadManager
+          .getLoadCache()
+          .updateConfirmedConfigNodeEndPoints(
+              nodeId, heartbeatResp.getConfirmedConfigNodeEndPoints());
     }
   }
 
   @Override
   public void onError(Exception e) {
     if (ThriftClient.isConnectionBroken(e)) {
-      loadCache.forceUpdateNodeCache(
-          NodeType.DataNode, nodeId, NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
+      loadManager.forceUpdateNodeCache(
+          NodeType.DataNode, nodeId, new NodeHeartbeatSample(NodeStatus.Unknown));
     }
+    loadManager.getLoadCache().resetHeartbeatProcessing(nodeId);
   }
 }

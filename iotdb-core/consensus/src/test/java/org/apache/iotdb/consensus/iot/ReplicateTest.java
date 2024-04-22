@@ -31,9 +31,9 @@ import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.iot.util.TestEntry;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.ratis.util.FileUtils;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -304,6 +304,27 @@ public class ReplicateTest {
         logger.error("Failed because", e);
         Assert.fail("Failed because " + e.getMessage());
       }
+    }
+  }
+
+  @Test
+  public void parsingAndConstructIDTest() throws Exception {
+    logger.info("Start ParsingAndConstructIDTest");
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    for (int i = 0; i < CHECK_POINT_GAP; i++) {
+      servers.get(0).write(gid, new TestEntry(i, peers.get(0)));
+    }
+    List<ConsensusGroupId> ids = servers.get(0).getAllConsensusGroupIdsWithoutStarting();
+
+    Assert.assertEquals(1, ids.size());
+    Assert.assertEquals(gid, ids.get(0));
+
+    String regionDir = servers.get(0).getRegionDirFromConsensusGroupId(gid);
+    try {
+      File regionDirFile = new File(regionDir);
+      Assert.assertTrue(regionDirFile.exists());
+    } catch (Exception e) {
+      Assert.fail();
     }
   }
 

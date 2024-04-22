@@ -20,14 +20,14 @@
 package org.apache.iotdb.flink.tsfile;
 
 import org.apache.iotdb.flink.util.TsFileWriteUtil;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.constant.QueryConstant;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.util.FileUtils;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.constant.QueryConstant;
+import org.apache.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Before;
 

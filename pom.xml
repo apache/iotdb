@@ -141,7 +141,7 @@
       is for ensuring the SNAPSHOT will stay available. We should however have the Ratis folks do a
       new release soon, as releasing with this version is more than sub-ideal.
     -->
-        <ratis.version>3.1.0-52e8db6-SNAPSHOT</ratis.version>
+        <ratis.version>3.1.0-a6a21d5-SNAPSHOT</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor-netty.version>1.1.13</reactor-netty.version>
         <reactor.version>3.5.10</reactor.version>
@@ -185,8 +185,9 @@
         <!-- This was the last version to support Java 8 -->
         <tomcat.version>9.0.86</tomcat.version>
         <xz.version>1.9</xz.version>
-        <zeppelin.version>0.10.1</zeppelin.version>
+        <zeppelin.version>0.11.1</zeppelin.version>
         <zstd-jni.version>1.5.5-5</zstd-jni.version>
+        <tsfile.version>1.0.1-4ab90f6-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim

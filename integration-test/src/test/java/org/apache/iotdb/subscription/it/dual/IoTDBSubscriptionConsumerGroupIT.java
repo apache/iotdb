@@ -32,9 +32,9 @@ import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.utils.Pair;
 import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Before;

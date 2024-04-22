@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.flink.tsfile.util;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 
 /** Utils of setting global TSFileConfig. */
 public class TSFileConfigUtil {

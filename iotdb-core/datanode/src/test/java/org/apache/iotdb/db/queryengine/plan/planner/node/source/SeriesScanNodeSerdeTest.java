@@ -25,8 +25,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelp
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;

@@ -47,14 +47,18 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   private final EnrichedDeque<Event> bufferQueue;
 
+  private final long creationTime;
+
   private final int regionId;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
 
-  public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue, int regionId) {
+  public PipeEventCollector(
+      BoundedBlockingPendingQueue<Event> pendingQueue, long creationTime, int regionId) {
     this.pendingQueue = pendingQueue;
+    this.creationTime = creationTime;
     this.regionId = regionId;
     bufferQueue = new EnrichedDeque<>(new LinkedList<>());
   }
@@ -130,7 +134,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
       // Assign a commit id for this event in order to report progress in order.
       PipeEventCommitManager.getInstance()
-          .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, regionId);
+          .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
 
       // Assign a rebootTimes to a given event for PipeConsensus.
       ((EnrichedEvent) event).setRebootTimes(PipeAgent.runtime().getRebootTimes());

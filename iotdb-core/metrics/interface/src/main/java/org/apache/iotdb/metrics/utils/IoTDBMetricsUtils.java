@@ -24,8 +24,8 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import java.util.Map;
 
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.BACK_QUOTE_STRING;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.DOUBLE_BACK_QUOTE_STRING;
+import static org.apache.tsfile.common.constant.TsFileConstant.BACK_QUOTE_STRING;
+import static org.apache.tsfile.common.constant.TsFileConstant.DOUBLE_BACK_QUOTE_STRING;
 
 public class IoTDBMetricsUtils {
   private static final MetricConfig METRIC_CONFIG =

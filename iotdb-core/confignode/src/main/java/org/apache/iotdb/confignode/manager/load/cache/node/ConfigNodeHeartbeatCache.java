@@ -22,8 +22,7 @@ package org.apache.iotdb.confignode.manager.load.cache.node;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
-import java.util.concurrent.atomic.AtomicReference;
-
+/** Heartbeat cache for cluster ConfigNodes. */
 public class ConfigNodeHeartbeatCache extends BaseNodeCache {
 
   /** Only get CURRENT_NODE_ID here due to initialization order. */
@@ -31,7 +30,7 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
       ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
 
   public static final NodeStatistics CURRENT_NODE_STATISTICS =
-      new NodeStatistics(0, NodeStatus.Running, null);
+      new NodeStatistics(0, NodeStatus.Running, null, 0);
 
   /** Constructor for create ConfigNodeHeartbeatCache with default NodeStatistics. */
   public ConfigNodeHeartbeatCache(int configNodeId) {
@@ -41,31 +40,31 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
   /** Constructor only for ConfigNode-leader. */
   public ConfigNodeHeartbeatCache(int configNodeId, NodeStatistics statistics) {
     super(configNodeId);
-    this.previousStatistics = new AtomicReference<>(statistics);
-    this.currentStatistics = new AtomicReference<>(statistics);
+    this.currentStatistics.set(statistics);
   }
 
   @Override
-  protected void updateCurrentStatistics() {
-    // Skip itself
-    if (nodeId == CURRENT_NODE_ID) {
+  public synchronized void updateCurrentStatistics() {
+    // Skip itself and the Removing status can not be updated
+    if (nodeId == CURRENT_NODE_ID || NodeStatus.Removing.equals(getNodeStatus())) {
       return;
     }
 
-    NodeHeartbeatSample lastSample = null;
+    NodeHeartbeatSample lastSample;
     synchronized (slidingWindow) {
-      if (!slidingWindow.isEmpty()) {
-        lastSample = slidingWindow.getLast();
-      }
+      lastSample = (NodeHeartbeatSample) getLastSample();
     }
-    long lastSendTime = lastSample == null ? 0 : lastSample.getSendTimestamp();
+    long lastSendTime = lastSample == null ? 0 : lastSample.getSampleLogicalTimestamp();
 
     // Update Node status
-    NodeStatus status = null;
-    // TODO: Optimize judge logic
-    if (System.nanoTime() - lastSendTime > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
+    NodeStatus status;
+    long currentNanoTime = System.nanoTime();
+    if (lastSample == null) {
       status = NodeStatus.Unknown;
-    } else if (lastSample != null) {
+    } else if (currentNanoTime - lastSendTime > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
+      // TODO: Optimize Unknown judge logic
+      status = NodeStatus.Unknown;
+    } else {
       status = lastSample.getStatus();
     }
 
@@ -74,10 +73,6 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
     // TODO: Construct load score module
     long loadScore = NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE;
 
-    NodeStatistics newStatistics = new NodeStatistics(loadScore, status, null);
-    if (!currentStatistics.get().equals(newStatistics)) {
-      // Update the current NodeStatistics if necessary
-      currentStatistics.set(newStatistics);
-    }
+    currentStatistics.set(new NodeStatistics(currentNanoTime, status, null, loadScore));
   }
 }

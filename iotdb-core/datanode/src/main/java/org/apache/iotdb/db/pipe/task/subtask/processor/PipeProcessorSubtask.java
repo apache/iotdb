@@ -142,7 +142,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               outputEventCollector);
         }
       }
-      releaseLastEvent(!isClosed.get() && outputEventCollector.hasNoCollectInvocationAfterReset());
+      decreaseReferenceCountAndReleaseLastEvent(
+          !isClosed.get() && outputEventCollector.hasNoCollectInvocationAfterReset());
     } catch (PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.info(
           "Temporarily out of memory in pipe event processing, will wait for the memory to release.",
@@ -157,7 +158,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
             e);
       } else {
         LOGGER.info("Exception in pipe event processing, ignored because pipe is dropped.", e);
-        releaseLastEvent(false);
+        clearReferenceCountAndReleaseLastEvent();
       }
     }
 

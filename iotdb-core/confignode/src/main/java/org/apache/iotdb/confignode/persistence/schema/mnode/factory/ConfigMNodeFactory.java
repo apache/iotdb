@@ -26,7 +26,8 @@ import org.apache.iotdb.commons.schema.node.utils.MNodeFactory;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigBasicInternalMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigDatabaseMNode;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 @MNodeFactory
 public class ConfigMNodeFactory implements IMNodeFactory<IConfigMNode> {

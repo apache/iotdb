@@ -21,7 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan;
 
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

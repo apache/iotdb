@@ -35,7 +35,8 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.QueryIdGenerator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
@@ -52,6 +53,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -139,9 +141,12 @@ public class Coordinator {
       }
       return result;
     } finally {
-      if (queryContext != null && queryContext.getAcquiredLockNum() > 0) {
-        for (int i = 0, lockNums = queryContext.getAcquiredLockNum(); i < lockNums; i++) {
-          DataNodeSchemaCache.getInstance().releaseInsertLock();
+      if (queryContext != null && !queryContext.getAcquiredLockNumMap().isEmpty()) {
+        Map<SchemaLockType, Integer> lockMap = queryContext.getAcquiredLockNumMap();
+        for (Map.Entry<SchemaLockType, Integer> entry : lockMap.entrySet()) {
+          for (int i = 0; i < entry.getValue(); i++) {
+            DataNodeSchemaLockManager.getInstance().releaseReadLock(entry.getKey());
+          }
         }
       }
     }
