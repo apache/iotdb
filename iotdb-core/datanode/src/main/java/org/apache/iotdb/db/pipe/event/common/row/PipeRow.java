@@ -22,11 +22,12 @@ package org.apache.iotdb.db.pipe.event.common.row;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 import org.apache.iotdb.pipe.api.type.Type;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Arrays;
 import java.util.List;
@@ -100,13 +101,13 @@ public class PipeRow implements Row {
   @Override
   public org.apache.iotdb.pipe.api.type.Binary getBinary(int columnIndex) {
     return PipeBinaryTransformer.transformToPipeBinary(
-        ((org.apache.iotdb.tsfile.utils.Binary[]) valueColumns[columnIndex])[rowIndex]);
+        ((org.apache.tsfile.utils.Binary[]) valueColumns[columnIndex])[rowIndex]);
   }
 
   @Override
   public String getString(int columnIndex) {
-    final org.apache.iotdb.tsfile.utils.Binary binary =
-        ((org.apache.iotdb.tsfile.utils.Binary[]) valueColumns[columnIndex])[rowIndex];
+    final org.apache.tsfile.utils.Binary binary =
+        ((org.apache.tsfile.utils.Binary[]) valueColumns[columnIndex])[rowIndex];
     return binary == null ? null : binary.getStringValue(TSFileConfig.STRING_CHARSET);
   }
 

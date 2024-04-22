@@ -22,10 +22,10 @@ package org.apache.iotdb.db.queryengine.transformation.datastructure;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.udf.api.type.Binary;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.BytesUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

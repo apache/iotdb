@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.pipe.resource.memory;
 
 import org.apache.iotdb.db.utils.MemUtils;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.List;
 import java.util.Map;

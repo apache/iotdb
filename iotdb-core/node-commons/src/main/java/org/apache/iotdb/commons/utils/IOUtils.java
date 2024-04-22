@@ -23,7 +23,8 @@ import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.io.DataInputStream;
 import java.io.File;

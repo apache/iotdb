@@ -18,9 +18,8 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.List;

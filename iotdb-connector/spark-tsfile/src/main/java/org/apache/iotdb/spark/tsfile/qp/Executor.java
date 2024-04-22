@@ -18,10 +18,9 @@
  */
 package org.apache.iotdb.spark.tsfile.qp;
 
-import org.apache.iotdb.tsfile.read.TsFileReader;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-
+import org.apache.tsfile.read.TsFileReader;
+import org.apache.tsfile.read.expression.QueryExpression;
+import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

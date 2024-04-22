@@ -20,7 +20,8 @@
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
 
 import java.io.File;
 import java.io.IOException;

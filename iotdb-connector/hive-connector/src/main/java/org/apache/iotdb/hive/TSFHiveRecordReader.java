@@ -21,10 +21,6 @@ package org.apache.iotdb.hive;
 import org.apache.iotdb.hadoop.tsfile.IReaderSet;
 import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
 import org.apache.iotdb.hadoop.tsfile.TSFRecordReader;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.NullWritable;
@@ -32,6 +28,10 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

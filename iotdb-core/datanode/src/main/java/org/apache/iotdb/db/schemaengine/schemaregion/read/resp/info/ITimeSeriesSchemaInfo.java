@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info;
 
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.Map;
 

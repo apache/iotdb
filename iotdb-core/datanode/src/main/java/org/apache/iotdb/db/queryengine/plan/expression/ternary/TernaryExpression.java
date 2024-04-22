@@ -27,7 +27,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.tsfile.enums.TSDataType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

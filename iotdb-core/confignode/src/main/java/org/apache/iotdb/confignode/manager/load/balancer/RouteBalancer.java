@@ -33,8 +33,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.GreedyLeaderBalancer;
-import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.MinCostFlowLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.GreedyPriorityBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
@@ -51,8 +51,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,7 +97,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
   private final IManager configManager;
   // For generating optimal Region leader distribution
-  private final ILeaderBalancer leaderBalancer;
+  private final AbstractLeaderBalancer leaderBalancer;
   // For generating optimal cluster Region routing priority
   private final IPriorityBalancer priorityRouter;
 
@@ -108,7 +108,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   private final Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap;
 
   // The interval of retrying to balance ratis leader after the last failed time
-  private static final long BALANCE_RATIS_LEADER_FAILED_INTERVAL_IN_NS = 60 * 1000L * 1000L * 1000L;
+  private static final long BALANCE_RATIS_LEADER_FAILED_INTERVAL_IN_NS = 20 * 1000L * 1000L * 1000L;
   private final Map<TConsensusGroupId, Long> lastFailedTimeForLeaderBalance;
 
   public RouteBalancer(IManager configManager) {
@@ -118,10 +118,10 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     this.lastFailedTimeForLeaderBalance = new TreeMap<>();
 
     switch (CONF.getLeaderDistributionPolicy()) {
-      case ILeaderBalancer.GREEDY_POLICY:
+      case AbstractLeaderBalancer.GREEDY_POLICY:
         this.leaderBalancer = new GreedyLeaderBalancer();
         break;
-      case ILeaderBalancer.CFD_POLICY:
+      case AbstractLeaderBalancer.CFD_POLICY:
       default:
         this.leaderBalancer = new MinCostFlowLeaderBalancer();
         break;
@@ -157,13 +157,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
             getPartitionManager().getAllRegionGroupIdMap(regionGroupType),
             getPartitionManager().getAllReplicaSetsMap(regionGroupType),
             currentLeaderMap,
-            getNodeManager()
-                .filterDataNodeThroughStatus(
-                    NodeStatus.Unknown, NodeStatus.ReadOnly, NodeStatus.Removing)
-                .stream()
-                .map(TDataNodeConfiguration::getLocation)
-                .map(TDataNodeLocation::getDataNodeId)
-                .collect(Collectors.toSet()));
+            getLoadManager().getLoadCache().getCurrentDataNodeStatisticsMap(),
+            getLoadManager().getLoadCache().getCurrentRegionStatisticsMap(regionGroupType));
 
     // Transfer leader to the optimal distribution
     long currentTime = System.nanoTime();

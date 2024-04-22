@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.flink.tsfile;
 
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
+import org.apache.tsfile.read.common.RowRecord;
 
 import java.io.Serializable;
 

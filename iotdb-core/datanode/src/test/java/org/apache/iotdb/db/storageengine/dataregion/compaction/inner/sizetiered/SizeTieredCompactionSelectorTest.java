@@ -24,8 +24,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.Siz
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.FakedTsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 

@@ -27,10 +27,10 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.TriggerAttributes;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -21,10 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.read.control;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.UnClosedTsFileReader;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.UnClosedTsFileReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

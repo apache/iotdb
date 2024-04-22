@@ -18,8 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.tsfile.utils.TimeDuration;
-
+import org.apache.tsfile.utils.TimeDuration;
 import org.junit.Assert;
 import org.junit.Test;
 

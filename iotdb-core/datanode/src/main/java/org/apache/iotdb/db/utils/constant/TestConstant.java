@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils.constant;
 
-import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.tsfile.utils.FilePathUtils;
 
 import java.io.File;
 

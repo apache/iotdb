@@ -21,7 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.statement.component;
 
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.Literal;
-import org.apache.iotdb.tsfile.utils.TimeDuration;
+
+import org.apache.tsfile.utils.TimeDuration;
 
 /** This class maintains information of {@code FILL} clause. */
 public class FillComponent extends StatementNode {

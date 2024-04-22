@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.web.grafana.controller;
 
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.web.grafana.bean.TimeValues;
 import org.apache.iotdb.web.grafana.service.DatabaseConnectService;
 
@@ -26,6 +25,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
