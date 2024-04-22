@@ -113,6 +113,13 @@ public class ReplicateTest {
           Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
       Path configurationPath =
           Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
+      if (!Files.exists(configurationPath) && !Files.exists(tmpConfigurationPath)) {
+        return;
+      }
+      if (!Files.exists(tmpConfigurationPath)) {
+        Files.createDirectories(tmpConfigurationPath.getParent());
+        Files.createFile(tmpConfigurationPath);
+      }
       Files.write(tmpConfigurationPath, publicBAOS.getBuf());
       if (Files.exists(configurationPath)) {
         Files.delete(configurationPath);
