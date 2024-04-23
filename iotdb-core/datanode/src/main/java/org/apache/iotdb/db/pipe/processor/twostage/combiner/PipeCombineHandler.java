@@ -145,9 +145,9 @@ public class PipeCombineHandler {
           new HashSet<>(PipeAgent.task().getPipeTaskRegionIdSet(pipeName, creationTime));
       pipeRelatedRegionIdSet.removeIf(
           regionId -> !ALL_REGION_ID_2_DATANODE_ID_MAP.containsKey(regionId));
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "Pipe (pipeName={}, creationTime={} related region ids {}",
+      if (LOGGER.isInfoEnabled()) {
+        LOGGER.info(
+            "Two stage aggregate pipe (pipeName={}, creationTime={}) related region ids {}",
             pipeName,
             creationTime,
             pipeRelatedRegionIdSet);

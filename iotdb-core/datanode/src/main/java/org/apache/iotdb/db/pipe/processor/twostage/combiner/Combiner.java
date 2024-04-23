@@ -59,7 +59,7 @@ public class Combiner {
 
   public TSStatus combine(int regionId, State state) {
     final Set<Integer> finalExpectedRegionIdSet =
-        new HashSet<>(expectedRegionId2DataNodeIdMap.values());
+        new HashSet<>(expectedRegionId2DataNodeIdMap.keySet());
 
     if (finalExpectedRegionIdSet.isEmpty()) {
       return RpcUtils.getStatus(
@@ -82,8 +82,8 @@ public class Combiner {
       operator.onComplete();
       isComplete.set(true);
 
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
+      if (LOGGER.isInfoEnabled()) {
+        LOGGER.info(
             "Combiner combine completed: regionId: {}, state: {}, receivedRegionIdSet: {}, expectedRegionIdSet: {}",
             regionId,
             state,
