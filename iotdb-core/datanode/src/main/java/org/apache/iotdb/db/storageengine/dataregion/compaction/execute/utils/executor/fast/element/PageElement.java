@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
 

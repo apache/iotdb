@@ -31,10 +31,6 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -47,6 +43,10 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.annotation.Nullable;
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.read.common.RowRecord;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -74,12 +74,12 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.jdbc.Config.IOTDB_ERROR_PREFIX;
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.BOOLEAN;
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.FLOAT;
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT32;
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT64;
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
+import static org.apache.tsfile.enums.TSDataType.BOOLEAN;
+import static org.apache.tsfile.enums.TSDataType.DOUBLE;
+import static org.apache.tsfile.enums.TSDataType.FLOAT;
+import static org.apache.tsfile.enums.TSDataType.INT32;
+import static org.apache.tsfile.enums.TSDataType.INT64;
+import static org.apache.tsfile.enums.TSDataType.TEXT;
 
 public class ImportData extends AbstractDataTool {
 

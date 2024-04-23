@@ -44,13 +44,13 @@ import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.rpc.BaseRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
-import org.apache.iotdb.tsfile.utils.FSUtils;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.fileSystem.FSType;
+import org.apache.tsfile.utils.FSUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,7 +67,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class IoTDBConfig {
 
@@ -684,8 +684,17 @@ public class IoTDBConfig {
    */
   private long mergeIntervalSec = 0L;
 
-  /** The limit of compaction merge can reach per second */
+  /** The limit of compaction merge can reach per second. When <= 0, no limit. unit: megabyte */
   private int compactionWriteThroughputMbPerSec = 16;
+
+  /**
+   * The limit of compaction read throughput can reach per second. When <= 0, no limit. unit:
+   * megabyte
+   */
+  private int compactionReadThroughputMbPerSec = 0;
+
+  /** The limit of compaction read operation can reach per second. When <= 0, no limit. */
+  private int compactionReadOperationPerSec = 0;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
@@ -2044,6 +2053,22 @@ public class IoTDBConfig {
 
   public void setCompactionWriteThroughputMbPerSec(int compactionWriteThroughputMbPerSec) {
     this.compactionWriteThroughputMbPerSec = compactionWriteThroughputMbPerSec;
+  }
+
+  public int getCompactionReadThroughputMbPerSec() {
+    return compactionReadThroughputMbPerSec;
+  }
+
+  public void setCompactionReadThroughputMbPerSec(int compactionReadThroughputMbPerSec) {
+    this.compactionReadThroughputMbPerSec = compactionReadThroughputMbPerSec;
+  }
+
+  public int getCompactionReadOperationPerSec() {
+    return compactionReadOperationPerSec;
+  }
+
+  public void setCompactionReadOperationPerSec(int compactionReadOperationPerSec) {
+    this.compactionReadOperationPerSec = compactionReadOperationPerSec;
   }
 
   public boolean isEnableTimedFlushSeqMemtable() {

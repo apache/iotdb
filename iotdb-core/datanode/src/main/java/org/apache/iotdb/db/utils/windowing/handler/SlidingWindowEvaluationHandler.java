@@ -24,8 +24,9 @@ import org.apache.iotdb.db.utils.windowing.configuration.Configuration;
 import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
 import org.apache.iotdb.db.utils.windowing.runtime.WindowEvaluationTaskPoolManager;
 import org.apache.iotdb.db.utils.windowing.window.EvictableBatchList;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
+
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 
 public abstract class SlidingWindowEvaluationHandler {
 

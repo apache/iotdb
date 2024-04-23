@@ -22,7 +22,8 @@ package org.apache.iotdb.db.pipe.processor.aggregate.window.processor;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.TimeSeriesWindow;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowState;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.Set;

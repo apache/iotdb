@@ -19,18 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column;
 
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.type.BinaryType;
-import org.apache.iotdb.tsfile.read.common.type.BooleanType;
-import org.apache.iotdb.tsfile.read.common.type.DoubleType;
-import org.apache.iotdb.tsfile.read.common.type.FloatType;
-import org.apache.iotdb.tsfile.read.common.type.IntType;
-import org.apache.iotdb.tsfile.read.common.type.LongType;
-import org.apache.iotdb.tsfile.read.common.type.Type;
-import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.read.common.type.BinaryType;
+import org.apache.tsfile.read.common.type.BooleanType;
+import org.apache.tsfile.read.common.type.DoubleType;
+import org.apache.tsfile.read.common.type.FloatType;
+import org.apache.tsfile.read.common.type.IntType;
+import org.apache.tsfile.read.common.type.LongType;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;

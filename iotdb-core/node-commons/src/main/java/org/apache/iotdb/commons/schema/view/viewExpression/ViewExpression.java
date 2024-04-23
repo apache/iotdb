@@ -45,7 +45,8 @@ import org.apache.iotdb.commons.schema.view.viewExpression.unary.LogicNotViewExp
 import org.apache.iotdb.commons.schema.view.viewExpression.unary.NegationViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.unary.RegularViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

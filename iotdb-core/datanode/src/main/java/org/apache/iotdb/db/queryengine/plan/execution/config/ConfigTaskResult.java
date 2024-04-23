@@ -21,7 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
+import org.apache.tsfile.read.common.block.TsBlock;
 
 public class ConfigTaskResult {
   private TSStatusCode statusCode;

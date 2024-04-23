@@ -51,8 +51,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -310,21 +310,17 @@ public class RouteBalancer implements IClusterStatusSubscriber {
         regionPriorityEntry : differentPriorityMap.entrySet()) {
       if (!Objects.equals(
           regionPriorityEntry.getValue().getRight(), regionPriorityEntry.getValue().getLeft())) {
-        try {
-          LOGGER.info(
-              "[RegionPriority]\t {}: {}->{}",
-              regionPriorityEntry.getKey(),
-              regionPriorityEntry.getValue().getLeft() == null
-                  ? "null"
-                  : regionPriorityEntry.getValue().getLeft().getDataNodeLocations().stream()
-                      .map(TDataNodeLocation::getDataNodeId)
-                      .collect(Collectors.toList()),
-              regionPriorityEntry.getValue().getRight().getDataNodeLocations().stream()
-                  .map(TDataNodeLocation::getDataNodeId)
-                  .collect(Collectors.toList()));
-        } catch (Exception e) {
-          LOGGER.error("Unexpected exception", e);
-        }
+        LOGGER.info(
+            "[RegionPriority]\t {}: {}->{}",
+            regionPriorityEntry.getKey(),
+            regionPriorityEntry.getValue().getLeft() == null
+                ? "null"
+                : regionPriorityEntry.getValue().getLeft().getDataNodeLocations().stream()
+                    .map(TDataNodeLocation::getDataNodeId)
+                    .collect(Collectors.toList()),
+            regionPriorityEntry.getValue().getRight().getDataNodeLocations().stream()
+                .map(TDataNodeLocation::getDataNodeId)
+                .collect(Collectors.toList()));
       }
     }
   }

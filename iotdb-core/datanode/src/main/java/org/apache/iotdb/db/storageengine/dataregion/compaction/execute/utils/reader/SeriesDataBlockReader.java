@@ -30,9 +30,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOpt
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.collect.Sets;
+import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.io.IOException;
 import java.util.HashSet;
