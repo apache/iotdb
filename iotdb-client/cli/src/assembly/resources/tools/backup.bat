@@ -87,12 +87,19 @@ for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
 if defined local_iotdb_occupied_ports (
      goto :checkFail
 )
+echo ------------------------------------------
+echo Starting IoTDB Client Data Back Script
+echo ------------------------------------------
 
 set CLASSPATH=%CLASSPATH%;%IOTDB_HOME%\lib\*
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.tool.IoTDBDataBackTool
 
-"%JAVA_HOME%\bin\java" -DIOTDB_HOME=!IOTDB_HOME! !JAVA_OPTS! -cp !CLASSPATH! !MAIN_CLASS! %*
-pause
+set "logsDir=%IOTDB_HOME%\logs"
+if not exist "%logsDir%" (
+    mkdir "%logsDir%"
+)
+
+"%JAVA_HOME%\bin\java" -DIOTDB_HOME=!IOTDB_HOME! !JAVA_OPTS! -cp !CLASSPATH! !MAIN_CLASS! %* > %logsDir%\iotdb-data-back.log 2>&1
 exit /b
 
 :checkIfIOTDBProcess

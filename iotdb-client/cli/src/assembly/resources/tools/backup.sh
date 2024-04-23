@@ -125,4 +125,10 @@ done
 
 MAIN_CLASS=org.apache.iotdb.tool.IoTDBDataBackTool
 
-"$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+logs_dir="${IOTDB_HOME}/logs"
+
+if [ ! -d "$logs_dir" ]; then
+    mkdir "$logs_dir"
+fi
+
+"$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@" > ${logs_dir}/iotdb-data-back.log &
