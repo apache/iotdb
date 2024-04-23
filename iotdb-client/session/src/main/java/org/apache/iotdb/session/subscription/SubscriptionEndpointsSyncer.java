@@ -66,8 +66,7 @@ public class SubscriptionEndpointsSyncer implements Runnable {
     try {
       allEndPoints = consumer.fetchAllEndPointsWithRedirection();
     } catch (final Exception e) {
-      LOGGER.warn(
-          "Failed to fetch all endpoints, exception: {}, will retry later...", e.getMessage());
+      LOGGER.warn("Failed to fetch all endpoints, will retry later...", e);
       return; // retry later
     }
 
@@ -81,9 +80,9 @@ public class SubscriptionEndpointsSyncer implements Runnable {
           newProvider.handshake();
         } catch (final Exception e) {
           LOGGER.warn(
-              "Failed to create connection with subscription provider {}, exception: {}, will retry later...",
+              "Failed to create connection with subscription provider {}, will retry later...",
               newProvider,
-              e.getMessage());
+              e);
           continue; // retry later
         }
         consumer.addProvider(entry.getKey(), newProvider);
@@ -94,9 +93,9 @@ public class SubscriptionEndpointsSyncer implements Runnable {
           provider.setAvailable();
         } catch (final Exception e) {
           LOGGER.warn(
-              "something unexpected happened when sending heartbeat to subscription provider {}, exception: {}, set subscription provider unavailable",
+              "something unexpected happened when sending heartbeat to subscription provider {}, set subscription provider unavailable",
               provider,
-              e.getMessage());
+              e);
           provider.setUnavailable();
         }
         // close and remove unavailable provider (reset the connection as much as possible)
@@ -105,9 +104,9 @@ public class SubscriptionEndpointsSyncer implements Runnable {
             consumer.closeAndRemoveProvider(entry.getKey());
           } catch (final IoTDBConnectionException e) {
             LOGGER.warn(
-                "Exception occurred when closing and removing subscription provider with data node id {}: {}",
+                "Exception occurred when closing and removing subscription provider with data node id {}",
                 entry.getKey(),
-                e.getMessage());
+                e);
           }
         }
       }
@@ -121,9 +120,9 @@ public class SubscriptionEndpointsSyncer implements Runnable {
           consumer.closeAndRemoveProvider(dataNodeId);
         } catch (final IoTDBConnectionException e) {
           LOGGER.warn(
-              "Exception occurred when closing and removing subscription provider with data node id {}: {}",
+              "Exception occurred when closing and removing subscription provider with data node id {}",
               dataNodeId,
-              e.getMessage());
+              e);
         }
       }
     }

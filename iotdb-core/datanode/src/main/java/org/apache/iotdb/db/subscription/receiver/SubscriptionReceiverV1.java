@@ -407,12 +407,20 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // check timer
     if (timer.isExpired()) {
-      LOGGER.warn("Subscription: timeout happened when consumer {} poll tsfile", consumerConfig);
+      LOGGER.warn(
+          "Subscription: timeout happened when consumer {} poll TsFile (topic name: {}, file name: {}, writing offset: {})",
+          consumerConfig,
+          messagePayload.getTopicName(),
+          messagePayload.getFileName(),
+          messagePayload.getWritingOffset());
     }
 
     LOGGER.info(
-        "Subscription: consumer {} poll tsfile, commit contexts: {}",
+        "Subscription: consumer {} poll TsFile (topic name: {}, file name: {}, writing offset: {}) successfully, commit contexts: {}",
         consumerConfig,
+        messagePayload.getTopicName(),
+        messagePayload.getFileName(),
+        messagePayload.getWritingOffset(),
         commitContexts);
 
     return PipeSubscribePollResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS, polledMessages);

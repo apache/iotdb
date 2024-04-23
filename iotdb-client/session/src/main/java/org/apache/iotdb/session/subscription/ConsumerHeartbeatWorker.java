@@ -53,9 +53,9 @@ public class ConsumerHeartbeatWorker implements Runnable {
         provider.setAvailable();
       } catch (final Exception e) {
         LOGGER.warn(
-            "something unexpected happened when sending heartbeat to subscription provider {}, exception: {}, set subscription provider unavailable",
+            "something unexpected happened when sending heartbeat to subscription provider {}, set subscription provider unavailable",
             provider,
-            e.getMessage());
+            e);
         provider.setUnavailable();
       }
     }

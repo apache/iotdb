@@ -234,7 +234,7 @@ public class CommonConfig {
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
-  private int subscriptionRecycleUncommittedEventIntervalMs = 240000; // 240s
+  private int subscriptionRecycleUncommittedEventIntervalMs = 120000; // 120s
   private long subscriptionDefaultPollTimeoutMs = 30000;
   private long subscriptionMinPollTimeoutMs = 500;
   private int subscriptionReadFileBufferSize = 8388608;

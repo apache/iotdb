@@ -35,4 +35,9 @@ public class SubscriptionTsFileReader implements SubscriptionMessagePayload {
   public TsFileReader open() throws IOException {
     return new TsFileReader(new TsFileSequenceReader(filePath));
   }
+
+  @Override
+  public String toString() {
+    return "SubscriptionTsFileReader{" + "filePath='" + filePath + '\'' + '}';
+  }
 }

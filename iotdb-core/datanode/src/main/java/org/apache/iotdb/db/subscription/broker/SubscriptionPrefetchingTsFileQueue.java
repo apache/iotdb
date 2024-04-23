@@ -65,6 +65,10 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
   @Override
   public SubscriptionTsFileEvent poll(final String consumerId, final SubscriptionPollTimer timer) {
+    if (hasPollableOnTheFlySubscriptionTsFileEvent(consumerId)) {
+      return null;
+    }
+
     final SubscriptionTsFileEvent pollableEvent =
         getPollableOnTheFlySubscriptionTsFileEvent(consumerId);
     if (Objects.nonNull(pollableEvent)) {
@@ -145,7 +149,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
         (PipeTsFileInsertionEvent) enrichedEvents.get(0);
 
     // check file name
-    if (!Objects.equals(tsFileInsertionEvent.getTsFile().getName(), fileName)) {
+    if (!fileName.startsWith(tsFileInsertionEvent.getTsFile().getName())) {
       final String errorMessage =
           String.format(
               "inconsistent file name, current: %s, incoming: %s, consumer: %s, writing offset: %s, prefetching queue: %s",
@@ -167,8 +171,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       switch (SubscriptionPolledMessageType.valueOf(messageType)) {
         case TS_FILE_INIT:
           // check file name
-          if (!Objects.equals(
-              ((TsFileInitMessagePayload) messagePayload).getFileName(), fileName)) {
+          if (!fileName.startsWith(((TsFileInitMessagePayload) messagePayload).getFileName())) {
             final String errorMessage =
                 String.format(
                     "inconsistent file name, current: %s, incoming: %s, consumer: %s, writing offset: %s, prefetching queue: %s",
@@ -192,8 +195,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
           break;
         case TS_FILE_PIECE:
           // check file name
-          if (!Objects.equals(
-              ((TsFilePieceMessagePayload) messagePayload).getFileName(), fileName)) {
+          if (!fileName.startsWith(((TsFilePieceMessagePayload) messagePayload).getFileName())) {
             final String errorMessage =
                 String.format(
                     "inconsistent file name, current: %s, incoming: %s, consumer: %s, writing offset: %s, prefetching queue: %s",
@@ -218,8 +220,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
           break;
         case TS_FILE_SEAL:
           // check file name
-          if (!Objects.equals(
-              ((TsFileSealMessagePayload) messagePayload).getFileName(), fileName)) {
+          if (!fileName.startsWith(((TsFileSealMessagePayload) messagePayload).getFileName())) {
             final String errorMessage =
                 String.format(
                     "inconsistent file name, current: %s, incoming: %s, consumer: %s, writing offset: %s, prefetching queue: %s",
@@ -310,6 +311,29 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   }
 
   /////////////////////////////// utility ///////////////////////////////
+
+  private synchronized boolean hasPollableOnTheFlySubscriptionTsFileEvent(final String consumerId) {
+    final SubscriptionTsFileEvent event = consumerIdToCurrentEventMap.get(consumerId);
+    if (Objects.isNull(event)) {
+      return false;
+    }
+
+    if (event.isCommitted()) {
+      consumerIdToCurrentEventMap.remove(consumerId);
+      return false;
+    }
+
+    if (!event.pollable()) {
+      LOGGER.info(
+          "SubscriptionPrefetchingTsFileQueue {} is currently transferring TsFile (with event {}) to consumer {}",
+          this,
+          event,
+          consumerId);
+      return true;
+    }
+
+    return false;
+  }
 
   private synchronized SubscriptionTsFileEvent getPollableOnTheFlySubscriptionTsFileEvent(
       final String consumerId) {

@@ -127,10 +127,10 @@ final class SubscriptionProvider extends SubscriptionSession {
       req = PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize handshake request {}: {}",
+          "IOException occurred when SubscriptionProvider {} serialize handshake request {}",
           this,
           consumerConfig,
-          e.getMessage());
+          e);
       throw new SubscriptionRetryableException(e.getMessage(), e);
     }
     final TPipeSubscribeResp resp;
@@ -140,10 +140,10 @@ final class SubscriptionProvider extends SubscriptionSession {
       // TODO: Distinguish between TTransportException, TApplicationException, and
       // TProtocolException.
       LOGGER.warn(
-          "TException occurred when SubscriptionProvider {} handshake with request {}: {}, set SubscriptionProvider unavailable",
+          "TException occurred when SubscriptionProvider {} handshake with request {}, set SubscriptionProvider unavailable",
           this,
           consumerConfig,
-          e.getMessage());
+          e);
       setUnavailable();
       throw new SubscriptionNonRetryableException(e.getMessage(), e);
     }
@@ -176,9 +176,9 @@ final class SubscriptionProvider extends SubscriptionSession {
       // TODO: Distinguish between TTransportException, TApplicationException, and
       // TProtocolException.
       LOGGER.warn(
-          "TException occurred when SubscriptionProvider {} close: {}, set SubscriptionProvider unavailable",
+          "TException occurred when SubscriptionProvider {} close, set SubscriptionProvider unavailable",
           this,
-          e.getMessage());
+          e);
       setUnavailable();
       throw new SubscriptionNonRetryableException(e.getMessage(), e);
     }
@@ -195,9 +195,9 @@ final class SubscriptionProvider extends SubscriptionSession {
       // TODO: Distinguish between TTransportException, TApplicationException, and
       // TProtocolException.
       LOGGER.warn(
-          "TException occurred when SubscriptionProvider {} heartbeat: {}, set SubscriptionProvider unavailable",
+          "TException occurred when SubscriptionProvider {} heartbeat, set SubscriptionProvider unavailable",
           this,
-          e.getMessage());
+          e);
       setUnavailable();
       throw new SubscriptionNonRetryableException(e.getMessage(), e);
     }
@@ -210,10 +210,10 @@ final class SubscriptionProvider extends SubscriptionSession {
       req = PipeSubscribeSubscribeReq.toTPipeSubscribeReq(topicNames);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize subscribe request {}: {}",
+          "IOException occurred when SubscriptionProvider {} serialize subscribe request {}",
           this,
           topicNames,
-          e.getMessage());
+          e);
       throw new SubscriptionRetryableException(e.getMessage(), e);
     }
     final TPipeSubscribeResp resp;
@@ -223,10 +223,10 @@ final class SubscriptionProvider extends SubscriptionSession {
       // TODO: Distinguish between TTransportException, TApplicationException, and
       // TProtocolException.
       LOGGER.warn(
-          "TException occurred when SubscriptionProvider {} subscribe with request {}: {}, set SubscriptionProvider unavailable",
+          "TException occurred when SubscriptionProvider {} subscribe with request {}, set SubscriptionProvider unavailable",
           this,
           topicNames,
-          e.getMessage());
+          e);
       setUnavailable();
       throw new SubscriptionNonRetryableException(e.getMessage(), e);
     }
@@ -239,10 +239,10 @@ final class SubscriptionProvider extends SubscriptionSession {
       req = PipeSubscribeUnsubscribeReq.toTPipeSubscribeReq(topicNames);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize unsubscribe request {}: {}",
+          "IOException occurred when SubscriptionProvider {} serialize unsubscribe request {}",
           this,
           topicNames,
-          e.getMessage());
+          e);
       throw new SubscriptionRetryableException(e.getMessage(), e);
     }
     final TPipeSubscribeResp resp;
@@ -252,10 +252,10 @@ final class SubscriptionProvider extends SubscriptionSession {
       // TODO: Distinguish between TTransportException, TApplicationException, and
       // TProtocolException.
       LOGGER.warn(
-          "TException occurred when SubscriptionProvider {} unsubscribe with request {}: {}, set SubscriptionProvider unavailable",
+          "TException occurred when SubscriptionProvider {} unsubscribe with request {}, set SubscriptionProvider unavailable",
           this,
           topicNames,
-          e.getMessage());
+          e);
       setUnavailable();
       throw new SubscriptionNonRetryableException(e.getMessage(), e);
     }
@@ -269,10 +269,10 @@ final class SubscriptionProvider extends SubscriptionSession {
       req = PipeSubscribePollReq.toTPipeSubscribeReq(pollMessage);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize poll request {}: {}",
+          "IOException occurred when SubscriptionProvider {} serialize poll request {}",
           this,
           pollMessage,
-          e.getMessage());
+          e);
       throw new SubscriptionRetryableException(e.getMessage(), e);
     }
     final TPipeSubscribeResp resp;
@@ -282,10 +282,10 @@ final class SubscriptionProvider extends SubscriptionSession {
       // TODO: Distinguish between TTransportException, TApplicationException, and
       // TProtocolException.
       LOGGER.warn(
-          "TException occurred when SubscriptionProvider {} poll with request {}: {}, set SubscriptionProvider unavailable",
+          "TException occurred when SubscriptionProvider {} poll with request {}, set SubscriptionProvider unavailable",
           this,
           pollMessage,
-          e.getMessage());
+          e);
       setUnavailable();
       throw new SubscriptionNonRetryableException(e.getMessage(), e);
     }
@@ -301,10 +301,10 @@ final class SubscriptionProvider extends SubscriptionSession {
       req = PipeSubscribeCommitReq.toTPipeSubscribeReq(subscriptionCommitContexts);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize commit request {}: {}",
+          "IOException occurred when SubscriptionProvider {} serialize commit request {}",
           this,
           subscriptionCommitContexts,
-          e.getMessage());
+          e);
       throw new SubscriptionRetryableException(e.getMessage(), e);
     }
     final TPipeSubscribeResp resp;
@@ -314,10 +314,10 @@ final class SubscriptionProvider extends SubscriptionSession {
       // TODO: Distinguish between TTransportException, TApplicationException, and
       // TProtocolException.
       LOGGER.warn(
-          "TException occurred when SubscriptionProvider {} commit with request {}: {}, set SubscriptionProvider unavailable",
+          "TException occurred when SubscriptionProvider {} commit with request {}, set SubscriptionProvider unavailable",
           this,
           subscriptionCommitContexts,
-          e.getMessage());
+          e);
       setUnavailable();
       throw new SubscriptionNonRetryableException(e.getMessage(), e);
     }

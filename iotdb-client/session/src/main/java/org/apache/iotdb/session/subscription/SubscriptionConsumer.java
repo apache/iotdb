@@ -50,6 +50,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -104,61 +105,6 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private final String tsFileBaseDir;
 
-  public String getConsumerId() {
-    return consumerId;
-  }
-
-  public String getConsumerGroupId() {
-    return consumerGroupId;
-  }
-
-  /////////////////////////////// tsfile ///////////////////////////////
-
-  private static final int POLL_TS_FILE_RETRY_LIMIT = 3;
-
-  private final Map<String, SubscriptionTsFileInfo> topicNameToSubscriptionTsFileInfo =
-      new ConcurrentHashMap<>();
-
-  private static class SubscriptionTsFileInfo {
-
-    SubscriptionCommitContext commitContext;
-    File file;
-    RandomAccessFile fileWriter;
-    int retryCount;
-
-    SubscriptionTsFileInfo(
-        final SubscriptionCommitContext commitContext,
-        final File file,
-        final RandomAccessFile fileWriter) {
-      this.commitContext = commitContext;
-      this.file = file;
-      this.fileWriter = fileWriter;
-      this.retryCount = 0;
-    }
-
-    String getTopicName() {
-      return commitContext.getTopicName();
-    }
-
-    /** @return {@code true} if exceed retry limit */
-    boolean increaseRetryCountAndCheckIfExceedRetryLimit() {
-      retryCount++;
-      return retryCount > POLL_TS_FILE_RETRY_LIMIT;
-    }
-
-    @Override
-    public String toString() {
-      return "SubscriptionTsFileInfo{"
-          + "commitContext="
-          + commitContext
-          + ", file="
-          + file.getAbsoluteFile()
-          + ", retryCount="
-          + retryCount
-          + "}";
-    }
-  }
-
   private Path getTsFileDir(final String topicName) throws IOException {
     final Path dirPath =
         Paths.get(tsFileBaseDir).resolve(consumerGroupId).resolve(consumerId).resolve(topicName);
@@ -166,81 +112,12 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     return dirPath;
   }
 
-  private SubscriptionTsFileInfo getSubscriptionTsFileInfoTsFileInfo(
-      final SubscriptionCommitContext commitContext, final String fileName) throws IOException {
-    final String topicName = commitContext.getTopicName();
-    SubscriptionTsFileInfo info = topicNameToSubscriptionTsFileInfo.get(topicName);
-    if (Objects.isNull(info)) {
-      info = createSubscriptionTsFileInfoTsFileInfo(commitContext, fileName);
-    } else {
-      if (!info.file.exists()) {
-        LOGGER.info(
-            "file {} does not exist, remove corresponding subscription TsFile info...", fileName);
-        removeSubscriptionTsFileInfo(topicName);
-        info = createSubscriptionTsFileInfoTsFileInfo(commitContext, fileName);
-      }
-      if (!Objects.equals(info.file.getName(), fileName)) {
-        LOGGER.info(
-            "inconsistent file name, current is {}, incoming is {}, remove corresponding subscription TsFile info...",
-            info.file.getName(),
-            fileName);
-        removeSubscriptionTsFileInfo(topicName);
-        info = createSubscriptionTsFileInfoTsFileInfo(commitContext, fileName);
-      }
-    }
-
-    return info;
+  public String getConsumerId() {
+    return consumerId;
   }
 
-  private SubscriptionTsFileInfo createSubscriptionTsFileInfoTsFileInfo(
-      final SubscriptionCommitContext commitContext, final String fileName) throws IOException {
-    final String topicName = commitContext.getTopicName();
-    final Path filePath = getTsFileDir(topicName).resolve(fileName);
-
-    Files.createFile(filePath);
-    final File file = filePath.toFile();
-    final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw");
-
-    final SubscriptionTsFileInfo info = new SubscriptionTsFileInfo(commitContext, file, fileWriter);
-    topicNameToSubscriptionTsFileInfo.put(topicName, info);
-    LOGGER.info("consumer {} create subscription TsFile info {}", this, info);
-    return info;
-  }
-
-  private void removeSubscriptionTsFileInfo(final String topicName) {
-    final SubscriptionTsFileInfo info = topicNameToSubscriptionTsFileInfo.get(topicName);
-    if (Objects.isNull(info)) {
-      return;
-    }
-
-    try {
-      info.fileWriter.close();
-    } catch (final IOException e) {
-      LOGGER.warn(e.getMessage());
-    }
-
-    LOGGER.info("consumer {} remove subscription TsFile info {}", this, info);
-    topicNameToSubscriptionTsFileInfo.remove(topicName);
-  }
-
-  private void removeAllSubscriptionTsFileInfo() {
-    for (final String topicName : topicNameToSubscriptionTsFileInfo.keySet()) {
-      removeSubscriptionTsFileInfo(topicName);
-    }
-  }
-
-  private void increaseSubscriptionTsFileInfoRetryCountOrRemove(final String topicName) {
-    final SubscriptionTsFileInfo info = topicNameToSubscriptionTsFileInfo.get(topicName);
-    if (Objects.isNull(info)) {
-      return;
-    }
-
-    if (info.increaseRetryCountAndCheckIfExceedRetryLimit()) {
-      LOGGER.info(
-          "exceed retry limit {}, remove corresponding subscription TsFile info...",
-          POLL_TS_FILE_RETRY_LIMIT);
-      removeSubscriptionTsFileInfo(topicName);
-    }
+  public String getConsumerGroupId() {
+    return consumerGroupId;
   }
 
   /////////////////////////////// ctor ///////////////////////////////
@@ -336,9 +213,6 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
 
     try {
-      // remove all subscription TsFile info
-      removeAllSubscriptionTsFileInfo();
-
       // shutdown endpoints syncer
       shutdownEndpointsSyncer();
 
@@ -504,7 +378,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         defaultProvider = constructProvider(endPoint);
         defaultDataNodeId = defaultProvider.handshake();
       } catch (final Exception e) {
-        LOGGER.warn("Failed to create connection with {}, exception: {}", endPoint, e.getMessage());
+        LOGGER.warn("Failed to create connection with {}", endPoint, e);
         continue; // try next endpoint
       }
       addProvider(defaultDataNodeId, defaultProvider);
@@ -513,10 +387,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       try {
         allEndPoints = defaultProvider.getSessionConnection().fetchAllEndPoints();
       } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to fetch all endpoints from {}, exception: {}, will retry later...",
-            endPoint,
-            e.getMessage());
+        LOGGER.warn("Failed to fetch all endpoints from {}, will retry later...", endPoint, e);
         break; // retry later
       }
 
@@ -531,9 +402,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
           provider.handshake();
         } catch (final Exception e) {
           LOGGER.warn(
-              "Failed to create connection with {}, exception: {}, will retry later...",
-              entry.getValue(),
-              e.getMessage());
+              "Failed to create connection with {}, will retry later...", entry.getValue(), e);
           continue; // retry later
         }
         addProvider(entry.getKey(), provider);
@@ -609,20 +478,6 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       throws SubscriptionException {
     final List<SubscriptionMessage> messages = new ArrayList<>();
 
-    // poll on the fly tsfile
-    for (final SubscriptionTsFileInfo info :
-        topicNameToSubscriptionTsFileInfo.values().stream()
-            .filter(
-                info -> {
-                  if (topicNames.isEmpty()) {
-                    return true;
-                  }
-                  return topicNames.contains(info.getTopicName());
-                })
-            .collect(Collectors.toList())) {
-      pollTsFile(info.commitContext, info.file.getName(), timeoutMs).ifPresent(messages::add);
-    }
-
     // poll tablets or tsfile
     for (final SubscriptionPolledMessage polledMessage : pollInternal(topicNames, timeoutMs)) {
       final short messageType = polledMessage.getMessageType();
@@ -654,47 +509,81 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private Optional<SubscriptionMessage> pollTsFile(
-      final SubscriptionCommitContext commitContext, final String fileName, final long timeoutMs)
+      final SubscriptionCommitContext commitContext, String fileName, final long timeoutMs)
       throws SubscriptionException {
+    final String topicName = commitContext.getTopicName();
+    Path filePath;
+
     try {
-      final SubscriptionMessage message = pollTsFileInternal(commitContext, fileName, timeoutMs);
-      removeSubscriptionTsFileInfo(commitContext.getTopicName());
-      return Optional.of(message);
+      filePath = getTsFileDir(topicName).resolve(fileName);
+      Files.createFile(filePath);
+    } catch (final FileAlreadyExistsException fileAlreadyExistsException) {
+      LOGGER.info(
+          "FileAlreadyExistsException occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}, append \".1\" to file name",
+          this,
+          fileName,
+          commitContext,
+          fileAlreadyExistsException);
+      fileName += ".1";
+      try {
+        filePath = getTsFileDir(topicName).resolve(fileName);
+        Files.createFile(filePath);
+      } catch (final IOException e) {
+        LOGGER.warn(
+            "IOException occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}",
+            this,
+            fileName,
+            commitContext,
+            e);
+        // TODO: Consider mid-process failures.
+        // rethrow
+        throw new SubscriptionNonRetryableException(e.getMessage(), e);
+      }
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "IOException occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}",
+          this,
+          fileName,
+          commitContext,
+          e);
+      // TODO: Consider mid-process failures.
+      // rethrow
+      throw new SubscriptionNonRetryableException(e.getMessage(), e);
+    }
+
+    final File file = filePath.toFile();
+    try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
+      return Optional.of(pollTsFileInternal(commitContext, file, fileWriter, timeoutMs));
     } catch (final IOException | SubscriptionRetryableException e) {
       LOGGER.warn(
-          "IOException or SubscriptionRetryableException occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}: {}",
+          "IOException or SubscriptionRetryableException occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}",
           this,
           fileName,
           commitContext,
-          e.getMessage());
-      // assume retryable
-      increaseSubscriptionTsFileInfoRetryCountOrRemove(commitContext.getTopicName());
+          e);
+      return Optional.empty();
     } catch (final SubscriptionNonRetryableException e) {
       LOGGER.warn(
-          "SubscriptionNonRetryableException occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}: {}",
+          "SubscriptionNonRetryableException occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}",
           this,
           fileName,
           commitContext,
-          e.getMessage());
-      // assume non-retryable
-      removeSubscriptionTsFileInfo(commitContext.getTopicName());
+          e);
       // TODO: Consider mid-process failures.
       // rethrow
       throw e;
     }
-    return Optional.empty();
   }
 
   private SubscriptionMessage pollTsFileInternal(
-      final SubscriptionCommitContext commitContext, final String fileName, final long timeoutMs)
+      final SubscriptionCommitContext commitContext,
+      final File file,
+      final RandomAccessFile fileWriter,
+      final long timeoutMs)
       throws IOException, SubscriptionException {
     final int dataNodeId = commitContext.getDataNodeId();
     final String topicName = commitContext.getTopicName();
-
-    final SubscriptionTsFileInfo info =
-        getSubscriptionTsFileInfoTsFileInfo(commitContext, fileName);
-    final File file = info.file;
-    final RandomAccessFile fileWriter = info.fileWriter;
+    final String fileName = file.getName();
 
     LOGGER.info(
         "{} start to poll TsFile {} with commit context {}",
@@ -737,8 +626,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
           case TS_FILE_PIECE:
             {
               // check file name
-              if (!Objects.equals(
-                  fileName, ((TsFilePieceMessagePayload) messagePayload).getFileName())) {
+              if (!fileName.startsWith(
+                  ((TsFilePieceMessagePayload) messagePayload).getFileName())) {
                 final String errorMessage =
                     String.format(
                         "inconsistent file name, current is %s, incoming is %s, consumer: %s",
@@ -772,8 +661,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
           case TS_FILE_SEAL:
             {
               // check file name
-              if (!Objects.equals(
-                  fileName, ((TsFileSealMessagePayload) messagePayload).getFileName())) {
+              if (!fileName.startsWith(((TsFileSealMessagePayload) messagePayload).getFileName())) {
                 final String errorMessage =
                     String.format(
                         "inconsistent file name, current is %s, incoming is %s, consumer: %s",
@@ -855,17 +743,17 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
                       timeoutMs)));
         } catch (final SubscriptionRetryableException e) {
           LOGGER.warn(
-              "SubscriptionRetryableException occurred when SubscriptionConsumer {} polling from SubscriptionProvider {}: {}",
+              "SubscriptionRetryableException occurred when SubscriptionConsumer {} polling from SubscriptionProvider {}",
               this,
               provider,
-              e.getMessage());
+              e);
           // ignore
         } catch (final SubscriptionNonRetryableException e) {
           LOGGER.warn(
-              "SubscriptionNonRetryableException occurred when SubscriptionConsumer {} polling from SubscriptionProvider {}: {}",
+              "SubscriptionNonRetryableException occurred when SubscriptionConsumer {} polling from SubscriptionProvider {}",
               this,
               provider,
-              e.getMessage());
+              e);
           // TODO: Consider mid-process failures.
           // rethrow
           throw e;
@@ -988,10 +876,10 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         return;
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to subscribe topics {} from subscription provider {}, exception: {}, try next subscription provider...",
+            "Failed to subscribe topics {} from subscription provider {}, try next subscription provider...",
             topicNames,
             provider,
-            e.getMessage());
+            e);
       }
     }
     throw NO_PROVIDERS_EXCEPTION;
@@ -1006,10 +894,10 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         return;
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to unsubscribe topics {} from subscription provider {}, exception: {}, try next subscription provider...",
+            "Failed to unsubscribe topics {} from subscription provider {}, try next subscription provider...",
             topicNames,
             provider,
-            e.getMessage());
+            e);
       }
     }
     throw NO_PROVIDERS_EXCEPTION;
@@ -1024,9 +912,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         break;
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to fetch all endpoints from subscription provider {}, exception: {}, try next subscription provider...",
+            "Failed to fetch all endpoints from subscription provider {}, try next subscription provider...",
             provider,
-            e.getMessage());
+            e);
       }
     }
     if (Objects.isNull(endPoints)) {
