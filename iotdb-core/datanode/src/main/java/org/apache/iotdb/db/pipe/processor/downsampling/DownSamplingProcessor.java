@@ -34,7 +34,8 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+
+import org.apache.tsfile.common.constant.TsFileConstant;
 
 import java.util.concurrent.atomic.AtomicReference;
 

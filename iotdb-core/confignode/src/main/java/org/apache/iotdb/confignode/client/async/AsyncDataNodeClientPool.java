@@ -39,10 +39,13 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackLis
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.TransferLeaderRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
@@ -368,7 +371,7 @@ public class AsyncDataNodeClientPool {
         case CHANGE_REGION_LEADER:
           client.changeRegionLeader(
               (TRegionLeaderChangeReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
+              (TransferLeaderRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case CONSTRUCT_SCHEMA_BLACK_LIST:
@@ -435,6 +438,12 @@ public class AsyncDataNodeClientPool {
           client.countPathsUsingTemplate(
               (TCountPathsUsingTemplateReq) clientHandler.getRequest(requestId),
               (CountPathsUsingTemplateRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case CHECK_SCHEMA_REGION_USING_TEMPLATE:
+          client.checkSchemaRegionUsingTemplate(
+              (TCheckSchemaRegionUsingTemplateReq) clientHandler.getRequest(requestId),
+              (CheckSchemaRegionUsingTemplateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case CHECK_TIMESERIES_EXISTENCE:

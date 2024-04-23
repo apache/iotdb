@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
@@ -49,7 +50,7 @@ public class PipeParameters {
 
   protected final Map<String, String> attributes;
 
-  public PipeParameters(Map<String, String> attributes) {
+  public PipeParameters(final Map<String, String> attributes) {
     this.attributes = attributes == null ? new HashMap<>() : attributes;
   }
 
@@ -57,11 +58,11 @@ public class PipeParameters {
     return attributes;
   }
 
-  public boolean hasAttribute(String key) {
+  public boolean hasAttribute(final String key) {
     return attributes.containsKey(key) || attributes.containsKey(KeyReducer.reduce(key));
   }
 
-  public boolean hasAnyAttributes(String... keys) {
+  public boolean hasAnyAttributes(final String... keys) {
     for (final String key : keys) {
       if (hasAttribute(key)) {
         return true;
@@ -70,37 +71,37 @@ public class PipeParameters {
     return false;
   }
 
-  public String getString(String key) {
+  public String getString(final String key) {
     final String value = attributes.get(key);
     return value != null ? value : attributes.get(KeyReducer.reduce(key));
   }
 
-  public Boolean getBoolean(String key) {
+  public Boolean getBoolean(final String key) {
     final String value = getString(key);
     return value == null ? null : Boolean.parseBoolean(value);
   }
 
-  public Integer getInt(String key) {
+  public Integer getInt(final String key) {
     final String value = getString(key);
     return value == null ? null : Integer.parseInt(value);
   }
 
-  public Long getLong(String key) {
+  public Long getLong(final String key) {
     final String value = getString(key);
     return value == null ? null : Long.parseLong(value);
   }
 
-  public Float getFloat(String key) {
+  public Float getFloat(final String key) {
     final String value = getString(key);
     return value == null ? null : Float.parseFloat(value);
   }
 
-  public Double getDouble(String key) {
+  public Double getDouble(final String key) {
     final String value = getString(key);
     return value == null ? null : Double.parseDouble(value);
   }
 
-  public String getStringByKeys(String... keys) {
+  public String getStringByKeys(final String... keys) {
     for (final String key : keys) {
       final String value = getString(key);
       if (value != null) {
@@ -110,7 +111,7 @@ public class PipeParameters {
     return null;
   }
 
-  public Boolean getBooleanByKeys(String... keys) {
+  public Boolean getBooleanByKeys(final String... keys) {
     for (final String key : keys) {
       final Boolean value = getBoolean(key);
       if (value != null) {
@@ -120,7 +121,7 @@ public class PipeParameters {
     return null;
   }
 
-  public Integer getIntByKeys(String... keys) {
+  public Integer getIntByKeys(final String... keys) {
     for (final String key : keys) {
       final Integer value = getInt(key);
       if (value != null) {
@@ -130,7 +131,7 @@ public class PipeParameters {
     return null;
   }
 
-  public Long getLongByKeys(String... keys) {
+  public Long getLongByKeys(final String... keys) {
     for (final String key : keys) {
       final Long value = getLong(key);
       if (value != null) {
@@ -140,7 +141,7 @@ public class PipeParameters {
     return null;
   }
 
-  public Float getFloatByKeys(String... keys) {
+  public Float getFloatByKeys(final String... keys) {
     for (final String key : keys) {
       final Float value = getFloat(key);
       if (value != null) {
@@ -150,7 +151,7 @@ public class PipeParameters {
     return null;
   }
 
-  public Double getDoubleByKeys(String... keys) {
+  public Double getDoubleByKeys(final String... keys) {
     for (final String key : keys) {
       final Double value = getDouble(key);
       if (value != null) {
@@ -160,37 +161,37 @@ public class PipeParameters {
     return null;
   }
 
-  public String getStringOrDefault(String key, String defaultValue) {
+  public String getStringOrDefault(final String key, final String defaultValue) {
     final String value = getString(key);
     return value == null ? defaultValue : value;
   }
 
-  public boolean getBooleanOrDefault(String key, boolean defaultValue) {
+  public boolean getBooleanOrDefault(final String key, final boolean defaultValue) {
     final String value = getString(key);
     return value == null ? defaultValue : Boolean.parseBoolean(value);
   }
 
-  public int getIntOrDefault(String key, int defaultValue) {
+  public int getIntOrDefault(final String key, final int defaultValue) {
     final String value = getString(key);
     return value == null ? defaultValue : Integer.parseInt(value);
   }
 
-  public long getLongOrDefault(String key, long defaultValue) {
+  public long getLongOrDefault(final String key, final long defaultValue) {
     final String value = getString(key);
     return value == null ? defaultValue : Long.parseLong(value);
   }
 
-  public float getFloatOrDefault(String key, float defaultValue) {
+  public float getFloatOrDefault(final String key, final float defaultValue) {
     final String value = getString(key);
     return value == null ? defaultValue : Float.parseFloat(value);
   }
 
-  public double getDoubleOrDefault(String key, double defaultValue) {
+  public double getDoubleOrDefault(final String key, final double defaultValue) {
     final String value = getString(key);
     return value == null ? defaultValue : Double.parseDouble(value);
   }
 
-  public String getStringOrDefault(List<String> keys, String defaultValue) {
+  public String getStringOrDefault(final List<String> keys, final String defaultValue) {
     for (final String key : keys) {
       final String value = getString(key);
       if (value != null) {
@@ -200,7 +201,7 @@ public class PipeParameters {
     return defaultValue;
   }
 
-  public boolean getBooleanOrDefault(List<String> keys, boolean defaultValue) {
+  public boolean getBooleanOrDefault(final List<String> keys, final boolean defaultValue) {
     for (final String key : keys) {
       final String value = getString(key);
       if (value != null) {
@@ -210,7 +211,7 @@ public class PipeParameters {
     return defaultValue;
   }
 
-  public int getIntOrDefault(List<String> keys, int defaultValue) {
+  public int getIntOrDefault(final List<String> keys, final int defaultValue) {
     for (final String key : keys) {
       final String value = getString(key);
       if (value != null) {
@@ -220,7 +221,7 @@ public class PipeParameters {
     return defaultValue;
   }
 
-  public long getLongOrDefault(List<String> keys, long defaultValue) {
+  public long getLongOrDefault(final List<String> keys, final long defaultValue) {
     for (final String key : keys) {
       final String value = getString(key);
       if (value != null) {
@@ -230,7 +231,7 @@ public class PipeParameters {
     return defaultValue;
   }
 
-  public float getFloatOrDefault(List<String> keys, float defaultValue) {
+  public float getFloatOrDefault(final List<String> keys, final float defaultValue) {
     for (final String key : keys) {
       final String value = getString(key);
       if (value != null) {
@@ -240,7 +241,7 @@ public class PipeParameters {
     return defaultValue;
   }
 
-  public double getDoubleOrDefault(List<String> keys, double defaultValue) {
+  public double getDoubleOrDefault(final List<String> keys, final double defaultValue) {
     for (final String key : keys) {
       final String value = getString(key);
       if (value != null) {
@@ -251,14 +252,14 @@ public class PipeParameters {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeParameters that = (PipeParameters) obj;
+    final PipeParameters that = (PipeParameters) obj;
     return attributes.equals(that.attributes);
   }
 
@@ -276,7 +277,11 @@ public class PipeParameters {
     return attributes.entrySet().stream()
         .collect(
             Collectors.toMap(
-                Entry::getKey, entry -> ValueHider.hide(entry.getKey(), entry.getValue())))
+                Entry::getKey,
+                entry -> ValueHider.hide(entry.getKey(), entry.getValue()),
+                // The key won't be duplicated thus we just return the oldValue
+                (u, v) -> u,
+                TreeMap::new))
         .toString();
   }
 
@@ -287,11 +292,11 @@ public class PipeParameters {
    * @param that provide the key that needs to be updated along with the value
    * @return this pipe parameters
    */
-  public PipeParameters addOrReplaceEquivalentAttributes(PipeParameters that) {
-    Map<String, Entry<String, String>> thisMap =
+  public PipeParameters addOrReplaceEquivalentAttributes(final PipeParameters that) {
+    final Map<String, Entry<String, String>> thisMap =
         this.attributes.entrySet().stream()
             .collect(Collectors.toMap(entry -> KeyReducer.reduce(entry.getKey()), entry -> entry));
-    Map<String, Entry<String, String>> thatMap =
+    final Map<String, Entry<String, String>> thatMap =
         that.attributes.entrySet().stream()
             .collect(Collectors.toMap(entry -> KeyReducer.reduce(entry.getKey()), entry -> entry));
     thatMap.forEach(
@@ -310,7 +315,7 @@ public class PipeParameters {
    * @param that provide the key that needs to be updated along with the value
    * @return this {@link PipeParameters}
    */
-  public PipeParameters addOrReplaceEquivalentAttributesWithClone(PipeParameters that) {
+  public PipeParameters addOrReplaceEquivalentAttributesWithClone(final PipeParameters that) {
     Map<String, String> thisMap =
         this.attributes.entrySet().stream()
             .collect(Collectors.toMap(entry -> KeyReducer.reduce(entry.getKey()), Entry::getValue));
@@ -333,7 +338,7 @@ public class PipeParameters {
       PREFIXES.add("sink.");
     }
 
-    static String reduce(String key) {
+    static String reduce(final String key) {
       if (key == null) {
         return null;
       }
@@ -357,7 +362,7 @@ public class PipeParameters {
       KEYS.add("ssl.trust-store-pwd");
     }
 
-    static String hide(String key, String value) {
+    static String hide(final String key, final String value) {
       if (Objects.isNull(key)) {
         return value;
       }

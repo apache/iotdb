@@ -31,10 +31,10 @@ import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,12 +63,6 @@ public class DataNodeSchemaCache {
 
   // cache update or clean have higher priority than cache read
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
-
-  // To make insert and delete executive, I import a new rwlock to datanode schema.
-  // The reason is that some operations [loadtsfiles] will hold readlock then acquire writelock
-  // before
-  // closing the tsfile and resting the datanodeCache.
-  private final ReentrantReadWriteLock insertDeletionLock = new ReentrantReadWriteLock(false);
 
   private DataNodeSchemaCache() {
     deviceUsingTemplateSchemaCache = new DeviceUsingTemplateSchemaCache(templateManager);
@@ -109,22 +103,6 @@ public class DataNodeSchemaCache {
 
   public void releaseWriteLock() {
     readWriteLock.writeLock().unlock();
-  }
-
-  public void takeInsertLock() {
-    insertDeletionLock.readLock().lock();
-  }
-
-  public void releaseInsertLock() {
-    insertDeletionLock.readLock().unlock();
-  }
-
-  public void takeDeleteLock() {
-    insertDeletionLock.writeLock().lock();
-  }
-
-  public void releaseDeleteLock() {
-    insertDeletionLock.writeLock().unlock();
   }
 
   /**

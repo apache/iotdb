@@ -28,7 +28,8 @@ import org.apache.iotdb.spark.tsfile.qp.optimizer.DNFFilterOptimizer;
 import org.apache.iotdb.spark.tsfile.qp.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.spark.tsfile.qp.optimizer.PhysicalOptimizer;
 import org.apache.iotdb.spark.tsfile.qp.optimizer.RemoveNotOptimizer;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+
+import org.apache.tsfile.read.TsFileSequenceReader;
 
 import java.io.IOException;
 import java.util.ArrayList;

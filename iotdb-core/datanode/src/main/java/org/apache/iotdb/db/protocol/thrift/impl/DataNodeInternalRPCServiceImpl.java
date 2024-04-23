@@ -84,6 +84,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -145,6 +147,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelResp;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
@@ -202,6 +206,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
@@ -223,15 +228,15 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.thrift.TException;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.NotImplementedException;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -248,6 +253,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -548,13 +554,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req) {
     DataNodeSchemaCache cache = DataNodeSchemaCache.getInstance();
-    cache.takeDeleteLock();
+    DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     cache.takeWriteLock();
     try {
       cache.invalidate(PathPatternTree.deserialize(req.pathPatternTree).getAllPathPatterns());
     } finally {
       cache.releaseWriteLock();
-      cache.releaseDeleteLock();
+      DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     }
     return RpcUtils.SUCCESS_STATUS;
   }
@@ -772,8 +778,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TCountPathsUsingTemplateResp countPathsUsingTemplate(TCountPathsUsingTemplateReq req)
-      throws TException {
+  public TCountPathsUsingTemplateResp countPathsUsingTemplate(TCountPathsUsingTemplateReq req) {
     PathPatternTree patternTree = PathPatternTree.deserialize(req.patternTree);
     TCountPathsUsingTemplateResp resp = new TCountPathsUsingTemplateResp();
     AtomicLong result = new AtomicLong(0);
@@ -804,6 +809,33 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               }
             }));
     resp.setCount(result.get());
+    return resp;
+  }
+
+  @Override
+  public TCheckSchemaRegionUsingTemplateResp checkSchemaRegionUsingTemplate(
+      TCheckSchemaRegionUsingTemplateReq req) {
+    TCheckSchemaRegionUsingTemplateResp resp = new TCheckSchemaRegionUsingTemplateResp();
+    AtomicBoolean result = new AtomicBoolean(false);
+    resp.setStatus(
+        executeInternalSchemaTask(
+            req.getSchemaRegionIdList(),
+            consensusGroupId -> {
+              ReadWriteLock readWriteLock =
+                  regionManager.getRegionLock(new SchemaRegionId(consensusGroupId.getId()));
+              readWriteLock.writeLock().lock();
+              try {
+                ISchemaRegion schemaRegion =
+                    schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+                if (schemaRegion.getSchemaRegionStatistics().getTemplateActivatedNumber() > 0) {
+                  result.set(true);
+                }
+                return RpcUtils.SUCCESS_STATUS;
+              } finally {
+                readWriteLock.writeLock().unlock();
+              }
+            }));
+    resp.setResult(result.get());
     return resp;
   }
 
@@ -1397,6 +1429,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     // Judging leader if necessary
     if (req.isNeedJudgeLeader()) {
+      // Always get logical clock before judging leader
+      // to ensure that the leader is up-to-date
+      resp.setConsensusLogicalTimeMap(getLogicalClockMap());
       resp.setJudgedLeaders(getJudgedLeaders());
     }
 
@@ -1493,6 +1528,40 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     SchemaRegionConsensusImpl.getInstance().isLeader(groupId)));
 
     return result;
+  }
+
+  private Map<TConsensusGroupId, Long> getLogicalClockMap() {
+    Map<TConsensusGroupId, Long> result = new HashMap<>();
+    DataRegionConsensusImpl.getInstance()
+        .getAllConsensusGroupIds()
+        .forEach(
+            groupId ->
+                result.put(
+                    groupId.convertToTConsensusGroupId(),
+                    DataRegionConsensusImpl.getInstance().getLogicalClock(groupId)));
+
+    SchemaRegionConsensusImpl.getInstance()
+        .getAllConsensusGroupIds()
+        .forEach(
+            groupId ->
+                result.put(
+                    groupId.convertToTConsensusGroupId(),
+                    SchemaRegionConsensusImpl.getInstance().getLogicalClock(groupId)));
+
+    return result;
+  }
+
+  private long getLogicalClock(TConsensusGroupId groupId) {
+    switch (groupId.getType()) {
+      case DataRegion:
+        return DataRegionConsensusImpl.getInstance()
+            .getLogicalClock(ConsensusGroupId.Factory.createFromTConsensusGroupId(groupId));
+      case SchemaRegion:
+        return SchemaRegionConsensusImpl.getInstance()
+            .getLogicalClock(ConsensusGroupId.Factory.createFromTConsensusGroupId(groupId));
+      default:
+        throw new IllegalArgumentException("Unknown consensus group type: " + groupId.getType());
+    }
   }
 
   private double getMemory(String gaugeName) {
@@ -1697,7 +1766,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus updateTemplate(TUpdateTemplateReq req) {
     switch (TemplateInternalRPCUpdateType.getType(req.type)) {
       case ADD_TEMPLATE_SET_INFO:
-        ClusterTemplateManager.getInstance().addTemplateSetInfo(req.getTemplateInfo());
+        DataNodeSchemaLockManager.getInstance()
+            .takeWriteLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+        try {
+          ClusterTemplateManager.getInstance().addTemplateSetInfo(req.getTemplateInfo());
+        } finally {
+          DataNodeSchemaLockManager.getInstance()
+              .releaseWriteLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+        }
         break;
       case INVALIDATE_TEMPLATE_SET_INFO:
         ClusterTemplateManager.getInstance().invalidateTemplateSetInfo(req.getTemplateInfo());
@@ -1744,9 +1820,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus changeRegionLeader(TRegionLeaderChangeReq req) {
+  public TRegionLeaderChangeResp changeRegionLeader(TRegionLeaderChangeReq req) {
     LOGGER.info("[ChangeRegionLeader] {}", req);
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TRegionLeaderChangeResp resp = new TRegionLeaderChangeResp();
+
+    TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     TConsensusGroupId tgId = req.getRegionId();
     ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tgId);
     TEndPoint newNode = getConsensusEndPoint(req.getNewLeaderNode(), regionId);
@@ -1760,14 +1838,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               + regionId
               + ", skip leader transfer.";
       LOGGER.info(msg);
-      return status.setMessage(msg);
+      resp.setStatus(successStatus.setMessage(msg));
+      resp.setConsensusLogicalTimestamp(getLogicalClock(req.getRegionId()));
+      return resp;
     }
 
     LOGGER.info(
         "[ChangeRegionLeader] Start change the leader of RegionGroup: {} to DataNode: {}",
         regionId,
         req.getNewLeaderNode().getDataNodeId());
-    return transferLeader(regionId, newLeaderPeer);
+    resp.setStatus(transferLeader(regionId, newLeaderPeer));
+    resp.setConsensusLogicalTimestamp(getLogicalClock(req.getRegionId()));
+    return resp;
   }
 
   private TSStatus transferLeader(ConsensusGroupId regionId, Peer newLeaderPeer) {

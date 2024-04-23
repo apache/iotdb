@@ -90,7 +90,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
 
     if (isClosed.get()) {
       LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.", throwable);
-      releaseLastEvent(false);
+      clearReferenceCountAndReleaseLastEvent();
       return;
     }
 

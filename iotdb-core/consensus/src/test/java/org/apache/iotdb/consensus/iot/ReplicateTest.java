@@ -31,9 +31,9 @@ import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.iot.util.TestEntry;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.ratis.util.FileUtils;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

@@ -57,6 +57,7 @@ import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.logdispatcher.IoTConsensusMemoryManager;
 import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCService;
 import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCServiceProcessor;
+import org.apache.iotdb.consensus.iot.snapshot.IoTConsensusRateLimiter;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -120,6 +121,13 @@ public class IoTConsensus implements IConsensus {
         .init(
             config.getIotConsensusConfig().getReplication().getAllocateMemoryForConsensus(),
             config.getIotConsensusConfig().getReplication().getAllocateMemoryForQueue());
+    // init IoTConsensus Rate Limiter
+    IoTConsensusRateLimiter.getInstance()
+        .init(
+            config
+                .getIotConsensusConfig()
+                .getReplication()
+                .getRegionMigrationSpeedLimitBytesPerSecond());
   }
 
   @Override
@@ -300,8 +308,8 @@ public class IoTConsensus implements IConsensus {
       impl.takeSnapshot();
 
       // step 3: transit snapshot
-      logger.info("[IoTConsensus] start to transit snapshot...");
-      impl.transitSnapshot(peer);
+      logger.info("[IoTConsensus] start to transmit snapshot...");
+      impl.transmitSnapshot(peer);
 
       // step 4: let the new peer load snapshot
       logger.info("[IoTConsensus] trigger new peer to load snapshot...");
@@ -402,6 +410,13 @@ public class IoTConsensus implements IConsensus {
   @Override
   public boolean isLeaderReady(ConsensusGroupId groupId) {
     return true;
+  }
+
+  @Override
+  public long getLogicalClock(ConsensusGroupId groupId) {
+    return Optional.ofNullable(stateMachineMap.get(groupId))
+        .map(IoTConsensusServerImpl::getSearchIndex)
+        .orElse(0L);
   }
 
   @Override

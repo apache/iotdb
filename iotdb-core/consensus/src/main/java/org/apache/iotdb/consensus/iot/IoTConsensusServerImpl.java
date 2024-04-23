@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -42,6 +43,7 @@ import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.log.GetConsensusReqReaderPlan;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher;
+import org.apache.iotdb.consensus.iot.snapshot.IoTConsensusRateLimiter;
 import org.apache.iotdb.consensus.iot.snapshot.SnapshotFragmentReader;
 import org.apache.iotdb.consensus.iot.thrift.TActivatePeerReq;
 import org.apache.iotdb.consensus.iot.thrift.TActivatePeerRes;
@@ -79,9 +81,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -92,6 +97,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.apache.iotdb.commons.utils.FileUtils.humanReadableByteCountSI;
 
 public class IoTConsensusServerImpl {
 
@@ -119,6 +126,8 @@ public class IoTConsensusServerImpl {
   private final IoTConsensusServerMetrics ioTConsensusServerMetrics;
   private final String consensusGroupId;
   private final ScheduledExecutorService backgroundTaskService;
+  private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
+      IoTConsensusRateLimiter.getInstance();
 
   public IoTConsensusServerImpl(
       String storageDir,
@@ -284,32 +293,81 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  public void transitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
+  public void transmitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
     File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<Path> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
-    logger.info("transit snapshots: {}", snapshotPaths);
+    AtomicLong snapshotSizeSumAtomic = new AtomicLong();
+    StringBuilder allFilesStr = new StringBuilder();
+    snapshotPaths.forEach(
+        path -> {
+          try {
+            long fileSize = Files.size(path);
+            snapshotSizeSumAtomic.addAndGet(fileSize);
+            allFilesStr
+                .append("\n")
+                .append(path)
+                .append(" ")
+                .append(humanReadableByteCountSI(fileSize));
+          } catch (IOException e) {
+            logger.error(
+                "[SNAPSHOT TRANSMISSION] Calculate snapshot file's size fail: {}", path, e);
+          }
+        });
+    final long snapshotSizeSum = snapshotSizeSumAtomic.get();
+    long transitedSnapshotSizeSum = 0;
+    long transitedFilesNum = 0;
+    long startTime = System.nanoTime();
+    logger.info(
+        "[SNAPSHOT TRANSMISSION] Start to transmit snapshots ({} files, total size {}) from dir {}",
+        snapshotPaths.size(),
+        humanReadableByteCountSI(snapshotSizeSum),
+        snapshotDir);
+    logger.info(
+        "[SNAPSHOT TRANSMISSION] All the files below shell be transmitted: {}", allFilesStr);
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       for (Path path : snapshotPaths) {
         SnapshotFragmentReader reader = new SnapshotFragmentReader(newSnapshotDirName, path);
         try {
           while (reader.hasNext()) {
+            // TODO: zero copy ?
             TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
             req.setConsensusGroupId(targetPeer.getGroupId().convertToTConsensusGroupId());
+            ioTConsensusRateLimiter.acquireTransitDataSizeWithRateLimiter(req.getChunkLength());
             TSendSnapshotFragmentRes res = client.sendSnapshotFragment(req);
             if (!isSuccess(res.getStatus())) {
               throw new ConsensusGroupModifyPeerException(
-                  String.format("error when sending snapshot fragment to %s", targetPeer));
+                  String.format(
+                      "[SNAPSHOT TRANSMISSION] Error when transmitting snapshot fragment to %s",
+                      targetPeer));
             }
           }
+          transitedSnapshotSizeSum += reader.getTotalReadSize();
+          transitedFilesNum++;
+          logger.info(
+              "[SNAPSHOT TRANSMISSION] The overall progress for dir {}: files {}/{} done, size {}/{} done, time {} passed. File {} done.",
+              newSnapshotDirName,
+              transitedFilesNum,
+              snapshotPaths.size(),
+              humanReadableByteCountSI(transitedSnapshotSizeSum),
+              humanReadableByteCountSI(snapshotSizeSum),
+              CommonDateTimeUtils.convertMillisecondToDurationStr(
+                  (System.nanoTime() - startTime) / 1_000_000),
+              path);
         } finally {
           reader.close();
         }
       }
     } catch (Exception e) {
       throw new ConsensusGroupModifyPeerException(
-          String.format("error when send snapshot file to %s", targetPeer), e);
+          String.format("[SNAPSHOT TRANSMISSION] Error when send snapshot file to %s", targetPeer),
+          e);
     }
+    logger.info(
+        "[SNAPSHOT TRANSMISSION] After {}, successfully transmit all snapshots from dir {}",
+        CommonDateTimeUtils.convertMillisecondToDurationStr(
+            (System.nanoTime() - startTime) / 1_000_000),
+        snapshotDir);
   }
 
   public void receiveSnapshotFragment(
@@ -534,14 +592,14 @@ public class IoTConsensusServerImpl {
                 new TWaitSyncLogCompleteReq(targetPeer.getGroupId().convertToTConsensusGroupId()));
         if (res.complete) {
           logger.info(
-              "{} SyncLog is completed. TargetIndex: {}, CurrentSyncIndex: {}",
+              "[WAIT LOG SYNC] {} SyncLog is completed. TargetIndex: {}, CurrentSyncIndex: {}",
               targetPeer,
               res.searchIndex,
               res.safeIndex);
           return;
         }
         logger.info(
-            "{} SyncLog is still in progress. TargetIndex: {}, CurrentSyncIndex: {}",
+            "[WAIT LOG SYNC] {} SyncLog is still in progress. TargetIndex: {}, CurrentSyncIndex: {}",
             targetPeer,
             res.searchIndex,
             res.safeIndex);
@@ -587,8 +645,8 @@ public class IoTConsensusServerImpl {
     // step 2, update configuration
     configuration.add(targetPeer);
     // step 3, persist configuration
-    logger.info("[IoTConsensus] persist new configuration: {}", configuration);
     persistConfiguration();
+    logger.info("[IoTConsensus] persist new configuration: {}", configuration);
   }
 
   public void removeSyncLogChannel(Peer targetPeer) throws ConsensusGroupModifyPeerException {
@@ -609,6 +667,7 @@ public class IoTConsensusServerImpl {
 
   public void persistConfiguration() {
     try {
+      removeDuplicateConfiguration();
       renameTmpConfigurationFileToRemoveSuffix();
       serializeConfigurationAndFsyncToDisk();
       deleteConfiguration();
@@ -664,7 +723,6 @@ public class IoTConsensusServerImpl {
       configuration.add(Peer.deserialize(buffer));
     }
     persistConfiguration();
-    Files.delete(oldConfigurationPath);
   }
 
   public static String generateConfigurationDatFileName(int nodeId, String suffix) {
@@ -937,6 +995,18 @@ public class IoTConsensusServerImpl {
                       e);
                 }
               });
+    }
+  }
+
+  public void removeDuplicateConfiguration() {
+    Set<Peer> seen = new HashSet<>();
+    Iterator<Peer> it = configuration.iterator();
+
+    while (it.hasNext()) {
+      Peer peer = it.next();
+      if (!seen.add(peer)) {
+        it.remove();
+      }
     }
   }
 

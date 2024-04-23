@@ -52,7 +52,6 @@ import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
@@ -112,9 +111,9 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -546,27 +545,6 @@ public class ProcedureManager {
   }
 
   // region region migration
-
-  private TConsensusGroupId regionIdToTConsensusGroupId(final int regionId)
-      throws ProcedureException {
-    if (configManager
-        .getPartitionManager()
-        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId))) {
-      return new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId);
-    }
-    if (configManager
-        .getPartitionManager()
-        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))) {
-      return new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId);
-    }
-    String msg =
-        String.format(
-            "Submit RegionMigrateProcedure failed, because RegionGroup: %s doesn't exist",
-            regionId);
-    LOGGER.warn(msg);
-    throw new ProcedureException(msg);
-  }
-
   private TSStatus checkRegionMigrate(
       TMigrateRegionReq migrateRegionReq,
       TConsensusGroupId regionGroupId,
@@ -574,7 +552,28 @@ public class ProcedureManager {
       TDataNodeLocation destDataNode,
       TDataNodeLocation coordinatorForAddPeer) {
     String failMessage = null;
-    if (originalDataNode == null) {
+    Optional<Procedure<ConfigNodeProcedureEnv>> anotherMigrateProcedure =
+        this.executor.getProcedures().values().stream()
+            .filter(
+                procedure -> {
+                  if (procedure instanceof RegionMigrateProcedure) {
+                    return !procedure.isFinished()
+                        && ((RegionMigrateProcedure) procedure)
+                            .getConsensusGroupId()
+                            .equals(regionGroupId);
+                  }
+                  return false;
+                })
+            .findAny();
+    if (anotherMigrateProcedure.isPresent()) {
+      failMessage =
+          String.format(
+              "Submit RegionMigrateProcedure failed, "
+                  + "because another RegionMigrateProcedure of the same consensus group %d is already in processing. "
+                  + "A consensus group is able to have at most 1 RegionMigrateProcedure at the same time"
+                  + "For further information, you can search [pid%d] in log.",
+              regionGroupId, anotherMigrateProcedure.get().getProcId());
+    } else if (originalDataNode == null) {
       failMessage =
           String.format(
               "Submit RegionMigrateProcedure failed, because no original DataNode %d",
@@ -626,7 +625,7 @@ public class ProcedureManager {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public TSStatus migrateRegion(TMigrateRegionReq migrateRegionReq) {
+  public synchronized TSStatus migrateRegion(TMigrateRegionReq migrateRegionReq) {
     TConsensusGroupId regionGroupId;
     Optional<TConsensusGroupId> optional =
         configManager
@@ -682,10 +681,12 @@ public class ProcedureManager {
             coordinatorForAddPeer,
             coordinatorForRemovePeer));
     LOGGER.info(
-        "Submit RegionMigrateProcedure successfully, Region: {}, From: {}, To: {}",
-        migrateRegionReq.getRegionId(),
-        migrateRegionReq.getFromId(),
-        migrateRegionReq.getToId());
+        "Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}",
+        regionGroupId,
+        originalDataNode,
+        destDataNode,
+        coordinatorForAddPeer,
+        coordinatorForRemovePeer);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

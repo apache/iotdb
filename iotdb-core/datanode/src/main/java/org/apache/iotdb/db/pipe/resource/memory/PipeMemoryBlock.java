@@ -160,7 +160,12 @@ public class PipeMemoryBlock implements AutoCloseable {
 
   @Override
   public String toString() {
-    return "PipeMemoryBlock{" + "memoryUsageInBytes=" + memoryUsageInBytes.get() + '}';
+    return "PipeMemoryBlock{"
+        + "memoryUsageInBytes="
+        + memoryUsageInBytes.get()
+        + ", isReleased="
+        + isReleased
+        + '}';
   }
 
   @Override

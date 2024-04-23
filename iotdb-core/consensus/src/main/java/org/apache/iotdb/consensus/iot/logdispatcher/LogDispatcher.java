@@ -46,8 +46,12 @@ import java.util.Objects;
 import java.util.OptionalLong;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -97,12 +101,13 @@ public class LogDispatcher {
 
   public synchronized void start() {
     if (!threads.isEmpty()) {
-      threads.forEach(executorService::submit);
+      threads.forEach(thread -> thread.setFuture(executorService.submit(thread)));
     }
   }
 
   public synchronized void stop() {
     if (!threads.isEmpty()) {
+      threads.forEach(LogDispatcherThread::stop);
       executorService.shutdownNow();
       int timeout = 10;
       try {
@@ -113,7 +118,6 @@ public class LogDispatcher {
         Thread.currentThread().interrupt();
         logger.error("Unexpected Interruption when closing LogDispatcher service ");
       }
-      threads.forEach(LogDispatcherThread::stop);
     }
     stopped = true;
   }
@@ -129,7 +133,7 @@ public class LogDispatcher {
     if (this.executorService == null) {
       initLogSyncThreadPool();
     }
-    executorService.submit(thread);
+    thread.setFuture(executorService.submit(thread));
   }
 
   public synchronized void removeLogDispatcherThread(Peer peer) throws IOException {
@@ -227,6 +231,8 @@ public class LogDispatcher {
 
     private final LogDispatcherThreadMetrics logDispatcherThreadMetrics;
 
+    private Future<?> future;
+
     public LogDispatcherThread(Peer peer, IoTConsensusConfig config, long initialSyncIndex) {
       this.peer = peer;
       this.config = config;
@@ -249,6 +255,10 @@ public class LogDispatcher {
 
     public long getCurrentSyncIndex() {
       return controller.getCurrentIndex();
+    }
+
+    public void setFuture(Future<?> future) {
+      this.future = future;
     }
 
     public long getLastFlushedSyncIndex() {
@@ -298,6 +308,17 @@ public class LogDispatcher {
 
     public void stop() {
       stopped = true;
+      if (!future.cancel(true)) {
+        logger.warn("LogDispatcherThread Future for {} is not stopped", peer);
+      }
+      try {
+        future.get(30, TimeUnit.SECONDS);
+      } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("LogDispatcherThread Future for {} is not stopped", peer, e);
+      } catch (CancellationException ignored) {
+        // ignore because it is expected
+      }
       long requestSize = 0;
       for (IndexedConsensusRequest indexedConsensusRequest : pendingEntries) {
         requestSize += indexedConsensusRequest.getSerializedSize();

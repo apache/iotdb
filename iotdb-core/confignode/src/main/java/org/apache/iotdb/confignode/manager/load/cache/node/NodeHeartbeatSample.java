@@ -20,57 +20,50 @@
 package org.apache.iotdb.confignode.manager.load.cache.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 
-public class NodeHeartbeatSample {
+/** NodeHeartbeatSample records the heartbeat sample of a Node. */
+public class NodeHeartbeatSample extends AbstractHeartbeatSample {
 
-  // Unit: ms
-  private final long sendTimestamp;
-  private final long receiveTimestamp;
-
+  // Node status and the status's reason
   private final NodeStatus status;
   private final String statusReason;
+  // The Node hardware's load sample
+  private final TLoadSample loadSample;
 
-  private TLoadSample loadSample = null;
-
-  @TestOnly
-  public NodeHeartbeatSample(long sendTimestamp, long receiveTimestamp) {
-    this.sendTimestamp = sendTimestamp;
-    this.receiveTimestamp = receiveTimestamp;
-    this.status = NodeStatus.Running;
+  /** Constructor for generating default sample with specified status */
+  public NodeHeartbeatSample(NodeStatus status) {
+    super(System.nanoTime());
+    this.status = status;
     this.statusReason = null;
+    this.loadSample = null;
+  }
+
+  /** Constructor for generating default sample with specified status and timestamp */
+  public NodeHeartbeatSample(long sampleNanoTimestamp, NodeStatus status) {
+    super(sampleNanoTimestamp);
+    this.status = status;
+    this.statusReason = null;
+    this.loadSample = null;
   }
 
   /** Constructor for DataNode sample. */
-  public NodeHeartbeatSample(TDataNodeHeartbeatResp heartbeatResp, long receiveTimestamp) {
-    this.sendTimestamp = heartbeatResp.getHeartbeatTimestamp();
-    this.receiveTimestamp = receiveTimestamp;
-
+  public NodeHeartbeatSample(TDataNodeHeartbeatResp heartbeatResp) {
+    super(heartbeatResp.getHeartbeatTimestamp());
     this.status = NodeStatus.parse(heartbeatResp.getStatus());
     this.statusReason = heartbeatResp.isSetStatusReason() ? heartbeatResp.getStatusReason() : null;
-
-    if (heartbeatResp.isSetLoadSample()) {
-      this.loadSample = heartbeatResp.getLoadSample();
-    }
+    this.loadSample = heartbeatResp.isSetLoadSample() ? heartbeatResp.getLoadSample() : null;
   }
 
   /** Constructor for ConfigNode sample. */
-  public NodeHeartbeatSample(TConfigNodeHeartbeatResp heartbeatResp, long receiveTimestamp) {
-    this.sendTimestamp = heartbeatResp.getTimestamp();
-    this.receiveTimestamp = receiveTimestamp;
+  public NodeHeartbeatSample(TConfigNodeHeartbeatResp heartbeatResp) {
+    super(heartbeatResp.getTimestamp());
     this.status = NodeStatus.Running;
     this.statusReason = null;
-  }
-
-  public long getSendTimestamp() {
-    return sendTimestamp;
-  }
-
-  public long getReceiveTimestamp() {
-    return receiveTimestamp;
+    this.loadSample = null;
   }
 
   public NodeStatus getStatus() {
@@ -87,20 +80,5 @@ public class NodeHeartbeatSample {
 
   public TLoadSample getLoadSample() {
     return loadSample;
-  }
-
-  /**
-   * Generate a default NodeHeartbeatSample.
-   *
-   * <p>i.e. Only contain timestamp and NodeStatus
-   *
-   * @param status The NodeStatus in default NodeSample
-   * @return A NodeHeartbeatSample that only contain timestamp and NodeStatus
-   */
-  public static NodeHeartbeatSample generateDefaultSample(NodeStatus status) {
-    long currentTime = System.nanoTime();
-    return new NodeHeartbeatSample(
-        new TDataNodeHeartbeatResp(currentTime, status.getStatus()).setStatusReason(null),
-        currentTime);
   }
 }

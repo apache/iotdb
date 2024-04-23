@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionChunkReader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
+import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -31,7 +32,7 @@ public class NonAlignedPageElement extends PageElement {
   private final PageHeader pageHeader;
 
   // compressed page data
-  private final ByteBuffer pageData;
+  private ByteBuffer pageData;
 
   private final CompactionChunkReader chunkReader;
 
@@ -52,6 +53,7 @@ public class NonAlignedPageElement extends PageElement {
   public void deserializePage() throws IOException {
     TsBlock batchData = chunkReader.readPageData(pageHeader, pageData);
     this.pointReader = batchData.getTsBlockSingleColumnIterator();
+    pageData = null;
   }
 
   @Override

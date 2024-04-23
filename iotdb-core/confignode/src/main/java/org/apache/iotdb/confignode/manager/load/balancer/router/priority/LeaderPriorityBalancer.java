@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.TreeMap;
 
 /** The LeaderPriorityBalancer always pick the leader Replica */
 public class LeaderPriorityBalancer extends GreedyPriorityBalancer implements IPriorityBalancer {
@@ -39,7 +39,7 @@ public class LeaderPriorityBalancer extends GreedyPriorityBalancer implements IP
       Map<TConsensusGroupId, Integer> regionLeaderMap,
       Map<Integer, Long> dataNodeLoadScoreMap) {
 
-    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap = new ConcurrentHashMap<>();
+    Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap = new TreeMap<>();
 
     replicaSets.forEach(
         replicaSet -> {
