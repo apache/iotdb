@@ -199,7 +199,7 @@ public class TsFileSelfCheckToolTest {
       // ChunkMetadata, the Statistics of ChunkMetadata here uses the Statistics of
       // TimeseriesMetadata.
       // Therefore, Chunk's Statistics error will be reported.
-      assertEquals("Chunk exists statistics mistakes at position 22", e.getMessage());
+      assertEquals("Chunk exists statistics mistakes at position 32", e.getMessage());
     }
     tearDown(filePath);
   }

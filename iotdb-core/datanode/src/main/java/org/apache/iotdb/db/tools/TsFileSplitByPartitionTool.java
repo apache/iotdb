@@ -144,9 +144,10 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     }
     int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length;
     reader.position(headerLength);
-    if (reader.readMarker() != 3) {
+    byte version = reader.readMarker();
+    if (version != (byte) 3 && version != (byte) 4) {
       throw new WriteProcessException(
-          "The version of this tsfile is too low, please upgrade it to the version 3.");
+          "The version of this tsfile is too low, please upgrade it to the version 4.");
     }
     // start to scan chunks and chunkGroups
     byte marker;
