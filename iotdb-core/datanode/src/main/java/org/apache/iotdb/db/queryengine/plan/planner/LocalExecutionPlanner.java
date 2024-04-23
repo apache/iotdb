@@ -31,6 +31,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.utils.SetThreadName;
 
@@ -50,6 +52,8 @@ public class LocalExecutionPlanner {
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanner.class);
   private static final long ALLOCATE_MEMORY_FOR_OPERATORS;
   private static final long MAX_REST_MEMORY_FOR_LOAD;
+
+  public final Metadata metadata = new TableMetadataImpl();
 
   static {
     IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
@@ -88,7 +92,7 @@ public class LocalExecutionPlanner {
         root = plan.accept(new OperatorTreeGenerator(), context);
         break;
       case TABLE:
-        root = plan.accept(new TableOperatorGenerator(), context);
+        root = plan.accept(new TableOperatorGenerator(metadata), context);
         break;
       default:
         throw new IllegalArgumentException(String.format("Unknown sql dialect: %s", sqlDialect));
