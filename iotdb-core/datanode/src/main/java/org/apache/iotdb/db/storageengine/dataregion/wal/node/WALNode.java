@@ -227,7 +227,7 @@ public class WALNode implements IWALNode {
     private static final int MAX_RECURSION_TIME = 5;
 
     // the effective information ratio
-    private double effectiveInfoRatio = 0d;
+    private double effectiveInfoRatio = 1.0d;
 
     private List<Long> pinnedMemTableIds;
 
@@ -327,14 +327,15 @@ public class WALNode implements IWALNode {
       MemTableInfo oldestUnpinnedMemTableInfo = checkpointManager.getOldestUnpinnedMemTableInfo();
       long avgFileSize =
           getFileNum() != 0
-              ? getTotalSize() / getFileNum()
+              ? getDiskUsage() / getFileNum()
               : config.getWalFileSizeThresholdInByte();
       long totalCost =
           oldestUnpinnedMemTableInfo == null
               ? costOfActiveMemTables
               : (getCurrentWALFileVersion() - oldestUnpinnedMemTableInfo.getFirstFileVersionId())
                   * avgFileSize;
-      if (totalCost == 0) {
+      if (costOfActiveMemTables == 0 || totalCost == 0) {
+        effectiveInfoRatio = 1.0d;
         return;
       }
       effectiveInfoRatio = (double) costOfActiveMemTables / totalCost;
