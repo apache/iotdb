@@ -339,7 +339,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               pushDownPredicate,
               Collections.singletonList(node.getSeriesPath().getMeasurement()),
               context.getTypeProvider().getTemplatedInfo() != null,
-              context.getTypeProvider()));
+              context.getTypeProvider(),
+              context.getZoneId()));
     }
 
     OperatorContext operatorContext =
@@ -401,7 +402,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               pushDownPredicate,
               node.getAlignedPath().getMeasurementList(),
               context.getTypeProvider().getTemplatedInfo() != null,
-              context.getTypeProvider()));
+              context.getTypeProvider(),
+              context.getZoneId()));
     }
 
     OperatorContext operatorContext =

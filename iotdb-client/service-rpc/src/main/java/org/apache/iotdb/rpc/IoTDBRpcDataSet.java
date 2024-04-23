@@ -552,17 +552,18 @@ public class IoTDBRpcDataSet {
       case DOUBLE:
         return String.valueOf(curTsBlock.getColumn(index).getDouble(tsBlockIndex));
       case TEXT:
-      case BYTEA:
         return curTsBlock
             .getColumn(index)
             .getBinary(tsBlockIndex)
             .getStringValue(TSFileConfig.STRING_CHARSET);
+      case BYTEA:
+        return RpcUtils.parseByteaByteArrayToString(
+            curTsBlock.getColumn(index).getBinary(tsBlockIndex).getValues());
       case TIMESTAMP:
         return RpcUtils.formatDatetime(
             timeFormat, "ms", curTsBlock.getColumn(index).getLong(tsBlockIndex), zoneId);
       case DATE:
         return RpcUtils.formatDate(curTsBlock.getColumn(index).getInt(tsBlockIndex));
-        // TODO
       default:
         return null;
     }

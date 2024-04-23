@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -114,6 +115,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.literal.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.Literal;
@@ -218,6 +220,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.io.BaseEncoding;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.io.FileNotFoundException;
@@ -1734,7 +1737,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (constantContext.realLiteral() != null) {
       return new DoubleLiteral(text);
     } else if (constantContext.dateExpression() != null) {
-      return new LongLiteral(parseDateExpression(constantContext.dateExpression()));
+      return new LongLiteral(
+          parseDateExpression(
+              constantContext.dateExpression(),
+              CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
     } else {
       throw new SemanticException("Unsupported constant value in FILL: " + text);
     }
@@ -1852,7 +1858,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (timeIndex == -1 && rows.size() != 1) {
       throw new SemanticException("need timestamps when insert multi rows");
     }
-    List<String[]> valuesList = new ArrayList<>();
+    List<Object[]> valuesList = new ArrayList<>();
     long[] timeArray = new long[rows.size()];
     for (int i = 0, size = rows.size(); i < size; i++) {
       IoTDBSqlParser.RowContext row = rows.get(i);
@@ -3025,7 +3031,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (constantContext.STRING_LITERAL() != null) {
       return parseStringLiteral(text);
     } else if (constantContext.dateExpression() != null) {
-      return String.valueOf(parseDateExpression(constantContext.dateExpression()));
+      return String.valueOf(
+          parseDateExpression(
+              constantContext.dateExpression(),
+              CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
     } else {
       throw new IllegalArgumentException("Unsupported constant value: " + text);
     }
@@ -3041,9 +3050,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return new ConstantOperand(TSDataType.INT64, text);
     } else if (constantContext.realLiteral() != null) {
       return parseRealLiteral(text);
+    } else if (constantContext.BINARY_LITERAL() != null) {
+      BinaryLiteral binaryLiteral = new BinaryLiteral(text);
+      return new ConstantOperand(
+          TSDataType.BYTEA, BaseEncoding.base16().encode(binaryLiteral.getValues()));
     } else if (constantContext.dateExpression() != null) {
       return new ConstantOperand(
-          TSDataType.INT64, String.valueOf(parseDateExpression(constantContext.dateExpression())));
+          TSDataType.INT64,
+          String.valueOf(
+              parseDateExpression(
+                  constantContext.dateExpression(),
+                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision())));
     } else {
       throw new SemanticException("Unsupported constant operand: " + text);
     }
@@ -3064,14 +3081,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
    *
    * <p>eg. now() + 1d - 2h
    */
-  public Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx) {
+  public Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx, String precision) {
     long time;
     time = parseDateTimeFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
-        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+        time +=
+            DateTimeUtils.convertDurationStrToLong(
+                time, ctx.getChild(i + 1).getText(), precision, false);
       } else {
-        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+        time -=
+            DateTimeUtils.convertDurationStrToLong(
+                time, ctx.getChild(i + 1).getText(), precision, false);
       }
     }
     return time;

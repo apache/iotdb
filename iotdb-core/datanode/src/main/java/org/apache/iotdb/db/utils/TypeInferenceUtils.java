@@ -54,6 +54,10 @@ public class TypeInferenceUtils {
 
   private TypeInferenceUtils() {}
 
+  private static boolean isBytea(String s) {
+    return s.length() >= 3 && s.startsWith("X'") && s.endsWith("'");
+  }
+
   static boolean isNumber(String s) {
     if (s == null || s.equals("NaN")) {
       return false;
@@ -116,6 +120,8 @@ public class TypeInferenceUtils {
         // "NaN" is returned if the NaN Literal is given in Parser
       } else if ("NaN".equals(strValue)) {
         return nanStringInferType;
+      } else if (isBytea(strValue)) {
+        return TSDataType.BYTEA;
       } else {
         return TSDataType.TEXT;
       }

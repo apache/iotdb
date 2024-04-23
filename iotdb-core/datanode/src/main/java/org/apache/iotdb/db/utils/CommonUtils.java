@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.statement.literal.BinaryLiteral;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
@@ -98,7 +99,7 @@ public class CommonUtils {
           }
         case DATE:
           try {
-            return DateTimeUtils.parseDateExpressionToInt(StringUtils.trim(value));
+            return DateTimeUtils.parseDateExpressionToInt(StringUtils.trim(value), zoneId);
           } catch (Throwable e) {
             throw new NumberFormatException(
                 "data type is not consistent, input "
@@ -108,7 +109,6 @@ public class CommonUtils {
                     + " because "
                     + e.getMessage());
           }
-
         case FLOAT:
           float f;
           try {
@@ -143,8 +143,18 @@ public class CommonUtils {
                   value.substring(1, value.length() - 1), TSFileConfig.STRING_CHARSET);
             }
           }
-
           return new Binary(value, TSFileConfig.STRING_CHARSET);
+        case BYTEA:
+          if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
+              || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
+            if (value.length() == 1) {
+              return new Binary(parseByteaStringToByteArray(value));
+            } else {
+              return new Binary(
+                  parseByteaStringToByteArray(value.substring(1, value.length() - 1)));
+            }
+          }
+          return new Binary(parseByteaStringToByteArray(value));
         default:
           throw new QueryProcessException("Unsupported data type:" + dataType);
       }
@@ -235,31 +245,6 @@ public class CommonUtils {
         break;
     }
     return value;
-  }
-
-  @TestOnly
-  public static Object parseValueForTest(TSDataType dataType, String value)
-      throws QueryProcessException {
-    try {
-      switch (dataType) {
-        case BOOLEAN:
-          return parseBoolean(value);
-        case INT32:
-          return Integer.parseInt(value);
-        case INT64:
-          return Long.parseLong(value);
-        case FLOAT:
-          return Float.parseFloat(value);
-        case DOUBLE:
-          return Double.parseDouble(value);
-        case TEXT:
-          return new Binary(value, TSFileConfig.STRING_CHARSET);
-        default:
-          throw new QueryProcessException("Unsupported data type:" + dataType);
-      }
-    } catch (NumberFormatException e) {
-      throw new QueryProcessException(e.getMessage());
-    }
   }
 
   private static boolean parseBoolean(String value) throws QueryProcessException {
@@ -373,6 +358,90 @@ public class CommonUtils {
     }
     return status;
   }
+
+  /**
+   * Converts a string into a byte array based on the encoding format (hex or escape).
+   *
+   * @param input The input string.
+   * @return The encoded byte array.
+   * @throws IllegalArgumentException if input is invalid.
+   */
+  public static byte[] parseByteaStringToByteArray(String input) throws IllegalArgumentException {
+    try {
+      BinaryLiteral binaryLiteral = new BinaryLiteral(input);
+      return binaryLiteral.getValues();
+    } catch (SemanticException e) {
+      throw new IllegalArgumentException(e.getMessage());
+    }
+  }
+  //
+  //  /**
+  //   * Decodes a hex-encoded string to a byte array.
+  //   *
+  //   * @param hexString The hex string (without "\\x" prefix).
+  //   * @return The corresponding byte array.
+  //   * @throws IllegalArgumentException if the hex string is invalid.
+  //   */
+  //  private static byte[] decodeHexString(String hexString) throws IllegalArgumentException {
+  //    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+  //    for (int i = 2; i < hexString.length(); i += 2) {
+  //      if (i + 1 >= hexString.length()) {
+  //        throw new IllegalArgumentException("Invalid hex string length");
+  //      }
+  //      try {
+  //        int value = Integer.parseInt(hexString.substring(i, i + 2), 16);
+  //        outputStream.write(value);
+  //      } catch (NumberFormatException e) {
+  //        throw new IllegalArgumentException("Invalid hex character encountered");
+  //      }
+  //    }
+  //    return outputStream.toByteArray();
+  //  }
+  //
+  //  /**
+  //   * Decodes a string with escape sequences to a byte array.
+  //   *
+  //   * @param escapeString The string containing escape sequences.
+  //   * @return The corresponding byte array.
+  //   * @throws IllegalArgumentException if the escape string is invalid.
+  //   */
+  //  private static byte[] decodeEscapeString(String escapeString, Charset charset)
+  //      throws IllegalArgumentException {
+  //    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+  //    for (int i = 0; i < escapeString.length(); i++) {
+  //      char c = escapeString.charAt(i);
+  //      if (c == '\\') {
+  //        // try to decode \\ firstly
+  //        if (i + 1 >= escapeString.length()) {
+  //          throw new IllegalArgumentException("Invalid or incomplete escape sequence");
+  //        }
+  //        c = escapeString.charAt(i + 1);
+  //        if (c == '\\') {
+  //          outputStream.write('\\');
+  //          i++;
+  //          continue;
+  //        }
+  //        // try to decode \xxx
+  //        if (i + 3 >= escapeString.length() || !Character.isDigit(escapeString.charAt(i + 1))) {
+  //          throw new IllegalArgumentException("Invalid or incomplete escape sequence");
+  //        }
+  //        String octal = escapeString.substring(i + 1, i + 4);
+  //        try {
+  //          int value = Integer.parseInt(octal, 8);
+  //          if (value < 0 || value > 255) {
+  //            throw new IllegalArgumentException("Escape value out of range");
+  //          }
+  //          outputStream.write(value);
+  //          i += 3;
+  //        } catch (NumberFormatException e) {
+  //          throw new IllegalArgumentException("Invalid octal value");
+  //        }
+  //      } else {
+  //        outputStream.write(c);
+  //      }
+  //    }
+  //    return outputStream.toByteArray();
+  //  }
 
   private static void badUse(Exception e) {
     System.out.println("node-tool: " + e.getMessage());

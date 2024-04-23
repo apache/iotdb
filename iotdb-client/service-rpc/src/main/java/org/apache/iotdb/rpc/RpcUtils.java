@@ -56,7 +56,7 @@ public class RpcUtils {
 
   public static final long MIN_SHRINK_INTERVAL = 60_000L;
 
-  private static final LocalDate BASE_DATE = LocalDate.of(1000, 1, 1);
+  private static final LocalDate BASE_DATE = LocalDate.of(0, 1, 1);
   private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
   private RpcUtils() {
@@ -317,6 +317,16 @@ public class RpcUtils {
       }
       return formatDatetimeStr(datetime, digits);
     }
+  }
+
+  public static String parseByteaByteArrayToString(byte[] input) {
+    StringBuilder hexString = new StringBuilder("0x");
+    if (input != null) {
+      for (byte b : input) {
+        hexString.append(String.format("%02x", b));
+      }
+    }
+    return hexString.toString();
   }
 
   public static TSStatus squashResponseStatusList(List<TSStatus> responseStatusList) {

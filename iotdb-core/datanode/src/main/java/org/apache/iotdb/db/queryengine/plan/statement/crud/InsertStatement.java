@@ -43,7 +43,7 @@ public class InsertStatement extends Statement {
   private long[] times;
   private String[] measurementList;
 
-  private List<String[]> valuesList;
+  private List<Object[]> valuesList;
 
   private boolean isAligned;
 
@@ -90,11 +90,11 @@ public class InsertStatement extends Statement {
     this.measurementList = measurementList;
   }
 
-  public List<String[]> getValuesList() {
+  public List<Object[]> getValuesList() {
     return valuesList;
   }
 
-  public void setValuesList(List<String[]> valuesList) {
+  public void setValuesList(List<Object[]> valuesList) {
     this.valuesList = valuesList;
   }
 

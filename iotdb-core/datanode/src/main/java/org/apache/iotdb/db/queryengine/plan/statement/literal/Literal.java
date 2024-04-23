@@ -35,7 +35,8 @@ public abstract class Literal extends StatementNode {
     DOUBLE,
     LONG,
     STRING,
-    NULL
+    NULL,
+    BINARY
   }
 
   public static Literal deserialize(ByteBuffer byteBuffer) {

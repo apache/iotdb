@@ -253,6 +253,35 @@ public class ExpressionTypeAnalyzer {
               leftExpressionString, leftExpressionDataType, TSDataType.TEXT);
           checkInputExpressionDataType(
               rightExpressionString, rightExpressionDataType, TSDataType.TEXT);
+        } else if (TSDataType.BYTEA.equals(leftExpressionDataType)
+            || TSDataType.BYTEA.equals(rightExpressionDataType)) {
+          checkInputExpressionDataType(
+              leftExpressionString, leftExpressionDataType, TSDataType.BYTEA);
+          checkInputExpressionDataType(
+              rightExpressionString, rightExpressionDataType, TSDataType.BYTEA);
+        } else if (TSDataType.DATE.equals(leftExpressionDataType)
+            || TSDataType.DATE.equals(rightExpressionDataType)) {
+          checkInputExpressionDataType(
+              leftExpressionString,
+              leftExpressionDataType,
+              TSDataType.DATE,
+              TSDataType.INT32,
+              TSDataType.INT64);
+          checkInputExpressionDataType(
+              rightExpressionString,
+              rightExpressionDataType,
+              TSDataType.DATE,
+              TSDataType.INT32,
+              TSDataType.INT64);
+        } else if (TSDataType.TIMESTAMP.equals(leftExpressionDataType)
+            || TSDataType.TIMESTAMP.equals(rightExpressionDataType)) {
+          checkInputExpressionDataType(
+              leftExpressionString, leftExpressionDataType, TSDataType.TIMESTAMP, TSDataType.INT64);
+          checkInputExpressionDataType(
+              rightExpressionString,
+              rightExpressionDataType,
+              TSDataType.TIMESTAMP,
+              TSDataType.INT64);
         } else {
           checkInputExpressionDataType(
               leftExpressionString,
