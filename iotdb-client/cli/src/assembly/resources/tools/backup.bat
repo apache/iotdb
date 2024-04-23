@@ -99,7 +99,7 @@ if not exist "%logsDir%" (
     mkdir "%logsDir%"
 )
 
-"%JAVA_HOME%\bin\java" -DIOTDB_HOME=!IOTDB_HOME! !JAVA_OPTS! -cp !CLASSPATH! !MAIN_CLASS! %* > %logsDir%\iotdb-data-back.log 2>&1
+start /B "" cmd /C "%JAVA_HOME%\bin\java -DIOTDB_HOME=!IOTDB_HOME! !JAVA_OPTS! -cp !CLASSPATH! !MAIN_CLASS! %* > %logsDir%\iotdb-data-back.log 2>&1"
 exit /b
 
 :checkIfIOTDBProcess

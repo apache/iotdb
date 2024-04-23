@@ -131,4 +131,4 @@ if [ ! -d "$logs_dir" ]; then
     mkdir "$logs_dir"
 fi
 
-"$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@" > ${logs_dir}/iotdb-data-back.log &
+nohup "$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@" > ${logs_dir}/iotdb-data-back.log 2>&1 &
