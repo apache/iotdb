@@ -139,7 +139,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   }
 
   /** Balance cluster RegionGroup leader distribution through configured algorithm. */
-  private synchronized void balanceRegionLeader() {
+  public synchronized void balanceRegionLeader() {
     if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION) {
       balanceRegionLeader(TConsensusGroupType.SchemaRegion, SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS);
     }
@@ -241,7 +241,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   }
 
   /** Balance cluster RegionGroup route priority through configured algorithm. */
-  private synchronized void balanceRegionPriority() {
+  public synchronized void balanceRegionPriority() {
     priorityMapLock.writeLock().lock();
     AtomicBoolean needBroadcast = new AtomicBoolean(false);
     Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> differentPriorityMap =
