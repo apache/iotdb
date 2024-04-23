@@ -151,17 +151,17 @@ public class RepairDataFileScanUtil {
           measurementChunkMetadataListMapIterator.next();
       for (Map.Entry<String, List<ChunkMetadata>> measurementChunkMetadataListEntry :
           measurementChunkMetadataListMap.entrySet()) {
-        String measurement =
+        String path =
             device + TsFileConstant.PATH_SEPARATOR + measurementChunkMetadataListEntry.getKey();
         List<ChunkMetadata> chunkMetadataList = measurementChunkMetadataListEntry.getValue();
-        checkSingleNonAlignedSeries(reader, measurement, chunkMetadataList);
+        checkSingleNonAlignedSeries(reader, path, chunkMetadataList);
         previousTime = Long.MIN_VALUE;
       }
     }
   }
 
   private void checkSingleNonAlignedSeries(
-      TsFileSequenceReader reader, String measurement, List<ChunkMetadata> chunkMetadataList)
+      TsFileSequenceReader reader, String path, List<ChunkMetadata> chunkMetadataList)
       throws IOException {
     for (ChunkMetadata chunkMetadata : chunkMetadataList) {
       if (chunkMetadata == null || chunkMetadata.getStatistics().getCount() == 0) {
@@ -190,7 +190,7 @@ public class RepairDataFileScanUtil {
                 TSDataType.INT64);
         while (timeDecoder.hasNext(timeBuffer)) {
           long currentTime = timeDecoder.readLong(timeBuffer);
-          checkPreviousTimeAndUpdate(measurement, currentTime);
+          checkPreviousTimeAndUpdate(path, currentTime);
         }
       }
     }
