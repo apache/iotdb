@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.udf.api;
 
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.udf.api.customizer.config.UDAFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.utils.ResultValue;
+
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.utils.BitMap;
 
 public interface UDAF extends UDF {
   void beforeStart(UDFParameters parameters, UDAFConfigurations configurations);

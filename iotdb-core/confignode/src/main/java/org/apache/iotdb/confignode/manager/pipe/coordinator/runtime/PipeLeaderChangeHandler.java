@@ -29,7 +29,8 @@ import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatist
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.util.HashMap;
 import java.util.Map;

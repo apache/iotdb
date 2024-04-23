@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
-import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 
 import java.util.function.Supplier;
 

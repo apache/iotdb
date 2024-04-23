@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.concurrent.GuardedBy;
 

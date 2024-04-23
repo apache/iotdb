@@ -47,7 +47,7 @@ public class SerializedEnrichedEvent {
   private ByteBuffer byteBuffer; // serialized EnrichedTablets
 
   public SerializedEnrichedEvent(
-      EnrichedTablets enrichedTablets, List<EnrichedEvent> enrichedEvents) {
+      final EnrichedTablets enrichedTablets, final List<EnrichedEvent> enrichedEvents) {
     this.enrichedTablets = enrichedTablets;
     this.enrichedEvents = enrichedEvents;
     this.lastPolledTimestamp = INVALID_TIMESTAMP;
@@ -66,7 +66,7 @@ public class SerializedEnrichedEvent {
       try {
         byteBuffer = PipeSubscribePollResp.serializeEnrichedTablets(enrichedTablets);
         return true;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         LOGGER.warn(
             "Subscription: something unexpected happened when serializing EnrichedTablets {}, exception is {}",
             byteBuffer,
@@ -93,8 +93,8 @@ public class SerializedEnrichedEvent {
   }
 
   public void decreaseReferenceCount() {
-    for (EnrichedEvent enrichedEvent : enrichedEvents) {
-      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
+      enrichedEvent.decreaseReferenceCount(SerializedEnrichedEvent.class.getName(), true);
     }
   }
 

@@ -80,7 +80,7 @@ public class SettleTask extends WrappedRunnable {
       }
     } catch (IllegalPathException
         | IOException
-        | org.apache.iotdb.tsfile.exception.write.WriteProcessException e) {
+        | org.apache.tsfile.exception.write.WriteProcessException e) {
       resourceToBeSettled.readUnlock();
       throw new WriteProcessException(
           String.format(

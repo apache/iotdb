@@ -19,18 +19,17 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
-import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
-import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
-import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
-
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.statistics.IntegerStatistics;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.file.metadata.statistics.TimeStatistics;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.tsfile.read.filter.factory.ValueFilterApi;
+import org.apache.tsfile.read.reader.series.PaginationController;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;

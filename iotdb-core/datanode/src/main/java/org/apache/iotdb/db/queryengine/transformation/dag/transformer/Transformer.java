@@ -22,7 +22,8 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
-import org.apache.iotdb.tsfile.utils.Binary;
+
+import org.apache.tsfile.utils.Binary;
 
 import java.io.IOException;
 

@@ -30,8 +30,9 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionConnection;
 import org.apache.iotdb.session.subscription.model.Subscription;
 import org.apache.iotdb.session.subscription.model.Topic;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
+
+import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.read.common.RowRecord;
 
 import java.time.ZoneId;
 import java.util.HashSet;

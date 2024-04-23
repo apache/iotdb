@@ -21,7 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
 import java.util.Map;

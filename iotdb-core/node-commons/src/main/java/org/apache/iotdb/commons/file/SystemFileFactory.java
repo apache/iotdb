@@ -20,9 +20,9 @@
 package org.apache.iotdb.commons.file;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.fileSystem.FSType;
 
 import java.io.File;
 import java.io.IOException;

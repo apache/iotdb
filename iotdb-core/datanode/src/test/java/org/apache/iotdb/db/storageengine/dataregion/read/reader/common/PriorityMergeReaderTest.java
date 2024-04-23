@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-
+import org.apache.tsfile.read.TimeValuePair;
 import org.junit.Assert;
 import org.junit.Test;
 

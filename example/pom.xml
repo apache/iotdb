@@ -33,7 +33,6 @@
         <module>kafka</module>
         <module>rocketmq</module>
         <module>session</module>
-        <module>tsfile</module>
         <module>jdbc</module>
         <module>hadoop</module>
         <module>flink</module>

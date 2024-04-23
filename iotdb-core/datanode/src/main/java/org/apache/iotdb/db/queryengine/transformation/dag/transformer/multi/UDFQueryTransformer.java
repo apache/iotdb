@@ -22,7 +22,8 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.tsfile.enums.TSDataType;
 
 public abstract class UDFQueryTransformer extends Transformer {
 

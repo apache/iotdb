@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -19,12 +19,11 @@
 
 package org.apache.iotdb.flink.tsfile;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.FileInputSplit;
 import org.apache.flink.types.Row;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.junit.Test;
 
 import java.io.IOException;

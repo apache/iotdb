@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.fill;
 
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 public interface IFill {
 

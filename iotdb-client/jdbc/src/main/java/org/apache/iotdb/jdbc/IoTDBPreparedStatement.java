@@ -20,10 +20,10 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -880,7 +880,12 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setString(int parameterIndex, String x) {
-    this.parameters.put(parameterIndex, x);
+    // if the sql is insert and the value is not a string literal, add double quotes
+    if (sql.trim().toUpperCase().startsWith("INSERT") && !x.startsWith("\"") && !x.endsWith("'")) {
+      this.parameters.put(parameterIndex, "\"" + x + "\"");
+    } else {
+      this.parameters.put(parameterIndex, x);
+    }
   }
 
   @Override

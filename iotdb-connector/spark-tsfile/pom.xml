@@ -30,14 +30,14 @@
     <name>IoTDB: Connector: Apache Spark TSFile</name>
     <dependencies>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>common-api</artifactId>
-            <version>1.3.2-SNAPSHOT</version>
+            <groupId>org.apache.tsfile</groupId>
+            <artifactId>common</artifactId>
+            <version>${tsfile.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
+            <groupId>org.apache.tsfile</groupId>
             <artifactId>tsfile</artifactId>
-            <version>1.3.2-SNAPSHOT</version>
+            <version>${tsfile.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
