@@ -34,7 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Comparator;
-import java.util.PriorityQueue;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -59,7 +59,7 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
 
     // TODO: use DataRegionStateMachine to impl it. here will invoke @sc's impl interface
     // TODO: check memory when logging wal
-    // TODO: check disk(read-only etc.) when writing tsfile
+    // TODO: check disk(read-only etc.) when writing tsFile
     return null;
   }
 
@@ -85,9 +85,10 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
    * although events can arrive receiver in a random sequence.
    */
   private class RequestExecutor {
-    // A min heap that buffers transfer request, whose length is not larger than
-    // PIPE_CONSENSUS_EVENT_BUFFER_SIZE
-    private final PriorityQueue<WrappedRequest> reqBuffer;
+    // An ordered set that buffers transfer request, whose length is not larger than
+    // PIPE_CONSENSUS_EVENT_BUFFER_SIZE.
+    // Here we use set is to avoid duplicate events being received in some special cases
+    private final TreeSet<WrappedRequest> reqBuffer;
     private final Lock lock;
     private final Condition condition;
     private int onSyncedCommitIndex = -1;
@@ -95,8 +96,7 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
 
     public RequestExecutor() {
       reqBuffer =
-          new PriorityQueue<>(
-              COMMON_CONFIG.getPipeConsensusEventBufferSize(),
+          new TreeSet<>(
               Comparator.comparingInt(WrappedRequest::getRebootTime)
                   .thenComparingInt(WrappedRequest::getCommitIndex));
       lock = new ReentrantLock();
@@ -123,33 +123,34 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
         return new TPipeConsensusTransferResp(status);
       }
       try {
-        reqBuffer.offer(wrappedReq);
+        reqBuffer.add(wrappedReq);
         // Judge whether connector has rebooted or not, if the rebootTimes increases compared to
         // connectorRebootTimes, need to reset receiver because connector has been restarted.
         if (wrappedReq.getRebootTime() > connectorRebootTimes) {
           reset(connectorRebootTimes);
-          // TODO：如果发送端重启，接收端堆积的请求怎么办？考虑 reset 时的堆积请求
-          // TODO: 如：1,1 1,2 1,3 1,4 1,5 / 1,6 1,7 1,8（follwer 得想办法知道 leader 是否发满了/前置请求是否发完了）
-          // TODO: RPC 60s 超时问题；如果存储引擎等非共识层写入超时，会导致已接收的副本重发，从而导致堆积。
+          // TODO：如果发送端重启，接收端堆积的请求怎么办？考虑 reset 时的堆积请求：thrift service 添加 deleteContext 释放资源。
+          // TODO: 如：1,1 1,2 1,3 1,4 1,5 / 1,6 1,7 1,8（follower 得想办法知道 leader
+          // 是否发满了/前置请求是否发完了）：发送端等待事件超时后尝试握手
+          // TODO: RPC 60s 超时问题；如果存储引擎等非共识层写入超时，会导致已接收的副本重发，从而导致堆积：存储端做去重
         }
 
         // Polling to process
         while (true) {
-          if (reqBuffer.peek().equals(req)
+          if (reqBuffer.first().equals(wrappedReq)
               && wrappedReq.getCommitIndex() == onSyncedCommitIndex + 1) {
             // If current req is supposed to be process, load this event through
             // DataRegionStateMachine.
             TPipeConsensusTransferResp resp = loadEvent(req);
-            reqBuffer.remove();
+            reqBuffer.pollFirst();
             onSyncedCommitIndex++;
             return resp;
           }
 
           if (reqBuffer.size() >= COMMON_CONFIG.getPipeConsensusEventBufferSize()) {
             // If the reqBuffer is full and its peek is hold by current thread, load this event.
-            if (reqBuffer.peek().equals(req)) {
+            if (reqBuffer.first().equals(wrappedReq)) {
               TPipeConsensusTransferResp resp = loadEvent(req);
-              reqBuffer.remove();
+              reqBuffer.pollFirst();
               onSyncedCommitIndex = wrappedReq.getCommitIndex();
               return resp;
             } else {
@@ -203,8 +204,10 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
     final int commitIndex;
 
     public WrappedRequest(TPipeConsensusTransferReq req) {
-      this.rebootTime = req.rebootTimes;
-      this.commitIndex = req.commitIndex;
+      //      this.rebootTime = req.rebootTimes;
+      //      this.commitIndex = req.commitIndex;
+      this.rebootTime = 0;
+      this.commitIndex = 0;
     }
 
     public int getRebootTime() {
@@ -213,6 +216,18 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
 
     public int getCommitIndex() {
       return commitIndex;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      WrappedRequest that = (WrappedRequest) o;
+      return rebootTime == that.rebootTime && commitIndex == that.commitIndex;
     }
   }
 }

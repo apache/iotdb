@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.reques
 
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
+import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -40,6 +41,7 @@ public class PipeConsensusTabletBatchReq extends TPipeConsensusTransferReq {
   private final transient List<PipeConsensusTabletBinaryReq> binaryReqs = new ArrayList<>();
   private final transient List<PipeConsensusTabletInsertNodeReq> insertNodeReqs = new ArrayList<>();
   private final transient List<PipeConsensusTabletRawReq> tabletReqs = new ArrayList<>();
+  private final transient List<TPipeConsensusTransferReq> transferReqs = new ArrayList<>();
 
   private PipeConsensusTabletBatchReq() {
     // do nothing
@@ -52,7 +54,8 @@ public class PipeConsensusTabletBatchReq extends TPipeConsensusTransferReq {
   public static PipeConsensusTabletBatchReq toTPipeConsensusTransferReq(
       List<ByteBuffer> binaryBuffers,
       List<ByteBuffer> insertNodeBuffers,
-      List<ByteBuffer> tabletBuffers)
+      List<ByteBuffer> tabletBuffers,
+      List<TCommitId> commitIds)
       throws IOException {
     final PipeConsensusTabletBatchReq batchReq = new PipeConsensusTabletBatchReq();
 

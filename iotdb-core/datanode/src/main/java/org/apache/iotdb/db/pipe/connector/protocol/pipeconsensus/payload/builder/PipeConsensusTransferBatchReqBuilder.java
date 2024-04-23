@@ -20,7 +20,11 @@
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBatchReq;
+import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
+import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletRawReq;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
@@ -51,6 +55,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_DELAY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_SIZE_KEY;
 
+// TODO: 改造 Batch 协议，使之成为打包 event 粒度发送，并改造接收端返回结果
 public abstract class PipeConsensusTransferBatchReqBuilder implements AutoCloseable {
 
   private static final Logger LOGGER =
@@ -58,11 +63,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
 
   protected final List<Event> events = new ArrayList<>();
   protected final List<Long> requestCommitIds = new ArrayList<>();
-
-  protected final List<ByteBuffer> binaryBuffers = new ArrayList<>();
-  protected final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
-  protected final List<ByteBuffer> tabletBuffers = new ArrayList<>();
-
+  protected final List<TPipeConsensusTransferReq> batchReqs = new ArrayList<>();
   // limit in delayed time
   protected final int maxDelayInMs;
   protected long firstEventProcessingTime = Long.MIN_VALUE;
@@ -143,9 +144,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
   }
 
   public synchronized void onSuccess() {
-    binaryBuffers.clear();
-    insertNodeBuffers.clear();
-    tabletBuffers.clear();
+    batchReqs.clear();
 
     events.clear();
     requestCommitIds.clear();
@@ -156,8 +155,9 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
   }
 
   public PipeConsensusTabletBatchReq toTPipeConsensusTransferReq() throws IOException {
-    return PipeConsensusTabletBatchReq.toTPipeConsensusTransferReq(
-        binaryBuffers, insertNodeBuffers, tabletBuffers);
+    return null;
+    //    return PipeConsensusTabletBatchReq.toTPipeConsensusTransferReq(
+    //        binaryBuffers, insertNodeBuffers, tabletBuffers, requestCommitIds);
   }
 
   protected long getMaxBatchSizeInBytes() {
@@ -165,7 +165,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
   }
 
   public boolean isEmpty() {
-    return binaryBuffers.isEmpty() && insertNodeBuffers.isEmpty() && tabletBuffers.isEmpty();
+    return batchReqs.isEmpty();
   }
 
   public List<Event> deepCopyEvents() {
@@ -182,12 +182,13 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
       // deserializing if possible
       final InsertNode insertNode =
           pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      // PipeConsensus will transfer binary data to TPipeConsensusTransferReq
       if (Objects.isNull(insertNode)) {
         buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
-        binaryBuffers.add(buffer);
+        batchReqs.add(PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(buffer));
       } else {
         buffer = insertNode.serializeToByteBuffer();
-        insertNodeBuffers.add(buffer);
+        batchReqs.add(PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(insertNode));
       }
     } else {
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
@@ -198,7 +199,10 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
         ReadWriteIOUtils.write(pipeRawTabletInsertionEvent.isAligned(), outputStream);
         buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
       }
-      tabletBuffers.add(buffer);
+      batchReqs.add(
+          PipeConsensusTabletRawReq.toTPipeConsensusTransferRawReq(
+              pipeRawTabletInsertionEvent.convertToTablet(),
+              pipeRawTabletInsertionEvent.isAligned()));
     }
     return buffer.limit();
   }

@@ -45,7 +45,13 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
+// TODO：改造 request，加上 commitId 和 rebootTimes
+// TODO: 改造 handler，onComplete 的优化 + onComplete 加上出队逻辑
+// TODO: 改造 batch 协议
+// TODO:
 public class PipeConsensusAsyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusAsyncConnector.class);
@@ -66,6 +72,10 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
 
   private final BlockingQueue<Event> transferBuffer =
       new LinkedBlockingDeque<>(COMMON_CONFIG.getPipeConsensusEventBufferSize());
+
+  private final AtomicBoolean isClosed = new AtomicBoolean(false);
+
+  private final AtomicInteger alreadySentEventsInTransferBuffer = new AtomicInteger(0);
 
   private PipeConsensusSyncConnector retryConnector;
 
@@ -133,6 +143,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
       // decrease reference count
       ((EnrichedEvent) event)
           .decreaseReferenceCount(PipeConsensusAsyncConnector.class.getName(), true);
+      // decrease alreadySentEventsCounts
+      alreadySentEventsInTransferBuffer.decrementAndGet();
     }
   }
 
@@ -153,8 +165,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     if (!enqueueResult) {
       throw new PipeException(ENQUEUE_EXCEPTION_MSG);
     }
-    // TODO：改造 request，加上 commitId 和 rebootTimes
-    // TODO: 改造 handler，onComplete 的优化 + onComplete 加上出队逻辑
     syncTransferQueuedEventsIfNecessary();
   }
 
@@ -228,10 +238,52 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     }
   }
 
+  /**
+   * Add failure event to retry queue.
+   *
+   * @param event event to retry
+   */
+  public synchronized void addFailureEventToRetryQueue(final Event event) {
+    if (isClosed.get()) {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
+      }
+      return;
+    }
+
+    retryEventQueue.offer(event);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Added event {} to retry queue.", event);
+    }
+  }
+
+  /**
+   * Add failure events to retry queue.
+   *
+   * @param events events to retry
+   */
+  public synchronized void addFailureEventsToRetryQueue(final Iterable<Event> events) {
+    for (final Event event : events) {
+      addFailureEventToRetryQueue(event);
+    }
+  }
+
+  public synchronized void clearRetryEventsReferenceCount() {
+    while (!retryEventQueue.isEmpty()) {
+      final Event event = retryEventQueue.poll();
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
+      }
+    }
+  }
+
   // synchronized to avoid close connector when transfer event
   @Override
   public synchronized void close() throws Exception {
+    isClosed.set(true);
+
     retryConnector.close();
+    clearRetryEventsReferenceCount();
 
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();
