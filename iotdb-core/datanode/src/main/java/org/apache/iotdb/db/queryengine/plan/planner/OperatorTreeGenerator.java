@@ -192,6 +192,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -1753,6 +1754,133 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   @Override
+  public Operator visitRawDataAggregation(
+      RawDataAggregationNode node, LocalExecutionPlanContext context) {
+    checkArgument(
+        !node.getAggregationDescriptorList().isEmpty(),
+        "Aggregation descriptorList cannot be empty");
+    Operator child = node.getChild().accept(this, context);
+    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    List<Aggregator> aggregators = new ArrayList<>();
+    Map<String, List<InputLocation>> layout = makeLayout(node);
+    List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
+    for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
+      List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
+      aggregators.add(
+          new Aggregator(
+              AccumulatorFactory.createAccumulator(
+                  descriptor.getAggregationFuncName(),
+                  descriptor.getAggregationType(),
+                  descriptor.getInputExpressions().stream()
+                      .map(x -> context.getTypeProvider().getType(x.getExpressionString()))
+                      .collect(Collectors.toList()),
+                  descriptor.getInputExpressions(),
+                  descriptor.getInputAttributes(),
+                  ascending,
+                  descriptor.getStep().isInputRaw()),
+              descriptor.getStep(),
+              inputLocationList));
+    }
+
+    GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
+    GroupByParameter groupByParameter = node.getGroupByParameter();
+
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                RawDataAggregationOperator.class.getSimpleName());
+
+    ITimeRangeIterator timeRangeIterator =
+        initTimeRangeIterator(groupByTimeParameter, ascending, true);
+    long maxReturnSize =
+        calculateMaxAggregationResultSize(
+            aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
+
+    // groupByParameter and groupByTimeParameter
+    if (groupByParameter != null) {
+      WindowType windowType = groupByParameter.getWindowType();
+
+      WindowParameter windowParameter;
+      switch (windowType) {
+        case VARIATION_WINDOW:
+          Expression groupByVariationExpression = node.getGroupByExpression();
+          if (groupByVariationExpression == null) {
+            throw new IllegalArgumentException("groupByVariationExpression can't be null");
+          }
+          String controlColumn = groupByVariationExpression.getExpressionString();
+          TSDataType controlColumnType = context.getTypeProvider().getType(controlColumn);
+          windowParameter =
+              new VariationWindowParameter(
+                  controlColumnType,
+                  layout.get(controlColumn).get(0).getValueColumnIndex(),
+                  node.isOutputEndTime(),
+                  ((GroupByVariationParameter) groupByParameter).isIgnoringNull(),
+                  ((GroupByVariationParameter) groupByParameter).getDelta());
+          break;
+        case CONDITION_WINDOW:
+          Expression groupByConditionExpression = node.getGroupByExpression();
+          if (groupByConditionExpression == null) {
+            throw new IllegalArgumentException("groupByConditionExpression can't be null");
+          }
+          windowParameter =
+              new ConditionWindowParameter(
+                  node.isOutputEndTime(),
+                  ((GroupByConditionParameter) groupByParameter).isIgnoringNull(),
+                  layout
+                      .get(groupByConditionExpression.getExpressionString())
+                      .get(0)
+                      .getValueColumnIndex(),
+                  ((GroupByConditionParameter) groupByParameter).getKeepExpression());
+          break;
+        case SESSION_WINDOW:
+          windowParameter =
+              new SessionWindowParameter(
+                  ((GroupBySessionParameter) groupByParameter).getTimeInterval(),
+                  node.isOutputEndTime());
+          break;
+        case COUNT_WINDOW:
+          Expression groupByCountExpression = node.getGroupByExpression();
+          if (groupByCountExpression == null) {
+            throw new IllegalArgumentException("groupByCountExpression can't be null");
+          }
+          windowParameter =
+              new CountWindowParameter(
+                  ((GroupByCountParameter) groupByParameter).getCountNumber(),
+                  layout
+                      .get(groupByCountExpression.getExpressionString())
+                      .get(0)
+                      .getValueColumnIndex(),
+                  node.isOutputEndTime(),
+                  ((GroupByCountParameter) groupByParameter).isIgnoreNull());
+          break;
+        default:
+          throw new IllegalArgumentException("Unsupported window type");
+      }
+      return new RawDataAggregationOperator(
+          operatorContext,
+          aggregators,
+          timeRangeIterator,
+          child,
+          ascending,
+          maxReturnSize,
+          windowParameter);
+    }
+
+    WindowParameter windowParameter = new TimeWindowParameter(node.isOutputEndTime());
+    return new RawDataAggregationOperator(
+        operatorContext,
+        aggregators,
+        timeRangeIterator,
+        child,
+        ascending,
+        maxReturnSize,
+        windowParameter);
+  }
+
+  @Override
   public Operator visitAggregation(AggregationNode node, LocalExecutionPlanContext context) {
     checkArgument(
         !node.getAggregationDescriptorList().isEmpty(),
@@ -1779,128 +1907,28 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               descriptor.getStep(),
               inputLocationList));
     }
-    boolean inputRaw = node.getAggregationDescriptorList().get(0).getStep().isInputRaw();
-    GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
-    GroupByParameter groupByParameter = node.getGroupByParameter();
 
-    if (inputRaw) {
-      checkArgument(children.size() == 1, "rawDataAggregateOperator can only accept one input");
-      OperatorContext operatorContext =
-          context
-              .getDriverContext()
-              .addOperatorContext(
-                  context.getNextOperatorId(),
-                  node.getPlanNodeId(),
-                  RawDataAggregationOperator.class.getSimpleName());
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                AggregationOperator.class.getSimpleName());
 
-      ITimeRangeIterator timeRangeIterator =
-          initTimeRangeIterator(groupByTimeParameter, ascending, true);
-      long maxReturnSize =
-          calculateMaxAggregationResultSize(
-              aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
+    ITimeRangeIterator timeRangeIterator =
+        initTimeRangeIterator(node.getGroupByTimeParameter(), ascending, true);
+    long maxReturnSize =
+        calculateMaxAggregationResultSize(
+            aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
 
-      // groupByParameter and groupByTimeParameter
-      if (groupByParameter != null) {
-        WindowType windowType = groupByParameter.getWindowType();
-
-        WindowParameter windowParameter;
-        switch (windowType) {
-          case VARIATION_WINDOW:
-            Expression groupByVariationExpression = node.getGroupByExpression();
-            if (groupByVariationExpression == null) {
-              throw new IllegalArgumentException("groupByVariationExpression can't be null");
-            }
-            String controlColumn = groupByVariationExpression.getExpressionString();
-            TSDataType controlColumnType = context.getTypeProvider().getType(controlColumn);
-            windowParameter =
-                new VariationWindowParameter(
-                    controlColumnType,
-                    layout.get(controlColumn).get(0).getValueColumnIndex(),
-                    node.isOutputEndTime(),
-                    ((GroupByVariationParameter) groupByParameter).isIgnoringNull(),
-                    ((GroupByVariationParameter) groupByParameter).getDelta());
-            break;
-          case CONDITION_WINDOW:
-            Expression groupByConditionExpression = node.getGroupByExpression();
-            if (groupByConditionExpression == null) {
-              throw new IllegalArgumentException("groupByConditionExpression can't be null");
-            }
-            windowParameter =
-                new ConditionWindowParameter(
-                    node.isOutputEndTime(),
-                    ((GroupByConditionParameter) groupByParameter).isIgnoringNull(),
-                    layout
-                        .get(groupByConditionExpression.getExpressionString())
-                        .get(0)
-                        .getValueColumnIndex(),
-                    ((GroupByConditionParameter) groupByParameter).getKeepExpression());
-            break;
-          case SESSION_WINDOW:
-            windowParameter =
-                new SessionWindowParameter(
-                    ((GroupBySessionParameter) groupByParameter).getTimeInterval(),
-                    node.isOutputEndTime());
-            break;
-          case COUNT_WINDOW:
-            Expression groupByCountExpression = node.getGroupByExpression();
-            if (groupByCountExpression == null) {
-              throw new IllegalArgumentException("groupByCountExpression can't be null");
-            }
-            windowParameter =
-                new CountWindowParameter(
-                    ((GroupByCountParameter) groupByParameter).getCountNumber(),
-                    layout
-                        .get(groupByCountExpression.getExpressionString())
-                        .get(0)
-                        .getValueColumnIndex(),
-                    node.isOutputEndTime(),
-                    ((GroupByCountParameter) groupByParameter).isIgnoreNull());
-            break;
-          default:
-            throw new IllegalArgumentException("Unsupported window type");
-        }
-        return new RawDataAggregationOperator(
-            operatorContext,
-            aggregators,
-            timeRangeIterator,
-            children.get(0),
-            ascending,
-            maxReturnSize,
-            windowParameter);
-      }
-
-      WindowParameter windowParameter = new TimeWindowParameter(node.isOutputEndTime());
-      return new RawDataAggregationOperator(
-          operatorContext,
-          aggregators,
-          timeRangeIterator,
-          children.get(0),
-          ascending,
-          maxReturnSize,
-          windowParameter);
-    } else {
-      OperatorContext operatorContext =
-          context
-              .getDriverContext()
-              .addOperatorContext(
-                  context.getNextOperatorId(),
-                  node.getPlanNodeId(),
-                  AggregationOperator.class.getSimpleName());
-
-      ITimeRangeIterator timeRangeIterator =
-          initTimeRangeIterator(groupByTimeParameter, ascending, true);
-      long maxReturnSize =
-          calculateMaxAggregationResultSize(
-              aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
-
-      return new AggregationOperator(
-          operatorContext,
-          aggregators,
-          timeRangeIterator,
-          children,
-          node.isOutputEndTime(),
-          maxReturnSize);
-    }
+    return new AggregationOperator(
+        operatorContext,
+        aggregators,
+        timeRangeIterator,
+        children,
+        node.isOutputEndTime(),
+        maxReturnSize);
   }
 
   private List<InputLocation[]> calcInputLocationList(

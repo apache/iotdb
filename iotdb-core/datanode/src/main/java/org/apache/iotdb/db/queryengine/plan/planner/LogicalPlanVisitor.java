@@ -18,18 +18,12 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
-import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -95,8 +89,6 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.apache.commons.lang3.StringUtils;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -105,7 +97,6 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 /**
  * This visitor is used to generate a logical plan for the statement and returns the {@link
@@ -179,7 +170,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     analysis.getDeviceToGroupByExpression() != null
                         ? analysis.getDeviceToGroupByExpression().get(deviceName)
                         : null,
-                    analysis.getDeviceViewInputIndexesMap().get(deviceName),
                     context));
         // order by device, expression, push down sortOperator
         if (queryStatement.needPushDownSort()) {
@@ -210,7 +200,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   analysis.getWhereExpression(),
                   analysis.getAggregationExpressions(),
                   analysis.getGroupByExpression(),
-                  null,
                   context));
     }
 
@@ -255,7 +244,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       Expression whereExpression,
       Set<Expression> aggregationExpressions,
       Expression groupByExpression,
-      List<Integer> deviceViewInputIndexes,
       MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
     if (aggregationExpressions == null) {
@@ -275,96 +263,56 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   queryStatement.getResultTimeOrder());
     } else {
       // aggregation query
-      boolean isRawDataSource =
-          analysis.hasValueFilter()
-              || analysis.hasGroupByParameter()
-              || needTransform(sourceTransformExpressions)
-              || cannotUseStatistics(aggregationExpressions, sourceTransformExpressions);
-      if (queryStatement.isOutputEndTime()) {
-        context.getTypeProvider().setType(ENDTIME, TSDataType.INT64);
-      }
-      AggregationStep curStep;
-      if (isRawDataSource) {
-        planBuilder =
-            planBuilder
-                .planRawDataSource(
-                    sourceExpressions,
-                    queryStatement.getResultTimeOrder(),
-                    0,
-                    0,
-                    analysis.isLastLevelUseWildcard())
-                .planWhereAndSourceTransform(
-                    whereExpression,
-                    sourceTransformExpressions,
-                    queryStatement.isGroupByTime(),
-                    queryStatement.getResultTimeOrder());
+      planBuilder =
+          planBuilder
+              .planRawDataSource(
+                  sourceExpressions,
+                  queryStatement.getResultTimeOrder(),
+                  0,
+                  0,
+                  analysis.isLastLevelUseWildcard())
+              .planWhereAndSourceTransform(
+                  whereExpression,
+                  sourceTransformExpressions,
+                  queryStatement.isGroupByTime(),
+                  queryStatement.getResultTimeOrder());
 
-        boolean outputPartial =
-            queryStatement.isGroupByLevel()
-                || (queryStatement.isGroupByTime()
-                    && analysis.getGroupByTimeParameter().hasOverlap());
-        curStep = outputPartial ? AggregationStep.PARTIAL : AggregationStep.SINGLE;
+      boolean outputPartial =
+          queryStatement.isGroupByLevel()
+              || (queryStatement.isGroupByTime()
+                  && analysis.getGroupByTimeParameter().hasOverlap());
+      AggregationStep curStep = outputPartial ? AggregationStep.PARTIAL : AggregationStep.SINGLE;
+      planBuilder =
+          planBuilder.planRawDataAggregation(
+              aggregationExpressions,
+              groupByExpression,
+              analysis.getGroupByTimeParameter(),
+              analysis.getGroupByParameter(),
+              queryStatement.isOutputEndTime(),
+              curStep,
+              queryStatement.getResultTimeOrder());
+
+      if (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap()) {
+        curStep =
+            queryStatement.isGroupByLevel() ? AggregationStep.INTERMEDIATE : AggregationStep.FINAL;
         planBuilder =
-            planBuilder.planAggregation(
+            planBuilder.planSlidingWindowAggregation(
                 aggregationExpressions,
-                groupByExpression,
                 analysis.getGroupByTimeParameter(),
-                analysis.getGroupByParameter(),
-                queryStatement.isOutputEndTime(),
                 curStep,
                 queryStatement.getResultTimeOrder());
+      }
 
-        if (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap()) {
-          curStep =
-              queryStatement.isGroupByLevel()
-                  ? AggregationStep.INTERMEDIATE
-                  : AggregationStep.FINAL;
-          planBuilder =
-              planBuilder.planSlidingWindowAggregation(
-                  aggregationExpressions,
-                  analysis.getGroupByTimeParameter(),
-                  curStep,
-                  queryStatement.getResultTimeOrder());
-        }
-
-        if (queryStatement.isGroupByLevel()) {
-          planBuilder =
-              planBuilder.planGroupByLevel(
-                  analysis.getCrossGroupByExpressions(),
-                  analysis.getGroupByTimeParameter(),
-                  queryStatement.getResultTimeOrder());
-        }
-      } else {
-        curStep =
-            (analysis.getCrossGroupByExpressions() != null
-                    || (analysis.getGroupByTimeParameter() != null
-                        && analysis.getGroupByTimeParameter().hasOverlap()))
-                ? AggregationStep.PARTIAL
-                : AggregationStep.SINGLE;
-
+      if (queryStatement.isGroupByLevel()) {
         planBuilder =
-            deviceViewInputIndexes == null
-                ? planBuilder.planAggregationSource(
-                    curStep,
-                    queryStatement.getResultTimeOrder(),
-                    analysis.getGroupByTimeParameter(),
-                    aggregationExpressions,
-                    sourceTransformExpressions,
-                    analysis.getCrossGroupByExpressions(),
-                    analysis.getTagKeys(),
-                    analysis.getTagValuesToGroupedTimeseriesOperands())
-                : planBuilder.planAggregationSourceWithIndexAdjust(
-                    curStep,
-                    queryStatement.getResultTimeOrder(),
-                    analysis.getGroupByTimeParameter(),
-                    aggregationExpressions,
-                    sourceTransformExpressions,
-                    analysis.getCrossGroupByExpressions(),
-                    deviceViewInputIndexes,
-                    queryStatement.isOutputEndTime());
+            planBuilder.planGroupByLevel(
+                analysis.getCrossGroupByExpressions(),
+                analysis.getGroupByTimeParameter(),
+                queryStatement.getResultTimeOrder());
       }
 
       if (queryStatement.isGroupByTime() && queryStatement.isOutputEndTime()) {
+        context.getTypeProvider().setType(ENDTIME, TSDataType.INT64);
         planBuilder =
             planBuilder.planEndTimeColumnInject(
                 analysis.getGroupByTimeParameter(),
@@ -393,55 +341,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     }
 
     return 0;
-  }
-
-  private boolean needTransform(Set<Expression> expressions) {
-    for (Expression expression : expressions) {
-      if (ExpressionAnalyzer.checkIsNeedTransform(expression)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private boolean cannotUseStatistics(
-      Set<Expression> expressions, Set<Expression> sourceTransformExpressions) {
-    for (Expression expression : expressions) {
-
-      if (expression instanceof FunctionExpression) {
-        FunctionExpression functionExpression = (FunctionExpression) expression;
-        // Disable statistics optimization of UDAF for now
-        if (functionExpression.isExternalAggregationFunctionExpression()) {
-          return true;
-        }
-
-        if (COUNT_TIME.equalsIgnoreCase(functionExpression.getFunctionName())) {
-          String alignedDeviceId = "";
-          for (Expression countTimeExpression : sourceTransformExpressions) {
-            TimeSeriesOperand ts = (TimeSeriesOperand) countTimeExpression;
-            if (!(ts.getPath() instanceof AlignedPath
-                || ((MeasurementPath) ts.getPath()).isUnderAlignedEntity())) {
-              return true;
-            }
-            if (StringUtils.isEmpty(alignedDeviceId)) {
-              alignedDeviceId = ts.getPath().getDevice();
-            } else if (!alignedDeviceId.equalsIgnoreCase(ts.getPath().getDevice())) {
-              // count_time from only one aligned device can use AlignedSeriesAggScan
-              return true;
-            }
-          }
-          return false;
-        }
-
-        if (!BuiltinAggregationFunction.canUseStatistics(functionExpression.getFunctionName())) {
-          return true;
-        }
-      } else {
-        throw new IllegalArgumentException(
-            String.format("Invalid Aggregation Expression: %s", expression.getExpressionString()));
-      }
-    }
-    return false;
   }
 
   @Override
