@@ -98,6 +98,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.commons.utils.FileUtils.humanReadableByteCountSI;
+
 public class IoTConsensusServerImpl {
 
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
@@ -305,7 +307,7 @@ public class IoTConsensusServerImpl {
                 .append("\n")
                 .append(path)
                 .append(" ")
-                .append(FileUtils.byteCountToDisplaySize(fileSize));
+                .append(humanReadableByteCountSI(fileSize));
           } catch (IOException e) {
             logger.error(
                 "[SNAPSHOT TRANSMISSION] Calculate snapshot file's size fail: {}", path, e);
@@ -318,7 +320,7 @@ public class IoTConsensusServerImpl {
     logger.info(
         "[SNAPSHOT TRANSMISSION] Start to transmit snapshots ({} files, total size {}) from dir {}",
         snapshotPaths.size(),
-        FileUtils.byteCountToDisplaySize(snapshotSizeSum),
+        humanReadableByteCountSI(snapshotSizeSum),
         snapshotDir);
     logger.info(
         "[SNAPSHOT TRANSMISSION] All the files below shell be transmitted: {}", allFilesStr);
@@ -343,15 +345,15 @@ public class IoTConsensusServerImpl {
           transitedSnapshotSizeSum += reader.getTotalReadSize();
           transitedFilesNum++;
           logger.info(
-              "[SNAPSHOT TRANSMISSION] File {} done. The overall progress for dir {}: files {}/{} done, size {}/{} done, time {} passed",
-              path,
+              "[SNAPSHOT TRANSMISSION] The overall progress for dir {}: files {}/{} done, size {}/{} done, time {} passed. File {} done.",
               newSnapshotDirName,
               transitedFilesNum,
               snapshotPaths.size(),
-              FileUtils.byteCountToDisplaySize(transitedSnapshotSizeSum),
-              FileUtils.byteCountToDisplaySize(snapshotSizeSum),
+              humanReadableByteCountSI(transitedSnapshotSizeSum),
+              humanReadableByteCountSI(snapshotSizeSum),
               CommonDateTimeUtils.convertMillisecondToDurationStr(
-                  (System.nanoTime() - startTime) / 1_000_000));
+                  (System.nanoTime() - startTime) / 1_000_000),
+              path);
         } finally {
           reader.close();
         }
