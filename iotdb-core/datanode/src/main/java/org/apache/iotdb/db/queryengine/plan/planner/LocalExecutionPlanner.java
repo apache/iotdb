@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateM
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -82,8 +83,11 @@ public class LocalExecutionPlanner {
     // TODO Replace operator with operatorFactory to build multiple driver for one pipeline
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
+    PipelineMemoryEstimator memoryEstimator =
+        context.constructPipelineMemoryEstimator(root, null, plan, -1);
+
     // check whether current free memory is enough to execute current query
-    long estimatedMemorySize = checkMemory(root, instanceContext.getStateMachine());
+    long estimatedMemorySize = checkMemory(memoryEstimator, instanceContext.getStateMachine());
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
 
@@ -105,8 +109,11 @@ public class LocalExecutionPlanner {
 
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
+    PipelineMemoryEstimator memoryEstimator =
+        context.constructPipelineMemoryEstimator(root, null, plan, -1);
+
     // check whether current free memory is enough to execute current query
-    checkMemory(root, instanceContext.getStateMachine());
+    checkMemory(memoryEstimator, instanceContext.getStateMachine());
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
 
@@ -116,7 +123,8 @@ public class LocalExecutionPlanner {
     return context.getPipelineDriverFactories();
   }
 
-  private long checkMemory(Operator root, FragmentInstanceStateMachine stateMachine)
+  private long checkMemory(
+      final PipelineMemoryEstimator memoryEstimator, FragmentInstanceStateMachine stateMachine)
       throws MemoryNotEnoughException {
 
     // if it is disabled, just return
@@ -125,7 +133,7 @@ public class LocalExecutionPlanner {
       return 0;
     }
 
-    long estimatedMemorySize = root.calculateMaxPeekMemoryWithCounter();
+    long estimatedMemorySize = memoryEstimator.calculateEstimatedMemorySize();
     QueryRelatedResourceMetricSet.getInstance().updateEstimatedMemory(estimatedMemorySize);
 
     synchronized (this) {

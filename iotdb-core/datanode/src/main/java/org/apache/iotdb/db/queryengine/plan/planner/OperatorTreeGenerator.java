@@ -154,6 +154,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ColumnTransformerVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimatorFactory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -2987,7 +2988,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             subContext.setDegreeOfParallelism(dopForChild);
 
             int originPipeNum = context.getPipelineNumber();
-            Operator sourceOperator = createNewPipelineForChildNode(context, subContext, childNode);
+            Operator sourceOperator =
+                createNewPipelineForChildNode(context, subContext, childNode, node.getPlanNodeId());
             parentPipelineChildren.add(sourceOperator);
             dopForChild =
                 Math.max(1, dopForChild - (subContext.getPipelineNumber() - 1 - originPipeNum));
@@ -3029,7 +3031,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           }
 
           Operator sourceOperator =
-              createNewPipelineForChildNode(context, subContext, partialParentNode);
+              createNewPipelineForChildNode(
+                  context, subContext, partialParentNode, node.getPlanNodeId());
           parentPipelineChildren.add(sourceOperator);
           afterwardsNodes.add(partialParentNode);
           finalExchangeNum += subContext.getExchangeSumNum() - context.getExchangeSumNum() + 1;
@@ -3091,7 +3094,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   private Operator createNewPipelineForChildNode(
-      LocalExecutionPlanContext context, LocalExecutionPlanContext subContext, PlanNode childNode) {
+      LocalExecutionPlanContext context,
+      LocalExecutionPlanContext subContext,
+      PlanNode childNode,
+      PlanNodeId parentNodeId) {
     Operator childOperation = childNode.accept(this, subContext);
     ISinkChannel localSinkChannel =
         MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
@@ -3099,6 +3105,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             subContext.getDriverContext(), childNode.getPlanNodeId().getId());
     subContext.setISink(localSinkChannel);
     subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext(), 0);
+    subContext.constructPipelineMemoryEstimator(childOperation, parentNodeId, childNode, -1);
 
     ExchangeOperator sourceOperator =
         new ExchangeOperator(
@@ -3118,6 +3125,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   public List<Operator> dealWithConsumeChildrenOneByOneNode(
       PlanNode node, LocalExecutionPlanContext context) {
+    checkArgument(PipelineMemoryEstimatorFactory.isConsumeChildrenOneByOneNode(node));
     List<Operator> parentPipelineChildren = new ArrayList<>();
     int originExchangeNum = context.getExchangeSumNum();
     int finalExchangeNum = context.getExchangeSumNum();
@@ -3162,6 +3170,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           // actually is dop
           int curChildPipelineNum =
               Math.min(dopForChild, subContext.getPipelineNumber() - originPipeNum);
+
           childPipelineNums.add(curChildPipelineNum);
           sumOfChildPipelines += curChildPipelineNum;
           // If sumOfChildPipelines > dopForChild, we have to wait until some pipelines finish
@@ -3181,6 +3190,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               context.getPipelineDriverFactories().get(i).setDependencyPipeline(dependencyPipeId);
             }
           }
+
+          subContext.constructPipelineMemoryEstimator(
+              childOperation,
+              node.getPlanNodeId(),
+              childNode,
+              dependencyChildNode == 0 ? -1 : dependencyPipeId);
 
           ExchangeOperator sourceOperator =
               new ExchangeOperator(

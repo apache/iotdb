@@ -140,4 +140,9 @@ public class FullOuterTimeJoinNode extends MultiChildProcessNode {
   public int hashCode() {
     return Objects.hash(super.hashCode(), mergeOrder);
   }
+
+  @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.FULL_OUTER_TIME_JOIN;
+  }
 }
