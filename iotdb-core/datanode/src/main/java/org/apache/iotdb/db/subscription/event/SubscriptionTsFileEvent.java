@@ -74,9 +74,9 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
                   return generateSubscriptionTsFileEventWithPieceOrSealPayload(0);
                 } catch (final IOException e) {
                   LOGGER.warn(
-                      "IOException occurred when prefetching next SubscriptionTsFileEvent: {}, current SubscriptionTsFileEvent: {}",
-                      e.getMessage(),
-                      this);
+                      "IOException occurred when prefetching next SubscriptionTsFileEvent, current SubscriptionTsFileEvent: {}",
+                      this,
+                      e);
                   return null;
                 }
               case TS_FILE_PIECE:
@@ -85,9 +85,9 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
                       ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset());
                 } catch (final IOException e) {
                   LOGGER.warn(
-                      "IOException occurred when prefetching next SubscriptionTsFileEvent: {}, current SubscriptionTsFileEvent: {}",
-                      e.getMessage(),
-                      this);
+                      "IOException occurred when prefetching next SubscriptionTsFileEvent, current SubscriptionTsFileEvent: {}",
+                      this,
+                      e);
                   return null;
                 }
               case TS_FILE_SEAL:

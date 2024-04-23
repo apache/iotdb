@@ -21,6 +21,7 @@ package org.apache.iotdb;
 
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.util.Version;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.Session;
@@ -31,15 +32,11 @@ import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
 import org.apache.iotdb.session.subscription.SubscriptionTsFileReader;
 
-import org.apache.tsfile.read.TsFileReader;
-import org.apache.tsfile.read.common.Path;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
-
-import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.locks.LockSupport;
 
 public class SubscriptionSessionExample {
 
@@ -50,6 +47,10 @@ public class SubscriptionSessionExample {
 
   private static final String TOPIC_1 = "topic1";
   private static final String TOPIC_2 = "`topic2`";
+
+  public static final long SLEEP_NS = 1_000_000_000L;
+  public static final long POLL_TIMEOUT_MS = 10_000L;
+  private static final int MAX_RETRY_TIMES = 3;
 
   private static void prepareData() throws Exception {
     // Open session
@@ -65,7 +66,7 @@ public class SubscriptionSessionExample {
 
     // Insert some historical data
     final long currentTime = System.currentTimeMillis();
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 10000; ++i) {
       session.executeNonQueryStatement(
           String.format("insert into root.db.d1(time, s1, s2) values (%s, 1, 2)", i));
       session.executeNonQueryStatement(
@@ -103,18 +104,13 @@ public class SubscriptionSessionExample {
     session = null;
   }
 
-  private static void createTopics() throws Exception {
+  private static void subscriptionExample1() throws Exception {
     // Create topics
     try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
       subscriptionSession.open();
       subscriptionSession.createTopic(TOPIC_1);
-      final Properties config = new Properties();
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_READER_VALUE);
-      subscriptionSession.createTopic(TOPIC_2, config);
     }
-  }
 
-  private static void subscriptionExample1() throws Exception {
     int retryCount = 0;
     // Subscription: property-style ctor
     final Properties config = new Properties();
@@ -124,11 +120,11 @@ public class SubscriptionSessionExample {
     consumer1.open();
     consumer1.subscribe(TOPIC_1);
     while (true) {
-      Thread.sleep(1000); // Wait for some time
-      final List<SubscriptionMessage> messages = consumer1.poll(Duration.ofMillis(10000));
+      LockSupport.parkNanos(SLEEP_NS); // wait some time
+      final List<SubscriptionMessage> messages = consumer1.poll(POLL_TIMEOUT_MS);
       if (messages.isEmpty()) {
         retryCount++;
-        if (retryCount >= 5) {
+        if (retryCount >= MAX_RETRY_TIMES) {
           break;
         }
       }
@@ -158,47 +154,63 @@ public class SubscriptionSessionExample {
   }
 
   private static void subscriptionExample2() throws Exception {
-    int retryCount = 0;
-    // Subscription: builder-style ctor
-    try (final SubscriptionPullConsumer consumer2 =
-        new SubscriptionPullConsumer.Builder()
-            .consumerId("c2")
-            .consumerGroupId("cg2")
-            .autoCommit(false)
-            .buildPullConsumer()) {
-      consumer2.open();
-      consumer2.subscribe(TOPIC_2);
-      while (true) {
-        Thread.sleep(1000); // wait some time
-        final List<SubscriptionMessage> messages =
-            consumer2.poll(Collections.singleton(TOPIC_2), Duration.ofMillis(10000));
-        if (messages.isEmpty()) {
-          retryCount++;
-          if (retryCount >= 5) {
-            break;
-          }
-        }
-        for (final SubscriptionMessage message : messages) {
-          final SubscriptionTsFileReader reader = (SubscriptionTsFileReader) message.getPayload();
-          try (final TsFileReader tsFileReader = reader.open()) {
-            final Path path = new Path("root.db.d1", "s1", true);
-            final QueryDataSet dataSet =
-                tsFileReader.query(QueryExpression.create(Collections.singletonList(path), null));
-            while (dataSet.hasNext()) {
-              System.out.println(dataSet.next());
-            }
-          }
-        }
-        consumer2.commitSync(messages);
-      }
-      consumer2.unsubscribe(TOPIC_2);
+    try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
+      subscriptionSession.open();
+      final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_READER_VALUE);
+      subscriptionSession.createTopic(TOPIC_2, config);
+    }
+
+    final List<Thread> threads = new ArrayList<>();
+    for (int i = 0; i < 8; ++i) {
+      final int idx = i;
+      final Thread thread =
+          new Thread(
+              () -> {
+                int retryCount = 0;
+                // Subscription: builder-style ctor
+                try (final SubscriptionPullConsumer consumer2 =
+                    new SubscriptionPullConsumer.Builder()
+                        .consumerId("c" + idx)
+                        .consumerGroupId("cg2")
+                        .autoCommit(false)
+                        .buildPullConsumer()) {
+                  consumer2.open();
+                  consumer2.subscribe(TOPIC_2);
+                  while (true) {
+                    LockSupport.parkNanos(SLEEP_NS); // wait some time
+                    final List<SubscriptionMessage> messages =
+                        consumer2.poll(Collections.singleton(TOPIC_2), POLL_TIMEOUT_MS);
+                    if (messages.isEmpty()) {
+                      retryCount++;
+                      if (retryCount >= MAX_RETRY_TIMES) {
+                        break;
+                      }
+                    }
+                    for (final SubscriptionMessage message : messages) {
+                      final SubscriptionTsFileReader reader =
+                          (SubscriptionTsFileReader) message.getPayload();
+                      System.out.println(reader.toString());
+                    }
+                    consumer2.commitSync(messages);
+                  }
+                  consumer2.unsubscribe(TOPIC_2);
+                } catch (IoTDBConnectionException e) {
+                  throw new RuntimeException(e);
+                }
+              });
+      thread.start();
+      threads.add(thread);
+    }
+
+    for (final Thread thread : threads) {
+      thread.join();
     }
   }
 
   public static void main(final String[] args) throws Exception {
     prepareData();
     dataQuery();
-    createTopics();
     subscriptionExample1();
     subscriptionExample2();
   }

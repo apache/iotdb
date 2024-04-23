@@ -98,7 +98,7 @@ public class TsFilePieceMessagePayload implements SubscriptionMessagePayload {
         + ", nextWritingOffset="
         + nextWritingOffset
         + ", filePiece="
-        + Arrays.toString(filePiece)
+        + Arrays.toString(filePiece).substring(0, 256)
         + "}";
   }
 }

@@ -146,8 +146,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     } catch (final SubscriptionException e) {
       final String exceptionMessage =
           String.format(
-              "Subscription: something unexpected happened when handshaking: %s, req: %s",
-              e.getMessage(), req);
+              "Subscription: something unexpected happened when handshaking: %s, req: %s", e, req);
       LOGGER.warn(exceptionMessage);
       return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, exceptionMessage));
@@ -198,8 +197,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     } catch (final SubscriptionException e) {
       final String exceptionMessage =
           String.format(
-              "Subscription: something unexpected happened when heartbeat: %s, req: %s",
-              e.getMessage(), req);
+              "Subscription: something unexpected happened when heartbeat: %s, req: %s", e, req);
       LOGGER.warn(exceptionMessage);
       return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HEARTBEAT_ERROR, exceptionMessage));
@@ -228,8 +226,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     } catch (final SubscriptionException e) {
       final String exceptionMessage =
           String.format(
-              "Subscription: something unexpected happened when subscribing: %s, req: %s",
-              e.getMessage(), req);
+              "Subscription: something unexpected happened when subscribing: %s, req: %s", e, req);
       LOGGER.warn(exceptionMessage);
       return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR, exceptionMessage));
@@ -262,7 +259,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       final String exceptionMessage =
           String.format(
               "Subscription: something unexpected happened when unsubscribing: %s, req: %s",
-              e.getMessage(), req);
+              e, req);
       LOGGER.warn(exceptionMessage);
       return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR, exceptionMessage));
@@ -318,8 +315,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     } catch (final SubscriptionException e) {
       final String exceptionMessage =
           String.format(
-              "Subscription: something unexpected happened when polling: %s, req: %s",
-              e.getMessage(), req);
+              "Subscription: something unexpected happened when polling: %s, req: %s", e, req);
       LOGGER.warn(exceptionMessage);
       return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, exceptionMessage));
@@ -397,8 +393,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     } catch (final SubscriptionException e) {
       final String exceptionMessage =
           String.format(
-              "Subscription: something unexpected happened when committing: %s, req: %s",
-              e.getMessage(), req);
+              "Subscription: something unexpected happened when committing: %s, req: %s", e, req);
       LOGGER.warn(exceptionMessage);
       return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_COMMIT_ERROR, exceptionMessage));
@@ -441,8 +436,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     } catch (final SubscriptionException e) {
       final String exceptionMessage =
           String.format(
-              "Subscription: something unexpected happened when closing: %s, req: %s",
-              e.getMessage(), req);
+              "Subscription: something unexpected happened when closing: %s, req: %s", e, req);
       LOGGER.warn(exceptionMessage);
       return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
           RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_CLOSE_ERROR, exceptionMessage));
@@ -508,7 +502,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to create consumer %s in config node, exception is %s.",
-              consumerConfig, e.getMessage());
+              consumerConfig, e);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
@@ -534,7 +528,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to close consumer %s in config node, exception is %s.",
-              consumerConfig, e.getMessage());
+              consumerConfig, e);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
@@ -564,7 +558,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to subscribe topics %s for consumer %s in config node, exception is %s.",
-              topicNames, consumerConfig, e.getMessage());
+              topicNames, consumerConfig, e);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
@@ -592,7 +586,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to unsubscribe topics %s for consumer %s in config node, exception is %s.",
-              topicNames, consumerConfig, e.getMessage());
+              topicNames, consumerConfig, e);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }

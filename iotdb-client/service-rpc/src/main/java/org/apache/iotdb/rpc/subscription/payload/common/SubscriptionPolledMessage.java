@@ -132,8 +132,8 @@ public class SubscriptionPolledMessage {
         return true;
       } catch (final IOException e) {
         LOGGER.warn(
-            "Subscription: something unexpected happened when serializing SubscriptionRawMessage, exception is {}",
-            e.getMessage());
+            "Subscription: something unexpected happened when serializing SubscriptionRawMessage",
+            e);
       }
       return false;
     }

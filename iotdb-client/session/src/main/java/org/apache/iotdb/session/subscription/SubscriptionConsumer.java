@@ -22,7 +22,6 @@ package org.apache.iotdb.session.subscription;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -43,7 +42,6 @@ import org.apache.iotdb.rpc.subscription.payload.common.TsFilePieceMessagePayloa
 import org.apache.iotdb.rpc.subscription.payload.common.TsFileSealMessagePayload;
 import org.apache.iotdb.session.util.SessionUtils;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,8 +76,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
 
-  private static final IoTDBConnectionException NO_PROVIDERS_EXCEPTION =
-      new IoTDBConnectionException("Cluster has no available subscription providers to connect");
+  private static final SubscriptionConnectionException NO_PROVIDERS_EXCEPTION =
+      new SubscriptionConnectionException(
+          "Cluster has no available subscription providers to connect");
 
   private final List<TEndPoint> initialEndpoints;
 
@@ -183,8 +182,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// open & close ///////////////////////////////
 
-  public synchronized void open()
-      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+  public synchronized void open() throws IoTDBConnectionException {
     if (!isClosed.get()) {
       return;
     }
@@ -255,18 +253,15 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// subscribe & unsubscribe ///////////////////////////////
 
-  public void subscribe(final String topicName)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+  public void subscribe(final String topicName) throws SubscriptionException {
     subscribe(Collections.singleton(topicName));
   }
 
-  public void subscribe(final String... topicNames)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+  public void subscribe(final String... topicNames) throws SubscriptionException {
     subscribe(new HashSet<>(Arrays.asList(topicNames)));
   }
 
-  public void subscribe(final Set<String> topicNames)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+  public void subscribe(final Set<String> topicNames) throws SubscriptionException {
     acquireReadLock();
     try {
       subscribeWithRedirection(topicNames);
@@ -275,18 +270,15 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  public void unsubscribe(final String topicName)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+  public void unsubscribe(final String topicName) throws SubscriptionException {
     unsubscribe(Collections.singleton(topicName));
   }
 
-  public void unsubscribe(final String... topicNames)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+  public void unsubscribe(final String... topicNames) throws SubscriptionException {
     unsubscribe(new HashSet<>(Arrays.asList(topicNames)));
   }
 
-  public void unsubscribe(final Set<String> topicNames)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+  public void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
     acquireReadLock();
     try {
       unsubscribeWithRedirection(topicNames);
@@ -481,8 +473,6 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         new SubscriptionPollTimer(System.currentTimeMillis(), timeoutMs);
 
     do {
-      // update timer
-      timer.update();
       // poll tablets or tsfile
       for (final SubscriptionPolledMessage polledMessage : pollInternal(topicNames)) {
         final short messageType = polledMessage.getMessageType();
@@ -511,8 +501,12 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       if (!messages.isEmpty()) {
         return messages;
       }
+      // update timer
+      timer.update();
     } while (timer.notExpired());
 
+    LOGGER.info(
+        "SubscriptionConsumer {} poll empty message after {} millisecond(s)", this, timeoutMs);
     return messages;
   }
 
@@ -614,23 +608,24 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       final SubscriptionPolledMessage polledMessage = polledMessages.get(0);
       final SubscriptionMessagePayload messagePayload = polledMessage.getMessagePayload();
 
-      // check commit context
-      final SubscriptionCommitContext incomingCommitContext = polledMessage.getCommitContext();
-      if (Objects.isNull(incomingCommitContext)
-          || !Objects.equals(commitContext, incomingCommitContext)) {
-        final String errorMessage =
-            String.format(
-                "inconsistent commit context, current is %s, incoming is %s, consumer: %s",
-                commitContext, incomingCommitContext, this);
-        LOGGER.warn(errorMessage);
-        throw new SubscriptionNonRetryableException(errorMessage);
-      }
-
       final short messageType = polledMessage.getMessageType();
       if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
         switch (SubscriptionPolledMessageType.valueOf(messageType)) {
           case TS_FILE_PIECE:
             {
+              // check commit context
+              final SubscriptionCommitContext incomingCommitContext =
+                  polledMessage.getCommitContext();
+              if (Objects.isNull(incomingCommitContext)
+                  || !Objects.equals(commitContext, incomingCommitContext)) {
+                final String errorMessage =
+                    String.format(
+                        "inconsistent commit context, current is %s, incoming is %s, consumer: %s",
+                        commitContext, incomingCommitContext, this);
+                LOGGER.warn(errorMessage);
+                throw new SubscriptionNonRetryableException(errorMessage);
+              }
+
               // check file name
               if (!fileName.startsWith(
                   ((TsFilePieceMessagePayload) messagePayload).getFileName())) {
@@ -666,6 +661,19 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
             }
           case TS_FILE_SEAL:
             {
+              // check commit context
+              final SubscriptionCommitContext incomingCommitContext =
+                  polledMessage.getCommitContext();
+              if (Objects.isNull(incomingCommitContext)
+                  || !Objects.equals(commitContext, incomingCommitContext)) {
+                final String errorMessage =
+                    String.format(
+                        "inconsistent commit context, current is %s, incoming is %s, consumer: %s",
+                        commitContext, incomingCommitContext, this);
+                LOGGER.warn(errorMessage);
+                throw new SubscriptionNonRetryableException(errorMessage);
+              }
+
               // check file name
               if (!fileName.startsWith(((TsFileSealMessagePayload) messagePayload).getFileName())) {
                 final String errorMessage =
@@ -870,8 +878,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// redirection ///////////////////////////////
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  private void subscribeWithRedirection(final Set<String> topicNames)
-      throws IoTDBConnectionException {
+  private void subscribeWithRedirection(final Set<String> topicNames) throws SubscriptionException {
     for (final SubscriptionProvider provider : getAllAvailableProviders()) {
       try {
         provider.subscribe(topicNames);
@@ -889,7 +896,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   private void unsubscribeWithRedirection(final Set<String> topicNames)
-      throws IoTDBConnectionException {
+      throws SubscriptionException {
     for (final SubscriptionProvider provider : getAllAvailableProviders()) {
       try {
         provider.unsubscribe(topicNames);
@@ -906,7 +913,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection() throws IoTDBConnectionException {
+  Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection() throws SubscriptionException {
     Map<Integer, TEndPoint> endPoints = null;
     for (final SubscriptionProvider provider : getAllAvailableProviders()) {
       try {

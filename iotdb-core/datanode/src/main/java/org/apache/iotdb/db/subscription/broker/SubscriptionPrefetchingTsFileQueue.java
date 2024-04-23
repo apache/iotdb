@@ -259,7 +259,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
         final String errorMessage =
             String.format(
                 "IOException occurred when SubscriptionPrefetchingTsFileQueue %s transferring TsFile (with event %s) to consumer %s: %s",
-                this, event, consumerId, e.getMessage());
+                this, event, consumerId, e);
         LOGGER.warn(errorMessage);
         // assume retryable
         return generateSubscriptionTsFileEventWithErrorMessage(errorMessage, true);

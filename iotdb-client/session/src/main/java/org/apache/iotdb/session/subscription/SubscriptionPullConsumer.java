@@ -20,15 +20,12 @@
 package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
@@ -93,8 +90,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// open & close ///////////////////////////////
 
-  public synchronized void open()
-      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+  public synchronized void open() throws IoTDBConnectionException {
     if (!isClosed.get()) {
       return;
     }

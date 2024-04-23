@@ -70,7 +70,7 @@ public class SubscriptionTopicAgent {
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
-              topicName, e.getMessage());
+              topicName, e);
       LOGGER.warn(exceptionMessage);
       return new TPushTopicMetaRespExceptionMessage(
           topicName, exceptionMessage, System.currentTimeMillis());
@@ -97,7 +97,7 @@ public class SubscriptionTopicAgent {
           final String exceptionMessage =
               String.format(
                   "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
-                  topicName, e.getMessage());
+                  topicName, e);
           LOGGER.warn(exceptionMessage);
           return new TPushTopicMetaRespExceptionMessage(
               topicName, exceptionMessage, System.currentTimeMillis());
@@ -116,8 +116,7 @@ public class SubscriptionTopicAgent {
       return null;
     } catch (Exception e) {
       final String exceptionMessage =
-          String.format(
-              "Subscription: Failed to drop topic %s, because %s", topicName, e.getMessage());
+          String.format("Subscription: Failed to drop topic %s, because %s", topicName, e);
       LOGGER.warn(exceptionMessage);
       return new TPushTopicMetaRespExceptionMessage(
           topicName, exceptionMessage, System.currentTimeMillis());
