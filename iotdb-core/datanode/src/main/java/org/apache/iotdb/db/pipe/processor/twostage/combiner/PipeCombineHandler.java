@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.processor.twostage.combiner;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
@@ -126,6 +127,9 @@ public class PipeCombineHandler {
             throw new PipeException("Failed to fetch data region ids");
           }
           for (final TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
+            if (!RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
+              continue;
+            }
             ALL_REGION_ID_2_DATANODE_ID_MAP.put(
                 regionInfo.getConsensusGroupId().getId(), regionInfo.getDataNodeId());
           }
