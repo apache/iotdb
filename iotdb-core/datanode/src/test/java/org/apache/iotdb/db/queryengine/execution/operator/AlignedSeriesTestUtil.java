@@ -162,12 +162,12 @@ public class AlignedSeriesTestUtil {
       tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device0), i);
       tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device0), i);
 
-      record.deviceId = device1;
+      record.deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(device1);
       fileWriter.writeAligned(record);
       tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device1), i);
       tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device1), i);
 
-      record.deviceId = device2;
+      record.deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(device2);
       fileWriter.write(record);
       tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device2), i);
       tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device2), i);

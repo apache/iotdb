@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.write.record.TSRecord;
@@ -169,7 +170,7 @@ public class MemUtilsTest {
   @Test
   public void getMemSizeTest() {
     long totalSize = 0;
-    String device = "root.sg.d1";
+    IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1");
     TSRecord record = new TSRecord(0, device);
 
     DataPoint point1 = new IntDataPoint("s1", 1);
@@ -202,7 +203,7 @@ public class MemUtilsTest {
     totalSize += MemUtils.getDataPointMem(point6);
     record.addTuple(point6);
 
-    totalSize += 8L * record.dataPointList.size() + MemUtils.getStringMem(device) + 16;
+    totalSize += 8L * record.dataPointList.size() + device.ramBytesUsed() + 16;
 
     Assert.assertEquals(totalSize, MemUtils.getTsRecordMem(record));
   }
