@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -86,6 +87,12 @@ import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeM
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
 public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
+
+  private final Metadata metadata;
+
+  public TableOperatorGenerator(Metadata metadata) {
+    this.metadata = metadata;
+  }
 
   @Override
   public Operator visitPlan(PlanNode node, LocalExecutionPlanContext context) {
@@ -340,7 +347,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                           ImmutableList.of(),
                           ImmutableList.of(),
                           0,
-                          context.getTypeProvider());
+                          context.getTypeProvider(),
+                          metadata);
 
                   return visitor.process(p, filterColumnTransformerContext);
                 })
@@ -366,7 +374,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             commonTransformerList,
             filterOutputDataTypes,
             inputLocations.size() - 1,
-            context.getTypeProvider());
+            context.getTypeProvider(),
+            metadata);
 
     for (Expression expression : projectExpressions) {
       projectOutputTransformerList.add(

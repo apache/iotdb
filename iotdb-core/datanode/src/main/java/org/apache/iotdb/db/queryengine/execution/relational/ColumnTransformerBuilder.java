@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.relational;
 
+import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticDivisionColumnTransformer;
@@ -42,11 +46,23 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.NullColumn
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalAndMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalOrMultiColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.BetweenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.InColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LogicNotColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.RegularColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CastFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DiffColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DiffFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Replace2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Replace3ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ReplaceFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RoundColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RoundFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString3ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringFunctionColumnTransformer;
 import org.apache.iotdb.db.relational.sql.tree.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.relational.sql.tree.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.relational.sql.tree.AstVisitor;
@@ -97,6 +113,9 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoIndexScanChecker.isStringLiteral;
+import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
+import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -118,48 +137,47 @@ public class ColumnTransformerBuilder
   @Override
   protected ColumnTransformer visitArithmeticBinary(
       ArithmeticBinaryExpression node, Context context) {
-    ColumnTransformer res;
-    if (context.cache.containsKey(node)) {
-      res = context.cache.get(node);
-    } else {
-      res = getArithmeticBinaryTransformer(node, context);
-      context.cache.put(node, res);
-    }
-    res.addReferenceCount();
-    return res;
-  }
-
-  private ColumnTransformer getArithmeticBinaryTransformer(
-      ArithmeticBinaryExpression node, Context context) {
-    if (context.hasSeen.containsKey(node)) {
-      IdentityColumnTransformer identity =
-          new IdentityColumnTransformer(
-              DOUBLE, context.originSize + context.commonTransformerList.size());
-      ColumnTransformer columnTransformer = context.hasSeen.get(node);
-      columnTransformer.addReferenceCount();
-      context.commonTransformerList.add(columnTransformer);
-      context.leafList.add(identity);
-      context.inputDataTypes.add(TSDataType.DOUBLE);
-      return identity;
-    } else {
-      ColumnTransformer left = process(node.getLeft(), context);
-      ColumnTransformer right = process(node.getRight(), context);
-      switch (node.getOperator()) {
-        case ADD:
-          return new ArithmeticAdditionColumnTransformer(DOUBLE, left, right);
-        case SUBTRACT:
-          return new ArithmeticSubtractionColumnTransformer(DOUBLE, left, right);
-        case MULTIPLY:
-          return new ArithmeticMultiplicationColumnTransformer(DOUBLE, left, right);
-        case DIVIDE:
-          return new ArithmeticDivisionColumnTransformer(DOUBLE, left, right);
-        case MODULUS:
-          return new ArithmeticModuloColumnTransformer(DOUBLE, left, right);
-        default:
-          throw new UnsupportedOperationException(
-              String.format(UNSUPPORTED_EXPRESSION, node.getOperator()));
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                DOUBLE, context.originSize + context.commonTransformerList.size());
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(TSDataType.DOUBLE);
+        context.cache.put(node, identity);
+      } else {
+        ColumnTransformer left = process(node.getLeft(), context);
+        ColumnTransformer right = process(node.getRight(), context);
+        ColumnTransformer child;
+        switch (node.getOperator()) {
+          case ADD:
+            child = new ArithmeticAdditionColumnTransformer(DOUBLE, left, right);
+            break;
+          case SUBTRACT:
+            child = new ArithmeticSubtractionColumnTransformer(DOUBLE, left, right);
+            break;
+          case MULTIPLY:
+            child = new ArithmeticMultiplicationColumnTransformer(DOUBLE, left, right);
+            break;
+          case DIVIDE:
+            child = new ArithmeticDivisionColumnTransformer(DOUBLE, left, right);
+            break;
+          case MODULUS:
+            child = new ArithmeticModuloColumnTransformer(DOUBLE, left, right);
+            break;
+          default:
+            throw new UnsupportedOperationException(
+                String.format(UNSUPPORTED_EXPRESSION, node.getOperator()));
+        }
+        context.cache.put(node, child);
       }
     }
+    ColumnTransformer res = context.cache.get(node);
+    res.addReferenceCount();
+    return res;
   }
 
   @Override
@@ -169,25 +187,24 @@ public class ColumnTransformerBuilder
       case PLUS:
         return process(node.getValue(), context);
       case MINUS:
-        ColumnTransformer res =
-            context.cache.computeIfAbsent(
-                node,
-                n -> {
-                  if (context.hasSeen.containsKey(node)) {
-                    IdentityColumnTransformer identity =
-                        new IdentityColumnTransformer(
-                            DOUBLE, context.originSize + context.commonTransformerList.size());
-                    ColumnTransformer columnTransformer = context.hasSeen.get(node);
-                    columnTransformer.addReferenceCount();
-                    context.commonTransformerList.add(columnTransformer);
-                    context.leafList.add(identity);
-                    context.inputDataTypes.add(TSDataType.DOUBLE);
-                    return identity;
-                  } else {
-                    ColumnTransformer childColumnTransformer = process(node.getValue(), context);
-                    return new ArithmeticNegationColumnTransformer(DOUBLE, childColumnTransformer);
-                  }
-                });
+        if (!context.cache.containsKey(node)) {
+          if (context.hasSeen.containsKey(node)) {
+            IdentityColumnTransformer identity =
+                new IdentityColumnTransformer(
+                    DOUBLE, context.originSize + context.commonTransformerList.size());
+            ColumnTransformer columnTransformer = context.hasSeen.get(node);
+            columnTransformer.addReferenceCount();
+            context.commonTransformerList.add(columnTransformer);
+            context.leafList.add(identity);
+            context.inputDataTypes.add(TSDataType.DOUBLE);
+            context.cache.put(node, identity);
+          } else {
+            ColumnTransformer childColumnTransformer = process(node.getValue(), context);
+            context.cache.put(
+                node, new ArithmeticNegationColumnTransformer(DOUBLE, childColumnTransformer));
+          }
+        }
+        ColumnTransformer res = context.cache.get(node);
         res.addReferenceCount();
         return res;
       default:
@@ -197,12 +214,58 @@ public class ColumnTransformerBuilder
 
   @Override
   protected ColumnTransformer visitBetweenPredicate(BetweenPredicate node, Context context) {
-    throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                BOOLEAN, context.originSize + context.commonTransformerList.size());
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(TSDataType.BOOLEAN);
+        context.cache.put(node, identity);
+      } else {
+        ColumnTransformer value = this.process(node.getValue(), context);
+        ColumnTransformer min = this.process(node.getMin(), context);
+        ColumnTransformer max = this.process(node.getMax(), context);
+        context.cache.put(node, new BetweenColumnTransformer(BOOLEAN, value, min, max, false));
+      }
+    }
+    ColumnTransformer res = context.cache.get(node);
+    res.addReferenceCount();
+    return res;
   }
 
   @Override
   protected ColumnTransformer visitCast(Cast node, Context context) {
-    throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
+
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                columnTransformer.getType(),
+                context.originSize + context.commonTransformerList.size());
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(getTSDataType(columnTransformer.getType()));
+        context.cache.put(node, identity);
+      } else {
+        ColumnTransformer child = this.process(node.getExpression(), context);
+        Type type;
+        try {
+          type = context.metadata.getType(toTypeSignature(node.getType()));
+        } catch (TypeNotFoundException e) {
+          throw new SemanticException(String.format("Unknown type: %s", node.getType()));
+        }
+        context.cache.put(node, new CastFunctionColumnTransformer(type, child));
+      }
+    }
+    ColumnTransformer res = context.cache.get(node);
+    res.addReferenceCount();
+    return res;
   }
 
   @Override
@@ -303,7 +366,6 @@ public class ColumnTransformerBuilder
   @Override
   protected ColumnTransformer visitComparisonExpression(
       ComparisonExpression node, Context context) {
-    // fixme why using computeIfAbsent throw npe
     ColumnTransformer comparisonTransformer;
     if (context.cache.containsKey(node)) {
       comparisonTransformer = context.cache.get(node);
@@ -411,141 +473,247 @@ public class ColumnTransformerBuilder
 
   @Override
   protected ColumnTransformer visitFunctionCall(FunctionCall node, Context context) {
-    throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                columnTransformer.getType(),
+                context.originSize + context.commonTransformerList.size());
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(getTSDataType(columnTransformer.getType()));
+        context.cache.put(node, identity);
+      } else {
+        context.cache.put(
+            node,
+            getFunctionColumnTransformer(node.getName().getSuffix(), node.getArguments(), context));
+      }
+    }
+    ColumnTransformer res = context.cache.get(node);
+    res.addReferenceCount();
+    return res;
+  }
+
+  private ColumnTransformer getFunctionColumnTransformer(
+      String functionName, List<Expression> children, Context context) {
+    // builtin scalar function
+    if (BuiltinScalarFunction.DIFF.getFunctionName().equalsIgnoreCase(functionName)) {
+      boolean ignoreNull = true;
+      if (children.size() > 1) {
+        if (isBooleanLiteral(children.get(1))) {
+          ignoreNull = ((BooleanLiteral) children.get(1)).getValue();
+        } else {
+          return new DiffColumnTransformer(
+              DOUBLE,
+              this.process(children.get(0), context),
+              this.process(children.get(1), context));
+        }
+      }
+      return new DiffFunctionColumnTransformer(
+          DOUBLE, this.process(children.get(0), context), ignoreNull);
+    } else if (BuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
+      int places = 0;
+      if (children.size() > 1) {
+        if (isLongLiteral(children.get(1))) {
+          places = (int) ((LongLiteral) children.get(1)).getParsedValue();
+        } else {
+          return new RoundColumnTransformer(
+              DOUBLE,
+              this.process(children.get(0), context),
+              this.process(children.get(1), context));
+        }
+      }
+      return new RoundFunctionColumnTransformer(
+          DOUBLE, this.process(children.get(0), context), places);
+    } else if (BuiltinScalarFunction.REPLACE.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (children.size() == 2) {
+        if (isStringLiteral(children.get(1))) {
+          return new ReplaceFunctionColumnTransformer(
+              TEXT,
+              this.process(children.get(0), context),
+              ((StringLiteral) children.get(1)).getValue(),
+              "");
+        } else {
+          return new Replace2ColumnTransformer(
+              TEXT, this.process(children.get(0), context), this.process(children.get(1), context));
+        }
+      } else {
+        // size == 3
+        if (isStringLiteral(children.get(1)) && isStringLiteral(children.get(2))) {
+          return new ReplaceFunctionColumnTransformer(
+              TEXT,
+              this.process(children.get(0), context),
+              ((StringLiteral) children.get(1)).getValue(),
+              ((StringLiteral) children.get(2)).getValue());
+        } else {
+          return new Replace3ColumnTransformer(
+              TEXT,
+              this.process(children.get(0), context),
+              this.process(children.get(1), context),
+              this.process(children.get(2), context));
+        }
+      }
+    } else if (BuiltinScalarFunction.SUBSTRING.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (children.size() == 2) {
+        if (isLongLiteral(children.get(1))) {
+          return new SubStringFunctionColumnTransformer(
+              TEXT,
+              this.process(children.get(0), context),
+              (int) ((LongLiteral) children.get(1)).getParsedValue(),
+              Integer.MAX_VALUE);
+        } else {
+          return new SubString2ColumnTransformer(
+              TEXT, this.process(children.get(0), context), this.process(children.get(1), context));
+        }
+      } else {
+        // size == 3
+        if (isLongLiteral(children.get(1)) && isLongLiteral(children.get(2))) {
+          return new SubStringFunctionColumnTransformer(
+              TEXT,
+              this.process(children.get(0), context),
+              (int) ((LongLiteral) children.get(1)).getParsedValue(),
+              (int) ((LongLiteral) children.get(2)).getParsedValue());
+        } else {
+          return new SubString3ColumnTransformer(
+              TEXT,
+              this.process(children.get(0), context),
+              this.process(children.get(1), context),
+              this.process(children.get(2), context));
+        }
+      }
+    }
+
+    throw new IllegalArgumentException(String.format("Unknown function: %s", functionName));
   }
 
   @Override
   protected ColumnTransformer visitInPredicate(InPredicate node, Context context) {
-    ColumnTransformer res =
-        context.cache.computeIfAbsent(
-            node,
-            n -> {
-              if (context.hasSeen.containsKey(node)) {
-                IdentityColumnTransformer identity =
-                    new IdentityColumnTransformer(
-                        BOOLEAN, context.originSize + context.commonTransformerList.size());
-                ColumnTransformer columnTransformer = context.hasSeen.get(node);
-                columnTransformer.addReferenceCount();
-                context.commonTransformerList.add(columnTransformer);
-                context.leafList.add(identity);
-                context.inputDataTypes.add(TSDataType.BOOLEAN);
-                return identity;
-              } else {
-                ColumnTransformer childColumnTransformer = process(node.getValue(), context);
-                InListExpression inListExpression = (InListExpression) node.getValueList();
-                List<Expression> expressionList = inListExpression.getValues();
-                List<Literal> values = new ArrayList<>();
-                for (Expression expression : expressionList) {
-                  checkArgument(expression instanceof Literal);
-                  values.add((Literal) expression);
-                }
-                return new InColumnTransformer(BOOLEAN, childColumnTransformer, values);
-              }
-            });
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                BOOLEAN, context.originSize + context.commonTransformerList.size());
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(TSDataType.BOOLEAN);
+        context.cache.put(node, identity);
+      } else {
+        ColumnTransformer childColumnTransformer = process(node.getValue(), context);
+        InListExpression inListExpression = (InListExpression) node.getValueList();
+        List<Expression> expressionList = inListExpression.getValues();
+        List<Literal> values = new ArrayList<>();
+        for (Expression expression : expressionList) {
+          checkArgument(expression instanceof Literal);
+          values.add((Literal) expression);
+        }
+        context.cache.put(node, new InColumnTransformer(BOOLEAN, childColumnTransformer, values));
+      }
+    }
+
+    ColumnTransformer res = context.cache.get(node);
     res.addReferenceCount();
     return res;
   }
 
   @Override
   protected ColumnTransformer visitNotExpression(NotExpression node, Context context) {
-    ColumnTransformer res =
-        context.cache.computeIfAbsent(
-            node,
-            n -> {
-              if (context.hasSeen.containsKey(node)) {
-                IdentityColumnTransformer identity =
-                    new IdentityColumnTransformer(
-                        BOOLEAN, context.originSize + context.commonTransformerList.size());
-                ColumnTransformer columnTransformer = context.hasSeen.get(node);
-                columnTransformer.addReferenceCount();
-                context.commonTransformerList.add(columnTransformer);
-                context.leafList.add(identity);
-                context.inputDataTypes.add(TSDataType.BOOLEAN);
-                return identity;
-              } else {
-                ColumnTransformer childColumnTransformer = process(node.getValue(), context);
-                return new LogicNotColumnTransformer(BOOLEAN, childColumnTransformer);
-              }
-            });
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                BOOLEAN, context.originSize + context.commonTransformerList.size());
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(TSDataType.BOOLEAN);
+        context.cache.put(node, identity);
+      } else {
+        ColumnTransformer childColumnTransformer = process(node.getValue(), context);
+        context.cache.put(node, new LogicNotColumnTransformer(BOOLEAN, childColumnTransformer));
+      }
+    }
+    ColumnTransformer res = context.cache.get(node);
     res.addReferenceCount();
     return res;
   }
 
   @Override
   protected ColumnTransformer visitLikePredicate(LikePredicate node, Context context) {
-    ColumnTransformer res =
-        context.cache.computeIfAbsent(
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                BOOLEAN, context.originSize + context.commonTransformerList.size());
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(TSDataType.BOOLEAN);
+        context.cache.put(node, identity);
+      } else {
+        ColumnTransformer childColumnTransformer = process(node.getValue(), context);
+        context.cache.put(
             node,
-            n -> {
-              if (context.hasSeen.containsKey(node)) {
-                IdentityColumnTransformer identity =
-                    new IdentityColumnTransformer(
-                        BOOLEAN, context.originSize + context.commonTransformerList.size());
-                ColumnTransformer columnTransformer = context.hasSeen.get(node);
-                columnTransformer.addReferenceCount();
-                context.commonTransformerList.add(columnTransformer);
-                context.leafList.add(identity);
-                context.inputDataTypes.add(TSDataType.BOOLEAN);
-                return identity;
-              } else {
-                ColumnTransformer childColumnTransformer = process(node.getValue(), context);
-                return new RegularColumnTransformer(
-                    BOOLEAN,
-                    childColumnTransformer,
-                    compileRegex(
-                        parseLikePatternToRegex(((StringLiteral) node.getPattern()).getValue())));
-              }
-            });
+            new RegularColumnTransformer(
+                BOOLEAN,
+                childColumnTransformer,
+                compileRegex(
+                    parseLikePatternToRegex(((StringLiteral) node.getPattern()).getValue()))));
+      }
+    }
+    ColumnTransformer res = context.cache.get(node);
     res.addReferenceCount();
     return res;
   }
 
   @Override
   protected ColumnTransformer visitIsNotNullPredicate(IsNotNullPredicate node, Context context) {
-    ColumnTransformer res =
-        context.cache.computeIfAbsent(
-            node,
-            n -> {
-              if (context.hasSeen.containsKey(node)) {
-                IdentityColumnTransformer identity =
-                    new IdentityColumnTransformer(
-                        BOOLEAN, context.originSize + context.commonTransformerList.size());
-                ColumnTransformer columnTransformer = context.hasSeen.get(node);
-                columnTransformer.addReferenceCount();
-                context.commonTransformerList.add(columnTransformer);
-                context.leafList.add(identity);
-                context.inputDataTypes.add(TSDataType.BOOLEAN);
-                return identity;
-              } else {
-                ColumnTransformer childColumnTransformer = process(node.getValue(), context);
-                return new IsNullColumnTransformer(BOOLEAN, childColumnTransformer, true);
-              }
-            });
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                BOOLEAN, context.originSize + context.commonTransformerList.size());
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(TSDataType.BOOLEAN);
+        context.cache.put(node, identity);
+      } else {
+        ColumnTransformer childColumnTransformer = process(node.getValue(), context);
+        context.cache.put(node, new IsNullColumnTransformer(BOOLEAN, childColumnTransformer, true));
+      }
+    }
+    ColumnTransformer res = context.cache.get(node);
     res.addReferenceCount();
     return res;
   }
 
   @Override
   protected ColumnTransformer visitIsNullPredicate(IsNullPredicate node, Context context) {
-    ColumnTransformer res =
-        context.cache.computeIfAbsent(
-            node,
-            n -> {
-              if (context.hasSeen.containsKey(node)) {
-                IdentityColumnTransformer identity =
-                    new IdentityColumnTransformer(
-                        BOOLEAN, context.originSize + context.commonTransformerList.size());
-                ColumnTransformer columnTransformer = context.hasSeen.get(node);
-                columnTransformer.addReferenceCount();
-                context.commonTransformerList.add(columnTransformer);
-                context.leafList.add(identity);
-                context.inputDataTypes.add(TSDataType.BOOLEAN);
-                return identity;
-              } else {
-                ColumnTransformer childColumnTransformer = process(node.getValue(), context);
-                return new IsNullColumnTransformer(BOOLEAN, childColumnTransformer, false);
-              }
-            });
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                BOOLEAN, context.originSize + context.commonTransformerList.size());
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(TSDataType.BOOLEAN);
+        context.cache.put(node, identity);
+      } else {
+        ColumnTransformer childColumnTransformer = process(node.getValue(), context);
+        context.cache.put(
+            node, new IsNullColumnTransformer(BOOLEAN, childColumnTransformer, false));
+      }
+    }
+    ColumnTransformer res = context.cache.get(node);
     res.addReferenceCount();
     return res;
   }
@@ -644,6 +812,14 @@ public class ColumnTransformerBuilder
     throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
   }
 
+  public static boolean isLongLiteral(Expression expression) {
+    return expression instanceof LongLiteral;
+  }
+
+  public static boolean isBooleanLiteral(Expression expression) {
+    return expression instanceof BooleanLiteral;
+  }
+
   public static class Context {
 
     private final SessionInfo sessionInfo;
@@ -669,6 +845,8 @@ public class ColumnTransformerBuilder
 
     private final TypeProvider typeProvider;
 
+    private final Metadata metadata;
+
     public Context(
         SessionInfo sessionInfo,
         List<LeafColumnTransformer> leafList,
@@ -678,7 +856,8 @@ public class ColumnTransformerBuilder
         List<ColumnTransformer> commonTransformerList,
         List<TSDataType> inputDataTypes,
         int originSize,
-        TypeProvider typeProvider) {
+        TypeProvider typeProvider,
+        Metadata metadata) {
       this.sessionInfo = sessionInfo;
       this.leafList = leafList;
       this.inputLocations = inputLocations;
@@ -688,6 +867,7 @@ public class ColumnTransformerBuilder
       this.inputDataTypes = inputDataTypes;
       this.originSize = originSize;
       this.typeProvider = typeProvider;
+      this.metadata = metadata;
     }
 
     public Type getType(SymbolReference symbolReference) {
