@@ -232,7 +232,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         });
   }
 
-  /** @param event the {@link Event} from the {@link StorageEngine} */
+  /**
+   * @param event the {@link Event} from the {@link StorageEngine}
+   */
   public final void extract(PipeRealtimeEvent event) {
     if (isDbNameCoveredByPattern) {
       event.skipParsingPattern();

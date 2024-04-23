@@ -94,7 +94,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     this.fullPath = getFullPath();
   }
 
-  /** @param partialNodes nodes of a time series path */
+  /**
+   * @param partialNodes nodes of a time series path
+   */
   public PartialPath(String[] partialNodes) {
     nodes = partialNodes;
   }

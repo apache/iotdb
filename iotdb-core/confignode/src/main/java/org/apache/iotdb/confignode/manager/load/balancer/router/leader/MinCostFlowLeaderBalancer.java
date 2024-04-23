@@ -43,6 +43,7 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
   /** Graph nodes */
   // Super source node
   private static final int S_NODE = 0;
+
   // Super terminal node
   private static final int T_NODE = 1;
   // Maximum index of graph nodes
@@ -320,7 +321,9 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
     }
   }
 
-  /** @return Map<RegionGroupId, DataNodeId where the new leader locate> */
+  /**
+   * @return Map<RegionGroupId, DataNodeId where the new leader locate>
+   */
   private Map<TConsensusGroupId, Integer> collectLeaderDistribution() {
     Map<TConsensusGroupId, Integer> result = new ConcurrentHashMap<>();
 

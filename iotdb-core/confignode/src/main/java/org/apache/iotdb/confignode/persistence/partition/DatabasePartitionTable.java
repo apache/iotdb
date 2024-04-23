@@ -112,7 +112,9 @@ public class DatabasePartitionTable {
                 new RegionGroup(CommonDateTimeUtils.currentTime(), replicaSet)));
   }
 
-  /** @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup */
+  /**
+   * @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup
+   */
   public List<TRegionReplicaSet> getAllReplicaSets() {
     List<TRegionReplicaSet> result = new ArrayList<>();
 

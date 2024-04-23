@@ -865,7 +865,9 @@ public class DataRegionTest {
 
   @Test
   public void testInsertUnSequenceRows()
-      throws IllegalPathException, WriteProcessRejectException, QueryProcessException,
+      throws IllegalPathException,
+          WriteProcessRejectException,
+          QueryProcessException,
           DataRegionException {
     int defaultAvgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
     config.setAvgSeriesPointNumberThreshold(2);
@@ -900,7 +902,10 @@ public class DataRegionTest {
 
   @Test
   public void testSmallReportProportionInsertRow()
-      throws WriteProcessException, QueryProcessException, IllegalPathException, IOException,
+      throws WriteProcessException,
+          QueryProcessException,
+          IllegalPathException,
+          IOException,
           DataRegionException {
     double defaultValue = config.getWriteMemoryVariationReportProportion();
     config.setWriteMemoryVariationReportProportion(0);

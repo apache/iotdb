@@ -766,6 +766,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       }
     }
   }
+
   // endregion
 
   @Override

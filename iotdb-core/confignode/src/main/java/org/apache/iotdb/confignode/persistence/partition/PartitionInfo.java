@@ -119,6 +119,7 @@ public class PartitionInfo implements SnapshotProcessor {
   /** For Cluster Partition. */
   // For allocating Regions
   private final AtomicInteger nextRegionGroupId;
+
   // Map<DatabaseName, DatabasePartitionInfo>
   private final Map<String, DatabasePartitionTable> databasePartitionTables;
 

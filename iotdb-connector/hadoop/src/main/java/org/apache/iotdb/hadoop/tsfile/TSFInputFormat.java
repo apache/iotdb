@@ -47,16 +47,22 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
 
   /** key to configure whether reading time enable */
   public static final String READ_TIME_ENABLE = "tsfile.read.time.enable";
+
   /** key to configure whether reading deltaObjectId enable */
   public static final String READ_DELTAOBJECT_ENABLE = "tsfile.read.deltaObjectId.enable";
+
   /** key to configure the type of filter */
   @Deprecated public static final String FILTER_TYPE = "tsfile.filter.type";
+
   /** key to configure the filter */
   @Deprecated public static final String FILTER_EXPRESSION = "tsfile.filter.expression";
+
   /** key to configure whether filtering is enable */
   public static final String FILTER_EXIST = "tsfile.filter.exist";
+
   /** key to configure the reading deltaObjectIds */
   public static final String READ_DELTAOBJECTS = "tsfile.read.deltaobject";
+
   /** key to configure the reading measurementIds */
   public static final String READ_MEASUREMENTID = "tsfile.read.measurement";
 

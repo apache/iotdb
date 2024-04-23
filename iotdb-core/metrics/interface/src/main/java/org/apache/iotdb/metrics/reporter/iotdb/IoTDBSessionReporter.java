@@ -56,6 +56,7 @@ public class IoTDBSessionReporter extends IoTDBReporter {
 
   /** The manager of metrics. */
   protected AbstractMetricManager metricManager;
+
   /** The session pool to write metrics. */
   protected SessionPool sessionPool;
 

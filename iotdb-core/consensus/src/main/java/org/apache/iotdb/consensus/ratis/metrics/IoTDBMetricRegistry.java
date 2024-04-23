@@ -44,26 +44,35 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   private final Map<String, CounterProxy> counterCache = new ConcurrentHashMap<>();
   private final Map<String, TimerProxy> timerCache = new ConcurrentHashMap<>();
   private final Map<String, Boolean> gaugeCache = new ConcurrentHashMap<>();
+
   /** Time taken to flush log. */
   public static final String RAFT_LOG_FLUSH_TIME = "flushTime";
+
   /** Size of SegmentedRaftLogCache::closedSegments in bytes. */
   public static final String RAFT_LOG_CACHE_CLOSED_SEGMENTS_SIZE_IN_BYTES =
       "closedSegmentsSizeInBytes";
+
   /** Size of SegmentedRaftLogCache::openSegment in bytes. */
   public static final String RAFT_LOG_CACHE_OPEN_SEGMENT_SIZE_IN_BYTES = "openSegmentSizeInBytes";
+
   /** Total time taken to append a raft log entry. */
   public static final String RAFT_LOG_APPEND_ENTRY_LATENCY = "appendEntryLatency";
+
   /**
    * Time taken for a Raft log operation to get into the queue after being requested. This is the
    * time that it has to wait for the queue to be non-full.
    */
   public static final String RAFT_LOG_TASK_ENQUEUE_DELAY = "queueingDelay";
+
   /** Time spent by a Raft log operation in the queue. */
   public static final String RAFT_LOG_TASK_QUEUE_TIME = "enqueuedTime";
+
   /** Time taken for a Raft log operation to complete execution. */
   public static final String RAFT_LOG_TASK_EXECUTION_TIME = "ExecutionTime";
+
   /** Time taken for followers to append log entries. */
   public static final String FOLLOWER_APPEND_ENTRIES_LATENCY = "follower_append_entry_latency";
+
   /** Time taken to process write requests from client. */
   public static final String RAFT_CLIENT_WRITE_REQUEST = "clientWriteRequest";
 

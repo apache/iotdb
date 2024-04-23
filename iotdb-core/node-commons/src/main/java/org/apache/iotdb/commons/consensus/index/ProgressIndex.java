@@ -115,7 +115,9 @@ public abstract class ProgressIndex {
   public abstract ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(
       ProgressIndex progressIndex);
 
-  /** @return the type of this {@link ProgressIndex} */
+  /**
+   * @return the type of this {@link ProgressIndex}
+   */
   public abstract ProgressIndexType getType();
 
   /**

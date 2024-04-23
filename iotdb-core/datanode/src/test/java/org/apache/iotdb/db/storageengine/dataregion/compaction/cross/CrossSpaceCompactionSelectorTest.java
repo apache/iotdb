@@ -185,7 +185,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
   @Test
   public void testSelectWithTooManySourceFiles()
-      throws IOException, MetadataException, WriteProcessException, InterruptedException,
+      throws IOException,
+          MetadataException,
+          WriteProcessException,
+          InterruptedException,
           ExecutionException {
     int oldMaxFileNumForCompaction = SystemInfo.getInstance().getTotalFileLimitForCompaction();
     SystemInfo.getInstance().setTotalFileLimitForCompactionTask(1);
