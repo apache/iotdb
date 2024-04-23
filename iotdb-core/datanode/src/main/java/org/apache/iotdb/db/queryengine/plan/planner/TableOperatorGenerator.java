@@ -236,6 +236,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           Optional.of(pushDownPredicate),
           tableScanOperator,
           node.getOutputSymbols().stream()
+              .filter(symbol -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(symbol.getName()))
               .map(Symbol::toSymbolReference)
               .toArray(Expression[]::new),
           tableScanOperator.getResultDataTypes(),
@@ -296,7 +297,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return constructFilterAndProjectOperator(
         predicate,
         inputOperator,
-        node.getOutputSymbols().stream().map(Symbol::toSymbolReference).toArray(Expression[]::new),
+        node.getOutputSymbols().stream()
+            .filter(symbol -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(symbol.getName()))
+            .map(Symbol::toSymbolReference)
+            .toArray(Expression[]::new),
         inputDataTypes,
         inputLocations,
         node.getPlanNodeId(),
@@ -414,7 +418,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return constructFilterAndProjectOperator(
         predicate,
         inputOperator,
-        node.getAssignments().getExpressions().toArray(new Expression[0]),
+        node.getAssignments().getMap().entrySet().stream()
+            .filter(
+                entry -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(entry.getKey().getName()))
+            .map(Map.Entry::getValue)
+            .toArray(Expression[]::new),
         inputDataTypes,
         inputLocations,
         node.getPlanNodeId(),

@@ -49,6 +49,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 
 public class LogicalPlanner {
@@ -110,14 +111,16 @@ public class LogicalPlanner {
     RelationType outputDescriptor = analysis.getOutputDescriptor();
     for (Field field : outputDescriptor.getVisibleFields()) {
       String name = field.getName().orElse("_col" + columnNumber);
-      if (!"time".equalsIgnoreCase(name)) {
-        columnHeaders.add(new ColumnHeader(name, transferTypeToTsDataType(field.getType())));
-      }
 
       names.add(name);
       int fieldIndex = outputDescriptor.indexOf(field);
       Symbol symbol = plan.getSymbol(fieldIndex);
       outputs.add(symbol);
+
+      if (!TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(name)) {
+        columnHeaders.add(
+            new ColumnHeader(symbol.getName(), transferTypeToTsDataType(field.getType())));
+      }
 
       columnNumber++;
     }
@@ -141,8 +144,7 @@ public class LogicalPlanner {
   }
 
   private RelationPlanner getRelationPlanner(Analysis analysis) {
-    return new RelationPlanner(
-        analysis, symbolAllocator, context.getQueryId(), sessionInfo, ImmutableMap.of());
+    return new RelationPlanner(analysis, symbolAllocator, context, sessionInfo, ImmutableMap.of());
   }
 
   public TSDataType transferTypeToTsDataType(Type type) {

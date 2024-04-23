@@ -20,7 +20,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -34,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.Predic
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
@@ -101,12 +101,8 @@ public class IndexScan implements RelationalPlanOptimizer {
       Expression indexExpression = context.getPredicate();
       if (indexExpression != null) {
         Set<String> idOrAttributeColumnNames =
-            node.getAssignments().entrySet().stream()
-                .filter(
-                    e ->
-                        TsTableColumnCategory.ID.equals(e.getValue().getColumnCategory())
-                            || ATTRIBUTE.equals(e.getValue().getColumnCategory()))
-                .map(e -> e.getKey().getName())
+            node.getIdAndAttributeIndexMap().keySet().stream()
+                .map(Symbol::getName)
                 .collect(Collectors.toSet());
         if (indexExpression instanceof LogicalExpression) {
           for (Expression subExpression : ((LogicalExpression) indexExpression).getTerms()) {

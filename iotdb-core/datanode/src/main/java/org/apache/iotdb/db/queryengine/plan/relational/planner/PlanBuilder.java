@@ -13,32 +13,25 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.ResolvedField;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTranslateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.relational.sql.tree.ComparisonExpression;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.relational.sql.tree.FieldReference;
-import org.apache.iotdb.db.relational.sql.tree.Identifier;
-import org.apache.iotdb.db.relational.sql.tree.LogicalExpression;
-import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
-
-import com.google.common.collect.ImmutableMap;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Verify.verify;
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 
 public class PlanBuilder {
@@ -58,16 +51,7 @@ public class PlanBuilder {
     this.fieldSymbols = fieldSymbols;
   }
 
-  public static PlanBuilder newPlanBuilder(
-      RelationPlan plan, Analysis analysis, SessionInfo session) {
-    return newPlanBuilder(plan, analysis, ImmutableMap.of(), session);
-  }
-
-  public static PlanBuilder newPlanBuilder(
-      RelationPlan plan,
-      Analysis analysis,
-      Map<ScopeAware<Expression>, Symbol> mappings,
-      SessionInfo session) {
+  public static PlanBuilder newPlanBuilder(RelationPlan plan, Analysis analysis) {
     return new PlanBuilder(
         plan.getRoot(), analysis, plan.getFieldMappings().toArray(new Symbol[0]));
   }
@@ -88,39 +72,20 @@ public class PlanBuilder {
     return this.fieldSymbols;
   }
 
-  public Expression rewrite(Expression root, boolean isRoot) {
+  public Expression rewrite(Expression root) {
     verify(
         analysis.isAnalyzed(root),
         "Expression is not analyzed (%s): %s",
         root.getClass().getName(),
         root);
-    return translate(root, isRoot);
+    return translate(root);
   }
 
-  private Expression translate(Expression expression, boolean isRoot) {
-    // TODO add more translate expressions impl
-    if (expression instanceof FieldReference) {
-      return new SymbolReference(getSymbolForColumn(expression).get().getName());
-    } else if (expression instanceof ComparisonExpression) {
-      ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
-      Expression left = translate(comparisonExpression.getLeft(), false);
-      Expression right = translate(comparisonExpression.getRight(), false);
-      return new ComparisonExpression(comparisonExpression.getOperator(), left, right);
-    } else if (expression instanceof Identifier) {
-      return getSymbolForColumn(expression).map(Symbol::toSymbolReference).get();
-    } else if (expression instanceof LogicalExpression) {
-      LogicalExpression logicalExpression = (LogicalExpression) expression;
-      return new LogicalExpression(
-          logicalExpression.getOperator(),
-          logicalExpression.getTerms().stream()
-              .map(e -> translate(e, false))
-              .collect(toImmutableList()));
-    }
-
-    return expression;
+  private Expression translate(Expression expression) {
+    return new ExpressionTranslateVisitor().process(expression, this);
   }
 
-  private Optional<Symbol> getSymbolForColumn(Expression expression) {
+  public Optional<Symbol> getSymbolForColumn(Expression expression) {
     if (!analysis.isColumnReference(expression)) {
       // Expression can be a reference to lambda argument (or DereferenceExpression based on lambda
       // argument reference).
@@ -142,33 +107,34 @@ public class PlanBuilder {
       Iterable<T> expressions,
       Analysis analysis,
       SymbolAllocator symbolAllocator,
-      QueryId idAllocator) {
+      MPPQueryContext queryContext) {
     Assignments.Builder projections = Assignments.builder();
 
     // add an identity projection for underlying plan
     projections.putIdentities(root.getOutputSymbols());
 
-    Set<String> set = new HashSet<>();
-    for (Symbol symbol : root.getOutputSymbols()) {
-      set.add(symbol.toString());
-    }
+    Set<String> symbolSet =
+        root.getOutputSymbols().stream().map(Symbol::getName).collect(Collectors.toSet());
 
     Map<Expression, Symbol> mappings = new HashMap<>();
     for (T expression : expressions) {
       // Skip any expressions that have already been translated and recorded in the
       // translation map, or that are duplicated in the list of exp
       if (!mappings.containsKey(expression)
-          && !set.contains(expression.toString().toLowerCase())
+          && !symbolSet.contains(expression.toString().toLowerCase())
           && !(expression instanceof FieldReference)) {
-        set.add(expression.toString());
-        Symbol symbol = symbolAllocator.newSymbol("expr", analysis.getType(expression));
-        projections.put(symbol, expression);
+        symbolSet.add(expression.toString());
+        // Symbol symbol = symbolAllocator.newSymbol("expr", analysis.getType(expression));
+        Symbol symbol =
+            symbolAllocator.newSymbol(expression.toString(), analysis.getType(expression));
+        queryContext.getTypeProvider().putTableModelType(symbol, analysis.getType(expression));
+        projections.put(symbol, translate(expression));
         mappings.put(expression, symbol);
       }
     }
 
     return new PlanBuilder(
-        new ProjectNode(idAllocator.genPlanNodeId(), this.root, projections.build()),
+        new ProjectNode(queryContext.getQueryId().genPlanNodeId(), this.root, projections.build()),
         this.analysis,
         this.fieldSymbols);
   }

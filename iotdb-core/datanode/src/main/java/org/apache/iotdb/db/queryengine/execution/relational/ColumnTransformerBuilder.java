@@ -118,42 +118,48 @@ public class ColumnTransformerBuilder
   @Override
   protected ColumnTransformer visitArithmeticBinary(
       ArithmeticBinaryExpression node, Context context) {
-    ColumnTransformer res =
-        context.cache.computeIfAbsent(
-            node,
-            n -> {
-              if (context.hasSeen.containsKey(node)) {
-                IdentityColumnTransformer identity =
-                    new IdentityColumnTransformer(
-                        DOUBLE, context.originSize + context.commonTransformerList.size());
-                ColumnTransformer columnTransformer = context.hasSeen.get(node);
-                columnTransformer.addReferenceCount();
-                context.commonTransformerList.add(columnTransformer);
-                context.leafList.add(identity);
-                context.inputDataTypes.add(TSDataType.DOUBLE);
-                return identity;
-              } else {
-                ColumnTransformer left = process(node.getLeft(), context);
-                ColumnTransformer right = process(node.getRight(), context);
-                switch (node.getOperator()) {
-                  case ADD:
-                    return new ArithmeticAdditionColumnTransformer(DOUBLE, left, right);
-                  case SUBTRACT:
-                    return new ArithmeticSubtractionColumnTransformer(DOUBLE, left, right);
-                  case MULTIPLY:
-                    return new ArithmeticMultiplicationColumnTransformer(DOUBLE, left, right);
-                  case DIVIDE:
-                    return new ArithmeticDivisionColumnTransformer(DOUBLE, left, right);
-                  case MODULUS:
-                    return new ArithmeticModuloColumnTransformer(DOUBLE, left, right);
-                  default:
-                    throw new UnsupportedOperationException(
-                        String.format(UNSUPPORTED_EXPRESSION, node.getOperator()));
-                }
-              }
-            });
+    ColumnTransformer res;
+    if (context.cache.containsKey(node)) {
+      res = context.cache.get(node);
+    } else {
+      res = getArithmeticBinaryTransformer(node, context);
+      context.cache.put(node, res);
+    }
     res.addReferenceCount();
     return res;
+  }
+
+  private ColumnTransformer getArithmeticBinaryTransformer(
+      ArithmeticBinaryExpression node, Context context) {
+    if (context.hasSeen.containsKey(node)) {
+      IdentityColumnTransformer identity =
+          new IdentityColumnTransformer(
+              DOUBLE, context.originSize + context.commonTransformerList.size());
+      ColumnTransformer columnTransformer = context.hasSeen.get(node);
+      columnTransformer.addReferenceCount();
+      context.commonTransformerList.add(columnTransformer);
+      context.leafList.add(identity);
+      context.inputDataTypes.add(TSDataType.DOUBLE);
+      return identity;
+    } else {
+      ColumnTransformer left = process(node.getLeft(), context);
+      ColumnTransformer right = process(node.getRight(), context);
+      switch (node.getOperator()) {
+        case ADD:
+          return new ArithmeticAdditionColumnTransformer(DOUBLE, left, right);
+        case SUBTRACT:
+          return new ArithmeticSubtractionColumnTransformer(DOUBLE, left, right);
+        case MULTIPLY:
+          return new ArithmeticMultiplicationColumnTransformer(DOUBLE, left, right);
+        case DIVIDE:
+          return new ArithmeticDivisionColumnTransformer(DOUBLE, left, right);
+        case MODULUS:
+          return new ArithmeticModuloColumnTransformer(DOUBLE, left, right);
+        default:
+          throw new UnsupportedOperationException(
+              String.format(UNSUPPORTED_EXPRESSION, node.getOperator()));
+      }
+    }
   }
 
   @Override
