@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.processor.twostage.combiner;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.processor.twostage.operator.Operator;
 import org.apache.iotdb.db.pipe.processor.twostage.state.State;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -37,7 +38,8 @@ public class Combiner {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Combiner.class);
 
-  private static final int MAX_COMBINER_LIVE_TIME_IN_MS = 1000 * 60 * 5; // 5 minutes
+  private static final long MAX_COMBINER_LIVE_TIME_IN_MS =
+      PipeConfig.getInstance().getTwoStageAggregateMaxCombinerLiveTimeInMs();
   private final long creationTimeInMs;
 
   private final Operator operator;

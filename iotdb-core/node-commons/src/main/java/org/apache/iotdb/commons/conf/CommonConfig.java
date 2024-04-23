@@ -228,6 +228,10 @@ public class CommonConfig {
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
 
+  private long twoStageAggregateMaxCombinerLiveTimeInMs = 5 * 60 * 1000; // 5 minutes
+  private long twoStageAggregateDataRegionInfoCacheTimeInMs = 5 * 60 * 1000; // 5 minutes
+  private long twoStageAggregateSenderEndPointsCacheInMs = 20 * 60 * 1000; // 20 minutes
+
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
   private int subscriptionMaxTabletsPerPrefetching = 16;
@@ -959,6 +963,34 @@ public class CommonConfig {
   public void setPipeListeningQueueTransferSnapshotThreshold(
       long pipeListeningQueueTransferSnapshotThreshold) {
     this.pipeListeningQueueTransferSnapshotThreshold = pipeListeningQueueTransferSnapshotThreshold;
+  }
+
+  public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
+    return twoStageAggregateMaxCombinerLiveTimeInMs;
+  }
+
+  public void setTwoStageAggregateMaxCombinerLiveTimeInMs(
+      long twoStageAggregateMaxCombinerLiveTimeInMs) {
+    this.twoStageAggregateMaxCombinerLiveTimeInMs = twoStageAggregateMaxCombinerLiveTimeInMs;
+  }
+
+  public long getTwoStageAggregateDataRegionInfoCacheTimeInMs() {
+    return twoStageAggregateDataRegionInfoCacheTimeInMs;
+  }
+
+  public void setTwoStageAggregateDataRegionInfoCacheTimeInMs(
+      long twoStageAggregateDataRegionInfoCacheTimeInMs) {
+    this.twoStageAggregateDataRegionInfoCacheTimeInMs =
+        twoStageAggregateDataRegionInfoCacheTimeInMs;
+  }
+
+  public long getTwoStageAggregateSenderEndPointsCacheInMs() {
+    return twoStageAggregateSenderEndPointsCacheInMs;
+  }
+
+  public void setTwoStageAggregateSenderEndPointsCacheInMs(
+      long twoStageAggregateSenderEndPointsCacheInMs) {
+    this.twoStageAggregateSenderEndPointsCacheInMs = twoStageAggregateSenderEndPointsCacheInMs;
   }
 
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {

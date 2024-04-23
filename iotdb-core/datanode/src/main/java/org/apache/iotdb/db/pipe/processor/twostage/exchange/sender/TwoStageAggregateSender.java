@@ -103,22 +103,21 @@ public class TwoStageAggregateSender implements AutoCloseable {
     final long currentTime = System.currentTimeMillis();
 
     if (DATANODE_ID_2_END_POINTS.get() != null
-        // 30 minutes cache
-        && currentTime - DATANODE_ID_2_END_POINTS_LAST_UPDATE_TIME.get() < 30 * 60 * 1000) {
+        && currentTime - DATANODE_ID_2_END_POINTS_LAST_UPDATE_TIME.get()
+            < PIPE_CONFIG.getTwoStageAggregateSenderEndPointsCacheInMs()) {
       return false;
     }
 
     synchronized (DATANODE_ID_2_END_POINTS) {
       if (DATANODE_ID_2_END_POINTS.get() != null
-          // 30 minutes cache
-          && currentTime - DATANODE_ID_2_END_POINTS_LAST_UPDATE_TIME.get() < 30 * 60 * 1000) {
+          && currentTime - DATANODE_ID_2_END_POINTS_LAST_UPDATE_TIME.get()
+              < PIPE_CONFIG.getTwoStageAggregateSenderEndPointsCacheInMs()) {
         return false;
       }
 
       final Map<Integer, TEndPoint> dataNodeId2EndPointMap = new HashMap<>();
       try (final ConfigNodeClient configNodeClient =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        // TODO: We assume that different data nodes will get the same data nodes' endpoints
         final TShowDataNodesResp showDataNodesResp = configNodeClient.showDataNodes();
         if (showDataNodesResp == null || showDataNodesResp.getDataNodesInfoList() == null) {
           throw new PipeException("Failed to fetch data nodes");

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
@@ -115,7 +116,7 @@ public class PipeCombineHandler {
   private Map<Integer, Integer> fetchExpectedRegionId2DataNodeIdMap() {
     synchronized (ALL_REGION_ID_2_DATANODE_ID_MAP) {
       if (System.currentTimeMillis() - ALL_REGION_ID_2_DATANODE_ID_MAP_LAST_UPDATE_TIME.get()
-          > 5 * 60 * 1000) { // 5 minutes
+          > PipeConfig.getInstance().getTwoStageAggregateDataRegionInfoCacheTimeInMs()) {
         ALL_REGION_ID_2_DATANODE_ID_MAP.clear();
 
         try (final ConfigNodeClient configNodeClient =
