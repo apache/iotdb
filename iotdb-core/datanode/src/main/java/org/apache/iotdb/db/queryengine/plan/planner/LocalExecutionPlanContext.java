@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
@@ -349,10 +348,5 @@ public class LocalExecutionPlanContext {
 
   public TemplatedInfo getTemplatedInfo() {
     return typeProvider.getTemplatedInfo();
-  }
-
-  @TestOnly
-  public Map<PlanNodeId, List<PipelineMemoryEstimator>> getParentPlanNodeIdToMemoryEstimator() {
-    return parentPlanNodeIdToMemoryEstimator;
   }
 }
