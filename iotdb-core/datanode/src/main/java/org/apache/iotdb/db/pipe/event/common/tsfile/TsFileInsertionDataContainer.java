@@ -144,24 +144,24 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       Map<IDeviceID, List<String>> originalDeviceMeasurementsMap) {
     final Map<IDeviceID, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
     for (Map.Entry<IDeviceID, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
-      final String deviceId = entry.getKey().toString();
+      final IDeviceID deviceId = entry.getKey();
+      String deviceStr = deviceId.toString();
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
       // in this case, all data can be matched without checking the measurements
-      if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
+      if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceStr)) {
         if (!entry.getValue().isEmpty()) {
-          filteredDeviceMeasurementsMap.put(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId), entry.getValue());
+          filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
         }
       }
 
       // case 2: for example, pattern is root.a.b.c and device is root.a.b
       // in this case, we need to check the full path
-      else if (pattern.mayOverlapWithDevice(deviceId)) {
+      else if (pattern.mayOverlapWithDevice(deviceStr)) {
         final List<String> filteredMeasurements = new ArrayList<>();
 
         for (final String measurement : entry.getValue()) {
-          if (pattern.matchesMeasurement(deviceId, measurement)) {
+          if (pattern.matchesMeasurement(deviceStr, measurement)) {
             filteredMeasurements.add(measurement);
           } else {
             // Parse pattern iff there are measurements filtered out
@@ -170,8 +170,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
         }
 
         if (!filteredMeasurements.isEmpty()) {
-          filteredDeviceMeasurementsMap.put(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId), filteredMeasurements);
+          filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
         }
       }
 

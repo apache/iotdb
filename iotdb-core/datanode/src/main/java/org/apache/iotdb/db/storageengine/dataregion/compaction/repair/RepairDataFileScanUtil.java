@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDevice
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
@@ -109,6 +110,7 @@ public class RepairDataFileScanUtil {
 
   private void checkAlignedDeviceSeries(TsFileSequenceReader reader, IDeviceID device)
       throws IOException {
+    String deviceStr = device.toString();
     List<AlignedChunkMetadata> chunkMetadataList = reader.getAlignedChunkMetadata(device);
     for (AlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
       IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
@@ -133,7 +135,7 @@ public class RepairDataFileScanUtil {
             Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
         while (decoder.hasNext(uncompressedPageData)) {
           long currentTime = decoder.readLong(uncompressedPageData);
-          checkPreviousTimeAndUpdate(device.toString(), currentTime);
+          checkPreviousTimeAndUpdate(deviceStr, currentTime);
         }
       }
     }
@@ -149,7 +151,8 @@ public class RepairDataFileScanUtil {
           measurementChunkMetadataListMapIterator.next();
       for (Map.Entry<String, List<ChunkMetadata>> measurementChunkMetadataListEntry :
           measurementChunkMetadataListMap.entrySet()) {
-        String measurement = measurementChunkMetadataListEntry.getKey();
+        String measurement =
+            device + TsFileConstant.PATH_SEPARATOR + measurementChunkMetadataListEntry.getKey();
         List<ChunkMetadata> chunkMetadataList = measurementChunkMetadataListEntry.getValue();
         checkSingleNonAlignedSeries(reader, measurement, chunkMetadataList);
         previousTime = Long.MIN_VALUE;
