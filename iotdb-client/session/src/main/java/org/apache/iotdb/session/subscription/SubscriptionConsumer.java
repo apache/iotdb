@@ -712,6 +712,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
             }
           case TS_FILE_ERROR:
             {
+              // no need to check commit context
+
               final String errorMessage =
                   ((TsFileErrorMessagePayload) messagePayload).getErrorMessage();
               final boolean retryable = ((TsFileErrorMessagePayload) messagePayload).isRetryable();
