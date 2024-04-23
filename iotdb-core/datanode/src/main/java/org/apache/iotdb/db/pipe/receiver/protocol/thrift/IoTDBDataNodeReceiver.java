@@ -301,17 +301,17 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     batchVisitor.clear();
     final List<TSStatus> results = new ArrayList<>();
     while (generator.hasNext()) {
-      final Optional<Statement> optionalStatement = batchVisitor.process(generator.next(), null);
-      if (!optionalStatement.isPresent()) {
+      final Statement originalStatement = generator.next();
+      if (!executionTypes.contains(originalStatement.getType())) {
         continue;
       }
 
-      final Statement statement = optionalStatement.get();
-      if (executionTypes.contains(statement.getType())) {
-        // The statements do not contain AlterLogicalViewStatements
-        // Here we apply the statements as many as possible
-        results.add(executeStatementAndClassifyExceptions(statement));
-      }
+      // The statements do not contain AlterLogicalViewStatements
+      // Here we apply the statements as many as possible
+      // Even if there are failed statements
+      batchVisitor
+          .process(originalStatement, null)
+          .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
     }
     batchVisitor.getRemainBatches().stream()
         .filter(Optional::isPresent)
