@@ -21,7 +21,8 @@ package org.apache.iotdb.db.pipe.processor.twostage.operator;
 
 import org.apache.iotdb.db.pipe.processor.twostage.state.CountState;
 import org.apache.iotdb.db.pipe.processor.twostage.state.State;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.util.Queue;
 
