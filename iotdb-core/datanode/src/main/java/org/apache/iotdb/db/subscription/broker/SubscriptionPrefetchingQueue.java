@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 
@@ -57,7 +56,7 @@ public abstract class SubscriptionPrefetchingQueue {
     this.uncommittedEvents = new ConcurrentHashMap<>();
   }
 
-  public abstract SubscriptionEvent poll(String consumerId, SubscriptionPollTimer timer);
+  public abstract SubscriptionEvent poll(String consumerId);
 
   public abstract void executePrefetch();
 

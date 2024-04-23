@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
@@ -35,7 +34,6 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
@@ -304,24 +302,14 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       final SubscriptionPollMessage pollMessage = req.getPollMessage();
       final short messageType = pollMessage.getMessageType();
 
-      final long timeoutMs = pollMessage.getTimeoutMs();
-      final SubscriptionPollTimer timer =
-          new SubscriptionPollTimer(
-              System.currentTimeMillis(),
-              timeoutMs == 0
-                  ? SubscriptionConfig.getInstance().getSubscriptionDefaultPollTimeoutMs()
-                  : Math.max(
-                      timeoutMs,
-                      SubscriptionConfig.getInstance().getSubscriptionMinPollTimeoutMs()));
-
       if (SubscriptionPollMessageType.isValidatedMessageType(messageType)) {
         switch (SubscriptionPollMessageType.valueOf(messageType)) {
           case POLL:
             return handlePipeSubscribePollInternal(
-                consumerConfig, (PollMessagePayload) pollMessage.getMessagePayload(), timer);
+                consumerConfig, (PollMessagePayload) pollMessage.getMessagePayload());
           case POLL_TS_FILE:
             return handlePipeSubscribePollTsFileInternal(
-                consumerConfig, (PollTsFileMessagePayload) pollMessage.getMessagePayload(), timer);
+                consumerConfig, (PollTsFileMessagePayload) pollMessage.getMessagePayload());
           default:
             break;
         }
@@ -339,9 +327,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private TPipeSubscribeResp handlePipeSubscribePollInternal(
-      final ConsumerConfig consumerConfig,
-      final PollMessagePayload messagePayload,
-      final SubscriptionPollTimer timer) {
+      final ConsumerConfig consumerConfig, final PollMessagePayload messagePayload) {
     Set<String> topicNames = messagePayload.getTopicNames();
     if (topicNames.isEmpty()) {
       // poll all subscribed topics
@@ -355,7 +341,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // poll
     final List<SubscriptionEvent> events =
-        SubscriptionAgent.broker().poll(consumerConfig, topicNames, timer);
+        SubscriptionAgent.broker().poll(consumerConfig, topicNames);
 
     final List<SubscriptionPolledMessage> polledMessages =
         events.stream().map(SubscriptionEvent::getMessage).collect(Collectors.toList());
@@ -364,14 +350,6 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         polledMessages.stream()
             .map(SubscriptionPolledMessage::getCommitContext)
             .collect(Collectors.toList());
-
-    // check timer
-    if (timer.isExpired()) {
-      LOGGER.warn(
-          "Subscription: timeout happened when consumer {} poll topics {}",
-          consumerConfig,
-          topicNames);
-    }
 
     LOGGER.info(
         "Subscription: consumer {} poll topics {} successfully, commit contexts: {}",
@@ -384,9 +362,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private TPipeSubscribeResp handlePipeSubscribePollTsFileInternal(
-      final ConsumerConfig consumerConfig,
-      final PollTsFileMessagePayload messagePayload,
-      final SubscriptionPollTimer timer) {
+      final ConsumerConfig consumerConfig, final PollTsFileMessagePayload messagePayload) {
     // poll
     final List<SubscriptionEvent> events =
         SubscriptionAgent.broker()
@@ -394,8 +370,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                 consumerConfig,
                 messagePayload.getTopicName(),
                 messagePayload.getFileName(),
-                messagePayload.getWritingOffset(),
-                timer);
+                messagePayload.getWritingOffset());
 
     final List<SubscriptionPolledMessage> polledMessages =
         events.stream().map(SubscriptionEvent::getMessage).collect(Collectors.toList());
@@ -404,16 +379,6 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         polledMessages.stream()
             .map(SubscriptionPolledMessage::getCommitContext)
             .collect(Collectors.toList());
-
-    // check timer
-    if (timer.isExpired()) {
-      LOGGER.warn(
-          "Subscription: timeout happened when consumer {} poll TsFile (topic name: {}, file name: {}, writing offset: {})",
-          consumerConfig,
-          messagePayload.getTopicName(),
-          messagePayload.getFileName(),
-          messagePayload.getWritingOffset());
-    }
 
     LOGGER.info(
         "Subscription: consumer {} poll TsFile (topic name: {}, file name: {}, writing offset: {}) successfully, commit contexts: {}",

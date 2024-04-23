@@ -27,7 +27,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
@@ -62,11 +61,14 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
   }
 
   @Override
-  public SubscriptionEvent poll(final String consumerId, final SubscriptionPollTimer timer) {
+  public SubscriptionEvent poll(final String consumerId) {
     if (prefetchingQueue.isEmpty()) {
       prefetchOnce(SubscriptionConfig.getInstance().getSubscriptionMaxTabletsPerPrefetching());
       // without serializeOnce here
     }
+
+    final long size = prefetchingQueue.size();
+    long count = 0;
 
     SubscriptionEvent currentEvent;
     try {
@@ -80,11 +82,11 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
         }
         // Re-enqueue the uncommitted event at the end of the queue.
         prefetchingQueue.add(currentEvent);
-        // timeout control
-        timer.update();
-        if (timer.isExpired()) {
+        // limit control
+        if (count >= size) {
           break;
         }
+        count++;
         if (!currentEvent.pollable()) {
           continue;
         }

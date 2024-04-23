@@ -552,16 +552,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_recycle_uncommitted_event_interval_ms",
                 String.valueOf(config.getSubscriptionRecycleUncommittedEventIntervalMs()))));
-    config.setSubscriptionDefaultPollTimeoutMs(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_default_poll_timeout_ms",
-                String.valueOf(config.getSubscriptionDefaultPollTimeoutMs()))));
-    config.setSubscriptionMinPollTimeoutMs(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_min_poll_timeout_ms",
-                String.valueOf(config.getSubscriptionMinPollTimeoutMs()))));
     config.setSubscriptionReadFileBufferSize(
         Integer.parseInt(
             properties.getProperty(

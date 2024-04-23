@@ -22,7 +22,6 @@ package org.apache.iotdb.db.subscription.broker;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -58,21 +57,16 @@ public class SubscriptionBroker {
 
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
 
-  public List<SubscriptionEvent> poll(
-      final String consumerId, final Set<String> topicNames, final SubscriptionPollTimer timer) {
+  public List<SubscriptionEvent> poll(final String consumerId, final Set<String> topicNames) {
     final List<SubscriptionEvent> events = new ArrayList<>();
     for (final Map.Entry<String, SubscriptionPrefetchingQueue> entry :
         topicNameToPrefetchingQueue.entrySet()) {
       final String topicName = entry.getKey();
       final SubscriptionPrefetchingQueue prefetchingQueue = entry.getValue();
       if (topicNames.contains(topicName)) {
-        final SubscriptionEvent event = prefetchingQueue.poll(consumerId, timer);
+        final SubscriptionEvent event = prefetchingQueue.poll(consumerId);
         if (Objects.nonNull(event)) {
           events.add(event);
-        }
-        timer.update();
-        if (timer.isExpired()) {
-          break;
         }
       }
     }
@@ -83,8 +77,7 @@ public class SubscriptionBroker {
       final String consumerId,
       final String topicName,
       final String fileName,
-      final long writingOffset,
-      final SubscriptionPollTimer timer) {
+      final long writingOffset) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
@@ -103,7 +96,7 @@ public class SubscriptionBroker {
     }
     return Collections.singletonList(
         ((SubscriptionPrefetchingTsFileQueue) prefetchingQueue)
-            .pollTsFile(consumerId, fileName, writingOffset, timer));
+            .pollTsFile(consumerId, fileName, writingOffset));
   }
 
   /** @return list of successful commit contexts */

@@ -234,9 +234,7 @@ public class CommonConfig {
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
-  private int subscriptionRecycleUncommittedEventIntervalMs = 120000; // 120s
-  private long subscriptionDefaultPollTimeoutMs = 30000;
-  private long subscriptionMinPollTimeoutMs = 500;
+  private int subscriptionRecycleUncommittedEventIntervalMs = 60000; // 60s
   private int subscriptionReadFileBufferSize = 8388608;
 
   /** Whether to use persistent schema mode. */
@@ -1015,22 +1013,6 @@ public class CommonConfig {
       int subscriptionRecycleUncommittedEventIntervalMs) {
     this.subscriptionRecycleUncommittedEventIntervalMs =
         subscriptionRecycleUncommittedEventIntervalMs;
-  }
-
-  public long getSubscriptionDefaultPollTimeoutMs() {
-    return subscriptionDefaultPollTimeoutMs;
-  }
-
-  public void setSubscriptionDefaultPollTimeoutMs(long subscriptionDefaultPollTimeoutMs) {
-    this.subscriptionDefaultPollTimeoutMs = subscriptionDefaultPollTimeoutMs;
-  }
-
-  public long getSubscriptionMinPollTimeoutMs() {
-    return subscriptionMinPollTimeoutMs;
-  }
-
-  public void setSubscriptionMinPollTimeoutMs(long subscriptionMinPollTimeoutMs) {
-    this.subscriptionMinPollTimeoutMs = subscriptionMinPollTimeoutMs;
   }
 
   public int getSubscriptionReadFileBufferSize() {

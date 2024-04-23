@@ -22,7 +22,6 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtask;
-import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
@@ -46,9 +45,7 @@ public class SubscriptionBrokerAgent {
   //////////////////////////// provided for subscription agent ////////////////////////////
 
   public List<SubscriptionEvent> poll(
-      final ConsumerConfig consumerConfig,
-      final Set<String> topicNames,
-      final SubscriptionPollTimer timer) {
+      final ConsumerConfig consumerConfig, final Set<String> topicNames) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
@@ -60,15 +57,14 @@ public class SubscriptionBrokerAgent {
     }
     // TODO: currently we fetch messages from all topics
     final String consumerId = consumerConfig.getConsumerId();
-    return broker.poll(consumerId, topicNames, timer);
+    return broker.poll(consumerId, topicNames);
   }
 
   public List<SubscriptionEvent> pollTsFile(
       final ConsumerConfig consumerConfig,
       final String topicName,
       final String fileName,
-      final long writingOffset,
-      final SubscriptionPollTimer timer) {
+      final long writingOffset) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
@@ -79,7 +75,7 @@ public class SubscriptionBrokerAgent {
       throw new SubscriptionException(errorMessage);
     }
     final String consumerId = consumerConfig.getConsumerId();
-    return broker.pollTsFile(consumerId, topicName, fileName, writingOffset, timer);
+    return broker.pollTsFile(consumerId, topicName, fileName, writingOffset);
   }
 
   /** @return list of successful commit contexts */

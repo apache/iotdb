@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionTsFileEvent;
-import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionMessagePayload;
@@ -64,7 +63,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   }
 
   @Override
-  public SubscriptionTsFileEvent poll(final String consumerId, final SubscriptionPollTimer timer) {
+  public SubscriptionTsFileEvent poll(final String consumerId) {
     if (hasPollableOnTheFlySubscriptionTsFileEvent(consumerId)) {
       return null;
     }
@@ -73,11 +72,6 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
         getPollableOnTheFlySubscriptionTsFileEvent(consumerId);
     if (Objects.nonNull(pollableEvent)) {
       return pollableEvent;
-    }
-
-    timer.update();
-    if (timer.isExpired()) {
-      return null;
     }
 
     Event event;
@@ -109,10 +103,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   }
 
   public synchronized @NonNull SubscriptionTsFileEvent pollTsFile(
-      final String consumerId,
-      final String fileName,
-      final long writingOffset,
-      final SubscriptionPollTimer timer) {
+      final String consumerId, final String fileName, final long writingOffset) {
     // 1. Extract current event and check it
     final SubscriptionTsFileEvent event = consumerIdToCurrentEventMap.get(consumerId);
     if (Objects.isNull(event)) {
@@ -253,25 +244,11 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     }
 
     // 3. Poll tsfile piece or tsfile seal
-    return pollTsFile(consumerId, writingOffset, event, timer);
+    return pollTsFile(consumerId, writingOffset, event);
   }
 
   private synchronized @NonNull SubscriptionTsFileEvent pollTsFile(
-      final String consumerId,
-      final long writingOffset,
-      final SubscriptionTsFileEvent event,
-      final SubscriptionPollTimer timer) {
-    timer.update();
-    if (timer.isExpired()) {
-      final String errorMessage =
-          String.format(
-              "Timeout occurred when SubscriptionPrefetchingTsFileQueue %s transferring TsFile (with event %s) to consumer %s",
-              this, event, consumerId);
-      LOGGER.warn(errorMessage);
-      // assume retryable
-      return generateSubscriptionTsFileEventWithErrorMessage(errorMessage, true);
-    }
-
+      final String consumerId, final long writingOffset, final SubscriptionTsFileEvent event) {
     Pair<SubscriptionTsFileEvent, Boolean> newEventWithCommittable =
         event.matchOrResetNext(writingOffset);
     if (Objects.isNull(newEventWithCommittable)) {

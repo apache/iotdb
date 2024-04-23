@@ -55,14 +55,6 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionRecycleUncommittedEventIntervalMs();
   }
 
-  public long getSubscriptionDefaultPollTimeoutMs() {
-    return COMMON_CONFIG.getSubscriptionDefaultPollTimeoutMs();
-  }
-
-  public long getSubscriptionMinPollTimeoutMs() {
-    return COMMON_CONFIG.getSubscriptionMinPollTimeoutMs();
-  }
-
   public int getSubscriptionReadFileBufferSize() {
     return COMMON_CONFIG.getSubscriptionReadFileBufferSize();
   }
@@ -84,8 +76,6 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionRecycleUncommittedEventIntervalMs: {}",
         getSubscriptionRecycleUncommittedEventIntervalMs());
-    LOGGER.info("SubscriptionDefaultPollTimeoutMs: {}", getSubscriptionDefaultPollTimeoutMs());
-    LOGGER.info("SubscriptionMinPollTimeoutMs: {}", getSubscriptionMinPollTimeoutMs());
     LOGGER.info("SubscriptionReadFileBufferSize: {}", getSubscriptionReadFileBufferSize());
   }
 

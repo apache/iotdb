@@ -477,40 +477,47 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   protected List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
     final List<SubscriptionMessage> messages = new ArrayList<>();
+    final SubscriptionPollTimer timer =
+        new SubscriptionPollTimer(System.currentTimeMillis(), timeoutMs);
 
-    // poll tablets or tsfile
-    for (final SubscriptionPolledMessage polledMessage : pollInternal(topicNames, timeoutMs)) {
-      final short messageType = polledMessage.getMessageType();
-      if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
-        switch (SubscriptionPolledMessageType.valueOf(messageType)) {
-          case TABLETS:
-            messages.add(
-                new SubscriptionMessage(
-                    polledMessage.getCommitContext(),
-                    ((TabletsMessagePayload) polledMessage.getMessagePayload()).getTablets()));
-            break;
-          case TS_FILE_INIT:
-            pollTsFile(
-                    polledMessage.getCommitContext(),
-                    ((TsFileInitMessagePayload) polledMessage.getMessagePayload()).getFileName(),
-                    timeoutMs)
-                .ifPresent(messages::add);
-            break;
-          default:
-            LOGGER.warn("unexpected message type: {}", messageType);
-            break;
+    do {
+      // update timer
+      timer.update();
+      // poll tablets or tsfile
+      for (final SubscriptionPolledMessage polledMessage : pollInternal(topicNames)) {
+        final short messageType = polledMessage.getMessageType();
+        if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
+          switch (SubscriptionPolledMessageType.valueOf(messageType)) {
+            case TABLETS:
+              messages.add(
+                  new SubscriptionMessage(
+                      polledMessage.getCommitContext(),
+                      ((TabletsMessagePayload) polledMessage.getMessagePayload()).getTablets()));
+              break;
+            case TS_FILE_INIT:
+              pollTsFile(
+                      polledMessage.getCommitContext(),
+                      ((TsFileInitMessagePayload) polledMessage.getMessagePayload()).getFileName())
+                  .ifPresent(messages::add);
+              break;
+            default:
+              LOGGER.warn("unexpected message type: {}", messageType);
+              break;
+          }
+        } else {
+          LOGGER.warn("unexpected message type: {}", messageType);
         }
-      } else {
-        LOGGER.warn("unexpected message type: {}", messageType);
       }
-    }
+      if (!messages.isEmpty()) {
+        return messages;
+      }
+    } while (timer.notExpired());
 
     return messages;
   }
 
   private Optional<SubscriptionMessage> pollTsFile(
-      final SubscriptionCommitContext commitContext, String fileName, final long timeoutMs)
-      throws SubscriptionException {
+      final SubscriptionCommitContext commitContext, String fileName) throws SubscriptionException {
     final String topicName = commitContext.getTopicName();
     Path filePath;
 
@@ -553,7 +560,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
-      return Optional.of(pollTsFileInternal(commitContext, file, fileWriter, timeoutMs));
+      return Optional.of(pollTsFileInternal(commitContext, file, fileWriter));
     } catch (final IOException | SubscriptionRetryableException e) {
       LOGGER.warn(
           "IOException or SubscriptionRetryableException occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}",
@@ -578,8 +585,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private SubscriptionMessage pollTsFileInternal(
       final SubscriptionCommitContext commitContext,
       final File file,
-      final RandomAccessFile fileWriter,
-      final long timeoutMs)
+      final RandomAccessFile fileWriter)
       throws IOException, SubscriptionException {
     final int dataNodeId = commitContext.getDataNodeId();
     final String topicName = commitContext.getTopicName();
@@ -594,7 +600,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     long writingOffset = fileWriter.length();
     while (true) {
       final List<SubscriptionPolledMessage> polledMessages =
-          pollTsFileInternal(dataNodeId, topicName, fileName, writingOffset, timeoutMs);
+          pollTsFileInternal(dataNodeId, topicName, fileName, writingOffset);
 
       // It's agreed that the server will always return at least one message, even in case of
       // failure.
@@ -727,8 +733,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  private List<SubscriptionPolledMessage> pollInternal(
-      final Set<String> topicNames, final long timeoutMs) throws SubscriptionException {
+  private List<SubscriptionPolledMessage> pollInternal(final Set<String> topicNames)
+      throws SubscriptionException {
     final List<SubscriptionPolledMessage> polledMessages = new ArrayList<>();
 
     acquireReadLock();
@@ -740,7 +746,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
                   new SubscriptionPollMessage(
                       SubscriptionPollMessageType.POLL.getType(),
                       new PollMessagePayload(topicNames),
-                      timeoutMs)));
+                      0L)));
         } catch (final SubscriptionRetryableException e) {
           LOGGER.warn(
               "SubscriptionRetryableException occurred when SubscriptionConsumer {} polling from SubscriptionProvider {}",
@@ -767,11 +773,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private List<SubscriptionPolledMessage> pollTsFileInternal(
-      final int dataNodeId,
-      final String topicName,
-      final String fileName,
-      final long writingOffset,
-      final long timeoutMs)
+      final int dataNodeId, final String topicName, final String fileName, final long writingOffset)
       throws SubscriptionException {
     acquireReadLock();
     try {
@@ -786,7 +788,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
           new SubscriptionPollMessage(
               SubscriptionPollMessageType.POLL_TS_FILE.getType(),
               new PollTsFileMessagePayload(topicName, fileName, writingOffset),
-              timeoutMs));
+              0L));
     } finally {
       releaseReadLock();
     }

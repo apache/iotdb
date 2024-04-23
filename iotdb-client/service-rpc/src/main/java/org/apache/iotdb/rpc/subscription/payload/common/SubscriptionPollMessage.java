@@ -36,7 +36,7 @@ public class SubscriptionPollMessage {
 
   private final transient SubscriptionMessagePayload messagePayload;
 
-  private final transient long timeoutMs;
+  private final transient long timeoutMs; // unused now
 
   public SubscriptionPollMessage(
       short messageType, SubscriptionMessagePayload messagePayload, long timeoutMs) {
