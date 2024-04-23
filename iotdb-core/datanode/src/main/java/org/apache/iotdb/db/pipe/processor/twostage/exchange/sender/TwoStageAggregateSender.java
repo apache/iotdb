@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.db.pipe.processor.twostage.combiner.PipeCombineHandlerManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -38,12 +39,13 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class TwoStageAggregateSender implements AutoCloseable {
@@ -52,17 +54,26 @@ public class TwoStageAggregateSender implements AutoCloseable {
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
-  // TODO: Update the endpoints periodically to handle node changes
-  private static final AtomicReference<TEndPoint[]> END_POINTS = new AtomicReference<>();
+  private final String pipeName;
+  private final long creationTime;
+
+  private static final AtomicLong DATANODE_ID_2_END_POINTS_LAST_UPDATE_TIME = new AtomicLong(0);
+  private static final AtomicReference<Map<Integer, TEndPoint>> DATANODE_ID_2_END_POINTS =
+      new AtomicReference<>();
 
   private TEndPoint[] endPoints;
   private final Map<TEndPoint, IoTDBSyncClient> endPointIoTDBSyncClientMap =
       new ConcurrentHashMap<>();
 
+  public TwoStageAggregateSender(String pipeName, long creationTime) {
+    this.pipeName = pipeName;
+    this.creationTime = creationTime;
+  }
+
   public synchronized TPipeTransferResp request(long watermark, TPipeTransferReq req)
       throws TException {
-    tryFetchEndPointsIfNecessary();
-    tryConstructClients();
+    final boolean endPointsChanged = tryFetchEndPointsIfNecessary();
+    tryConstructClients(endPointsChanged);
 
     final TEndPoint endPoint = endPoints[(int) watermark % endPoints.length];
     IoTDBSyncClient client = endPointIoTDBSyncClientMap.get(endPoint);
@@ -88,17 +99,23 @@ public class TwoStageAggregateSender implements AutoCloseable {
     }
   }
 
-  private void tryFetchEndPointsIfNecessary() {
-    if (END_POINTS.get() != null) {
-      return;
+  private static boolean tryFetchEndPointsIfNecessary() {
+    final long currentTime = System.currentTimeMillis();
+
+    if (DATANODE_ID_2_END_POINTS.get() != null
+        // 30 minutes cache
+        && currentTime - DATANODE_ID_2_END_POINTS_LAST_UPDATE_TIME.get() < 30 * 60 * 1000) {
+      return false;
     }
 
-    synchronized (END_POINTS) {
-      if (END_POINTS.get() != null) {
-        return;
+    synchronized (DATANODE_ID_2_END_POINTS) {
+      if (DATANODE_ID_2_END_POINTS.get() != null
+          // 30 minutes cache
+          && currentTime - DATANODE_ID_2_END_POINTS_LAST_UPDATE_TIME.get() < 30 * 60 * 1000) {
+        return false;
       }
 
-      final Set<TEndPoint> endPointSet = new HashSet<>();
+      final Map<Integer, TEndPoint> dataNodeId2EndPointMap = new HashMap<>();
       try (final ConfigNodeClient configNodeClient =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // TODO: We assume that different data nodes will get the same data nodes' endpoints
@@ -107,34 +124,66 @@ public class TwoStageAggregateSender implements AutoCloseable {
           throw new PipeException("Failed to fetch data nodes");
         }
         for (final TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
-          endPointSet.add(new TEndPoint(dataNodeInfo.getRpcAddresss(), dataNodeInfo.getRpcPort()));
+          dataNodeId2EndPointMap.put(
+              dataNodeInfo.getDataNodeId(),
+              new TEndPoint(dataNodeInfo.getRpcAddresss(), dataNodeInfo.getRpcPort()));
         }
       } catch (ClientManagerException | TException e) {
         throw new PipeException("Failed to fetch data nodes", e);
       }
 
-      if (endPointSet.isEmpty()) {
+      if (dataNodeId2EndPointMap.isEmpty()) {
         throw new PipeException("No data nodes' endpoints fetched");
       }
 
-      END_POINTS.set(endPointSet.toArray(new TEndPoint[0]));
+      DATANODE_ID_2_END_POINTS.set(dataNodeId2EndPointMap);
+      DATANODE_ID_2_END_POINTS_LAST_UPDATE_TIME.set(currentTime);
     }
 
-    LOGGER.info(
-        "Data nodes' endpoints for two-stage aggregation: {}", Arrays.toString(END_POINTS.get()));
+    LOGGER.info("Data nodes' endpoints for two-stage aggregation: {}", DATANODE_ID_2_END_POINTS);
+    return true;
   }
 
-  private void tryConstructClients() {
-    if (Objects.isNull(endPoints)) {
-      endPoints = END_POINTS.get();
+  private void tryConstructClients(boolean endPointsChanged) {
+    if (Objects.nonNull(endPoints) && !endPointsChanged) {
+      return;
     }
 
-    if (endPointIoTDBSyncClientMap.isEmpty()) {
-      for (final TEndPoint endPoint : endPoints) {
+    final Set<Integer> expectedDataNodeIdSet =
+        PipeCombineHandlerManager.getInstance().getExpectedDataNodeIdSet(pipeName, creationTime);
+    if (expectedDataNodeIdSet.isEmpty()) {
+      throw new PipeException("No expected region id set fetched");
+    }
+
+    endPoints =
+        DATANODE_ID_2_END_POINTS.get().entrySet().stream()
+            .filter(entry -> expectedDataNodeIdSet.contains(entry.getKey()))
+            .map(Map.Entry::getValue)
+            .toArray(TEndPoint[]::new);
+    LOGGER.info(
+        "End points for two-stage aggregation pipe (pipeName={}, creationTime={}) were updated to {}",
+        pipeName,
+        creationTime,
+        endPoints);
+
+    for (final TEndPoint endPoint : endPoints) {
+      if (endPointIoTDBSyncClientMap.containsKey(endPoint)) {
+        continue;
+      }
+
+      try {
+        endPointIoTDBSyncClientMap.put(endPoint, constructIoTDBSyncClient(endPoint));
+      } catch (TTransportException e) {
+        LOGGER.warn("Failed to construct IoTDBSyncClient", e);
+      }
+    }
+
+    for (final TEndPoint endPoint : new HashSet<>(endPointIoTDBSyncClientMap.keySet())) {
+      if (!DATANODE_ID_2_END_POINTS.get().containsValue(endPoint)) {
         try {
-          endPointIoTDBSyncClientMap.put(endPoint, constructIoTDBSyncClient(endPoint));
-        } catch (TTransportException e) {
-          LOGGER.warn("Failed to construct IoTDBSyncClient", e);
+          endPointIoTDBSyncClientMap.remove(endPoint).close();
+        } catch (Exception e) {
+          LOGGER.warn("Failed to close IoTDBSyncClient", e);
         }
       }
     }

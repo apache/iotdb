@@ -58,11 +58,13 @@ public class PipeCombineHandler {
 
   private final Function<String, Operator> /* <combineId, operator> */ operatorConstructor;
 
-  private static final Set<Integer> ALL_REGION_ID_SET = new HashSet<>();
-  private static final AtomicLong ALL_REGION_ID_SET_LAST_UPDATE_TIME = new AtomicLong(0);
-  private final Set<Integer> expectedRegionIdSet;
+  private static final Map<Integer, Integer> ALL_REGION_ID_2_DATANODE_ID_MAP = new HashMap<>();
+  private static final AtomicLong ALL_REGION_ID_2_DATANODE_ID_MAP_LAST_UPDATE_TIME =
+      new AtomicLong(0);
+  private final ConcurrentMap<Integer, Integer> expectedRegionId2DataNodeIdMap =
+      new ConcurrentHashMap<>();
 
-  private final ConcurrentMap<String, Combiner> combineId2Combiner;
+  private final ConcurrentMap<String, Combiner> combineId2Combiner = new ConcurrentHashMap<>();
 
   public PipeCombineHandler(
       String pipeName, long creationTime, Function<String, Operator> operatorConstructor) {
@@ -71,25 +73,15 @@ public class PipeCombineHandler {
 
     this.operatorConstructor = operatorConstructor;
 
-    expectedRegionIdSet = new HashSet<>();
-    fetchAndUpdateExpectedRegionIdSet();
-
-    combineId2Combiner = new ConcurrentHashMap<>();
-  }
-
-  public String getPipeName() {
-    return pipeName;
-  }
-
-  public long getCreationTime() {
-    return creationTime;
+    fetchAndUpdateExpectedRegionId2DataNodeIdMap();
   }
 
   public synchronized TSStatus combine(int regionId, String combineId, State state) {
     return combineId2Combiner
         .computeIfAbsent(
             combineId,
-            id -> new Combiner(operatorConstructor.apply(combineId), expectedRegionIdSet))
+            id ->
+                new Combiner(operatorConstructor.apply(combineId), expectedRegionId2DataNodeIdMap))
         .combine(regionId, state);
   }
 
@@ -115,15 +107,15 @@ public class PipeCombineHandler {
     return FetchCombineResultResponse.toTPipeTransferResp(combineId2ResultType);
   }
 
-  public void fetchAndUpdateExpectedRegionIdSet() {
-    updateExpectedRegionIdSet(fetchExpectedRegionIdSet());
+  public void fetchAndUpdateExpectedRegionId2DataNodeIdMap() {
+    updateExpectedRegionId2DataNodeIdMap(fetchExpectedRegionId2DataNodeIdMap());
   }
 
-  private Set<Integer> fetchExpectedRegionIdSet() {
-    synchronized (ALL_REGION_ID_SET) {
-      if (System.currentTimeMillis() - ALL_REGION_ID_SET_LAST_UPDATE_TIME.get()
+  private Map<Integer, Integer> fetchExpectedRegionId2DataNodeIdMap() {
+    synchronized (ALL_REGION_ID_2_DATANODE_ID_MAP) {
+      if (System.currentTimeMillis() - ALL_REGION_ID_2_DATANODE_ID_MAP_LAST_UPDATE_TIME.get()
           > 5 * 60 * 1000) { // 5 minutes
-        ALL_REGION_ID_SET.clear();
+        ALL_REGION_ID_2_DATANODE_ID_MAP.clear();
 
         try (final ConfigNodeClient configNodeClient =
             ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -134,37 +126,49 @@ public class PipeCombineHandler {
             throw new PipeException("Failed to fetch data region ids");
           }
           for (final TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
-            ALL_REGION_ID_SET.add(regionInfo.getConsensusGroupId().getId());
+            ALL_REGION_ID_2_DATANODE_ID_MAP.put(
+                regionInfo.getConsensusGroupId().getId(), regionInfo.getDataNodeId());
           }
         } catch (ClientManagerException | TException e) {
           throw new PipeException("Failed to fetch data nodes", e);
         }
 
-        ALL_REGION_ID_SET_LAST_UPDATE_TIME.set(System.currentTimeMillis());
+        ALL_REGION_ID_2_DATANODE_ID_MAP_LAST_UPDATE_TIME.set(System.currentTimeMillis());
 
         LOGGER.info(
             "Fetched data region ids {} at {}",
-            ALL_REGION_ID_SET,
-            ALL_REGION_ID_SET_LAST_UPDATE_TIME.get());
+            ALL_REGION_ID_2_DATANODE_ID_MAP,
+            ALL_REGION_ID_2_DATANODE_ID_MAP_LAST_UPDATE_TIME.get());
       }
-    }
 
-    final Set<Integer> pipeRelatedRegionIdSet =
-        new HashSet<>(PipeAgent.task().getPipeTaskRegionIdSet(pipeName, creationTime));
-    pipeRelatedRegionIdSet.removeIf(regionId -> !ALL_REGION_ID_SET.contains(regionId));
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(
-          "Pipe (pipeName={}, creationTime={} related region ids {}",
-          pipeName,
-          creationTime,
-          pipeRelatedRegionIdSet);
+      final Set<Integer> pipeRelatedRegionIdSet =
+          new HashSet<>(PipeAgent.task().getPipeTaskRegionIdSet(pipeName, creationTime));
+      pipeRelatedRegionIdSet.removeIf(
+          regionId -> !ALL_REGION_ID_2_DATANODE_ID_MAP.containsKey(regionId));
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Pipe (pipeName={}, creationTime={} related region ids {}",
+            pipeName,
+            creationTime,
+            pipeRelatedRegionIdSet);
+      }
+      return ALL_REGION_ID_2_DATANODE_ID_MAP.entrySet().stream()
+          .filter(entry -> pipeRelatedRegionIdSet.contains(entry.getKey()))
+          .collect(
+              HashMap::new,
+              (map, entry) -> map.put(entry.getKey(), entry.getValue()),
+              HashMap::putAll);
     }
-    return pipeRelatedRegionIdSet;
   }
 
-  private synchronized void updateExpectedRegionIdSet(Set<Integer> newRegionIdSet) {
-    expectedRegionIdSet.clear();
-    expectedRegionIdSet.addAll(newRegionIdSet);
+  private synchronized void updateExpectedRegionId2DataNodeIdMap(
+      Map<Integer, Integer> newExpectedRegionId2DataNodeIdMap) {
+    expectedRegionId2DataNodeIdMap.clear();
+    expectedRegionId2DataNodeIdMap.putAll(newExpectedRegionId2DataNodeIdMap);
+  }
+
+  public synchronized Set<Integer> getExpectedDataNodeIdSet() {
+    return new HashSet<>(expectedRegionId2DataNodeIdMap.values());
   }
 
   public synchronized void cleanOutdatedCombiner() {

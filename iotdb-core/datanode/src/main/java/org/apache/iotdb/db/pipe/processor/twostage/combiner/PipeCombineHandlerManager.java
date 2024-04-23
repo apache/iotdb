@@ -31,9 +31,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -71,6 +73,13 @@ public class PipeCombineHandlerManager {
         LOGGER.warn("Error occurred when closing CombineHandler(id = {})", pipeId, e);
       }
     }
+  }
+
+  public synchronized Set<Integer> getExpectedDataNodeIdSet(String pipeName, long creationTime) {
+    final String pipeId = generatePipeId(pipeName, creationTime);
+
+    final PipeCombineHandler handler = pipeId2CombineHandler.get(pipeId);
+    return Objects.isNull(handler) ? Collections.emptySet() : handler.getExpectedDataNodeIdSet();
   }
 
   public TPipeTransferResp handle(CombineRequest combineRequest) {
@@ -112,7 +121,7 @@ public class PipeCombineHandlerManager {
 
     pipeId2CombineHandlerSnapshot.forEach(
         (pipeId, handler) -> {
-          handler.fetchAndUpdateExpectedRegionIdSet();
+          handler.fetchAndUpdateExpectedRegionId2DataNodeIdMap();
           handler.cleanOutdatedCombiner();
         });
   }

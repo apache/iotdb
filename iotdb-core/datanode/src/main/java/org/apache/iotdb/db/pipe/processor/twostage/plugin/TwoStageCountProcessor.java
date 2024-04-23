@@ -146,10 +146,10 @@ public class TwoStageCountProcessor implements PipeProcessor {
         localCommitProgressIndex.get(),
         localCount.get());
 
-    twoStageAggregateSender = new TwoStageAggregateSender();
     PipeCombineHandlerManager.getInstance()
         .register(
             pipeName, creationTime, (combineId) -> new CountOperator(combineId, globalCountQueue));
+    twoStageAggregateSender = new TwoStageAggregateSender(pipeName, creationTime);
   }
 
   @Override
@@ -361,9 +361,9 @@ public class TwoStageCountProcessor implements PipeProcessor {
 
   @Override
   public void close() throws Exception {
-    PipeCombineHandlerManager.getInstance().deregister(pipeName, creationTime);
     if (Objects.nonNull(twoStageAggregateSender)) {
       twoStageAggregateSender.close();
     }
+    PipeCombineHandlerManager.getInstance().deregister(pipeName, creationTime);
   }
 }

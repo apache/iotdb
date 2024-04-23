@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Combiner {
@@ -41,22 +42,24 @@ public class Combiner {
 
   private final Operator operator;
 
-  private final Set<Integer> expectedRegionIdSet;
+  private final ConcurrentMap<Integer, Integer> expectedRegionId2DataNodeIdMap;
   private final Set<Integer> receivedRegionIdSet;
 
   private final AtomicBoolean isComplete = new AtomicBoolean(false);
 
-  public Combiner(Operator operator, Set<Integer> expectedRegionIdSet) {
+  public Combiner(
+      Operator operator, ConcurrentMap<Integer, Integer> expectedRegionId2DataNodeIdMap) {
     this.creationTimeInMs = System.currentTimeMillis();
 
     this.operator = operator;
 
-    this.expectedRegionIdSet = expectedRegionIdSet;
+    this.expectedRegionId2DataNodeIdMap = expectedRegionId2DataNodeIdMap;
     this.receivedRegionIdSet = new HashSet<>();
   }
 
   public TSStatus combine(int regionId, State state) {
-    final Set<Integer> finalExpectedRegionIdSet = new HashSet<>(expectedRegionIdSet);
+    final Set<Integer> finalExpectedRegionIdSet =
+        new HashSet<>(expectedRegionId2DataNodeIdMap.values());
 
     if (finalExpectedRegionIdSet.isEmpty()) {
       return RpcUtils.getStatus(
