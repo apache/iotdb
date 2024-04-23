@@ -246,9 +246,15 @@ public class QueryPlanner {
     Pair<Expression, Boolean> resultPair = extractGlobalTimePredicate(predicate, true, true);
     Expression globalTimePredicate = resultPair.left;
     analysis.setGlobalTableModelTimePredicate(globalTimePredicate);
+    boolean hasValueFilter = resultPair.right;
+    if (!hasValueFilter) {
+      return subPlan;
+    }
+    // TODO if predicate equals true, no need filter
 
     return subPlan.withNewRoot(
-        new FilterNode(idAllocator.genPlanNodeId(), subPlan.getRoot(), predicate));
+        new FilterNode(
+            idAllocator.genPlanNodeId(), subPlan.getRoot(), subPlan.rewrite(predicate, true)));
 
     // subPlan = subqueryPlanner.handleSubqueries(subPlan, predicate, analysis.getSubqueries(node));
   }

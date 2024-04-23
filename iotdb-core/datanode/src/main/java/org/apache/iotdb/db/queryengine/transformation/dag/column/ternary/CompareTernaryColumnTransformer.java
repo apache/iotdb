@@ -21,8 +21,6 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.ternary;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 
-import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 
@@ -33,21 +31,6 @@ public abstract class CompareTernaryColumnTransformer extends TernaryColumnTrans
       ColumnTransformer secondColumnTransformer,
       ColumnTransformer thirdColumnTransformer) {
     super(returnType, firstColumnTransformer, secondColumnTransformer, thirdColumnTransformer);
-  }
-
-  @Override
-  public void evaluate() {
-    firstColumnTransformer.tryEvaluate();
-    secondColumnTransformer.tryEvaluate();
-    thirdColumnTransformer.tryEvaluate();
-    // attention: get positionCount before calling getColumn
-    int positionCount = firstColumnTransformer.getColumnCachePositionCount();
-    Column firstColumn = firstColumnTransformer.getColumn();
-    Column secondColumn = secondColumnTransformer.getColumn();
-    Column thirdColumn = thirdColumnTransformer.getColumn();
-    ColumnBuilder columnBuilder = returnType.createColumnBuilder(positionCount);
-    doTransform(firstColumn, secondColumn, thirdColumn, columnBuilder, positionCount);
-    initializeColumnCache(columnBuilder.build());
   }
 
   @Override
@@ -64,11 +47,4 @@ public abstract class CompareTernaryColumnTransformer extends TernaryColumnTrans
     throw new UnsupportedOperationException(
         "The Type of three subExpression should be all Numeric or Text");
   }
-
-  protected abstract void doTransform(
-      Column firstColumn,
-      Column secondColumn,
-      Column thirdColumn,
-      ColumnBuilder builder,
-      int positionCount);
 }

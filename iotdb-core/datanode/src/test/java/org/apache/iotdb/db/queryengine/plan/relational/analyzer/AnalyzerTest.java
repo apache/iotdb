@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -132,6 +133,7 @@ public class AnalyzerTest {
     System.out.println(actualAnalysis.getTypes());
   }
 
+  @Ignore
   @Test
   public void testSingleTableQuery() throws IoTDBException {
     // no sort

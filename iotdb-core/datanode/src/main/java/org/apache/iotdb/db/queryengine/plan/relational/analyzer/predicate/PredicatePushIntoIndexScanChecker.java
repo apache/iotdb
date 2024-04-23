@@ -27,7 +27,6 @@ import org.apache.iotdb.db.relational.sql.tree.InPredicate;
 import org.apache.iotdb.db.relational.sql.tree.IsNotNullPredicate;
 import org.apache.iotdb.db.relational.sql.tree.IsNullPredicate;
 import org.apache.iotdb.db.relational.sql.tree.LikePredicate;
-import org.apache.iotdb.db.relational.sql.tree.Literal;
 import org.apache.iotdb.db.relational.sql.tree.LogicalExpression;
 import org.apache.iotdb.db.relational.sql.tree.NotExpression;
 import org.apache.iotdb.db.relational.sql.tree.NullIfExpression;
@@ -38,6 +37,8 @@ import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
 
 import java.util.List;
 import java.util.Set;
+
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
 
 public class PredicatePushIntoIndexScanChecker extends PredicateVisitor<Boolean, Void> {
 
@@ -79,7 +80,11 @@ public class PredicatePushIntoIndexScanChecker extends PredicateVisitor<Boolean,
     }
     List<Expression> children = node.getTerms();
     for (Expression child : children) {
-      if (!process(child, context)) {
+      Boolean result = process(child, context);
+      if (result == null) {
+        throw new IllegalStateException("Should never return null.");
+      }
+      if (!result) {
         return Boolean.FALSE;
       }
     }
@@ -95,7 +100,7 @@ public class PredicatePushIntoIndexScanChecker extends PredicateVisitor<Boolean,
   protected Boolean visitComparisonExpression(ComparisonExpression node, Void context) {
     if (node.getOperator() == ComparisonExpression.Operator.EQUAL) {
       return (isIdOrAttributeColumn(node.getLeft()) && isStringLiteral(node.getRight()))
-          || (isIdOrAttributeColumn(node.getRight()) && isLiteral(node.getLeft()));
+          || (isIdOrAttributeColumn(node.getRight()) && isStringLiteral(node.getLeft()));
     } else {
       return Boolean.FALSE;
     }
@@ -128,26 +133,10 @@ public class PredicatePushIntoIndexScanChecker extends PredicateVisitor<Boolean,
 
   @Override
   protected Boolean visitBetweenPredicate(BetweenPredicate node, Void context) {
-    return (isSymbolReference(node.getValue())
-            && isLiteral(node.getMin())
-            && isLiteral(node.getMax()))
-        || (isLiteral(node.getValue())
-            && isSymbolReference(node.getMin())
-            && isLiteral(node.getMax()))
-        || (isLiteral(node.getValue())
-            && isLiteral(node.getMin())
-            && isSymbolReference(node.getMax()));
-  }
-
-  public static boolean isLiteral(Expression expression) {
-    return expression instanceof Literal;
+    return Boolean.FALSE;
   }
 
   public static boolean isStringLiteral(Expression expression) {
     return expression instanceof StringLiteral;
-  }
-
-  public static boolean isSymbolReference(Expression expression) {
-    return expression instanceof SymbolReference;
   }
 }

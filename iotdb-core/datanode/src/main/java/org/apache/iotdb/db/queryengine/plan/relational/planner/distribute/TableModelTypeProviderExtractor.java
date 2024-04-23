@@ -17,10 +17,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.SimplePlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+
+import org.apache.tsfile.read.common.type.BooleanType;
 
 import java.util.HashMap;
 
@@ -69,6 +72,9 @@ public class TableModelTypeProviderExtractor {
     @Override
     public Void visitFilter(FilterNode node, Void context) {
       node.getChild().accept(this, context);
+      // fixme toString method of expression is not expected
+      typeProvider.putTableModelType(
+          new Symbol(node.getPredicate().toString()), BooleanType.BOOLEAN);
       return null;
     }
 
