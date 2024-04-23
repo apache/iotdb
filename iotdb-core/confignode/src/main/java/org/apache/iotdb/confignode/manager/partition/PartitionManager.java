@@ -389,7 +389,7 @@ public class PartitionManager {
       try {
         assignedDataPartition =
             getLoadManager().allocateDataPartition(unassignedDataPartitionSlotsMap);
-      } catch (NoAvailableRegionGroupException e) {
+      } catch (DatabaseNotExistsException | NoAvailableRegionGroupException e) {
         status = getConsensusManager().confirmLeader();
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           // The allocation might fail due to leadership change
@@ -398,9 +398,15 @@ public class PartitionManager {
         }
 
         LOGGER.error("Create DataPartition failed because: ", e);
-        resp.setStatus(
-            new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
-                .setMessage(e.getMessage()));
+        if (e instanceof DatabaseNotExistsException) {
+          resp.setStatus(
+              new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                  .setMessage(e.getMessage()));
+        } else {
+          resp.setStatus(
+              new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
+                  .setMessage(e.getMessage()));
+        }
         return resp;
       }
 
