@@ -242,7 +242,7 @@ public class CommonConfig {
   private String schemaEngineMode = "Memory";
 
   /** Whether to enable Last cache. */
-  private boolean lastCacheEnable = false;
+  private boolean lastCacheEnable = true;
 
   // Max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
