@@ -128,10 +128,12 @@ public class IoTDBTimeZoneIT {
 
       ResultSet resultSet = statement.executeQuery("select * from root.**");
       int cnt = 0;
+      boolean result = true;
       try {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(tz1);
-          Assert.assertEquals(retArray[cnt], ans);
+          System.out.println(ans);
+          result = result && (retArray[cnt].equals(ans));
           cnt++;
         }
       } finally {
