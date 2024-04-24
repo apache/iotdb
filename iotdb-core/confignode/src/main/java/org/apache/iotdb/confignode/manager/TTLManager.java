@@ -20,7 +20,8 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.exception.TTLException;
+import org.apache.iotdb.commons.exception.ttl.TTLIllegalPathException;
+import org.apache.iotdb.commons.exception.ttl.TTLRuleCountNotEnoughException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
@@ -45,7 +46,7 @@ public class TTLManager {
   private final TTLInfo ttlInfo;
 
   private static final int ttlCountThreshold =
-      CommonDescriptor.getInstance().getConfig().getTTLCountThreshold();
+      CommonDescriptor.getInstance().getConfig().getTTLRuleCount();
 
   public TTLManager(IManager configManager, TTLInfo ttlInfo) {
     this.configManager = configManager;
@@ -56,12 +57,12 @@ public class TTLManager {
     PartialPath path = new PartialPath(setTTLPlan.getPathPattern());
     if (!checkIsPathValidated(path)) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
-      errorStatus.setMessage(new TTLException(path.getFullPath()).getMessage());
+      errorStatus.setMessage(new TTLIllegalPathException(path.getFullPath()).getMessage());
       return errorStatus;
     }
     if (ttlInfo.getTTLCount() >= ttlCountThreshold) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.OVERSIZE_TTL.getStatusCode());
-      errorStatus.setMessage(new TTLException().getMessage());
+      errorStatus.setMessage(new TTLRuleCountNotEnoughException().getMessage());
       return errorStatus;
     }
 
@@ -82,7 +83,7 @@ public class TTLManager {
     PartialPath path = new PartialPath(setTTLPlan.getPathPattern());
     if (!checkIsPathValidated(path)) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
-      errorStatus.setMessage(new TTLException(path.getFullPath()).getMessage());
+      errorStatus.setMessage(new TTLIllegalPathException(path.getFullPath()).getMessage());
       return errorStatus;
     }
     // if path matches database, then unset both path and path.**

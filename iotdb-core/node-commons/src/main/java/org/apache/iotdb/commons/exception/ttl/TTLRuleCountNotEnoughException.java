@@ -16,23 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.exception;
+package org.apache.iotdb.commons.exception.ttl;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
-public class TTLException extends Exception {
-
-  public TTLException(String path) {
-    super(
-        String.format(
-            "Illegal pattern path: %s, pattern path should end with **, otherwise, it should be a specific database or device path without *",
-            path));
-  }
-
-  public TTLException() {
+public class TTLRuleCountNotEnoughException extends Exception {
+  public TTLRuleCountNotEnoughException() {
     super(
         String.format(
             "The number of TTL stored in the system has reached threshold %d, please increase the ttl_count parameter.",
-            CommonDescriptor.getInstance().getConfig().getTTLCountThreshold()));
+            CommonDescriptor.getInstance().getConfig().getTTLRuleCount()));
   }
 }

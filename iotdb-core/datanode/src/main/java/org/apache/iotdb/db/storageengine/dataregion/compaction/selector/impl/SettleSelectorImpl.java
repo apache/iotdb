@@ -36,6 +36,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -58,6 +59,9 @@ public class SettleSelectorImpl implements ISettleSelector {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  // this parameter indicates whether to use the costly method for settle file selection. The
+  // high-cost selection has a lower triggering frequency, while the low-cost selection has a higher
+  // triggering frequency.
   private final boolean heavySelect;
   private final String storageGroupName;
   private final String dataRegionId;
@@ -78,15 +82,17 @@ public class SettleSelectorImpl implements ISettleSelector {
     this.tsFileManager = tsFileManager;
   }
 
-  static class AllDirtyResource {
-    List<TsFileResource> resources = new ArrayList<>();
+  static class FileDirtyInfo {
+    DirtyStatus status;
+    long dirtyDataSize = 0;
 
-    public void add(TsFileResource resource) {
-      resources.add(resource);
+    public FileDirtyInfo(DirtyStatus status) {
+      this.status = status;
     }
 
-    public List<TsFileResource> getResources() {
-      return resources;
+    public FileDirtyInfo(DirtyStatus status, long dirtyDataSize) {
+      this.status = status;
+      this.dirtyDataSize = dirtyDataSize;
     }
   }
 
@@ -121,7 +127,7 @@ public class SettleSelectorImpl implements ISettleSelector {
   }
 
   private List<SettleCompactionTask> selectTasks(List<TsFileResource> resources) {
-    AllDirtyResource allDirtyResource = new AllDirtyResource();
+    List<TsFileResource> fullyDirtyResource = new ArrayList<>();
     List<PartialDirtyResource> partialDirtyResourceList = new ArrayList<>();
     PartialDirtyResource partialDirtyResource = new PartialDirtyResource();
     try {
@@ -130,19 +136,19 @@ public class SettleSelectorImpl implements ISettleSelector {
           continue;
         }
         boolean shouldStop = false;
-        DirtyStatus dirtyStatus;
+        FileDirtyInfo fileDirtyInfo;
         if (!heavySelect) {
-          dirtyStatus = selectFileBaseOnModSize(resource);
+          fileDirtyInfo = selectFileBaseOnModSize(resource);
         } else {
-          dirtyStatus = selectFileBaseOnDirtyData(resource);
+          fileDirtyInfo = selectFileBaseOnDirtyData(resource);
         }
 
-        switch (dirtyStatus) {
-          case ALL_DELETED:
-            allDirtyResource.add(resource);
+        switch (fileDirtyInfo.status) {
+          case FULLY_DELETED:
+            fullyDirtyResource.add(resource);
             break;
           case PARTIAL_DELETED:
-            shouldStop = partialDirtyResource.add(resource, dirtyStatus.getDirtyDataSize());
+            shouldStop = partialDirtyResource.add(resource, fileDirtyInfo.dirtyDataSize);
             break;
           case NOT_SATISFIED:
             shouldStop = !partialDirtyResource.getResources().isEmpty();
@@ -163,7 +169,7 @@ public class SettleSelectorImpl implements ISettleSelector {
         }
       }
       partialDirtyResourceList.add(partialDirtyResource);
-      return creatTask(allDirtyResource, partialDirtyResourceList);
+      return createTask(fullyDirtyResource, partialDirtyResourceList);
     } catch (Exception e) {
       LOGGER.error(
           "{}-{} cannot select file for settle compaction", storageGroupName, dataRegionId, e);
@@ -171,17 +177,16 @@ public class SettleSelectorImpl implements ISettleSelector {
     return Collections.emptyList();
   }
 
-  private DirtyStatus selectFileBaseOnModSize(TsFileResource resource) {
+  private FileDirtyInfo selectFileBaseOnModSize(TsFileResource resource) {
     ModificationFile modFile = resource.getModFile();
     if (modFile == null || !modFile.exists()) {
-      return DirtyStatus.NOT_SATISFIED;
+      return new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
     }
     return modFile.getSize() > config.getInnerCompactionTaskSelectionModsFileThreshold()
-            || (!heavySelect
-                && !CompactionUtils.isDiskHasSpace(
-                    config.getInnerCompactionTaskSelectionDiskRedundancy()))
-        ? PARTIAL_DELETED
-        : DirtyStatus.NOT_SATISFIED;
+            || !CompactionUtils.isDiskHasSpace(
+                config.getInnerCompactionTaskSelectionDiskRedundancy())
+        ? new FileDirtyInfo(PARTIAL_DELETED)
+        : new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
   }
 
   /**
@@ -191,37 +196,38 @@ public class SettleSelectorImpl implements ISettleSelector {
    *
    * @return dirty status means the status of current resource.
    */
-  private DirtyStatus selectFileBaseOnDirtyData(TsFileResource resource)
+  private FileDirtyInfo selectFileBaseOnDirtyData(TsFileResource resource)
       throws IOException, IllegalPathException {
     ModificationFile modFile = resource.getModFile();
-    DeviceTimeIndex deviceTimeIndex =
-        resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE
-            ? resource.buildDeviceTimeIndex()
-            : (DeviceTimeIndex) resource.getTimeIndex();
+    ITimeIndex timeIndex = resource.getTimeIndex();
+    if (timeIndex instanceof FileTimeIndex) {
+      timeIndex = resource.buildDeviceTimeIndex();
+    }
     Set<IDeviceID> deletedDevices = new HashSet<>();
     boolean hasExpiredTooLong = false;
     long currentTime = CommonDateTimeUtils.currentTime();
 
     Collection<Modification> modifications = modFile.getModifications();
-    for (IDeviceID device : deviceTimeIndex.getDevices()) {
+    for (IDeviceID device : ((DeviceTimeIndex) timeIndex).getDevices()) {
       // check expired device by ttl
+      // TODO: remove deviceId conversion
       long deviceTTL = DataNodeTTLCache.getInstance().getTTL(((PlainDeviceID) device).toStringID());
       boolean hasSetTTL = deviceTTL != Long.MAX_VALUE;
       boolean isDeleted =
-          !deviceTimeIndex.isDeviceAlive(device, deviceTTL)
+          !timeIndex.isDeviceAlive(device, deviceTTL)
               || isDeviceDeletedByMods(
                   modifications,
                   device,
-                  deviceTimeIndex.getStartTime(device),
-                  deviceTimeIndex.getEndTime(device));
+                  timeIndex.getStartTime(device),
+                  timeIndex.getEndTime(device));
 
       if (hasSetTTL) {
         if (!isDeleted) {
           // For devices with TTL set, all data must expire in order to meet the conditions for
           // being selected.
-          return DirtyStatus.NOT_SATISFIED;
+          return new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
         }
-        long outdatedTimeDiff = currentTime - deviceTimeIndex.getEndTime(device);
+        long outdatedTimeDiff = currentTime - timeIndex.getEndTime(device);
         hasExpiredTooLong =
             hasExpiredTooLong
                 || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), 3 * deviceTTL);
@@ -232,19 +238,19 @@ public class SettleSelectorImpl implements ISettleSelector {
       }
     }
 
-    float deletedDeviceRate = (float) (deletedDevices.size()) / deviceTimeIndex.getDevices().size();
-    if (deletedDeviceRate == 1f) {
+    double deletedDeviceRatio =
+        ((double) deletedDevices.size()) / ((DeviceTimeIndex) timeIndex).getDevices().size();
+    if (deletedDeviceRatio == 1d) {
       // the whole file is completely dirty
-      return DirtyStatus.ALL_DELETED;
+      return new FileDirtyInfo(DirtyStatus.FULLY_DELETED);
     }
     hasExpiredTooLong = config.getMaxExpiredTime() != Long.MAX_VALUE && hasExpiredTooLong;
-    if (hasExpiredTooLong || deletedDeviceRate >= config.getExpiredDataRate()) {
+    if (hasExpiredTooLong || deletedDeviceRatio >= config.getExpiredDataRate()) {
       // evaluate dirty data size in the tsfile
-      DirtyStatus partialDeleted = DirtyStatus.PARTIAL_DELETED;
-      partialDeleted.setDirtyDataSize((long) (deletedDeviceRate * resource.getTsFileSize()));
-      return partialDeleted;
+      return new FileDirtyInfo(
+          PARTIAL_DELETED, (long) (deletedDeviceRatio * resource.getTsFileSize()));
     }
-    return DirtyStatus.NOT_SATISFIED;
+    return new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
   }
 
   /** Check whether the device is completely deleted by mods or not. */
@@ -262,12 +268,13 @@ public class SettleSelectorImpl implements ISettleSelector {
     return false;
   }
 
-  private List<SettleCompactionTask> creatTask(
-      AllDirtyResource allDirtyResource, List<PartialDirtyResource> partialDirtyResourceList) {
+  private List<SettleCompactionTask> createTask(
+      List<TsFileResource> fullyDirtyResources,
+      List<PartialDirtyResource> partialDirtyResourceList) {
     List<SettleCompactionTask> tasks = new ArrayList<>();
     for (int i = 0; i < partialDirtyResourceList.size(); i++) {
       if (i == 0) {
-        if (allDirtyResource.getResources().isEmpty()
+        if (fullyDirtyResources.isEmpty()
             && partialDirtyResourceList.get(i).getResources().isEmpty()) {
           continue;
         }
@@ -275,7 +282,7 @@ public class SettleSelectorImpl implements ISettleSelector {
             new SettleCompactionTask(
                 timePartition,
                 tsFileManager,
-                allDirtyResource.getResources(),
+                fullyDirtyResources,
                 partialDirtyResourceList.get(i).getResources(),
                 isSeq,
                 createCompactionPerformer(),
@@ -311,7 +318,7 @@ public class SettleSelectorImpl implements ISettleSelector {
   }
 
   enum DirtyStatus {
-    ALL_DELETED, // the whole file is deleted
+    FULLY_DELETED, // the whole file is deleted
     PARTIAL_DELETED, // the file is partial deleted
     NOT_SATISFIED; // do not satisfy settle condition, which does not mean there is no dirty data
 

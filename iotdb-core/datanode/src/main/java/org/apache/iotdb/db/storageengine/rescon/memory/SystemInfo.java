@@ -282,6 +282,7 @@ public class SystemInfo {
         break;
       case SETTLE:
         settleCompactionMemoryCost.addAndGet(memoryCost);
+        break;
       default:
     }
     return true;
@@ -323,6 +324,9 @@ public class SystemInfo {
         break;
       case CROSS:
         crossSpaceCompactionMemoryCost.addAndGet(memoryCost);
+        break;
+      case SETTLE:
+        settleCompactionMemoryCost.addAndGet(memoryCost);
         break;
       default:
     }

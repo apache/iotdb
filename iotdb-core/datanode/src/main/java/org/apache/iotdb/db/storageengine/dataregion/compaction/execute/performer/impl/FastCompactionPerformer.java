@@ -136,6 +136,7 @@ public class FastCompactionPerformer
                     || !x.isDeviceAlive(
                         device,
                         DataNodeTTLCache.getInstance()
+                            // TODO: remove deviceId conversion
                             .getTTL(((PlainDeviceID) device).toStringID())));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
 

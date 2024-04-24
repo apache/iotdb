@@ -103,12 +103,11 @@ public class CommonDescriptor {
     }
     config.setTierTTLInMs(tierTTL);
 
-    int ttlCountThreshold =
+    int ttlRuleCount =
         Integer.parseInt(
-            properties.getProperty(
-                "ttl_count_threshold", String.valueOf(config.getTTLCountThreshold())));
-    ttlCountThreshold = ttlCountThreshold < 0 ? Integer.MAX_VALUE : ttlCountThreshold;
-    config.setTTLCountThreshold(ttlCountThreshold);
+            properties.getProperty("ttl_rule_count", String.valueOf(config.getTTLRuleCount())));
+    ttlRuleCount = ttlRuleCount < 0 ? Integer.MAX_VALUE : ttlRuleCount;
+    config.setTTLRuleCount(ttlRuleCount);
 
     config.setSyncDir(properties.getProperty("dn_sync_dir", config.getSyncDir()).trim());
 

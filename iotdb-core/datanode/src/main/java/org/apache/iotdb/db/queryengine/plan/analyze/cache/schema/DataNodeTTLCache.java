@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATER_NO_REGEX;
 
 public class DataNodeTTLCache {
   private final TTLCache ttlCache;
@@ -45,7 +46,7 @@ public class DataNodeTTLCache {
   public void setTTL(String path, long ttl) {
     lock.writeLock().lock();
     try {
-      ttlCache.setTTL(path.split("\\" + IoTDBConstant.PATH_SEPARATOR), ttl);
+      ttlCache.setTTL(path.split(PATH_SEPARATER_NO_REGEX), ttl);
     } finally {
       lock.writeLock().unlock();
     }
@@ -54,7 +55,7 @@ public class DataNodeTTLCache {
   public void setTTL(Map<String, Long> pathTTLs) {
     lock.writeLock().lock();
     try {
-      pathTTLs.forEach((k, v) -> ttlCache.setTTL(k.split("\\" + IoTDBConstant.PATH_SEPARATOR), v));
+      pathTTLs.forEach((k, v) -> ttlCache.setTTL(k.split(PATH_SEPARATER_NO_REGEX), v));
     } finally {
       lock.writeLock().unlock();
     }
@@ -63,7 +64,7 @@ public class DataNodeTTLCache {
   public void unsetTTL(String path) {
     lock.writeLock().lock();
     try {
-      ttlCache.unsetTTL(path.split("\\" + IoTDBConstant.PATH_SEPARATOR));
+      ttlCache.unsetTTL(path.split(PATH_SEPARATER_NO_REGEX));
     } finally {
       lock.writeLock().unlock();
     }
@@ -72,7 +73,7 @@ public class DataNodeTTLCache {
   public long getTTL(String path) {
     lock.readLock().lock();
     try {
-      return ttlCache.getTTL(path.split("\\" + IoTDBConstant.PATH_SEPARATOR));
+      return ttlCache.getClosestTTL(path.split(PATH_SEPARATER_NO_REGEX));
     } finally {
       lock.readLock().unlock();
     }
@@ -82,7 +83,7 @@ public class DataNodeTTLCache {
   public Map<String, Long> getTTLUnderOneNode(String path) {
     lock.readLock().lock();
     try {
-      return ttlCache.getAllTTLUnderOneNode(path.split("\\" + IoTDBConstant.PATH_SEPARATOR));
+      return ttlCache.getAllTTLUnderOneNode(path.split(PATH_SEPARATER_NO_REGEX));
     } finally {
       lock.readLock().unlock();
     }
@@ -92,7 +93,7 @@ public class DataNodeTTLCache {
   public long getNodeTTL(String path) {
     lock.readLock().lock();
     try {
-      return ttlCache.getNodeTTL(path.split("\\" + IoTDBConstant.PATH_SEPARATOR));
+      return ttlCache.getLastNodeTTL(path.split(PATH_SEPARATER_NO_REGEX));
     } finally {
       lock.readLock().unlock();
     }

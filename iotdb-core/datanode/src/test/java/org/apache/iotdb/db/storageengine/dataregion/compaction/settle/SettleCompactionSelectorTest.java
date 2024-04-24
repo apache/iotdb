@@ -31,9 +31,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.Set
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 
+import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.utils.TsFileGeneratorUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -83,9 +83,9 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(1, seqTasks.size());
     Assert.assertEquals(1, unseqTasks.size());
     Assert.assertEquals(3, (seqTasks.get(0).getPartialDeletedFiles().size()));
-    Assert.assertEquals(0, seqTasks.get(0).getAllDeletedFiles().size());
+    Assert.assertEquals(0, seqTasks.get(0).getFullyDeletedFiles().size());
     Assert.assertEquals(3, (unseqTasks.get(0).getPartialDeletedFiles().size()));
-    Assert.assertEquals(0, unseqTasks.get(0).getAllDeletedFiles().size());
+    Assert.assertEquals(0, unseqTasks.get(0).getFullyDeletedFiles().size());
 
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertTrue(unseqTasks.get(0).start());
@@ -150,11 +150,11 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
       Assert.assertEquals(1, (seqTasks.get(0).getPartialDeletedFiles().size()));
       Assert.assertEquals(
           seqResources.get(i * 2), (seqTasks.get(0).getPartialDeletedFiles().get(0)));
-      Assert.assertEquals(0, (seqTasks.get(0).getAllDeletedFiles().size()));
+      Assert.assertEquals(0, (seqTasks.get(0).getFullyDeletedFiles().size()));
       Assert.assertEquals(1, (unseqTasks.get(0).getPartialDeletedFiles().size()));
       Assert.assertEquals(
           unseqResources.get(i * 2), (unseqTasks.get(0).getPartialDeletedFiles().get(0)));
-      Assert.assertEquals(0, (unseqTasks.get(0)).getAllDeletedFiles().size());
+      Assert.assertEquals(0, (unseqTasks.get(0)).getFullyDeletedFiles().size());
 
       Assert.assertTrue(seqTasks.get(0).start());
       Assert.assertTrue(unseqTasks.get(0).start());
@@ -220,7 +220,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
         new SettleSelectorImpl(true, COMPACTION_TEST_SG, "0", 0, tsFileManager);
     List<SettleCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
     Assert.assertEquals(1, seqTasks.size());
-    Assert.assertEquals(1, seqTasks.get(0).getAllDeletedFiles().size());
+    Assert.assertEquals(1, seqTasks.get(0).getFullyDeletedFiles().size());
     Assert.assertEquals(0, seqTasks.get(0).getPartialDeletedFiles().size());
 
     Assert.assertTrue(seqTasks.get(0).start());
@@ -230,7 +230,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     settleSelector = new SettleSelectorImpl(false, COMPACTION_TEST_SG, "0", 0, tsFileManager);
     seqTasks = settleSelector.selectSettleTask(seqResources);
     Assert.assertEquals(1, seqTasks.size());
-    Assert.assertEquals(0, seqTasks.get(0).getAllDeletedFiles().size());
+    Assert.assertEquals(0, seqTasks.get(0).getFullyDeletedFiles().size());
     Assert.assertEquals(3, seqTasks.get(0).getPartialDeletedFiles().size());
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
@@ -238,7 +238,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     // select third time
     seqTasks = settleSelector.selectSettleTask(seqResources);
     Assert.assertEquals(1, seqTasks.size());
-    Assert.assertEquals(0, seqTasks.get(0).getAllDeletedFiles().size());
+    Assert.assertEquals(0, seqTasks.get(0).getFullyDeletedFiles().size());
     Assert.assertEquals(1, seqTasks.get(0).getPartialDeletedFiles().size());
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
@@ -288,7 +288,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(1, unseqTasks.size());
 
     Assert.assertEquals(5, unseqTasks.get(0).getPartialDeletedFiles().size());
-    Assert.assertEquals(0, unseqTasks.get(0).getAllDeletedFiles().size());
+    Assert.assertEquals(0, unseqTasks.get(0).getFullyDeletedFiles().size());
 
     Assert.assertTrue(unseqTasks.get(0).start());
     Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
@@ -309,7 +309,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(1, seqTasks.size());
     Assert.assertEquals(0, unseqTasks.size());
     Assert.assertEquals(5, seqTasks.get(0).getPartialDeletedFiles().size());
-    Assert.assertEquals(0, seqTasks.get(0).getAllDeletedFiles().size());
+    Assert.assertEquals(0, seqTasks.get(0).getFullyDeletedFiles().size());
 
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
@@ -352,9 +352,9 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(2, unseqTasks.size());
 
     Assert.assertEquals(3, seqTasks.get(0).getPartialDeletedFiles().size());
-    Assert.assertEquals(0, seqTasks.get(0).getAllDeletedFiles().size());
+    Assert.assertEquals(0, seqTasks.get(0).getFullyDeletedFiles().size());
     Assert.assertEquals(2, seqTasks.get(1).getPartialDeletedFiles().size());
-    Assert.assertEquals(0, seqTasks.get(1).getAllDeletedFiles().size());
+    Assert.assertEquals(0, seqTasks.get(1).getFullyDeletedFiles().size());
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertTrue(seqTasks.get(1).start());
     Assert.assertTrue(unseqTasks.get(0).start());
@@ -425,7 +425,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     seqTasks = settleSelector.selectSettleTask(seqResources);
     Assert.assertEquals(1, seqTasks.size());
     Assert.assertEquals(0, seqTasks.get(0).getPartialDeletedFiles().size());
-    Assert.assertEquals(5, seqTasks.get(0).getAllDeletedFiles().size());
+    Assert.assertEquals(5, seqTasks.get(0).getFullyDeletedFiles().size());
 
     // select third time
     // file 0 2 4 6 8 is all deleted, file 1 3 5 7 9 is partial_deleted
@@ -441,14 +441,14 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     }
     seqTasks = settleSelector.selectSettleTask(seqResources);
     Assert.assertEquals(2, seqTasks.size());
-    Assert.assertEquals(5, seqTasks.get(0).getAllDeletedFiles().size());
+    Assert.assertEquals(5, seqTasks.get(0).getFullyDeletedFiles().size());
     Assert.assertEquals(3, seqTasks.get(0).getPartialDeletedFiles().size());
     Assert.assertEquals(seqResources.get(1), seqTasks.get(0).getPartialDeletedFiles().get(0));
     Assert.assertEquals(seqResources.get(3), seqTasks.get(0).getPartialDeletedFiles().get(1));
     Assert.assertEquals(seqResources.get(5), seqTasks.get(0).getPartialDeletedFiles().get(2));
     Assert.assertEquals(seqResources.get(7), seqTasks.get(1).getPartialDeletedFiles().get(0));
     Assert.assertEquals(seqResources.get(9), seqTasks.get(1).getPartialDeletedFiles().get(1));
-    Assert.assertEquals(0, seqTasks.get(1).getAllDeletedFiles().size());
+    Assert.assertEquals(0, seqTasks.get(1).getFullyDeletedFiles().size());
     Assert.assertEquals(2, seqTasks.get(1).getPartialDeletedFiles().size());
     Assert.assertTrue(seqTasks.get(0).start());
     Assert.assertTrue(seqTasks.get(1).start());
@@ -500,20 +500,20 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
         new SettleSelectorImpl(true, COMPACTION_TEST_SG, "0", 0, tsFileManager);
     List<SettleCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
     Assert.assertEquals(4, seqTasks.size());
-    Assert.assertEquals(1, seqTasks.get(0).getAllDeletedFiles().size());
+    Assert.assertEquals(1, seqTasks.get(0).getFullyDeletedFiles().size());
     Assert.assertEquals(2, seqTasks.get(0).getPartialDeletedFiles().size());
     Assert.assertEquals(seqResources.get(0), seqTasks.get(0).getPartialDeletedFiles().get(0));
     Assert.assertEquals(seqResources.get(2), seqTasks.get(0).getPartialDeletedFiles().get(1));
 
-    Assert.assertEquals(0, seqTasks.get(1).getAllDeletedFiles().size());
+    Assert.assertEquals(0, seqTasks.get(1).getFullyDeletedFiles().size());
     Assert.assertEquals(1, seqTasks.get(1).getPartialDeletedFiles().size());
     Assert.assertEquals(seqResources.get(4), seqTasks.get(1).getPartialDeletedFiles().get(0));
 
-    Assert.assertEquals(0, seqTasks.get(2).getAllDeletedFiles().size());
+    Assert.assertEquals(0, seqTasks.get(2).getFullyDeletedFiles().size());
     Assert.assertEquals(1, seqTasks.get(2).getPartialDeletedFiles().size());
     Assert.assertEquals(seqResources.get(6), seqTasks.get(2).getPartialDeletedFiles().get(0));
 
-    Assert.assertEquals(0, seqTasks.get(3).getAllDeletedFiles().size());
+    Assert.assertEquals(0, seqTasks.get(3).getFullyDeletedFiles().size());
     Assert.assertEquals(1, seqTasks.get(3).getPartialDeletedFiles().size());
     Assert.assertEquals(seqResources.get(8), seqTasks.get(3).getPartialDeletedFiles().get(0));
 
@@ -572,15 +572,15 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
         new SettleSelectorImpl(true, COMPACTION_TEST_SG, "0", 0, tsFileManager);
     List<SettleCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
     Assert.assertEquals(3, seqTasks.size());
-    Assert.assertEquals(3, seqTasks.get(0).getAllDeletedFiles().size());
+    Assert.assertEquals(3, seqTasks.get(0).getFullyDeletedFiles().size());
     Assert.assertEquals(1, seqTasks.get(0).getPartialDeletedFiles().size());
     Assert.assertEquals(seqResources.get(0), seqTasks.get(0).getPartialDeletedFiles().get(0));
 
-    Assert.assertEquals(0, seqTasks.get(1).getAllDeletedFiles().size());
+    Assert.assertEquals(0, seqTasks.get(1).getFullyDeletedFiles().size());
     Assert.assertEquals(1, seqTasks.get(1).getPartialDeletedFiles().size());
     Assert.assertEquals(seqResources.get(4), seqTasks.get(1).getPartialDeletedFiles().get(0));
 
-    Assert.assertEquals(0, seqTasks.get(2).getAllDeletedFiles().size());
+    Assert.assertEquals(0, seqTasks.get(2).getFullyDeletedFiles().size());
     Assert.assertEquals(2, seqTasks.get(2).getPartialDeletedFiles().size());
     Assert.assertEquals(seqResources.get(6), seqTasks.get(2).getPartialDeletedFiles().get(0));
     Assert.assertEquals(seqResources.get(8), seqTasks.get(2).getPartialDeletedFiles().get(1));

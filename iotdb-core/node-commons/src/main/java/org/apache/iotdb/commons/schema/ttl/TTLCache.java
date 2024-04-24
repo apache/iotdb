@@ -20,16 +20,15 @@ package org.apache.iotdb.commons.schema.ttl;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -63,24 +62,23 @@ public class TTLCache {
     if (nodes.length < 2 || ttl <= 0) {
       return;
     }
-    CacheNode parent = ttlCacheTree;
+    CacheNode current = ttlCacheTree;
     for (int i = 1; i < nodes.length; i++) {
-      CacheNode child = parent.getChild(nodes[i]);
+      CacheNode child = current.getChild(nodes[i]);
       if (child == null) {
-        parent.addChild(nodes[i], NULL_TTL);
-        child = parent.getChild(nodes[i]);
+        child = current.addChild(nodes[i], NULL_TTL);
       }
-      parent = child;
+      current = child;
     }
-    if (parent.ttl == NULL_TTL) {
+    if (current.ttl == NULL_TTL) {
       ttlCount++;
     }
-    parent.ttl = ttl;
+    current.ttl = ttl;
   }
 
   /**
-   * Unset ttl and remove all useless nodes. If the path to be removed is internal node, then just
-   * reset its ttl. Else, find the sub path and remove it.
+   * Unset ttl and remove all useless nodes whose subtree at them contains no valid ttl. If the path
+   * to be removed is internal node, then just reset its ttl. Else, find the sub path and remove it.
    *
    * @param nodes path to be removed
    */
@@ -92,35 +90,37 @@ public class TTLCache {
       if (nodes[0].equals(IoTDBConstant.PATH_ROOT)
           && nodes[1].equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
         ttlCacheTree.getChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD).ttl =
-            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs();
+            CommonDateTimeUtils.convertMilliTimeWithPrecision(
+                CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+                CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
         return;
       }
     }
-    CacheNode parent = ttlCacheTree;
+    CacheNode current = ttlCacheTree;
     int index = 0;
-    boolean usefulFlag;
+    boolean hasNonDefaultTTL;
     CacheNode parentOfSubPathToBeRemoved = null;
     for (int i = 1; i < nodes.length; i++) {
-      usefulFlag = !parent.getChildren().isEmpty() || parent.ttl != NULL_TTL;
-      CacheNode child = parent.getChild(nodes[i]);
+      hasNonDefaultTTL = !current.getChildren().isEmpty() || current.ttl != NULL_TTL;
+      CacheNode child = current.getChild(nodes[i]);
       if (child == null) {
         // there is no matching path on ttl cache tree
         return;
       }
-      if (usefulFlag) {
-        parentOfSubPathToBeRemoved = parent;
+      if (hasNonDefaultTTL) {
+        parentOfSubPathToBeRemoved = current;
         index = i;
       }
-      parent = child;
+      current = child;
     }
-    // currently, parent is the leaf node of the path to be removed
-    if (parent.ttl != NULL_TTL) {
+    // currently, current node is the leaf node of the path to be removed
+    if (current.ttl != NULL_TTL) {
       ttlCount--;
     }
 
-    if (!parent.getChildren().isEmpty()) {
+    if (!current.getChildren().isEmpty()) {
       // node to be removed is internal node, then just reset its ttl
-      parent.ttl = NULL_TTL;
+      current.ttl = NULL_TTL;
       return;
     }
 
@@ -136,33 +136,36 @@ public class TTLCache {
    *
    * @param nodes should be prefix path or specific device path without wildcard
    */
-  public long getTTL(String[] nodes) {
+  public long getClosestTTL(String[] nodes) {
     long ttl = ttlCacheTree.ttl;
-    CacheNode parent = ttlCacheTree;
+    CacheNode current = ttlCacheTree;
     for (int i = 1; i < nodes.length; i++) {
-      CacheNode child = parent.getChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+      CacheNode child = current.getChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
       ttl = child != null ? child.ttl : ttl;
-      parent = parent.getChild(nodes[i]);
-      if (parent == null) {
+      current = current.getChild(nodes[i]);
+      if (current == null) {
         break;
       }
     }
-    ttl = parent != null && parent.ttl != NULL_TTL ? parent.ttl : ttl;
+    ttl = current != null && current.ttl != NULL_TTL ? current.ttl : ttl;
     return ttl;
   }
 
   public Map<String, Long> getAllTTLUnderOneNode(String[] nodes) {
     Map<String, Long> pathTTLMap = new HashMap<>();
-    CacheNode node = ttlCacheTree;
+    CacheNode current = ttlCacheTree;
     for (int i = 1; i < nodes.length; i++) {
-      node = node.getChild(nodes[i]);
-      if (node == null) {
+      current = current.getChild(nodes[i]);
+      if (current == null) {
         return pathTTLMap;
       }
     }
 
     // get all ttl under current node
-    dfsCacheTree(pathTTLMap, new StringBuilder(new PartialPath(nodes).getFullPath()), node);
+    dfsCacheTree(
+        pathTTLMap,
+        new StringBuilder(String.join(String.valueOf(IoTDBConstant.PATH_SEPARATOR), nodes)),
+        current);
     return pathTTLMap;
   }
 
@@ -170,7 +173,7 @@ public class TTLCache {
    * Return the ttl of path. If the path does not exist, it means that the TTL is not set, and
    * return NULL_TTL.
    */
-  public long getNodeTTL(String[] nodes) {
+  public long getLastNodeTTL(String[] nodes) {
     CacheNode node = ttlCacheTree;
     for (int i = 1; i < nodes.length; i++) {
       node = node.getChild(nodes[i]);
@@ -205,7 +208,7 @@ public class TTLCache {
     return ttlCount;
   }
 
-  public void serialize(BufferedOutputStream outputStream) throws IOException {
+  public void serialize(OutputStream outputStream) throws IOException {
     Map<String, Long> allPathTTLMap = getAllPathTTL();
     ReadWriteIOUtils.write(allPathTTLMap.size(), outputStream);
     for (Map.Entry<String, Long> entry : allPathTTLMap.entrySet()) {
@@ -215,7 +218,7 @@ public class TTLCache {
     outputStream.flush();
   }
 
-  public void deserialize(BufferedInputStream bufferedInputStream) throws IOException {
+  public void deserialize(InputStream bufferedInputStream) throws IOException {
     int size = ReadWriteIOUtils.readInt(bufferedInputStream);
     while (size > 0) {
       String path = ReadWriteIOUtils.readString(bufferedInputStream);
@@ -229,7 +232,9 @@ public class TTLCache {
     ttlCacheTree.removeAllChildren();
     ttlCacheTree.addChild(
         IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD,
-        CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+        CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs(),
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
   }
 
   static class CacheNode {
@@ -249,12 +254,10 @@ public class TTLCache {
       this.ttl = NULL_TTL;
     }
 
-    public void addChild(CacheNode childNode) {
-      children.put(childNode.name, childNode);
-    }
-
-    public void addChild(String name, long ttl) {
-      children.put(name, new CacheNode(name, ttl));
+    public CacheNode addChild(String name, long ttl) {
+      CacheNode newNode = new CacheNode(name, ttl);
+      children.put(name, newNode);
+      return newNode;
     }
 
     public void removeChild(String name) {

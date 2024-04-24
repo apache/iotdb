@@ -154,7 +154,7 @@ public class CompactionSchedulerWithFastPerformerTest {
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
     String sgName = COMPACTION_TEST_SG + "test1";
     try {
-      // CompactionTaskManager.getInstance().restart();
+      CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
@@ -279,7 +279,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     try {
       String sgName = COMPACTION_TEST_SG + "test2";
       try {
-        // CompactionTaskManager.getInstance().restart();
+        CompactionTaskManager.getInstance().restart();
         TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
         Set<String> fullPath = new HashSet<>();
         for (String device : fullPaths) {
@@ -390,7 +390,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(100);
     String sgName = COMPACTION_TEST_SG + "test3";
     try {
-      // CompactionTaskManager.getInstance().restart();
+      CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
@@ -488,7 +488,7 @@ public class CompactionSchedulerWithFastPerformerTest {
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
     String sgName = COMPACTION_TEST_SG + "test4";
     try {
-      // CompactionTaskManager.getInstance().restart();
+      CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
@@ -571,7 +571,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(100);
     String sgName = COMPACTION_TEST_SG + "test5";
     try {
-      // CompactionTaskManager.getInstance().restart();
+      CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
@@ -686,7 +686,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(100);
     String sgName = COMPACTION_TEST_SG + "test6";
     try {
-      // CompactionTaskManager.getInstance().restart();
+      CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
@@ -791,7 +791,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(100);
     String sgName = COMPACTION_TEST_SG + "test7";
     try {
-      // CompactionTaskManager.getInstance().restart();
+      CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
@@ -892,7 +892,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(100);
     String sgName = COMPACTION_TEST_SG + "test8";
     try {
-      // CompactionTaskManager.getInstance().restart();
+      CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
@@ -979,7 +979,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
     String sgName = COMPACTION_TEST_SG + "test9";
     try {
-      // CompactionTaskManager.getInstance().restart();
+      CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
@@ -1082,7 +1082,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
     String sgName = COMPACTION_TEST_SG + "test10";
     try {
-      // CompactionTaskManager.getInstance().restart();
+      CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
@@ -1189,7 +1189,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
     String sgName = COMPACTION_TEST_SG + "test11";
     try {
-      // CompactionTaskManager.getInstance().restart();
+      CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
@@ -1293,7 +1293,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
     String sgName = COMPACTION_TEST_SG + "test12";
     try {
-      // CompactionTaskManager.getInstance().restart();
+      CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
@@ -1399,7 +1399,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
     String sgName = COMPACTION_TEST_SG + "test13";
     try {
-      // CompactionTaskManager.getInstance().restart();
+      CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
@@ -1508,7 +1508,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
     String sgName = COMPACTION_TEST_SG + "test14";
     try {
-      // CompactionTaskManager.getInstance().restart();
+      CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
@@ -1625,7 +1625,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
     String sgName = COMPACTION_TEST_SG + "test16";
     try {
-      // CompactionTaskManager.getInstance().restart();
+      CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {
@@ -1719,7 +1719,7 @@ public class CompactionSchedulerWithFastPerformerTest {
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(1024 * 1024);
     String sgName = COMPACTION_TEST_SG + "test17";
     try {
-      // CompactionTaskManager.getInstance().restart();
+      CompactionTaskManager.getInstance().restart();
       TsFileManager tsFileManager = new TsFileManager(sgName, "0", "target");
       Set<String> fullPath = new HashSet<>();
       for (String device : fullPaths) {

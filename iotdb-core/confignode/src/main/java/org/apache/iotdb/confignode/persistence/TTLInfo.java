@@ -91,15 +91,16 @@ public class TTLInfo implements SnapshotProcessor {
   }
 
   public ShowTTLResp showAllTTL() {
-    lock.readLock().lock();
     ShowTTLResp resp = new ShowTTLResp();
+    Map<String, Long> pathTTLMap;
+    lock.readLock().lock();
     try {
-      Map<String, Long> pathTTLMap = ttlCache.getAllPathTTL();
-      resp.setPathTTLMap(pathTTLMap);
-      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      pathTTLMap = ttlCache.getAllPathTTL();
     } finally {
       lock.readLock().unlock();
     }
+    resp.setPathTTLMap(pathTTLMap);
+    resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     return resp;
   }
 

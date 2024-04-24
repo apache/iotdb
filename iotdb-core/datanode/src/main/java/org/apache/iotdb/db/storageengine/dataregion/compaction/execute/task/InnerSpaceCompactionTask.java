@@ -278,7 +278,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         targetTsFileList,
         timePartition);
 
-    // release the read lock of all source files, and get the write lock of them to delete them
+    // get the write lock of them to delete them
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       selectedTsFileResourceList.get(i).writeLock();
       isHoldingWriteLock[i] = true;

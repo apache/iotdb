@@ -71,7 +71,7 @@ public class CompactionScheduleSummary {
       case SETTLE:
         submitSettleCompactionTaskNum += 1;
         partialDeletedFileNum += ((SettleCompactionTask) task).getPartialDeletedFiles().size();
-        allDeletedFileNum += ((SettleCompactionTask) task).getAllDeletedFiles().size();
+        allDeletedFileNum += ((SettleCompactionTask) task).getFullyDeletedFiles().size();
         break;
       default:
         break;

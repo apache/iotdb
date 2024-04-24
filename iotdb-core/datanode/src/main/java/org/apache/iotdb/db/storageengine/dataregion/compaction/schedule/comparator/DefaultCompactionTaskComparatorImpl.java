@@ -153,12 +153,12 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
 
   public int compareSettleCompactionTask(SettleCompactionTask o1, SettleCompactionTask o2) {
     // we prefer the task with more all_deleted files
-    if (o1.getAllDeletedFiles().size() != o2.getAllDeletedFiles().size()) {
-      return o1.getAllDeletedFiles().size() > o2.getAllDeletedFiles().size() ? -1 : 1;
+    if (o1.getFullyDeletedFiles().size() != o2.getFullyDeletedFiles().size()) {
+      return o1.getFullyDeletedFiles().size() > o2.getFullyDeletedFiles().size() ? -1 : 1;
     }
     // we prefer the task with larger all_deleted files
-    if (o1.getAllDeletedFileSize() != o2.getAllDeletedFileSize()) {
-      return o1.getAllDeletedFileSize() > o2.getAllDeletedFileSize() ? -1 : 1;
+    if (o1.getFullyDeletedFileSize() != o2.getFullyDeletedFileSize()) {
+      return o1.getFullyDeletedFileSize() > o2.getFullyDeletedFileSize() ? -1 : 1;
     }
     // we prefer the task with larger mods file
     if (o1.getTotalModsSize() != o2.getTotalModsSize()) {

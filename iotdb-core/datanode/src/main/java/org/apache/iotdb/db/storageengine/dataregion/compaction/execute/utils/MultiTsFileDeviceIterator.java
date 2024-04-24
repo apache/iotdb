@@ -589,6 +589,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                         new LinkedList<>(ModificationFile.getNormalMods(r).getModifications());
                     // add outdated device mods by ttl
                     for (IDeviceID device : r.getDevices()) {
+                      // TODO: remove deviceId conversion
                       long timeLowerBound =
                           CommonDateTimeUtils.currentTime()
                               - DataNodeTTLCache.getInstance()
