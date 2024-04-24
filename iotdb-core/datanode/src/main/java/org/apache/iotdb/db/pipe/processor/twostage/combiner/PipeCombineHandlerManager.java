@@ -80,11 +80,11 @@ public class PipeCombineHandlerManager {
     }
   }
 
-  public synchronized Object getLastCombinedValue(String pipeName, long creationTime) {
+  public Object getLastCombinedValue(String pipeName, long creationTime) {
     return pipeId2LastCombinedValue.get(generatePipeId(pipeName, creationTime));
   }
 
-  public synchronized void updateLastCombinedValue(
+  public void updateLastCombinedValue(
       String pipeName, long creationTime, Object lastCombinedValue) {
     pipeId2LastCombinedValue.put(generatePipeId(pipeName, creationTime), lastCombinedValue);
   }
