@@ -224,8 +224,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   public void stopAllPipesWithCriticalException() {
-    super.stopAllPipesWithCriticalException(
-        IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
+    super.stopAllPipesWithCriticalException(CONFIG.getDataNodeId());
   }
 
   ///////////////////////// Heartbeat /////////////////////////
@@ -333,7 +332,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
               .noneMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)) {
         // Extractors of this pipe might not pin too much MemTables,
         // still need to check if linked-and-deleted TsFile count exceeds limit.
-        if (mayDeletedTsFilePinnedCountReachDangerousThreshold()) {
+        if ((CONFIG.isEnableSeqSpaceCompaction()
+                || CONFIG.isEnableUnseqSpaceCompaction()
+                || CONFIG.isEnableCrossSpaceCompaction())
+            && mayDeletedTsFilePinnedCountReachDangerousThreshold()) {
           LOGGER.warn(
               "Pipe {} may need to restart because too many TsFiles are out-of-date.",
               pipeMeta.getStaticMeta());
@@ -363,8 +365,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {
-    return 3 * WALManager.getInstance().getTotalDiskUsage()
-        > 2 * IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
+    return 3 * WALManager.getInstance().getTotalDiskUsage() > 2 * CONFIG.getThrottleThreshold();
   }
 
   private void restartStuckPipe(PipeMeta pipeMeta) {
