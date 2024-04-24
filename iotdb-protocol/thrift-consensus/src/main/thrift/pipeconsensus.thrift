@@ -47,7 +47,12 @@ struct TPipeConsensusBatchTransferResp {
 
 service PipeConsensusIService {
   /**
-  * Transfer data in a given ConsensusGroup, used by PipeConsensus
+  * Transfer stream data in a given ConsensusGroup, used by PipeConsensus
   **/
   TPipeConsensusTransferResp pipeConsensusTransfer(TPipeConsensusTransferReq req)
+
+  /**
+  * Transfer batch data in a given ConsensusGroup, used by PipeConsensus
+  **/
+  TPipeConsensusBatchTransferResp pipeConsensusBatchTransfer(TPipeConsensusBatchTransferReq req)
 }
