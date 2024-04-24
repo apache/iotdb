@@ -140,6 +140,7 @@ public class IoTDBTimeZoneIT {
         resultSet.close();
       }
       Assert.assertEquals(13, cnt);
+      Assert.assertTrue(result);
     }
   }
 
