@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.reques
 
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusTransferFilePieceReq;
+import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 
 import java.io.IOException;
@@ -39,10 +40,11 @@ public class PipeConsensusTsFilePieceWithModReq extends PipeConsensusTransferFil
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeConsensusTsFilePieceWithModReq toTPipeConsensusTransferReq(
-      String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
+      String fileName, long startWritingOffset, byte[] filePiece, TCommitId commitId)
+      throws IOException {
     return (PipeConsensusTsFilePieceWithModReq)
         new PipeConsensusTsFilePieceWithModReq()
-            .convertToTPipeConsensusTransferReq(fileName, startWritingOffset, filePiece);
+            .convertToTPipeConsensusTransferReq(fileName, startWritingOffset, filePiece, commitId);
   }
 
   public static PipeConsensusTsFilePieceWithModReq fromTPipeConsensusTransferReq(

@@ -19,4 +19,27 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler;
 
-public class PipeConsensusTabletRawEventHandler {}
+import org.apache.iotdb.consensus.pipe.client.AsyncPipeConsensusServiceClient;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
+import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.PipeConsensusAsyncConnector;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+
+import org.apache.thrift.TException;
+
+public class PipeConsensusTabletRawEventHandler
+    extends PipeConsensusTabletInsertionEventHandler<TPipeConsensusTransferResp> {
+
+  public PipeConsensusTabletRawEventHandler(
+      PipeRawTabletInsertionEvent event,
+      TPipeConsensusTransferReq req,
+      PipeConsensusAsyncConnector connector) {
+    super(event, req, connector);
+  }
+
+  @Override
+  protected void doTransfer(AsyncPipeConsensusServiceClient client, TPipeConsensusTransferReq req)
+      throws TException {
+    client.pipeConsensusTransfer(req, this);
+  }
+}

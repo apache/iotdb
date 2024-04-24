@@ -20,9 +20,12 @@
 package org.apache.iotdb.consensus.pipe.service;
 
 import org.apache.iotdb.consensus.pipe.thrift.PipeConsensusIService;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferReq;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,4 +46,10 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
   public void pipeConsensusTransfer(
       TPipeConsensusTransferReq req,
       AsyncMethodCallback<TPipeConsensusTransferResp> resultHandler) {}
+
+  @Override
+  public void pipeConsensusBatchTransfer(
+      TPipeConsensusBatchTransferReq req,
+      AsyncMethodCallback<TPipeConsensusBatchTransferResp> resultHandler)
+      throws TException {}
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.reques
 
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
+import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 
 import java.nio.ByteBuffer;
@@ -35,10 +36,12 @@ public class PipeConsensusTabletBinaryReq extends TPipeConsensusTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeConsensusTabletBinaryReq toTPipeConsensusTransferReq(ByteBuffer byteBuffer) {
+  public static PipeConsensusTabletBinaryReq toTPipeConsensusTransferReq(
+      ByteBuffer byteBuffer, TCommitId commitId) {
     final PipeConsensusTabletBinaryReq req = new PipeConsensusTabletBinaryReq();
     req.byteBuffer = byteBuffer;
 
+    req.commitId = commitId;
     req.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     req.type = PipeConsensusRequestType.TRANSFER_TABLET_BINARY.getType();
     req.body = byteBuffer;
@@ -54,6 +57,7 @@ public class PipeConsensusTabletBinaryReq extends TPipeConsensusTransferReq {
     binaryReq.version = transferReq.version;
     binaryReq.type = transferReq.type;
     binaryReq.body = transferReq.body;
+    binaryReq.commitId = transferReq.commitId;
 
     return binaryReq;
   }
@@ -72,11 +76,12 @@ public class PipeConsensusTabletBinaryReq extends TPipeConsensusTransferReq {
     return byteBuffer.equals(that.byteBuffer)
         && version == that.version
         && type == that.type
-        && body.equals(that.body);
+        && body.equals(that.body)
+        && Objects.equals(commitId, that.commitId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(byteBuffer, version, type, body);
+    return Objects.hash(byteBuffer, version, type, body, commitId);
   }
 }

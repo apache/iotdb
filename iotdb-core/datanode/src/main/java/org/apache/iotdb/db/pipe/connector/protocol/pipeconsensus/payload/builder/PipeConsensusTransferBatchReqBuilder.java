@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
@@ -55,7 +56,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_DELAY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_SIZE_KEY;
 
-// TODO: 改造 Batch 协议，使之成为打包 event 粒度发送，并改造接收端返回结果
 public abstract class PipeConsensusTransferBatchReqBuilder implements AutoCloseable {
 
   private static final Logger LOGGER =
@@ -154,10 +154,8 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
     totalBufferSize = 0;
   }
 
-  public PipeConsensusTabletBatchReq toTPipeConsensusTransferReq() throws IOException {
-    return null;
-    //    return PipeConsensusTabletBatchReq.toTPipeConsensusTransferReq(
-    //        binaryBuffers, insertNodeBuffers, tabletBuffers, requestCommitIds);
+  public PipeConsensusTabletBatchReq toTPipeConsensusBatchTransferReq() throws IOException {
+    return PipeConsensusTabletBatchReq.toTPipeConsensusBatchTransferReq(batchReqs);
   }
 
   protected long getMaxBatchSizeInBytes() {
@@ -175,9 +173,16 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
   protected int buildTabletInsertionBuffer(TabletInsertionEvent event)
       throws IOException, WALPipeException {
     final ByteBuffer buffer;
+    final TCommitId commitId;
+
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) event;
+      commitId =
+          new TCommitId(
+              pipeInsertNodeTabletInsertionEvent.getCommitId(),
+              pipeInsertNodeTabletInsertionEvent.getRebootTimes());
+
       // Read the bytebuffer from the wal file and transfer it directly without serializing or
       // deserializing if possible
       final InsertNode insertNode =
@@ -185,14 +190,20 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
       // PipeConsensus will transfer binary data to TPipeConsensusTransferReq
       if (Objects.isNull(insertNode)) {
         buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
-        batchReqs.add(PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(buffer));
+        batchReqs.add(PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(buffer, commitId));
       } else {
         buffer = insertNode.serializeToByteBuffer();
-        batchReqs.add(PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(insertNode));
+        batchReqs.add(
+            PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(insertNode, commitId));
       }
     } else {
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
           (PipeRawTabletInsertionEvent) event;
+      commitId =
+          new TCommitId(
+              pipeRawTabletInsertionEvent.getCommitId(),
+              pipeRawTabletInsertionEvent.getRebootTimes());
+
       try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
           final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
         pipeRawTabletInsertionEvent.convertToTablet().serialize(outputStream);
@@ -202,8 +213,10 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
       batchReqs.add(
           PipeConsensusTabletRawReq.toTPipeConsensusTransferRawReq(
               pipeRawTabletInsertionEvent.convertToTablet(),
-              pipeRawTabletInsertionEvent.isAligned()));
+              pipeRawTabletInsertionEvent.isAligned(),
+              commitId));
     }
+
     return buffer.limit();
   }
 

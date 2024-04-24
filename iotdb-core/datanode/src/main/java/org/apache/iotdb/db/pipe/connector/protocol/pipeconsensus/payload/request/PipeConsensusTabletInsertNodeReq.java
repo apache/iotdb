@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.reques
 
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
+import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -37,10 +38,11 @@ public class PipeConsensusTabletInsertNodeReq extends TPipeConsensusTransferReq 
   /////////////////////////////// WriteBack & Batch ///////////////////////////////
 
   public static PipeConsensusTabletInsertNodeReq toTPipeConsensusTransferRawReq(
-      InsertNode insertNode) {
+      InsertNode insertNode, TCommitId commitId) {
     final PipeConsensusTabletInsertNodeReq req = new PipeConsensusTabletInsertNodeReq();
 
     req.insertNode = insertNode;
+    req.commitId = commitId;
 
     return req;
   }
@@ -48,11 +50,12 @@ public class PipeConsensusTabletInsertNodeReq extends TPipeConsensusTransferReq 
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeConsensusTabletInsertNodeReq toTPipeConsensusTransferReq(
-      InsertNode insertNode) {
+      InsertNode insertNode, TCommitId commitId) {
     final PipeConsensusTabletInsertNodeReq req = new PipeConsensusTabletInsertNodeReq();
 
     req.insertNode = insertNode;
 
+    req.commitId = commitId;
     req.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     req.type = PipeConsensusRequestType.TRANSFER_TABLET_INSERT_NODE.getType();
     req.body = insertNode.serializeToByteBuffer();
@@ -69,6 +72,7 @@ public class PipeConsensusTabletInsertNodeReq extends TPipeConsensusTransferReq 
     insertNodeReq.version = transferReq.version;
     insertNodeReq.type = transferReq.type;
     insertNodeReq.body = transferReq.body;
+    insertNodeReq.commitId = transferReq.commitId;
 
     return insertNodeReq;
   }
@@ -87,11 +91,12 @@ public class PipeConsensusTabletInsertNodeReq extends TPipeConsensusTransferReq 
     return Objects.equals(insertNode, that.insertNode)
         && version == that.version
         && type == that.type
-        && Objects.equals(body, that.body);
+        && Objects.equals(body, that.body)
+        && Objects.equals(commitId, that.commitId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(insertNode, version, type, body);
+    return Objects.hash(insertNode, version, type, body, commitId);
   }
 }

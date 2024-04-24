@@ -91,16 +91,21 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
     private final TreeSet<WrappedRequest> reqBuffer;
     private final Lock lock;
     private final Condition condition;
-    private int onSyncedCommitIndex = -1;
+    private long onSyncedCommitIndex = -1;
     private int connectorRebootTimes = 1;
 
     public RequestExecutor() {
       reqBuffer =
           new TreeSet<>(
               Comparator.comparingInt(WrappedRequest::getRebootTime)
-                  .thenComparingInt(WrappedRequest::getCommitIndex));
+                  .thenComparingLong(WrappedRequest::getCommitIndex));
       lock = new ReentrantLock();
       condition = lock.newCondition();
+    }
+
+    private void onSuccess(long nextSyncedCommitIndex) {
+      reqBuffer.pollFirst();
+      onSyncedCommitIndex = nextSyncedCommitIndex;
     }
 
     private TPipeConsensusTransferResp onRequest(final TPipeConsensusTransferReq req) {
@@ -132,6 +137,7 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
           // TODO: 如：1,1 1,2 1,3 1,4 1,5 / 1,6 1,7 1,8（follower 得想办法知道 leader
           // 是否发满了/前置请求是否发完了）：发送端等待事件超时后尝试握手
           // TODO: RPC 60s 超时问题；如果存储引擎等非共识层写入超时，会导致已接收的副本重发，从而导致堆积：存储端做去重
+          // TODO: 处理 tablet 攒批
         }
 
         // Polling to process
@@ -141,8 +147,11 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
             // If current req is supposed to be process, load this event through
             // DataRegionStateMachine.
             TPipeConsensusTransferResp resp = loadEvent(req);
-            reqBuffer.pollFirst();
-            onSyncedCommitIndex++;
+
+            if (resp != null
+                && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              onSuccess(onSyncedCommitIndex + 1);
+            }
             return resp;
           }
 
@@ -150,8 +159,11 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
             // If the reqBuffer is full and its peek is hold by current thread, load this event.
             if (reqBuffer.first().equals(wrappedReq)) {
               TPipeConsensusTransferResp resp = loadEvent(req);
-              reqBuffer.pollFirst();
-              onSyncedCommitIndex = wrappedReq.getCommitIndex();
+
+              if (resp != null
+                  && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                onSuccess(wrappedReq.getCommitIndex());
+              }
               return resp;
             } else {
               // If reqBuffer is full and current thread do not hold the reqBuffer's peek, this req
@@ -201,20 +213,18 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
    */
   private static class WrappedRequest {
     final int rebootTime;
-    final int commitIndex;
+    final long commitIndex;
 
     public WrappedRequest(TPipeConsensusTransferReq req) {
-      //      this.rebootTime = req.rebootTimes;
-      //      this.commitIndex = req.commitIndex;
-      this.rebootTime = 0;
-      this.commitIndex = 0;
+      this.rebootTime = req.getCommitId().getRebootTimes();
+      this.commitIndex = req.getCommitId().getCommitIndex();
     }
 
     public int getRebootTime() {
       return rebootTime;
     }
 
-    public int getCommitIndex() {
+    public long getCommitIndex() {
       return commitIndex;
     }
 

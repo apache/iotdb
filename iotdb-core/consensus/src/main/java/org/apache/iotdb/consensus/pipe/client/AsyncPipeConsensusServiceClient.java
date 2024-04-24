@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AsyncPipeConsensusServiceClient extends PipeConsensusIService.AsyncClient
     implements ThriftClient {
@@ -45,6 +46,7 @@ public class AsyncPipeConsensusServiceClient extends PipeConsensusIService.Async
   private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncPipeConsensusServiceClient> clientManager;
+  private final AtomicBoolean shouldReturnSelf = new AtomicBoolean(true);
 
   public AsyncPipeConsensusServiceClient(
       ThriftClientProperty property,
@@ -93,12 +95,14 @@ public class AsyncPipeConsensusServiceClient extends PipeConsensusIService.Async
     return printLogWhenEncounterException;
   }
 
-  /**
-   * return self, the method doesn't need to be called by the user and will be triggered after the
-   * RPC is finished.
-   */
-  private void returnSelf() {
-    clientManager.returnClient(endpoint, this);
+  public void returnSelf() {
+    if (shouldReturnSelf.get()) {
+      clientManager.returnClient(endpoint, this);
+    }
+  }
+
+  public void setShouldReturnSelf(boolean shouldReturnSelf) {
+    this.shouldReturnSelf.set(shouldReturnSelf);
   }
 
   private void close() {

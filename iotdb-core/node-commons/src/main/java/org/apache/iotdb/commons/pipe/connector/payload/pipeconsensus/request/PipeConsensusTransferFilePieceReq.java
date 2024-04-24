@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request;
 
+import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 
 import org.apache.tsfile.utils.Binary;
@@ -42,12 +43,14 @@ public abstract class PipeConsensusTransferFilePieceReq extends TPipeConsensusTr
   /////////////////////////////// Thrift ///////////////////////////////
 
   protected final PipeConsensusTransferFilePieceReq convertToTPipeConsensusTransferReq(
-      String snapshotName, long startWritingOffset, byte[] snapshotPiece) throws IOException {
+      String snapshotName, long startWritingOffset, byte[] snapshotPiece, TCommitId commitId)
+      throws IOException {
 
     this.fileName = snapshotName;
     this.startWritingOffset = startWritingOffset;
     this.filePiece = snapshotPiece;
 
+    this.commitId = commitId;
     this.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     this.type = getPlanType().getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -71,6 +74,7 @@ public abstract class PipeConsensusTransferFilePieceReq extends TPipeConsensusTr
     version = transferReq.version;
     type = transferReq.type;
     body = transferReq.body;
+    commitId = transferReq.commitId;
 
     return this;
   }
@@ -91,12 +95,13 @@ public abstract class PipeConsensusTransferFilePieceReq extends TPipeConsensusTr
         && Arrays.equals(filePiece, that.filePiece)
         && version == that.version
         && type == that.type
-        && body.equals(that.body);
+        && body.equals(that.body)
+        && Objects.equals(commitId, that.commitId);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        fileName, startWritingOffset, Arrays.hashCode(filePiece), version, type, body);
+        fileName, startWritingOffset, Arrays.hashCode(filePiece), version, type, body, commitId);
   }
 }

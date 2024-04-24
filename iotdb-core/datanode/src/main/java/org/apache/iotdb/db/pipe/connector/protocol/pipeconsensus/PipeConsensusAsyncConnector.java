@@ -48,10 +48,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-// TODO：改造 request，加上 commitId 和 rebootTimes
 // TODO: 改造 handler，onComplete 的优化 + onComplete 加上出队逻辑
 // TODO: 改造 batch 协议
-// TODO:
+// TODO: 改造 tsFile 传送协议
 public class PipeConsensusAsyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusAsyncConnector.class);
@@ -165,6 +164,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     if (!enqueueResult) {
       throw new PipeException(ENQUEUE_EXCEPTION_MSG);
     }
+
     syncTransferQueuedEventsIfNecessary();
   }
 
