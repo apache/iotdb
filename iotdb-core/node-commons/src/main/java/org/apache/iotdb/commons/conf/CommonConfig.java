@@ -228,9 +228,9 @@ public class CommonConfig {
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
 
-  private long twoStageAggregateMaxCombinerLiveTimeInMs = 5 * 60 * 1000; // 5 minutes
-  private long twoStageAggregateDataRegionInfoCacheTimeInMs = 5 * 60 * 1000; // 5 minutes
-  private long twoStageAggregateSenderEndPointsCacheInMs = 20 * 60 * 1000; // 20 minutes
+  private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000; // 8 minutes
+  private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000; // 3 minutes
+  private long twoStageAggregateSenderEndPointsCacheInMs = 3 * 60 * 1000; // 3 minutes
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));

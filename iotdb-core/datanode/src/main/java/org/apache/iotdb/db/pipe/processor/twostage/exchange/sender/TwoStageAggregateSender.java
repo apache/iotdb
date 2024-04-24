@@ -81,6 +81,8 @@ public class TwoStageAggregateSender implements AutoCloseable {
       client = reconstructIoTDBSyncClient(endPoint);
     }
 
+    LOGGER.info("Sending request {} (watermark = {}) to {}", req, watermark, endPoint);
+
     try {
       return client.pipeTransfer(req);
     } catch (Exception e) {
