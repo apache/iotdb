@@ -1147,7 +1147,7 @@ public class TsFileResource {
   }
 
   public boolean isEmpty() {
-    return getDevices().isEmpty();
+    return getFileStartTime() == Long.MAX_VALUE && getFileEndTime() == Long.MIN_VALUE;
   }
 
   public String getDatabaseName() {
