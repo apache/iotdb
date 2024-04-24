@@ -141,7 +141,8 @@ public class ProcedureManager {
 
   public static final long PROCEDURE_WAIT_TIME_OUT = COMMON_CONFIG.getConnectionTimeoutInMS();
   private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 10;
-  private static final String PROCEDURE_TIMEOUT_MESSAGE = "Procedure execution timed out.";
+  private static final String PROCEDURE_TIMEOUT_MESSAGE =
+      "Timed out to wait for procedure return. The procedure is still running.";
 
   private final ConfigManager configManager;
   private ProcedureExecutor<ConfigNodeProcedureEnv> executor;
@@ -1189,7 +1190,8 @@ public class ProcedureManager {
 
   private static String wrapTimeoutMessageForPipeProcedure(String message) {
     if (message.equals(PROCEDURE_TIMEOUT_MESSAGE)) {
-      return "Timed out to get procedure execution status. Please manually check if the procedure is executed successfully.";
+      return message
+          + " Please manually check later whether the procedure is executed successfully.";
     }
     return message;
   }
