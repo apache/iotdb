@@ -35,6 +35,8 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.text.CharacterIterator;
+import java.text.StringCharacterIterator;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -285,5 +287,21 @@ public class FileUtils {
 
     Files.copy(sourceFile.toPath(), targetFile.toPath());
     return targetFile;
+  }
+
+  /**
+   * Transfer bytes to human-readable string. Copy from <a
+   * href="https://stackoverflow.com/a/3758880">stackoverflow</a>.
+   */
+  public static String humanReadableByteCountSI(long bytes) {
+    if (-1000 < bytes && bytes < 1000) {
+      return bytes + " B";
+    }
+    CharacterIterator ci = new StringCharacterIterator("KMGTPE");
+    while (bytes <= -999_950 || bytes >= 999_950) {
+      bytes /= 1000;
+      ci.next();
+    }
+    return String.format("%.2f %cB", bytes / 1000.0, ci.current());
   }
 }

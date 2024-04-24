@@ -90,7 +90,7 @@ public class RemoveRegionPeerProcedure
               consensusGroupId.getId(),
               targetDataNode.getDataNodeId());
           handler.updateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
-          handler.changeRegionLeader(consensusGroupId, targetDataNode);
+          handler.transferRegionLeader(consensusGroupId, targetDataNode);
           KillPoint.setKillPoint(state);
           setNextState(REMOVE_REGION_PEER);
           break;
