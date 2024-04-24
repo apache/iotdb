@@ -201,7 +201,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     final InsertNode insertNode;
     MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus = null;
     final TPipeConsensusTransferResp resp;
-    TCommitId commitId =
+    TCommitId tCommitId =
         new TCommitId(
             pipeInsertNodeTabletInsertionEvent.getCommitId(),
             pipeInsertNodeTabletInsertionEvent.getRebootTimes());
@@ -216,14 +216,14 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                 .getLeft()
                 .pipeConsensusTransfer(
                     PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
-                        insertNode, commitId));
+                        insertNode, tCommitId));
       } else {
         resp =
             clientAndStatus
                 .getLeft()
                 .pipeConsensusTransfer(
                     PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
-                        pipeInsertNodeTabletInsertionEvent.getByteBuffer(), commitId));
+                        pipeInsertNodeTabletInsertionEvent.getByteBuffer(), tCommitId));
       }
     } catch (Exception e) {
       if (clientAndStatus != null) {
@@ -254,7 +254,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     final MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus =
         syncRetryAndHandshakeClientManager.borrowClient(getFollowerUrl());
     final TPipeConsensusTransferResp resp;
-    TCommitId commitId =
+    TCommitId tCommitId =
         new TCommitId(
             pipeRawTabletInsertionEvent.getCommitId(),
             pipeRawTabletInsertionEvent.getRebootTimes());
@@ -267,7 +267,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                   PipeConsensusTabletRawReq.toTPipeConsensusTransferReq(
                       pipeRawTabletInsertionEvent.convertToTablet(),
                       pipeRawTabletInsertionEvent.isAligned(),
-                      commitId));
+                      tCommitId));
     } catch (Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
@@ -298,14 +298,14 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     final MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus =
         syncRetryAndHandshakeClientManager.borrowClient(getFollowerUrl());
     final TPipeConsensusTransferResp resp;
-    final TCommitId commitId =
+    final TCommitId tCommitId =
         new TCommitId(
             pipeTsFileInsertionEvent.getCommitId(), pipeTsFileInsertionEvent.getRebootTimes());
 
     // 1. Transfer tsFile, and mod file if exists and receiver's version >= 2
     if (pipeTsFileInsertionEvent.isWithMod()) {
-      transferFilePieces(modFile, clientAndStatus, true, commitId);
-      transferFilePieces(tsFile, clientAndStatus, true, commitId);
+      transferFilePieces(modFile, clientAndStatus, true, tCommitId);
+      transferFilePieces(tsFile, clientAndStatus, true, tCommitId);
       // 2. Transfer filre seal signal with mod, which means the file is tansferred completely
       try {
         resp =
@@ -317,7 +317,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                         modFile.length(),
                         tsFile.getName(),
                         tsFile.length(),
-                        commitId));
+                        tCommitId));
       } catch (Exception e) {
         clientAndStatus.setRight(false);
         throw new PipeConnectionException(
@@ -325,7 +325,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
             e);
       }
     } else {
-      transferFilePieces(tsFile, clientAndStatus, false, commitId);
+      transferFilePieces(tsFile, clientAndStatus, false, tCommitId);
       // 2. Transfer file seal signal without mod, which means the file is transferred completely
       try {
         resp =
@@ -333,7 +333,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                 .getLeft()
                 .pipeConsensusTransfer(
                     PipeConsensusTsFileSealReq.toTPipeConsensusTransferReq(
-                        tsFile.getName(), tsFile.length(), commitId));
+                        tsFile.getName(), tsFile.length(), tCommitId));
       } catch (Exception e) {
         clientAndStatus.setRight(false);
         throw new PipeConnectionException(
@@ -359,7 +359,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
       File file,
       MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus,
       boolean isMultiFile,
-      TCommitId commitId)
+      TCommitId tCommitId)
       throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
@@ -384,9 +384,9 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                       .pipeConsensusTransfer(
                           isMultiFile
                               ? PipeConsensusTsFilePieceWithModReq.toTPipeConsensusTransferReq(
-                                  file.getName(), position, payLoad, commitId)
+                                  file.getName(), position, payLoad, tCommitId)
                               : PipeConsensusTsFilePieceReq.toTPipeConsensusTransferReq(
-                                  file.getName(), position, payLoad, commitId)));
+                                  file.getName(), position, payLoad, tCommitId)));
         } catch (Exception e) {
           clientAndStatus.setRight(false);
           throw new PipeConnectionException(

@@ -109,6 +109,8 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
     }
 
     private TPipeConsensusTransferResp onRequest(final TPipeConsensusTransferReq req) {
+      // TODO: heartbeat event will be apply directly.
+
       lock.lock();
       WrappedRequest wrappedReq = new WrappedRequest(req);
       // if a req is deprecated, we will discard it
