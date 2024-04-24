@@ -17,20 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
+package org.apache.iotdb.db.pipe.processor.twostage.operator;
 
-public enum IoTDBConnectorRequestVersion {
-  VERSION_1((byte) 1),
-  VERSION_2((byte) 2),
-  ;
+import org.apache.iotdb.db.pipe.processor.twostage.state.State;
 
-  private final byte version;
+public interface Operator {
 
-  IoTDBConnectorRequestVersion(byte type) {
-    this.version = type;
-  }
+  void combine(State state);
 
-  public byte getVersion() {
-    return version;
-  }
+  void onComplete();
 }

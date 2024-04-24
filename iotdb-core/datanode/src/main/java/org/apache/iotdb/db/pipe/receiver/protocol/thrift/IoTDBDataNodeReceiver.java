@@ -201,8 +201,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           receiverId.get(),
           status);
       return new TPipeTransferResp(status);
-    } catch (final IOException e) {
-      final String error = String.format("Serialization error during pipe receiving, %s", e);
+    } catch (Exception e) {
+      final String error =
+          String.format("Exception %s encountered while handling request %s.", e.getMessage(), req);
       LOGGER.warn("Receiver id = {}: {}", receiverId.get(), error, e);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
