@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -204,7 +205,8 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     historicalExtractor = new PipeHistoricalDataRegionTsFileExtractor();
   }
 
-  private void constructRealtimeExtractor(final PipeParameters parameters) {
+  private void constructRealtimeExtractor(final PipeParameters parameters)
+      throws IllegalPathException {
     // Enable realtime extractor by default
     if (!parameters.getBooleanOrDefault(
         Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
@@ -218,6 +220,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
     // Use hybrid mode by default
     if (!parameters.hasAnyAttributes(EXTRACTOR_REALTIME_MODE_KEY, SOURCE_REALTIME_MODE_KEY)) {
+      checkWalEnable(parameters);
       realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
       LOGGER.info(
           "Pipe: '{}' is not set, use hybrid mode by default.", EXTRACTOR_REALTIME_MODE_KEY);
@@ -232,15 +235,15 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
       case EXTRACTOR_REALTIME_MODE_HYBRID_VALUE:
       case EXTRACTOR_REALTIME_MODE_LOG_VALUE:
       case EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE:
-        checkWalEnable();
+        checkWalEnable(parameters);
         realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
         break;
       case EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE:
-        checkWalEnable();
+        checkWalEnable(parameters);
         realtimeExtractor = new PipeRealtimeDataRegionLogExtractor();
         break;
       default:
-        checkWalEnable();
+        checkWalEnable(parameters);
         realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
         if (LOGGER.isWarnEnabled()) {
           LOGGER.warn(
@@ -250,10 +253,13 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     }
   }
 
-  private void checkWalEnable() {
+  private void checkWalEnable(final PipeParameters parameters) throws IllegalPathException {
     final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
-        || config.getWalMode().equals(WALMode.DISABLE)) {
+    if (Boolean.TRUE.equals(
+            DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters)
+                .getLeft())
+        && (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
+            || config.getWalMode().equals(WALMode.DISABLE))) {
       throw new PipeException(
           "The pipe cannot transfer realtime insertion when data region is using ratis consensus or disabling wal. Please set 'realtime.mode'='batch' in source parameters when enabling realtime transmission.");
     }
