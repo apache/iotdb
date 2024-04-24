@@ -223,7 +223,22 @@ public class TwoStageCountProcessor implements PipeProcessor {
 
   private void collectGlobalCountIfNecessary(EventCollector eventCollector) throws IOException {
     while (!globalCountQueue.isEmpty()) {
+      final Object lastCombinedValue =
+          PipeCombineHandlerManager.getInstance().getLastCombinedValue(pipeName, creationTime);
+      final Pair<Long, Long> lastCollectedTimestampCountPair =
+          Objects.isNull(lastCombinedValue)
+              ? new Pair<>(Long.MIN_VALUE, 0L)
+              : (Pair<Long, Long>) lastCombinedValue;
+
       final Pair<Long, Long> timestampCountPair = globalCountQueue.poll();
+      if (timestampCountPair.right < lastCollectedTimestampCountPair.right) {
+        timestampCountPair.right = lastCollectedTimestampCountPair.right;
+        LOGGER.warn(
+            "Global count is less than the last collected count: timestamp={}, count={}",
+            timestampCountPair.left,
+            timestampCountPair.right);
+      }
+
       final Tablet tablet =
           new Tablet(
               outputSeries.getDevice(),
@@ -233,8 +248,12 @@ public class TwoStageCountProcessor implements PipeProcessor {
       tablet.rowSize = 1;
       tablet.addTimestamp(0, timestampCountPair.left);
       tablet.addValue(outputSeries.getMeasurement(), 0, timestampCountPair.right);
+
       eventCollector.collect(
           new PipeRawTabletInsertionEvent(tablet, false, null, null, null, false));
+
+      PipeCombineHandlerManager.getInstance()
+          .updateLastCombinedValue(pipeName, creationTime, timestampCountPair);
     }
   }
 

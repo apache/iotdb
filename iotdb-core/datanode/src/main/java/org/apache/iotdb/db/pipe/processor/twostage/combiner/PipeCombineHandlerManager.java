@@ -50,6 +50,7 @@ public class PipeCombineHandlerManager {
       new ConcurrentHashMap<>();
   private final ConcurrentMap<String, AtomicInteger> pipeId2ReferenceCount =
       new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, Object> pipeId2LastCombinedValue = new ConcurrentHashMap<>();
 
   public synchronized void register(
       String pipeName, long creationTime, Function<String, Operator> operatorConstructor) {
@@ -57,8 +58,8 @@ public class PipeCombineHandlerManager {
 
     pipeId2CombineHandler.putIfAbsent(
         pipeId, new PipeCombineHandler(pipeName, creationTime, operatorConstructor));
-    pipeId2ReferenceCount.putIfAbsent(pipeId, new AtomicInteger(0));
 
+    pipeId2ReferenceCount.putIfAbsent(pipeId, new AtomicInteger(0));
     pipeId2ReferenceCount.get(pipeId).incrementAndGet();
   }
 
@@ -67,7 +68,10 @@ public class PipeCombineHandlerManager {
 
     if (pipeId2ReferenceCount.containsKey(pipeId)
         && pipeId2ReferenceCount.get(pipeId).decrementAndGet() <= 0) {
+      pipeId2LastCombinedValue.remove(pipeId);
+
       pipeId2ReferenceCount.remove(pipeId);
+
       try {
         pipeId2CombineHandler.remove(pipeId).close();
       } catch (Exception e) {
@@ -76,10 +80,18 @@ public class PipeCombineHandlerManager {
     }
   }
 
-  public synchronized Set<Integer> getExpectedDataNodeIdSet(String pipeName, long creationTime) {
-    final String pipeId = generatePipeId(pipeName, creationTime);
+  public synchronized Object getLastCombinedValue(String pipeName, long creationTime) {
+    return pipeId2LastCombinedValue.get(generatePipeId(pipeName, creationTime));
+  }
 
-    final PipeCombineHandler handler = pipeId2CombineHandler.get(pipeId);
+  public synchronized void updateLastCombinedValue(
+      String pipeName, long creationTime, Object lastCombinedValue) {
+    pipeId2LastCombinedValue.put(generatePipeId(pipeName, creationTime), lastCombinedValue);
+  }
+
+  public synchronized Set<Integer> getExpectedDataNodeIdSet(String pipeName, long creationTime) {
+    final PipeCombineHandler handler =
+        pipeId2CombineHandler.get(generatePipeId(pipeName, creationTime));
     return Objects.isNull(handler) ? Collections.emptySet() : handler.getExpectedDataNodeIdSet();
   }
 
