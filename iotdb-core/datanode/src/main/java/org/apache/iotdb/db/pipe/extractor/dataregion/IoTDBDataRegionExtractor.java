@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.historical.PipeHistoricalDataRegionExtractor;
@@ -101,6 +100,15 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
       return;
     }
     hasNoExtractionNeed = false;
+
+    if (insertionDeletionListeningOptionPair.getLeft().equals(true)
+        && IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      throw new PipeException(
+          "The pipe cannot transfer data when data region is using ratis consensus.");
+    }
 
     // Validate extractor.pattern.format is within valid range
     validator
@@ -254,14 +262,12 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
   }
 
   private void checkWalEnable(final PipeParameters parameters) throws IllegalPathException {
-    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     if (Boolean.TRUE.equals(
             DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters)
                 .getLeft())
-        && (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
-            || config.getWalMode().equals(WALMode.DISABLE))) {
+        && IoTDBDescriptor.getInstance().getConfig().getWalMode().equals(WALMode.DISABLE)) {
       throw new PipeException(
-          "The pipe cannot transfer realtime insertion when data region is using ratis consensus or disabling wal. Please set 'realtime.mode'='batch' in source parameters when enabling realtime transmission.");
+          "The pipe cannot transfer realtime insertion if data region disables wal. Please set 'realtime.mode'='batch' in source parameters when enabling realtime transmission.");
     }
   }
 
