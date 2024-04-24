@@ -233,8 +233,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected final TPipeTransferResp handleTransferFilePiece(
       final PipeTransferFilePieceReq req,
       final boolean isRequestThroughAirGap,
-      final boolean isSingleFile)
-      throws IOException {
+      final boolean isSingleFile) {
     try {
       updateWritingFileIfNeeded(req.getFileName(), isSingleFile);
 
@@ -265,7 +264,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       }
 
       writingFileWriter.write(req.getFilePiece());
-      writingFileWriter.getFD().sync();
       return PipeTransferFilePieceResp.toTPipeTransferResp(
           RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
     } catch (Exception e) {
@@ -435,7 +433,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // updateWritingFileIfNeeded#isFileExistedAndNameCorrect, and continue to write to the already
       // loaded file. Since the writing file writer has already been closed, it will throw a Stream
       // Close exception.
-      writingFileWriter.getFD().sync();
       writingFileWriter.close();
       writingFileWriter = null;
 
@@ -512,7 +509,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // updateWritingFileIfNeeded#isFileExistedAndNameCorrect, and continue to write to the already
       // loaded file. Since the writing file writer has already been closed, it will throw a Stream
       // Close exception.
-      writingFileWriter.getFD().sync();
       writingFileWriter.close();
       writingFileWriter = null;
 
