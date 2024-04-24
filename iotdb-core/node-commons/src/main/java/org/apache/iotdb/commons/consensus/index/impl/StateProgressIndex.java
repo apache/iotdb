@@ -132,7 +132,8 @@ public class StateProgressIndex extends ProgressIndex {
     lock.readLock().lock();
     try {
       return progressIndex instanceof StateProgressIndex
-          && innerProgressIndex.equals(((StateProgressIndex) progressIndex).innerProgressIndex);
+          && innerProgressIndex.equals(((StateProgressIndex) progressIndex).innerProgressIndex)
+          && version == ((StateProgressIndex) progressIndex).version;
     } finally {
       lock.readLock().unlock();
     }
@@ -154,7 +155,7 @@ public class StateProgressIndex extends ProgressIndex {
 
   @Override
   public int hashCode() {
-    return Objects.hash(innerProgressIndex);
+    return Objects.hash(innerProgressIndex, version);
   }
 
   @Override
