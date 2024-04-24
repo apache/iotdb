@@ -17,20 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
+package org.apache.iotdb.commons.pipe.plugin.builtin.processor.twostage;
 
-public enum IoTDBConnectorRequestVersion {
-  VERSION_1((byte) 1),
-  VERSION_2((byte) 2),
-  ;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.PlaceHolderProcessor;
 
-  private final byte version;
-
-  IoTDBConnectorRequestVersion(byte type) {
-    this.version = type;
-  }
-
-  public byte getVersion() {
-    return version;
-  }
-}
+/**
+ * This class is a placeholder and should not be initialized. It represents the
+ * TwoStageCountProcessor. There is a real implementation in the server module but cannot be
+ * imported here. The pipe agent in the server module will replace this class with the real
+ * implementation when initializing the TwoStageCountProcessor.
+ */
+public class TwoStageCountProcessor extends PlaceHolderProcessor {}

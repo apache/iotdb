@@ -17,20 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
+package org.apache.iotdb.db.pipe.event.common.watermark;
 
-public enum IoTDBConnectorRequestVersion {
-  VERSION_1((byte) 1),
-  VERSION_2((byte) 2),
-  ;
+import org.apache.iotdb.pipe.api.event.Event;
 
-  private final byte version;
+public class PipeWatermarkEvent implements Event {
 
-  IoTDBConnectorRequestVersion(byte type) {
-    this.version = type;
+  private final long watermark;
+
+  public PipeWatermarkEvent(long watermark) {
+    this.watermark = watermark;
   }
 
-  public byte getVersion() {
-    return version;
+  public long getWatermark() {
+    return watermark;
+  }
+
+  @Override
+  public String toString() {
+    return "PipeWatermarkEvent{" + "watermark=" + watermark + '}';
   }
 }

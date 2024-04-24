@@ -137,7 +137,7 @@ public class MetaProgressIndex extends ProgressIndex {
     lock.writeLock().lock();
     try {
       if (!(progressIndex instanceof MetaProgressIndex)) {
-        return this;
+        return ProgressIndex.blendProgressIndex(this, progressIndex);
       }
 
       this.index = Math.max(this.index, ((MetaProgressIndex) progressIndex).index);
