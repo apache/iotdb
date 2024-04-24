@@ -896,7 +896,7 @@ public class IoTDBConfig {
    * on startup and set this variable so that the correct class name can be obtained later when the
    * data region consensus layer singleton is initialized
    */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
 
   /**
    * The consensus protocol class for schema region. The Datanode should communicate with ConfigNode
