@@ -124,10 +124,13 @@ public class PipeTsFileResourceManager {
    * @param file tsfile, resource file or mod file. can be original file or hardlink/copy of
    *     original file
    * @param isTsFile {@code true} to create hardlink, {@code false} to copy file
+   * @param tsFileResource the TsFileResource of original TsFile. Ignored if {@param isTsFile} is
+   *     {@code false}.
    * @return the hardlink or copied file
    * @throws IOException when create hardlink or copy file failed
    */
-  public File increaseFileReference(File file, boolean isTsFile) throws IOException {
+  public File increaseFileReference(File file, boolean isTsFile, TsFileResource tsFileResource)
+      throws IOException {
     lock.lock();
     try {
       // If the file is already a hardlink or copied file,
@@ -155,7 +158,7 @@ public class PipeTsFileResourceManager {
       // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
       // the hardlink or copied file, and return the hardlink or copied file.
       hardlinkOrCopiedFileToPipeTsFileResourceMap.put(
-          resultFile.getPath(), new PipeTsFileResource(resultFile, isTsFile));
+          resultFile.getPath(), new PipeTsFileResource(resultFile, isTsFile, tsFileResource));
       return resultFile;
     } finally {
       lock.unlock();
@@ -301,9 +304,9 @@ public class PipeTsFileResourceManager {
   public void pinTsFileResource(TsFileResource resource, boolean withMods) throws IOException {
     lock.lock();
     try {
-      increaseFileReference(resource.getTsFile(), true);
+      increaseFileReference(resource.getTsFile(), true, resource);
       if (withMods && resource.getModFile().exists()) {
-        increaseFileReference(new File(resource.getModFile().getFilePath()), false);
+        increaseFileReference(new File(resource.getModFile().getFilePath()), false, null);
       }
     } finally {
       lock.unlock();
@@ -329,6 +332,24 @@ public class PipeTsFileResourceManager {
     lock.lock();
     try {
       return hardlinkOrCopiedFileToPipeTsFileResourceMap.size();
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  /**
+   * Get the count of linked TsFiles whose original TsFile is already deleted (by compaction or
+   * else)
+   */
+  public int getLinkedButDeletedTsfileCount() {
+    lock.lock();
+    try {
+      return (int)
+          hardlinkOrCopiedFileToPipeTsFileResourceMap
+              .values()
+              .parallelStream()
+              .filter(PipeTsFileResource::isOriginalTsFileDeleted)
+              .count();
     } finally {
       lock.unlock();
     }

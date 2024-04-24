@@ -324,14 +324,24 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           taskId2ExtractorMap.values().stream()
               .filter(e -> e.getPipeName().equals(pipeName))
               .collect(Collectors.toList());
-      if (extractors.isEmpty()
-          || !extractors.get(0).isStreamMode()
-          || extractors.stream()
-              .noneMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)) {
+      if (extractors.isEmpty()) {
         continue;
       }
 
-      if (mayMemTablePinnedCountReachDangerousThreshold() || mayWalSizeReachThrottleThreshold()) {
+      if (!extractors.get(0).isStreamMode()
+          || extractors.stream()
+              .noneMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)) {
+        // Extractors of this pipe might not pin too much MemTables,
+        // still need to check if linked-and-deleted TsFile count exceeds limit.
+        if (mayDeletedTsFilePinnedCountReachDangerousThreshold()) {
+          LOGGER.warn(
+              "Pipe {} may need to restart because too many TsFiles are out-of-date.",
+              pipeMeta.getStaticMeta());
+          stuckPipes.add(pipeMeta);
+        }
+      } else if (mayMemTablePinnedCountReachDangerousThreshold()
+          || mayWalSizeReachThrottleThreshold()) {
+        // Extractors of this pipe may be stuck and pinning too much MemTables.
         LOGGER.warn("Pipe {} may be stuck.", pipeMeta.getStaticMeta());
         stuckPipes.add(pipeMeta);
       }
@@ -344,6 +354,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   private boolean mayMemTablePinnedCountReachDangerousThreshold() {
     return PipeResourceManager.wal().getPinnedWalCount()
         >= 10 * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
+  }
+
+  private boolean mayDeletedTsFilePinnedCountReachDangerousThreshold() {
+    return PipeResourceManager.tsfile().getLinkedButDeletedTsfileCount()
+        >= StorageEngine.getInstance().getAllDataRegionIds().size()
+            * PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {

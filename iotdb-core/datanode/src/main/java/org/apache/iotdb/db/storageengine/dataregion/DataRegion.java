@@ -2846,7 +2846,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     // help tsfile resource degrade
-    TsFileResourceManager.getInstance().registerSealedTsFileResource(tsFileResource);
+    tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
 
     tsFileManager.add(tsFileResource, false);
 
