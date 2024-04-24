@@ -238,14 +238,6 @@ public abstract class InsertBaseStatement extends Statement {
             .collect(Collectors.toList());
   }
 
-  public List<Exception> getFailedExceptions() {
-    return failedMeasurementIndex2Info == null
-        ? Collections.emptyList()
-        : failedMeasurementIndex2Info.values().stream()
-            .map(info -> info.cause)
-            .collect(Collectors.toList());
-  }
-
   public List<String> getFailedMessages() {
     return failedMeasurementIndex2Info == null
         ? Collections.emptyList()

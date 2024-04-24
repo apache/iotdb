@@ -286,6 +286,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
                 values,
                 subTimes.length);
         subNode.setFailedMeasurementNumber(getFailedMeasurementNumber());
+        subNode.setFailedMeasurementsIndex(getFailedMeasurementsIndex());
         subNode.setRange(locs);
         subNode.setDataRegionReplicaSet(entry.getKey());
         result.add(subNode);
@@ -356,6 +357,37 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     measurements[index] = null;
     dataTypes[index] = null;
     columns[index] = null;
+  }
+
+  public InsertTabletNode reconstructWithoutFailedMeasurements() {
+    int failedMeasurementNumber = getFailedMeasurementNumber();
+    if (failedMeasurementNumber == 0) {
+      return this;
+    }
+    String[] newMeasurements = new String[measurements.length - failedMeasurementNumber];
+    TSDataType[] newDataTypes = new TSDataType[dataTypes.length - failedMeasurementNumber];
+    MeasurementSchema[] newMeasurementSchemas =
+        new MeasurementSchema[measurementSchemas.length - failedMeasurementNumber];
+    Object[] newColumns = new Object[columns.length - failedMeasurementNumber];
+    BitMap[] newBitMaps = new BitMap[bitMaps.length - failedMeasurementNumber];
+    for (int i = 0, j = 0; i < measurements.length; i++) {
+      if (measurements[i] != null) {
+        newMeasurements[j] = measurements[i];
+        newDataTypes[j] = dataTypes[i];
+        newMeasurementSchemas[j] = measurementSchemas[i];
+        newColumns[j] = columns[i];
+        newBitMaps[j] = bitMaps[i];
+        j++;
+      }
+    }
+
+    // update the fields
+    this.measurements = newMeasurements;
+    this.dataTypes = newDataTypes;
+    this.measurementSchemas = newMeasurementSchemas;
+    this.columns = newColumns;
+    this.bitMaps = newBitMaps;
+    return this;
   }
 
   @Override

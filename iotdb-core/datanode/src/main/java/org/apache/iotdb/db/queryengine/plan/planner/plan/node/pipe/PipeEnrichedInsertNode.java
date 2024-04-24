@@ -271,6 +271,11 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
+  public void setFailedMeasurementsIndex(List<Integer> failedMeasurements) {
+    insertNode.setFailedMeasurementsIndex(failedMeasurements);
+  }
+
+  @Override
   public int getFailedMeasurementNumber() {
     return insertNode.getFailedMeasurementNumber();
   }

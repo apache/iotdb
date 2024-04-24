@@ -40,7 +40,9 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 public abstract class InsertNode extends WritePlanNode implements ComparableConsensusRequest {
@@ -60,6 +62,7 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   protected TSDataType[] dataTypes;
 
   protected int failedMeasurementNumber = 0;
+  protected List<Integer> failedMeasurementsIndex;
 
   /**
    * device id reference, for reuse device id in both id table and memtable <br>
@@ -95,6 +98,7 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
     this.isAligned = isAligned;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
+    this.failedMeasurementsIndex = new ArrayList<>();
   }
 
   public TRegionReplicaSet getDataRegionReplicaSet() {
@@ -267,6 +271,14 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
       return failedMeasurementNumber >= measurements.length;
     }
     return true;
+  }
+
+  public void setFailedMeasurementsIndex(List<Integer> failedMeasurementsIndex) {
+    this.failedMeasurementsIndex = failedMeasurementsIndex;
+  }
+
+  public List<Integer> getFailedMeasurementsIndex() {
+    return failedMeasurementsIndex;
   }
   // endregion
 

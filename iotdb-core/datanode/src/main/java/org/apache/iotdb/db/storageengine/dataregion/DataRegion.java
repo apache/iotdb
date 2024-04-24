@@ -1057,7 +1057,8 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     try {
-      tsFileProcessor.insertTablet(insertTabletNode, start, end, results);
+      tsFileProcessor.insertTablet(
+          insertTabletNode.reconstructWithoutFailedMeasurements(), start, end, results);
     } catch (WriteProcessRejectException e) {
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
       return false;
@@ -1119,7 +1120,7 @@ public class DataRegion implements IDataRegionForQuery {
       return;
     }
     long[] costsForMetrics = new long[4];
-    tsFileProcessor.insert(insertRowNode, costsForMetrics);
+    tsFileProcessor.insert(insertRowNode.reconstructWithoutFailedMeasurements(), costsForMetrics);
     PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
@@ -1182,7 +1183,8 @@ public class DataRegion implements IDataRegionForQuery {
       }
       tsFileProcessorMapForFlushing.put(tsFileProcessor, areSequence[i]);
       try {
-        tsFileProcessor.insert(insertRowNode, costsForMetrics);
+        tsFileProcessor.insert(
+            insertRowNode.reconstructWithoutFailedMeasurements(), costsForMetrics);
       } catch (WriteProcessException e) {
         insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
