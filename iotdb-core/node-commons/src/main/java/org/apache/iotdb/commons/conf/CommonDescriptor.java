@@ -517,6 +517,12 @@ public class CommonDescriptor {
                 "pipe_listening_queue_transfer_snapshot_threshold",
                 String.valueOf(config.getPipeListeningQueueTransferSnapshotThreshold()))));
 
+    config.setPipeSnapshotExecutionMaxBatchSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_snapshot_execution_max_batch_size",
+                String.valueOf(config.getPipeSnapshotExecutionMaxBatchSize()))));
+
     config.setTwoStageAggregateMaxCombinerLiveTimeInMs(
         Long.parseLong(
             properties.getProperty(
