@@ -64,7 +64,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
   @Override
   public SubscriptionTsFileEvent poll(final String consumerId) {
-    if (hasPollableOnTheFlySubscriptionTsFileEvent(consumerId)) {
+    if (hasUnPollableOnTheFlySubscriptionTsFileEvent(consumerId)) {
       return null;
     }
 
@@ -289,7 +289,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
   /////////////////////////////// utility ///////////////////////////////
 
-  private synchronized boolean hasPollableOnTheFlySubscriptionTsFileEvent(final String consumerId) {
+  private synchronized boolean hasUnPollableOnTheFlySubscriptionTsFileEvent(
+      final String consumerId) {
     final SubscriptionTsFileEvent event = consumerIdToCurrentEventMap.get(consumerId);
     if (Objects.isNull(event)) {
       return false;
