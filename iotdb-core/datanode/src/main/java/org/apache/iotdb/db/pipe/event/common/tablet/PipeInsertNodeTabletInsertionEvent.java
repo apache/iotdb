@@ -276,7 +276,12 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         default:
           throw new UnSupportedDataTypeException("Unsupported node type " + node.getType());
       }
-      dataContainers.get(dataContainers.size() - 1).markAsNeedToReport();
+
+      final int size = dataContainers.size();
+      if (size > 0) {
+        dataContainers.get(size - 1).markAsNeedToReport();
+      }
+
       return dataContainers;
     } catch (Exception e) {
       throw new PipeException("Initialize data container error.", e);
@@ -310,7 +315,12 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
                         tablet, isAligned, pipeName, pipeTaskMeta, this, false))
             .filter(event -> !event.hasNoNeedParsingAndIsEmpty())
             .collect(Collectors.toList());
-    events.get(events.size() - 1).markAsNeedToReport();
+
+    final int size = events.size();
+    if (size > 0) {
+      events.get(size - 1).markAsNeedToReport();
+    }
+
     return events;
   }
 
