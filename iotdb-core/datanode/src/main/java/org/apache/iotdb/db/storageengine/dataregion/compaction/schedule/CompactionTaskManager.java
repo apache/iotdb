@@ -86,6 +86,8 @@ public class CompactionTaskManager implements IService {
 
   private volatile boolean init = false;
 
+  private final AtomicInteger zeroLevelInnerCompactionTaskNum = new AtomicInteger(0);
+
   public static CompactionTaskManager getInstance() {
     return INSTANCE;
   }
@@ -212,8 +214,17 @@ public class CompactionTaskManager implements IService {
     return ServiceType.COMPACTION_SERVICE;
   }
 
+  public AtomicInteger getZeroLevelInnerCompactionTaskNum() {
+    return this.zeroLevelInnerCompactionTaskNum;
+  }
+
   public boolean isWaitingQueueFull() {
-    return candidateCompactionTaskQueue.size() == candidateCompactionTaskQueue.getMaxSize();
+    if (config.getCandidateCompactionTaskQueueSize()
+        > 2 * config.getCompactionScheduleThreadNum()) {
+      return candidateCompactionTaskQueue.size()
+          >= (candidateCompactionTaskQueue.getMaxSize() - config.getCompactionScheduleThreadNum());
+    }
+    return candidateCompactionTaskQueue.size() >= candidateCompactionTaskQueue.getMaxSize();
   }
 
   /**
@@ -229,6 +240,10 @@ public class CompactionTaskManager implements IService {
         && !candidateCompactionTaskQueue.contains(compactionTask)
         && !isTaskRunning(compactionTask)
         && compactionTask.setSourceFilesToCompactionCandidate()) {
+      if (compactionTask instanceof InnerSpaceCompactionTask
+          && ((InnerSpaceCompactionTask) compactionTask).getSumOfCompactionCount() == 0) {
+        zeroLevelInnerCompactionTaskNum.incrementAndGet();
+      }
       candidateCompactionTaskQueue.put(compactionTask);
       return true;
     }

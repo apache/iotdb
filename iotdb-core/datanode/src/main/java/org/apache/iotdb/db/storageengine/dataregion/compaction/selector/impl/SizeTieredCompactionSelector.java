@@ -210,6 +210,10 @@ public class SizeTieredCompactionSelector
       if (!selectedResourceList.isEmpty()) {
         return createCompactionTasks(selectedResourceList, CompactionTaskPriorityType.NORMAL);
       }
+      // If any zero level task exist, skip the selection of high level compaction task
+      if (CompactionTaskManager.getInstance().getZeroLevelInnerCompactionTaskNum().get() > 0) {
+        return Collections.emptyList();
+      }
     }
     return Collections.emptyList();
   }

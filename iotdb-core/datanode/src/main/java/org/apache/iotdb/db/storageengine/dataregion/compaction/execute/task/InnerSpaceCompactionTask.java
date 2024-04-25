@@ -32,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
@@ -506,6 +507,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   public int getProcessedFileNum() {
     return selectedTsFileResourceList.size();
+  }
+
+  @Override
+  public void handleTaskCleanup() {
+    if (sumOfCompactionCount == 0) {
+      CompactionTaskManager.getInstance().getZeroLevelInnerCompactionTaskNum().decrementAndGet();
+    }
   }
 
   @Override
