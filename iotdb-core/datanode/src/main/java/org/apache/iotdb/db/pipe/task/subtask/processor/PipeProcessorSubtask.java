@@ -41,6 +41,7 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -59,6 +60,10 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   private final String pipeName;
   private final int dataRegionId;
 
+  // This variable is used to distinguish between old and new subtasks before and after stuck
+  // restart.
+  private final long subtaskCreationTime;
+
   public PipeProcessorSubtask(
       String taskID,
       long creationTime,
@@ -68,6 +73,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       PipeProcessor pipeProcessor,
       PipeEventCollector outputEventCollector) {
     super(taskID, creationTime);
+    this.subtaskCreationTime = System.currentTimeMillis();
     this.pipeName = pipeName;
     this.dataRegionId = dataRegionId;
     this.inputEventSupplier = inputEventSupplier;
@@ -204,14 +210,21 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   }
 
   @Override
-  public boolean equals(Object that) {
-    return that instanceof PipeProcessorSubtask
-        && this.taskID.equals(((PipeProcessorSubtask) that).taskID);
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    final PipeProcessorSubtask that = (PipeProcessorSubtask) obj;
+    return Objects.equals(this.taskID, that.taskID)
+        && Objects.equals(this.subtaskCreationTime, that.subtaskCreationTime);
   }
 
   @Override
   public int hashCode() {
-    return taskID.hashCode();
+    return Objects.hash(taskID, subtaskCreationTime);
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

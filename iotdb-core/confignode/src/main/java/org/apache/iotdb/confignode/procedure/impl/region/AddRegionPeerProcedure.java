@@ -44,7 +44,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -175,9 +174,15 @@ public class AddRegionPeerProcedure
             .orElseThrow(
                 () ->
                     new ProcedureException(
-                        "Cannot roll back, because cannot find the correct locations"))
+                        "[pid{}][AddRegion] Cannot roll back, because cannot find the correct locations"))
             .getDataNodeLocations();
-
+    if (correctDataNodeLocations.remove(destDataNode)) {
+      LOGGER.warn(
+          "[pid{}][AddRegion] It appears that consensus write has not modified the local partition table. "
+              + "Please verify whether a leader change has occurred during this stage. "
+              + "If this log is triggered without a leader change, it indicates a potential bug in the partition table.",
+          getProcId());
+    }
     String correctStr =
         correctDataNodeLocations.stream()
             .map(TDataNodeLocation::getDataNodeId)
@@ -185,16 +190,19 @@ public class AddRegionPeerProcedure
             .toString();
     List<TDataNodeLocation> relatedDataNodeLocations = new ArrayList<>(correctDataNodeLocations);
     relatedDataNodeLocations.add(destDataNode);
-    Map<Integer, TDataNodeLocation> relatedDataNodeLocationMap = new HashMap<>();
-    relatedDataNodeLocations.forEach(
-        location -> relatedDataNodeLocationMap.put(location.dataNodeId, location));
+    Map<Integer, TDataNodeLocation> relatedDataNodeLocationMap =
+        relatedDataNodeLocations.stream()
+            .collect(
+                Collectors.toMap(
+                    TDataNodeLocation::getDataNodeId, dataNodeLocation -> dataNodeLocation));
     LOGGER.info(
-        "[pid{}][AddRegion] Will reset peer list of consensus group {} on DataNode {}",
+        "[pid{}][AddRegion] reset peer list: peer list of consensus group {} on DataNode {} will be reset to {}",
         getProcId(),
         consensusGroupId,
-        relatedDataNodeLocations.stream()
+        relatedDataNodeLocationMap.values().stream()
             .map(TDataNodeLocation::getDataNodeId)
-            .collect(Collectors.toList()));
+            .collect(Collectors.toList()),
+        correctStr);
 
     Map<Integer, TSStatus> resultMap =
         handler.resetPeerList(
@@ -204,7 +212,7 @@ public class AddRegionPeerProcedure
         (dataNodeId, resetResult) -> {
           if (resetResult.getCode() == SUCCESS_STATUS.getStatusCode()) {
             LOGGER.info(
-                "[pid{}][AddRegion] reset peer list: peer list of consensus group {} on DataNode {} has been successfully to {}",
+                "[pid{}][AddRegion] reset peer list: peer list of consensus group {} on DataNode {} has been successfully reset to {}",
                 getProcId(),
                 consensusGroupId,
                 dataNodeId,
