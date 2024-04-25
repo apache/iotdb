@@ -293,7 +293,8 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     } catch (final TException e) {
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer tsFile insertion event: %s.", tsFileInsertionEvent),
+              "Network error when transfer tsFile insertion event: %s.",
+              ((PipeTsFileInsertionEvent) tsFileInsertionEvent).coreReportMessage()),
           e);
     }
   }

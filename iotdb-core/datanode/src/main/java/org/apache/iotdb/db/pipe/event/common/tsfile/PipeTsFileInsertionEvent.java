@@ -367,4 +367,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         + " - "
         + super.toString();
   }
+
+  @Override
+  public String coreReportMessage() {
+    return String.format(
+            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s}",
+            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get())
+        + " - "
+        + super.coreReportMessage();
+  }
 }

@@ -212,4 +212,13 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
         + " - "
         + super.toString();
   }
+
+  @Override
+  public String coreReportMessage() {
+    return String.format(
+            "PipeSchemaRegionSnapshotEvent{mTreeSnapshotPath=%s, tagLogSnapshotPath=%s, databaseName=%s}",
+            mTreeSnapshotPath, tagLogSnapshotPath, databaseName)
+        + " - "
+        + super.coreReportMessage();
+  }
 }
