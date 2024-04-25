@@ -50,6 +50,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -113,6 +114,13 @@ public class ReplicateTest {
           Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
       Path configurationPath =
           Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
+      if (!Files.exists(configurationPath) && !Files.exists(tmpConfigurationPath)) {
+        return;
+      }
+      if (!Files.exists(tmpConfigurationPath)) {
+        Files.createDirectories(tmpConfigurationPath.getParent());
+        Files.createFile(tmpConfigurationPath);
+      }
       Files.write(tmpConfigurationPath, publicBAOS.getBuf());
       if (Files.exists(configurationPath)) {
         Files.delete(configurationPath);
@@ -204,9 +212,17 @@ public class ReplicateTest {
       stopServer();
       initServer();
 
-      Assert.assertEquals(peers, servers.get(0).getImpl(gid).getConfiguration());
-      Assert.assertEquals(peers, servers.get(1).getImpl(gid).getConfiguration());
-      Assert.assertEquals(peers, servers.get(2).getImpl(gid).getConfiguration());
+      List<Peer> configuration = servers.get(0).getImpl(gid).getConfiguration();
+      configuration.sort(Comparator.comparingInt(Peer::getNodeId));
+      Assert.assertEquals(peers, configuration);
+
+      configuration = servers.get(1).getImpl(gid).getConfiguration();
+      configuration.sort(Comparator.comparingInt(Peer::getNodeId));
+      Assert.assertEquals(peers, configuration);
+
+      configuration = servers.get(2).getImpl(gid).getConfiguration();
+      configuration.sort(Comparator.comparingInt(Peer::getNodeId));
+      Assert.assertEquals(peers, configuration);
 
       Assert.assertEquals(CHECK_POINT_GAP, servers.get(0).getImpl(gid).getSearchIndex());
       Assert.assertEquals(CHECK_POINT_GAP, servers.get(1).getImpl(gid).getSearchIndex());
@@ -268,9 +284,17 @@ public class ReplicateTest {
 
       servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
-      Assert.assertEquals(peers, servers.get(0).getImpl(gid).getConfiguration());
-      Assert.assertEquals(peers, servers.get(1).getImpl(gid).getConfiguration());
-      Assert.assertEquals(peers, servers.get(2).getImpl(gid).getConfiguration());
+      List<Peer> configuration = servers.get(0).getImpl(gid).getConfiguration();
+      configuration.sort(Comparator.comparingInt(Peer::getNodeId));
+      Assert.assertEquals(peers, configuration);
+
+      configuration = servers.get(1).getImpl(gid).getConfiguration();
+      configuration.sort(Comparator.comparingInt(Peer::getNodeId));
+      Assert.assertEquals(peers, configuration);
+
+      configuration = servers.get(2).getImpl(gid).getConfiguration();
+      configuration.sort(Comparator.comparingInt(Peer::getNodeId));
+      Assert.assertEquals(peers, configuration);
 
       Assert.assertEquals(CHECK_POINT_GAP, servers.get(0).getImpl(gid).getSearchIndex());
       Assert.assertEquals(CHECK_POINT_GAP, servers.get(1).getImpl(gid).getSearchIndex());
