@@ -62,6 +62,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_T
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
+import static org.apache.iotdb.db.schemaengine.schemaregion.tag.TagLogFile.parseByteBuffer;
 
 public class SRStatementGenerator implements Iterator<Statement>, Iterable<Statement> {
 
@@ -293,10 +294,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         if (node.getOffset() >= 0) {
           if (tagFileChannel != null) {
             try {
-              final ByteBuffer byteBuffer =
-                  ByteBuffer.allocate(COMMON_CONFIG.getTagAttributeTotalSize());
-              tagFileChannel.read(byteBuffer, node.getOffset());
-              byteBuffer.flip();
+              final ByteBuffer byteBuffer = parseByteBuffer(tagFileChannel, node.getOffset());
               final Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
                   new Pair<>(
                       ReadWriteIOUtils.readMap(byteBuffer), ReadWriteIOUtils.readMap(byteBuffer));
@@ -340,9 +338,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         if (measurement.getAsMeasurementMNode().getOffset() >= 0) {
           if (tagFileChannel != null) {
             try {
-              ByteBuffer byteBuffer = ByteBuffer.allocate(COMMON_CONFIG.getTagAttributeTotalSize());
-              tagFileChannel.read(byteBuffer, measurement.getAsMeasurementMNode().getOffset());
-              byteBuffer.flip();
+              ByteBuffer byteBuffer = parseByteBuffer(tagFileChannel, measurement.getAsMeasurementMNode().getOffset());
               Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
                   new Pair<>(
                       ReadWriteIOUtils.readMap(byteBuffer), ReadWriteIOUtils.readMap(byteBuffer));

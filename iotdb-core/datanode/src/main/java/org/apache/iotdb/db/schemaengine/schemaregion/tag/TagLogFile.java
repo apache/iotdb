@@ -54,6 +54,9 @@ public class TagLogFile implements AutoCloseable {
   private static final int MAX_LENGTH =
       CommonDescriptor.getInstance().getConfig().getTagAttributeTotalSize();
 
+  private static final int MAX_ENTRY_NUM = CommonDescriptor.getInstance().getConfig().getTagAttributeEachMaxNum();
+  private static final int MAX_ENTRY_Size = CommonDescriptor.getInstance().getConfig().getTagAttributeEachMaxSize();
+
   private static final int RECORD_FLUSH_INTERVAL =
       IoTDBDescriptor.getInstance().getConfig().getTagAttributeFlushInterval();
   private int unFlushedRecordNum = 0;
@@ -101,16 +104,16 @@ public class TagLogFile implements AutoCloseable {
     if (position < 0) {
       return new Pair<>(Collections.emptyMap(), Collections.emptyMap());
     }
-    ByteBuffer byteBuffer = ParseByteBuffer(position);
+    ByteBuffer byteBuffer = parseByteBuffer(fileChannel, position);
     return new Pair<>(ReadWriteIOUtils.readMap(byteBuffer), ReadWriteIOUtils.readMap(byteBuffer));
   }
 
   public Map<String, String> readTag(long position) throws IOException {
-    ByteBuffer byteBuffer = ParseByteBuffer(position);
+    ByteBuffer byteBuffer = parseByteBuffer(fileChannel, position);
     return ReadWriteIOUtils.readMap(byteBuffer);
   }
 
-  private ByteBuffer ParseByteBuffer(long position) throws IOException {
+  public static ByteBuffer parseByteBuffer(FileChannel fileChannel, long position) throws IOException {
     // 读取第一个块
     ByteBuffer byteBuffer = ByteBuffer.allocate(MAX_LENGTH);
     fileChannel.read(byteBuffer, position);
@@ -310,30 +313,38 @@ public class TagLogFile implements AutoCloseable {
     return byteBuffer;
   }
 
-  public static int calculateMapSize(Map<String, String> map) {
+  public static int calculateMapSize(Map<String, String> map) throws MetadataException {
     int length = 0;
     if (map != null) {
+      if(map.size() > MAX_ENTRY_NUM){
+        throw new MetadataException("the emtry num of the map is over the tagAttributeMaxNum");
+      }
       length += 4; // mapSize is 4 byte
       for (Map.Entry<String, String> entry :
           map.entrySet()) { // while mapSize is 0, this for loop will not be executed
+        int entryLength = 0;
         String key = entry.getKey();
         String value = entry.getValue();
 
-        length += 4; // keySize is 4 byte
+        entryLength += 4; // keySize is 4 byte
         if (key != null) {
-          length +=
+          entryLength +=
               key.getBytes()
                   .length; // only key is not null then add key length, while key is null, only
           // store the keySize marker which is -1 (4 bytes)
         }
 
-        length += 4; // valueSize is 4 byte
+        entryLength += 4; // valueSize is 4 byte
         if (value != null) {
-          length +=
+          entryLength +=
               value.getBytes()
                   .length; // only value is not null then add value length, while value is null,
           // only store the valueSize marker which is -1 (4 bytes)
         }
+        if(entryLength > MAX_ENTRY_Size){
+          throw new MetadataException("An emtry of the map has a size which is over the tagAttributeMaxSize");
+        }
+        length += entryLength;
       }
     } else {
       length += 4; // while map is null, the mapSize is writed to -1 which is 4 byte
@@ -347,6 +358,7 @@ public class TagLogFile implements AutoCloseable {
       if (map == null) {
         ReadWriteIOUtils.write(0, byteBuffer);
       } else {
+//        if(map.size() > )
         ReadWriteIOUtils.write(map, byteBuffer);
       }
     } catch (BufferOverflowException e) {
