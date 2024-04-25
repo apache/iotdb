@@ -216,22 +216,27 @@ public class TagLogFile implements AutoCloseable {
       fileChannel.write(byteBuffer, blockOffset.get(0));
     }
     else {
-      if(blockNumReal == 1 && blockOffset.size() > 1){ // 实际数据占据1block，但是以前占据多个block，按照多个block处理
-        ByteBuffer byteBufferFinal = ByteBuffer.allocate(blockOffset.size()*MAX_LENGTH);
-        byteBufferFinal.putInt(-blockOffset.size());
-        for(int i = 1;i < blockOffset.size(); i++){
-          byteBufferFinal.putLong(blockOffset.get(i));
-        }
-        byteBufferFinal.put(byteBuffer);
-
-        for(int i = 0;i < blockOffset.size(); i++){
-          byteBufferFinal.position(i*MAX_LENGTH);
-          byteBufferFinal.limit((i+1)*MAX_LENGTH);
-          fileChannel.write(byteBufferFinal, blockOffset.get(i));
-        }
+      if(blockOffset.size() > blockNumReal){ // 如果现在比原有的空间小，那么还会使用原有的空间
+          ByteBuffer byteBufferFinal = ByteBuffer.allocate(blockOffset.size()*MAX_LENGTH);
+          byteBufferFinal.putInt(-blockOffset.size());
+          for(int i = 1;i < blockOffset.size(); i++){
+            byteBufferFinal.putLong(blockOffset.get(i));
+          }
+          if(blockNumReal > 1){ // 实际数据占据1block，但是以前占据多个block，按照多个block处理
+            byteBuffer.position((blockNumReal-1)*Long.BYTES+4);
+          }
+          else{ // 实际数据占据多个block
+            byteBuffer.position(0);
+          }
+          byteBufferFinal.put(byteBuffer);
+          for(int i = 0;i < blockOffset.size(); i++){
+            byteBufferFinal.position(i*MAX_LENGTH);
+            byteBufferFinal.limit((i+1)*MAX_LENGTH);
+            fileChannel.write(byteBufferFinal, blockOffset.get(i));
+          }
       }
       else{
-        // 实际写入的数据占据多个block
+        // 如果现在等于或者大于原有的空间，需要在末尾补充新的空间
         // 准备偏移量数据的bytebuffer
         int blockOffsetStoreLen = (blockNumReal-1)*Long.BYTES+4;
         ByteBuffer byteBufferOffset = ByteBuffer.allocate(blockOffsetStoreLen);
@@ -243,7 +248,7 @@ public class TagLogFile implements AutoCloseable {
           byteBuffer.limit((i+1)*MAX_LENGTH);
 
           if (i < blockOffset.size()){ // 说明现在写的空间是原来就有的空间
-            if(i > 0){
+            if(i > 0){ // 首个块的偏移量不记录
               byteBufferOffset.putLong(blockOffset.get(i));
             }
             fileChannel.write(byteBuffer, blockOffset.get(i));
@@ -254,13 +259,6 @@ public class TagLogFile implements AutoCloseable {
             blockOffset.add(fileChannel.size());
             fileChannel.write(byteBuffer, fileChannel.size());
           }
-        }
-
-        // 如果原来的block数量比现在更多，给其他block空间填充空
-        for(int i = blockNumReal; i < blockOffset.size(); i++) {
-          byteBufferOffset.putLong(blockOffset.get(i));
-          byteBufferNull.position(0);
-          fileChannel.write(byteBufferNull, blockOffset.get(i));
         }
 
         // 写入byteBufferOffset
