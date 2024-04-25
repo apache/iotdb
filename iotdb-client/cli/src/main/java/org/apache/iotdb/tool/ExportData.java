@@ -106,7 +106,7 @@ public class ExportData extends AbstractDataTool {
 
   private static String timestampPrecision;
 
-  private static int linesPerFile = 1000;
+  private static int linesPerFile = 10000;
 
   private static long timeout = -1;
 
