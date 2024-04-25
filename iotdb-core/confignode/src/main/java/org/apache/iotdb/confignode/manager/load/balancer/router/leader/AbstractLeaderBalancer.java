@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.manager.load.balancer.router.leader;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
@@ -28,6 +27,7 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 public abstract class AbstractLeaderBalancer {
@@ -37,8 +37,8 @@ public abstract class AbstractLeaderBalancer {
 
   // Map<Database, List<RegionGroup>>
   protected final Map<String, List<TConsensusGroupId>> databaseRegionGroupMap;
-  // Map<RegionGroupId, RegionGroup>
-  protected final Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap;
+  // Map<RegionGroupId, Set<DataNodeId>>
+  protected final Map<TConsensusGroupId, Set<Integer>> regionLocationMap;
   // Map<RegionGroupId, leaderId>
   protected final Map<TConsensusGroupId, Integer> regionLeaderMap;
   // Map<DataNodeId, NodeStatistics>
@@ -48,7 +48,7 @@ public abstract class AbstractLeaderBalancer {
 
   protected AbstractLeaderBalancer() {
     this.databaseRegionGroupMap = new TreeMap<>();
-    this.regionReplicaSetMap = new TreeMap<>();
+    this.regionLocationMap = new TreeMap<>();
     this.regionLeaderMap = new TreeMap<>();
     this.dataNodeStatisticsMap = new TreeMap<>();
     this.regionStatisticsMap = new TreeMap<>();
@@ -56,12 +56,12 @@ public abstract class AbstractLeaderBalancer {
 
   protected void initialize(
       Map<String, List<TConsensusGroupId>> databaseRegionGroupMap,
-      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap,
+      Map<TConsensusGroupId, Set<Integer>> regionLocationMap,
       Map<TConsensusGroupId, Integer> regionLeaderMap,
       Map<Integer, NodeStatistics> dataNodeStatisticsMap,
       Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap) {
     this.databaseRegionGroupMap.putAll(databaseRegionGroupMap);
-    this.regionReplicaSetMap.putAll(regionReplicaSetMap);
+    this.regionLocationMap.putAll(regionLocationMap);
     this.regionLeaderMap.putAll(regionLeaderMap);
     this.dataNodeStatisticsMap.putAll(dataNodeStatisticsMap);
     this.regionStatisticsMap.putAll(regionStatisticsMap);
@@ -83,7 +83,7 @@ public abstract class AbstractLeaderBalancer {
 
   protected void clear() {
     this.databaseRegionGroupMap.clear();
-    this.regionReplicaSetMap.clear();
+    this.regionLocationMap.clear();
     this.regionLeaderMap.clear();
     this.dataNodeStatisticsMap.clear();
     this.regionStatisticsMap.clear();
@@ -93,7 +93,7 @@ public abstract class AbstractLeaderBalancer {
    * Generate an optimal leader distribution.
    *
    * @param databaseRegionGroupMap RegionGroup held by each Database
-   * @param regionReplicaSetMap All RegionGroups the cluster currently have
+   * @param regionLocationMap All RegionGroups the cluster currently have
    * @param regionLeaderMap The current leader distribution of each RegionGroup
    * @param dataNodeStatisticsMap The current statistics of each DataNode
    * @param regionStatisticsMap The current statistics of each Region
@@ -101,7 +101,7 @@ public abstract class AbstractLeaderBalancer {
    */
   public abstract Map<TConsensusGroupId, Integer> generateOptimalLeaderDistribution(
       Map<String, List<TConsensusGroupId>> databaseRegionGroupMap,
-      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap,
+      Map<TConsensusGroupId, Set<Integer>> regionLocationMap,
       Map<TConsensusGroupId, Integer> regionLeaderMap,
       Map<Integer, NodeStatistics> dataNodeStatisticsMap,
       Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap);

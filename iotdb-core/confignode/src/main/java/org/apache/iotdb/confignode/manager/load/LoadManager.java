@@ -265,9 +265,16 @@ public class LoadManager {
     eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
   }
 
-  /** Remove the specified Node's cache. */
+  /**
+   * Remove the NodeHeartbeatCache of the specified Node, update statistics and broadcast statistics
+   * change event if necessary.
+   *
+   * @param nodeId the index of the specified Node
+   */
   public void removeNodeCache(int nodeId) {
     loadCache.removeNodeCache(nodeId);
+    loadCache.updateNodeStatistics();
+    eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
   }
 
   /**
@@ -324,7 +331,8 @@ public class LoadManager {
   }
 
   /**
-   * Force update the specified RegionGroups' cache.
+   * Force update the specified RegionGroups' cache, update statistics and broadcast statistics
+   * change event if necessary.
    *
    * @param heartbeatSampleMap Map<RegionGroupId, Map<DataNodeId, RegionHeartbeatSample>>
    */
@@ -341,38 +349,48 @@ public class LoadManager {
   }
 
   /**
-   * Add the cache of the specified Region in the specified RegionGroup.
+   * Force update the specified Region's cache, update statistics and broadcast statistics change
+   * event if necessary.
    *
-   * @param regionGroupId the specified RegionGroup
-   * @param dataNodeId the specified DataNode
+   * @param regionGroupId The specified RegionGroup
+   * @param dataNodeId The DataNodeId where the specified Region is located
+   * @param regionStatus The specified RegionStatus
    */
-  public void forceAddRegionCache(
+  public void forceUpdateRegionCache(
       TConsensusGroupId regionGroupId, int dataNodeId, RegionStatus regionStatus) {
     loadCache.cacheRegionHeartbeatSample(
         regionGroupId,
         dataNodeId,
         new RegionHeartbeatSample(System.nanoTime(), regionStatus),
-        true);
+        false);
     loadCache.updateRegionGroupStatistics();
     eventService.checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
   }
 
   /**
-   * Remove the cache of the specified Region in the specified RegionGroup.
+   * Remove the cache of the specified Region in the specified RegionGroup, update statistics and
+   * broadcast statistics change event if necessary.
    *
    * @param regionGroupId the specified RegionGroup
    * @param dataNodeId the specified DataNode
    */
-  public void forceRemoveRegionCache(TConsensusGroupId regionGroupId, int dataNodeId) {
+  public void removeRegionCache(TConsensusGroupId regionGroupId, int dataNodeId) {
     loadCache.removeRegionCache(regionGroupId, dataNodeId);
     loadCache.updateRegionGroupStatistics();
     eventService.checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
   }
 
-  /** Remove the specified RegionGroup's cache. */
+  /**
+   * Remove the specified RegionGroup's related cache, update statistics and broadcast statistics
+   * change event if necessary.
+   *
+   * @param consensusGroupId The specified RegionGroup
+   */
   public void removeRegionGroupRelatedCache(TConsensusGroupId consensusGroupId) {
     loadCache.removeRegionGroupCache(consensusGroupId);
     routeBalancer.removeRegionPriority(consensusGroupId);
+    loadCache.updateRegionGroupStatistics();
+    eventService.checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
   }
 
   /**

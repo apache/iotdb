@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -35,14 +36,17 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class RegionGroupCache {
 
+  private final String database;
   // Map<DataNodeId(where a RegionReplica resides in), RegionCache>
   private final Map<Integer, RegionCache> regionCacheMap;
   // The current RegionGroupStatistics, used for providing statistics to other services
   private final AtomicReference<RegionGroupStatistics> currentStatistics;
 
   /** Constructor for create RegionGroupCache with default RegionGroupStatistics. */
-  public RegionGroupCache() {
+  public RegionGroupCache(String database, Set<Integer> dataNodeIds) {
+    this.database = database;
     this.regionCacheMap = new ConcurrentHashMap<>();
+    dataNodeIds.forEach(dataNodeId -> regionCacheMap.put(dataNodeId, new RegionCache()));
     this.currentStatistics =
         new AtomicReference<>(RegionGroupStatistics.generateDefaultRegionGroupStatistics());
   }
@@ -56,14 +60,24 @@ public class RegionGroupCache {
    */
   public void cacheHeartbeatSample(
       int dataNodeId, RegionHeartbeatSample newHeartbeatSample, boolean overwrite) {
-    regionCacheMap
-        .computeIfAbsent(dataNodeId, empty -> new RegionCache())
-        .cacheHeartbeatSample(newHeartbeatSample, overwrite);
+    if (regionCacheMap.containsKey(dataNodeId)) {
+      // Only cache sample when the corresponding loadCache exists
+      regionCacheMap.get(dataNodeId).cacheHeartbeatSample(newHeartbeatSample, overwrite);
+    }
   }
 
   @TestOnly
   public void cacheHeartbeatSample(int dataNodeId, RegionHeartbeatSample newHeartbeatSample) {
     cacheHeartbeatSample(dataNodeId, newHeartbeatSample, false);
+  }
+
+  /**
+   * Create the cache of the specified Region.
+   *
+   * @param dataNodeId the specified DataNode
+   */
+  public void createRegionCache(int dataNodeId) {
+    regionCacheMap.put(dataNodeId, new RegionCache());
   }
 
   /**
@@ -130,5 +144,13 @@ public class RegionGroupCache {
 
   public RegionGroupStatistics getCurrentStatistics() {
     return currentStatistics.get();
+  }
+
+  public String getDatabase() {
+    return database;
+  }
+
+  public Set<Integer> getRegionLocations() {
+    return regionCacheMap.keySet();
   }
 }
