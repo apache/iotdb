@@ -251,6 +251,11 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     }
   }
 
+  public long count() {
+    final Tablet covertedTablet = convertToTablet();
+    return (long) covertedTablet.rowSize * covertedTablet.getSchemas().size();
+  }
+
   /////////////////////////// parsePatternOrTime ///////////////////////////
 
   @Override

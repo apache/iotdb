@@ -70,6 +70,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_LOG_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_WATERMARK_INTERVAL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
@@ -78,6 +80,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_WATERMARK_INTERVAL_KEY;
 
 public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
@@ -85,6 +88,8 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   private PipeHistoricalDataRegionExtractor historicalExtractor;
   private PipeRealtimeDataRegionExtractor realtimeExtractor;
+
+  private DataRegionWatermarkInjector watermarkInjector;
 
   private boolean hasNoExtractionNeed = true;
 
@@ -284,6 +289,23 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     historicalExtractor.customize(parameters, configuration);
     realtimeExtractor.customize(parameters, configuration);
 
+    // Set watermark injector
+    if (parameters.hasAnyAttributes(
+        EXTRACTOR_WATERMARK_INTERVAL_KEY, SOURCE_WATERMARK_INTERVAL_KEY)) {
+      final long watermarkIntervalInMs =
+          parameters.getLongOrDefault(
+              Arrays.asList(EXTRACTOR_WATERMARK_INTERVAL_KEY, SOURCE_WATERMARK_INTERVAL_KEY),
+              EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE);
+      if (watermarkIntervalInMs > 0) {
+        watermarkInjector = new DataRegionWatermarkInjector(regionId, watermarkIntervalInMs);
+        LOGGER.info(
+            "Pipe {}@{}: Set watermark injector with interval {} ms.",
+            pipeName,
+            regionId,
+            watermarkInjector.getInjectionIntervalInMs());
+      }
+    }
+
     // register metric after generating taskID
     PipeExtractorMetrics.getInstance().register(this);
   }
@@ -377,10 +399,18 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
       return null;
     }
 
-    Event event =
-        historicalExtractor.hasConsumedAll()
-            ? realtimeExtractor.supply()
-            : historicalExtractor.supply();
+    Event event = null;
+    if (!historicalExtractor.hasConsumedAll()) {
+      event = historicalExtractor.supply();
+    } else {
+      if (Objects.nonNull(watermarkInjector)) {
+        event = watermarkInjector.inject();
+      }
+      if (Objects.isNull(event)) {
+        event = realtimeExtractor.supply();
+      }
+    }
+
     if (Objects.nonNull(event)) {
       if (event instanceof TabletInsertionEvent) {
         PipeExtractorMetrics.getInstance().markTabletEvent(taskID);
@@ -390,6 +420,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
         PipeExtractorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
       }
     }
+
     return event;
   }
 
