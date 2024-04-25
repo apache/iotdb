@@ -48,7 +48,7 @@ public class PipeConsensusReceiverAgent extends PipeConsensusServerImpl {
         PipeConsensusRequestVersion.VERSION_1.getVersion(), PipeConsensusReceiver::new);
   }
 
-  public org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp receive(
+  public TPipeConsensusTransferResp receive(
       TPipeConsensusTransferReq req) {
     final byte reqVersion = req.getVersion();
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {

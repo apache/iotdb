@@ -78,6 +78,16 @@ public class PipeConsensusHandshakeReq extends TPipeConsensusTransferReq {
     return this;
   }
 
+  public static PipeConsensusHandshakeReq toTPipeConsensusTransferReq(Map<String, String> params)
+      throws IOException {
+    return new PipeConsensusHandshakeReq().convertToTPipeConsensusTransferReq(params);
+  }
+
+  public static PipeConsensusHandshakeReq fromTPipeConsensusTransferReq(
+      TPipeConsensusTransferReq transferReq) {
+    return new PipeConsensusHandshakeReq().translateFromTPipeConsensusTransferReq(transferReq);
+  }
+
   /////////////////////////////// Object ///////////////////////////////
 
   @Override

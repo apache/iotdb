@@ -132,6 +132,7 @@ public class PipeConsensusTsFileInsertionEventHandler
       return;
     }
 
+    // for save some mem
     final byte[] payload =
         readLength == readFileBufferSize
             ? readBuffer
@@ -161,6 +162,10 @@ public class PipeConsensusTsFileInsertionEventHandler
                   String.format(
                       "Seal file %s error, result status %s.", tsFile, response.getStatus()),
                   tsFile.getName());
+        }
+
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          connector.removeEventFromBuffer(event);
         }
       } catch (final Exception e) {
         onError(e);

@@ -22,9 +22,14 @@ package org.apache.iotdb.db.pipe.receiver.protocol.pipeconsensus;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
+import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.consensus.pipe.client.request.PipeConsensusHandshakeReq;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferReq;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
-import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -36,13 +41,17 @@ import org.slf4j.LoggerFactory;
 import java.util.Comparator;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
+public class PipeConsensusReceiver {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusReceiver.class);
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  // Used to generate transfer id, which is used to identify a receiver thread.
+  private static final AtomicLong RECEIVER_ID_GENERATOR = new AtomicLong(0);
+  private final AtomicLong receiverId = new AtomicLong(0);
   private final RequestExecutor requestExecutor = new RequestExecutor();
 
   /**
@@ -50,7 +59,36 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
    * load event must be synchronized.
    */
   public TPipeConsensusTransferResp receive(final TPipeConsensusTransferReq req) {
-    return requestExecutor.onRequest(req);
+    final short rawRequestType = req.getType();
+    if (PipeConsensusRequestType.isValidatedRequestType(rawRequestType)) {
+      switch (PipeConsensusRequestType.valueOf(rawRequestType)) {
+          // handshake event will be applied directly.
+        case PIPE_CONSENSUS_HANDSHAKE:
+          return handleHandshakeRequest(
+              PipeConsensusHandshakeReq.fromTPipeConsensusTransferReq(req));
+        case TRANSFER_TS_FILE_PIECE:
+        case TRANSFER_TS_FILE_PIECE_WITH_MOD:
+          return requestExecutor.onRequest(req, true);
+        default:
+          return requestExecutor.onRequest(req, false);
+      }
+    }
+    // Unknown request type, which means the request can not be handled by this receiver,
+    // maybe the version of the receiver is not compatible with the sender
+    final TSStatus status =
+        RpcUtils.getStatus(
+            TSStatusCode.PIPE_TYPE_ERROR,
+            String.format("Unknown PipeRequestType %s.", rawRequestType));
+    LOGGER.warn(
+        "Receiver id = {}: Unknown PipeRequestType, response status = {}.",
+        receiverId.get(),
+        status);
+    return new TPipeConsensusTransferResp(status);
+  }
+
+  // TODO
+  public TPipeConsensusBatchTransferResp receive(final TPipeConsensusBatchTransferReq req) {
+    return null;
   }
 
   private TPipeConsensusTransferResp loadEvent(final TPipeConsensusTransferReq req) {
@@ -61,6 +99,42 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
     // TODO: check memory when logging wal
     // TODO: check disk(read-only etc.) when writing tsFile
     return null;
+  }
+
+  private TPipeConsensusTransferResp handleHandshakeRequest(final PipeConsensusHandshakeReq req) {
+    // Reject to handshake if the request does not contain timestampPrecision.
+    final String timestampPrecision =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION);
+    if (timestampPrecision == null) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_CONSENSUS_HANDSHAKE_ERROR,
+              "Handshake request does not contain timestampPrecision.");
+      LOGGER.warn(
+          "Receiver id = {}: Handshake failed, response status = {}.", receiverId.get(), status);
+      return new TPipeConsensusTransferResp(status);
+    }
+
+    // Reject to handshake if the request does not contain the same timestampPrecision with
+    // receiver.
+    if (!CommonDescriptor.getInstance()
+        .getConfig()
+        .getTimestampPrecision()
+        .equals(timestampPrecision)) {
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_CONSENSUS_HANDSHAKE_ERROR,
+              String.format(
+                  "IoTDB receiver's timestamp precision %s, "
+                      + "connector's timestamp precision %s. Validation fails.",
+                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+                  timestampPrecision));
+      LOGGER.warn("Handshake failed, response status = {}.", status);
+      return new TPipeConsensusTransferResp(status);
+    }
+
+    receiverId.set(RECEIVER_ID_GENERATOR.incrementAndGet());
+    return new TPipeConsensusTransferResp(RpcUtils.SUCCESS_STATUS);
   }
 
   // WIP
@@ -78,6 +152,10 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
     result.body = resp.body;
     result.status = resp.getStatus();
     return result;
+  }
+
+  public PipeConsensusRequestVersion getVersion() {
+    return PipeConsensusRequestVersion.VERSION_1;
   }
 
   /**
@@ -108,9 +186,8 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
       onSyncedCommitIndex = nextSyncedCommitIndex;
     }
 
-    private TPipeConsensusTransferResp onRequest(final TPipeConsensusTransferReq req) {
-      // TODO: heartbeat event will be apply directly.
-
+    private TPipeConsensusTransferResp onRequest(
+        final TPipeConsensusTransferReq req, final boolean isTransferTsFilePiece) {
       lock.lock();
       WrappedRequest wrappedReq = new WrappedRequest(req);
       // if a req is deprecated, we will discard it
@@ -150,8 +227,13 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
             // DataRegionStateMachine.
             TPipeConsensusTransferResp resp = loadEvent(req);
 
+            // Only when event apply is successful and what is transmitted is not TsFilePiece, req
+            // will be removed from the buffer and onSyncedCommitIndex will be updated. Because pipe
+            // will transfer multi reqs with same commitId in a single TsFileInsertionEvent, only
+            // when the last seal req is applied, we can discard this event.
             if (resp != null
-                && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                && !isTransferTsFilePiece) {
               onSuccess(onSyncedCommitIndex + 1);
             }
             return resp;
@@ -163,7 +245,8 @@ public class PipeConsensusReceiver extends IoTDBDataNodeReceiver {
               TPipeConsensusTransferResp resp = loadEvent(req);
 
               if (resp != null
-                  && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                  && !isTransferTsFilePiece) {
                 onSuccess(wrappedReq.getCommitIndex());
               }
               return resp;
