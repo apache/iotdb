@@ -39,16 +39,16 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
   }
 
   public PipeConfigRegionWritePlanEvent(
-      ConfigPhysicalPlan configPhysicalPlan, boolean isGeneratedByPipe) {
+      final ConfigPhysicalPlan configPhysicalPlan, final boolean isGeneratedByPipe) {
     this(configPhysicalPlan, null, null, null, isGeneratedByPipe);
   }
 
   public PipeConfigRegionWritePlanEvent(
-      ConfigPhysicalPlan configPhysicalPlan,
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      boolean isGeneratedByPipe) {
+      final ConfigPhysicalPlan configPhysicalPlan,
+      final String pipeName,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final boolean isGeneratedByPipe) {
     super(pipeName, pipeTaskMeta, pattern, isGeneratedByPipe);
     this.configPhysicalPlan = configPhysicalPlan;
   }
@@ -59,19 +59,19 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime) {
+      final String pipeName,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime) {
     return new PipeConfigRegionWritePlanEvent(
         configPhysicalPlan, pipeName, pipeTaskMeta, pattern, false);
   }
 
   @Override
   public ByteBuffer serializeToByteBuffer() {
-    ByteBuffer planBuffer = configPhysicalPlan.serializeToByteBuffer();
-    ByteBuffer result = ByteBuffer.allocate(Byte.BYTES * 2 + planBuffer.limit());
+    final ByteBuffer planBuffer = configPhysicalPlan.serializeToByteBuffer();
+    final ByteBuffer result = ByteBuffer.allocate(Byte.BYTES * 2 + planBuffer.limit());
     ReadWriteIOUtils.write(PipeConfigSerializableEventType.CONFIG_WRITE_PLAN.getType(), result);
     ReadWriteIOUtils.write(isGeneratedByPipe, result);
     result.put(planBuffer);
@@ -79,8 +79,26 @@ public class PipeConfigRegionWritePlanEvent extends PipeWritePlanEvent {
   }
 
   @Override
-  public void deserializeFromByteBuffer(ByteBuffer buffer) throws IOException {
+  public void deserializeFromByteBuffer(final ByteBuffer buffer) throws IOException {
     isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
     configPhysicalPlan = ConfigPhysicalPlan.Factory.create(buffer);
+  }
+
+  /////////////////////////// Object ///////////////////////////
+
+  @Override
+  public String toString() {
+    return String.format(
+            "PipeConfigRegionWritePlanEvent{configPhysicalPlan=%s}", configPhysicalPlan)
+        + " - "
+        + super.toString();
+  }
+
+  @Override
+  public String coreReportMessage() {
+    return String.format(
+            "PipeConfigRegionWritePlanEvent{configPhysicalPlan=%s}", configPhysicalPlan)
+        + " - "
+        + super.coreReportMessage();
   }
 }

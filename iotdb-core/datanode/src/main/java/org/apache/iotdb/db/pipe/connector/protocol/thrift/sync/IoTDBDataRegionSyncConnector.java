@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
@@ -112,7 +113,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       throw new PipeConnectionException(
           String.format(
               "Failed to transfer tablet insertion event %s, because %s.",
-              tabletInsertionEvent, e.getMessage()),
+              ((EnrichedEvent) tabletInsertionEvent).coreReportMessage(), e.getMessage()),
           e);
     }
   }
@@ -138,7 +139,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       throw new PipeConnectionException(
           String.format(
               "Failed to transfer tsfile insertion event %s, because %s.",
-              tsFileInsertionEvent, e.getMessage()),
+              ((PipeTsFileInsertionEvent) tsFileInsertionEvent).coreReportMessage(),
+              e.getMessage()),
           e);
     }
   }
@@ -248,7 +250,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           status,
           String.format(
               "Transfer PipeInsertNodeTabletInsertionEvent %s error, result status %s",
-              pipeInsertNodeTabletInsertionEvent, status),
+              pipeInsertNodeTabletInsertionEvent.coreReportMessage(), status),
           pipeInsertNodeTabletInsertionEvent.toString());
     }
     if (insertNode != null && status.isSetRedirectNode()) {
@@ -303,7 +305,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           status,
           String.format(
               "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
-              pipeRawTabletInsertionEvent, status),
+              pipeRawTabletInsertionEvent.coreReportMessage(), status),
           pipeRawTabletInsertionEvent.toString());
     }
     if (status.isSetRedirectNode()) {

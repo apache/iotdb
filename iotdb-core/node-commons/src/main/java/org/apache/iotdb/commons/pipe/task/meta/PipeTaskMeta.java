@@ -56,7 +56,7 @@ public class PipeTaskMeta {
   private final Map<PipeRuntimeException, PipeRuntimeException> exceptionMessages =
       new ConcurrentHashMap<>();
 
-  public PipeTaskMeta(/* @NotNull */ ProgressIndex progressIndex, int leaderNodeId) {
+  public PipeTaskMeta(/* @NotNull */ final ProgressIndex progressIndex, final int leaderNodeId) {
     this.progressIndex.set(progressIndex);
     this.leaderNodeId.set(leaderNodeId);
   }
@@ -65,7 +65,7 @@ public class PipeTaskMeta {
     return progressIndex.get();
   }
 
-  public ProgressIndex updateProgressIndex(ProgressIndex updateIndex) {
+  public ProgressIndex updateProgressIndex(final ProgressIndex updateIndex) {
     return progressIndex.updateAndGet(
         index -> index.updateToMinimumEqualOrIsAfterProgressIndex(updateIndex));
   }
@@ -74,7 +74,7 @@ public class PipeTaskMeta {
     return leaderNodeId.get();
   }
 
-  public void setLeaderNodeId(int leaderNodeId) {
+  public void setLeaderNodeId(final int leaderNodeId) {
     this.leaderNodeId.set(leaderNodeId);
   }
 
@@ -86,11 +86,16 @@ public class PipeTaskMeta {
     return exceptionMessages.toString();
   }
 
-  public synchronized void trackExceptionMessage(PipeRuntimeException exceptionMessage) {
+  public synchronized void trackExceptionMessage(final PipeRuntimeException exceptionMessage) {
+    // Only keep the newest exception message to avoid excess rpc payload and
+    // show pipe response
+    // Here we still keep the map form to allow compatibility with legacy versions
+    exceptionMessages.clear();
     exceptionMessages.put(exceptionMessage, exceptionMessage);
   }
 
-  public synchronized boolean containsExceptionMessage(PipeRuntimeException exceptionMessage) {
+  public synchronized boolean containsExceptionMessage(
+      final PipeRuntimeException exceptionMessage) {
     return exceptionMessages.containsKey(exceptionMessage);
   }
 
@@ -102,7 +107,7 @@ public class PipeTaskMeta {
     exceptionMessages.clear();
   }
 
-  public synchronized void serialize(OutputStream outputStream) throws IOException {
+  public synchronized void serialize(final OutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
 
     ReadWriteIOUtils.write(leaderNodeId.get(), outputStream);
@@ -113,7 +118,8 @@ public class PipeTaskMeta {
     }
   }
 
-  public static PipeTaskMeta deserialize(PipeRuntimeMetaVersion version, ByteBuffer byteBuffer) {
+  public static PipeTaskMeta deserialize(
+      final PipeRuntimeMetaVersion version, final ByteBuffer byteBuffer) {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(byteBuffer);
 
     final int leaderNodeId = ReadWriteIOUtils.readInt(byteBuffer);
@@ -128,8 +134,8 @@ public class PipeTaskMeta {
     return pipeTaskMeta;
   }
 
-  public static PipeTaskMeta deserialize(PipeRuntimeMetaVersion version, InputStream inputStream)
-      throws IOException {
+  public static PipeTaskMeta deserialize(
+      final PipeRuntimeMetaVersion version, final InputStream inputStream) throws IOException {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(inputStream);
 
     final int leaderNodeId = ReadWriteIOUtils.readInt(inputStream);
@@ -145,14 +151,14 @@ public class PipeTaskMeta {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTaskMeta that = (PipeTaskMeta) obj;
+    final PipeTaskMeta that = (PipeTaskMeta) obj;
     return progressIndex.get().equals(that.progressIndex.get())
         && leaderNodeId.get() == that.leaderNodeId.get()
         && exceptionMessages.equals(that.exceptionMessages);
