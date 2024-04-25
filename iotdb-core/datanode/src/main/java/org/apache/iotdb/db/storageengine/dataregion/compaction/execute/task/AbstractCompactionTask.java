@@ -40,9 +40,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.exception.StopReadTsFileByInterruptException;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

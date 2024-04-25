@@ -41,7 +41,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
 

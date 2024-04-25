@@ -20,9 +20,10 @@
 package org.apache.iotdb.itbase.constant;
 
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.tsfile.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+
+import org.apache.tsfile.utils.FilePathUtils;
+import org.apache.tsfile.write.record.TSRecord;
+import org.apache.tsfile.write.record.datapoint.DataPoint;
 
 import java.io.File;
 

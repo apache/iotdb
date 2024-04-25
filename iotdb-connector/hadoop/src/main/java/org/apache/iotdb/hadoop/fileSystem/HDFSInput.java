@@ -18,13 +18,12 @@
  */
 package org.apache.iotdb.hadoop.fileSystem;
 
-import org.apache.iotdb.tsfile.read.reader.TsFileInput;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.ChecksumFileSystem;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.tsfile.read.reader.TsFileInput;
 
 import java.io.IOException;
 import java.io.InputStream;

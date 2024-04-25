@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.TimeRange;
 
 /** Used for aggregation with only one time window. i.e. Aggregation without group by. */
 public class SingleTimeWindowIterator implements ITimeRangeIterator {

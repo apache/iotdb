@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader;
 
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.io.IOException;
 

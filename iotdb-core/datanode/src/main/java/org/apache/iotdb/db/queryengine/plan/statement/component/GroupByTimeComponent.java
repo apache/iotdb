@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.statement.component;
 
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
-import org.apache.iotdb.tsfile.utils.TimeDuration;
+
+import org.apache.tsfile.utils.TimeDuration;
 
 /** This class maintains information of {@code GROUP BY} clause. */
 public class GroupByTimeComponent extends StatementNode {

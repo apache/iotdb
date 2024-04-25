@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.flink.util;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.junit.Test;
 
 import java.lang.reflect.Method;

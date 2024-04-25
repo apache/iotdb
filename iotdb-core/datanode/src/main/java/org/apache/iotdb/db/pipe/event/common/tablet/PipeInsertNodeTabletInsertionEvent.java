@@ -35,9 +35,9 @@ import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
+import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -276,6 +276,11 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     } catch (Exception e) {
       throw new PipeException("Initialize data container error.", e);
     }
+  }
+
+  public long count() {
+    final Tablet covertedTablet = convertToTablet();
+    return (long) covertedTablet.rowSize * covertedTablet.getSchemas().size();
   }
 
   /////////////////////////// parsePatternOrTime ///////////////////////////

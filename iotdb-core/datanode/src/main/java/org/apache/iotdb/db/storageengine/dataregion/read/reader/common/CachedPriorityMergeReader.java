@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.TimeValuePair;
 
 import java.io.IOException;
 

@@ -21,10 +21,10 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.Binary;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;

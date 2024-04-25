@@ -81,9 +81,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -94,6 +97,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.apache.iotdb.commons.utils.FileUtils.humanReadableByteCountSI;
 
 public class IoTConsensusServerImpl {
 
@@ -292,13 +297,20 @@ public class IoTConsensusServerImpl {
     File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<Path> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
     AtomicLong snapshotSizeSumAtomic = new AtomicLong();
+    StringBuilder allFilesStr = new StringBuilder();
     snapshotPaths.forEach(
-        snapshotPath -> {
+        path -> {
           try {
-            snapshotSizeSumAtomic.addAndGet(Files.size(snapshotPath));
+            long fileSize = Files.size(path);
+            snapshotSizeSumAtomic.addAndGet(fileSize);
+            allFilesStr
+                .append("\n")
+                .append(path)
+                .append(" ")
+                .append(humanReadableByteCountSI(fileSize));
           } catch (IOException e) {
             logger.error(
-                "[SNAPSHOT TRANSMISSION] Calculate snapshot file's size fail: {}", snapshotPath, e);
+                "[SNAPSHOT TRANSMISSION] Calculate snapshot file's size fail: {}", path, e);
           }
         });
     final long snapshotSizeSum = snapshotSizeSumAtomic.get();
@@ -308,8 +320,10 @@ public class IoTConsensusServerImpl {
     logger.info(
         "[SNAPSHOT TRANSMISSION] Start to transmit snapshots ({} files, total size {}) from dir {}",
         snapshotPaths.size(),
-        FileUtils.byteCountToDisplaySize(snapshotSizeSum),
+        humanReadableByteCountSI(snapshotSizeSum),
         snapshotDir);
+    logger.info(
+        "[SNAPSHOT TRANSMISSION] All the files below shell be transmitted: {}", allFilesStr);
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       for (Path path : snapshotPaths) {
@@ -331,14 +345,15 @@ public class IoTConsensusServerImpl {
           transitedSnapshotSizeSum += reader.getTotalReadSize();
           transitedFilesNum++;
           logger.info(
-              "[SNAPSHOT TRANSMISSION] The overall progress for dir {}: files {}/{} done, size {}/{} done, time {} passed",
+              "[SNAPSHOT TRANSMISSION] The overall progress for dir {}: files {}/{} done, size {}/{} done, time {} passed. File {} done.",
               newSnapshotDirName,
               transitedFilesNum,
               snapshotPaths.size(),
-              FileUtils.byteCountToDisplaySize(transitedSnapshotSizeSum),
-              FileUtils.byteCountToDisplaySize(snapshotSizeSum),
+              humanReadableByteCountSI(transitedSnapshotSizeSum),
+              humanReadableByteCountSI(snapshotSizeSum),
               CommonDateTimeUtils.convertMillisecondToDurationStr(
-                  (System.nanoTime() - startTime) / 1_000_000));
+                  (System.nanoTime() - startTime) / 1_000_000),
+              path);
         } finally {
           reader.close();
         }
@@ -630,8 +645,8 @@ public class IoTConsensusServerImpl {
     // step 2, update configuration
     configuration.add(targetPeer);
     // step 3, persist configuration
-    logger.info("[IoTConsensus] persist new configuration: {}", configuration);
     persistConfiguration();
+    logger.info("[IoTConsensus] persist new configuration: {}", configuration);
   }
 
   public void removeSyncLogChannel(Peer targetPeer) throws ConsensusGroupModifyPeerException {
@@ -652,6 +667,7 @@ public class IoTConsensusServerImpl {
 
   public void persistConfiguration() {
     try {
+      removeDuplicateConfiguration();
       renameTmpConfigurationFileToRemoveSuffix();
       serializeConfigurationAndFsyncToDisk();
       deleteConfiguration();
@@ -707,7 +723,6 @@ public class IoTConsensusServerImpl {
       configuration.add(Peer.deserialize(buffer));
     }
     persistConfiguration();
-    Files.delete(oldConfigurationPath);
   }
 
   public static String generateConfigurationDatFileName(int nodeId, String suffix) {
@@ -980,6 +995,18 @@ public class IoTConsensusServerImpl {
                       e);
                 }
               });
+    }
+  }
+
+  public void removeDuplicateConfiguration() {
+    Set<Peer> seen = new HashSet<>();
+    Iterator<Peer> it = configuration.iterator();
+
+    while (it.hasNext()) {
+      Peer peer = it.next();
+      if (!seen.add(peer)) {
+        it.remove();
+      }
     }
   }
 

@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
-import org.apache.iotdb.tsfile.utils.TimeDuration;
+
+import org.apache.tsfile.utils.TimeDuration;
 
 public class TimeRangeIteratorFactory {
 

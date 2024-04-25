@@ -20,9 +20,10 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 import static com.google.common.base.Preconditions.checkArgument;
 

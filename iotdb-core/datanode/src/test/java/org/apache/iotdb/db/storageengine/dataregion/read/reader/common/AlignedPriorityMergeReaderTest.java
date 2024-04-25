@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsVector;
-
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.utils.TsPrimitiveType.TsInt;
+import org.apache.tsfile.utils.TsPrimitiveType.TsVector;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

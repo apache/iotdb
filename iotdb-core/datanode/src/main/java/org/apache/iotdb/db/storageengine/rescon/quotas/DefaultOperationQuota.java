@@ -31,8 +31,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BitMap;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.BitMap;
 
 import java.nio.ByteBuffer;
 import java.util.List;

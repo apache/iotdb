@@ -123,9 +123,6 @@ set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Djdk.nio.maxCachedBufferSize=%MAX_CACHED_
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+CrashOnOutOfMemoryError
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+UseAdaptiveSizePolicy
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Xss512k
-@REM options below try to optimize safepoint stw time.
-set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+UnlockDiagnosticVMOptions
-set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:GuaranteedSafepointInterval=0
 @REM these two options print safepoints with pauses longer than 1000ms to the standard output. You can see these logs via redirection when starting in the background like "start-datanode.sh > log_datanode_safepoint.txt"
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:SafepointTimeoutDelay=1000
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+SafepointTimeout

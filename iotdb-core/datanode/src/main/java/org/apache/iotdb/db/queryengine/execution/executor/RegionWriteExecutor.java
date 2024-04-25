@@ -71,8 +71,8 @@ import org.apache.iotdb.db.trigger.executor.TriggerFireVisitor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -146,7 +146,7 @@ public class RegionWriteExecutor {
           new WritePlanNodeExecutionContext(groupId, regionManager.getRegionLock(groupId));
       return planNode.accept(executionVisitor, context);
     } catch (Throwable e) {
-      LOGGER.error(e.getMessage(), e);
+      LOGGER.warn(e.getMessage(), e);
       RegionExecutionResult result = new RegionExecutionResult();
       result.setAccepted(false);
       result.setMessage(e.getMessage());
@@ -178,7 +178,7 @@ public class RegionWriteExecutor {
         response.setMessage(status.getMessage());
         response.setStatus(status);
       } catch (ConsensusException e) {
-        LOGGER.error("Failed in the write API executing the consensus layer due to: ", e);
+        LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
         response.setAccepted(false);
         response.setMessage(e.toString());
         response.setStatus(
@@ -346,7 +346,7 @@ public class RegionWriteExecutor {
                 : super.visitCreateTimeSeries(node, context);
           } else {
             MetadataException metadataException = failingMeasurementMap.get(0);
-            LOGGER.error(METADATA_ERROR_MSG, metadataException);
+            LOGGER.warn(METADATA_ERROR_MSG, metadataException);
             result = new RegionExecutionResult();
             result.setAccepted(false);
             result.setMessage(metadataException.getMessage());
@@ -395,7 +395,7 @@ public class RegionWriteExecutor {
                 : super.visitCreateAlignedTimeSeries(node, context);
           } else {
             MetadataException metadataException = failingMeasurementMap.values().iterator().next();
-            LOGGER.error(METADATA_ERROR_MSG, metadataException);
+            LOGGER.warn(METADATA_ERROR_MSG, metadataException);
             result = new RegionExecutionResult();
             result.setAccepted(false);
             result.setMessage(metadataException.getMessage());
@@ -491,7 +491,7 @@ public class RegionWriteExecutor {
 
         for (Map.Entry<Integer, MetadataException> failingMeasurement :
             failingMeasurementMap.entrySet()) {
-          LOGGER.error(METADATA_ERROR_MSG, failingMeasurement.getValue());
+          LOGGER.warn(METADATA_ERROR_MSG, failingMeasurement.getValue());
           failingStatus.add(
               RpcUtils.getStatus(
                   failingMeasurement.getValue().getErrorCode(),
@@ -962,7 +962,7 @@ public class RegionWriteExecutor {
           // if there are some exceptions, handle each exception and return first of them.
           if (!failingMetadataException.isEmpty()) {
             MetadataException metadataException = failingMetadataException.get(0);
-            LOGGER.error(METADATA_ERROR_MSG, metadataException);
+            LOGGER.warn(METADATA_ERROR_MSG, metadataException);
             RegionExecutionResult result = new RegionExecutionResult();
             result.setAccepted(false);
             result.setMessage(metadataException.getMessage());

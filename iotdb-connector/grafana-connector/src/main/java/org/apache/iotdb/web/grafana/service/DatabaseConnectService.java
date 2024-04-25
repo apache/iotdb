@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.web.grafana.service;
 
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.web.grafana.bean.TimeValues;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.time.ZonedDateTime;
 import java.util.List;
