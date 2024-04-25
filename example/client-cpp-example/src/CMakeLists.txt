@@ -28,6 +28,11 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/thrift/include)
 # Add cpp-client include directory
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/client/include)
 
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../src/cpr/install/x64-Release/include)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../src/json)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../src/ThreadPool)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../src/fmt/include)
+
 FIND_PACKAGE(Boost REQUIRED)
 IF (DEFINED BOOST_INCLUDEDIR)
     INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
@@ -35,14 +40,16 @@ ENDIF()
 
 # Add the libs for the cpp-client
 LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/client/lib)
+LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../src/cpr/install/x64-Release/lib)
 
-ADD_EXECUTABLE(SessionExample SessionExample.cpp)
-ADD_EXECUTABLE(AlignedTimeseriesSessionExample AlignedTimeseriesSessionExample.cpp)
+# ADD_EXECUTABLE(SessionExample SessionExample.cpp)
+ADD_EXECUTABLE (iotdbtest iotdbtest.cpp iotdbtest.h iotdbclient.h iotdbclient.cpp)
 
 IF(MSVC)
-    TARGET_LINK_LIBRARIES(SessionExample iotdb_session "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib")
-    TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample iotdb_session "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib")
+    TARGET_LINK_LIBRARIES(iotdbtest PUBLIC
+                                    debug iotdb_session optimized iotdb_session
+                                    debug thriftmd optimized thriftmd
+                                    )
 ELSE()
-    TARGET_LINK_LIBRARIES(SessionExample iotdb_session pthread)
-    TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample iotdb_session pthread)
+    TARGET_LINK_LIBRARIES(iotdbtest iotdb_session pthread)
 ENDIF()
