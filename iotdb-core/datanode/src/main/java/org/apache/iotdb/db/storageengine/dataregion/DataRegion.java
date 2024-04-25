@@ -2400,6 +2400,9 @@ public class DataRegion implements IDataRegionForQuery {
         // could
         // be evicted due to the low priority of the task
         for (long timePartition : timePartitions) {
+          if (CompactionTaskManager.getInstance().isWaitingQueueFull()) {
+            break;
+          }
           CompactionScheduler.sharedLockCompactionSelection();
           try {
             trySubmitCount +=

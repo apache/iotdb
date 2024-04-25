@@ -186,6 +186,9 @@ public class CompactionScheduler {
 
   private static boolean canAddTaskToWaitingQueue(AbstractCompactionTask task)
       throws InterruptedException {
+    if (CompactionTaskManager.getInstance().isWaitingQueueFull()) {
+      return false;
+    }
     if (Thread.interrupted()) {
       throw new InterruptedException();
     }
