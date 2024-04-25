@@ -274,9 +274,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     @Override
     public Statement visitMeasurementMNode(
         AbstractMeasurementMNode<?, ? extends IMNode<?>> node, PartialPath path) {
-      if (node.getParent().getAsDeviceMNode().isAligned()) {
-        return null;
-      } else if (node.isLogicalView()) {
+      if (node.isLogicalView()) {
         final CreateLogicalViewStatement stmt = new CreateLogicalViewStatement();
         final LogicalViewSchema viewSchema =
             (LogicalViewSchema) node.getAsMeasurementMNode().getSchema();
@@ -305,6 +303,8 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         //          node.setOffset(0);
         //        }
         return stmt;
+      } else if (node.getParent().getAsDeviceMNode().isAligned()) {
+        return null;
       } else {
         final CreateTimeSeriesStatement stmt = new CreateTimeSeriesStatement();
         stmt.setPath(path);
@@ -343,7 +343,12 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     if (node.getAsDeviceMNode().isAligned()) {
       final CreateAlignedTimeSeriesStatement stmt = new CreateAlignedTimeSeriesStatement();
       stmt.setDevicePath(path);
+      boolean hasMeasurement = false;
       for (IMemMNode measurement : measurements.values()) {
+        if (!measurement.isMeasurement() || measurement.getAsMeasurementMNode().isLogicalView()) {
+          continue;
+        }
+        hasMeasurement = true;
         stmt.addMeasurement(measurement.getName());
         stmt.addDataType(measurement.getAsMeasurementMNode().getDataType());
         if (measurement.getAlias() != null) {
@@ -372,7 +377,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
           stmt.addTagsList(null);
         }
       }
-      return stmt;
+      return hasMeasurement ? stmt : null;
     }
     return null;
   }

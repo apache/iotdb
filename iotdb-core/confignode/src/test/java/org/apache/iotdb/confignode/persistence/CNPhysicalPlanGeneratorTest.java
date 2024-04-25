@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -183,6 +184,8 @@ public class CNPhysicalPlanGeneratorTest {
     plan.setNodeNameList(new ArrayList<>());
     // Create user plan 1
     authorInfo.authorNonQuery(plan);
+    plan.setAuthorType(ConfigPhysicalPlanType.CreateUserWithRawPassword);
+    plan.setPassword(AuthUtils.encryptPassword("password"));
     answerSet.add(plan.hashCode());
 
     plan = new AuthorPlan(ConfigPhysicalPlanType.CreateRole);
