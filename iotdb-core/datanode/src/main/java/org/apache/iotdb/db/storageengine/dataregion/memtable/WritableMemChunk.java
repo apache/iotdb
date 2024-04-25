@@ -30,7 +30,6 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -40,12 +39,18 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 
 public class WritableMemChunk implements IWritableMemChunk {
 
   private IMeasurementSchema schema;
   private TVList list;
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
+
+  private static final long TARGET_CHUNK_SIZE =
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
   private static final Logger LOGGER = LoggerFactory.getLogger(WritableMemChunk.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
@@ -285,7 +290,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public IChunkWriter createIChunkWriter() {
+  public ChunkWriterImpl createIChunkWriter() {
     return new ChunkWriterImpl(schema);
   }
 
@@ -322,14 +327,13 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void encode(IChunkWriter chunkWriter) {
+  public void encode(LinkedBlockingQueue<Object> ioTaskQueue) {
 
-    ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
-
+    TSDataType tsDataType = schema.getType();
+    ChunkWriterImpl chunkWriterImpl = createIChunkWriter();
+    long binarySizePerChunk = 0;
     for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
-
-      TSDataType tsDataType = schema.getType();
 
       // skip duplicated data
       if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
@@ -364,12 +368,32 @@ public class WritableMemChunk implements IWritableMemChunk {
           chunkWriterImpl.write(time, list.getDouble(sortedRowIndex));
           break;
         case TEXT:
-          chunkWriterImpl.write(time, list.getBinary(sortedRowIndex));
+          Binary value = list.getBinary(sortedRowIndex);
+          chunkWriterImpl.write(time, value);
+          binarySizePerChunk += getBinarySize(value);
+          if (binarySizePerChunk > TARGET_CHUNK_SIZE) {
+            chunkWriterImpl.sealCurrentPage();
+            chunkWriterImpl.clearPageWriter();
+            try {
+              ioTaskQueue.put(chunkWriterImpl);
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+            chunkWriterImpl = createIChunkWriter();
+            binarySizePerChunk = 0;
+          }
           break;
         default:
           LOGGER.error("WritableMemChunk does not support data type: {}", tsDataType);
           break;
       }
+    }
+    chunkWriterImpl.sealCurrentPage();
+    chunkWriterImpl.clearPageWriter();
+    try {
+      ioTaskQueue.put(chunkWriterImpl);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     }
   }
 
