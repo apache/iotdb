@@ -219,6 +219,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
               new long[] {((PipeWatermarkEvent) event).getWatermark(), localCount.get()},
               localCommitProgressIndex.get()));
     }
+
+    eventCollector.collect(event);
   }
 
   private void collectGlobalCountIfNecessary(EventCollector eventCollector) throws IOException {

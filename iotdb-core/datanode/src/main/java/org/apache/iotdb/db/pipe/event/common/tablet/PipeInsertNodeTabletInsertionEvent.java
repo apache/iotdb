@@ -59,7 +59,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
 
-  private final List<TabletInsertionDataContainer> dataContainers = new ArrayList<>();
+  private List<TabletInsertionDataContainer> dataContainers;
 
   private ProgressIndex progressIndex;
 
@@ -135,7 +135,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     try {
       PipeResourceManager.wal().unpin(walEntryHandler);
       // Release the containers' memory.
-      dataContainers.clear();
+      if (dataContainers != null) {
+        dataContainers.clear();
+        dataContainers = null;
+      }
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -252,9 +255,11 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   private List<TabletInsertionDataContainer> initDataContainers() {
     try {
-      if (!dataContainers.isEmpty()) {
+      if (dataContainers != null) {
         return dataContainers;
       }
+
+      dataContainers = new ArrayList<>();
       final InsertNode node = getInsertNode();
       switch (node.getType()) {
         case INSERT_ROW:
@@ -279,8 +284,11 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   public long count() {
-    final Tablet covertedTablet = convertToTablet();
-    return (long) covertedTablet.rowSize * covertedTablet.getSchemas().size();
+    long count = 0;
+    for (final Tablet covertedTablet : convertToTablets()) {
+      count += (long) covertedTablet.rowSize * covertedTablet.getSchemas().size();
+    }
+    return count;
   }
 
   /////////////////////////// parsePatternOrTime ///////////////////////////
