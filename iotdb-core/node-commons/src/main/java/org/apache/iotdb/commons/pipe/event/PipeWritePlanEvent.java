@@ -34,12 +34,13 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
 
   protected boolean isGeneratedByPipe;
 
-  protected final AtomicLong referenceCount = new AtomicLong(0);
-
   protected ProgressIndex progressIndex;
 
   protected PipeWritePlanEvent(
-      String pipeName, PipeTaskMeta pipeTaskMeta, PipePattern pattern, boolean isGeneratedByPipe) {
+      final String pipeName,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final boolean isGeneratedByPipe) {
     super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
@@ -49,7 +50,7 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
    * We just use a counter to prevent the reference count from being less than 0.
    */
   @Override
-  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     referenceCount.incrementAndGet();
     return true;
   }
@@ -59,7 +60,7 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
    * We just use a counter to prevent the reference count from being less than 0.
    */
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     final long count = referenceCount.decrementAndGet();
     if (count < 0) {
       LOGGER.warn("The reference count is less than 0, may need to check the implementation.");
@@ -68,7 +69,7 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
   }
 
   @Override
-  public void bindProgressIndex(ProgressIndex progressIndex) {
+  public void bindProgressIndex(final ProgressIndex progressIndex) {
     this.progressIndex = progressIndex;
   }
 
@@ -85,5 +86,25 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     return true;
+  }
+
+  /////////////////////////// Object ///////////////////////////
+
+  @Override
+  public String toString() {
+    return String.format(
+            "PipeWritePlanEvent{progressIndex=%s, isGeneratedByPipe=%s}",
+            progressIndex, isGeneratedByPipe)
+        + " - "
+        + super.toString();
+  }
+
+  @Override
+  public String coreReportMessage() {
+    return String.format(
+            "PipeWritePlanEvent{progressIndex=%s, isGeneratedByPipe=%s}",
+            progressIndex, isGeneratedByPipe)
+        + " - "
+        + super.coreReportMessage();
   }
 }
