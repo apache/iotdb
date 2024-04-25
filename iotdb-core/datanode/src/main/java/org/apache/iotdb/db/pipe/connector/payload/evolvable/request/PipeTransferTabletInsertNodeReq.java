@@ -60,7 +60,8 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
               insertNode));
     }
 
-    return (InsertBaseStatement) IoTDBDataNodeReceiver.PLAN_VISITOR.process(insertNode, null);
+    return (InsertBaseStatement)
+        IoTDBDataNodeReceiver.PLAN_TO_STATEMENT_VISITOR.process(insertNode, null);
   }
 
   /////////////////////////////// WriteBack & Batch ///////////////////////////////

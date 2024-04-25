@@ -105,10 +105,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private static final String[] RECEIVER_FILE_BASE_DIRS = IOTDB_CONFIG.getPipeReceiverFileDirs();
   private static FolderManager folderManager = null;
 
-  public static final PipePlanToStatementVisitor PLAN_VISITOR = new PipePlanToStatementVisitor();
-  private static final PipeStatementTSStatusVisitor STATUS_VISITOR =
+  public static final PipePlanToStatementVisitor PLAN_TO_STATEMENT_VISITOR =
+      new PipePlanToStatementVisitor();
+  private static final PipeStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
       new PipeStatementTSStatusVisitor();
-  private static final PipeStatementExceptionVisitor EXCEPTION_VISITOR =
+  private static final PipeStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
       new PipeStatementExceptionVisitor();
   private final PipeStatementToBatchVisitor batchVisitor = new PipeStatementToBatchVisitor();
 
@@ -330,7 +331,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             ClusterConfigTaskExecutor.getInstance()
                 .alterLogicalViewByPipe((AlterLogicalViewNode) req.getPlanNode()))
         : new TPipeTransferResp(
-            executeStatementAndClassifyExceptions(PLAN_VISITOR.process(req.getPlanNode(), null)));
+            executeStatementAndClassifyExceptions(
+                PLAN_TO_STATEMENT_VISITOR.process(req.getPlanNode(), null)));
   }
 
   private TPipeTransferResp handleTransferConfigPlan(final TPipeTransferReq req) {
@@ -362,7 +364,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             receiverId.get(),
             statement,
             result);
-        return statement.accept(STATUS_VISITOR, result);
+        return statement.accept(STATEMENT_STATUS_VISITOR, result);
       }
     } catch (final Exception e) {
       LOGGER.warn(
@@ -370,7 +372,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           receiverId.get(),
           statement,
           e);
-      return statement.accept(EXCEPTION_VISITOR, e);
+      return statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
     }
   }
 
