@@ -64,6 +64,7 @@ public class PermissionManager {
     LOGGER.info("Auth: run auth plan: {}", authorPlan.toString());
     try {
       if (authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUser
+          || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUserWithRawPassword
           || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateRole) {
         tsStatus = getConsensusManager().write(authorPlan);
       } else {

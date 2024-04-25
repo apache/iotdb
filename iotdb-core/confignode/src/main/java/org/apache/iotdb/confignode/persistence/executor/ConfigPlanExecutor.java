@@ -372,6 +372,7 @@ public class ConfigPlanExecutor {
       case DeleteProcedure:
         return procedureInfo.deleteProcedure((DeleteProcedurePlan) physicalPlan);
       case CreateUser:
+      case CreateUserWithRawPassword:
       case CreateRole:
       case DropUser:
       case DropRole:
