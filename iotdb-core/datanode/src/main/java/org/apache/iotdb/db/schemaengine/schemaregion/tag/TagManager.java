@@ -310,8 +310,7 @@ public class TagManager {
     if (node.getOffset() < 0) {
       return;
     }
-    Map<String, String> tagMap =
-        tagLogFile.readTag(node.getOffset());
+    Map<String, String> tagMap = tagLogFile.readTag(node.getOffset());
     if (tagMap != null) {
       for (Map.Entry<String, String> entry : tagMap.entrySet()) {
         if (tagIndex.containsKey(entry.getKey())
@@ -359,8 +358,7 @@ public class TagManager {
       IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
 
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(leafMNode.getOffset());
+    Pair<Map<String, String>, Map<String, String>> pair = tagLogFile.read(leafMNode.getOffset());
 
     if (tagsMap != null) {
       for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
@@ -424,8 +422,7 @@ public class TagManager {
       Map<String, String> attributesMap, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
 
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(leafMNode.getOffset());
+    Pair<Map<String, String>, Map<String, String>> pair = tagLogFile.read(leafMNode.getOffset());
 
     for (Map.Entry<String, String> entry : attributesMap.entrySet()) {
       String key = entry.getKey();
@@ -453,8 +450,7 @@ public class TagManager {
       Map<String, String> tagsMap, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
 
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(leafMNode.getOffset());
+    Pair<Map<String, String>, Map<String, String>> pair = tagLogFile.read(leafMNode.getOffset());
 
     for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
       String key = entry.getKey();
@@ -484,8 +480,7 @@ public class TagManager {
   public void dropTagsOrAttributes(
       Set<String> keySet, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(leafMNode.getOffset());
+    Pair<Map<String, String>, Map<String, String>> pair = tagLogFile.read(leafMNode.getOffset());
 
     Map<String, String> deleteTag = new HashMap<>();
     for (String key : keySet) {
@@ -557,8 +552,7 @@ public class TagManager {
       Map<String, String> alterMap, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
     // tags, attributes
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(leafMNode.getOffset());
+    Pair<Map<String, String>, Map<String, String>> pair = tagLogFile.read(leafMNode.getOffset());
     Map<String, String> oldTagValue = new HashMap<>();
     Map<String, String> newTagValue = new HashMap<>();
 
@@ -628,8 +622,7 @@ public class TagManager {
       String oldKey, String newKey, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
       throws MetadataException, IOException {
     // tags, attributes
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(leafMNode.getOffset());
+    Pair<Map<String, String>, Map<String, String>> pair = tagLogFile.read(leafMNode.getOffset());
 
     // current name has existed
     if (pair.left.containsKey(newKey) || pair.right.containsKey(newKey)) {
