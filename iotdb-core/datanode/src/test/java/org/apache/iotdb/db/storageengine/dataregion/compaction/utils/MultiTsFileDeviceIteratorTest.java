@@ -59,11 +59,9 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
@@ -126,7 +124,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     seqResources.add(resource2);
 
-    Set<String> measurementSet = new HashSet<>(4000);
+    List<String> measurementSet = new ArrayList<>(4000);
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
         new MultiTsFileDeviceIterator(seqResources)) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
