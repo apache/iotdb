@@ -373,7 +373,8 @@ public class SystemPropertiesUtils {
       throw new IOException(
           "The parameter config_node_id doesn't exist in "
               + "data/confignode/system/confignode-system.properties. "
-              + "Please delete data dir data/confignode and restart again.");
+              + "Please delete data dir data/confignode and restart again.",
+          e);
     }
   }
 
