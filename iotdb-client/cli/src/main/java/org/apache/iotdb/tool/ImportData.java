@@ -40,6 +40,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -51,6 +52,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -68,7 +70,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.jdbc.Config.IOTDB_ERROR_PREFIX;
 import static org.apache.tsfile.enums.TSDataType.BOOLEAN;
 import static org.apache.tsfile.enums.TSDataType.DOUBLE;
 import static org.apache.tsfile.enums.TSDataType.FLOAT;
@@ -471,8 +472,6 @@ public class ImportData extends AbstractDataTool {
           session.executeNonQueryStatement(sql);
         } catch (IoTDBConnectionException | StatementExecutionException e) {
           failedRecords.add(Arrays.asList(sql));
-          ioTPrinter.println(IOTDB_ERROR_PREFIX + " Can't execute sql because " + e.getMessage());
-          System.exit(CODE_ERROR);
         }
       }
       ioTPrinter.println(file.getName() + " Import completely!");
@@ -480,7 +479,23 @@ public class ImportData extends AbstractDataTool {
       ioTPrinter.println("SQL file read exception because: " + e.getMessage());
     }
     if (!failedRecords.isEmpty()) {
-      writeFailedLinesFile(null, failedFilePath, failedRecords);
+      FileWriter writer = null;
+      try {
+        writer = new FileWriter(failedFilePath);
+        for (List<Object> failedRecord : failedRecords) {
+          writer.write(failedRecord.get(0).toString() + "\n");
+        }
+      } catch (IOException e) {
+        ioTPrinter.println("Cannot dump fail result because: " + e.getMessage());
+      } finally {
+        if (ObjectUtils.isNotEmpty(writer)) {
+          try {
+            writer.flush();
+            writer.close();
+          } catch (IOException e) {;
+          }
+        }
+      }
     }
   }
 
