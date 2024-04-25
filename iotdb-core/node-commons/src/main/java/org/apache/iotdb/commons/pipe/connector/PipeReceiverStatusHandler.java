@@ -97,6 +97,17 @@ public class PipeReceiverStatusHandler {
           return;
         }
 
+      case 607: // OUT_OF_TTL
+        {
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "Out of TTL exception: will be ignored. event: {}. status: {}",
+                recordMessage,
+                status);
+          }
+          return;
+        }
+
       case 1809: // PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION
         {
           LOGGER.info("Idempotent conflict exception: will be ignored. status: {}", status);
