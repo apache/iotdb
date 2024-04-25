@@ -20,8 +20,6 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.exception.ttl.TTLIllegalPathException;
-import org.apache.iotdb.commons.exception.ttl.TTLRuleCountNotEnoughException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
@@ -57,12 +55,16 @@ public class TTLManager {
     PartialPath path = new PartialPath(setTTLPlan.getPathPattern());
     if (!checkIsPathValidated(path)) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
-      errorStatus.setMessage(new TTLIllegalPathException(path.getFullPath()).getMessage());
+      errorStatus.setMessage(
+          String.format(
+              "Illegal pattern path: %s, pattern path should end with **, otherwise, it should be a specific database or device path without *",
+              path.getFullPath()));
       return errorStatus;
     }
     if (ttlInfo.getTTLCount() >= ttlCountThreshold) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.OVERSIZE_TTL.getStatusCode());
-      errorStatus.setMessage(new TTLRuleCountNotEnoughException().getMessage());
+      errorStatus.setMessage(
+          "The number of TTL stored in the system has reached threshold %d, please increase the ttl_count parameter.");
       return errorStatus;
     }
 
@@ -83,7 +85,10 @@ public class TTLManager {
     PartialPath path = new PartialPath(setTTLPlan.getPathPattern());
     if (!checkIsPathValidated(path)) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
-      errorStatus.setMessage(new TTLIllegalPathException(path.getFullPath()).getMessage());
+      errorStatus.setMessage(
+          String.format(
+              "Illegal pattern path: %s, pattern path should end with **, otherwise, it should be a specific database or device path without *",
+              path.getFullPath()));
       return errorStatus;
     }
     // if path matches database, then unset both path and path.**
