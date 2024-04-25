@@ -254,31 +254,42 @@ public class SchemaRegionSnapshotParserTest {
     ICreateAlignedTimeSeriesPlan plan =
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
             new PartialPath("root.sg.t1.t2"),
-            Arrays.asList("s1", "s2"),
-            Arrays.asList(TSDataType.INT32, TSDataType.INT64),
-            Arrays.asList(TSEncoding.PLAIN, TSEncoding.RLE),
-            Arrays.asList(CompressionType.SNAPPY, CompressionType.LZ4),
-            Arrays.asList("alias1", "alias2"),
+            Arrays.asList("s1", "s2", "s3"),
+            Arrays.asList(TSDataType.INT32, TSDataType.INT64, TSDataType.BOOLEAN),
+            Arrays.asList(TSEncoding.PLAIN, TSEncoding.RLE, TSEncoding.PLAIN),
+            Arrays.asList(
+                CompressionType.SNAPPY, CompressionType.LZ4, CompressionType.UNCOMPRESSED),
+            Arrays.asList("alias1", "alias2", null),
             Arrays.asList(
                 new HashMap<String, String>() {
                   {
                     put("tag1", "t1");
+                    put("tag_1", "value2");
                   }
                 },
                 new HashMap<String, String>() {
                   {
                     put("tag2", "t2");
+                    put("tag_2", "t_2");
                   }
-                }),
+                },
+                new HashMap<>()), // not all measurements have tag
             Arrays.asList(
                 new HashMap<String, String>() {
                   {
                     put("attr1", "a1");
+                    put("attr_1", "a_1");
                   }
                 },
                 new HashMap<String, String>() {
                   {
                     put("attr2", "a2");
+                  }
+                },
+                new HashMap<String, String>() {
+                  {
+                    put("tag2", "t2");
+                    put("tag_2", "t_2");
                   }
                 }));
     schemaRegion.createAlignedTimeSeries(plan);
@@ -305,6 +316,69 @@ public class SchemaRegionSnapshotParserTest {
       CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
           (CreateAlignedTimeSeriesStatement) stmt;
       Assert.assertEquals(plan.getDevicePath(), createAlignedTimeSeriesStatement.getDevicePath());
+
+      Assert.assertEquals(
+          plan.getTagsList().size(), createAlignedTimeSeriesStatement.getTagsList().size());
+      Assert.assertEquals(
+          plan.getAliasList().size(), createAlignedTimeSeriesStatement.getAliasList().size());
+      Assert.assertEquals(
+          plan.getAttributesList().size(),
+          createAlignedTimeSeriesStatement.getAttributesList().size());
+      Assert.assertEquals(
+          createAlignedTimeSeriesStatement.getMeasurements().size(),
+          createAlignedTimeSeriesStatement.getAttributesList().size());
+      Assert.assertEquals(
+          createAlignedTimeSeriesStatement.getMeasurements().size(),
+          createAlignedTimeSeriesStatement.getTagsList().size());
+
+      Comparator<Map<String, String>> comp =
+          new Comparator<Map<String, String>>() {
+            @Override
+            public int compare(Map<String, String> o1, Map<String, String> o2) {
+              if (o1 == null && o2 == null) {
+                return 0;
+              }
+              if (o1 == null) {
+                return -1;
+              }
+              if (o2 == null) {
+                return 1;
+              }
+              return Integer.compare(o1.hashCode(), o2.hashCode());
+            }
+          };
+
+      Comparator<String> comp_str =
+          new Comparator<String>() {
+            @Override
+            public int compare(String o1, String o2) {
+              if (o1 == null && o2 == null) {
+                return 0;
+              }
+              if (o1 == null) {
+                return -1;
+              }
+              if (o2 == null) {
+                return 1;
+              }
+              return Integer.compare(o1.hashCode(), o2.hashCode());
+            }
+          };
+
+      Collections.sort(plan.getAliasList(), comp_str);
+      Collections.sort(createAlignedTimeSeriesStatement.getAliasList(), comp_str);
+      Collections.sort(plan.getAttributesList(), comp);
+      Collections.sort(createAlignedTimeSeriesStatement.getAttributesList(), comp);
+      Collections.sort(plan.getMeasurements(), comp_str);
+      Collections.sort(createAlignedTimeSeriesStatement.getMeasurements(), comp_str);
+      Collections.sort(plan.getTagsList(), comp);
+      Collections.sort(createAlignedTimeSeriesStatement.getTagsList(), comp);
+      Collections.sort(plan.getEncodings());
+      Collections.sort(createAlignedTimeSeriesStatement.getEncodings());
+      Collections.sort(plan.getCompressors());
+      Collections.sort(createAlignedTimeSeriesStatement.getCompressors());
+      Collections.sort(plan.getDataTypes());
+      Collections.sort(createAlignedTimeSeriesStatement.getDataTypes());
       Assert.assertEquals(
           plan.getMeasurements(), createAlignedTimeSeriesStatement.getMeasurements());
       Assert.assertEquals(plan.getAliasList(), createAlignedTimeSeriesStatement.getAliasList());
