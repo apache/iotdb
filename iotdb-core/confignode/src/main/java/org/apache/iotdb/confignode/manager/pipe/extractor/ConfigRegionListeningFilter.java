@@ -138,7 +138,7 @@ public class ConfigRegionListeningFilter {
     }
   }
 
-  static boolean shouldPlanBeListened(ConfigPhysicalPlan plan) {
+  static boolean shouldPlanBeListened(final ConfigPhysicalPlan plan) {
     final ConfigPhysicalPlanType type = plan.getType();
 
     // Do not transfer roll back set template plan
@@ -154,8 +154,8 @@ public class ConfigRegionListeningFilter {
         || OPTION_PLAN_MAP.values().stream().anyMatch(types -> types.contains(type));
   }
 
-  public static Set<ConfigPhysicalPlanType> parseListeningPlanTypeSet(PipeParameters parameters)
-      throws IllegalPathException, IllegalArgumentException {
+  public static Set<ConfigPhysicalPlanType> parseListeningPlanTypeSet(
+      final PipeParameters parameters) throws IllegalPathException, IllegalArgumentException {
     Set<ConfigPhysicalPlanType> planTypes = new HashSet<>();
     Set<PartialPath> inclusionOptions =
         parseOptions(
