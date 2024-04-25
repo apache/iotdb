@@ -369,14 +369,19 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     MeasurementSchema[] newMeasurementSchemas =
         new MeasurementSchema[measurementSchemas.length - failedMeasurementNumber];
     Object[] newColumns = new Object[columns.length - failedMeasurementNumber];
-    BitMap[] newBitMaps = new BitMap[bitMaps.length - failedMeasurementNumber];
+    BitMap[] newBitMaps = null;
+    if (bitMaps != null) {
+      newBitMaps = new BitMap[bitMaps.length - failedMeasurementNumber];
+    }
     for (int i = 0, j = 0; i < measurements.length; i++) {
       if (measurements[i] != null) {
         newMeasurements[j] = measurements[i];
         newDataTypes[j] = dataTypes[i];
         newMeasurementSchemas[j] = measurementSchemas[i];
         newColumns[j] = columns[i];
-        newBitMaps[j] = bitMaps[i];
+        if (bitMaps != null) {
+          newBitMaps[j] = bitMaps[i];
+        }
         j++;
       }
     }
