@@ -163,7 +163,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
                 taskID,
                 lastEvent instanceof EnrichedEvent
                     ? ((EnrichedEvent) lastEvent).coreReportMessage()
-                    : lastEvent.toString(),
+                    : lastEvent,
                 ErrorHandlingUtils.getRootCause(e).getMessage()),
             e);
       } else {
