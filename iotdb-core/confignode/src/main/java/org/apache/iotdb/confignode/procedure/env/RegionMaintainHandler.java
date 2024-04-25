@@ -739,8 +739,7 @@ public class RegionMaintainHandler {
         configManager.getNodeManager().filterDataNodeThroughStatus(allowingStatus).stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
-
-    // TODO return the node which has lowest load.
+    Collections.shuffle(aliveDataNodes);
     for (TDataNodeLocation aliveDataNode : aliveDataNodes) {
       if (regionLocations.contains(aliveDataNode) && !aliveDataNode.equals(filterLocation)) {
         return Optional.of(aliveDataNode);
