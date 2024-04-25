@@ -27,7 +27,6 @@ import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -54,10 +53,6 @@ import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -109,7 +104,7 @@ public class ImportData extends AbstractDataTool {
   private static final String LINES_PER_FAILED_FILE_ARGS = "linesPerFailedFile";
   private static final String LINES_PER_FAILED_FILE_ARGS_NAME = "Lines Per FailedFile";
 
-  private static final String TSFILEDB_CLI_PREFIX = "ImportCsv";
+  private static final String TSFILEDB_CLI_PREFIX = "ImportData";
 
   private static String targetPath;
   private static String failedFileDirectory = null;
@@ -192,7 +187,7 @@ public class ImportData extends AbstractDataTool {
         Option.builder(ALIGNED_ARGS)
             .argName(ALIGNED_NAME)
             .hasArg()
-            .desc("Whether to use the interface of aligned (optional)")
+            .desc("Whether to use the interface of aligned only when csv (optional)")
             .build();
     options.addOption(opAligned);
 
@@ -462,42 +457,31 @@ public class ImportData extends AbstractDataTool {
   }
 
   private static void importFromSqlFile(File file) {
+    ArrayList<List<Object>> failedRecords = new ArrayList<>();
+    String failedFilePath = null;
+    if (failedFileDirectory == null) {
+      failedFilePath = file.getAbsolutePath() + ".failed";
+    } else {
+      failedFilePath = failedFileDirectory + file.getName() + ".failed";
+    }
     try (BufferedReader br = new BufferedReader(new FileReader(file.getAbsolutePath()))) {
-      String line;
-      while ((line = br.readLine()) != null) {
-        executeSql(line);
+      String sql;
+      while ((sql = br.readLine()) != null) {
+        try {
+          session.executeNonQueryStatement(sql);
+        } catch (IoTDBConnectionException | StatementExecutionException e) {
+          failedRecords.add(Arrays.asList(sql));
+          ioTPrinter.println(IOTDB_ERROR_PREFIX + " Can't execute sql because " + e.getMessage());
+          System.exit(CODE_ERROR);
+        }
       }
       ioTPrinter.println(file.getName() + " Import completely!");
     } catch (IOException e) {
       ioTPrinter.println("SQL file read exception because: " + e.getMessage());
     }
-  }
-
-  private static void executeSql(String sql) {
-    try (Statement statement = getConnection().createStatement()) {
-      statement.setFetchSize(fetchSize);
-      statement.execute(sql.trim());
-    } catch (SQLException e) {
-      ioTPrinter.println(IOTDB_ERROR_PREFIX + " Can't execute sql because " + e.getMessage());
-      System.exit(CODE_ERROR);
+    if (!failedRecords.isEmpty()) {
+      writeFailedLinesFile(null, failedFilePath, failedRecords);
     }
-  }
-
-  private static Connection getConnection() {
-    // JDBC driver name and database URL
-    String driver = org.apache.iotdb.jdbc.IoTDBDriver.class.getName();
-    String url = Config.IOTDB_URL_PREFIX + host + ":" + port + "/";
-
-    Connection connection = null;
-    try {
-      Class.forName(driver);
-      connection = DriverManager.getConnection(url, username, password);
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
-    } catch (SQLException e) {
-      e.printStackTrace();
-    }
-    return connection;
   }
 
   /**
