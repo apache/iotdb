@@ -24,8 +24,8 @@ import org.apache.hadoop.fs.Path
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput
 import org.apache.iotdb.spark.constant.TestConstant
 import org.apache.iotdb.spark.tool.TsFileWriteTool
-import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tsfile.read.{TsFileSequenceReader, common}
+import org.apache.tsfile.common.constant.QueryConstant
+import org.apache.tsfile.read.{TsFileSequenceReader, common}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types._
 import org.junit.Assert

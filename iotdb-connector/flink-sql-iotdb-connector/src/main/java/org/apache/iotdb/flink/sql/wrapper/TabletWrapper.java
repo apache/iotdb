@@ -19,7 +19,8 @@
 package org.apache.iotdb.flink.sql.wrapper;
 
 import org.apache.iotdb.flink.sql.client.IoTDBWebSocketClient;
-import org.apache.iotdb.tsfile.write.record.Tablet;
+
+import org.apache.tsfile.write.record.Tablet;
 
 public class TabletWrapper {
   private final long commitId;

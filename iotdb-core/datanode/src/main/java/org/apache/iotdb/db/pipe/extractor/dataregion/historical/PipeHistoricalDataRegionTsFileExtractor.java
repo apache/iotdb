@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.historical;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
@@ -426,12 +427,23 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   private boolean mayTsFileContainUnprocessedData(TsFileResource resource) {
-    return startIndex instanceof TimeWindowStateProgressIndex
-        // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
-        ? ((TimeWindowStateProgressIndex) startIndex).getMinTime() <= resource.getFileEndTime()
-        // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
-        // "equals" max progressIndex must be transmitted to avoid data loss
-        : !startIndex.isAfter(resource.getMaxProgressIndexAfterClose());
+    if (startIndex instanceof TimeWindowStateProgressIndex) {
+      // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
+      return ((TimeWindowStateProgressIndex) startIndex).getMinTime() <= resource.getFileEndTime();
+    }
+
+    if (startIndex instanceof StateProgressIndex) {
+      // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
+      // "equals" max progressIndex must be transmitted to avoid data loss
+      final ProgressIndex innerProgressIndex =
+          ((StateProgressIndex) startIndex).getInnerProgressIndex();
+      return !innerProgressIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+          && !innerProgressIndex.equals(resource.getMaxProgressIndexAfterClose());
+    }
+
+    // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
+    // "equals" max progressIndex must be transmitted to avoid data loss
+    return !startIndex.isAfter(resource.getMaxProgressIndexAfterClose());
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(TsFileResource resource) {

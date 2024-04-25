@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.schema;
 
-import org.apache.iotdb.tsfile.exception.PathParseException;
-import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
-
+import org.apache.tsfile.exception.PathParseException;
+import org.apache.tsfile.read.common.parser.PathNodesGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

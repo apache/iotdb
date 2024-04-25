@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TimeRangeIteratorFactory;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.utils.TimeDuration;
 
+import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.TimeDuration;
 import org.junit.Assert;
 import org.junit.Test;
 

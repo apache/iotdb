@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.udf.api.utils;
 
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.utils.Binary;
 
 public class ResultValue {
   private ColumnBuilder builder;

@@ -25,16 +25,11 @@ import org.apache.iotdb.db.pipe.receiver.protocol.airgap.IoTDBAirGapReceiverAgen
 import org.apache.iotdb.db.pipe.receiver.protocol.legacy.IoTDBLegacyPipeReceiverAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.util.Arrays;
 
 /** {@link PipeDataNodeReceiverAgent} is the entry point of all pipe receivers' logic. */
 public class PipeDataNodeReceiverAgent {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeReceiverAgent.class);
 
   private final IoTDBDataNodeReceiverAgent thriftAgent;
   private final IoTDBAirGapReceiverAgent airGapAgent;

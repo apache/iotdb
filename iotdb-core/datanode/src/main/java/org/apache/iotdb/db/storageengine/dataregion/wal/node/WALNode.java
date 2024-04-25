@@ -54,10 +54,10 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener.Status;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.utils.TsFileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -227,7 +227,7 @@ public class WALNode implements IWALNode {
     private static final int MAX_RECURSION_TIME = 5;
 
     // the effective information ratio
-    private double effectiveInfoRatio = 0d;
+    private double effectiveInfoRatio = 1.0d;
 
     private List<Long> pinnedMemTableIds;
 
@@ -325,14 +325,17 @@ public class WALNode implements IWALNode {
       // calculate effective information ratio
       long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
       MemTableInfo oldestUnpinnedMemTableInfo = checkpointManager.getOldestUnpinnedMemTableInfo();
+      long avgFileSize =
+          getFileNum() != 0
+              ? getDiskUsage() / getFileNum()
+              : config.getWalFileSizeThresholdInByte();
       long totalCost =
           oldestUnpinnedMemTableInfo == null
               ? costOfActiveMemTables
-              : (getCurrentWALFileVersion()
-                      - oldestUnpinnedMemTableInfo.getFirstFileVersionId()
-                      + 1)
-                  * config.getWalFileSizeThresholdInByte();
-      if (totalCost == 0) {
+              : (getCurrentWALFileVersion() - oldestUnpinnedMemTableInfo.getFirstFileVersionId())
+                  * avgFileSize;
+      if (costOfActiveMemTables == 0 || totalCost == 0) {
+        effectiveInfoRatio = 1.0d;
         return;
       }
       effectiveInfoRatio = (double) costOfActiveMemTables / totalCost;
@@ -461,6 +464,9 @@ public class WALNode implements IWALNode {
         logger.error("Fail to get data region processor for {}", oldestTsFile, e);
         return false;
       }
+      if (dataRegion == null) {
+        return false;
+      }
 
       // snapshot or flush memTable, flush memTable when it belongs to an old time partition, or
       // it's snapshot count or size reach threshold.
@@ -573,7 +579,7 @@ public class WALNode implements IWALNode {
       // If this set is empty, there is a case where WalEntry has been logged but not persisted,
       // because WalEntry is persisted asynchronously. In this case, the file cannot be deleted
       // directly, so it is considered active
-      if (memTableIdsOfCurrentWal == null || memTableIdsOfCurrentWal.isEmpty()) {
+      if (memTableIdsOfCurrentWal == null) {
         return true;
       }
       return !Collections.disjoint(
