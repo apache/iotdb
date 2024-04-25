@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.MergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
@@ -478,6 +479,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   @Override
   public Operator visitMergeSort(MergeSortNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext = context.getDriverContext().addOperatorContext(context.getNextOperatorId(), node.getPlanNodeId(),
+        MergeSortOperator.class.getSimpleName());
+    List<Operator> children = new ArrayList<>(node.getChildren().size());
+    for (PlanNode child : node.getChildren()) {
+      children.add(this.process(child, context));
+    }
+
     return super.visitMergeSort(node, context);
   }
 

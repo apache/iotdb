@@ -22,6 +22,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -47,7 +48,7 @@ public class MergeSortNode extends MultiChildProcessNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return children.get(0).getOutputColumnNames();
   }
 
   @Override
@@ -55,4 +56,9 @@ public class MergeSortNode extends MultiChildProcessNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+
+  @Override
+  public List<Symbol> getOutputSymbols() {
+    return super.getOutputSymbols();
+  }
 }
