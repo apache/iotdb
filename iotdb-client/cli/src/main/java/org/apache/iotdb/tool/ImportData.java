@@ -188,7 +188,7 @@ public class ImportData extends AbstractDataTool {
         Option.builder(ALIGNED_ARGS)
             .argName(ALIGNED_NAME)
             .hasArg()
-            .desc("Whether to use the interface of aligned only when csv (optional)")
+            .desc("Whether to use the interface of aligned(only csv optional)")
             .build();
     options.addOption(opAligned);
 
