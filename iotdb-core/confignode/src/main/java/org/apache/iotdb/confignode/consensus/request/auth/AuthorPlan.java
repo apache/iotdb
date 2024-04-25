@@ -263,6 +263,9 @@ public class AuthorPlan extends ConfigPhysicalPlan {
       case ListRoleUsers:
         type = ConfigPhysicalPlanType.ListRoleUsers.getPlanType();
         break;
+      case CreateUserWithRawPassword:
+        type = ConfigPhysicalPlanType.CreateUserWithRawPassword.getPlanType();
+        break;
       default:
         throw new IllegalArgumentException("Unknown operator: " + configPhysicalPlanType);
     }
