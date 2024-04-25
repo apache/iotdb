@@ -110,6 +110,8 @@ public class ExportData extends AbstractDataTool {
 
   private static long timeout = -1;
 
+  private static Boolean aligned = false;
+
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
   @SuppressWarnings({
@@ -210,7 +212,6 @@ public class ExportData extends AbstractDataTool {
     needDataTypePrinted = Boolean.valueOf(commandLine.getOptionValue(DATA_TYPE_ARGS));
     queryCommand = commandLine.getOptionValue(QUERY_COMMAND_ARGS);
     exportType = commandLine.getOptionValue(EXPORT_TYPE_ARGS);
-    aligned = commandLine.getOptionValue(ALIGNED_ARGS);
     String timeoutString = commandLine.getOptionValue(TIMEOUT_ARGS);
     if (timeoutString != null) {
       timeout = Long.parseLong(timeoutString);
@@ -231,6 +232,9 @@ public class ExportData extends AbstractDataTool {
     }
     if (commandLine.getOptionValue(LINES_PER_FILE_ARGS) != null) {
       linesPerFile = Integer.parseInt(commandLine.getOptionValue(LINES_PER_FILE_ARGS));
+    }
+    if (commandLine.getOptionValue(ALIGNED_ARGS) != null) {
+      aligned = Boolean.valueOf(commandLine.getOptionValue(ALIGNED_ARGS));
     }
   }
 
@@ -526,7 +530,7 @@ public class ExportData extends AbstractDataTool {
             timeseries.remove(0);
           }
           String sqlMiddle = null;
-          if (Boolean.TRUE.toString().equals(aligned)) {
+          if (Boolean.TRUE.equals(aligned)) {
             sqlMiddle = " ALIGNED VALUES (" + rowRecord.getTimestamp() + ",";
           } else {
             sqlMiddle = " VALUES (" + rowRecord.getTimestamp() + ",";
