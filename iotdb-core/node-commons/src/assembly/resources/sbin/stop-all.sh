@@ -37,7 +37,7 @@ fi
 
 function validateParam() {
   if [[ -z $1 || -z $2 ||  -z $3 ||  -z $4 ||  -z $5 ||  -z $6 ]]; then
-    echo "The iotdb-cluster.properties file is incomplete, the current 1C1D will be stopped ... "
+    echo "The iotdb-cluster.properties file only contains default settings. It will stop 1C1D."
     exec ${IOTDB_HOME}/sbin/stop-standalone.sh
   fi
 }
