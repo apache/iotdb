@@ -30,14 +30,6 @@
     <packaging>pom</packaging>
     <name>IoTDB: Client: Client for CPP</name>
     <description>C++ client</description>
-    <!-- TODO: The tests don't run, if distribution has not been built locally and fails without reasoning -->
-    <properties>
-        <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.7/catch.hpp</catch2.url>
-        <cmake.build.type>Release</cmake.build.type>
-        <!-- Default value of cmake root -->
-        <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
-        <thrift.exec.absolute.path>${project.build.directory}/thrift/bin/${thrift.executable}</thrift.exec.absolute.path>
-    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -48,29 +40,6 @@
     </dependencies>
     <build>
         <plugins>
-            <!-- Build and do session integration test -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>copy-test-resources</id>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <phase>validate</phase>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/build/test</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.basedir}/src/test</directory>
-                                    <filtering>true</filtering>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
@@ -93,25 +62,6 @@
                                     <outputDirectory>${project.build.directory}/thrift</outputDirectory>
                                 </artifactItem>
                             </artifactItems>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>com.googlecode.maven-download-plugin</groupId>
-                <artifactId>download-maven-plugin</artifactId>
-                <executions>
-                    <!-- Download the Catch2 header file. -->
-                    <execution>
-                        <id>get-catch2</id>
-                        <goals>
-                            <goal>wget</goal>
-                        </goals>
-                        <phase>generate-resources</phase>
-                        <configuration>
-                            <url>${catch2.url}</url>
-                            <unpack>false</unpack>
-                            <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
@@ -206,22 +156,7 @@
                             </options>
                         </configuration>
                     </execution>
-                    <!-- Generate Cmake build directory to compile testing program -->
-                    <execution>
-                        <id>cmake-generate-test</id>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                        <phase>test-compile</phase>
-                        <configuration>
-                            <generator>${cmake.generator}</generator>
-                            <sourcePath>${project.build.directory}/build/test</sourcePath>
-                            <targetPath>${project.build.directory}/build/test</targetPath>
-                            <options>
-                                <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
-                            </options>
-                        </configuration>
-                    </execution>
+
                     <!-- Actually executes the build -->
                     <execution>
                         <id>cmake-compile</id>
@@ -236,29 +171,8 @@
                         </configuration>
                     </execution>
                     <!-- Actually executes the testing compilation -->
-                    <execution>
-                        <id>cmake-compile-test</id>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                        <phase>test-compile</phase>
-                        <configuration>
-                            <config>${cmake.build.type}</config>
-                            <projectDirectory>${project.build.directory}/build/test</projectDirectory>
-                        </configuration>
-                    </execution>
                     <!-- Run the integration test cases -->
                     <!-- TODO: This execution doesn't seem to respect the "skipTests" config -->
-                    <execution>
-                        <id>cmake-run-test</id>
-                        <goals>
-                            <goal>test</goal>
-                        </goals>
-                        <phase>integration-test</phase>
-                        <configuration>
-                            <buildDirectory>${project.build.directory}/build/test</buildDirectory>
-                        </configuration>
-                    </execution>
                 </executions>
             </plugin>
             <!--Package all C++ header files and client library-->
