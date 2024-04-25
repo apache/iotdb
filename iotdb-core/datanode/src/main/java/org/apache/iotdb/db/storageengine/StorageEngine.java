@@ -694,6 +694,22 @@ public class StorageEngine implements IService {
       throws DataRegionException {
     makeSureNoOldRegion(regionId);
     AtomicReference<DataRegionException> exceptionAtomicReference = new AtomicReference<>(null);
+    if (CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+      long walBufferMemCost =
+          (WALManager.getInstance().getWALNodesNum() + 1)
+              * IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
+      long maxWalBufferMemCost =
+          (long)
+              (CONFIG.getMaxOffHeapMemoryBytes()
+                  * CONFIG.getMaxWalBufferOffHeapMemorySizeProportion());
+      if (maxWalBufferMemCost > 0 && maxWalBufferMemCost < walBufferMemCost) {
+        throw new DataRegionException(
+            "Total allocated direct memory for wal buffer will be "
+                + walBufferMemCost
+                + ", which is greater than limit mem cost: "
+                + maxWalBufferMemCost);
+      }
+    }
     DataRegion dataRegion =
         dataRegionMap.computeIfAbsent(
             regionId,

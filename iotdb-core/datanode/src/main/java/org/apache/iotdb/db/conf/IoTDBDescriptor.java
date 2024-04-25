@@ -57,6 +57,7 @@ import org.apache.iotdb.metrics.utils.NodeType;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
+import ch.qos.logback.core.util.FileSize;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -417,6 +418,15 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "max_waiting_time_when_insert_blocked",
                 Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
+
+    String offHeapMemoryStr = System.getProperty("OFF_HEAP_MEMORY");
+    if (offHeapMemoryStr != null) {
+      if (!offHeapMemoryStr.toLowerCase().endsWith("b")) {
+        offHeapMemoryStr += "b";
+      }
+      conf.setMaxOffHeapMemoryBytes(FileSize.valueOf(offHeapMemoryStr).getSize());
+      LOGGER.info("OFF_HEAP_MEMORY: {}", conf.getMaxOffHeapMemoryBytes());
+    }
 
     conf.setIoTaskQueueSizeForFlushing(
         Integer.parseInt(
@@ -1118,6 +1128,15 @@ public class IoTDBDescriptor {
                 "wal_buffer_size_in_byte", Integer.toString(conf.getWalBufferSize())));
     if (walBufferSize > 0) {
       conf.setWalBufferSize(walBufferSize);
+    }
+
+    double maxWalBufferOffHeapMemorySizeProportion =
+        Double.parseDouble(
+            properties.getProperty(
+                "max_wal_buffer_off_heap_memory_size_proportion",
+                Double.toString(conf.getMaxWalBufferOffHeapMemorySizeProportion())));
+    if (maxWalBufferOffHeapMemorySizeProportion > 0) {
+      conf.setMaxWalBufferOffHeapMemorySizeProportion(maxWalBufferOffHeapMemorySizeProportion);
     }
 
     int walBufferQueueCapacity =
