@@ -92,7 +92,7 @@ public class IoTConsensus implements IConsensus {
       new ConcurrentHashMap<>();
   private final IoTConsensusRPCService service;
   private final RegisterManager registerManager = new RegisterManager();
-  private final IoTConsensusConfig config;
+  private IoTConsensusConfig config;
   private final IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
@@ -462,6 +462,15 @@ public class IoTConsensus implements IConsensus {
   @Override
   public String getRegionDirFromConsensusGroupId(ConsensusGroupId groupId) {
     return buildPeerDir(storageDir, groupId);
+  }
+
+  @Override
+  public void reloadConsensusConfig(ConsensusConfig consensusConfig) {
+    config = consensusConfig.getIotConsensusConfig();
+
+    // only update region migration speed limit for now
+    IoTConsensusRateLimiter.getInstance()
+        .init(config.getReplication().getRegionMigrationSpeedLimitBytesPerSecond());
   }
 
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
