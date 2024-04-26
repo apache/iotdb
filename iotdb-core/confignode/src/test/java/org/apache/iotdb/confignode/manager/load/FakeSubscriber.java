@@ -27,24 +27,26 @@ import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatist
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
+
 import org.apache.tsfile.utils.Pair;
 
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.Semaphore;
 
-public class FakeSubscriber implements IClusterStatusSubscriber  {
+public class FakeSubscriber implements IClusterStatusSubscriber {
 
   private final Semaphore nodeSemaphore;
   private final Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap;
   private final Semaphore regionGroupSemaphore;
   private final Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
-    differentRegionGroupStatisticsMap;
+      differentRegionGroupStatisticsMap;
   private final Semaphore consensusGroupSemaphore;
   private final Map<TConsensusGroupId, Pair<ConsensusGroupStatistics, ConsensusGroupStatistics>>
-    differentConsensusGroupStatisticsMap;
+      differentConsensusGroupStatisticsMap;
 
-  public FakeSubscriber(Semaphore nodeSemaphore, Semaphore regionGroupSemaphore, Semaphore consensusGroupSemaphore) {
+  public FakeSubscriber(
+      Semaphore nodeSemaphore, Semaphore regionGroupSemaphore, Semaphore consensusGroupSemaphore) {
     this.nodeSemaphore = nodeSemaphore;
     this.regionGroupSemaphore = regionGroupSemaphore;
     this.consensusGroupSemaphore = consensusGroupSemaphore;
@@ -78,11 +80,13 @@ public class FakeSubscriber implements IClusterStatusSubscriber  {
     return differentNodeStatisticsMap;
   }
 
-  public Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>> getDifferentRegionGroupStatisticsMap() {
+  public Map<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
+      getDifferentRegionGroupStatisticsMap() {
     return differentRegionGroupStatisticsMap;
   }
 
-  public Map<TConsensusGroupId, Pair<ConsensusGroupStatistics, ConsensusGroupStatistics>> getDifferentConsensusGroupStatisticsMap() {
+  public Map<TConsensusGroupId, Pair<ConsensusGroupStatistics, ConsensusGroupStatistics>>
+      getDifferentConsensusGroupStatisticsMap() {
     return differentConsensusGroupStatisticsMap;
   }
 }
