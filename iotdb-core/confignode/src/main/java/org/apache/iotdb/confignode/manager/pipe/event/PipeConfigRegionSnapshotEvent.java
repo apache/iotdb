@@ -66,7 +66,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
         Collections.unmodifiableSet(
             new HashSet<>(
                 Arrays.asList(
-                    ConfigPhysicalPlanType.CreateUser.getPlanType(),
+                    ConfigPhysicalPlanType.CreateUserWithRawPassword.getPlanType(),
                     ConfigPhysicalPlanType.GrantUser.getPlanType()))));
     SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
         CNSnapshotFileType.USER_ROLE,
