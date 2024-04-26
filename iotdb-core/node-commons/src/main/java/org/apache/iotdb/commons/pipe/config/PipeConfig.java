@@ -189,6 +189,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMaxAllowedLinkedTsFileCount();
   }
 
+  public float getPipeMaxAllowedLinkedTsFileDiskUsagePercentage() {
+    return COMMON_CONFIG.getPipeMaxAllowedLinkedTsFileDiskUsagePercentage();
+  }
+
   public long getPipeStuckRestartIntervalSeconds() {
     return COMMON_CONFIG.getPipeStuckRestartIntervalSeconds();
   }

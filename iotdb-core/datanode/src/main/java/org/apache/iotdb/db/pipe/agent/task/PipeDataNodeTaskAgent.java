@@ -31,6 +31,8 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -50,6 +52,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSc
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
@@ -335,7 +339,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         if ((CONFIG.isEnableSeqSpaceCompaction()
                 || CONFIG.isEnableUnseqSpaceCompaction()
                 || CONFIG.isEnableCrossSpaceCompaction())
-            && mayDeletedTsFilePinnedCountReachDangerousThreshold()) {
+            && mayDeletedTsFileSizeReachDangerousThreshold()) {
           LOGGER.warn(
               "Pipe {} may need to restart because too many TsFiles are out-of-date.",
               pipeMeta.getStaticMeta());
@@ -358,10 +362,23 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         >= 10 * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
   }
 
-  private boolean mayDeletedTsFilePinnedCountReachDangerousThreshold() {
-    return PipeResourceManager.tsfile().getLinkedButDeletedTsfileCount()
-        >= StorageEngine.getInstance().getAllDataRegionIds().size()
-            * PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
+  private boolean mayDeletedTsFileSizeReachDangerousThreshold() {
+    long linkedButDeletedTsFileSize = PipeResourceManager.tsfile().getLinkedButDeletedTsfileSize();
+    double totalDisk =
+        MetricService.getInstance()
+            .getAutoGauge(
+                SystemMetric.SYS_DISK_TOTAL_SPACE.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                // This "system" should stay the same with the one in
+                // DataNodeInternalRPCServiceImpl.
+                "system")
+            .getValue();
+    if (linkedButDeletedTsFileSize > 0 && totalDisk != 0) {
+      return linkedButDeletedTsFileSize
+          > PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileDiskUsagePercentage() * totalDisk;
+    }
+    return false;
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {

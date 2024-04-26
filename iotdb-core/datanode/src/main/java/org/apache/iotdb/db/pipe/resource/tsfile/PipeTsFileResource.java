@@ -48,16 +48,18 @@ public class PipeTsFileResource implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResource.class);
 
+  public static final long TSFILE_MIN_TIME_TO_LIVE_IN_MS = 1000L * 20;
+  private static final float MEMORY_SUFFICIENT_THRESHOLD = 0.5f;
+
   private final File hardlinkOrCopiedFile;
   private final boolean isTsFile;
   /** this TsFileResource is used to track the {@link TsFileResourceStatus} of original TsFile. * */
   private final TsFileResource tsFileResource;
 
-  public static final long TSFILE_MIN_TIME_TO_LIVE_IN_MS = 1000L * 20;
+  private volatile long fileSize = -1L;
+
   private final AtomicInteger referenceCount;
   private final AtomicLong lastUnpinToZeroTime;
-
-  private static final float MEMORY_SUFFICIENT_THRESHOLD = 0.5f;
   private PipeMemoryBlock allocatedMemoryBlock;
   private Map<IDeviceID, List<String>> deviceMeasurementsMap = null;
   private Map<IDeviceID, Boolean> deviceIsAlignedMap = null;
@@ -75,6 +77,17 @@ public class PipeTsFileResource implements AutoCloseable {
 
   public File getFile() {
     return hardlinkOrCopiedFile;
+  }
+
+  public long getFileSize() {
+    if (fileSize == -1L) {
+      synchronized (this) {
+        if (fileSize == -1L) {
+          fileSize = hardlinkOrCopiedFile.length();
+        }
+      }
+    }
+    return fileSize;
   }
 
   public boolean isOriginalTsFileDeleted() {

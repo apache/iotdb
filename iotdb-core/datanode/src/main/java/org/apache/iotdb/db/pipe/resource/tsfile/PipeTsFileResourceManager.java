@@ -338,18 +338,17 @@ public class PipeTsFileResourceManager {
   }
 
   /**
-   * Get the count of linked TsFiles whose original TsFile is already deleted (by compaction or
-   * else)
+   * Get the total size of linked TsFiles whose original TsFile is deleted (by compaction or else)
    */
-  public int getLinkedButDeletedTsfileCount() {
+  public long getLinkedButDeletedTsfileSize() {
     lock.lock();
     try {
-      return (int)
-          hardlinkOrCopiedFileToPipeTsFileResourceMap
-              .values()
-              .parallelStream()
-              .filter(PipeTsFileResource::isOriginalTsFileDeleted)
-              .count();
+      return hardlinkOrCopiedFileToPipeTsFileResourceMap
+          .values()
+          .parallelStream()
+          .filter(PipeTsFileResource::isOriginalTsFileDeleted)
+          .mapToLong(PipeTsFileResource::getFileSize)
+          .sum();
     } finally {
       lock.unlock();
     }
