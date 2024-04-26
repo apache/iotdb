@@ -90,6 +90,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1007,7 +1008,7 @@ public class PartitionManager {
    * @return SeriesPartitionSlot
    */
   public TSeriesPartitionSlot getSeriesPartitionSlot(String devicePath) {
-    return executor.getSeriesPartitionSlot(devicePath);
+    return executor.getSeriesPartitionSlot(StringArrayDeviceID.getFACTORY().create(devicePath));
   }
 
   public RegionInfoListResp getRegionInfoList(GetRegionInfoListPlan req) {
@@ -1083,7 +1084,9 @@ public class PartitionManager {
       plan.setDatabase(req.getDatabase());
     } else {
       plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
-      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      plan.setSeriesSlotId(
+          executor.getSeriesPartitionSlot(
+              StringArrayDeviceID.getFACTORY().create(req.getDevice())));
     }
     if (Objects.equals(plan.getDatabase(), "")) {
       // Return empty result if Database not specified
@@ -1118,7 +1121,9 @@ public class PartitionManager {
       plan.setDatabase(req.getDatabase());
     } else if (req.isSetDevice()) {
       plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
-      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      plan.setSeriesSlotId(
+          executor.getSeriesPartitionSlot(
+              StringArrayDeviceID.getFACTORY().create(req.getDevice())));
       if (Objects.equals(plan.getDatabase(), "")) {
         // Return empty result if Database not specified
         return new GetTimeSlotListResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
@@ -1145,7 +1150,9 @@ public class PartitionManager {
       plan.setDatabase(req.getDatabase());
     } else if (req.isSetDevice()) {
       plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
-      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      plan.setSeriesSlotId(
+          executor.getSeriesPartitionSlot(
+              StringArrayDeviceID.getFACTORY().create(req.getDevice())));
       if (Objects.equals(plan.getDatabase(), "")) {
         // Return empty result if Database not specified
         return new CountTimeSlotListResp(RpcUtils.SUCCESS_STATUS, 0);

@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -66,7 +68,8 @@ public class SchemaPartition extends Partition {
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
     String storageGroup = getStorageGroupByDevice(deviceName);
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    TSeriesPartitionSlot seriesPartitionSlot =
+        calculateDeviceGroupId(StringArrayDeviceID.getFACTORY().create(deviceName));
     if (schemaPartitionMap.get(storageGroup) == null) {
       throw new RuntimeException(
           new IoTDBException("Path does not exist. ", TSStatusCode.PATH_NOT_EXIST.getStatusCode()));

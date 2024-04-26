@@ -16,26 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.partition.executor.hash;
+
+package org.apache.iotdb.commons.partition.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
-public class SDBMHashExecutor extends SeriesPartitionExecutor {
+import org.apache.tsfile.file.metadata.IDeviceID;
 
-  public SDBMHashExecutor(int deviceGroupCount) {
+public class HashExecutor extends SeriesPartitionExecutor {
+
+  private static final int SEED = 131;
+  private static final char PATH_SEPARATOR = '.';
+
+  public HashExecutor(int deviceGroupCount) {
     super(deviceGroupCount);
   }
 
   @Override
-  public TSeriesPartitionSlot getSeriesPartitionSlot(String device) {
-    int hash = 0;
-
-    for (int i = 0; i < device.length(); i++) {
-      hash = ((int) device.charAt(i) + (hash << 6) + (hash << 16) - hash);
+  public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {
+    int hash = 0, segmentNum = deviceID.segmentNum();
+    for (int segmentID = 0; segmentID < segmentNum; segmentID++) {
+      String segment = (String) deviceID.segment(segmentID);
+      for (int i = 0; i < segment.length(); i++) {
+        hash = hash * SEED + segment.charAt(i);
+      }
+      if (segmentID < segmentNum - 1) {
+        hash = hash * SEED + PATH_SEPARATOR;
+      }
     }
     hash &= Integer.MAX_VALUE;
-
     return new TSeriesPartitionSlot(hash % seriesPartitionSlotNum);
   }
 }

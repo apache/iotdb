@@ -76,7 +76,7 @@ public class ConfigNodeConfig {
 
   /** SeriesPartitionSlot executor class. */
   private String seriesPartitionExecutorClass =
-      "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
+      "org.apache.iotdb.commons.partition.executor.HashExecutor";
 
   /** The policy of extension SchemaRegionGroup for each Database. */
   private RegionGroupExtensionPolicy schemaRegionGroupExtensionPolicy =

@@ -16,9 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.partition.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -36,7 +39,7 @@ public abstract class SeriesPartitionExecutor {
     this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
-  public abstract TSeriesPartitionSlot getSeriesPartitionSlot(String device);
+  public abstract TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID);
 
   public static SeriesPartitionExecutor getSeriesPartitionExecutor(
       String executorName, int seriesPartitionSlotNum) {

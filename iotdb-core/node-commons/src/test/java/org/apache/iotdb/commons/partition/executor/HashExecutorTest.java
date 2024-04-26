@@ -16,28 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.partition.executor.hash;
+
+package org.apache.iotdb.commons.partition.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
-public class BKDRHashExecutor extends SeriesPartitionExecutor {
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.junit.Assert;
+import org.junit.Test;
+
+public class HashExecutorTest {
 
   private static final int SEED = 131;
+  private static final String PATH_PREFIX = "root.db.d";
+  private static final int TEST_SERIES_SLOT_NUM = 1000;
+  private static final HashExecutor EXECUTOR = new HashExecutor(TEST_SERIES_SLOT_NUM);
 
-  public BKDRHashExecutor(int deviceGroupCount) {
-    super(deviceGroupCount);
+  @Test
+  public void hashExecutorCompatibleTest() {
+    for (int suffix = 0; suffix < 1000; suffix++) {
+      String device = PATH_PREFIX + suffix;
+      IDeviceID deviceID = StringArrayDeviceID.getFACTORY().create(PATH_PREFIX + suffix);
+      Assert.assertEquals(
+          oldVersionGetSeriesPartitionSlot(device), EXECUTOR.getSeriesPartitionSlot(deviceID));
+    }
   }
 
-  @Override
-  public TSeriesPartitionSlot getSeriesPartitionSlot(String device) {
+  private TSeriesPartitionSlot oldVersionGetSeriesPartitionSlot(String device) {
     int hash = 0;
-
     for (int i = 0; i < device.length(); i++) {
       hash = hash * SEED + (int) device.charAt(i);
     }
     hash &= Integer.MAX_VALUE;
-
-    return new TSeriesPartitionSlot(hash % seriesPartitionSlotNum);
+    return new TSeriesPartitionSlot(hash % TEST_SERIES_SLOT_NUM);
   }
 }
