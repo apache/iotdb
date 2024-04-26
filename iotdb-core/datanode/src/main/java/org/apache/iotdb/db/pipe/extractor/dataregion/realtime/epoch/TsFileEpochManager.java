@@ -30,11 +30,14 @@ import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class TsFileEpochManager {
 
@@ -93,6 +96,11 @@ public class TsFileEpochManager {
         .collect(
             Collectors.toMap(
                 insertRowNode -> insertRowNode.getDevicePath().getFullPath(),
-                InsertNode::getMeasurements));
+                InsertNode::getMeasurements,
+                (oldMeasurements, newMeasurements) ->
+                    Stream.of(Arrays.asList(oldMeasurements), Arrays.asList(newMeasurements))
+                        .flatMap(Collection::stream)
+                        .distinct()
+                        .toArray(String[]::new)));
   }
 }
