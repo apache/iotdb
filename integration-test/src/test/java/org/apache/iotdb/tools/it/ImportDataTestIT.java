@@ -74,7 +74,7 @@ public class ImportDataTestIT extends AbstractScript {
   @Override
   protected void testOnWindows() throws IOException {
     final String[] output = {
-      "The file name must end with \"csv\" or \"txt\"!",
+      "The file name must end with \"csv\" or \"txt\" or \"sql\"!",
     };
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -101,7 +101,7 @@ public class ImportDataTestIT extends AbstractScript {
   @Override
   protected void testOnUnix() throws IOException {
     final String[] output = {
-      "The file name must end with \"csv\" or \"txt\"!",
+      "The file name must end with \"csv\" or \"txt\" or \"sql\"!",
     };
     ProcessBuilder builder =
         new ProcessBuilder(

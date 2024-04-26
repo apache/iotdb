@@ -656,6 +656,7 @@ public class ProcedureManager {
             .getLocation();
     // select coordinator for adding peer
     RegionMaintainHandler handler = new RegionMaintainHandler(configManager);
+    // TODO: choose the DataNode which has lowest load
     final TDataNodeLocation coordinatorForAddPeer =
         handler
             .filterDataNodeWithOtherRegionReplica(
@@ -1154,7 +1155,7 @@ public class ProcedureManager {
       final Procedure<ConfigNodeProcedureEnv> finishedProcedure =
           executor.getResultOrProcedure(procedureId);
       if (!finishedProcedure.isFinished()) {
-        // the procedure is still executing
+        // The procedure is still executing
         statusList.add(
             RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK, PROCEDURE_TIMEOUT_MESSAGE));
         isSucceed = false;
