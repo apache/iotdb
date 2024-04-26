@@ -115,7 +115,8 @@ public class LoadTsFileScheduler implements IScheduler {
   private static final int TRANSMIT_LIMIT =
       CommonDescriptor.getInstance().getConfig().getTTimePartitionSlotTransmitLimit();
 
-  private static final ConcurrentMap<String, SyncObject> tsfileSyncMap = new ConcurrentHashMap<>();
+  private static final ConcurrentMap<String, SynchronizedObject> tsfileSyncMap =
+      new ConcurrentHashMap<>();
 
   private final MPPQueryContext queryContext;
   private final QueryStateMachine stateMachine;
@@ -126,6 +127,11 @@ public class LoadTsFileScheduler implements IScheduler {
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
   private final LoadTsFileDataCacheMemoryBlock block;
+
+  static class SynchronizedObject {
+    final Object lock = new Object();
+    final AtomicInteger refCount = new AtomicInteger(0);
+  }
 
   public LoadTsFileScheduler(
       DistributedQueryPlan distributedQueryPlan,
@@ -163,17 +169,17 @@ public class LoadTsFileScheduler implements IScheduler {
 
         tsfileSyncMap.compute(
             tsFilePath,
-            (key, syncObject) -> {
-              if (syncObject == null) {
-                syncObject = new SyncObject();
+            (key, synchronizedObject) -> {
+              if (synchronizedObject == null) {
+                synchronizedObject = new SynchronizedObject();
               }
-              syncObject.refCount.incrementAndGet();
-              return syncObject;
+              synchronizedObject.refCount.incrementAndGet();
+              return synchronizedObject;
             });
 
-        SyncObject syncObject = tsfileSyncMap.get(tsFilePath);
+        SynchronizedObject synchronizedObject = tsfileSyncMap.get(tsFilePath);
 
-        synchronized (syncObject.lock) {
+        synchronized (synchronizedObject.lock) {
           try {
             if (node.isTsFileEmpty()) {
               LOGGER.info("Load skip TsFile {}, because it has no data.", tsFilePath);
@@ -219,7 +225,7 @@ public class LoadTsFileScheduler implements IScheduler {
             stateMachine.transitionToFailed(e);
             LOGGER.warn("LoadTsFileScheduler loads TsFile {} error", tsFilePath, e);
           } finally {
-            if (syncObject.refCount.decrementAndGet() == 0) {
+            if (synchronizedObject.refCount.decrementAndGet() == 0) {
               tsfileSyncMap.remove(tsFilePath);
             }
           }
@@ -462,11 +468,6 @@ public class LoadTsFileScheduler implements IScheduler {
   public enum LoadCommand {
     EXECUTE,
     ROLLBACK
-  }
-
-  static class SyncObject {
-    final Object lock = new Object();
-    final AtomicInteger refCount = new AtomicInteger(0);
   }
 
   private static class TsFileDataManager {
