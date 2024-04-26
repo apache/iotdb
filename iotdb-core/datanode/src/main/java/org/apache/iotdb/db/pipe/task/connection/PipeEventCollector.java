@@ -83,8 +83,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   private void parseAndCollectEvent(PipeInsertNodeTabletInsertionEvent sourceEvent) {
     if (sourceEvent.shouldParseTimeOrPattern()) {
-      final PipeRawTabletInsertionEvent parsedEvent = sourceEvent.parseEventWithPatternOrTime();
-      if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
+      for (PipeRawTabletInsertionEvent parsedEvent : sourceEvent.toRawTabletInsertionEvents()) {
         collectEvent(parsedEvent);
       }
     } else {
