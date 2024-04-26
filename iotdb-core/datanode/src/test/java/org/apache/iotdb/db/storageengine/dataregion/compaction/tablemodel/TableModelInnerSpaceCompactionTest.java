@@ -164,6 +164,48 @@ public class TableModelInnerSpaceCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
+  public void testSequenceInnerSpaceCompactionOfTableModelAndTreeModel() throws IOException {
+    TsFileResource resource1 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource1)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    TsFileResource resource2 = createEmptyFileAndResource(true);
+    try (CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource2)) {
+      writer.registerTableSchema("t1", Arrays.asList("id1", "id2"));
+      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2"));
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqResources.add(resource1);
+    seqResources.add(resource2);
+    tsFileManager.addAll(seqResources, true);
+
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+    Assert.assertTrue(task.start());
+    TsFileResource targetResource = tsFileManager.getTsFileList(true).get(0);
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
+      TsFileMetadata tsFileMetadata = reader.readFileMetadata();
+      Assert.assertEquals(2, tsFileMetadata.getTableSchemaMap().size());
+    }
+  }
+
+  @Test
   public void testSequenceInnerSpaceCompactionOfTwoV4TreeModelCanNotMatch() throws IOException {
     TsFileResource resource1 = createEmptyFileAndResource(true);
     try (CompactionTableModelTestFileWriter writer =
