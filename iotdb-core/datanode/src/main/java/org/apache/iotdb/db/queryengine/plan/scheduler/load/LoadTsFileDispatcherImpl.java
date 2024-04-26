@@ -57,6 +57,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -77,6 +79,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   private final boolean isGeneratedByPipe;
 
   private static final String NODE_CONNECTION_ERROR = "can't connect to node {}";
+  private static final int LOCK_FILE_RETRY_TIME = 10;
 
   public LoadTsFileDispatcherImpl(
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
@@ -234,7 +237,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       final TsFileResource tsFileResource = ((LoadSingleTsFileNode) planNode).getTsFileResource();
       try {
         PipeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
-        tsFileResource.serialize();
+        serializeResource(tsFileResource);
 
         StorageEngine.getInstance()
             .getDataRegion((DataRegionId) groupId)
@@ -288,6 +291,38 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       }
     }
     return immediateFuture(new FragInstanceDispatchResult(true));
+  }
+
+  private void serializeResource(TsFileResource tsFileResource) throws IOException {
+    // add FileLock to avoid concurrent modification of the resource file by multiple threads
+    FileLock fileLock = null;
+    int retryNum = 0;
+    try (FileChannel fileChannel = FileChannel.open(tsFileResource.getTsFile().toPath())) {
+      while (fileLock == null) {
+        fileLock = fileChannel.tryLock();
+        if (fileLock == null) {
+          if (retryNum++ >= LOCK_FILE_RETRY_TIME) {
+            throw new IOException(
+                String.format(
+                    "Failed to lock the resource file for tsfile %s after %d retries",
+                    tsFileResource.getTsFile().getName(), LOCK_FILE_RETRY_TIME));
+          }
+          Thread.sleep(100L * retryNum);
+        }
+      }
+
+      tsFileResource.serialize();
+    } catch (InterruptedException e) {
+      LOGGER.error(
+          "Failed to lock the resource file for tsfile {}.",
+          tsFileResource.getTsFile().getName(),
+          e);
+      Thread.currentThread().interrupt();
+    } finally {
+      if (fileLock != null) {
+        fileLock.release();
+      }
+    }
   }
 
   @Override
