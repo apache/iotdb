@@ -63,8 +63,8 @@ public class TableModelInnerSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource resource1 = createEmptyFileAndResource(true);
     try (CompactionTableModelTestFileWriter writer =
         new CompactionTableModelTestFileWriter(resource1)) {
-      writer.startChunkGroup(
-          "t1", Arrays.asList("id1", "id2"), Arrays.asList("id_field1", "id_field2"));
+      writer.registerTableSchema("t1", Arrays.asList("id1", "id2"));
+      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2"));
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
@@ -76,10 +76,8 @@ public class TableModelInnerSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource resource2 = createEmptyFileAndResource(true);
     try (CompactionTableModelTestFileWriter writer =
         new CompactionTableModelTestFileWriter(resource2)) {
-      writer.startChunkGroup(
-          "t1",
-          Arrays.asList("id1", "id2", "id3"),
-          Arrays.asList("id_field1", "id_field2", "id_field3"));
+      writer.registerTableSchema("t1", Arrays.asList("id1", "id2", "id3"));
+      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2", "id_field3"));
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
@@ -170,8 +168,8 @@ public class TableModelInnerSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource resource1 = createEmptyFileAndResource(true);
     try (CompactionTableModelTestFileWriter writer =
         new CompactionTableModelTestFileWriter(resource1)) {
-      writer.startChunkGroup(
-          "t1", Arrays.asList("id1", "id2"), Arrays.asList("id_field1", "id_field2"));
+      writer.registerTableSchema("t1", Arrays.asList("id1", "id2"));
+      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2"));
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
@@ -183,8 +181,8 @@ public class TableModelInnerSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource resource2 = createEmptyFileAndResource(true);
     try (CompactionTableModelTestFileWriter writer =
         new CompactionTableModelTestFileWriter(resource2)) {
-      writer.startChunkGroup(
-          "t1", Arrays.asList("id1", "id3"), Arrays.asList("id_field1", "id_field3"));
+      writer.registerTableSchema("t1", Arrays.asList("id1", "id3"));
+      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field3"));
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
