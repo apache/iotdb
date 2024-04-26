@@ -425,6 +425,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         alignedChunkMetadataList, modificationForCurDevice);
   }
 
+  public Map<TsFileResource, TsFileSequenceReader> getReaderMap() {
+    return readerMap;
+  }
+
   @Override
   public void close() throws IOException {
     for (TsFileSequenceReader reader : readerMap.values()) {

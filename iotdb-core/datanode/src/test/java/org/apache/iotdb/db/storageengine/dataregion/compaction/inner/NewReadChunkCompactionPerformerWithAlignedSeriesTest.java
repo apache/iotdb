@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionC
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
@@ -45,6 +46,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -81,6 +83,27 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
     TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(originTargetPageSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(originTargetPagePointNum);
+  }
+
+  @Test
+  public void testTableModel()
+      throws IOException, PageException, StorageEngineException, InterruptedException,
+          MetadataException {
+    File v3TsFile = new File("/Users/shuww/0425/test2/0-19-0-0.tsfile");
+    TsFileResource resource1 = new TsFileResource(v3TsFile);
+    resource1.setStatusForTest(TsFileResourceStatus.COMPACTION_CANDIDATE);
+    resource1.deserialize();
+    seqResources.add(resource1);
+    tsFileManager.addAll(seqResources, true);
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
+
+    ReadChunkCompactionPerformer performer = new ReadChunkCompactionPerformer();
+    CompactionTaskSummary summary = new CompactionTaskSummary();
+    performer.setSummary(summary);
+    performer.setSourceFiles(seqResources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
+    performer.perform();
   }
 
   @Test
