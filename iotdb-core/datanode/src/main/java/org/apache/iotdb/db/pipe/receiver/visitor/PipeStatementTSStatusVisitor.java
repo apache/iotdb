@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -45,6 +48,9 @@ import org.apache.iotdb.rpc.TSStatusCode;
  * the processes that generate the following {@link TSStatus}es in the class.
  */
 public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSStatus> {
+
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   @Override
   public TSStatus visitNode(final StatementNode node, final TSStatus context) {
     return context;
@@ -80,6 +86,12 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     } else if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
+      if (context.getMessage().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING)
+          && config.isEnablePartialInsert()) {
+        return new TSStatus(
+                TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+            .setMessage(context.getMessage());
+      }
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
