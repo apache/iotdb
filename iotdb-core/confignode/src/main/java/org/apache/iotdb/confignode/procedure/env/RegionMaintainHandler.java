@@ -450,6 +450,7 @@ public class RegionMaintainHandler {
     configManager
         .getLoadManager()
         .forceRemoveRegionCache(regionId, deprecatedLocation.getDataNodeId());
+    configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
   }
 
   /**
@@ -683,7 +684,8 @@ public class RegionMaintainHandler {
           break;
         }
         if (retryTime++ > MAX_RETRY_TIME) {
-          throw new ProcedureException("Transfer leader fail");
+          LOGGER.warn("[RemoveRegion] Ratis transfer leader fail, but procedure will continue.");
+          return;
         }
         LOGGER.warn("Call changeRegionLeader fail for the {} time", retryTime);
       }
@@ -695,8 +697,7 @@ public class RegionMaintainHandler {
             Collections.singletonMap(
                 regionId,
                 new ConsensusGroupHeartbeatSample(timestamp, newLeaderNode.get().getDataNodeId())));
-    configManager.getLoadManager().getRouteBalancer().balanceRegionLeader();
-    configManager.getLoadManager().getRouteBalancer().balanceRegionPriority();
+    configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
 
     LOGGER.info(
         "{}, Change region leader finished, regionId: {}, newLeaderNode: {}",
@@ -738,8 +739,7 @@ public class RegionMaintainHandler {
         configManager.getNodeManager().filterDataNodeThroughStatus(allowingStatus).stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
-
-    // TODO return the node which has lowest load.
+    Collections.shuffle(aliveDataNodes);
     for (TDataNodeLocation aliveDataNode : aliveDataNodes) {
       if (regionLocations.contains(aliveDataNode) && !aliveDataNode.equals(filterLocation)) {
         return Optional.of(aliveDataNode);

@@ -222,9 +222,7 @@ public class RegionMigrateService implements IService {
     private final Logger poolLogger = LoggerFactory.getLogger(RegionMigratePool.class);
 
     private RegionMigratePool() {
-      this.pool =
-          IoTDBThreadPoolFactory.newCachedThreadPool(
-              ThreadName.REGION_MIGRATE.getName(), Runtime.getRuntime().availableProcessors() / 2);
+      this.pool = IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.REGION_MIGRATE.getName());
     }
 
     @Override

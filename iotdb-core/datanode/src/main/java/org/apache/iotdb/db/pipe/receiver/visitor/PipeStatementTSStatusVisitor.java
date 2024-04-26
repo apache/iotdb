@@ -46,33 +46,40 @@ import org.apache.iotdb.rpc.TSStatusCode;
  */
 public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSStatus> {
   @Override
-  public TSStatus visitNode(StatementNode node, TSStatus context) {
+  public TSStatus visitNode(final StatementNode node, final TSStatus context) {
     return context;
   }
 
   @Override
-  public TSStatus visitInsertTablet(InsertTabletStatement insertTabletStatement, TSStatus context) {
+  public TSStatus visitInsertTablet(
+      final InsertTabletStatement insertTabletStatement, final TSStatus context) {
     return visitInsertBase(insertTabletStatement, context);
   }
 
   @Override
-  public TSStatus visitInsertRow(InsertRowStatement insertRowStatement, TSStatus context) {
+  public TSStatus visitInsertRow(
+      final InsertRowStatement insertRowStatement, final TSStatus context) {
     return visitInsertBase(insertRowStatement, context);
   }
 
   @Override
-  public TSStatus visitInsertRows(InsertRowsStatement insertRowsStatement, TSStatus context) {
+  public TSStatus visitInsertRows(
+      final InsertRowsStatement insertRowsStatement, final TSStatus context) {
     return visitInsertBase(insertRowsStatement, context);
   }
 
   @Override
   public TSStatus visitInsertMultiTablets(
-      InsertMultiTabletsStatement insertMultiTabletsStatement, TSStatus context) {
+      final InsertMultiTabletsStatement insertMultiTabletsStatement, final TSStatus context) {
     return visitInsertBase(insertMultiTabletsStatement, context);
   }
 
-  private TSStatus visitInsertBase(InsertBaseStatement insertBaseStatement, TSStatus context) {
-    if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
+  private TSStatus visitInsertBase(
+      final InsertBaseStatement insertBaseStatement, final TSStatus context) {
+    if (context.getCode() == TSStatusCode.OUT_OF_TTL.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    } else if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
@@ -80,17 +87,18 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   }
 
   @Override
-  public TSStatus visitCreateTimeseries(CreateTimeSeriesStatement statement, TSStatus context) {
+  public TSStatus visitCreateTimeseries(
+      final CreateTimeSeriesStatement statement, final TSStatus context) {
     return visitGeneralCreateTimeSeries(statement, context);
   }
 
   @Override
   public TSStatus visitCreateAlignedTimeseries(
-      CreateAlignedTimeSeriesStatement statement, TSStatus context) {
+      final CreateAlignedTimeSeriesStatement statement, final TSStatus context) {
     return visitGeneralCreateTimeSeries(statement, context);
   }
 
-  private TSStatus visitGeneralCreateTimeSeries(Statement statement, TSStatus context) {
+  private TSStatus visitGeneralCreateTimeSeries(final Statement statement, final TSStatus context) {
     if (context.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()
         || context.getCode() == TSStatusCode.ALIAS_ALREADY_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
@@ -106,28 +114,31 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
 
   @Override
   public TSStatus visitCreateMultiTimeseries(
-      CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, TSStatus context) {
+      final CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, final TSStatus context) {
     return visitGeneralCreateMultiTimeseries(createMultiTimeSeriesStatement, context);
   }
 
   @Override
   public TSStatus visitInternalCreateTimeseries(
-      InternalCreateTimeSeriesStatement internalCreateTimeSeriesStatement, TSStatus context) {
+      final InternalCreateTimeSeriesStatement internalCreateTimeSeriesStatement,
+      final TSStatus context) {
     return visitGeneralCreateMultiTimeseries(internalCreateTimeSeriesStatement, context);
   }
 
   @Override
   public TSStatus visitInternalCreateMultiTimeSeries(
-      InternalCreateMultiTimeSeriesStatement internalCreateMultiTimeSeriesStatement,
-      TSStatus context) {
+      final InternalCreateMultiTimeSeriesStatement internalCreateMultiTimeSeriesStatement,
+      final TSStatus context) {
     return visitGeneralCreateMultiTimeseries(internalCreateMultiTimeSeriesStatement, context);
   }
 
-  private TSStatus visitGeneralCreateMultiTimeseries(Statement statement, TSStatus context) {
+  private TSStatus visitGeneralCreateMultiTimeseries(
+      final Statement statement, final TSStatus context) {
     if (context.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-      for (TSStatus status : context.getSubStatus()) {
+      for (final TSStatus status : context.getSubStatus()) {
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            && status.getCode() != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
+            && status.getCode() != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()
+            && status.getCode() != TSStatusCode.ALIAS_ALREADY_EXIST.getStatusCode()) {
           if (status.getCode() == TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode()) {
             return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
                 .setMessage(context.getMessage());
@@ -146,7 +157,7 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
 
   @Override
   public TSStatus visitAlterTimeseries(
-      AlterTimeSeriesStatement alterTimeSeriesStatement, TSStatus context) {
+      final AlterTimeSeriesStatement alterTimeSeriesStatement, final TSStatus context) {
     if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
       if (context.getMessage().contains("already")) {
         return new TSStatus(
@@ -165,12 +176,12 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
 
   @Override
   public TSStatus visitCreateLogicalView(
-      CreateLogicalViewStatement createLogicalViewStatement, TSStatus context) {
+      final CreateLogicalViewStatement createLogicalViewStatement, final TSStatus context) {
     if (context.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     } else if (context.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-      for (TSStatus status : context.getSubStatus()) {
+      for (final TSStatus status : context.getSubStatus()) {
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
           return visitStatement(createLogicalViewStatement, context);
@@ -184,18 +195,18 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
 
   @Override
   public TSStatus visitActivateTemplate(
-      ActivateTemplateStatement activateTemplateStatement, TSStatus context) {
+      final ActivateTemplateStatement activateTemplateStatement, final TSStatus context) {
     return visitGeneralActivateTemplate(activateTemplateStatement, context);
   }
 
   @Override
   public TSStatus visitBatchActivateTemplate(
-      BatchActivateTemplateStatement batchActivateTemplateStatement, TSStatus context) {
+      final BatchActivateTemplateStatement batchActivateTemplateStatement, final TSStatus context) {
     return visitGeneralActivateTemplate(batchActivateTemplateStatement, context);
   }
 
   private TSStatus visitGeneralActivateTemplate(
-      Statement activateTemplateStatement, TSStatus context) {
+      final Statement activateTemplateStatement, final TSStatus context) {
     if (context.getCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
