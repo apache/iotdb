@@ -203,14 +203,14 @@ public class LoadTsFileScheduler implements IScheduler {
             if (isLoadSingleTsFileSuccess) {
               LOGGER.info(
                   "Load TsFile {} Successfully, load process [{}/{}]",
-                  node.getTsFileResource().getTsFilePath(),
+                  tsFilePath,
                   i + 1,
                   tsFileNodeListSize);
             } else {
               isLoadSuccess = false;
               LOGGER.warn(
                   "Can not Load TsFile {}, load process [{}/{}]",
-                  node.getTsFileResource().getTsFilePath(),
+                  tsFilePath,
                   i + 1,
                   tsFileNodeListSize);
             }
