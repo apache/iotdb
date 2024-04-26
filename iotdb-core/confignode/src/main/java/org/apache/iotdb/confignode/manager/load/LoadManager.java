@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
@@ -343,7 +344,7 @@ public class LoadManager {
             regionHeartbeatSampleMap.forEach(
                 (dataNodeId, regionHeartbeatSample) ->
                     loadCache.cacheRegionHeartbeatSample(
-                        regionGroupId, dataNodeId, regionHeartbeatSample, false)));
+                        regionGroupId, dataNodeId, regionHeartbeatSample, true)));
     loadCache.updateRegionGroupStatistics();
     eventService.checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
   }
@@ -362,7 +363,7 @@ public class LoadManager {
         regionGroupId,
         dataNodeId,
         new RegionHeartbeatSample(System.nanoTime(), regionStatus),
-        false);
+        true);
     loadCache.updateRegionGroupStatistics();
     eventService.checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
   }
@@ -391,6 +392,8 @@ public class LoadManager {
     routeBalancer.removeRegionPriority(consensusGroupId);
     loadCache.updateRegionGroupStatistics();
     eventService.checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
+    loadCache.updateConsensusGroupStatistics();
+    eventService.checkAndBroadcastConsensusGroupStatisticsChangeEventIfNecessary();
   }
 
   /**
@@ -458,5 +461,10 @@ public class LoadManager {
 
   public RouteBalancer getRouteBalancer() {
     return routeBalancer;
+  }
+
+  @TestOnly
+  public EventService getEventService() {
+    return eventService;
   }
 }
