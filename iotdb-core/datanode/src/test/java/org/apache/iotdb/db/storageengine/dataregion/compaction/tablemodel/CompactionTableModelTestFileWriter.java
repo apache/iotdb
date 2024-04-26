@@ -47,23 +47,25 @@ public class CompactionTableModelTestFileWriter extends CompactionTestFileWriter
     fileWriter.setSchema(schema);
   }
 
-  public IDeviceID startChunkGroup(String tableName, List<String> idFields) throws IOException {
+  public IDeviceID startChunkGroup(
+      String tableName, List<String> idColumnNames, List<String> idColumnFields)
+      throws IOException {
     CompactionTableSchema tableSchema = new CompactionTableSchema(tableName);
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     List<ColumnType> columnTypes = new ArrayList<>();
-    for (String idField : idFields) {
+    for (String idColumnName : idColumnNames) {
       measurementSchemas.add(
           new MeasurementSchema(
-              idField, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+              idColumnName, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
       columnTypes.add(ColumnType.ID);
     }
     tableSchema.merge(new TableSchema(tableName, measurementSchemas, columnTypes));
     schema.registerTableSchema(tableSchema);
 
     int idx = 0;
-    String[] segments = new String[idFields.size() + 1];
+    String[] segments = new String[idColumnNames.size() + 1];
     segments[idx++] = tableName;
-    for (String idField : idFields) {
+    for (String idField : idColumnFields) {
       segments[idx++] = idField;
     }
     currentDeviceId = new StringArrayDeviceID(segments);
