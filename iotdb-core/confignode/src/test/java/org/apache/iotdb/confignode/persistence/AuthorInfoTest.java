@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
@@ -1019,5 +1020,25 @@ public class AuthorInfoTest {
         }
       }
     }
+  }
+
+  @Test
+  public void createUserWithRawPassword() throws AuthException {
+    TSStatus status;
+    AuthorPlan authorPlan;
+    authorPlan =
+        new AuthorPlan(
+            ConfigPhysicalPlanType.CreateUserWithRawPassword,
+            "testuser",
+            "",
+            AuthUtils.encryptPassword("password"),
+            "",
+            new HashSet<>(),
+            false,
+            new ArrayList<>());
+    status = authorInfo.authorNonQuery(authorPlan);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    TPermissionInfoResp result = authorInfo.login("testuser", "password");
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getStatus().getCode());
   }
 }

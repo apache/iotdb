@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -180,6 +181,11 @@ public class RegionMigrateService implements IService {
       } else {
         SchemaRegionConsensusImpl.getInstance().resetPeerList(regionId, correctPeers);
       }
+    } catch (ConsensusGroupNotExistException e) {
+      LOGGER.warn(
+          "Reset peer list fail, this DataNode not contains peer of consensus group {}. Maybe caused by create local peer failure.",
+          regionId,
+          e);
     } catch (ConsensusException e) {
       LOGGER.error("reset peer list fail", e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -216,9 +222,7 @@ public class RegionMigrateService implements IService {
     private final Logger poolLogger = LoggerFactory.getLogger(RegionMigratePool.class);
 
     private RegionMigratePool() {
-      this.pool =
-          IoTDBThreadPoolFactory.newCachedThreadPool(
-              ThreadName.REGION_MIGRATE.getName(), Runtime.getRuntime().availableProcessors() / 2);
+      this.pool = IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.REGION_MIGRATE.getName());
     }
 
     @Override

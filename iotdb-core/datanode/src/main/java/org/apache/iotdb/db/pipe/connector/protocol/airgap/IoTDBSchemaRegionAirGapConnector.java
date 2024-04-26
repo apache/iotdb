@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -76,7 +77,9 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
       isSocketAlive.set(socketIndex, false);
 
       throw new PipeConnectionException(
-          String.format("Network error when transfer event %s, because %s.", event, e.getMessage()),
+          String.format(
+              "Network error when transfer event %s, because %s.",
+              ((EnrichedEvent) event).coreReportMessage(), e.getMessage()),
           e);
     }
   }
