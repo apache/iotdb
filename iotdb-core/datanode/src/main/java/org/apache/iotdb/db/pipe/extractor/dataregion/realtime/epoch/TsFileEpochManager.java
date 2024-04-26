@@ -103,9 +103,7 @@ public class TsFileEpochManager {
     }
     Map<String, String[]> device2MeasurementsArray = new HashMap<>();
     device2Measurements.forEach(
-        (k, v) -> {
-          device2MeasurementsArray.put(k, v.toArray(new String[0]));
-        });
+        (k, v) -> device2MeasurementsArray.put(k, v.toArray(new String[0])));
     return device2MeasurementsArray;
   }
 }
