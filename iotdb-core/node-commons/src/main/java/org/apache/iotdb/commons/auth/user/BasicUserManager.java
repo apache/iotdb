@@ -104,6 +104,7 @@ public abstract class BasicUserManager implements IUserManager {
       createUser(
           CommonDescriptor.getInstance().getConfig().getAdminName(),
           CommonDescriptor.getInstance().getConfig().getAdminPassword(),
+          true,
           true);
       setUserUseWaterMark(CommonDescriptor.getInstance().getConfig().getAdminName(), false);
     }
@@ -139,11 +140,14 @@ public abstract class BasicUserManager implements IUserManager {
   }
 
   @Override
-  public boolean createUser(String username, String password, boolean validCheck)
+  public boolean createUser(
+      String username, String password, boolean validCheck, boolean enableEncrypt)
       throws AuthException {
     if (validCheck) {
       AuthUtils.validateUsername(username);
-      AuthUtils.validatePassword(password);
+      if (enableEncrypt) {
+        AuthUtils.validatePassword(password);
+      }
     }
 
     User user = getUser(username);
@@ -152,7 +156,7 @@ public abstract class BasicUserManager implements IUserManager {
     }
     lock.writeLock(username);
     try {
-      user = new User(username, AuthUtils.encryptPassword(password));
+      user = new User(username, enableEncrypt ? AuthUtils.encryptPassword(password) : password);
       userMap.put(username, user);
       return true;
     } finally {
@@ -389,5 +393,11 @@ public abstract class BasicUserManager implements IUserManager {
         (rolename, user) -> {
           AuthUtils.checkAndRefreshPri(user);
         });
+  }
+
+  @TestOnly
+  public boolean createUser(String username, String password, boolean validCheck)
+      throws AuthException {
+    return createUser(username, password, validCheck, true);
   }
 }

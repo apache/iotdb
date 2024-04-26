@@ -670,12 +670,9 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return Deep copy of all Regions' RegionReplicaSet
    */
   public List<TRegionReplicaSet> getAllReplicaSets() {
-    List<TRegionReplicaSet> result = new ArrayList<>();
-    databasePartitionTables
-        .values()
-        .forEach(
-            databasePartitionTable -> result.addAll(databasePartitionTable.getAllReplicaSets()));
-    return result;
+    return databasePartitionTables.values().stream()
+        .flatMap(DatabasePartitionTable::getAllReplicaSets)
+        .collect(Collectors.toList());
   }
 
   /**
@@ -705,7 +702,7 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public List<TRegionReplicaSet> getAllReplicaSets(String database) {
     if (databasePartitionTables.containsKey(database)) {
-      return databasePartitionTables.get(database).getAllReplicaSets();
+      return databasePartitionTables.get(database).getAllReplicaSets().collect(Collectors.toList());
     } else {
       return Collections.emptyList();
     }

@@ -113,7 +113,10 @@ public class ConfigRegionListeningFilter {
 
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.create"),
-          Collections.singletonList(ConfigPhysicalPlanType.CreateUser));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.CreateUser,
+                  ConfigPhysicalPlanType.CreateUserWithRawPassword)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.alter"),
           Collections.singletonList(ConfigPhysicalPlanType.UpdateUser));
