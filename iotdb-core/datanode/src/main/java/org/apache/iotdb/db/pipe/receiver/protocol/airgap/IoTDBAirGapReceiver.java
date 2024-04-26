@@ -82,7 +82,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
           "Pipe air gap receiver {} closed because socket is closed. Socket: {}",
           receiverId,
           socket);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Pipe air gap receiver {} closed because of exception. Socket: {}",
           receiverId,
