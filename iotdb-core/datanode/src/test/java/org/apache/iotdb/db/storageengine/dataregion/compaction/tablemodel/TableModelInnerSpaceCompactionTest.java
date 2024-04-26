@@ -145,10 +145,10 @@ public class TableModelInnerSpaceCompactionTest extends AbstractCompactionTest {
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
-    //    Assert.assertTrue(task.start());
+    Assert.assertTrue(task.start());
     TsFileResource targetResource = tsFileManager.getTsFileList(true).get(0);
     try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(resource1.getTsFile().getAbsolutePath())) {
+        new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
       TableSchema tableSchema = tsFileMetadata.getTableSchemaMap().get("root.testsg");
       Assert.assertEquals(2, tableSchema.getColumnTypes().size());
