@@ -87,10 +87,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -111,6 +114,8 @@ public class LoadTsFileScheduler implements IScheduler {
       IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() >> 2;
   private static final int TRANSMIT_LIMIT =
       CommonDescriptor.getInstance().getConfig().getTTimePartitionSlotTransmitLimit();
+
+  private static final ConcurrentMap<String, SyncObject> tsfileSyncMap = new ConcurrentHashMap<>();
 
   private final MPPQueryContext queryContext;
   private final QueryStateMachine stateMachine;
@@ -153,13 +158,8 @@ public class LoadTsFileScheduler implements IScheduler {
 
       for (int i = 0; i < tsFileNodeListSize; ++i) {
         LoadSingleTsFileNode node = tsFileNodeList.get(i);
+        String tsFilePath = node.getTsFileResource().getTsFilePath();
         boolean isLoadSingleTsFileSuccess = true;
-        try {
-          if (node.isTsFileEmpty()) {
-            LOGGER.info(
-                "Load skip TsFile {}, because it has no data.",
-                node.getTsFileResource().getTsFilePath());
-
           } else if (!node.needDecodeTsFile(
               slotList ->
                   partitionFetcher.queryDataPartition(
@@ -180,35 +180,63 @@ public class LoadTsFileScheduler implements IScheduler {
             node.clean();
             if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
               isLoadSingleTsFileSuccess = false;
+
+        synchronized (syncObject.lock) {
+          try {
+            if (node.isTsFileEmpty()) {
+              LOGGER.info("Load skip TsFile {}, because it has no data.", tsFilePath);
+            } else if (!node.needDecodeTsFile(
+                slotList ->
+                    partitionFetcher.queryDataPartition(
+                        slotList, queryContext.getSession().getUserName()))) {
+              // do not decode, load locally
+              isLoadSingleTsFileSuccess = loadLocally(node);
+              node.clean();
+
+            } else {
+              // need decode, load locally or remotely, use two phases method
+              String uuid = UUID.randomUUID().toString();
+              dispatcher.setUuid(uuid);
+              allReplicaSets.clear();
+
+              boolean isFirstPhaseSuccess = firstPhase(node);
+              boolean isSecondPhaseSuccess =
+                  secondPhase(isFirstPhaseSuccess, uuid, node.getTsFileResource());
+
+              node.clean();
+              if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
+                isLoadSingleTsFileSuccess = false;
+              }
+            }
+            if (isLoadSingleTsFileSuccess) {
+              LOGGER.info(
+                  "Load TsFile {} Successfully, load process [{}/{}]",
+                  node.getTsFileResource().getTsFilePath(),
+                  i + 1,
+                  tsFileNodeListSize);
+            } else {
+              isLoadSuccess = false;
+              LOGGER.warn(
+                  "Can not Load TsFile {}, load process [{}/{}]",
+                  node.getTsFileResource().getTsFilePath(),
+                  i + 1,
+                  tsFileNodeListSize);
+            }
+          } catch (Exception e) {
+            isLoadSuccess = false;
+            stateMachine.transitionToFailed(e);
+            LOGGER.warn("LoadTsFileScheduler loads TsFile {} error", tsFilePath, e);
+          } finally {
+            if (syncObject.refCount.decrementAndGet() == 0) {
+              tsfileSyncMap.remove(tsFilePath);
             }
           }
-          if (isLoadSingleTsFileSuccess) {
-            LOGGER.info(
-                "Load TsFile {} Successfully, load process [{}/{}]",
-                node.getTsFileResource().getTsFilePath(),
-                i + 1,
-                tsFileNodeListSize);
-          } else {
-            isLoadSuccess = false;
-            LOGGER.warn(
-                "Can not Load TsFile {}, load process [{}/{}]",
-                node.getTsFileResource().getTsFilePath(),
-                i + 1,
-                tsFileNodeListSize);
-          }
-        } catch (Exception e) {
-          isLoadSuccess = false;
-          stateMachine.transitionToFailed(e);
-          LOGGER.warn(
-              "LoadTsFileScheduler loads TsFile {} error",
-              node.getTsFileResource().getTsFilePath(),
-              e);
         }
       }
+
       if (isLoadSuccess) {
         stateMachine.transitionToFinished();
       }
-
     } finally {
       LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
     }
@@ -442,6 +470,11 @@ public class LoadTsFileScheduler implements IScheduler {
   public enum LoadCommand {
     EXECUTE,
     ROLLBACK
+  }
+
+  static class SyncObject {
+    final Object lock = new Object();
+    final AtomicInteger refCount = new AtomicInteger(0);
   }
 
   private static class TsFileDataManager {
