@@ -23,7 +23,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -31,12 +30,8 @@ import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
@@ -94,16 +89,10 @@ public class TsFileEpochManager {
 
   private Map<String, String[]> getDevice2MeasurementsMapFromInsertRowsNode(
       InsertRowsNode insertRowsNode) {
-    Map<String, Set<String>> device2Measurements = new HashMap<>();
-    for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
-      Set<String> measurementSet =
-          device2Measurements.computeIfAbsent(
-              insertRowNode.getDevicePath().getFullPath(), k -> new HashSet<>());
-      measurementSet.addAll(Arrays.asList(insertRowNode.getMeasurements()));
-    }
-    Map<String, String[]> device2MeasurementsArray = new HashMap<>();
-    device2Measurements.forEach(
-        (k, v) -> device2MeasurementsArray.put(k, v.toArray(new String[0])));
-    return device2MeasurementsArray;
+    return insertRowsNode.getInsertRowNodeList().stream()
+        .collect(
+            Collectors.toMap(
+                insertRowNode -> insertRowNode.getDevicePath().getFullPath(),
+                InsertNode::getMeasurements));
   }
 }
