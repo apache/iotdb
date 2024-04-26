@@ -237,7 +237,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       final TsFileResource tsFileResource = ((LoadSingleTsFileNode) planNode).getTsFileResource();
       try {
         PipeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
-        serializeResource(tsFileResource);
+        tsFileResource.serialize();
 
         StorageEngine.getInstance()
             .getDataRegion((DataRegionId) groupId)
@@ -291,38 +291,6 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       }
     }
     return immediateFuture(new FragInstanceDispatchResult(true));
-  }
-
-  private void serializeResource(TsFileResource tsFileResource) throws IOException {
-    // add FileLock to avoid concurrent modification of the resource file by multiple threads
-    FileLock fileLock = null;
-    int retryNum = 0;
-    try (FileChannel fileChannel = FileChannel.open(tsFileResource.getTsFile().toPath())) {
-      while (fileLock == null) {
-        fileLock = fileChannel.tryLock();
-        if (fileLock == null) {
-          if (retryNum++ >= LOCK_FILE_RETRY_TIME) {
-            throw new IOException(
-                String.format(
-                    "Failed to lock the resource file for tsfile %s after %d retries",
-                    tsFileResource.getTsFile().getName(), LOCK_FILE_RETRY_TIME));
-          }
-          Thread.sleep(100L * retryNum);
-        }
-      }
-
-      tsFileResource.serialize();
-    } catch (InterruptedException e) {
-      LOGGER.error(
-          "Failed to lock the resource file for tsfile {}.",
-          tsFileResource.getTsFile().getName(),
-          e);
-      Thread.currentThread().interrupt();
-    } finally {
-      if (fileLock != null) {
-        fileLock.release();
-      }
-    }
   }
 
   @Override
