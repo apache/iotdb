@@ -65,10 +65,6 @@ public class PipeConnectorConstant {
   public static final String SINK_IOTDB_BATCH_SIZE_KEY = "sink.batch.size-bytes";
   public static final long CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE = 16 * MB;
 
-  public static final String CONNECTOR_IOTDB_PARTIAL_INSERT_KEY = "connector.partial-insert";
-  public static final String SINK_IOTDB_PARTIAL_INSERT_KEY = "sink.partial-insert";
-  public static final boolean CONNECTOR_IOTDB_PARTIAL_INSERT_DEFAULT_VALUE = false;
-
   public static final String CONNECTOR_IOTDB_USER_KEY = "connector.user";
   public static final String SINK_IOTDB_USER_KEY = "sink.user";
   public static final String CONNECTOR_IOTDB_USER_DEFAULT_VALUE = "root";
