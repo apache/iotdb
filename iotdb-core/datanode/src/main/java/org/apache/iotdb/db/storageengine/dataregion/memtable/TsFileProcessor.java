@@ -366,17 +366,18 @@ public class TsFileProcessor {
     }
 
     startTime = System.nanoTime();
+
+    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
+    if (!insertRowsNode.isGeneratedByPipe()) {
+      workMemTable.markAsNotGeneratedByPipe();
+    }
+    PipeInsertionDataNodeListener.getInstance()
+        .listenToInsertNode(
+            dataRegionInfo.getDataRegion().getDataRegionId(),
+            walFlushListener.getWalEntryHandler(),
+            insertRowsNode,
+            tsFileResource);
     for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
-      PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
-      if (!insertRowNode.isGeneratedByPipe()) {
-        workMemTable.markAsNotGeneratedByPipe();
-      }
-      PipeInsertionDataNodeListener.getInstance()
-          .listenToInsertNode(
-              dataRegionInfo.getDataRegion().getDataRegionId(),
-              walFlushListener.getWalEntryHandler(),
-              insertRowNode,
-              tsFileResource);
 
       if (insertRowNode.isAligned()) {
         workMemTable.insertAlignedRow(insertRowNode);
@@ -391,9 +392,8 @@ public class TsFileProcessor {
       if (!sequence) {
         tsFileResource.updateEndTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
       }
-
-      tsFileResource.updateProgressIndex(insertRowNode.getProgressIndex());
     }
+    tsFileResource.updateProgressIndex(insertRowsNode.getProgressIndex());
     // recordScheduleMemTableCost
     costsForMetrics[3] += System.nanoTime() - startTime;
   }
