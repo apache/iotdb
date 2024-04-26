@@ -160,26 +160,18 @@ public class LoadTsFileScheduler implements IScheduler {
         LoadSingleTsFileNode node = tsFileNodeList.get(i);
         String tsFilePath = node.getTsFileResource().getTsFilePath();
         boolean isLoadSingleTsFileSuccess = true;
-          } else if (!node.needDecodeTsFile(
-              slotList ->
-                  partitionFetcher.queryDataPartition(
-                      slotList,
-                      queryContext.getSession().getUserName()))) { // do not decode, load locally
-            isLoadSingleTsFileSuccess = loadLocally(node);
-            node.clean();
 
-          } else { // need decode, load locally or remotely, use two phases method
-            String uuid = UUID.randomUUID().toString();
-            dispatcher.setUuid(uuid);
-            allReplicaSets.clear();
+        tsfileSyncMap.compute(
+            tsFilePath,
+            (key, syncObject) -> {
+              if (syncObject == null) {
+                syncObject = new SyncObject();
+              }
+              syncObject.refCount.incrementAndGet();
+              return syncObject;
+            });
 
-            boolean isFirstPhaseSuccess = firstPhase(node);
-            boolean isSecondPhaseSuccess =
-                secondPhase(isFirstPhaseSuccess, uuid, node.getTsFileResource());
-
-            node.clean();
-            if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
-              isLoadSingleTsFileSuccess = false;
+        SyncObject syncObject = tsfileSyncMap.get(tsFilePath);
 
         synchronized (syncObject.lock) {
           try {
