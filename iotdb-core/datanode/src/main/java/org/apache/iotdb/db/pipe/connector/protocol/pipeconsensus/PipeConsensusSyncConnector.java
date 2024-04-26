@@ -21,12 +21,14 @@ package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.response.PipeConsensusTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.consensus.pipe.client.SyncPipeConsensusServiceClient;
 import org.apache.iotdb.consensus.pipe.client.manager.PipeConsensusSyncClientManager;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder.PipeConsensusSyncBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
@@ -50,7 +52,6 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.lang3.tuple.MutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,15 +60,28 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /** This connector is used for PipeConsensus to transfer queued event. */
 public class PipeConsensusSyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusSyncConnector.class);
 
+  private static final String PIPE_CONSENSUS_SYNC_CONNECTION_FAILED_FORMAT =
+      "PipeConsensus: syncClient connection to %s:%s failed when %s, because: %s";
+
+  private static final String TABLET_INSERTION_NODE_SCENARIO = "transfer insertionNode tablet";
+
+  private static final String TABLET_RAW_SCENARIO = "transfer raw tablet";
+
+  private static final String TSFILE_SCENARIO = "transfer tsfile";
+
+  private static final String TABLET_BATCH_SCENARIO = "transfer tablet batch";
+
   private final List<TEndPoint> peers;
 
-  private final PipeConsensusSyncClientManager syncRetryAndHandshakeClientManager;
+  private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient>
+      syncRetryAndHandshakeClientManager;
 
   private PipeConsensusSyncBatchReqBuilder tabletBatchBuilder;
 
@@ -76,7 +90,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     // `peers` here actually is a singletonList that contains one peer's TEndPoint. But here we
     // retain the implementation of list to cope with possible future expansion
     this.peers = peers;
-    this.syncRetryAndHandshakeClientManager = PipeConsensusSyncClientManager.onPeers(peers);
+    this.syncRetryAndHandshakeClientManager = PipeConsensusSyncClientManager.getInstance();
   }
 
   @Override
@@ -90,20 +104,14 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
 
   @Override
   public void handshake() throws Exception {
-    syncRetryAndHandshakeClientManager.checkClientStatusAndTryReconstructIfNecessary(nodeUrls);
+    // do nothing
+    // PipeConsensus doesn't need to do handshake, since nodes in same consensusGroup/cluster
+    // usually have same configuration.
   }
 
   @Override
   public void heartbeat() throws Exception {
-    try {
-      handshake();
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Failed to reconnect to target server, because: {}. Try to reconnect later.",
-          e.getMessage(),
-          e);
-      throw e;
-    }
+    // do nothing
   }
 
   @Override
@@ -118,9 +126,9 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
         }
       } else {
         if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-          doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+          doTransferWrapper((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
         } else {
-          doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+          doTransferWrapper((PipeRawTabletInsertionEvent) tabletInsertionEvent);
         }
       }
     } catch (Exception e) {
@@ -167,72 +175,91 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
   }
 
   private void doTransfer() {
-    final MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus =
-        syncRetryAndHandshakeClientManager.borrowClient(getFollowerUrl());
-    final TPipeConsensusTransferResp resp;
-    try {
-      resp = null;
-      clientAndStatus
-          .getLeft()
-          .pipeConsensusBatchTransfer(tabletBatchBuilder.toTPipeConsensusBatchTransferReq());
+    try (final SyncPipeConsensusServiceClient syncPipeConsensusServiceClient =
+        syncRetryAndHandshakeClientManager.borrowClient(getFollowerUrl())) {
+      final TPipeConsensusBatchTransferResp resp;
+      resp =
+          syncPipeConsensusServiceClient.pipeConsensusBatchTransfer(
+              tabletBatchBuilder.toTPipeConsensusBatchTransferReq());
+
+      final List<TSStatus> statusList =
+          resp.getBatchResps().stream()
+              .map(TPipeConsensusTransferResp::getStatus)
+              .collect(Collectors.toList());
+
+      // TODO: 处理重试逻辑
+      // Only handle the failed statuses to avoid string format performance overhead
+      //      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+      //          && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      //        receiverStatusHandler.handle(
+      //            resp.getStatus(),
+      //            String.format(
+      //                "Transfer PipeConsensusTransferTabletBatchReq error, result status %s",
+      //                resp.status),
+      //            tabletBatchBuilder.deepCopyEvents().toString());
+      //      }
+
+      tabletBatchBuilder.onSuccess();
     } catch (Exception e) {
-      clientAndStatus.setRight(false);
       throw new PipeConnectionException(
-          String.format("Network error when transfer tablet batch, because %s.", e.getMessage()),
+          String.format(
+              PIPE_CONSENSUS_SYNC_CONNECTION_FAILED_FORMAT,
+              getFollowerUrl().getIp(),
+              getFollowerUrl().getPort(),
+              e.getMessage(),
+              TABLET_BATCH_SCENARIO),
           e);
     }
+  }
 
-    final TSStatus status = resp.getStatus();
-    // Only handle the failed statuses to avoid string format performance overhead
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-      receiverStatusHandler.handle(
-          resp.getStatus(),
-          String.format(
-              "Transfer PipeConsensusTransferTabletBatchReq error, result status %s", resp.status),
-          tabletBatchBuilder.deepCopyEvents().toString());
+  private void doTransferWrapper(
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
+      throws PipeException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+          PipeConsensusSyncConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeInsertNodeTabletInsertionEvent);
+    } finally {
+      pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
+          PipeConsensusSyncConnector.class.getName(), false);
     }
-
-    tabletBatchBuilder.onSuccess();
   }
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException {
     final InsertNode insertNode;
-    MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus = null;
     final TPipeConsensusTransferResp resp;
     TCommitId tCommitId =
         new TCommitId(
             pipeInsertNodeTabletInsertionEvent.getCommitId(),
             pipeInsertNodeTabletInsertionEvent.getRebootTimes());
 
-    try {
+    try (final SyncPipeConsensusServiceClient syncPipeConsensusServiceClient =
+        syncRetryAndHandshakeClientManager.borrowClient(getFollowerUrl())) {
       insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
 
-      clientAndStatus = syncRetryAndHandshakeClientManager.borrowClient(getFollowerUrl());
       if (insertNode != null) {
         resp =
-            clientAndStatus
-                .getLeft()
-                .pipeConsensusTransfer(
-                    PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
-                        insertNode, tCommitId));
+            syncPipeConsensusServiceClient.pipeConsensusTransfer(
+                PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
+                    insertNode, tCommitId));
       } else {
         resp =
-            clientAndStatus
-                .getLeft()
-                .pipeConsensusTransfer(
-                    PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
-                        pipeInsertNodeTabletInsertionEvent.getByteBuffer(), tCommitId));
+            syncPipeConsensusServiceClient.pipeConsensusTransfer(
+                PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
+                    pipeInsertNodeTabletInsertionEvent.getByteBuffer(), tCommitId));
       }
     } catch (Exception e) {
-      if (clientAndStatus != null) {
-        clientAndStatus.setRight(false);
-      }
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer insert node tablet insertion event, because %s.",
-              e.getMessage()),
+              PIPE_CONSENSUS_SYNC_CONNECTION_FAILED_FORMAT,
+              getFollowerUrl().getIp(),
+              getFollowerUrl().getPort(),
+              e.getMessage(),
+              TABLET_INSERTION_NODE_SCENARIO),
           e);
     }
 
@@ -249,31 +276,46 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     }
   }
 
+  private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+      throws PipeException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
+          PipeConsensusSyncConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeRawTabletInsertionEvent);
+    } finally {
+      pipeRawTabletInsertionEvent.decreaseReferenceCount(
+          PipeConsensusSyncConnector.class.getName(), false);
+    }
+  }
+
   private void doTransfer(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
-    final MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus =
-        syncRetryAndHandshakeClientManager.borrowClient(getFollowerUrl());
     final TPipeConsensusTransferResp resp;
-    TCommitId tCommitId =
-        new TCommitId(
-            pipeRawTabletInsertionEvent.getCommitId(),
-            pipeRawTabletInsertionEvent.getRebootTimes());
 
-    try {
+    try (final SyncPipeConsensusServiceClient syncPipeConsensusServiceClient =
+        syncRetryAndHandshakeClientManager.borrowClient(getFollowerUrl()); ) {
+      TCommitId tCommitId =
+          new TCommitId(
+              pipeRawTabletInsertionEvent.getCommitId(),
+              pipeRawTabletInsertionEvent.getRebootTimes());
+
       resp =
-          clientAndStatus
-              .getLeft()
-              .pipeConsensusTransfer(
-                  PipeConsensusTabletRawReq.toTPipeConsensusTransferReq(
-                      pipeRawTabletInsertionEvent.convertToTablet(),
-                      pipeRawTabletInsertionEvent.isAligned(),
-                      tCommitId));
+          syncPipeConsensusServiceClient.pipeConsensusTransfer(
+              PipeConsensusTabletRawReq.toTPipeConsensusTransferReq(
+                  pipeRawTabletInsertionEvent.convertToTablet(),
+                  pipeRawTabletInsertionEvent.isAligned(),
+                  tCommitId));
     } catch (Exception e) {
-      clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer raw tablet insertion event, because %s.",
-              e.getMessage()),
+              PIPE_CONSENSUS_SYNC_CONNECTION_FAILED_FORMAT,
+              getFollowerUrl().getIp(),
+              getFollowerUrl().getPort(),
+              e.getMessage(),
+              TABLET_RAW_SCENARIO),
           e);
     }
 
@@ -295,51 +337,44 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
       throws PipeException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
     final File modFile = pipeTsFileInsertionEvent.getModFile();
-    final MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus =
-        syncRetryAndHandshakeClientManager.borrowClient(getFollowerUrl());
     final TPipeConsensusTransferResp resp;
-    final TCommitId tCommitId =
-        new TCommitId(
-            pipeTsFileInsertionEvent.getCommitId(), pipeTsFileInsertionEvent.getRebootTimes());
 
-    // 1. Transfer tsFile, and mod file if exists and receiver's version >= 2
-    if (pipeTsFileInsertionEvent.isWithMod()) {
-      transferFilePieces(modFile, clientAndStatus, true, tCommitId);
-      transferFilePieces(tsFile, clientAndStatus, true, tCommitId);
-      // 2. Transfer filre seal signal with mod, which means the file is tansferred completely
-      try {
+    try (final SyncPipeConsensusServiceClient syncPipeConsensusServiceClient =
+        syncRetryAndHandshakeClientManager.borrowClient(getFollowerUrl())) {
+      final TCommitId tCommitId =
+          new TCommitId(
+              pipeTsFileInsertionEvent.getCommitId(), pipeTsFileInsertionEvent.getRebootTimes());
+
+      // 1. Transfer tsFile, and mod file if exists and receiver's version >= 2
+      if (pipeTsFileInsertionEvent.isWithMod()) {
+        transferFilePieces(modFile, syncPipeConsensusServiceClient, true, tCommitId);
+        transferFilePieces(tsFile, syncPipeConsensusServiceClient, true, tCommitId);
+        // 2. Transfer filre seal signal with mod, which means the file is tansferred completely
         resp =
-            clientAndStatus
-                .getLeft()
-                .pipeConsensusTransfer(
-                    PipeConsensusTsFileSealWithModReq.toTPipeConsensusTransferReq(
-                        modFile.getName(),
-                        modFile.length(),
-                        tsFile.getName(),
-                        tsFile.length(),
-                        tCommitId));
-      } catch (Exception e) {
-        clientAndStatus.setRight(false);
-        throw new PipeConnectionException(
-            String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()),
-            e);
-      }
-    } else {
-      transferFilePieces(tsFile, clientAndStatus, false, tCommitId);
-      // 2. Transfer file seal signal without mod, which means the file is transferred completely
-      try {
+            syncPipeConsensusServiceClient.pipeConsensusTransfer(
+                PipeConsensusTsFileSealWithModReq.toTPipeConsensusTransferReq(
+                    modFile.getName(),
+                    modFile.length(),
+                    tsFile.getName(),
+                    tsFile.length(),
+                    tCommitId));
+      } else {
+        transferFilePieces(tsFile, syncPipeConsensusServiceClient, false, tCommitId);
+        // 2. Transfer file seal signal without mod, which means the file is transferred completely
         resp =
-            clientAndStatus
-                .getLeft()
-                .pipeConsensusTransfer(
-                    PipeConsensusTsFileSealReq.toTPipeConsensusTransferReq(
-                        tsFile.getName(), tsFile.length(), tCommitId));
-      } catch (Exception e) {
-        clientAndStatus.setRight(false);
-        throw new PipeConnectionException(
-            String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()),
-            e);
+            syncPipeConsensusServiceClient.pipeConsensusTransfer(
+                PipeConsensusTsFileSealReq.toTPipeConsensusTransferReq(
+                    tsFile.getName(), tsFile.length(), tCommitId));
       }
+    } catch (Exception e) {
+      throw new PipeConnectionException(
+          String.format(
+              PIPE_CONSENSUS_SYNC_CONNECTION_FAILED_FORMAT,
+              getFollowerUrl().getIp(),
+              getFollowerUrl().getPort(),
+              e.getMessage(),
+              TSFILE_SCENARIO),
+          e);
     }
 
     final TSStatus status = resp.getStatus();
@@ -357,7 +392,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
 
   protected void transferFilePieces(
       File file,
-      MutablePair<SyncPipeConsensusServiceClient, Boolean> clientAndStatus,
+      SyncPipeConsensusServiceClient syncPipeConsensusServiceClient,
       boolean isMultiFile,
       TCommitId tCommitId)
       throws PipeException, IOException {
@@ -379,16 +414,13 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
         try {
           resp =
               PipeConsensusTransferFilePieceResp.fromTPipeConsensusTransferResp(
-                  clientAndStatus
-                      .getLeft()
-                      .pipeConsensusTransfer(
-                          isMultiFile
-                              ? PipeConsensusTsFilePieceWithModReq.toTPipeConsensusTransferReq(
-                                  file.getName(), position, payLoad, tCommitId)
-                              : PipeConsensusTsFilePieceReq.toTPipeConsensusTransferReq(
-                                  file.getName(), position, payLoad, tCommitId)));
+                  syncPipeConsensusServiceClient.pipeConsensusTransfer(
+                      isMultiFile
+                          ? PipeConsensusTsFilePieceWithModReq.toTPipeConsensusTransferReq(
+                              file.getName(), position, payLoad, tCommitId)
+                          : PipeConsensusTsFilePieceReq.toTPipeConsensusTransferReq(
+                              file.getName(), position, payLoad, tCommitId)));
         } catch (Exception e) {
-          clientAndStatus.setRight(false);
           throw new PipeConnectionException(
               String.format(
                   "Network error when transfer file %s, because %s.", file, e.getMessage()),
@@ -407,11 +439,6 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
           continue;
         }
 
-        // Send handshake req and then re-transfer the event
-        if (status.getCode()
-            == TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode()) {
-          syncRetryAndHandshakeClientManager.sendHandshakeReq(clientAndStatus);
-        }
         // Only handle the failed statuses to avoid string format performance overhead
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {

@@ -40,7 +40,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class AsyncPipeConsensusServiceClient extends PipeConsensusIService.AsyncClient
     implements ThriftClient {
 
-  private static final Logger logger =
+  private static final Logger LOGGER =
       LoggerFactory.getLogger(AsyncPipeConsensusServiceClient.class);
 
   private final boolean printLogWhenEncounterException;
@@ -115,7 +115,7 @@ public class AsyncPipeConsensusServiceClient extends PipeConsensusIService.Async
       checkReady();
       return true;
     } catch (Exception e) {
-      logger.info(
+      LOGGER.info(
           "Unexpected exception occurs in {}, error msg is {}",
           this,
           ExceptionUtils.getRootCause(e).toString());

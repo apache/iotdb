@@ -21,7 +21,6 @@ package org.apache.iotdb.consensus.pipe.client.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.consensus.pipe.client.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.consensus.pipe.client.PipeConsensusClientPool.AsyncPipeConsensusServiceClientPoolFactory;
 import org.apache.iotdb.consensus.pipe.client.PipeConsensusClientPool.PipeConsensusRPCConfig;
@@ -31,6 +30,13 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Note: This class is shared by all pipeConsensusTasks of one leader to its peers in a consensus
+ * group. And unlike pipe engine, PipeConsensus doesn't need to handshake before establish RPC
+ * connection between leader and follower.
+ *
+ * <p>Usage: you can invoke borrowClient method in this class to get your RPC asyncClient
+ */
 public class PipeConsensusAsyncClientManager {
 
   private static final Logger LOGGER =
@@ -45,18 +51,23 @@ public class PipeConsensusAsyncClientManager {
     // do nothing
   }
 
-  // TODO: Since each peer will have a sync handshake in advance, do we need to handshake the async
-  // client again?
   public AsyncPipeConsensusServiceClient borrowClient(final TEndPoint endPoint)
       throws PipeException {
     if (endPoint == null) {
+      if (LOGGER.isWarnEnabled()) {
+        LOGGER.warn("PipeConsensus: borrowAsyncClient endPoint is null");
+      }
       throw new PipeException(
           "PipeConsensus: async client manager can't borrow clients for a null TEndPoint. Please set the url of receiver correctly!");
     }
 
     try {
       return ASYNC_CLIENT_MANAGER.borrowClient(endPoint);
-    } catch (ClientManagerException e) {
+    } catch (Exception e) {
+      if (LOGGER.isWarnEnabled()) {
+        LOGGER.warn(
+            "PipeConsensus: borrowAsyncClient {}:{} failed", endPoint.getIp(), endPoint.getPort());
+      }
       throw new PipeConnectionException(
           String.format(
               PipeConnectionException.CONNECTION_ERROR_FORMATTER,

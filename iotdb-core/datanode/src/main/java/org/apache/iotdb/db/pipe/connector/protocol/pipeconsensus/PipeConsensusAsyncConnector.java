@@ -170,15 +170,16 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     }
   }
 
-  /** handshake with all peers , Synchronized to avoid close connector when transfer event */
   @Override
-  public synchronized void handshake() throws Exception {
-    retryConnector.handshake();
+  public void handshake() throws Exception {
+    // do nothing
+    // PipeConsensus doesn't need to do handshake, since nodes in same consensusGroup/cluster
+    // usually have same configuration.
   }
 
   @Override
   public void heartbeat() throws Exception {
-    retryConnector.heartbeat();
+    // do nothing
   }
 
   @Override
@@ -274,7 +275,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
       final PipeConsensusTabletBatchEventHandler pipeConsensusTabletBatchEventHandler) {
     AsyncPipeConsensusServiceClient client = null;
     try {
-      client = PipeConsensusAsyncClientManager.getInstance().borrowClient(getFollowerUrl());
+      client = asyncTransferClientManager.borrowClient(getFollowerUrl());
       pipeConsensusTabletBatchEventHandler.transfer(client);
     } catch (final Exception ex) {
       logOnClientException(client, ex);
@@ -286,7 +287,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
       final PipeConsensusTabletInsertNodeEventHandler pipeConsensusInsertNodeReqHandler) {
     AsyncPipeConsensusServiceClient client = null;
     try {
-      client = PipeConsensusAsyncClientManager.getInstance().borrowClient(getFollowerUrl());
+      client = asyncTransferClientManager.borrowClient(getFollowerUrl());
       pipeConsensusInsertNodeReqHandler.transfer(client);
     } catch (final Exception ex) {
       logOnClientException(client, ex);
@@ -297,7 +298,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
   private void transfer(final PipeConsensusTabletRawEventHandler pipeConsensusTabletReqHandler) {
     AsyncPipeConsensusServiceClient client = null;
     try {
-      client = PipeConsensusAsyncClientManager.getInstance().borrowClient(getFollowerUrl());
+      client = asyncTransferClientManager.borrowClient(getFollowerUrl());
       pipeConsensusTabletReqHandler.transfer(client);
     } catch (final Exception ex) {
       logOnClientException(client, ex);
@@ -350,7 +351,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
       final PipeConsensusTsFileInsertionEventHandler pipeConsensusTsFileInsertionEventHandler) {
     AsyncPipeConsensusServiceClient client = null;
     try {
-      client = PipeConsensusAsyncClientManager.getInstance().borrowClient(getFollowerUrl());
+      client = asyncTransferClientManager.borrowClient(getFollowerUrl());
       pipeConsensusTsFileInsertionEventHandler.transfer(client);
     } catch (final Exception ex) {
       logOnClientException(client, ex);

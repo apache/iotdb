@@ -24,8 +24,6 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
-import org.apache.iotdb.consensus.pipe.client.request.PipeConsensusHandshakeReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
@@ -58,10 +56,6 @@ public class PipeConsensusReceiver {
     final short rawRequestType = req.getType();
     if (PipeConsensusRequestType.isValidatedRequestType(rawRequestType)) {
       switch (PipeConsensusRequestType.valueOf(rawRequestType)) {
-          // handshake event will be applied directly.
-        case PIPE_CONSENSUS_HANDSHAKE:
-          return handleHandshakeRequest(
-              PipeConsensusHandshakeReq.fromTPipeConsensusTransferReq(req));
         case TRANSFER_TS_FILE_PIECE:
         case TRANSFER_TS_FILE_PIECE_WITH_MOD:
           return requestExecutor.onRequest(req, true);
@@ -94,44 +88,6 @@ public class PipeConsensusReceiver {
     // TODO: check memory when logging wal
     // TODO: check disk(read-only etc.) when writing tsFile
     return null;
-  }
-
-  private TPipeConsensusTransferResp handleHandshakeRequest(final PipeConsensusHandshakeReq req) {
-    // Reject to handshake if the request does not contain timestampPrecision.
-    final String timestampPrecision =
-        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION);
-    if (timestampPrecision == null) {
-      final TSStatus status =
-          RpcUtils.getStatus(
-              TSStatusCode.PIPE_CONSENSUS_HANDSHAKE_ERROR,
-              "PipeConsensus Handshake request does not contain timestampPrecision.");
-      if (LOGGER.isWarnEnabled()) {
-        LOGGER.warn("PipeConsensus Handshake failed, response status = {}.", status);
-      }
-      return new TPipeConsensusTransferResp(status);
-    }
-
-    // Reject to handshake if the request does not contain the same timestampPrecision with
-    // receiver.
-    if (!CommonDescriptor.getInstance()
-        .getConfig()
-        .getTimestampPrecision()
-        .equals(timestampPrecision)) {
-      final TSStatus status =
-          RpcUtils.getStatus(
-              TSStatusCode.PIPE_CONSENSUS_HANDSHAKE_ERROR,
-              String.format(
-                  "IoTDB receiver's timestamp precision %s, "
-                      + "connector's timestamp precision %s. Validation fails.",
-                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
-                  timestampPrecision));
-      if (LOGGER.isWarnEnabled()) {
-        LOGGER.warn("PipeConsensus: Handshake failed, response status = {}.", status);
-      }
-      return new TPipeConsensusTransferResp(status);
-    }
-
-    return new TPipeConsensusTransferResp(RpcUtils.SUCCESS_STATUS);
   }
 
   // WIP
