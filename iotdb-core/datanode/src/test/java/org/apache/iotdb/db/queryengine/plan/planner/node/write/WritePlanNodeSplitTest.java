@@ -44,7 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOf
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -176,7 +176,7 @@ public class WritePlanNodeSplitTest {
 
       TSeriesPartitionSlot seriesPartitionSlot =
           partitionExecutor.getSeriesPartitionSlot(
-              StringArrayDeviceID.getFACTORY().create(dataPartitionQueryParam.getDevicePath()));
+              IDeviceID.Factory.DEFAULT_FACTORY.create(dataPartitionQueryParam.getDevicePath()));
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap =
           seriesPartitionSlotMap.get(seriesPartitionSlot);
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMapResult =

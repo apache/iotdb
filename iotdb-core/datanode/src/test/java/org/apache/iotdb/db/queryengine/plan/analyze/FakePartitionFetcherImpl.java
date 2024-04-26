@@ -35,7 +35,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -279,7 +279,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
       TSeriesPartitionSlot seriesPartitionSlot =
           partitionExecutor.getSeriesPartitionSlot(
-              StringArrayDeviceID.getFACTORY().create(dataPartitionQueryParam.getDevicePath()));
+              IDeviceID.Factory.DEFAULT_FACTORY.create(dataPartitionQueryParam.getDevicePath()));
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListMap =
           sgPartitionMap.computeIfAbsent(seriesPartitionSlot, k -> new HashMap<>());
       for (TTimePartitionSlot timePartitionSlot :

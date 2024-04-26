@@ -55,7 +55,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
@@ -105,10 +105,10 @@ public class Util2 {
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
     sgPartitionMap.put(
-        executor.getSeriesPartitionSlot(StringArrayDeviceID.getFACTORY().create(device1)),
+        executor.getSeriesPartitionSlot(IDeviceID.Factory.DEFAULT_FACTORY.create(device1)),
         d1DataRegionMap);
     sgPartitionMap.put(
-        executor.getSeriesPartitionSlot(StringArrayDeviceID.getFACTORY().create(device2)),
+        executor.getSeriesPartitionSlot(IDeviceID.Factory.DEFAULT_FACTORY.create(device2)),
         d2DataRegionMap);
     DataPartition dataPartition =
         new DataPartition(
@@ -133,13 +133,13 @@ public class Util2 {
 
     Map<TSeriesPartitionSlot, TRegionReplicaSet> schemaRegionMap = new HashMap<>();
     schemaRegionMap.put(
-        executor.getSeriesPartitionSlot(StringArrayDeviceID.getFACTORY().create(device1)),
+        executor.getSeriesPartitionSlot(IDeviceID.Factory.DEFAULT_FACTORY.create(device1)),
         schemaRegion1);
     schemaRegionMap.put(
-        executor.getSeriesPartitionSlot(StringArrayDeviceID.getFACTORY().create(device2)),
+        executor.getSeriesPartitionSlot(IDeviceID.Factory.DEFAULT_FACTORY.create(device2)),
         schemaRegion2);
     schemaRegionMap.put(
-        executor.getSeriesPartitionSlot(StringArrayDeviceID.getFACTORY().create(device3)),
+        executor.getSeriesPartitionSlot(IDeviceID.Factory.DEFAULT_FACTORY.create(device3)),
         schemaRegion2);
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap = new HashMap<>();
     schemaPartitionMap.put("root.sg", schemaRegionMap);

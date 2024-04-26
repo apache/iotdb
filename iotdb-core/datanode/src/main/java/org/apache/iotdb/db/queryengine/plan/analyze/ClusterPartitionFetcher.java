@@ -51,7 +51,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -369,7 +369,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         seriesSlotTimePartitionMap
             .computeIfAbsent(
                 partitionExecutor.getSeriesPartitionSlot(
-                    StringArrayDeviceID.getFACTORY().create(queryParam.getDevicePath())),
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(queryParam.getDevicePath())),
                 k ->
                     new ComplexTimeSlotList(
                         queryParam.isNeedLeftAll(), queryParam.isNeedRightAll()))
@@ -406,7 +406,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
         deviceToTimePartitionMap.putIfAbsent(
             partitionExecutor.getSeriesPartitionSlot(
-                StringArrayDeviceID.getFACTORY().create(queryParam.getDevicePath())),
+                IDeviceID.Factory.DEFAULT_FACTORY.create(queryParam.getDevicePath())),
             sharedTTimeSlotList);
       }
       partitionSlotsMap.put(entry.getKey(), deviceToTimePartitionMap);

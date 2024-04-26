@@ -22,7 +22,6 @@ package org.apache.iotdb.commons.partition.executor;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -37,7 +36,7 @@ public class HashExecutorTest {
   public void hashExecutorCompatibleTest() {
     for (int suffix = 0; suffix < 1000; suffix++) {
       String device = PATH_PREFIX + suffix;
-      IDeviceID deviceID = StringArrayDeviceID.getFACTORY().create(PATH_PREFIX + suffix);
+      IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(PATH_PREFIX + suffix);
       Assert.assertEquals(
           oldVersionGetSeriesPartitionSlot(device), EXECUTOR.getSeriesPartitionSlot(deviceID));
     }
