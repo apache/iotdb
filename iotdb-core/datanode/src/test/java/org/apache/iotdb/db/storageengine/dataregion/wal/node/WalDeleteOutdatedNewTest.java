@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -64,13 +65,16 @@ public class WalDeleteOutdatedNewTest {
   private static final String devicePath = databasePath + ".test_d";
   private static final String dataRegionId = "1";
   private WALMode prevMode;
+  private String prevConsensus;
   private WALNode walNode1;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(logDirectory1);
     prevMode = config.getWalMode();
+    prevConsensus = config.getDataRegionConsensusProtocolClass();
     config.setWalMode(WALMode.SYNC);
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     walNode1 = new WALNode(identifier1, logDirectory1);
     DataRegion dataRegion = new DataRegionTest.DummyDataRegion(logDirectory1, databasePath);
     dataRegion.updatePartitionFileVersion(2911, 0);
@@ -81,6 +85,7 @@ public class WalDeleteOutdatedNewTest {
   public void tearDown() throws Exception {
     walNode1.close();
     config.setWalMode(prevMode);
+    config.setDataRegionConsensusProtocolClass(prevConsensus);
     EnvironmentUtils.cleanDir(logDirectory1);
     StorageEngine.getInstance().reset();
     WALInsertNodeCache.getInstance(1).clear();

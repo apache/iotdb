@@ -274,15 +274,37 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     @Override
     public Statement visitMeasurementMNode(
         AbstractMeasurementMNode<?, ? extends IMNode<?>> node, PartialPath path) {
-      if (node.getParent().getAsDeviceMNode().isAligned()) {
-        return null;
-      } else if (node.isLogicalView()) {
+      if (node.isLogicalView()) {
         final CreateLogicalViewStatement stmt = new CreateLogicalViewStatement();
         final LogicalViewSchema viewSchema =
             (LogicalViewSchema) node.getAsMeasurementMNode().getSchema();
-        stmt.setTargetFullPaths(Collections.singletonList(path));
-        stmt.setViewExpressions(Collections.singletonList(viewSchema.getExpression()));
+        if (viewSchema != null) {
+          stmt.setTargetFullPaths(Collections.singletonList(path));
+          stmt.setViewExpressions(Collections.singletonList(viewSchema.getExpression()));
+          return stmt;
+        }
+        //        if (node.getOffset() >= 0) {
+        //          final AlterTimeSeriesStatement alterTimeSeriesStatement = new
+        // AlterTimeSeriesStatement();
+        //          alterTimeSeriesStatement.setPath(path);
+        //          try {
+        //            Pair<Map<String, String>, Map<String, String>> tagsAndAttribute =
+        //                getTagsAndAttributes(node.getOffset());
+        //            if (tagsAndAttribute != null) {
+        //              alterTimeSeriesStatement.setTagsMap(tagsAndAttribute.left);
+        //              alterTimeSeriesStatement.setAttributesMap(tagsAndAttribute.right);
+        //            }
+        //          } catch (IOException ioException) {
+        //            lastExcept = ioException;
+        //            LOGGER.warn(
+        //                "Error when parse tag and attributes file of node path {}", path,
+        // ioException);
+        //          }
+        //          node.setOffset(0);
+        //        }
         return stmt;
+      } else if (node.getParent().getAsDeviceMNode().isAligned()) {
+        return null;
       } else {
         final CreateTimeSeriesStatement stmt = new CreateTimeSeriesStatement();
         stmt.setPath(path);
@@ -291,24 +313,18 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         stmt.setDataType(node.getDataType());
         stmt.setEncoding(node.getAsMeasurementMNode().getSchema().getEncodingType());
         if (node.getOffset() >= 0) {
-          if (tagFileChannel != null) {
-            try {
-              final ByteBuffer byteBuffer =
-                  ByteBuffer.allocate(COMMON_CONFIG.getTagAttributeTotalSize());
-              tagFileChannel.read(byteBuffer, node.getOffset());
-              byteBuffer.flip();
-              final Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
-                  new Pair<>(
-                      ReadWriteIOUtils.readMap(byteBuffer), ReadWriteIOUtils.readMap(byteBuffer));
+          try {
+            final Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
+                getTagsAndAttributes(node.getOffset());
+            if (tagsAndAttributes != null) {
               stmt.setTags(tagsAndAttributes.left);
               stmt.setAttributes(tagsAndAttributes.right);
-            } catch (IOException exception) {
-              lastExcept = exception;
-              LOGGER.warn("Error when parser tag and attributes files", exception);
             }
-          } else {
-            LOGGER.warn("Timeseries has attributes and tags but don't find tag file");
+          } catch (IOException ioException) {
+            lastExcept = ioException;
+            LOGGER.warn("Error when parser tag and attributes files", ioException);
           }
+          node.setOffset(0);
         }
         return stmt;
       }
@@ -327,7 +343,12 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     if (node.getAsDeviceMNode().isAligned()) {
       final CreateAlignedTimeSeriesStatement stmt = new CreateAlignedTimeSeriesStatement();
       stmt.setDevicePath(path);
+      boolean hasMeasurement = false;
       for (IMemMNode measurement : measurements.values()) {
+        if (!measurement.isMeasurement() || measurement.getAsMeasurementMNode().isLogicalView()) {
+          continue;
+        }
+        hasMeasurement = true;
         stmt.addMeasurement(measurement.getName());
         stmt.addDataType(measurement.getAsMeasurementMNode().getDataType());
         if (measurement.getAlias() != null) {
@@ -338,29 +359,40 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         stmt.addEncoding(measurement.getAsMeasurementMNode().getSchema().getEncodingType());
         stmt.addCompressor(measurement.getAsMeasurementMNode().getSchema().getCompressor());
         if (measurement.getAsMeasurementMNode().getOffset() >= 0) {
-          if (tagFileChannel != null) {
-            try {
-              ByteBuffer byteBuffer = ByteBuffer.allocate(COMMON_CONFIG.getTagAttributeTotalSize());
-              tagFileChannel.read(byteBuffer, measurement.getAsMeasurementMNode().getOffset());
-              byteBuffer.flip();
-              Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
-                  new Pair<>(
-                      ReadWriteIOUtils.readMap(byteBuffer), ReadWriteIOUtils.readMap(byteBuffer));
+          try {
+            Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
+                getTagsAndAttributes(measurement.getAsMeasurementMNode().getOffset());
+            if (tagsAndAttributes != null) {
               stmt.addAttributesList(tagsAndAttributes.right);
               stmt.addTagsList(tagsAndAttributes.left);
-            } catch (IOException exception) {
-              lastExcept = exception;
-              LOGGER.warn(
-                  "Error when parse tag and attributes file of node path {}",
-                  measurement.getPartialPath(),
-                  exception);
             }
-          } else {
-            LOGGER.warn("Measurement has set attributes or tags, but not find snapshot files");
+          } catch (IOException ioException) {
+            lastExcept = ioException;
+            LOGGER.warn(
+                "Error when parse tag and attributes file of node path {}", path, ioException);
           }
+          measurement.getAsMeasurementMNode().setOffset(0);
+        } else {
+          stmt.addAttributesList(null);
+          stmt.addTagsList(null);
         }
       }
-      return stmt;
+      return hasMeasurement ? stmt : null;
+    }
+    return null;
+  }
+
+  private Pair<Map<String, String>, Map<String, String>> getTagsAndAttributes(long offset)
+      throws IOException {
+    if (tagFileChannel != null) {
+      ByteBuffer byteBuffer = ByteBuffer.allocate(COMMON_CONFIG.getTagAttributeTotalSize());
+      tagFileChannel.read(byteBuffer, offset);
+      byteBuffer.flip();
+      Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
+          new Pair<>(ReadWriteIOUtils.readMap(byteBuffer), ReadWriteIOUtils.readMap(byteBuffer));
+      return tagsAndAttributes;
+    } else {
+      LOGGER.warn("Measurement has set attributes or tags, but not find snapshot files");
     }
     return null;
   }
