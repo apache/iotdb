@@ -20,8 +20,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import java.io.DataOutputStream;
@@ -30,25 +31,29 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 public class MergeSortNode extends MultiChildProcessNode {
-  private final OrderByParameter mergeOrderParameter;
+  private final OrderingScheme orderingScheme;
 
-  private final List<String> outputColumns;
+  private final List<Symbol> outputSymbols;
 
-  public MergeSortNode(
-      PlanNodeId id, OrderByParameter mergeOrderParameter, List<String> outputColumns) {
+  public MergeSortNode(PlanNodeId id, OrderingScheme orderingScheme, List<Symbol> outputSymbols) {
     super(id);
-    this.mergeOrderParameter = mergeOrderParameter;
-    this.outputColumns = outputColumns;
+    this.orderingScheme = orderingScheme;
+    this.outputSymbols = outputSymbols;
   }
 
   @Override
   public PlanNode clone() {
-    return null;
+    return new MergeSortNode(getPlanNodeId(), orderingScheme, outputSymbols);
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitMergeSort(this, context);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return children.get(0).getOutputColumnNames();
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -59,6 +64,10 @@ public class MergeSortNode extends MultiChildProcessNode {
 
   @Override
   public List<Symbol> getOutputSymbols() {
-    return super.getOutputSymbols();
+    return outputSymbols;
+  }
+
+  public OrderingScheme getOrderingScheme() {
+    return orderingScheme;
   }
 }

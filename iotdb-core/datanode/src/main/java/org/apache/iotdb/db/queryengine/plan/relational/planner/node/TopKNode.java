@@ -21,8 +21,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -33,22 +35,38 @@ public class TopKNode extends MultiChildProcessNode {
 
   private final OrderingScheme orderingScheme;
 
-  private final long count;
+  private final int count;
 
-  public TopKNode(PlanNodeId id, OrderingScheme scheme, long count) {
+  private final List<Symbol> outputSymbols;
+
+  private final boolean childrenDataInOrder;
+
+  public TopKNode(
+      PlanNodeId id,
+      OrderingScheme scheme,
+      int count,
+      List<Symbol> outputSymbols,
+      boolean childrenDataInOrder) {
     super(id);
     this.orderingScheme = scheme;
     this.count = count;
+    this.outputSymbols = outputSymbols;
+    this.childrenDataInOrder = childrenDataInOrder;
   }
 
   @Override
   public PlanNode clone() {
-    return null;
+    return new TopKNode(getPlanNodeId(), orderingScheme, count, outputSymbols, childrenDataInOrder);
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitTopK(this, context);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -56,4 +74,21 @@ public class TopKNode extends MultiChildProcessNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+
+  @Override
+  public List<Symbol> getOutputSymbols() {
+    return outputSymbols;
+  }
+
+  public OrderingScheme getOrderingScheme() {
+    return orderingScheme;
+  }
+
+  public int getCount() {
+    return count;
+  }
+
+  public boolean isChildrenDataInOrder() {
+    return childrenDataInOrder;
+  }
 }
