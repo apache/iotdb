@@ -32,13 +32,14 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 public class PipeConsensusReceiverAgent extends PipeConsensusServerImpl {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusReceiverAgent.class);
 
-  private final ThreadLocal<PipeConsensusReceiver> receiverThreadLocal = new ThreadLocal<>();
+  private final AtomicReference<PipeConsensusReceiver> receiverReference = new AtomicReference<>();
 
   private static final Map<Byte, Supplier<PipeConsensusReceiver>> RECEIVER_CONSTRUCTORS =
       new HashMap<>();
@@ -48,8 +49,7 @@ public class PipeConsensusReceiverAgent extends PipeConsensusServerImpl {
         PipeConsensusRequestVersion.VERSION_1.getVersion(), PipeConsensusReceiver::new);
   }
 
-  public TPipeConsensusTransferResp receive(
-      TPipeConsensusTransferReq req) {
+  public TPipeConsensusTransferResp receive(TPipeConsensusTransferReq req) {
     final byte reqVersion = req.getVersion();
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
       return getReceiver(reqVersion).receive(req);
@@ -65,31 +65,31 @@ public class PipeConsensusReceiverAgent extends PipeConsensusServerImpl {
   }
 
   private PipeConsensusReceiver getReceiver(byte reqVersion) {
-    if (receiverThreadLocal.get() == null) {
+    if (receiverReference.get() == null) {
       return internalSetAndGetReceiver(reqVersion);
     }
 
-    final byte receiverThreadLocalVersion = receiverThreadLocal.get().getVersion().getVersion();
+    final byte receiverThreadLocalVersion = receiverReference.get().getVersion().getVersion();
     if (receiverThreadLocalVersion != reqVersion) {
       LOGGER.warn(
           "The pipeConsensus request version {} is different from the sender request version {},"
               + " the receiver will be reset to the sender request version.",
           receiverThreadLocalVersion,
           reqVersion);
-      receiverThreadLocal.remove();
+      receiverReference.set(null);
       return internalSetAndGetReceiver(reqVersion);
     }
 
-    return receiverThreadLocal.get();
+    return receiverReference.get();
   }
 
   private PipeConsensusReceiver internalSetAndGetReceiver(byte reqVersion) {
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
-      receiverThreadLocal.set(RECEIVER_CONSTRUCTORS.get(reqVersion).get());
+      receiverReference.set(RECEIVER_CONSTRUCTORS.get(reqVersion).get());
     } else {
       throw new UnsupportedOperationException(
           String.format("Unsupported pipeConsensus request version %d", reqVersion));
     }
-    return receiverThreadLocal.get();
+    return receiverReference.get();
   }
 }

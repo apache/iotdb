@@ -41,7 +41,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Comparator;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -49,9 +48,6 @@ import java.util.concurrent.locks.ReentrantLock;
 public class PipeConsensusReceiver {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusReceiver.class);
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-  // Used to generate transfer id, which is used to identify a receiver thread.
-  private static final AtomicLong RECEIVER_ID_GENERATOR = new AtomicLong(0);
-  private final AtomicLong receiverId = new AtomicLong(0);
   private final RequestExecutor requestExecutor = new RequestExecutor();
 
   /**
@@ -78,11 +74,10 @@ public class PipeConsensusReceiver {
     final TSStatus status =
         RpcUtils.getStatus(
             TSStatusCode.PIPE_TYPE_ERROR,
-            String.format("Unknown PipeRequestType %s.", rawRequestType));
-    LOGGER.warn(
-        "Receiver id = {}: Unknown PipeRequestType, response status = {}.",
-        receiverId.get(),
-        status);
+            String.format("PipeConsensus Unknown PipeRequestType %s.", rawRequestType));
+    if (LOGGER.isWarnEnabled()) {
+      LOGGER.warn("PipeConsensus Unknown PipeRequestType, response status = {}.", status);
+    }
     return new TPipeConsensusTransferResp(status);
   }
 
@@ -109,9 +104,10 @@ public class PipeConsensusReceiver {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.PIPE_CONSENSUS_HANDSHAKE_ERROR,
-              "Handshake request does not contain timestampPrecision.");
-      LOGGER.warn(
-          "Receiver id = {}: Handshake failed, response status = {}.", receiverId.get(), status);
+              "PipeConsensus Handshake request does not contain timestampPrecision.");
+      if (LOGGER.isWarnEnabled()) {
+        LOGGER.warn("PipeConsensus Handshake failed, response status = {}.", status);
+      }
       return new TPipeConsensusTransferResp(status);
     }
 
@@ -129,11 +125,12 @@ public class PipeConsensusReceiver {
                       + "connector's timestamp precision %s. Validation fails.",
                   CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
                   timestampPrecision));
-      LOGGER.warn("Handshake failed, response status = {}.", status);
+      if (LOGGER.isWarnEnabled()) {
+        LOGGER.warn("PipeConsensus: Handshake failed, response status = {}.", status);
+      }
       return new TPipeConsensusTransferResp(status);
     }
 
-    receiverId.set(RECEIVER_ID_GENERATOR.incrementAndGet());
     return new TPipeConsensusTransferResp(RpcUtils.SUCCESS_STATUS);
   }
 
@@ -212,7 +209,6 @@ public class PipeConsensusReceiver {
         // connectorRebootTimes, need to reset receiver because connector has been restarted.
         if (wrappedReq.getRebootTime() > connectorRebootTimes) {
           reset(connectorRebootTimes);
-          // TODO：如果发送端重启，接收端堆积的请求怎么办？考虑 reset 时的堆积请求：thrift service 添加 deleteContext 释放资源。
           // TODO: 如：1,1 1,2 1,3 1,4 1,5 / 1,6 1,7 1,8（follower 得想办法知道 leader
           // 是否发满了/前置请求是否发完了）：发送端等待事件超时后尝试握手
           // TODO: RPC 60s 超时问题；如果存储引擎等非共识层写入超时，会导致已接收的副本重发，从而导致堆积：存储端做去重
