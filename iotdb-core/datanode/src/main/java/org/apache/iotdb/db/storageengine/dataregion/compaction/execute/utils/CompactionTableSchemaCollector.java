@@ -50,7 +50,7 @@ public class CompactionTableSchemaCollector {
     targetSchemas.add(schema);
     for (int i = 1; i < seqFiles.size(); i++) {
       Schema copySchema = new Schema();
-      for (TableSchema tableSchema : copySchema.getTableSchemaMap().values()) {
+      for (TableSchema tableSchema : schema.getTableSchemaMap().values()) {
         copySchema.registerTableSchema(((CompactionTableSchema) tableSchema).copy());
       }
       targetSchemas.add(copySchema);

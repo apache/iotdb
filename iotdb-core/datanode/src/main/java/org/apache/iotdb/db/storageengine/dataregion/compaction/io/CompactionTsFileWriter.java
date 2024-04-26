@@ -39,9 +39,9 @@ import org.apache.tsfile.write.writer.TsFileIOWriter;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class CompactionTsFileWriter extends TsFileIOWriter {
   CompactionType type;
@@ -134,13 +134,14 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   public void removeUnusedTableSchema() {
     Map<String, TableSchema> tableSchemaMap = getSchema().getTableSchemaMap();
-    Set<String> tableNames = tableSchemaMap.keySet();
-    for (String tableName : tableNames) {
-      List<ColumnType> columnTypes = tableSchemaMap.get(tableName).getColumnTypes();
+    Iterator<Map.Entry<String, TableSchema>> iterator = tableSchemaMap.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<String, TableSchema> entry = iterator.next();
+      List<ColumnType> columnTypes = entry.getValue().getColumnTypes();
       if (columnTypes.contains(ColumnType.MEASUREMENT)) {
         continue;
       }
-      tableSchemaMap.remove(tableName);
+      iterator.remove();
     }
   }
 }
