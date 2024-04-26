@@ -391,8 +391,8 @@ public class LoadManager {
     loadCache.removeRegionGroupCache(consensusGroupId);
     routeBalancer.removeRegionPriority(consensusGroupId);
     loadCache.updateRegionGroupStatistics();
-    eventService.checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
     loadCache.updateConsensusGroupStatistics();
+    eventService.checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary();
     eventService.checkAndBroadcastConsensusGroupStatisticsChangeEventIfNecessary();
   }
 
