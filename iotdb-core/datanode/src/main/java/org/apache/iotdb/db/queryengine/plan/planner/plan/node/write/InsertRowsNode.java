@@ -262,7 +262,11 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   @Override
   public long getMinTime() {
-    throw new NotImplementedException();
+    long minTime = Long.MAX_VALUE;
+    for (InsertRowNode rowNode : insertRowNodeList) {
+      minTime = Math.min(rowNode.getTime(), minTime);
+    }
+    return minTime;
   }
 
   @Override
