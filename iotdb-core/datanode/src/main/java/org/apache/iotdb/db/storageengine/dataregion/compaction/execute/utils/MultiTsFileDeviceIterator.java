@@ -326,15 +326,16 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   }
 
   /**
-   * return MeasurementIterator, who iterates the measurements of not aligned device
+   * return MultiTsFileNonAlignedMeasurementMetadataListIterator, who iterates the measurements of
+   * not aligned device
    *
-   * @param device the full path of the device to be iterated
+   * @param device the device to be iterated
    * @return measurement iterator of not aligned device
    * @throws IOException if io errors occurred
    */
-  public MeasurementIterator iterateNotAlignedSeries(
-      IDeviceID device, boolean derserializeTimeseriesMetadata) throws IOException {
-    return new MeasurementIterator(readerMap, device, derserializeTimeseriesMetadata);
+  public MultiTsFileNonAlignedMeasurementMetadataListIterator
+      iterateNotAlignedSeriesAndChunkMetadataList(IDeviceID device) throws IOException {
+    return new MultiTsFileNonAlignedMeasurementMetadataListIterator(readerMap, device);
   }
 
   /**
@@ -435,34 +436,30 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   /*
   NonAligned measurement iterator.
    */
-  public class MeasurementIterator {
-    private Map<TsFileResource, TsFileSequenceReader> readerMap;
-    private IDeviceID device;
-    private String currentCompactingSeries = null;
-    private LinkedList<String> seriesInThisIteration = new LinkedList<>();
+  public class MultiTsFileNonAlignedMeasurementMetadataListIterator {
+    private final Map<TsFileResource, TsFileSequenceReader> readerMap;
+    private final IDeviceID device;
+    private final LinkedList<String> seriesInThisIteration = new LinkedList<>();
     // tsfile sequence reader -> series -> list<ChunkMetadata>
-    private Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>> chunkMetadataCacheMap =
-        new HashMap<>();
+    private final Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
+        chunkMetadataCacheMap = new HashMap<>();
     // this map cache the chunk metadata list iterator for each tsfile
     // the iterator return a batch of series and all chunk metadata of these series in this tsfile
-    private Map<TsFileResource, Iterator<Map<String, List<ChunkMetadata>>>>
+    private final Map<TsFileResource, Iterator<Map<String, List<ChunkMetadata>>>>
         chunkMetadataIteratorMap = new HashMap<>();
+    private String currentCompactingSeries = null;
+    private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
+        chunkMetadataMetadataListOfCurrentCompactingSeries;
 
-    private MeasurementIterator(
-        Map<TsFileResource, TsFileSequenceReader> readerMap,
-        IDeviceID device,
-        boolean needDeserializeTimeseries)
-        throws IOException {
+    private MultiTsFileNonAlignedMeasurementMetadataListIterator(
+        Map<TsFileResource, TsFileSequenceReader> readerMap, IDeviceID device) throws IOException {
       this.readerMap = readerMap;
       this.device = device;
-
-      if (needDeserializeTimeseries) {
-        for (TsFileResource resource : tsFileResourcesSortedByAsc) {
-          TsFileSequenceReader reader = readerMap.get(resource);
-          chunkMetadataIteratorMap.put(
-              resource, reader.getMeasurementChunkMetadataListMapIterator(device));
-          chunkMetadataCacheMap.put(reader, new TreeMap<>());
-        }
+      for (TsFileResource resource : tsFileResourcesSortedByAsc) {
+        TsFileSequenceReader reader = readerMap.get(resource);
+        chunkMetadataIteratorMap.put(
+            resource, reader.getMeasurementChunkMetadataListMapIterator(device));
+        chunkMetadataCacheMap.put(reader, new TreeMap<>());
       }
     }
 
@@ -481,47 +478,61 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     @SuppressWarnings("squid:S3776")
     private boolean collectSeries() {
       String lastSeries = null;
-      List<String> tempCollectedSeries = new ArrayList<>();
+      List<String> collectedSeries = new ArrayList<>();
       for (TsFileResource resource : tsFileResourcesSortedByAsc) {
-        TsFileSequenceReader reader = readerMap.get(resource);
-        Map<String, List<ChunkMetadata>> chunkMetadataListMap = chunkMetadataCacheMap.get(reader);
-        if (chunkMetadataListMap.size() == 0) {
-          if (chunkMetadataIteratorMap.get(resource).hasNext()) {
-            chunkMetadataListMap = chunkMetadataIteratorMap.get(resource).next();
-            if (chunkMetadataListMap.containsKey("")) {
-              // encounter deleted aligned series, then remove it
-              chunkMetadataListMap.remove("");
-            }
-            chunkMetadataCacheMap.put(reader, chunkMetadataListMap);
-          } else {
-            continue;
-          }
+        Map<String, List<ChunkMetadata>> batchMeasurementChunkMetadataList =
+            getBatchMeasurementChunkMetadataListFromCache(resource);
+        if (batchMeasurementChunkMetadataList.isEmpty()) {
+          continue;
         }
+
         // get the min last series in the current chunk metadata
-        String maxSeries = Collections.max(chunkMetadataListMap.keySet());
+        String maxSeriesOfCurrentBatch =
+            Collections.max(batchMeasurementChunkMetadataList.keySet());
         if (lastSeries == null) {
-          lastSeries = maxSeries;
-        } else {
-          if (maxSeries.compareTo(lastSeries) < 0) {
-            lastSeries = maxSeries;
-          }
+          lastSeries = maxSeriesOfCurrentBatch;
+        } else if (maxSeriesOfCurrentBatch.compareTo(lastSeries) < 0) {
+          lastSeries = maxSeriesOfCurrentBatch;
         }
-        tempCollectedSeries.addAll(chunkMetadataListMap.keySet());
+        collectedSeries.addAll(batchMeasurementChunkMetadataList.keySet());
       }
-      if (!tempCollectedSeries.isEmpty()) {
-        if (!hasRemainingSeries()) {
-          lastSeries = Collections.max(tempCollectedSeries);
-        }
-        String finalLastSeries = lastSeries;
-        List<String> finalCollectedSeriesInThisIteration =
-            tempCollectedSeries.stream()
-                .filter(series -> series.compareTo(finalLastSeries) <= 0)
-                .collect(Collectors.toList());
-        seriesInThisIteration.addAll(finalCollectedSeriesInThisIteration);
-        return true;
-      } else {
+
+      if (collectedSeries.isEmpty()) {
         return false;
       }
+      if (!hasRemainingSeries()) {
+        lastSeries = Collections.max(collectedSeries);
+      }
+
+      String finalLastSeries = lastSeries;
+      seriesInThisIteration.addAll(
+          collectedSeries.stream()
+              .filter(series -> series.compareTo(finalLastSeries) <= 0)
+              .sorted()
+              .distinct()
+              .collect(Collectors.toList()));
+      return true;
+    }
+
+    private Map<String, List<ChunkMetadata>> getBatchMeasurementChunkMetadataListFromCache(
+        TsFileResource resource) {
+      TsFileSequenceReader reader = readerMap.get(resource);
+      Map<String, List<ChunkMetadata>> cachedBatchMeasurementChunkMetadataListMap =
+          chunkMetadataCacheMap.get(reader);
+      if (!cachedBatchMeasurementChunkMetadataListMap.isEmpty()) {
+        return cachedBatchMeasurementChunkMetadataListMap;
+      }
+      Iterator<Map<String, List<ChunkMetadata>>> batchMeasurementChunkMetadataListIterator =
+          chunkMetadataIteratorMap.get(resource);
+      if (!batchMeasurementChunkMetadataListIterator.hasNext()) {
+        return cachedBatchMeasurementChunkMetadataListMap;
+      }
+      Map<String, List<ChunkMetadata>> newBatchMeasurementChunkMetadataListMap =
+          batchMeasurementChunkMetadataListIterator.next();
+      // if encounter deleted aligned series, then remove it
+      newBatchMeasurementChunkMetadataListMap.remove("");
+      chunkMetadataCacheMap.put(reader, newBatchMeasurementChunkMetadataListMap);
+      return newBatchMeasurementChunkMetadataListMap;
     }
 
     private boolean hasRemainingSeries() {
@@ -537,13 +548,19 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       return !seriesInThisIteration.isEmpty() || collectSeries();
     }
 
-    public String nextSeries() {
+    public String nextSeries() throws IllegalPathException {
       if (!hasNextSeries()) {
         return null;
       } else {
-        currentCompactingSeries = seriesInThisIteration.removeFirst();
+        chunkMetadataMetadataListOfCurrentCompactingSeries =
+            calculateMetadataListForCurrentSeries();
         return currentCompactingSeries;
       }
+    }
+
+    public LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
+        getMetadataListForCurrentSeries() {
+      return chunkMetadataMetadataListOfCurrentCompactingSeries;
     }
 
     /**
@@ -556,11 +573,12 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
      * @throws IllegalPathException if path is illegal
      */
     @SuppressWarnings("squid:S1319")
-    public LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
-        getMetadataListForCurrentSeries() throws IllegalPathException {
-      if (currentCompactingSeries == null) {
+    private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
+        calculateMetadataListForCurrentSeries() throws IllegalPathException {
+      if (seriesInThisIteration.isEmpty()) {
         return new LinkedList<>();
       }
+      currentCompactingSeries = seriesInThisIteration.removeFirst();
 
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
           readerAndChunkMetadataForThisSeries = new LinkedList<>();

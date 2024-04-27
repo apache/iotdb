@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
@@ -31,7 +32,10 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.MergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TopKOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
@@ -46,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -68,6 +73,7 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -80,6 +86,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
@@ -477,11 +484,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   @Override
-  public Operator visitMergeSort(MergeSortNode node, LocalExecutionPlanContext context) {
-    return super.visitMergeSort(node, context);
-  }
-
-  @Override
   public Operator visitOutput(OutputNode node, LocalExecutionPlanContext context) {
     TypeProvider typeProvider = context.getTypeProvider();
     Optional<Expression> predicate;
@@ -515,12 +517,152 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   @Override
+  public Operator visitMergeSort(MergeSortNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                MergeSortOperator.class.getSimpleName());
+    List<Operator> children = new ArrayList<>(node.getChildren().size());
+    for (PlanNode child : node.getChildren()) {
+      children.add(this.process(child, context));
+    }
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    int sortItemsCount = node.getOrderingScheme().getOrderBy().size();
+
+    List<Integer> sortItemIndexList = new ArrayList<>(sortItemsCount);
+    List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemsCount);
+    genSortInformation(
+        node.getOutputSymbols(),
+        node.getOrderingScheme(),
+        sortItemIndexList,
+        sortItemDataTypeList,
+        context.getTypeProvider());
+
+    return new MergeSortOperator(
+        operatorContext,
+        children,
+        dataTypes,
+        getComparatorForTable(
+            node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList));
+  }
+
+  @Override
   public Operator visitSort(SortNode node, LocalExecutionPlanContext context) {
-    return super.visitSort(node, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                SortOperator.class.getSimpleName());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    int sortItemsCount = node.getOrderingScheme().getOrderBy().size();
+
+    List<Integer> sortItemIndexList = new ArrayList<>(sortItemsCount);
+    List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemsCount);
+    genSortInformation(
+        node.getOutputSymbols(),
+        node.getOrderingScheme(),
+        sortItemIndexList,
+        sortItemDataTypeList,
+        context.getTypeProvider());
+
+    String filePrefix =
+        IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
+            + File.separator
+            + operatorContext.getDriverContext().getFragmentInstanceContext().getId().getFullId()
+            + File.separator
+            + operatorContext.getDriverContext().getPipelineId()
+            + File.separator;
+
+    context.getDriverContext().setHaveTmpFile(true);
+    context.getDriverContext().getFragmentInstanceContext().setMayHaveTmpFile(true);
+
+    Operator child = node.getChild().accept(this, context);
+
+    return new SortOperator(
+        operatorContext,
+        child,
+        dataTypes,
+        filePrefix,
+        getComparatorForTable(
+            node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList));
   }
 
   @Override
   public Operator visitTopK(TopKNode node, LocalExecutionPlanContext context) {
-    return super.visitTopK(node, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TopKOperator.class.getSimpleName());
+    List<Operator> children = new ArrayList<>(node.getChildren().size());
+    for (PlanNode child : node.getChildren()) {
+      children.add(this.process(child, context));
+    }
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    int sortItemsCount = node.getOrderingScheme().getOrderBy().size();
+
+    List<Integer> sortItemIndexList = new ArrayList<>(sortItemsCount);
+    List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemsCount);
+    genSortInformation(
+        node.getOutputSymbols(),
+        node.getOrderingScheme(),
+        sortItemIndexList,
+        sortItemDataTypeList,
+        context.getTypeProvider());
+    return new TopKOperator(
+        operatorContext,
+        children,
+        dataTypes,
+        getComparatorForTable(
+            node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList),
+        node.getCount(),
+        node.isChildrenDataInOrder());
+  }
+
+  private List<TSDataType> getOutputColumnTypes(PlanNode node, TypeProvider typeProvider) {
+    return node.getOutputSymbols().stream()
+        .filter(s -> !TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(s.getName()))
+        .map(s -> getTSDataType(typeProvider.getTableModelType(s)))
+        .collect(Collectors.toList());
+  }
+
+  private void genSortInformation(
+      List<Symbol> outputSymbols,
+      OrderingScheme orderingScheme,
+      List<Integer> sortItemIndexList,
+      List<TSDataType> sortItemDataTypeList,
+      TypeProvider typeProvider) {
+    Map<Symbol, Integer> columnIndex = new HashMap<>();
+    int index = 0;
+    for (Symbol symbol : outputSymbols) {
+      if (TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(symbol.getName())) {
+        continue;
+      }
+      columnIndex.put(symbol, index++);
+    }
+    orderingScheme
+        .getOrderBy()
+        .forEach(
+            sortItem -> {
+              if (TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(sortItem.getName())) {
+                sortItemIndexList.add(-1);
+                sortItemDataTypeList.add(TSDataType.INT64);
+              } else {
+                Integer i = columnIndex.get(sortItem);
+                if (i == null) {
+                  throw new IllegalStateException(
+                      "Sort Item %s is not included in children's output columns");
+                }
+                sortItemIndexList.add(i);
+                sortItemDataTypeList.add(getTSDataType(typeProvider.getTableModelType(sortItem)));
+              }
+            });
   }
 }

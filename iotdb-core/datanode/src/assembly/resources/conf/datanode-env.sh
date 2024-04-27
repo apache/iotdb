@@ -277,9 +277,6 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djdk.nio.maxCachedBufferSize=${MAX_CACHED_BUFFE
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+CrashOnOutOfMemoryError"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+UseAdaptiveSizePolicy"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xss512k"
-# options below try to optimize safepoint stw time.
-IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+UnlockDiagnosticVMOptions"
-IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:GuaranteedSafepointInterval=0"
 # these two options print safepoints with pauses longer than 1000ms to the standard output. You can see these logs via redirection when starting in the background like "start-datanode.sh > log_datanode_safepoint.log"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:SafepointTimeoutDelay=1000"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+SafepointTimeout"

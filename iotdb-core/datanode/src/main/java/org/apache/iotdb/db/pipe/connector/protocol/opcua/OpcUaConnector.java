@@ -186,7 +186,9 @@ public class OpcUaConnector implements PipeConnector {
           OpcUaConnector.class.getName())) {
         return;
       }
-      transferTablet(server, pipeInsertNodeTabletInsertionEvent.convertToTablet());
+      for (final Tablet tablet : pipeInsertNodeTabletInsertionEvent.convertToTablets()) {
+        transferTablet(server, tablet);
+      }
     } finally {
       pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
           OpcUaConnector.class.getName(), false);
