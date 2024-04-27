@@ -42,34 +42,20 @@ import static org.apache.iotdb.db.relational.sql.tree.LogicalExpression.Operator
 public final class ExtractCommonPredicatesExpressionRewriter {
 
   public static Expression extractCommonPredicates(Expression expression) {
-    return ExpressionTreeRewriter.rewriteWith(new Visitor(), expression, NodeContext.ROOT_NODE);
+    return new Visitor().process(expression, NodeContext.ROOT_NODE);
   }
 
   private ExtractCommonPredicatesExpressionRewriter() {}
 
-  private static class Visitor extends ExpressionRewriter<NodeContext> {
-    @Override
-    protected Expression rewriteExpression(
-        Expression node, NodeContext context, ExpressionTreeRewriter<NodeContext> treeRewriter) {
-      if (context.isRootNode()) {
-        return treeRewriter.rewrite(node, NodeContext.NOT_ROOT_NODE);
-      }
-
-      return null;
-    }
+  private static class Visitor extends RewritingVisitor<NodeContext> {
 
     @Override
-    public Expression rewriteLogicalExpression(
-        LogicalExpression node,
-        NodeContext context,
-        ExpressionTreeRewriter<NodeContext> treeRewriter) {
+    public Expression visitLogicalExpression(LogicalExpression node, NodeContext context) {
       Expression expression =
           combinePredicates(
               node.getOperator(),
               extractPredicates(node.getOperator(), node).stream()
-                  .map(
-                      subExpression ->
-                          treeRewriter.rewrite(subExpression, NodeContext.NOT_ROOT_NODE))
+                  .map(subExpression -> process(subExpression, NodeContext.NOT_ROOT_NODE))
                   .collect(toImmutableList()));
 
       if (!(expression instanceof LogicalExpression)) {

@@ -82,7 +82,7 @@ public class PlanBuilder {
   }
 
   private Expression translate(Expression expression) {
-    return new ExpressionTranslateVisitor().process(expression, this);
+    return ExpressionTranslateVisitor.translateToSymbolReference(expression, this);
   }
 
   public Optional<Symbol> getSymbolForColumn(Expression expression) {

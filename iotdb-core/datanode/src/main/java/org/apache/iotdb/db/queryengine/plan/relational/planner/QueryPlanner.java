@@ -19,6 +19,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTranslateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -50,7 +51,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTranslator.sortItemToSortOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.PredicateUtils.extractGlobalTimePredicate;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
 
 public class QueryPlanner {
   private final Analysis analysis;
@@ -244,8 +245,9 @@ public class QueryPlanner {
       return planBuilder;
     }
 
-    Pair<Expression, Boolean> resultPair = extractGlobalTimePredicate(predicate, true, true);
-    Expression globalTimePredicate = resultPair.left;
+    Pair<Expression, Boolean> resultPair = extractGlobalTimeFilter(predicate);
+    Expression globalTimePredicate =
+        ExpressionTranslateVisitor.translateToSymbolReference(resultPair.left, planBuilder);
     analysis.setGlobalTableModelTimePredicate(globalTimePredicate);
     boolean hasValueFilter = resultPair.right;
     if (!hasValueFilter) {
