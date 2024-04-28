@@ -100,7 +100,6 @@ import org.apache.iotdb.db.relational.sql.tree.Select;
 import org.apache.iotdb.db.relational.sql.tree.SelectItem;
 import org.apache.iotdb.db.relational.sql.tree.SetProperties;
 import org.apache.iotdb.db.relational.sql.tree.ShowDB;
-import org.apache.iotdb.db.relational.sql.tree.ShowDevice;
 import org.apache.iotdb.db.relational.sql.tree.ShowIndex;
 import org.apache.iotdb.db.relational.sql.tree.ShowTables;
 import org.apache.iotdb.db.relational.sql.tree.SimpleCaseExpression;
@@ -378,12 +377,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitLoadTsFileStatement(RelationalSqlParser.LoadTsFileStatementContext ctx) {
     return super.visitLoadTsFileStatement(ctx);
-  }
-
-  @Override
-  public Node visitShowDevicesStatement(RelationalSqlParser.ShowDevicesStatementContext ctx) {
-    // todo parse where clause
-    return new ShowDevice(getLocation(ctx));
   }
 
   @Override
