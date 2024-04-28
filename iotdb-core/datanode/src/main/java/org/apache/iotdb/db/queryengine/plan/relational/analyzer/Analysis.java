@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
+import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySource;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -82,6 +83,7 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.common.header.DatasetHeader.EMPTY_HEADER;
 
 public class Analysis implements IAnalysis {
 
@@ -153,6 +155,8 @@ public class Analysis implements IAnalysis {
   private DataPartition dataPartition;
 
   private DatasetHeader respDatasetHeader;
+
+  private boolean finishQueryAfterAnalyze;
 
   public Expression getGlobalTableModelTimePredicate() {
     return this.globalTableModelTimePredicate;
@@ -575,12 +579,32 @@ public class Analysis implements IAnalysis {
 
   @Override
   public boolean canSkipExecute(MPPQueryContext context) {
-    return false;
+    return isFinishQueryAfterAnalyze();
+  }
+
+  public void setFinishQueryAfterAnalyze() {
+    this.finishQueryAfterAnalyze = true;
+  }
+
+  public boolean isFinishQueryAfterAnalyze() {
+    return finishQueryAfterAnalyze;
+  }
+
+  private boolean hasDataSource() {
+    return (dataPartition != null && !dataPartition.isEmpty());
+    //            || (schemaPartition != null && !schemaPartition.isEmpty())
+    //            || statement instanceof ShowQueriesStatement
+    //            || (statement instanceof QueryStatement
+    //            && ((QueryStatement) statement).isAggregationQuery());
   }
 
   @Override
   public TsBlock constructResultForMemorySource(MPPQueryContext context) {
-    return null;
+    StatementMemorySource source =
+        new StatementMemorySource(
+            new TsBlock(0), respDatasetHeader == null ? EMPTY_HEADER : respDatasetHeader);
+    setRespDatasetHeader(source.getDatasetHeader());
+    return source.getTsBlock();
   }
 
   @Override
