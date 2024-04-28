@@ -434,7 +434,6 @@ public class IoTDBDescriptor {
       }
       offHeapMemoryStr = offHeapMemoryStr.replaceAll("\\D", "");
       conf.setMaxOffHeapMemoryBytes(Long.parseLong(offHeapMemoryStr) * unit);
-      LOGGER.info("OFF_HEAP_MEMORY: {}", conf.getMaxOffHeapMemoryBytes());
     }
 
     conf.setIoTaskQueueSizeForFlushing(
