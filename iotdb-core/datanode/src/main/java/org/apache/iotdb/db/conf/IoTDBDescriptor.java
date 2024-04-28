@@ -57,7 +57,6 @@ import org.apache.iotdb.metrics.utils.NodeType;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
-import ch.qos.logback.core.util.FileSize;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -421,10 +420,20 @@ public class IoTDBDescriptor {
 
     String offHeapMemoryStr = System.getProperty("OFF_HEAP_MEMORY");
     if (offHeapMemoryStr != null) {
-      if (!offHeapMemoryStr.toLowerCase().endsWith("b")) {
+      offHeapMemoryStr = offHeapMemoryStr.toLowerCase();
+      if (!offHeapMemoryStr.endsWith("b")) {
         offHeapMemoryStr += "b";
       }
-      conf.setMaxOffHeapMemoryBytes(FileSize.valueOf(offHeapMemoryStr).getSize());
+      long unit = 1;
+      if (offHeapMemoryStr.endsWith("kb")) {
+        unit = 1024L;
+      } else if (offHeapMemoryStr.endsWith("mb")) {
+        unit = 1048576L;
+      } else if (offHeapMemoryStr.endsWith("gb")) {
+        unit = 1073741824L;
+      }
+      conf.setMaxOffHeapMemoryBytes(
+          Long.parseLong(offHeapMemoryStr.substring(0, offHeapMemoryStr.length() - 2)) * unit);
       LOGGER.info("OFF_HEAP_MEMORY: {}", conf.getMaxOffHeapMemoryBytes());
     }
 
