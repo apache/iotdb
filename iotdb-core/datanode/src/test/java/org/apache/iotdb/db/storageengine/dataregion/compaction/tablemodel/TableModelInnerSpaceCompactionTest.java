@@ -23,8 +23,10 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -47,15 +49,26 @@ import java.util.List;
 import java.util.Map;
 
 public class TableModelInnerSpaceCompactionTest extends AbstractCompactionTest {
+
+  private final String oldThreadName = Thread.currentThread().getName();
+
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
+    Thread.currentThread().setName(oldThreadName);
+    for (TsFileResource tsFileResource : seqResources) {
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+    }
   }
 
   @Test
@@ -206,7 +219,8 @@ public class TableModelInnerSpaceCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testSequenceInnerSpaceCompactionOfTwoV4TreeModelCanNotMatch() throws IOException {
+  public void testSequenceInnerSpaceCompactionOfTwoV4TreeModelCanNotMatchTableSchema()
+      throws IOException {
     TsFileResource resource1 = createEmptyFileAndResource(true);
     try (CompactionTableModelTestFileWriter writer =
         new CompactionTableModelTestFileWriter(resource1)) {
@@ -246,5 +260,44 @@ public class TableModelInnerSpaceCompactionTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertFalse(task.start());
+  }
+
+  @Test
+  public void testCompactionWithMultiTableSchema() throws IOException {
+    TsFileResource resource1 = createEmptyFileAndResource(true);
+    try (CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource1)) {
+      writer.registerTableSchema("t1", Arrays.asList("id1", "id2"));
+      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2"));
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+
+      writer.startChunkGroup("d1");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+
+      writer.endFile();
+    }
+    seqResources.add(resource1);
+    tsFileManager.addAll(seqResources, true);
+
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, new ReadPointCompactionPerformer(), 0);
+    Assert.assertTrue(task.start());
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(
+            tsFileManager.getTsFileList(true).get(0).getTsFile().getAbsolutePath())) {
+      TsFileMetadata tsFileMetadata = reader.readFileMetadata();
+      Assert.assertEquals(2, tsFileMetadata.getTableSchemaMap().size());
+    }
   }
 }
