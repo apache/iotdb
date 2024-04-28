@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeT
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.commons.pipe.pattern.PrefixPipePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -49,6 +50,7 @@ import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferCo
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigSnapshotPieceReq;
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigSnapshotSealReq;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
+import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanExceptionVisitor;
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanTSStatusVisitor;
 import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
@@ -140,7 +142,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
           receiverId.get(),
           status);
       return new TPipeTransferResp(status);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       final String error =
           "Exception encountered while handling pipe transfer request. Root cause: "
               + e.getMessage();
@@ -154,19 +156,19 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   // to notify its configurations.
   // Note that the sender needs not to reconstruct its client because the client
   // is directly linked to the preceding DataNode and has not broken.
-  private boolean needHandshake(PipeRequestType type) {
+  private boolean needHandshake(final PipeRequestType type) {
     return Objects.isNull(receiverFileDirWithIdSuffix.get())
         && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V1
         && type != PipeRequestType.HANDSHAKE_CONFIGNODE_V2;
   }
 
-  private TPipeTransferResp handleTransferConfigPlan(PipeTransferConfigPlanReq req)
+  private TPipeTransferResp handleTransferConfigPlan(final PipeTransferConfigPlanReq req)
       throws IOException {
     return new TPipeTransferResp(
         executePlanAndClassifyExceptions(ConfigPhysicalPlan.Factory.create(req.body)));
   }
 
-  private TSStatus executePlanAndClassifyExceptions(ConfigPhysicalPlan plan) {
+  private TSStatus executePlanAndClassifyExceptions(final ConfigPhysicalPlan plan) {
     TSStatus result;
     try {
       result = executePlan(plan);
@@ -178,7 +180,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             result);
         result = STATUS_VISITOR.process(plan, result);
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Receiver id = {}: Exception encountered while executing plan {}: ",
           receiverId.get(),
@@ -189,7 +191,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     return result;
   }
 
-  private TSStatus executePlan(ConfigPhysicalPlan plan) throws ConsensusException {
+  private TSStatus executePlan(final ConfigPhysicalPlan plan) throws ConsensusException {
     switch (plan.getType()) {
       case CreateDatabase:
         // Here we only reserve database name and substitute the sender's local information
@@ -301,13 +303,15 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected TSStatus loadFileV1(PipeTransferFileSealReqV1 req, String fileAbsolutePath) {
+  protected TSStatus loadFileV1(
+      final PipeTransferFileSealReqV1 req, final String fileAbsolutePath) {
     throw new UnsupportedOperationException(
         "IoTDBConfigNodeReceiver does not support load file V1.");
   }
 
   @Override
-  protected TSStatus loadFileV2(PipeTransferFileSealReqV2 req, List<String> fileAbsolutePaths)
+  protected TSStatus loadFileV2(
+      final PipeTransferFileSealReqV2 req, final List<String> fileAbsolutePaths)
       throws IOException {
     final Map<String, String> parameters = req.getParameters();
     final CNPhysicalPlanGenerator generator =
@@ -325,11 +329,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             parameters.get(ColumnHeaderConstant.TYPE));
     final List<TSStatus> results = new ArrayList<>();
     while (generator.hasNext()) {
-      final ConfigPhysicalPlan plan = generator.next();
-      if (executionTypes.contains(plan.getType())) {
-        // Here we apply the statements as many as possible
-        results.add(executePlanAndClassifyExceptions(plan));
-      }
+      IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+          .process(generator.next(), new PrefixPipePattern("a"))
+          .filter(configPhysicalPlan -> executionTypes.contains(configPhysicalPlan.getType()))
+          .ifPresent(
+              configPhysicalPlan ->
+                  results.add(executePlanAndClassifyExceptions(configPhysicalPlan)));
     }
     return PipeReceiverStatusHandler.getPriorStatus(results);
   }

@@ -86,10 +86,10 @@ public class IoTDBPipePatternTest {
       "root.db.d2.**", "root.db2.d1.**", "root.db.db.d1.**",
     };
     for (String s : patternsOverlapWithDevice) {
-      Assert.assertTrue(new IoTDBPipePattern(s).mayOverlapWithDevice(device));
+      Assert.assertTrue(new IoTDBPipePattern(s).matchPrefixPath(device));
     }
     for (String t : patternsNotOverlapWithDevice) {
-      Assert.assertFalse(new IoTDBPipePattern(t).mayOverlapWithDevice(device));
+      Assert.assertFalse(new IoTDBPipePattern(t).matchPrefixPath(device));
     }
 
     // Test pattern match measurement

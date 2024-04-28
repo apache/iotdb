@@ -186,7 +186,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       }
 
       final PipePattern pipePattern = extractor.getPipePattern();
-      if (Objects.isNull(pipePattern) || pipePattern.mayOverlapWithDevice(device)) {
+      if (Objects.isNull(pipePattern) || pipePattern.matchPrefixPath(device)) {
         filteredExtractors.add(extractor);
       }
     }

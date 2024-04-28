@@ -26,6 +26,11 @@ import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinke
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
+import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
+import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.pattern.PipePattern;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -34,9 +39,12 @@ import org.apache.tsfile.utils.Pair;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
+
+  protected IoTDBPipePattern pipePattern;
 
   private List<PipeSnapshotEvent> historicalEvents = new LinkedList<>();
 
@@ -48,6 +56,20 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
   protected final AtomicBoolean hasBeenClosed = new AtomicBoolean(false);
 
   protected abstract AbstractPipeListeningQueue getListeningQueue();
+
+  @Override
+  public void customize(
+      final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
+      throws Exception {
+    super.customize(parameters, configuration);
+
+    final PipePattern pattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
+    if (!(pattern instanceof IoTDBPipePattern && ((IoTDBPipePattern) pattern).isPrefix())) {
+      throw new PipeException(
+          "The source path be an IoTDB-style pattern and ends with '**' when schema transfer is included.");
+    }
+    pipePattern = (IoTDBPipePattern) pattern;
+  }
 
   @Override
   public void start() throws Exception {
@@ -138,9 +160,13 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     }
 
     // Realtime
-    EnrichedEvent realtimeEvent;
+    PipeWritePlanEvent realtimeEvent;
     do {
-      realtimeEvent = (EnrichedEvent) iterator.next(getMaxBlockingTimeMs());
+      realtimeEvent = (PipeWritePlanEvent) iterator.next(getMaxBlockingTimeMs());
+      realtimeEvent =
+          Objects.nonNull(realtimeEvent)
+              ? trimRealtimeEventByPipePattern(realtimeEvent).orElse(null)
+              : realtimeEvent;
       if (Objects.isNull(realtimeEvent)) {
         return null;
       }
@@ -148,8 +174,9 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
         || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe()));
 
     realtimeEvent =
-        realtimeEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-            pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+        (PipeWritePlanEvent)
+            realtimeEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+                pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
     realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
     realtimeEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
     return realtimeEvent;
@@ -157,9 +184,13 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   protected abstract long getMaxBlockingTimeMs();
 
-  protected abstract boolean isTypeListened(Event event);
+  // The trimmed event shall be non-null.
+  protected abstract Optional<PipeWritePlanEvent> trimRealtimeEventByPipePattern(
+      final PipeWritePlanEvent event);
 
-  protected abstract void confineHistoricalEventTransferTypes(PipeSnapshotEvent event);
+  protected abstract boolean isTypeListened(final PipeWritePlanEvent event);
+
+  protected abstract void confineHistoricalEventTransferTypes(final PipeSnapshotEvent event);
 
   @Override
   public void close() throws Exception {

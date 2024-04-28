@@ -41,7 +41,7 @@ public abstract class PipePattern {
 
   protected final String pattern;
 
-  protected PipePattern(String pattern) {
+  protected PipePattern(final String pattern) {
     this.pattern = pattern != null ? pattern : getDefaultPattern();
   }
 
@@ -58,7 +58,8 @@ public abstract class PipePattern {
    *
    * @return The interpreted {@link PipePattern} which is not null.
    */
-  public static PipePattern parsePipePatternFromSourceParameters(PipeParameters sourceParameters) {
+  public static PipePattern parsePipePatternFromSourceParameters(
+      final PipeParameters sourceParameters) {
     final String path = sourceParameters.getStringByKeys(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
 
     // 1. If "source.path" is specified, it will be interpreted as an IoTDB-style path,
@@ -104,27 +105,30 @@ public abstract class PipePattern {
   public abstract boolean isLegal();
 
   /** Check if this pattern matches all time-series under a database. */
-  public abstract boolean coversDb(String db);
+  public abstract boolean coversDb(final String db);
 
   /** Check if a device's all measurements are covered by this pattern. */
-  public abstract boolean coversDevice(String device);
+  public abstract boolean coversDevice(final String device);
 
   /**
-   * Check if a device may have some measurements matched by the pattern.
+   * Check if the {@link PipePattern} matches the given prefix path.
    *
-   * <p>NOTE1: this is only called when {@link PipePattern#coversDevice} is false.
-   *
-   * <p>NOTE2: this is just a loose check and may have false positives. To further check if a
+   * <p>NOTE1: In data transmission, this is called when {@link PipePattern#coversDevice} is false,
+   * and plays the role of a loose check and may have false positives. To further check if a
    * measurement matches the pattern, please use {@link PipePattern#matchesMeasurement} after this.
+   *
+   * <p>NOTE2: In schema transmission, it's used to detect whether the given path can act as a
+   * parent path of the {@link PipePattern}, and to transmit possibly used schemas like database
+   * creation and template setting.
    */
-  public abstract boolean mayOverlapWithDevice(String device);
+  public abstract boolean matchPrefixPath(final String path);
 
   /**
    * Check if a full path with device and measurement can be matched by pattern.
    *
-   * <p>NOTE: this is only called when {@link PipePattern#mayOverlapWithDevice} is true.
+   * <p>NOTE: this is only called when {@link PipePattern#matchPrefixPath} is true.
    */
-  public abstract boolean matchesMeasurement(String device, String measurement);
+  public abstract boolean matchesMeasurement(final String device, final String measurement);
 
   @Override
   public String toString() {

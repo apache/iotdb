@@ -390,7 +390,7 @@ public class TabletInsertionDataContainer {
 
     // case 2: for example, pattern is root.a.b.c and device is root.a.b
     // in this case, we need to check the full path
-    else if (pattern.mayOverlapWithDevice(deviceId)) {
+    else if (pattern.matchPrefixPath(deviceId)) {
       int filteredCount = 0;
 
       for (int i = 0; i < originColumnSize; i++) {

@@ -81,10 +81,10 @@ public class PrefixPipePatternTest {
       "root.db.d2", "root.**",
     };
     for (String s : patternsOverlapWithDevice) {
-      Assert.assertTrue(new PrefixPipePattern(s).mayOverlapWithDevice(device));
+      Assert.assertTrue(new PrefixPipePattern(s).matchPrefixPath(device));
     }
     for (String t : patternsNotOverlapWithDevice) {
-      Assert.assertFalse(new PrefixPipePattern(t).mayOverlapWithDevice(device));
+      Assert.assertFalse(new PrefixPipePattern(t).matchPrefixPath(device));
     }
 
     // Test pattern match measurement

@@ -157,7 +157,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
       // case 2: for example, pattern is root.a.b.c and device is root.a.b
       // in this case, we need to check the full path
-      else if (pattern.mayOverlapWithDevice(deviceId)) {
+      else if (pattern.matchPrefixPath(deviceId)) {
         final List<String> filteredMeasurements = new ArrayList<>();
 
         for (final String measurement : entry.getValue()) {

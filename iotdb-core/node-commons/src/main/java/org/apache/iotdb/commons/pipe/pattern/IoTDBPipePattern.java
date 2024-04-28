@@ -22,22 +22,25 @@ package org.apache.iotdb.commons.pipe.pattern;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import java.util.List;
 import java.util.Objects;
 
 public class IoTDBPipePattern extends PipePattern {
 
   private final PartialPath patternPartialPath;
 
-  public IoTDBPipePattern(String pattern) {
+  public IoTDBPipePattern(final String pattern) {
     super(pattern);
 
     try {
       patternPartialPath = new PartialPath(getPattern());
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       throw new PipeException("Illegal IoTDBPipePattern: " + getPattern(), e);
     }
   }
@@ -56,44 +59,42 @@ public class IoTDBPipePattern extends PipePattern {
     try {
       PathUtils.isLegalPath(pattern);
       return true;
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       return false;
     }
   }
 
   @Override
-  public boolean coversDb(String db) {
+  public boolean coversDb(final String db) {
     try {
       return patternPartialPath.include(
           new PartialPath(db, IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       return false;
     }
   }
 
   @Override
-  public boolean coversDevice(String device) {
+  public boolean coversDevice(final String device) {
     try {
       return patternPartialPath.include(
           new PartialPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       return false;
     }
   }
 
   @Override
-  public boolean mayOverlapWithDevice(String device) {
+  public boolean matchPrefixPath(final String path) {
     try {
-      // Another way is to use patternPath.overlapWith("device.*"),
-      // there will be no false positives but time cost may be higher.
-      return patternPartialPath.matchPrefixPath(new PartialPath(device));
-    } catch (IllegalPathException e) {
+      return patternPartialPath.matchPrefixPath(new PartialPath(path));
+    } catch (final IllegalPathException e) {
       return false;
     }
   }
 
   @Override
-  public boolean matchesMeasurement(String device, String measurement) {
+  public boolean matchesMeasurement(final String device, final String measurement) {
     // For aligned timeseries, empty measurement is an alias of the time column.
     if (Objects.isNull(measurement) || measurement.isEmpty()) {
       return false;
@@ -101,9 +102,31 @@ public class IoTDBPipePattern extends PipePattern {
 
     try {
       return patternPartialPath.matchFullPath(new PartialPath(device, measurement));
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       return false;
     }
+  }
+
+  /**
+   * Get the intersection of the given {@link PartialPath} and the {@link PipePattern}, Only used by
+   * schema transmission. Caller shall ensure it is a prefix pattern ending with "**".
+   */
+  public List<PartialPath> getIntersection(final PartialPath partialPath) {
+    return partialPath.intersectWithPrefixPattern(patternPartialPath);
+  }
+
+  /**
+   * Get the intersection of the given {@link PathPatternTree} and the {@link PipePattern}. Only
+   * used by schema transmission. Caller shall ensure it is a prefix pattern ending with "**".
+   */
+  public PathPatternTree getIntersection(final PathPatternTree patternTree) {
+    final PathPatternTree thisPatternTree = new PathPatternTree();
+    thisPatternTree.appendPathPattern(patternPartialPath);
+    return patternTree.intersectWithFullPathPrefixTree(thisPatternTree);
+  }
+
+  public boolean isPrefix() {
+    return PathPatternUtil.isMultiLevelMatchWildcard(patternPartialPath.getTailNode());
   }
 
   @Override
