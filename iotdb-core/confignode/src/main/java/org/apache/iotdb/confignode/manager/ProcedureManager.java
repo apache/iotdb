@@ -107,6 +107,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -567,14 +568,23 @@ public class ProcedureManager {
                   return false;
                 })
             .findAny();
-    if (anotherMigrateProcedure.isPresent()) {
+    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    if (TConsensusGroupType.DataRegion == regionGroupId.getType()
+        && ConsensusFactory.SIMPLE_CONSENSUS.equals(conf.getDataRegionConsensusProtocolClass())) {
+      failMessage =
+          "The region you are trying to migrate is using SimpleConsensus, and SimpleConsensus not supports region migration.";
+    } else if (TConsensusGroupType.SchemaRegion == regionGroupId.getType()
+        && ConsensusFactory.SIMPLE_CONSENSUS.equals(conf.getSchemaRegionConsensusProtocolClass())) {
+      failMessage =
+          "The region you are trying to migrate is using SimpleConsensus, and SimpleConsensus not supports region migration.";
+    } else if (anotherMigrateProcedure.isPresent()) {
       failMessage =
           String.format(
               "Submit RegionMigrateProcedure failed, "
                   + "because another RegionMigrateProcedure of the same consensus group %d is already in processing. "
-                  + "A consensus group is able to have at most 1 RegionMigrateProcedure at the same time"
-                  + "For further information, you can search [pid%d] in log.",
-              regionGroupId, anotherMigrateProcedure.get().getProcId());
+                  + "A consensus group is able to have at most 1 RegionMigrateProcedure at the same time. "
+                  + "For further information, please search [pid%d] in log. ",
+              regionGroupId.getId(), anotherMigrateProcedure.get().getProcId());
     } else if (originalDataNode == null) {
       failMessage =
           String.format(

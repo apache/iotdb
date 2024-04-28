@@ -74,6 +74,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -962,7 +963,7 @@ public class IoTConsensusServerImpl {
   }
 
   private void renameTmpConfigurationFileToRemoveSuffix() throws IOException {
-    try (Stream<Path> stream = Files.walk(Paths.get(storageDir))) {
+    try (Stream<Path> stream = Files.list(Paths.get(storageDir))) {
       List<Path> paths =
           stream
               .filter(Files::isRegularFile)
@@ -978,18 +979,20 @@ public class IoTConsensusServerImpl {
           try {
             Files.delete(targetFile.toPath());
           } catch (IOException e) {
-            logger.error("Unexpected error occurs when delete file: {}", targetPath);
+            logger.error("Unexpected error occurs when delete file: {}", targetPath, e);
           }
         }
         if (!filePath.toFile().renameTo(targetFile)) {
           logger.error("Unexpected error occurs when rename file: {} -> {}", filePath, targetPath);
         }
       }
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
     }
   }
 
   private void deleteConfiguration() throws IOException {
-    try (Stream<Path> stream = Files.walk(Paths.get(storageDir))) {
+    try (Stream<Path> stream = Files.list(Paths.get(storageDir))) {
       stream
           .filter(Files::isRegularFile)
           .filter(filePath -> filePath.getFileName().toString().endsWith(CONFIGURATION_FILE_NAME))
@@ -1004,6 +1007,8 @@ public class IoTConsensusServerImpl {
                       e);
                 }
               });
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
     }
   }
 

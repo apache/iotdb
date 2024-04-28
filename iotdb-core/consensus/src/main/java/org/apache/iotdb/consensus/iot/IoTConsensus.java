@@ -280,13 +280,13 @@ public class IoTConsensus implements IConsensus {
         (k, v) -> {
           exist.set(true);
           v.stop();
-          FileUtils.deleteFileOrDirectory(new File(buildPeerDir(storageDir, groupId)));
           return null;
         });
-    KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
     if (!exist.get()) {
       throw new ConsensusGroupNotExistException(groupId);
     }
+    FileUtils.deleteFileOrDirectory(new File(buildPeerDir(storageDir, groupId)));
+    KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
   }
 
   @Override
