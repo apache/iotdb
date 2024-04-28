@@ -22,8 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -38,16 +36,11 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertSchemaPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.CreateTableDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTableDevicesStatement;
-import org.apache.iotdb.db.relational.sql.tree.ComparisonExpression;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
-import org.apache.iotdb.db.relational.sql.tree.Identifier;
-import org.apache.iotdb.db.relational.sql.tree.Literal;
-import org.apache.iotdb.db.relational.sql.tree.LogicalExpression;
-import org.apache.iotdb.db.relational.sql.tree.StringLiteral;
-import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -199,27 +192,18 @@ public class TableModelSchemaFetcher {
       List<Expression> expressionList, TsTable table) {
     List<SchemaFilter> idDeterminedFilters = new ArrayList<>();
     List<SchemaFilter> idFuzzyFilters = new ArrayList<>();
-    Map<String, Integer> indexMap = getIdColumnIndex(table);
+    ConvertSchemaPredicateToFilterVisitor visitor = new ConvertSchemaPredicateToFilterVisitor();
+    ConvertSchemaPredicateToFilterVisitor.Context context =
+        new ConvertSchemaPredicateToFilterVisitor.Context(table);
     for (Expression expression : expressionList) {
       if (expression == null) {
         continue;
       }
-      if (expression instanceof LogicalExpression) {
-        LogicalExpression logicalExpression = (LogicalExpression) expression;
-        SchemaFilter schemaFilter = transformToSchemaFilter(logicalExpression, table, indexMap);
-        if (hasAttribute(schemaFilter)) {
-          idFuzzyFilters.add(schemaFilter);
-        } else {
-          idDeterminedFilters.add(schemaFilter);
-        }
+      SchemaFilter schemaFilter = expression.accept(visitor, context);
+      if (hasAttribute(schemaFilter)) {
+        idFuzzyFilters.add(schemaFilter);
       } else {
-        SchemaFilter schemaFilter =
-            transformToSchemaFilter((ComparisonExpression) expression, table, indexMap);
-        if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.DEVICE_ATTRIBUTE)) {
-          idFuzzyFilters.add(schemaFilter);
-        } else {
-          idDeterminedFilters.add(schemaFilter);
-        }
+        idDeterminedFilters.add(schemaFilter);
       }
     }
     return new Pair<>(idDeterminedFilters, idFuzzyFilters);
@@ -232,69 +216,5 @@ public class TableModelSchemaFetcher {
     }
 
     return schemaFilter.getSchemaFilterType().equals(SchemaFilterType.DEVICE_ATTRIBUTE);
-  }
-
-  private SchemaFilter transformToSchemaFilter(
-      LogicalExpression logicalExpression, TsTable table, Map<String, Integer> indexMap) {
-    SchemaFilter left;
-    SchemaFilter right;
-    if (logicalExpression.getTerms().get(0) instanceof LogicalExpression) {
-      left =
-          transformToSchemaFilter(
-              (LogicalExpression) (logicalExpression.getChildren().get(0)), table, indexMap);
-    } else {
-      left =
-          transformToSchemaFilter(
-              (ComparisonExpression) (logicalExpression.getChildren().get(0)), table, indexMap);
-    }
-    if (logicalExpression.getTerms().get(1) instanceof LogicalExpression) {
-      right =
-          transformToSchemaFilter(
-              (LogicalExpression) (logicalExpression.getChildren().get(1)), table, indexMap);
-    } else {
-      right =
-          transformToSchemaFilter(
-              (ComparisonExpression) (logicalExpression.getChildren().get(1)), table, indexMap);
-    }
-    return new OrFilter(left, right);
-  }
-
-  private SchemaFilter transformToSchemaFilter(
-      ComparisonExpression comparisonExpression, TsTable table, Map<String, Integer> indexMap) {
-    String columnName;
-    String value;
-    if (comparisonExpression.getLeft() instanceof Literal) {
-      value = ((StringLiteral) (comparisonExpression.getLeft())).getValue();
-      if (comparisonExpression.getRight() instanceof Identifier) {
-        columnName = ((Identifier) (comparisonExpression.getRight())).getValue();
-      } else {
-        columnName = ((SymbolReference) (comparisonExpression.getRight())).getName();
-      }
-    } else {
-      value = ((StringLiteral) (comparisonExpression.getRight())).getValue();
-      if (comparisonExpression.getLeft() instanceof Identifier) {
-        columnName = ((Identifier) (comparisonExpression.getLeft())).getValue();
-      } else {
-        columnName = ((SymbolReference) (comparisonExpression.getLeft())).getName();
-      }
-    }
-    if (table.getColumnSchema(columnName).getColumnCategory().equals(TsTableColumnCategory.ID)) {
-      return new DeviceIdFilter(indexMap.get(columnName), value);
-    } else {
-      return new DeviceAttributeFilter(columnName, value);
-    }
-  }
-
-  private Map<String, Integer> getIdColumnIndex(TsTable table) {
-    Map<String, Integer> map = new HashMap<>();
-    List<TsTableColumnSchema> columnSchemaList = table.getColumnList();
-    int idIndex = 0;
-    for (TsTableColumnSchema columnSchema : columnSchemaList) {
-      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-        map.put(columnSchema.getColumnName(), idIndex);
-        idIndex++;
-      }
-    }
-    return map;
   }
 }
