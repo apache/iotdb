@@ -127,18 +127,42 @@ public class TableMetadataImpl implements Metadata {
   public Type getFunctionReturnType(String functionName, List<? extends Type> argumentTypes) {
 
     // builtin scalar function
-    if (BuiltinScalarFunction.DIFF.getFunctionName().equalsIgnoreCase(functionName)
-        || BuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!isOneNumericType(argumentTypes)) {
+    if (BuiltinScalarFunction.DIFF.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!isOneNumericType(argumentTypes)
+          && !(argumentTypes.size() == 2
+              && isNumericType(argumentTypes.get(0))
+              && BOOLEAN.equals(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function"
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only supports numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+                + " only supports one numeric data types [INT32, INT64, FLOAT, DOUBLE] and one boolean");
+      }
+
+    } else if (BuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!isOneNumericType(argumentTypes) && !isTwoNumericType(argumentTypes)) {
+        throw new SemanticException(
+            "Scalar function"
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only supports two numeric data types [INT32, INT64, FLOAT, DOUBLE]");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.REPLACE.getFunctionName().equalsIgnoreCase(functionName)
-        || BuiltinScalarFunction.SUBSTRING.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!isOneTextType(argumentTypes)) {
+    } else if (BuiltinScalarFunction.REPLACE.getFunctionName().equalsIgnoreCase(functionName)) {
+
+      if (!isTwoTextType(argumentTypes) && isThreeTextType(argumentTypes)) {
+        throw new SemanticException(
+            "Scalar function"
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only supports text data type.");
+      }
+      return TEXT;
+    } else if (BuiltinScalarFunction.SUBSTRING.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 2
+              && TEXT.equals(argumentTypes.get(0))
+              && isNumericType(argumentTypes.get(1)))
+          && !(argumentTypes.size() == 3
+              && TEXT.equals(argumentTypes.get(0))
+              && isNumericType(argumentTypes.get(1))
+              && isNumericType(argumentTypes.get(2)))) {
         throw new SemanticException(
             "Scalar function"
                 + functionName.toLowerCase(Locale.ENGLISH)
@@ -281,6 +305,19 @@ public class TableMetadataImpl implements Metadata {
 
   public static boolean isOneTextType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 1 && TEXT.equals(argumentTypes.get(0));
+  }
+
+  public static boolean isTwoTextType(List<? extends Type> argumentTypes) {
+    return argumentTypes.size() == 2
+        && TEXT.equals(argumentTypes.get(0))
+        && TEXT.equals(argumentTypes.get(1));
+  }
+
+  public static boolean isThreeTextType(List<? extends Type> argumentTypes) {
+    return argumentTypes.size() == 3
+        && TEXT.equals(argumentTypes.get(0))
+        && TEXT.equals(argumentTypes.get(1))
+        && TEXT.equals(argumentTypes.get(2));
   }
 
   public static boolean isNumericType(Type type) {

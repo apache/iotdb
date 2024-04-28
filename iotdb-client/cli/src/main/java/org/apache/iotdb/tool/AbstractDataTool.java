@@ -117,6 +117,7 @@ public abstract class AbstractDataTool {
   protected static String timeZoneID;
   protected static String timeFormat;
   protected static String exportType;
+  protected static String aligned;
   protected static Session session;
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);

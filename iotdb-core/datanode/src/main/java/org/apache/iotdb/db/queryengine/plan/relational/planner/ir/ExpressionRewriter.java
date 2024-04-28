@@ -37,9 +37,13 @@ import org.apache.iotdb.db.relational.sql.tree.SimpleCaseExpression;
 import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
 
 public class ExpressionRewriter<C> {
+
   protected Expression rewriteExpression(
       Expression node, C context, ExpressionTreeRewriter<C> treeRewriter) {
     return null;
+    //    throw new IllegalStateException(
+    //        String.format("%s is not supported in ExpressionRewriter yet",
+    // node.getClass().getName()));
   }
 
   public Expression rewriteRow(Row node, C context, ExpressionTreeRewriter<C> treeRewriter) {
@@ -106,11 +110,6 @@ public class ExpressionRewriter<C> {
     return rewriteExpression(node, context, treeRewriter);
   }
 
-  //    public Expression rewriteLambdaExpression(LambdaExpression node, C context,
-  // ExpressionTreeRewriter<C> treeRewriter) {
-  //        return rewriteExpression(node, context, treeRewriter);
-  //    }
-
   //    public Expression rewriteBindExpression(BindExpression node, C context,
   // ExpressionTreeRewriter<C> treeRewriter) {
   //        return rewriteExpression(node, context, treeRewriter);
@@ -123,11 +122,6 @@ public class ExpressionRewriter<C> {
 
   //    public Expression rewriteConstant(Constant node, C context, ExpressionTreeRewriter<C>
   // treeRewriter) {
-  //        return rewriteExpression(node, context, treeRewriter);
-  //    }
-
-  //    public Expression rewriteSubscriptExpression(SubscriptExpression node, C context,
-  // ExpressionTreeRewriter<C> treeRewriter) {
   //        return rewriteExpression(node, context, treeRewriter);
   //    }
 

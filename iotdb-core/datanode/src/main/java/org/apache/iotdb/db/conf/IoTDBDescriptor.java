@@ -164,11 +164,12 @@ public class IoTDBDescriptor {
     try {
       return new URL(urlString);
     } catch (MalformedURLException e) {
+      LOGGER.warn("get url failed", e);
       return null;
     }
   }
 
-  /** load an property file and set TsfileDBConfig variables. */
+  /** load a property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
     URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
@@ -1848,7 +1849,8 @@ public class IoTDBDescriptor {
           throw new RuntimeException(
               "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
                   + " should be an integer, which is "
-                  + queryMemoryAllocateProportion);
+                  + queryMemoryAllocateProportion,
+              e);
         }
       }
     }
@@ -2020,7 +2022,8 @@ public class IoTDBDescriptor {
         throw new RuntimeException(
             "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion"
                 + " should be an integer, which is "
-                + readerTransformerCollectorMemoryProportion);
+                + readerTransformerCollectorMemoryProportion,
+            e);
       }
     }
   }
@@ -2125,7 +2128,8 @@ public class IoTDBDescriptor {
         configNodeUrls = configNodeUrls.trim();
         conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(configNodeUrls).get(0));
       } catch (BadNodeUrlException e) {
-        LOGGER.error("ConfigNodes are set in wrong format, please set them like 127.0.0.1:10710");
+        LOGGER.error(
+            "ConfigNodes are set in wrong format, please set them like 127.0.0.1:10710", e);
       }
     } else {
       throw new IOException(

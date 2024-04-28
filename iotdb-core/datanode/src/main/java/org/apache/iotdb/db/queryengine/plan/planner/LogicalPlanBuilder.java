@@ -171,7 +171,7 @@ public class LogicalPlanBuilder {
               && !expression.getExpressionString().equals(ENDTIME)) {
             context
                 .getTypeProvider()
-                .setType(expression.getExpressionString(), getPreAnalyzedType(expression));
+                .setTreeModelType(expression.getExpressionString(), getPreAnalyzedType(expression));
           }
         });
   }
@@ -180,11 +180,11 @@ public class LogicalPlanBuilder {
     if (keys == null) {
       return;
     }
-    keys.forEach(k -> context.getTypeProvider().setType(k, dataType));
+    keys.forEach(k -> context.getTypeProvider().setTreeModelType(k, dataType));
   }
 
   private void updateTypeProviderWithConstantType(String columnName, TSDataType dataType) {
-    context.getTypeProvider().setType(columnName, dataType);
+    context.getTypeProvider().setTreeModelType(columnName, dataType);
   }
 
   public LogicalPlanBuilder planRawDataSource(
@@ -349,7 +349,7 @@ public class LogicalPlanBuilder {
         columnHeader ->
             context
                 .getTypeProvider()
-                .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
+                .setTreeModelType(columnHeader.getColumnName(), columnHeader.getColumnType()));
 
     return this;
   }
@@ -707,7 +707,7 @@ public class LogicalPlanBuilder {
       // Currently UDAF only supports one input series
       String inputExpressionStr =
           aggregationDescriptor.getInputExpressions().get(0).getExpressionString();
-      typeProvider.setType(
+      typeProvider.setTreeModelType(
           String.format("%s(%s)", partialAggregationNames, inputExpressionStr), aggregationType);
     } else {
       List<String> partialAggregationsNames =
@@ -731,9 +731,11 @@ public class LogicalPlanBuilder {
       TypeProvider typeProvider, String partialAggregationName, String inputExpressionStr) {
     TSDataType aggregationType =
         SchemaUtils.getBuiltinAggregationTypeByFuncName(partialAggregationName);
-    typeProvider.setType(
+    typeProvider.setTreeModelType(
         String.format("%s(%s)", partialAggregationName, inputExpressionStr),
-        aggregationType == null ? typeProvider.getType(inputExpressionStr) : aggregationType);
+        aggregationType == null
+            ? typeProvider.getTreeModelType(inputExpressionStr)
+            : aggregationType);
   }
 
   public static void updateTypeProviderByPartialAggregation(
@@ -749,13 +751,13 @@ public class LogicalPlanBuilder {
         // Currently UDAF only supports one input series
         String inputExpressionStr =
             aggregationDescriptor.getInputExpressions().get(0).getExpressionString();
-        typeProvider.setType(
+        typeProvider.setTreeModelType(
             String.format("%s(%s)", partialAggregationNames, inputExpressionStr), aggregationType);
       } else {
         PartialPath path =
             ((TimeSeriesOperand) aggregationDescriptor.getOutputExpressions().get(0)).getPath();
         for (String partialAggregationName : partialAggregationsNames) {
-          typeProvider.setType(
+          typeProvider.setTreeModelType(
               String.format("%s(%s)", partialAggregationName, path.getFullPath()),
               SchemaUtils.getSeriesTypeByPath(path, partialAggregationName));
         }
@@ -863,7 +865,7 @@ public class LogicalPlanBuilder {
               -1);
     }
 
-    context.getTypeProvider().setType(DEVICE, TSDataType.TEXT);
+    context.getTypeProvider().setTreeModelType(DEVICE, TSDataType.TEXT);
     updateTypeProvider(deviceViewOutputExpressions);
 
     if (queryStatement.needPushDownSort()
@@ -1568,7 +1570,7 @@ public class LogicalPlanBuilder {
         columnHeader ->
             context
                 .getTypeProvider()
-                .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
+                .setTreeModelType(columnHeader.getColumnName(), columnHeader.getColumnType()));
     return this;
   }
 

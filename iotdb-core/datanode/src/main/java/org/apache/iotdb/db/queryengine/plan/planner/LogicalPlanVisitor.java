@@ -144,7 +144,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             explainAnalyzeStatement.isVerbose(),
             context.getLocalQueryId(),
             context.getTimeOut());
-    context.getTypeProvider().setType(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT);
+    context
+        .getTypeProvider()
+        .setTreeModelType(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT);
     return root;
   }
 
@@ -289,7 +291,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               || needTransform(sourceTransformExpressions)
               || cannotUseStatistics(aggregationExpressions, sourceTransformExpressions);
       if (queryStatement.isOutputEndTime()) {
-        context.getTypeProvider().setType(ENDTIME, TSDataType.INT64);
+        context.getTypeProvider().setTreeModelType(ENDTIME, TSDataType.INT64);
       }
       AggregationStep curStep;
       if (isRawDataSource) {

@@ -1022,7 +1022,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 aggregationName,
                 getAggregationTypeByFuncName(aggregationName),
                 Collections.singletonList(
-                    context.getTypeProvider().getType(functionExpression.getOutputSymbol())),
+                    context
+                        .getTypeProvider()
+                        .getTreeModelType(functionExpression.getOutputSymbol())),
                 functionExpression.getExpressions(),
                 functionExpression.getFunctionAttributes(),
                 timeAscending,
@@ -1571,7 +1573,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                   x ->
                       context
                           .getTypeProvider()
-                          .getType(descriptor.getInputExpressions().get(x).getExpressionString()))
+                          .getTreeModelType(
+                              descriptor.getInputExpressions().get(x).getExpressionString()))
               .collect(Collectors.toList());
       aggregators.add(
           new Aggregator(
@@ -1631,7 +1634,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         List<InputLocation[]> inputLocations = calcInputLocationList(aggregationDescriptor, layout);
         List<TSDataType> inputDataTypes =
             aggregationDescriptor.getInputExpressions().stream()
-                .map(x -> context.getTypeProvider().getType(x.getExpressionString()))
+                .map(x -> context.getTypeProvider().getTreeModelType(x.getExpressionString()))
                 .collect(Collectors.toList());
         aggregators.add(
             new Aggregator(
@@ -1698,7 +1701,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               descriptor.getAggregationFuncName(),
               descriptor.getAggregationType(),
               descriptor.getInputExpressions().stream()
-                  .map(x -> context.getTypeProvider().getType(x.getExpressionString()))
+                  .map(x -> context.getTypeProvider().getTreeModelType(x.getExpressionString()))
                   .collect(Collectors.toList()),
               descriptor.getInputExpressions(),
               descriptor.getInputAttributes(),
@@ -1771,7 +1774,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                   descriptor.getAggregationFuncName(),
                   descriptor.getAggregationType(),
                   descriptor.getInputExpressions().stream()
-                      .map(x -> context.getTypeProvider().getType(x.getExpressionString()))
+                      .map(x -> context.getTypeProvider().getTreeModelType(x.getExpressionString()))
                       .collect(Collectors.toList()),
                   descriptor.getInputExpressions(),
                   descriptor.getInputAttributes(),
@@ -1812,7 +1815,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               throw new IllegalArgumentException("groupByVariationExpression can't be null");
             }
             String controlColumn = groupByVariationExpression.getExpressionString();
-            TSDataType controlColumnType = context.getTypeProvider().getType(controlColumn);
+            TSDataType controlColumnType =
+                context.getTypeProvider().getTreeModelType(controlColumn);
             windowParameter =
                 new VariationWindowParameter(
                     controlColumnType,
@@ -2839,7 +2843,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       return node.getChildren().stream()
           .map(PlanNode::getOutputColumnNames)
           .flatMap(List::stream)
-          .map(typeProvider::getType)
+          .map(typeProvider::getTreeModelType)
           .collect(Collectors.toList());
     } else {
       return getInputColumnTypesUseTemplate(node);
@@ -2868,7 +2872,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   private List<TSDataType> getOutputColumnTypes(PlanNode node, TypeProvider typeProvider) {
     return node.getOutputColumnNames().stream()
-        .map(typeProvider::getType)
+        .map(typeProvider::getTreeModelType)
         .collect(Collectors.toList());
   }
 

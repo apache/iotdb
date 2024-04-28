@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.consensus.index;
 
 import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 
 import com.google.common.collect.ImmutableList;
 
@@ -169,8 +170,10 @@ public abstract class ProgressIndex {
       return progressIndex1; // progressIndex1 is not null
     }
 
-    return new HybridProgressIndex(progressIndex1)
-        .updateToMinimumEqualOrIsAfterProgressIndex(progressIndex2);
+    return progressIndex1 instanceof StateProgressIndex
+        ? progressIndex1.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex2)
+        : new HybridProgressIndex(progressIndex1)
+            .updateToMinimumEqualOrIsAfterProgressIndex(progressIndex2);
   }
 
   /**

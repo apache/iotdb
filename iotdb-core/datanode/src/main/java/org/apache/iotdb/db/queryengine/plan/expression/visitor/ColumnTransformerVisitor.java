@@ -579,7 +579,7 @@ public class ColumnTransformerVisitor
 
     public TSDataType getType(Expression expression) {
       if (typeProvider != null) {
-        return typeProvider.getType(expression.getOutputSymbol());
+        return typeProvider.getTreeModelType(expression.getOutputSymbol());
       }
       return expressionTypes.get(NodeRef.of(expression));
     }

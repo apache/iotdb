@@ -47,6 +47,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 
 public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter, Void> {
 
@@ -210,7 +211,7 @@ public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter
 
   public static boolean isTimeColumn(Expression expression) {
     return expression instanceof SymbolReference
-        && "time".equalsIgnoreCase(((SymbolReference) expression).getName());
+        && TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(((SymbolReference) expression).getName());
   }
 
   public static long getLongValue(Expression expression) {

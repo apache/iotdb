@@ -293,7 +293,8 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     } catch (final TException e) {
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer tsFile insertion event: %s.", tsFileInsertionEvent),
+              "Network error when transfer tsFile insertion event: %s.",
+              ((PipeTsFileInsertionEvent) tsFileInsertionEvent).coreReportMessage()),
           e);
     }
   }
@@ -324,11 +325,12 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
   private void doTransfer(final PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
       throws IoTDBConnectionException, StatementExecutionException {
-    final Tablet tablet = pipeInsertNodeInsertionEvent.convertToTablet();
-    if (pipeInsertNodeInsertionEvent.isAligned()) {
-      sessionPool.insertAlignedTablet(tablet);
-    } else {
-      sessionPool.insertTablet(tablet);
+    for (final Tablet tablet : pipeInsertNodeInsertionEvent.convertToTablets()) {
+      if (pipeInsertNodeInsertionEvent.isAligned()) {
+        sessionPool.insertAlignedTablet(tablet);
+      } else {
+        sessionPool.insertTablet(tablet);
+      }
     }
   }
 
