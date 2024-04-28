@@ -23,11 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
@@ -48,7 +46,6 @@ import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -98,12 +95,7 @@ public class LoadCache {
     initNodeHeartbeatCache(
         configManager.getNodeManager().getRegisteredConfigNodes(),
         configManager.getNodeManager().getRegisteredDataNodes());
-    initRegionGroupHeartbeatCache(
-        configManager.getClusterSchemaManager().getDatabaseNames().stream()
-            .collect(
-                Collectors.toMap(
-                    database -> database,
-                    database -> configManager.getPartitionManager().getAllReplicaSets(database))));
+    initRegionGroupHeartbeatCache(configManager.getPartitionManager().getAllReplicaSets());
   }
 
   /** Initialize the nodeCacheMap when the ConfigNode-Leader is switched. */
@@ -120,7 +112,8 @@ public class LoadCache {
         configNodeLocation -> {
           int configNodeId = configNodeLocation.getConfigNodeId();
           if (configNodeId != CURRENT_NODE_ID) {
-            createNodeHeartbeatCache(NodeType.ConfigNode, configNodeId);
+            nodeCacheMap.put(configNodeId, new ConfigNodeHeartbeatCache(configNodeId));
+            heartbeatProcessingMap.put(configNodeId, new AtomicBoolean(false));
           }
         });
     // Force set itself and never update
@@ -133,7 +126,8 @@ public class LoadCache {
     registeredDataNodes.forEach(
         dataNodeConfiguration -> {
           int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
-          createNodeHeartbeatCache(NodeType.DataNode, dataNodeId);
+          nodeCacheMap.put(dataNodeId, new DataNodeHeartbeatCache(dataNodeId));
+          heartbeatProcessingMap.put(dataNodeId, new AtomicBoolean(false));
         });
   }
 
@@ -141,24 +135,15 @@ public class LoadCache {
    * Initialize the regionGroupCacheMap and regionRouteCacheMap when the ConfigNode-Leader is
    * switched.
    */
-  private void initRegionGroupHeartbeatCache(
-      Map<String, List<TRegionReplicaSet>> regionReplicaMap) {
+  private void initRegionGroupHeartbeatCache(List<TRegionReplicaSet> regionReplicaSets) {
     regionGroupCacheMap.clear();
     consensusGroupCacheMap.clear();
-    regionReplicaMap.forEach(
-        (database, regionReplicaSets) ->
-            regionReplicaSets.forEach(
-                regionReplicaSet -> {
-                  TConsensusGroupId regionGroupId = regionReplicaSet.getRegionId();
-                  regionGroupCacheMap.put(
-                      regionGroupId,
-                      new RegionGroupCache(
-                          database,
-                          regionReplicaSet.getDataNodeLocations().stream()
-                              .map(TDataNodeLocation::getDataNodeId)
-                              .collect(Collectors.toSet())));
-                  consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
-                }));
+    regionReplicaSets.forEach(
+        regionReplicaSet -> {
+          TConsensusGroupId consensusGroupId = regionReplicaSet.getRegionId();
+          regionGroupCacheMap.put(consensusGroupId, new RegionGroupCache());
+          consensusGroupCacheMap.put(consensusGroupId, new ConsensusGroupCache());
+        });
   }
 
   public void clearHeartbeatCache() {
@@ -181,35 +166,16 @@ public class LoadCache {
   }
 
   /**
-   * Create a new NodeHeartbeatCache for the specified Node.
-   *
-   * @param nodeType The specified NodeType
-   * @param nodeId The specified NodeId
-   */
-  public void createNodeHeartbeatCache(NodeType nodeType, int nodeId) {
-    switch (nodeType) {
-      case ConfigNode:
-        nodeCacheMap.put(nodeId, new ConfigNodeHeartbeatCache(nodeId));
-        break;
-      case DataNode:
-      default:
-        nodeCacheMap.put(nodeId, new DataNodeHeartbeatCache(nodeId));
-        break;
-    }
-    heartbeatProcessingMap.put(nodeId, new AtomicBoolean(false));
-  }
-
-  /**
    * Cache the latest heartbeat sample of a ConfigNode.
    *
    * @param nodeId the id of the ConfigNode
    * @param sample the latest heartbeat sample
    */
   public void cacheConfigNodeHeartbeatSample(int nodeId, NodeHeartbeatSample sample) {
-    // Only cache sample when the corresponding loadCache exists
-    Optional.ofNullable(nodeCacheMap.get(nodeId))
-        .ifPresent(node -> node.cacheHeartbeatSample(sample));
-    Optional.ofNullable(heartbeatProcessingMap.get(nodeId)).ifPresent(node -> node.set(false));
+    nodeCacheMap
+        .computeIfAbsent(nodeId, empty -> new ConfigNodeHeartbeatCache(nodeId))
+        .cacheHeartbeatSample(sample);
+    heartbeatProcessingMap.get(nodeId).set(false);
   }
 
   /**
@@ -219,47 +185,14 @@ public class LoadCache {
    * @param sample the latest heartbeat sample
    */
   public void cacheDataNodeHeartbeatSample(int nodeId, NodeHeartbeatSample sample) {
-    // Only cache sample when the corresponding loadCache exists
-    Optional.ofNullable(nodeCacheMap.get(nodeId))
-        .ifPresent(node -> node.cacheHeartbeatSample(sample));
-    Optional.ofNullable(heartbeatProcessingMap.get(nodeId)).ifPresent(node -> node.set(false));
+    nodeCacheMap
+        .computeIfAbsent(nodeId, empty -> new DataNodeHeartbeatCache(nodeId))
+        .cacheHeartbeatSample(sample);
+    heartbeatProcessingMap.get(nodeId).set(false);
   }
 
   public void resetHeartbeatProcessing(int nodeId) {
     heartbeatProcessingMap.get(nodeId).set(false);
-  }
-
-  /**
-   * Remove the NodeHeartbeatCache of the specified Node.
-   *
-   * @param nodeId the index of the specified Node
-   */
-  public void removeNodeCache(int nodeId) {
-    nodeCacheMap.remove(nodeId);
-    heartbeatProcessingMap.remove(nodeId);
-  }
-
-  /**
-   * Create a new RegionGroupCache and a new ConsensusGroupCache for the specified RegionGroup.
-   *
-   * @param database the Database where the RegionGroup belonged
-   * @param regionGroupId the index of the RegionGroup
-   * @param dataNodeIds the index of the DataNodes where the Regions resided
-   */
-  public void createRegionGroupHeartbeatCache(
-      String database, TConsensusGroupId regionGroupId, Set<Integer> dataNodeIds) {
-    regionGroupCacheMap.put(regionGroupId, new RegionGroupCache(database, dataNodeIds));
-    consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
-  }
-
-  /**
-   * Create a new RegionCache for the specified Region in the specified RegionGroup.
-   *
-   * @param regionGroupId the index of the RegionGroup
-   * @param dataNodeId the index of the DataNode where the Region resides
-   */
-  public void createRegionCache(TConsensusGroupId regionGroupId, int dataNodeId) {
-    regionGroupCacheMap.get(regionGroupId).createRegionCache(dataNodeId);
   }
 
   /**
@@ -274,9 +207,9 @@ public class LoadCache {
       int nodeId,
       RegionHeartbeatSample sample,
       boolean overwrite) {
-    // Only cache sample when the corresponding loadCache exists
-    Optional.ofNullable(regionGroupCacheMap.get(regionGroupId))
-        .ifPresent(group -> group.cacheHeartbeatSample(nodeId, sample, overwrite));
+    regionGroupCacheMap
+        .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache())
+        .cacheHeartbeatSample(nodeId, sample, overwrite);
   }
 
   /**
@@ -298,9 +231,9 @@ public class LoadCache {
    */
   public void cacheConsensusSample(
       TConsensusGroupId regionGroupId, ConsensusGroupHeartbeatSample sample) {
-    // Only cache sample when the corresponding loadCache exists
-    Optional.ofNullable(consensusGroupCacheMap.get(regionGroupId))
-        .ifPresent(group -> group.cacheHeartbeatSample(sample));
+    consensusGroupCacheMap
+        .computeIfAbsent(regionGroupId, empty -> new ConsensusGroupCache())
+        .cacheHeartbeatSample(sample);
   }
 
   /** Update the NodeStatistics of all Nodes. */
@@ -345,44 +278,6 @@ public class LoadCache {
           }
         });
     return dataNodeStatisticsMap;
-  }
-
-  /**
-   * Get a map of cached RegionGroups of all Databases.
-   *
-   * @param type SchemaRegion or DataRegion
-   * @return Map<Database, List<RegionGroupId>>
-   */
-  public Map<String, List<TConsensusGroupId>> getCurrentDatabaseRegionGroupMap(
-      TConsensusGroupType type) {
-    Map<String, List<TConsensusGroupId>> databaseRegionGroupMap = new TreeMap<>();
-    regionGroupCacheMap.forEach(
-        (regionGroupId, regionGroupCache) -> {
-          if (type.equals(regionGroupId.getType())) {
-            databaseRegionGroupMap
-                .computeIfAbsent(regionGroupCache.getDatabase(), empty -> new ArrayList<>())
-                .add(regionGroupId);
-          }
-        });
-    return databaseRegionGroupMap;
-  }
-
-  /**
-   * Get a map of cached RegionGroups
-   *
-   * @param type SchemaRegion or DataRegion
-   * @return Map<RegionGroupId, Set<DataNodeId>>
-   */
-  public Map<TConsensusGroupId, Set<Integer>> getCurrentRegionLocationMap(
-      TConsensusGroupType type) {
-    Map<TConsensusGroupId, Set<Integer>> regionGroupIdsMap = new TreeMap<>();
-    regionGroupCacheMap.forEach(
-        (regionGroupId, regionGroupCache) -> {
-          if (type.equals(regionGroupId.getType())) {
-            regionGroupIdsMap.put(regionGroupId, regionGroupCache.getRegionLocations());
-          }
-        });
-    return regionGroupIdsMap;
   }
 
   /**
@@ -440,6 +335,22 @@ public class LoadCache {
   public NodeStatus getNodeStatus(int nodeId) {
     BaseNodeCache nodeCache = nodeCacheMap.get(nodeId);
     return nodeCache == null ? NodeStatus.Unknown : nodeCache.getNodeStatus();
+  }
+
+  /**
+   * Get all DataNodes' NodeStatus
+   *
+   * @return Map<DataNodeId, NodeStatus>
+   */
+  public Map<Integer, NodeStatus> getDataNodeStatus() {
+    Map<Integer, NodeStatus> nodeStatusMap = new TreeMap<>();
+    nodeCacheMap.forEach(
+        (nodeId, nodeCache) -> {
+          if (nodeCache instanceof DataNodeHeartbeatCache) {
+            nodeStatusMap.put(nodeId, nodeCache.getNodeStatus());
+          }
+        });
+    return nodeStatusMap;
   }
 
   /**
@@ -553,6 +464,11 @@ public class LoadCache {
         .min(Comparator.comparingLong(BaseNodeCache::getLoadScore))
         .map(BaseNodeCache::getNodeId)
         .orElse(-1);
+  }
+
+  /** Remove the specified Node's cache. */
+  public void removeNodeCache(int nodeId) {
+    nodeCacheMap.remove(nodeId);
   }
 
   /**

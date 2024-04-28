@@ -46,7 +46,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 public class LeaderBalancerComparisonTest {
 
@@ -82,7 +81,7 @@ public class LeaderBalancerComparisonTest {
       // Simulate each DataNode has 16 CPU cores
       // and each RegionGroup has 3 replicas
       int regionGroupNum = TEST_CPU_CORE_NUM * dataNodeNum / TEST_REPLICA_NUM;
-      Map<TConsensusGroupId, Set<Integer>> regionReplicaSetMap = new HashMap<>();
+      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new HashMap<>();
       Map<TConsensusGroupId, Integer> regionLeaderMap = new HashMap<>();
       generateTestData(dataNodeNum, regionGroupNum, regionReplicaSetMap, regionLeaderMap);
 
@@ -102,9 +101,13 @@ public class LeaderBalancerComparisonTest {
       regionReplicaSetMap.forEach(
           (regionGroupId, regionReplicaSet) -> {
             Map<Integer, RegionStatistics> regionStatistics = new TreeMap<>();
-            regionReplicaSet.forEach(
-                dataNodeId ->
-                    regionStatistics.put(dataNodeId, new RegionStatistics(RegionStatus.Running)));
+            regionReplicaSet
+                .getDataNodeLocations()
+                .forEach(
+                    dataNodeLocation ->
+                        regionStatistics.put(
+                            dataNodeLocation.getDataNodeId(),
+                            new RegionStatistics(RegionStatus.Running)));
             allRunningRegionStatistics.put(regionGroupId, regionStatistics);
           });
       Statistics greedyStatistics =
@@ -160,13 +163,15 @@ public class LeaderBalancerComparisonTest {
       regionReplicaSetMap.forEach(
           (regionGroupId, regionReplicaSet) -> {
             Map<Integer, RegionStatistics> regionStatistics = new TreeMap<>();
-            regionReplicaSet.forEach(
-                dataNodeId ->
-                    regionStatistics.put(
-                        dataNodeId,
-                        disabledDataNodeSet.contains(dataNodeId)
-                            ? new RegionStatistics(RegionStatus.Unknown)
-                            : new RegionStatistics(RegionStatus.Running)));
+            regionReplicaSet
+                .getDataNodeLocations()
+                .forEach(
+                    dataNodeLocation ->
+                        regionStatistics.put(
+                            dataNodeLocation.getDataNodeId(),
+                            disabledDataNodeSet.contains(dataNodeLocation.getDataNodeId())
+                                ? new RegionStatistics(RegionStatus.Unknown)
+                                : new RegionStatistics(RegionStatus.Running)));
             disabledRegionStatistics.put(regionGroupId, regionStatistics);
           });
       greedyStatistics =
@@ -233,7 +238,7 @@ public class LeaderBalancerComparisonTest {
   private void generateTestData(
       int dataNodeNum,
       int regionGroupNum,
-      Map<TConsensusGroupId, Set<Integer>> regionReplicaSetMap,
+      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap,
       Map<TConsensusGroupId, Integer> regionLeaderMap) {
 
     Map<Integer, AtomicInteger> regionCounter = new ConcurrentHashMap<>();
@@ -287,11 +292,7 @@ public class LeaderBalancerComparisonTest {
         randomNum -= 1;
       }
 
-      regionReplicaSetMap.put(
-          regionGroupId,
-          regionReplicaSet.getDataNodeLocations().stream()
-              .map(TDataNodeLocation::getDataNodeId)
-              .collect(Collectors.toSet()));
+      regionReplicaSetMap.put(regionGroupId, regionReplicaSet);
       regionReplicaSet
           .getDataNodeLocations()
           .forEach(
@@ -306,7 +307,7 @@ public class LeaderBalancerComparisonTest {
       int dataNodeNum,
       int regionGroupNum,
       AbstractLeaderBalancer leaderBalancer,
-      Map<TConsensusGroupId, Set<Integer>> regionReplicaSetMap,
+      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap,
       Map<TConsensusGroupId, Integer> regionLeaderMap,
       Map<Integer, NodeStatistics> nodeStatisticsMap,
       Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap,

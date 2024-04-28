@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.manager.load.cache.consensus;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 
 /** ConsensusGroupHeartbeatSample records the heartbeat sample of a consensus group. */
@@ -29,12 +28,6 @@ public class ConsensusGroupHeartbeatSample extends AbstractHeartbeatSample {
 
   public ConsensusGroupHeartbeatSample(long sampleLogicalTimestamp, int leaderId) {
     super(sampleLogicalTimestamp);
-    this.leaderId = leaderId;
-  }
-
-  @TestOnly
-  public ConsensusGroupHeartbeatSample(int leaderId) {
-    super(System.nanoTime());
     this.leaderId = leaderId;
   }
 

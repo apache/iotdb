@@ -417,7 +417,8 @@ public class RegionMaintainHandler {
     return report;
   }
 
-  public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {
+  public void addRegionLocation(
+      TConsensusGroupId regionId, TDataNodeLocation newLocation, RegionStatus regionStatus) {
     AddRegionLocationPlan req = new AddRegionLocationPlan(regionId, newLocation);
     TSStatus status = configManager.getPartitionManager().addRegionLocation(req);
     LOGGER.info(
@@ -427,15 +428,14 @@ public class RegionMaintainHandler {
         status);
     configManager
         .getLoadManager()
-        .getLoadCache()
-        .createRegionCache(regionId, newLocation.getDataNodeId());
+        .forceAddRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
   }
 
-  public void forceUpdateRegionCache(
+  public void updateRegionCache(
       TConsensusGroupId regionId, TDataNodeLocation newLocation, RegionStatus regionStatus) {
     configManager
         .getLoadManager()
-        .forceUpdateRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
+        .forceAddRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
   }
 
   public void removeRegionLocation(
@@ -447,7 +447,9 @@ public class RegionMaintainHandler {
         regionId,
         getIdWithRpcEndpoint(deprecatedLocation),
         status);
-    configManager.getLoadManager().removeRegionCache(regionId, deprecatedLocation.getDataNodeId());
+    configManager
+        .getLoadManager()
+        .forceRemoveRegionCache(regionId, deprecatedLocation.getDataNodeId());
     configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
   }
 

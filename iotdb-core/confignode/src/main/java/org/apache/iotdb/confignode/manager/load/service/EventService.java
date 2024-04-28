@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
@@ -41,7 +40,6 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -128,22 +126,16 @@ public class EventService {
     Map<Integer, Pair<NodeStatistics, NodeStatistics>> differentNodeStatisticsMap = new TreeMap<>();
     currentNodeStatisticsMap.forEach(
         (nodeId, currentNodeStatistics) -> {
-          NodeStatistics previousNodeStatistics = previousNodeStatisticsMap.get(nodeId);
-          if (previousNodeStatistics == null
-              || (currentNodeStatistics.isNewerThan(previousNodeStatistics)
-                  && !currentNodeStatistics.equals(previousNodeStatistics))) {
+          NodeStatistics previousNodeStatistics =
+              previousNodeStatisticsMap.getOrDefault(
+                  nodeId, NodeStatistics.generateDefaultNodeStatistics());
+          if (currentNodeStatistics.isNewerThan(previousNodeStatistics)
+              && !currentNodeStatistics.equals(previousNodeStatistics)) {
             differentNodeStatisticsMap.put(
                 nodeId, new Pair<>(previousNodeStatistics, currentNodeStatistics));
             previousNodeStatisticsMap.put(nodeId, currentNodeStatistics);
           }
         });
-    previousNodeStatisticsMap.forEach(
-        (nodeId, previousNodeStatistics) -> {
-          if (!currentNodeStatisticsMap.containsKey(nodeId)) {
-            differentNodeStatisticsMap.put(nodeId, new Pair<>(previousNodeStatistics, null));
-          }
-        });
-    previousNodeStatisticsMap.keySet().retainAll(currentNodeStatisticsMap.keySet());
     if (!differentNodeStatisticsMap.isEmpty()) {
       eventPublisher.post(new NodeStatisticsChangeEvent(differentNodeStatisticsMap));
       recordNodeStatistics(differentNodeStatisticsMap);
@@ -155,11 +147,14 @@ public class EventService {
     LOGGER.info("[NodeStatistics] NodeStatisticsMap: ");
     for (Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> nodeCacheEntry :
         differentNodeStatisticsMap.entrySet()) {
-      LOGGER.info(
-          "[NodeStatistics]\t {}: {} -> {}",
-          "nodeId{" + nodeCacheEntry.getKey() + "}",
-          nodeCacheEntry.getValue().getLeft(),
-          nodeCacheEntry.getValue().getRight());
+      if (!Objects.equals(
+          nodeCacheEntry.getValue().getRight(), nodeCacheEntry.getValue().getLeft())) {
+        LOGGER.info(
+            "[NodeStatistics]\t {}: {}->{}",
+            "nodeId{" + nodeCacheEntry.getKey() + "}",
+            nodeCacheEntry.getValue().getLeft(),
+            nodeCacheEntry.getValue().getRight());
+      }
     }
   }
 
@@ -171,24 +166,16 @@ public class EventService {
     currentRegionGroupStatisticsMap.forEach(
         (regionGroupId, currentRegionGroupStatistics) -> {
           RegionGroupStatistics previousRegionGroupStatistics =
-              previousRegionGroupStatisticsMap.get(regionGroupId);
-          if (previousRegionGroupStatistics == null
-              || (currentRegionGroupStatistics.isNewerThan(previousRegionGroupStatistics)
-                  && !currentRegionGroupStatistics.equals(previousRegionGroupStatistics))) {
+              previousRegionGroupStatisticsMap.getOrDefault(
+                  regionGroupId, RegionGroupStatistics.generateDefaultRegionGroupStatistics());
+          if (currentRegionGroupStatistics.isNewerThan(previousRegionGroupStatistics)
+              && !currentRegionGroupStatistics.equals(previousRegionGroupStatistics)) {
             differentRegionGroupStatisticsMap.put(
                 regionGroupId,
                 new Pair<>(previousRegionGroupStatistics, currentRegionGroupStatistics));
             previousRegionGroupStatisticsMap.put(regionGroupId, currentRegionGroupStatistics);
           }
         });
-    previousRegionGroupStatisticsMap.forEach(
-        (regionGroupId, previousRegionGroupStatistics) -> {
-          if (!currentRegionGroupStatisticsMap.containsKey(regionGroupId)) {
-            differentRegionGroupStatisticsMap.put(
-                regionGroupId, new Pair<>(previousRegionGroupStatistics, null));
-          }
-        });
-    previousRegionGroupStatisticsMap.keySet().retainAll(currentRegionGroupStatisticsMap.keySet());
     if (!differentRegionGroupStatisticsMap.isEmpty()) {
       eventPublisher.post(new RegionGroupStatisticsChangeEvent(differentRegionGroupStatisticsMap));
       recordRegionGroupStatistics(differentRegionGroupStatisticsMap);
@@ -201,38 +188,38 @@ public class EventService {
     LOGGER.info("[RegionGroupStatistics] RegionGroupStatisticsMap: ");
     for (Map.Entry<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
         regionGroupStatisticsEntry : differentRegionGroupStatisticsMap.entrySet()) {
-      RegionGroupStatistics previousStatistics = regionGroupStatisticsEntry.getValue().getLeft();
-      RegionGroupStatistics currentStatistics = regionGroupStatisticsEntry.getValue().getRight();
-      LOGGER.info(
-          "[RegionGroupStatistics]\t RegionGroup {}: {} -> {}",
-          regionGroupStatisticsEntry.getKey(),
-          previousStatistics == null ? null : previousStatistics.getRegionGroupStatus(),
-          currentStatistics == null ? null : currentStatistics.getRegionGroupStatus());
+      if (!Objects.equals(
+          regionGroupStatisticsEntry.getValue().getRight(),
+          regionGroupStatisticsEntry.getValue().getLeft())) {
+        LOGGER.info(
+            "[RegionGroupStatistics]\t RegionGroup {}: {} -> {}",
+            regionGroupStatisticsEntry.getKey(),
+            regionGroupStatisticsEntry.getValue().getLeft().getRegionGroupStatus(),
+            regionGroupStatisticsEntry.getValue().getRight().getRegionGroupStatus());
 
-      List<Integer> leftIds =
-          previousStatistics == null ? Collections.emptyList() : previousStatistics.getRegionIds();
-      List<Integer> rightIds =
-          currentStatistics == null ? Collections.emptyList() : currentStatistics.getRegionIds();
-      for (Integer leftId : leftIds) {
-        if (rightIds.contains(leftId)) {
-          LOGGER.info(
-              "[RegionGroupStatistics]\t Region in DataNode {}: {} -> {}",
-              leftId,
-              previousStatistics.getRegionStatus(leftId),
-              currentStatistics.getRegionStatus(leftId));
-        } else {
-          LOGGER.info(
-              "[RegionGroupStatistics]\t Region in DataNode {}: {} -> null",
-              leftId,
-              previousStatistics.getRegionStatus(leftId));
+        List<Integer> leftIds = regionGroupStatisticsEntry.getValue().getLeft().getRegionIds();
+        List<Integer> rightIds = regionGroupStatisticsEntry.getValue().getRight().getRegionIds();
+        for (Integer leftId : leftIds) {
+          if (!rightIds.contains(leftId)) {
+            LOGGER.info(
+                "[RegionGroupStatistics]\t Region in DataNode {}: {} -> null",
+                leftId,
+                regionGroupStatisticsEntry.getValue().getLeft().getRegionStatus(leftId));
+          } else {
+            LOGGER.info(
+                "[RegionGroupStatistics]\t Region in DataNode {}: {} -> {}",
+                leftId,
+                regionGroupStatisticsEntry.getValue().getLeft().getRegionStatus(leftId),
+                regionGroupStatisticsEntry.getValue().getRight().getRegionStatus(leftId));
+          }
         }
-      }
-      for (Integer rightId : rightIds) {
-        if (!leftIds.contains(rightId)) {
-          LOGGER.info(
-              "[RegionGroupStatistics]\t Region in DataNode {}: null -> {}",
-              rightId,
-              currentStatistics.getRegionStatus(rightId));
+        for (Integer rightId : rightIds) {
+          if (!leftIds.contains(rightId)) {
+            LOGGER.info(
+                "[RegionGroupStatistics]\t Region in DataNode {}: null -> {}",
+                rightId,
+                regionGroupStatisticsEntry.getValue().getRight().getRegionStatus(rightId));
+          }
         }
       }
     }
@@ -246,10 +233,11 @@ public class EventService {
     currentConsensusGroupStatisticsMap.forEach(
         (consensusGroupId, currentConsensusGroupStatistics) -> {
           ConsensusGroupStatistics previousConsensusGroupStatistics =
-              previousConsensusGroupStatisticsMap.get(consensusGroupId);
-          if (previousConsensusGroupStatistics == null
-              || (currentConsensusGroupStatistics.isNewerThan(previousConsensusGroupStatistics)
-                  && !currentConsensusGroupStatistics.equals(previousConsensusGroupStatistics))) {
+              previousConsensusGroupStatisticsMap.getOrDefault(
+                  consensusGroupId,
+                  ConsensusGroupStatistics.generateDefaultConsensusGroupStatistics());
+          if (currentConsensusGroupStatistics.isNewerThan(previousConsensusGroupStatistics)
+              && !currentConsensusGroupStatistics.equals(previousConsensusGroupStatistics)) {
             differentConsensusGroupStatisticsMap.put(
                 consensusGroupId,
                 new Pair<>(previousConsensusGroupStatistics, currentConsensusGroupStatistics));
@@ -257,16 +245,6 @@ public class EventService {
                 consensusGroupId, currentConsensusGroupStatistics);
           }
         });
-    previousConsensusGroupStatisticsMap.forEach(
-        (consensusGroupId, previousConsensusGroupStatistics) -> {
-          if (!currentConsensusGroupStatisticsMap.containsKey(consensusGroupId)) {
-            differentConsensusGroupStatisticsMap.put(
-                consensusGroupId, new Pair<>(previousConsensusGroupStatistics, null));
-          }
-        });
-    previousConsensusGroupStatisticsMap
-        .keySet()
-        .retainAll(currentConsensusGroupStatisticsMap.keySet());
     if (!differentConsensusGroupStatisticsMap.isEmpty()) {
       eventPublisher.post(
           new ConsensusGroupStatisticsChangeEvent(differentConsensusGroupStatisticsMap));
@@ -284,16 +262,11 @@ public class EventService {
           consensusGroupStatisticsEntry.getValue().getRight(),
           consensusGroupStatisticsEntry.getValue().getLeft())) {
         LOGGER.info(
-            "[ConsensusGroupStatistics]\t {}: {} -> {}",
+            "[ConsensusGroupStatistics]\t {}: {}->{}",
             consensusGroupStatisticsEntry.getKey(),
             consensusGroupStatisticsEntry.getValue().getLeft(),
             consensusGroupStatisticsEntry.getValue().getRight());
       }
     }
-  }
-
-  @TestOnly
-  public EventBus getEventPublisher() {
-    return eventPublisher;
   }
 }

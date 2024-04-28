@@ -76,7 +76,9 @@ public class NodeStatistics extends AbstractStatistics {
       return false;
     }
     NodeStatistics that = (NodeStatistics) o;
-    return status == that.status && Objects.equals(statusReason, that.statusReason);
+    return loadScore == that.loadScore
+        && status == that.status
+        && Objects.equals(statusReason, that.statusReason);
   }
 
   @Override

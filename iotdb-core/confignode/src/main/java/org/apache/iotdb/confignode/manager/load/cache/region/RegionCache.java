@@ -58,8 +58,7 @@ public class RegionCache extends AbstractLoadCache {
     return (RegionStatistics) currentStatistics.get();
   }
 
-  public synchronized void cacheHeartbeatSample(
-      RegionHeartbeatSample newHeartbeatSample, boolean overwrite) {
+  public void cacheHeartbeatSample(RegionHeartbeatSample newHeartbeatSample, boolean overwrite) {
     if (overwrite || getLastSample() == null) {
       super.cacheHeartbeatSample(newHeartbeatSample);
       return;
