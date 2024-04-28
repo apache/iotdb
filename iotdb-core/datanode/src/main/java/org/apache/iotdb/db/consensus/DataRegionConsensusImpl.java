@@ -61,15 +61,13 @@ public class DataRegionConsensusImpl {
     DataRegionConsensusImpl.DataRegionConsensusImplHolder.reinitializeStatics();
   }
 
-  public static void reloadConsensusConfig(IoTDBConfig conf) {
-    DataRegionConsensusImpl.DataRegionConsensusImplHolder.CONF = conf;
-    ConsensusConfig consensusConfig = DataRegionConsensusImplHolder.buildConsensusConfig();
-    getInstance().reloadConsensusConfig(consensusConfig);
+  public static void reloadConsensusConfig() {
+    getInstance().reloadConsensusConfig(DataRegionConsensusImplHolder.buildConsensusConfig());
   }
 
   private static class DataRegionConsensusImplHolder {
 
-    private static IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
+    private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
 
     private static IConsensus INSTANCE;
 

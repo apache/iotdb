@@ -1053,9 +1053,9 @@ public class IoTDBDescriptor {
     loadIoTConsensusProps(properties);
   }
 
-  private void reloadIoTConsensusProps(Properties properties) {
+  private void reloadConsensusProps(Properties properties) {
     loadIoTConsensusProps(properties);
-    DataRegionConsensusImpl.reloadConsensusConfig(conf);
+    DataRegionConsensusImpl.reloadConsensusConfig();
   }
 
   private void loadIoTConsensusProps(Properties properties) {
@@ -1713,8 +1713,8 @@ public class IoTDBDescriptor {
                   "merge_threshold_of_explain_analyze",
                   String.valueOf(conf.getMergeThresholdOfExplainAnalyze()))));
 
-      // update IoTConsensus config
-      reloadIoTConsensusProps(properties);
+      // update Consensus config
+      reloadConsensusProps(properties);
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
