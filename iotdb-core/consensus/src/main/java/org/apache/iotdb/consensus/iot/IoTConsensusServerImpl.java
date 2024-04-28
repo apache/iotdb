@@ -128,6 +128,7 @@ public class IoTConsensusServerImpl {
   private final ScheduledExecutorService backgroundTaskService;
   private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
       IoTConsensusRateLimiter.getInstance();
+  private volatile long lastPinnedSearchIndexForMigration = -1;
 
   public IoTConsensusServerImpl(
       String storageDir,
@@ -514,7 +515,7 @@ public class IoTConsensusServerImpl {
       if (peer.equals(thisNode)) {
         // use searchIndex for thisNode as the initialSyncIndex because targetPeer will load the
         // snapshot produced by thisNode
-        buildSyncLogChannel(targetPeer, searchIndex.get());
+        buildSyncLogChannel(targetPeer, lastPinnedSearchIndexForMigration);
       } else {
         // use RPC to tell other peers to build sync log channel to target peer
         try (SyncIoTConsensusServiceClient client =
@@ -552,14 +553,13 @@ public class IoTConsensusServerImpl {
     // The configuration will be modified during iterating because we will add the targetPeer to
     // configuration
     ImmutableList<Peer> currentMembers = ImmutableList.copyOf(this.configuration);
+    removeSyncLogChannel(targetPeer);
     for (Peer peer : currentMembers) {
       if (peer.equals(targetPeer)) {
         // if the targetPeer is the same as current peer, skip it because removing itself is illegal
         continue;
       }
-      if (peer.equals(thisNode)) {
-        removeSyncLogChannel(targetPeer);
-      } else {
+      if (!peer.equals(thisNode)) {
         // use RPC to tell other peers to build sync log channel to target peer
         try (SyncIoTConsensusServiceClient client =
             syncClientManager.borrowClient(peer.getEndpoint())) {
@@ -770,7 +770,9 @@ public class IoTConsensusServerImpl {
   }
 
   public long getMinFlushedSyncIndex() {
-    return logDispatcher.getMinFlushedSyncIndex().orElseGet(searchIndex::get);
+    return lastPinnedSearchIndexForMigration == -1
+        ? logDispatcher.getMinFlushedSyncIndex().orElseGet(searchIndex::get)
+        : lastPinnedSearchIndexForMigration;
   }
 
   public String getStorageDir() {
@@ -887,9 +889,16 @@ public class IoTConsensusServerImpl {
    * lost.
    */
   public void checkAndLockSafeDeletedSearchIndex() {
-    if (configuration.size() == 1) {
-      consensusReqReader.setSafelyDeletedSearchIndex(searchIndex.get());
-    }
+    lastPinnedSearchIndexForMigration = searchIndex.get();
+    consensusReqReader.setSafelyDeletedSearchIndex(getMinFlushedSyncIndex());
+  }
+
+  /**
+   * We should unlock safelyDeletedSearchIndex after addPeer to avoid potential data accumulation.
+   */
+  public void checkAndUnlockSafeDeletedSearchIndex() {
+    lastPinnedSearchIndexForMigration = -1;
+    checkAndUpdateSafeDeletedSearchIndex();
   }
 
   /**
