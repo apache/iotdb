@@ -22,6 +22,8 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -35,6 +37,11 @@ public class DeviceAttributeFilter extends SchemaFilter {
   public DeviceAttributeFilter(String key, String value) {
     this.key = key;
     this.value = value;
+  }
+
+  public DeviceAttributeFilter(ByteBuffer byteBuffer) {
+    this.key = ReadWriteIOUtils.readString(byteBuffer);
+    this.value = ReadWriteIOUtils.readString(byteBuffer);
   }
 
   public String getKey() {
@@ -56,8 +63,14 @@ public class DeviceAttributeFilter extends SchemaFilter {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(key, byteBuffer);
+    ReadWriteIOUtils.write(value, byteBuffer);
+  }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {}
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(key, stream);
+    ReadWriteIOUtils.write(value, stream);
+  }
 }

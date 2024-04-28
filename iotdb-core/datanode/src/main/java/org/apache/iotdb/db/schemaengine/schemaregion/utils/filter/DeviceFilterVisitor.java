@@ -64,11 +64,16 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
 
   @Override
   public boolean visitDeviceIdFilter(DeviceIdFilter filter, IDeviceSchemaInfo info) {
-    return info.getPartialPath().getNodes()[filter.getIndex() + 3].equals(filter.getValue());
+    String[] nodes = info.getPartialPath().getNodes();
+    if (nodes.length < filter.getIndex() + 3) {
+      return false;
+    } else {
+      return nodes[filter.getIndex() + 3].equals(filter.getValue());
+    }
   }
 
   @Override
   public boolean visitDeviceAttributeFilter(DeviceAttributeFilter filter, IDeviceSchemaInfo info) {
-    return info.getAttributeValue(filter.getKey()).equals(filter.getValue());
+    return filter.getValue().equals(info.getAttributeValue(filter.getKey()));
   }
 }
