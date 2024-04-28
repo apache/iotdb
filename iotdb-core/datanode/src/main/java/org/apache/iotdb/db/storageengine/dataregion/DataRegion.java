@@ -890,10 +890,8 @@ public class DataRegion implements IDataRegionForQuery {
           insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
 
       // check memtable size and may asyncTryToFlush the work memtable
-      if (tsFileProcessor != null) {
-        if (tsFileProcessor.shouldFlush()) {
-          fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
-        }
+      if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
+        fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
     } finally {
       writeUnlock();
@@ -1106,11 +1104,8 @@ public class DataRegion implements IDataRegionForQuery {
   private TsFileProcessor insertToTsFileProcessor(
       InsertRowNode insertRowNode, boolean sequence, long timePartitionId)
       throws WriteProcessException {
-    if (insertRowNode.allMeasurementFailed()) {
-      return null;
-    }
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
-    if (tsFileProcessor == null) {
+    if (tsFileProcessor == null || insertRowNode.allMeasurementFailed()) {
       return null;
     }
     long[] costsForMetrics = new long[4];
