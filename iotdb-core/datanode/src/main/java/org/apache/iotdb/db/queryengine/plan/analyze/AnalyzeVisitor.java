@@ -2829,6 +2829,31 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return analysis;
   }
 
+  private void analyzeGlobalTimeConditionInShowMetaData(
+      WhereCondition timeCondition, Analysis analysis) {
+    Expression predicate = timeCondition.getPredicate();
+    Pair<Expression, Boolean> resultPair =
+        PredicateUtils.extractGlobalTimePredicate(predicate, true, true);
+    if (resultPair.right) {
+      throw new SemanticException(
+          "Value Filter can't exist in the condition of SHOW/COUNT clause, only time condition supported");
+    }
+    if (resultPair.left == null) {
+      throw new SemanticException(
+          "Time condition can't be empty in the condition of SHOW/COUNT clause");
+    }
+    Expression globalTimePredicate = resultPair.left;
+    globalTimePredicate = PredicateUtils.predicateRemoveNot(globalTimePredicate);
+    analysis.setGlobalTimePredicate(globalTimePredicate);
+  }
+
+  private void removeLogicViewMeasurement(ISchemaTree schemaTree) {
+    if (!schemaTree.hasLogicalViewMeasurement()) {
+      return;
+    }
+    schemaTree.removeLogicalView();
+  }
+
   @Override
   public Analysis visitShowDevices(
       ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
@@ -2838,9 +2863,39 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(
         showDevicesStatement.getPathPattern().concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
-    SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
 
-    analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+    if (showDevicesStatement.hasTimeCondition()) {
+      // If there is time condition in SHOW DEVICES, we need to scan the raw data
+      WhereCondition timeCondition = showDevicesStatement.getTimeCondition();
+      analyzeGlobalTimeConditionInShowMetaData(timeCondition, analysis);
+      context.generateGlobalTimeFilter(analysis);
+
+      ISchemaTree schemaTree = schemaFetcher.fetchSchemaInDeviceLevel(patternTree, context);
+      if (schemaTree.isEmpty()) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        return analysis;
+      }
+      removeLogicViewMeasurement(schemaTree);
+
+      // fetch Data partition
+      List<DeviceSchemaInfo> deviceSchemaInfo = schemaTree.getMatchedDevices(ALL_MATCH_PATTERN);
+      Map<PartialPath, Boolean> devicePathsToAlignedStatus = new HashMap<>();
+      for (DeviceSchemaInfo deviceSchema : deviceSchemaInfo) {
+        devicePathsToAlignedStatus.put(deviceSchema.getDevicePath(), deviceSchema.isAligned());
+      }
+      showDevicesStatement.setDevicePathToAlignedStatus(devicePathsToAlignedStatus);
+      DataPartition dataPartition =
+          fetchDataPartitionByDevices(
+              devicePathsToAlignedStatus.keySet().stream()
+                  .map(PartialPath::getDevice)
+                  .collect(Collectors.toSet()),
+              schemaTree,
+              context);
+      analysis.setDataPartitionInfo(dataPartition);
+    } else {
+      SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+    }
     analysis.setRespDatasetHeader(
         showDevicesStatement.hasSgCol()
             ? DatasetHeaderFactory.getShowDevicesWithSgHeader()

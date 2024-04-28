@@ -313,6 +313,12 @@ public class Analysis implements IAnalysis {
     return dataPartition.getDataRegionReplicaSetWithTimeFilter(seriesPath.getDevice(), timefilter);
   }
 
+  public List<TRegionReplicaSet> getPartitionInfoByDevice(
+      PartialPath devicePath, Filter timefilter) {
+    return dataPartition.getDataRegionReplicaSetWithTimeFilter(
+        devicePath.getFullPath(), timefilter);
+  }
+
   public TRegionReplicaSet getPartitionInfo(
       PartialPath seriesPath, TTimePartitionSlot tTimePartitionSlot) {
     return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), tTimePartitionSlot).get(0);

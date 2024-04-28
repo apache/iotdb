@@ -80,6 +80,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQ
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
@@ -1640,6 +1641,14 @@ public class LogicalPlanBuilder {
             this.getRoot(),
             0,
             new SlidingTimeColumnGeneratorParameter(groupByTimeParameter, ascending));
+    return this;
+  }
+
+  public LogicalPlanBuilder planDeviceRegionScan(
+      Map<PartialPath, Boolean> devicePathToAlignedStatus) {
+    this.root =
+        new DeviceRegionScanNode(
+            context.getQueryId().genPlanNodeId(), devicePathToAlignedStatus, null);
     return this;
   }
 }

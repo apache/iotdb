@@ -76,6 +76,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RegionMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
@@ -95,7 +96,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.RegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
@@ -158,6 +161,14 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitAlignedLastQueryScan(AlignedLastQueryScanNode node, C context) {
     return visitSourceNode(node, context);
+  }
+
+  public R visitRegionScan(RegionScanNode node, C context) {
+    return visitSourceNode(node, context);
+  }
+
+  public R visitDeviceRegionScan(DeviceRegionScanNode node, C context) {
+    return visitRegionScan(node, context);
   }
 
   // single child --------------------------------------------------------------------------------
@@ -295,6 +306,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitHorizontallyConcat(HorizontallyConcatNode node, C context) {
+    return visitMultiChildProcess(node, context);
+  }
+
+  public R visitRegionMerge(RegionMergeNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 

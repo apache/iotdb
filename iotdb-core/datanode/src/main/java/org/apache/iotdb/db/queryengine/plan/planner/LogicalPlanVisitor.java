@@ -653,6 +653,15 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
+    if (showDevicesStatement.hasTimeCondition()) {
+      planBuilder =
+          planBuilder
+              .planDeviceRegionScan(showDevicesStatement.getDevicePathToAlignedStatus())
+              .planLimit(showDevicesStatement.getLimit())
+              .planOffset(showDevicesStatement.getOffset());
+      return planBuilder.getRoot();
+    }
+
     // If there is only one region, we can push down the offset and limit operation to
     // source operator.
     boolean canPushDownOffsetLimit =

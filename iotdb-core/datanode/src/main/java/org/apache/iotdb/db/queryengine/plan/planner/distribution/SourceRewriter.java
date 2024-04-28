@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.Horizontal
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RegionMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -59,7 +60,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQ
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.RegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
@@ -706,6 +709,25 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     return processRawSeriesScan(node, context, mergeNode);
   }
 
+  @Override
+  public List<PlanNode> visitDeviceRegionScan(
+      DeviceRegionScanNode node, DistributionPlanContext context) {
+
+    List<PlanNode> planNodeList = splitRegionScanNodeByRegion(node, context);
+    if (planNodeList.size() == 1) {
+      return planNodeList;
+    }
+
+    boolean needMergeInAdvance = !(node.isOutputCount() && context.isAllDeviceOnlyInOneRegion());
+    RegionMergeNode regionMergeNode =
+        new RegionMergeNode(
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.isOutputCount(),
+            needMergeInAdvance);
+    planNodeList.forEach(regionMergeNode::addChild);
+    return Collections.singletonList(regionMergeNode);
+  }
+
   private List<PlanNode> processRawSeriesScan(
       SeriesSourceNode node, DistributionPlanContext context, MultiChildProcessNode parent) {
     List<PlanNode> sourceNodes = splitSeriesSourceNodeByPartition(node, context);
@@ -714,6 +736,43 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     }
     sourceNodes.forEach(parent::addChild);
     return Collections.singletonList(parent);
+  }
+
+  private List<PlanNode> splitRegionScanNodeByRegion(
+      RegionScanNode node, DistributionPlanContext context) {
+    List<PlanNode> planNodesForRegions = new ArrayList<>();
+    Map<TRegionReplicaSet, Set<PartialPath>> devicesInRegion = new HashMap<>();
+    List<PartialPath> devicesList = node.getDevicePaths();
+    boolean isAllDeviceOnlyInOneRegion = true;
+
+    for (PartialPath device : devicesList) {
+      List<TRegionReplicaSet> dataDistribution =
+          analysis.getPartitionInfoByDevice(device, context.getPartitionTimeFilter());
+      isAllDeviceOnlyInOneRegion = isAllDeviceOnlyInOneRegion && dataDistribution.size() == 1;
+      for (TRegionReplicaSet dataRegion : dataDistribution) {
+        devicesInRegion.computeIfAbsent(dataRegion, k -> new HashSet<>()).add(device);
+      }
+    }
+
+    context.setAllDeviceOnlyInOneRegion(isAllDeviceOnlyInOneRegion);
+
+    // If there is only one region, return directly
+    if (devicesInRegion.size() == 1) {
+      node.setRegionReplicaSet(devicesInRegion.keySet().iterator().next());
+      planNodesForRegions.add(node);
+      return planNodesForRegions;
+    }
+
+    for (Map.Entry<TRegionReplicaSet, Set<PartialPath>> entry : devicesInRegion.entrySet()) {
+      RegionScanNode split = (RegionScanNode) node.clone();
+      split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+      split.setRegionReplicaSet(entry.getKey());
+      split.setPaths(entry.getValue());
+      split.setOutputCount(isAllDeviceOnlyInOneRegion);
+      planNodesForRegions.add(split);
+    }
+
+    return planNodesForRegions;
   }
 
   private List<PlanNode> splitSeriesSourceNodeByPartition(

@@ -178,14 +178,18 @@ aliasClause
     : ALIAS operator_eq alias
     ;
 
+timeConditonClause
+    :whereClause
+    ;
+
 // ---- Show Devices
 showDevices
-    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? devicesWhereClause? rowPaginationClause?
+    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? devicesWhereClause? timeConditonClause? rowPaginationClause?
     ;
 
 // ---- Show Timeseries
 showTimeseries
-    : SHOW LATEST? TIMESERIES prefixPath? timeseriesWhereClause? rowPaginationClause?
+    : SHOW LATEST? TIMESERIES prefixPath? timeseriesWhereClause? timeConditonClause? rowPaginationClause?
     ;
 
 // ---- Show Child Paths

@@ -708,7 +708,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.devicesWhereClause() != null) {
       showDevicesStatement.setSchemaFilter(parseDevicesWhereClause(ctx.devicesWhereClause()));
     }
-
+    if (ctx.timeConditonClause() != null) {
+      showDevicesStatement.setTimeCondition(
+          parseWhereClause(ctx.timeConditonClause().whereClause()));
+    }
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {
         showDevicesStatement.setLimit(parseLimitClause(ctx.rowPaginationClause().limitClause()));
