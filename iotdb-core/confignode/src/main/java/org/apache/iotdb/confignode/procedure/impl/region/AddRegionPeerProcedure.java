@@ -92,6 +92,7 @@ public class AddRegionPeerProcedure
               consensusGroupId.getId(),
               destDataNode.getDataNodeId());
           handler.addRegionLocation(consensusGroupId, destDataNode);
+          handler.forceUpdateRegionCache(consensusGroupId, destDataNode, RegionStatus.Adding);
           TSStatus status = handler.createNewRegionPeer(consensusGroupId, destDataNode);
           setKillPoint(state);
           if (status.getCode() != SUCCESS_STATUS.getStatusCode()) {
