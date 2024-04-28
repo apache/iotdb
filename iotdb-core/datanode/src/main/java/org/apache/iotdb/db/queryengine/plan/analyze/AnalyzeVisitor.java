@@ -33,11 +33,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
-import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterToPathUtil;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -186,7 +182,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ALLOWED_SCHEMA_PROPS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEADBAND;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
@@ -3717,49 +3712,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     String database = statement.getDatabase();
     String tableName = statement.getTableName();
-    List<TsTableColumnSchema> columnSchemaList =
-        DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList();
 
-    int length = DataNodeTableCache.getInstance().getTable(database, tableName).getIdNums() + 3 + 1;
-    String[] nodes = new String[length];
-    Arrays.fill(nodes, "*");
-    nodes[0] = PATH_ROOT;
-    nodes[1] = database;
-    nodes[2] = tableName;
-    nodes[nodes.length - 1] = ONE_LEVEL_PATH_WILDCARD;
-    Map<Integer, List<String>> orValueMap = new HashMap<>();
-    for (SchemaFilter schemaFilter : statement.getIdDeterminedFilterList()) {
-      if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.DEVICE_ID)) {
-        DeviceIdFilter deviceIdFilter = (DeviceIdFilter) schemaFilter;
-        nodes[deviceIdFilter.getIndex() + 3] = deviceIdFilter.getValue();
-      } else if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.OR)) {
-        OrFilter orFilter = (OrFilter) schemaFilter;
-        if (orFilter.getLeft().getSchemaFilterType().equals(SchemaFilterType.DEVICE_ID)
-            && orFilter.getRight().getSchemaFilterType().equals(SchemaFilterType.DEVICE_ID)) {
-          DeviceIdFilter deviceIdFilter = (DeviceIdFilter) orFilter.getLeft();
-          nodes[deviceIdFilter.getIndex() + 3] = deviceIdFilter.getValue();
-          deviceIdFilter = (DeviceIdFilter) orFilter.getLeft();
-          orValueMap
-              .computeIfAbsent(deviceIdFilter.getIndex(), k -> new ArrayList<>())
-              .add(deviceIdFilter.getValue());
-        }
-      }
-    }
+    List<PartialPath> devicePatternList =
+        DeviceFilterToPathUtil.convertToDevicePattern(
+            database,
+            tableName,
+            DataNodeTableCache.getInstance().getTable(database, tableName),
+            statement.getIdDeterminedFilterList());
     PathPatternTree patternTree = new PathPatternTree();
-    PartialPath path = new PartialPath(nodes);
-    patternTree.appendFullPath(path);
-    List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(path);
-    for (Map.Entry<Integer, List<String>> entry : orValueMap.entrySet()) {
-      for (int i = 0, size = pathList.size(); i < size; i++) {
-        for (String value : entry.getValue()) {
-          nodes = Arrays.copyOf(pathList.get(i).getNodes(), length);
-          nodes[entry.getKey() + 3] = value;
-          path = new PartialPath(nodes);
-          pathList.add(path);
-          patternTree.appendFullPath(path);
-        }
-      }
+    for (PartialPath devicePattern : devicePatternList) {
+      patternTree.appendFullPath(devicePattern, ONE_LEVEL_PATH_WILDCARD);
     }
 
     SchemaPartition partition =

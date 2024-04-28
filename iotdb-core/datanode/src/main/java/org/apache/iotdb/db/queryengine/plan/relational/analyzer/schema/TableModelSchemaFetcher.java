@@ -21,8 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
-import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -184,7 +182,6 @@ public class TableModelSchemaFetcher {
     } finally {
       coordinator.cleanupQueryExecution(queryId, null, t);
     }
-    System.out.println(deviceEntryList);
     return deviceEntryList;
   }
 
@@ -199,22 +196,14 @@ public class TableModelSchemaFetcher {
       if (expression == null) {
         continue;
       }
+      context.reset();
       SchemaFilter schemaFilter = expression.accept(visitor, context);
-      if (hasAttribute(schemaFilter)) {
+      if (context.hasAttribute()) {
         idFuzzyFilters.add(schemaFilter);
       } else {
         idDeterminedFilters.add(schemaFilter);
       }
     }
     return new Pair<>(idDeterminedFilters, idFuzzyFilters);
-  }
-
-  private boolean hasAttribute(SchemaFilter schemaFilter) {
-    if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.OR)) {
-      return hasAttribute(((OrFilter) schemaFilter).getLeft())
-          || hasAttribute(((OrFilter) schemaFilter).getRight());
-    }
-
-    return schemaFilter.getSchemaFilterType().equals(SchemaFilterType.DEVICE_ATTRIBUTE);
   }
 }

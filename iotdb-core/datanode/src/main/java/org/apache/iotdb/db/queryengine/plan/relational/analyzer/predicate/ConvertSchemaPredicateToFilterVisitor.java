@@ -43,7 +43,6 @@ import org.apache.iotdb.db.relational.sql.tree.SimpleCaseExpression;
 import org.apache.iotdb.db.relational.sql.tree.StringLiteral;
 import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -109,6 +108,7 @@ public class ConvertSchemaPredicateToFilterVisitor
         .equals(TsTableColumnCategory.ID)) {
       return new DeviceIdFilter(context.idColumeIndexMap.get(columnName), value);
     } else {
+      context.hasAttribute = true;
       return new DeviceAttributeFilter(columnName, value);
     }
   }
@@ -143,8 +143,7 @@ public class ConvertSchemaPredicateToFilterVisitor
     private final TsTable table;
     private final Map<String, Integer> idColumeIndexMap;
 
-    private final List<SchemaFilter> idDeterminedFilters = new ArrayList<>();
-    private final List<SchemaFilter> idFuzzyFilters = new ArrayList<>();
+    private boolean hasAttribute = false;
 
     public Context(TsTable table) {
       this.table = table;
@@ -162,6 +161,14 @@ public class ConvertSchemaPredicateToFilterVisitor
         }
       }
       return map;
+    }
+
+    public boolean hasAttribute() {
+      return hasAttribute;
+    }
+
+    public void reset() {
+      hasAttribute = false;
     }
   }
 }
