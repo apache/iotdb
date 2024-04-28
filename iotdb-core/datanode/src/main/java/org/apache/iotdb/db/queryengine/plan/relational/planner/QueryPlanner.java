@@ -246,8 +246,11 @@ public class QueryPlanner {
     }
 
     Pair<Expression, Boolean> resultPair = extractGlobalTimeFilter(predicate);
-    Expression globalTimePredicate =
-        ExpressionTranslateVisitor.translateToSymbolReference(resultPair.left, planBuilder);
+    Expression globalTimePredicate = null;
+    if (resultPair.left != null) {
+      globalTimePredicate =
+          ExpressionTranslateVisitor.translateToSymbolReference(resultPair.left, planBuilder);
+    }
     analysis.setGlobalTableModelTimePredicate(globalTimePredicate);
     boolean hasValueFilter = resultPair.right;
     if (!hasValueFilter) {
