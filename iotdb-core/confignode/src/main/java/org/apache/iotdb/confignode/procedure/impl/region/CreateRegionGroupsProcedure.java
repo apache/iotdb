@@ -178,8 +178,8 @@ public class CreateRegionGroupsProcedure
       case ACTIVATE_REGION_GROUPS:
         long currentTime = System.nanoTime();
         // Build RegionGroupCache immediately to make these successfully built RegionGroup available
-        Map<String, Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>>>
-            activateRegionGroupMap = new TreeMap<>();
+        Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> activateRegionGroupMap =
+            new TreeMap<>();
         createRegionGroupsPlan
             .getRegionGroupMap()
             .forEach(
@@ -211,9 +211,8 @@ public class CreateRegionGroupsProcedure
                                                   ? RegionStatus.Unknown
                                                   : RegionStatus.Running));
                                     });
-                            activateRegionGroupMap
-                                .computeIfAbsent(database, empty -> new TreeMap<>())
-                                .put(regionReplicaSet.getRegionId(), activateSampleMap);
+                            activateRegionGroupMap.put(
+                                regionReplicaSet.getRegionId(), activateSampleMap);
                           }
                         }));
         env.activateRegionGroup(activateRegionGroupMap);

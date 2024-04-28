@@ -89,13 +89,13 @@ public class RemoveRegionPeerProcedure
               getProcId(),
               consensusGroupId.getId(),
               targetDataNode.getDataNodeId());
-          handler.forceUpdateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
+          handler.updateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
           handler.transferRegionLeader(consensusGroupId, targetDataNode);
           KillPoint.setKillPoint(state);
           setNextState(REMOVE_REGION_PEER);
           break;
         case REMOVE_REGION_PEER:
-          handler.forceUpdateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
+          handler.updateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
           tsStatus =
               handler.submitRemoveRegionPeerTask(
                   this.getProcId(), targetDataNode, consensusGroupId, coordinator);
@@ -121,7 +121,7 @@ public class RemoveRegionPeerProcedure
           setNextState(DELETE_OLD_REGION_PEER);
           break;
         case DELETE_OLD_REGION_PEER:
-          handler.forceUpdateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
+          handler.updateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
           tsStatus =
               handler.submitDeleteOldRegionPeerTask(
                   this.getProcId(), targetDataNode, consensusGroupId);

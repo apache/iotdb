@@ -20,12 +20,13 @@
 package org.apache.iotdb.confignode.manager.load.balancer.router.leader;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -39,13 +40,13 @@ public class GreedyLeaderBalancer extends AbstractLeaderBalancer {
   @Override
   public Map<TConsensusGroupId, Integer> generateOptimalLeaderDistribution(
       Map<String, List<TConsensusGroupId>> databaseRegionGroupMap,
-      Map<TConsensusGroupId, Set<Integer>> regionLocationMap,
+      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap,
       Map<TConsensusGroupId, Integer> regionLeaderMap,
       Map<Integer, NodeStatistics> dataNodeStatisticsMap,
       Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap) {
     initialize(
         databaseRegionGroupMap,
-        regionLocationMap,
+        regionReplicaSetMap,
         regionLeaderMap,
         dataNodeStatisticsMap,
         regionStatisticsMap);
@@ -56,11 +57,12 @@ public class GreedyLeaderBalancer extends AbstractLeaderBalancer {
 
   private Map<TConsensusGroupId, Integer> constructGreedyDistribution() {
     Map<Integer, Integer> leaderCounter = new TreeMap<>();
-    regionLocationMap.forEach(
-        (regionGroupId, dataNodeIds) -> {
+    regionReplicaSetMap.forEach(
+        (regionGroupId, regionGroup) -> {
           int minCount = Integer.MAX_VALUE,
               leaderId = regionLeaderMap.getOrDefault(regionGroupId, -1);
-          for (int dataNodeId : dataNodeIds) {
+          for (TDataNodeLocation dataNodeLocation : regionGroup.getDataNodeLocations()) {
+            int dataNodeId = dataNodeLocation.getDataNodeId();
             if (isDataNodeAvailable(dataNodeId) && isRegionAvailable(regionGroupId, dataNodeId)) {
               // Select the DataNode with the minimal leader count as the new leader
               int count = leaderCounter.getOrDefault(dataNodeId, 0);
