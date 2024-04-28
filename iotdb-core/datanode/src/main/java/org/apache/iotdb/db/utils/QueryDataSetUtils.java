@@ -64,6 +64,7 @@ import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.AVG_
 import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.AVG_DAILY_DRIVING_SESSION_DATA_TYPES;
 import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.AVG_LOAD_DATA_TYPES;
 import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.AVG_VS_PROJ_FUEL_CONSUMPTION_DATA_TYPES;
+import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.BREAKDOWN_FREQUENCY_DATA_TYPES;
 import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.DAILY_ACTIVITY_DATA_TYPES;
 import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.DRIVER_LEVEL;
 import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.FLEET_LEVEL;
@@ -1467,5 +1468,110 @@ public class QueryDataSetUtils {
 
   private static class DailyActivityValue {
     long count = 0;
+  }
+
+  public static Pair<List<ByteBuffer>, Boolean> constructBreakdownFrequencyResult(
+      IQueryExecution queryExecution1, IQueryExecution queryExecution2, TsBlockSerde serde)
+      throws IoTDBException, IOException {
+
+    Map<String, DailyActivityValue> map = new HashMap<>();
+
+    TsBlock totalTsBlock = null;
+    boolean totalFinished = false;
+    int totalIndex = 0;
+    TsBlock statusTsBlock = null;
+    boolean statusFinished = false;
+    int statusIndex = 0;
+    List<Boolean> avtiveList = new ArrayList<>(1440);
+
+    while (!totalFinished && !statusFinished) {
+      if (totalTsBlock == null || totalTsBlock.isEmpty()) {
+        Optional<TsBlock> optionalTsBlock = queryExecution1.getBatchResult();
+        if (!optionalTsBlock.isPresent()) {
+          totalFinished = true;
+        } else {
+          totalTsBlock = optionalTsBlock.get();
+        }
+      }
+
+      if (statusTsBlock == null || statusTsBlock.isEmpty()) {
+        Optional<TsBlock> optionalTsBlock = queryExecution2.getBatchResult();
+        if (!optionalTsBlock.isPresent()) {
+          statusFinished = true;
+        } else {
+          statusTsBlock = optionalTsBlock.get();
+        }
+      }
+
+      if (totalTsBlock != null
+          && !totalTsBlock.isEmpty()
+          && statusTsBlock != null
+          && !statusTsBlock.isEmpty()) {
+        BinaryColumn deviceColumn = (BinaryColumn) totalTsBlock.getColumn(0);
+        LongColumn totalColumn = (LongColumn) totalTsBlock.getColumn(1);
+        LongColumn statusColumn = (LongColumn) statusTsBlock.getColumn(1);
+        while (totalIndex < totalTsBlock.getPositionCount()
+            && statusIndex < statusTsBlock.getPositionCount()) {
+          long currentTotal = totalColumn.getLong(totalIndex);
+          long currentStatus = statusColumn.getLong(statusIndex);
+
+          avtiveList.add(currentStatus * 1.0d / currentTotal > 0.5);
+          if (avtiveList.size() == 1440) {
+            String deviceId =
+                deviceColumn.getBinary(totalIndex).getStringValue(StandardCharsets.UTF_8);
+            String model = deviceId.split("\\.")[MODEL_LEVEL];
+            DailyActivityValue value = map.computeIfAbsent(model, k -> new DailyActivityValue());
+            boolean meetTrue = false;
+            for (boolean active : avtiveList) {
+              if (active) {
+                if (!meetTrue) {
+                  meetTrue = true;
+                }
+              } else {
+                if (meetTrue) {
+                  value.count++;
+                  meetTrue = false;
+                }
+              }
+            }
+
+            if (meetTrue) {
+              value.count++;
+            }
+            avtiveList.clear();
+          }
+          totalIndex++;
+          statusIndex++;
+        }
+
+        if (totalIndex == totalTsBlock.getPositionCount()) {
+          totalTsBlock = null;
+          totalIndex = 0;
+        }
+
+        if (statusIndex == statusTsBlock.getPositionCount()) {
+          statusTsBlock = null;
+          statusIndex = 0;
+        }
+      }
+    }
+
+    int size = map.size();
+
+    TsBlockBuilder builder = new TsBlockBuilder(size, BREAKDOWN_FREQUENCY_DATA_TYPES);
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder modelColumnBuilder = builder.getColumnBuilder(0);
+    ColumnBuilder breakDownFrequencyColumnBuilder = builder.getColumnBuilder(1);
+
+    map.forEach(
+        (k, v) -> {
+          timeColumnBuilder.writeLong(0);
+          modelColumnBuilder.writeBinary(new Binary(k, StandardCharsets.UTF_8));
+          breakDownFrequencyColumnBuilder.writeLong(v.count);
+        });
+
+    builder.declarePositions(size);
+
+    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), true);
   }
 }
