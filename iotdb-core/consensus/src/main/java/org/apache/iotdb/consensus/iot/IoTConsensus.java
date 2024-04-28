@@ -341,6 +341,8 @@ public class IoTConsensus implements IConsensus {
             "[IoTConsensus] failed to cleanup side effects after failed to add remote peer", mpe);
       }
       throw new ConsensusException(e);
+    } finally {
+      impl.checkAndUnlockSafeDeletedSearchIndex();
     }
   }
 
