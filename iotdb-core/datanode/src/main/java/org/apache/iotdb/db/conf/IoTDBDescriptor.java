@@ -432,8 +432,8 @@ public class IoTDBDescriptor {
       } else if (offHeapMemoryStr.endsWith("gb")) {
         unit = 1073741824L;
       }
-      conf.setMaxOffHeapMemoryBytes(
-          Long.parseLong(offHeapMemoryStr.substring(0, offHeapMemoryStr.length() - 2)) * unit);
+      offHeapMemoryStr = offHeapMemoryStr.replaceAll("\\D", "");
+      conf.setMaxOffHeapMemoryBytes(Long.parseLong(offHeapMemoryStr) * unit);
       LOGGER.info("OFF_HEAP_MEMORY: {}", conf.getMaxOffHeapMemoryBytes());
     }
 
