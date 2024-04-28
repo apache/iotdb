@@ -528,6 +528,85 @@ struct TSConnectionInfoResp {
   1: required list<TSConnectionInfo> connectionInfoList
 }
 
+struct TSHighLoadReq {
+  1: required i64 sessionId
+  2: required i64 statementId
+  3: required string fleet
+  4: required i32 fetchSize
+  5: required i64 timeout
+}
+
+struct TSLongDrivingSessionsReq {
+  1: required i64 sessionId
+  2: required i64 statementId
+  3: required string fleet
+  4: required i64 startTime
+  5: required i64 endTime
+  6: required i32 fetchSize
+  7: required i64 timeout
+}
+
+struct TSLongDailySessionsReq {
+  1: required i64 sessionId
+  2: required i64 statementId
+  3: required string fleet
+  4: required i64 startTime
+  5: required i64 endTime
+  6: required i32 fetchSize
+  7: required i64 timeout
+}
+
+struct TSAvgVsProjectedFuelConsumptionReq {
+  1: required i64 sessionId
+  2: required i64 statementId
+  3: required i32 fetchSize
+  4: required i64 timeout
+}
+
+struct TSAvgDailyDrivingDurationReq {
+  1: required i64 sessionId
+  2: required i64 statementId
+  3: required i64 startTime
+  4: required i64 endTime
+  5: required i32 fetchSize
+  6: required i64 timeout
+}
+
+struct TSAvgDailyDrivingSessionReq {
+  1: required i64 sessionId
+  2: required i64 statementId
+  3: required i64 startTime
+  4: required i64 endTime
+  5: required i32 fetchSize
+  6: required i64 timeout
+}
+
+struct TSAvgLoadReq {
+  1: required i64 sessionId
+  2: required i64 statementId
+  3: required i32 fetchSize
+  4: required i64 timeout
+}
+
+struct TSDailyActivityReq {
+  1: required i64 sessionId
+  2: required i64 statementId
+  3: required i64 startTime
+  4: required i64 endTime
+  5: required i32 fetchSize
+  6: required i64 timeout
+}
+
+struct TSBreakdownFrequencyReq {
+  1: required i64 sessionId
+  2: required i64 statementId
+  3: required i64 startTime
+  4: required i64 endTime
+  5: required i32 fetchSize
+  6: required i64 timeout
+}
+
+
 service IClientRPCService {
 
   TSExecuteStatementResp executeQueryStatementV2(1:TSExecuteStatementReq req);
@@ -623,6 +702,24 @@ service IClientRPCService {
   TSExecuteStatementResp executeLastDataQuery(1:TSLastDataQueryReq req);
 
   TSExecuteStatementResp executeAggregationQuery(1:TSAggregationQueryReq req);
+
+  TSExecuteStatementResp highLoad(1:TSHighLoadReq req);
+
+  TSExecuteStatementResp longDrivingSessions(1:TSLongDrivingSessionsReq req);
+
+  TSExecuteStatementResp longDailySessions(1:TSLongDailySessionsReq req);
+
+  TSExecuteStatementResp avgVsProjectedFuelConsumption(1:TSAvgVsProjectedFuelConsumptionReq req);
+
+  TSExecuteStatementResp avgDailyDrivingDuration(1:TSAvgDailyDrivingDurationReq req);
+
+  TSExecuteStatementResp avgDailyDrivingSession(1:TSAvgDailyDrivingSessionReq req);
+
+  TSExecuteStatementResp avgLoad(1:TSAvgLoadReq req);
+
+  TSExecuteStatementResp dailyActivity(1:TSDailyActivityReq req);
+
+  TSExecuteStatementResp breakdownFrequency(1:TSBreakdownFrequencyReq req);
 
   i64 requestStatementId(1:i64 sessionId);
 

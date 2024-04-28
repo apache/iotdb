@@ -121,7 +121,12 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSAvgDailyDrivingDurationReq;
+import org.apache.iotdb.service.rpc.thrift.TSAvgDailyDrivingSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSAvgLoadReq;
+import org.apache.iotdb.service.rpc.thrift.TSAvgVsProjectedFuelConsumptionReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
+import org.apache.iotdb.service.rpc.thrift.TSBreakdownFrequencyReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
@@ -130,6 +135,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSDailyActivityReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
@@ -142,6 +148,7 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSGroupByQueryIntervalReq;
+import org.apache.iotdb.service.rpc.thrift.TSHighLoadReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -151,6 +158,8 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
+import org.apache.iotdb.service.rpc.thrift.TSLongDailySessionsReq;
+import org.apache.iotdb.service.rpc.thrift.TSLongDrivingSessionsReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -165,6 +174,8 @@ import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.primitives.Bytes;
 import io.airlift.units.Duration;
 import io.jsonwebtoken.lang.Strings;
 import org.apache.commons.lang3.StringUtils;
@@ -191,6 +202,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -202,6 +214,13 @@ import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.db.queryengine.plan.statement.StatementType.AVG_DAILY_DRIVING_DURATION;
+import static org.apache.iotdb.db.queryengine.plan.statement.StatementType.AVG_DAILY_DRIVING_SESSION;
+import static org.apache.iotdb.db.queryengine.plan.statement.StatementType.AVG_LOAD;
+import static org.apache.iotdb.db.queryengine.plan.statement.StatementType.AVG_VS_PROJECTED_FUEL_CONSUMPTION;
+import static org.apache.iotdb.db.queryengine.plan.statement.StatementType.DAILY_ACTIVITY;
+import static org.apache.iotdb.db.queryengine.plan.statement.StatementType.HIGH_LOAD;
+import static org.apache.iotdb.db.queryengine.plan.statement.StatementType.LONG_DRIVING_SESSIONS;
 import static org.apache.iotdb.db.utils.CommonUtils.getContentOfRequest;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNpeOrUnexpectedException;
@@ -237,6 +256,258 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
+  private static final String NAME_COLUMN_NAME = "name";
+
+  private static final String DRIVER_COLUMN_NAME = "DRIVER";
+
+  private static final String CURRENT_LOAD_COLUMN_NAME = "current_load";
+
+  private static final String LOAD_CAPACITY_COLUMN_NAME = "load_capacity";
+
+  private static final String VELOCITY_COLUMN_NAME = "velocity";
+
+  private static final String FUEL_CONSUMPTION_COLUMN_NAME = "fuel_consumption";
+
+  private static final String NOMINAL_FUEL_CONSUMPTION_COLUMN_NAME = "nominal_fuel_consumption";
+
+  private static final String FLEET_COLUMN_NAME = "fleet";
+
+  private static final String MODEL_COLUMN_NAME = "model";
+
+  private static final String STATUS_COLUMN_NAME = "status";
+
+  private static final String HIGH_LOAD_SQL_TEMPLATE =
+      "select last" + CURRENT_LOAD_COLUMN_NAME + " from root.diagnostics.%s.**";
+
+  private static final List<String> HIGH_LOAD_HEADERS =
+      ImmutableList.of(
+          NAME_COLUMN_NAME,
+          DRIVER_COLUMN_NAME,
+          CURRENT_LOAD_COLUMN_NAME,
+          LOAD_CAPACITY_COLUMN_NAME);
+
+  private static final List<String> HIGH_LOAD_HEADER_DATA_TYPES =
+      ImmutableList.of(
+          TSDataType.TEXT.toString(),
+          TSDataType.TEXT.toString(),
+          TSDataType.DOUBLE.toString(),
+          TSDataType.DOUBLE.toString());
+
+  public static final List<TSDataType> HIGH_LOAD_DATA_TYPES =
+      ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT, TSDataType.DOUBLE, TSDataType.DOUBLE);
+
+  private static final Map<String, Integer> HIGH_LOAD_COLUMN_NAME_INDEX_MAP = new HashMap<>();
+
+  static {
+    for (int i = 0; i < HIGH_LOAD_HEADERS.size(); i++) {
+      HIGH_LOAD_COLUMN_NAME_INDEX_MAP.put(HIGH_LOAD_HEADERS.get(i), i);
+    }
+  }
+
+  private static final List<Byte> HIGH_LOAD_ALIAS_COLUMNS =
+      new ArrayList<>(Bytes.asList(new BitSet().toByteArray()));
+
+  private static final String LONG_DRIVING_SESSIONS_SQL_TEMPLATE =
+      "select avg("
+          + VELOCITY_COLUMN_NAME
+          + ") from root.readings.%s.** GROUP BY([%d, %d), 10m) ALIGN BY DEVICE HAVING avg("
+          + VELOCITY_COLUMN_NAME
+          + ") > 1";
+
+  private static final List<String> LONG_DRIVING_SESSIONS_HEADERS =
+      ImmutableList.of(NAME_COLUMN_NAME, DRIVER_COLUMN_NAME);
+
+  private static final List<String> LONG_DRIVING_SESSIONS_HEADER_DATA_TYPES =
+      ImmutableList.of(TSDataType.TEXT.toString(), TSDataType.TEXT.toString());
+
+  public static final List<TSDataType> LONG_DRIVING_SESSIONS_DATA_TYPES =
+      ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT);
+
+  private static final Map<String, Integer> LONG_DRIVING_SESSIONS_COLUMN_NAME_INDEX_MAP =
+      new HashMap<>();
+
+  static {
+    for (int i = 0; i < LONG_DRIVING_SESSIONS_HEADERS.size(); i++) {
+      LONG_DRIVING_SESSIONS_COLUMN_NAME_INDEX_MAP.put(LONG_DRIVING_SESSIONS_HEADERS.get(i), i);
+    }
+  }
+
+  private static final List<Byte> LONG_DRIVING_SESSIONS_ALIAS_COLUMNS =
+      new ArrayList<>(Bytes.asList(new BitSet().toByteArray()));
+
+  private static final String AVG_VS_PROJ_FUEL_CONSUMPTION_SQL_TEMPLATE =
+      "select sum("
+          + FUEL_CONSUMPTION_COLUMN_NAME
+          + "), count("
+          + FUEL_CONSUMPTION_COLUMN_NAME
+          + ") from root.readings.** where "
+          + VELOCITY_COLUMN_NAME
+          + " > 1 ALIGN BY DEVICE";
+
+  private static final List<String> AVG_VS_PROJ_FUEL_CONSUMPTION_HEADERS =
+      ImmutableList.of(
+          FLEET_COLUMN_NAME,
+          "avg_" + FUEL_CONSUMPTION_COLUMN_NAME,
+          NOMINAL_FUEL_CONSUMPTION_COLUMN_NAME);
+
+  private static final List<String> AVG_VS_PROJ_FUEL_CONSUMPTION_HEADER_DATA_TYPES =
+      ImmutableList.of(
+          TSDataType.TEXT.toString(), TSDataType.DOUBLE.toString(), TSDataType.DOUBLE.toString());
+
+  public static final List<TSDataType> AVG_VS_PROJ_FUEL_CONSUMPTION_DATA_TYPES =
+      ImmutableList.of(TSDataType.TEXT, TSDataType.DOUBLE, TSDataType.DOUBLE);
+
+  private static final Map<String, Integer> AVG_VS_PROJ_FUEL_CONSUMPTION_COLUMN_NAME_INDEX_MAP =
+      new HashMap<>();
+
+  static {
+    for (int i = 0; i < AVG_VS_PROJ_FUEL_CONSUMPTION_HEADERS.size(); i++) {
+      AVG_VS_PROJ_FUEL_CONSUMPTION_COLUMN_NAME_INDEX_MAP.put(
+          AVG_VS_PROJ_FUEL_CONSUMPTION_HEADERS.get(i), i);
+    }
+  }
+
+  private static final List<Byte> AVG_VS_PROJ_FUEL_CONSUMPTION_ALIAS_COLUMNS =
+      new ArrayList<>(Bytes.asList(new BitSet().toByteArray()));
+
+  private static final String AVG_DAILY_DRIVING_DURATION_SQL_TEMPLATE =
+      "select avg("
+          + VELOCITY_COLUMN_NAME
+          + ") from root.readings.** GROUP BY([%d, %d), 10m) HAVING avg("
+          + VELOCITY_COLUMN_NAME
+          + ") > 1 ALIGN BY DEVICE";
+
+  private static final List<String> AVG_DAILY_DRIVING_DURATION_HEADERS =
+      ImmutableList.of(FLEET_COLUMN_NAME, NAME_COLUMN_NAME, DRIVER_COLUMN_NAME, "avg_daily_hours");
+
+  private static final List<String> AVG_DAILY_DRIVING_DURATION_HEADER_DATA_TYPES =
+      ImmutableList.of(
+          TSDataType.TEXT.toString(),
+          TSDataType.TEXT.toString(),
+          TSDataType.TEXT.toString(),
+          TSDataType.DOUBLE.toString());
+
+  public static final List<TSDataType> AVG_DAILY_DRIVING_DURATION_DATA_TYPES =
+      ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.DOUBLE);
+
+  private static final Map<String, Integer> AVG_DAILY_DRIVING_DURATIONN_COLUMN_NAME_INDEX_MAP =
+      new HashMap<>();
+
+  static {
+    for (int i = 0; i < AVG_DAILY_DRIVING_DURATION_HEADERS.size(); i++) {
+      AVG_DAILY_DRIVING_DURATIONN_COLUMN_NAME_INDEX_MAP.put(
+          AVG_DAILY_DRIVING_DURATION_HEADERS.get(i), i);
+    }
+  }
+
+  private static final List<Byte> AVG_DAILY_DRIVING_DURATIONN_ALIAS_COLUMNS =
+      new ArrayList<>(Bytes.asList(new BitSet().toByteArray()));
+
+  private static final String AVG_DAILY_DRIVING_SESSION_SQL_TEMPLATE =
+      "select avg("
+          + VELOCITY_COLUMN_NAME
+          + ") from root.readings.** GROUP BY([%d, %d), 10m) ALIGN BY DEVICE";
+
+  private static final List<String> AVG_DAILY_DRIVING_SESSION_HEADERS =
+      ImmutableList.of(NAME_COLUMN_NAME, "avg_daily_driving_duration");
+
+  private static final List<String> AVG_DAILY_DRIVING_SESSION_HEADER_DATA_TYPES =
+      ImmutableList.of(TSDataType.TEXT.toString(), TSDataType.INT64.toString());
+
+  public static final List<TSDataType> AVG_DAILY_DRIVING_SESSION_DATA_TYPES =
+      ImmutableList.of(TSDataType.TEXT, TSDataType.INT64);
+
+  private static final Map<String, Integer> AVG_DAILY_DRIVING_SESSION_COLUMN_NAME_INDEX_MAP =
+      new HashMap<>();
+
+  static {
+    for (int i = 0; i < AVG_DAILY_DRIVING_SESSION_HEADERS.size(); i++) {
+      AVG_DAILY_DRIVING_SESSION_COLUMN_NAME_INDEX_MAP.put(
+          AVG_DAILY_DRIVING_SESSION_HEADERS.get(i), i);
+    }
+  }
+
+  private static final List<Byte> AVG_DAILY_DRIVING_SESSION_ALIAS_COLUMNS =
+      new ArrayList<>(Bytes.asList(new BitSet().toByteArray()));
+
+  private static final String AVG_LOAD_SQL_TEMPLATE =
+      "select avg(" + CURRENT_LOAD_COLUMN_NAME + ") from root.diagnostics.** ALIGN BY DEVICE";
+
+  private static final List<String> AVG_LOAD_HEADERS =
+      ImmutableList.of(
+          FLEET_COLUMN_NAME, MODEL_COLUMN_NAME, LOAD_CAPACITY_COLUMN_NAME, "avg_load_percentage");
+
+  private static final List<String> AVG_LOAD_HEADER_DATA_TYPES =
+      ImmutableList.of(
+          TSDataType.TEXT.toString(),
+          TSDataType.TEXT.toString(),
+          TSDataType.TEXT.toString(),
+          TSDataType.DOUBLE.toString());
+
+  public static final List<TSDataType> AVG_LOAD_DATA_TYPES =
+      ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.DOUBLE);
+
+  private static final Map<String, Integer> AVG_LOAD_COLUMN_NAME_INDEX_MAP = new HashMap<>();
+
+  static {
+    for (int i = 0; i < AVG_LOAD_HEADERS.size(); i++) {
+      AVG_LOAD_COLUMN_NAME_INDEX_MAP.put(AVG_LOAD_HEADERS.get(i), i);
+    }
+  }
+
+  private static final List<Byte> AVG_LOAD_ALIAS_COLUMNS =
+      new ArrayList<>(Bytes.asList(new BitSet().toByteArray()));
+
+  private static final String DAILY_ACTIVITY_SQL_TEMPLATE =
+      "select avg("
+          + STATUS_COLUMN_NAME
+          + ") from root.diagnostics.** GROUP BY([%d, %d), 10m) HAVING avg("
+          + STATUS_COLUMN_NAME
+          + ") < 1 ALIGN BY DEVICE";
+
+  private static final List<String> DAILY_ACTIVITY_HEADERS =
+      ImmutableList.of(FLEET_COLUMN_NAME, MODEL_COLUMN_NAME, "daily_activity");
+
+  private static final List<String> DAILY_ACTIVITY_HEADER_DATA_TYPES =
+      ImmutableList.of(
+          TSDataType.TEXT.toString(), TSDataType.TEXT.toString(), TSDataType.INT64.toString());
+
+  public static final List<TSDataType> DAILY_ACTIVITY_DATA_TYPES =
+      ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT, TSDataType.INT64);
+
+  private static final Map<String, Integer> DAILY_ACTIVITY_COLUMN_NAME_INDEX_MAP = new HashMap<>();
+
+  static {
+    for (int i = 0; i < DAILY_ACTIVITY_HEADERS.size(); i++) {
+      DAILY_ACTIVITY_COLUMN_NAME_INDEX_MAP.put(DAILY_ACTIVITY_HEADERS.get(i), i);
+    }
+  }
+
+  private static final List<Byte> DAILY_ACTIVITY_ALIAS_COLUMNS =
+      new ArrayList<>(Bytes.asList(new BitSet().toByteArray()));
+
+  private static final Map<String, DeviceAttributes> DEVICE_ATTRIBUTES_MAP = new HashMap<>();
+
+  public static class DeviceAttributes {
+    public final double nominalFuelConsumption;
+
+    public final double loadCapacity;
+
+    public final double fuelCapacity;
+
+    public DeviceAttributes(
+        double nominalFuelConsumption, double loadCapacity, double fuelCapacity) {
+      this.nominalFuelConsumption = nominalFuelConsumption;
+      this.loadCapacity = loadCapacity;
+      this.fuelCapacity = fuelCapacity;
+    }
+  }
+
+  public static final int FLEET_LEVEL = 2;
+  public static final int MODEL_LEVEL = 3;
+  public static final int NAME_LEVEL = 4;
+  public static final int DRIVER_LEVEL = 5;
 
   @FunctionalInterface
   public interface SelectResult {
@@ -2182,6 +2453,936 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSExecuteStatementResp executeAggregationQuery(TSAggregationQueryReq req) {
     return executeAggregationQueryInternal(req, OLD_SELECT_RESULT);
+  }
+
+  @Override
+  public TSExecuteStatementResp highLoad(TSHighLoadReq req) throws TException {
+    boolean finished = false;
+    long queryId = Long.MIN_VALUE;
+    String statement = String.format(HIGH_LOAD_SQL_TEMPLATE, req.fleet);
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    // quota
+    OperationQuota quota = null;
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+
+    long startTime = System.nanoTime();
+    StatementType statementType = null;
+    Throwable t = null;
+    try {
+      Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
+
+      if (s == null) {
+        return RpcUtils.getTSExecuteStatementResp(
+            RpcUtils.getStatus(
+                TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+      }
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
+      quota =
+          DataNodeThrottleQuotaManager.getInstance()
+              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+      statementType = s.getType();
+      if (ENABLE_AUDIT_LOG) {
+        AuditLogger.log(statement, s);
+      }
+
+      queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+      // create and cache dataset
+      ExecutionResult result =
+          COORDINATOR.executeForTreeModel(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(clientSession),
+              statement,
+              partitionFetcher,
+              schemaFetcher,
+              req.getTimeout());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution != null && queryExecution.isQuery()) {
+          resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+
+          resp.setColumnNameIndexMap(HIGH_LOAD_COLUMN_NAME_INDEX_MAP);
+          resp.setSgColumns(Collections.emptyList());
+          resp.setColumns(HIGH_LOAD_HEADERS);
+          resp.setDataTypeList(HIGH_LOAD_HEADER_DATA_TYPES);
+          resp.setAliasColumns(HIGH_LOAD_ALIAS_COLUMNS);
+          resp.setIgnoreTimeStamp(false);
+          resp.setQueryId(queryId);
+          resp.setStatus(result.status);
+          Pair<List<ByteBuffer>, Boolean> pair =
+              QueryDataSetUtils.constructHighLoadResult(
+                  queryExecution, DEVICE_ATTRIBUTES_MAP, serde);
+          finished = pair.right;
+          resp.setQueryResult(pair.left);
+          resp.setMoreData(!finished);
+          quota.addReadResult(resp.getQueryResult());
+        } else {
+          finished = true;
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
+        return resp;
+      }
+    } catch (Exception e) {
+      finished = true;
+      t = e;
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+    } catch (Error error) {
+      t = error;
+      throw error;
+    } finally {
+      long currentOperationCost = System.nanoTime() - startTime;
+      COORDINATOR.recordExecutionTime(queryId, currentOperationCost);
+
+      // record each operation time cost
+      if (statementType != null) {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_QUERY_STATEMENT, HIGH_LOAD.name(), currentOperationCost);
+      }
+
+      if (finished) {
+        // record total time cost for one query
+        long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
+        addQueryLatency(HIGH_LOAD, executionTime > 0 ? executionTime : currentOperationCost);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+      }
+      SESSION_MANAGER.updateIdleTime();
+      if (quota != null) {
+        quota.close();
+      }
+    }
+  }
+
+  @Override
+  public TSExecuteStatementResp longDrivingSessions(TSLongDrivingSessionsReq req)
+      throws TException {
+    boolean finished = false;
+    long queryId = Long.MIN_VALUE;
+    String statement =
+        String.format(LONG_DRIVING_SESSIONS_SQL_TEMPLATE, req.fleet, req.startTime, req.endTime);
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    // quota
+    OperationQuota quota = null;
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+
+    long startTime = System.nanoTime();
+    StatementType statementType = null;
+    Throwable t = null;
+    try {
+      Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
+
+      if (s == null) {
+        return RpcUtils.getTSExecuteStatementResp(
+            RpcUtils.getStatus(
+                TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+      }
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
+      quota =
+          DataNodeThrottleQuotaManager.getInstance()
+              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+      statementType = s.getType();
+      if (ENABLE_AUDIT_LOG) {
+        AuditLogger.log(statement, s);
+      }
+
+      queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+      // create and cache dataset
+      ExecutionResult result =
+          COORDINATOR.executeForTreeModel(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(clientSession),
+              statement,
+              partitionFetcher,
+              schemaFetcher,
+              req.getTimeout());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution != null && queryExecution.isQuery()) {
+          resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+
+          resp.setColumnNameIndexMap(LONG_DRIVING_SESSIONS_COLUMN_NAME_INDEX_MAP);
+          resp.setSgColumns(Collections.emptyList());
+          resp.setColumns(LONG_DRIVING_SESSIONS_HEADERS);
+          resp.setDataTypeList(LONG_DRIVING_SESSIONS_HEADER_DATA_TYPES);
+          resp.setAliasColumns(LONG_DRIVING_SESSIONS_ALIAS_COLUMNS);
+          resp.setIgnoreTimeStamp(true);
+          resp.setQueryId(queryId);
+          resp.setStatus(result.status);
+          Pair<List<ByteBuffer>, Boolean> pair =
+              QueryDataSetUtils.constructLongDrivingSessionsResult(queryExecution, serde, 22);
+          finished = pair.right;
+          resp.setQueryResult(pair.left);
+          resp.setMoreData(!finished);
+          quota.addReadResult(resp.getQueryResult());
+        } else {
+          finished = true;
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
+        return resp;
+      }
+    } catch (Exception e) {
+      finished = true;
+      t = e;
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+    } catch (Error error) {
+      t = error;
+      throw error;
+    } finally {
+      long currentOperationCost = System.nanoTime() - startTime;
+      COORDINATOR.recordExecutionTime(queryId, currentOperationCost);
+
+      // record each operation time cost
+      if (statementType != null) {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_QUERY_STATEMENT,
+            LONG_DRIVING_SESSIONS.name(),
+            currentOperationCost);
+      }
+
+      if (finished) {
+        // record total time cost for one query
+        long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
+        addQueryLatency(
+            LONG_DRIVING_SESSIONS, executionTime > 0 ? executionTime : currentOperationCost);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+      }
+      SESSION_MANAGER.updateIdleTime();
+      if (quota != null) {
+        quota.close();
+      }
+    }
+  }
+
+  @Override
+  public TSExecuteStatementResp longDailySessions(TSLongDailySessionsReq req) throws TException {
+    boolean finished = false;
+    long queryId = Long.MIN_VALUE;
+    String statement =
+        String.format(LONG_DRIVING_SESSIONS_SQL_TEMPLATE, req.fleet, req.startTime, req.endTime);
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    // quota
+    OperationQuota quota = null;
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+
+    long startTime = System.nanoTime();
+    StatementType statementType = null;
+    Throwable t = null;
+    try {
+      Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
+
+      if (s == null) {
+        return RpcUtils.getTSExecuteStatementResp(
+            RpcUtils.getStatus(
+                TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+      }
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
+      quota =
+          DataNodeThrottleQuotaManager.getInstance()
+              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+      statementType = s.getType();
+      if (ENABLE_AUDIT_LOG) {
+        AuditLogger.log(statement, s);
+      }
+
+      queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+      // create and cache dataset
+      ExecutionResult result =
+          COORDINATOR.executeForTreeModel(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(clientSession),
+              statement,
+              partitionFetcher,
+              schemaFetcher,
+              req.getTimeout());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution != null && queryExecution.isQuery()) {
+          resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+
+          resp.setColumnNameIndexMap(LONG_DRIVING_SESSIONS_COLUMN_NAME_INDEX_MAP);
+          resp.setSgColumns(Collections.emptyList());
+          resp.setColumns(LONG_DRIVING_SESSIONS_HEADERS);
+          resp.setDataTypeList(LONG_DRIVING_SESSIONS_HEADER_DATA_TYPES);
+          resp.setAliasColumns(LONG_DRIVING_SESSIONS_ALIAS_COLUMNS);
+          resp.setIgnoreTimeStamp(true);
+          resp.setQueryId(queryId);
+          resp.setStatus(result.status);
+          Pair<List<ByteBuffer>, Boolean> pair =
+              QueryDataSetUtils.constructLongDrivingSessionsResult(queryExecution, serde, 60);
+          finished = pair.right;
+          resp.setQueryResult(pair.left);
+          resp.setMoreData(!finished);
+          quota.addReadResult(resp.getQueryResult());
+        } else {
+          finished = true;
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
+        return resp;
+      }
+    } catch (Exception e) {
+      finished = true;
+      t = e;
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+    } catch (Error error) {
+      t = error;
+      throw error;
+    } finally {
+      long currentOperationCost = System.nanoTime() - startTime;
+      COORDINATOR.recordExecutionTime(queryId, currentOperationCost);
+
+      // record each operation time cost
+      if (statementType != null) {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_QUERY_STATEMENT,
+            LONG_DRIVING_SESSIONS.name(),
+            currentOperationCost);
+      }
+
+      if (finished) {
+        // record total time cost for one query
+        long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
+        addQueryLatency(
+            LONG_DRIVING_SESSIONS, executionTime > 0 ? executionTime : currentOperationCost);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+      }
+      SESSION_MANAGER.updateIdleTime();
+      if (quota != null) {
+        quota.close();
+      }
+    }
+  }
+
+  @Override
+  public TSExecuteStatementResp avgVsProjectedFuelConsumption(
+      TSAvgVsProjectedFuelConsumptionReq req) throws TException {
+    boolean finished = false;
+    long queryId = Long.MIN_VALUE;
+    String statement = AVG_VS_PROJ_FUEL_CONSUMPTION_SQL_TEMPLATE;
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    // quota
+    OperationQuota quota = null;
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+
+    long startTime = System.nanoTime();
+    StatementType statementType = null;
+    Throwable t = null;
+    try {
+      Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
+
+      if (s == null) {
+        return RpcUtils.getTSExecuteStatementResp(
+            RpcUtils.getStatus(
+                TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+      }
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
+      quota =
+          DataNodeThrottleQuotaManager.getInstance()
+              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+      statementType = s.getType();
+      if (ENABLE_AUDIT_LOG) {
+        AuditLogger.log(statement, s);
+      }
+
+      queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+      // create and cache dataset
+      ExecutionResult result =
+          COORDINATOR.executeForTreeModel(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(clientSession),
+              statement,
+              partitionFetcher,
+              schemaFetcher,
+              req.getTimeout());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution != null && queryExecution.isQuery()) {
+          resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+
+          resp.setColumnNameIndexMap(AVG_VS_PROJ_FUEL_CONSUMPTION_COLUMN_NAME_INDEX_MAP);
+          resp.setSgColumns(Collections.emptyList());
+          resp.setColumns(AVG_VS_PROJ_FUEL_CONSUMPTION_HEADERS);
+          resp.setDataTypeList(AVG_VS_PROJ_FUEL_CONSUMPTION_HEADER_DATA_TYPES);
+          resp.setAliasColumns(AVG_VS_PROJ_FUEL_CONSUMPTION_ALIAS_COLUMNS);
+          resp.setIgnoreTimeStamp(true);
+          resp.setQueryId(queryId);
+          resp.setStatus(result.status);
+          Pair<List<ByteBuffer>, Boolean> pair =
+              QueryDataSetUtils.constructAvgVsProjectedFuelConsumptionResult(
+                  queryExecution, DEVICE_ATTRIBUTES_MAP, serde);
+          finished = pair.right;
+          resp.setQueryResult(pair.left);
+          resp.setMoreData(!finished);
+          quota.addReadResult(resp.getQueryResult());
+        } else {
+          finished = true;
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
+        return resp;
+      }
+    } catch (Exception e) {
+      finished = true;
+      t = e;
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+    } catch (Error error) {
+      t = error;
+      throw error;
+    } finally {
+      long currentOperationCost = System.nanoTime() - startTime;
+      COORDINATOR.recordExecutionTime(queryId, currentOperationCost);
+
+      // record each operation time cost
+      if (statementType != null) {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_QUERY_STATEMENT,
+            AVG_VS_PROJECTED_FUEL_CONSUMPTION.name(),
+            currentOperationCost);
+      }
+
+      if (finished) {
+        // record total time cost for one query
+        long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
+        addQueryLatency(
+            AVG_VS_PROJECTED_FUEL_CONSUMPTION,
+            executionTime > 0 ? executionTime : currentOperationCost);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+      }
+      SESSION_MANAGER.updateIdleTime();
+      if (quota != null) {
+        quota.close();
+      }
+    }
+  }
+
+  @Override
+  public TSExecuteStatementResp avgDailyDrivingDuration(TSAvgDailyDrivingDurationReq req)
+      throws TException {
+    boolean finished = false;
+    long queryId = Long.MIN_VALUE;
+    String statement =
+        String.format(AVG_DAILY_DRIVING_DURATION_SQL_TEMPLATE, req.startTime, req.endTime);
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    // quota
+    OperationQuota quota = null;
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+
+    long startTime = System.nanoTime();
+    StatementType statementType = null;
+    Throwable t = null;
+    try {
+      Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
+
+      if (s == null) {
+        return RpcUtils.getTSExecuteStatementResp(
+            RpcUtils.getStatus(
+                TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+      }
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
+      quota =
+          DataNodeThrottleQuotaManager.getInstance()
+              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+      statementType = s.getType();
+      if (ENABLE_AUDIT_LOG) {
+        AuditLogger.log(statement, s);
+      }
+
+      queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+      // create and cache dataset
+      ExecutionResult result =
+          COORDINATOR.executeForTreeModel(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(clientSession),
+              statement,
+              partitionFetcher,
+              schemaFetcher,
+              req.getTimeout());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution != null && queryExecution.isQuery()) {
+          resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+
+          resp.setColumnNameIndexMap(AVG_DAILY_DRIVING_DURATIONN_COLUMN_NAME_INDEX_MAP);
+          resp.setSgColumns(Collections.emptyList());
+          resp.setColumns(AVG_DAILY_DRIVING_DURATION_HEADERS);
+          resp.setDataTypeList(AVG_DAILY_DRIVING_DURATION_HEADER_DATA_TYPES);
+          resp.setAliasColumns(AVG_DAILY_DRIVING_DURATIONN_ALIAS_COLUMNS);
+          resp.setIgnoreTimeStamp(false);
+          resp.setQueryId(queryId);
+          resp.setStatus(result.status);
+          Pair<List<ByteBuffer>, Boolean> pair =
+              QueryDataSetUtils.constructAvgDailyDrivingDurationResult(
+                  queryExecution, serde, req.startTime, req.endTime);
+          finished = pair.right;
+          resp.setQueryResult(pair.left);
+          resp.setMoreData(!finished);
+          quota.addReadResult(resp.getQueryResult());
+        } else {
+          finished = true;
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
+        return resp;
+      }
+    } catch (Exception e) {
+      finished = true;
+      t = e;
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+    } catch (Error error) {
+      t = error;
+      throw error;
+    } finally {
+      long currentOperationCost = System.nanoTime() - startTime;
+      COORDINATOR.recordExecutionTime(queryId, currentOperationCost);
+
+      // record each operation time cost
+      if (statementType != null) {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_QUERY_STATEMENT,
+            AVG_DAILY_DRIVING_DURATION.name(),
+            currentOperationCost);
+      }
+
+      if (finished) {
+        // record total time cost for one query
+        long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
+        addQueryLatency(
+            AVG_DAILY_DRIVING_DURATION, executionTime > 0 ? executionTime : currentOperationCost);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+      }
+      SESSION_MANAGER.updateIdleTime();
+      if (quota != null) {
+        quota.close();
+      }
+    }
+  }
+
+  @Override
+  public TSExecuteStatementResp avgDailyDrivingSession(TSAvgDailyDrivingSessionReq req)
+      throws TException {
+    boolean finished = false;
+    long queryId = Long.MIN_VALUE;
+    String statement =
+        String.format(AVG_DAILY_DRIVING_SESSION_SQL_TEMPLATE, req.startTime, req.endTime);
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    // quota
+    OperationQuota quota = null;
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+
+    long startTime = System.nanoTime();
+    StatementType statementType = null;
+    Throwable t = null;
+    try {
+      Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
+
+      if (s == null) {
+        return RpcUtils.getTSExecuteStatementResp(
+            RpcUtils.getStatus(
+                TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+      }
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
+      quota =
+          DataNodeThrottleQuotaManager.getInstance()
+              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+      statementType = s.getType();
+      if (ENABLE_AUDIT_LOG) {
+        AuditLogger.log(statement, s);
+      }
+
+      queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+      // create and cache dataset
+      ExecutionResult result =
+          COORDINATOR.executeForTreeModel(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(clientSession),
+              statement,
+              partitionFetcher,
+              schemaFetcher,
+              req.getTimeout());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution != null && queryExecution.isQuery()) {
+          resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+
+          resp.setColumnNameIndexMap(AVG_DAILY_DRIVING_SESSION_COLUMN_NAME_INDEX_MAP);
+          resp.setSgColumns(Collections.emptyList());
+          resp.setColumns(AVG_DAILY_DRIVING_SESSION_HEADERS);
+          resp.setDataTypeList(AVG_DAILY_DRIVING_SESSION_HEADER_DATA_TYPES);
+          resp.setAliasColumns(AVG_DAILY_DRIVING_SESSION_ALIAS_COLUMNS);
+          resp.setIgnoreTimeStamp(false);
+          resp.setQueryId(queryId);
+          resp.setStatus(result.status);
+          Pair<List<ByteBuffer>, Boolean> pair =
+              QueryDataSetUtils.constructAvgDailyDrivingSessionResult(
+                  queryExecution, serde, req.startTime, req.endTime);
+          finished = pair.right;
+          resp.setQueryResult(pair.left);
+          resp.setMoreData(!finished);
+          quota.addReadResult(resp.getQueryResult());
+        } else {
+          finished = true;
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
+        return resp;
+      }
+    } catch (Exception e) {
+      finished = true;
+      t = e;
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+    } catch (Error error) {
+      t = error;
+      throw error;
+    } finally {
+      long currentOperationCost = System.nanoTime() - startTime;
+      COORDINATOR.recordExecutionTime(queryId, currentOperationCost);
+
+      // record each operation time cost
+      if (statementType != null) {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_QUERY_STATEMENT,
+            AVG_DAILY_DRIVING_SESSION.name(),
+            currentOperationCost);
+      }
+
+      if (finished) {
+        // record total time cost for one query
+        long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
+        addQueryLatency(
+            AVG_DAILY_DRIVING_SESSION, executionTime > 0 ? executionTime : currentOperationCost);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+      }
+      SESSION_MANAGER.updateIdleTime();
+      if (quota != null) {
+        quota.close();
+      }
+    }
+  }
+
+  @Override
+  public TSExecuteStatementResp avgLoad(TSAvgLoadReq req) throws TException {
+    boolean finished = false;
+    long queryId = Long.MIN_VALUE;
+    String statement = AVG_LOAD_SQL_TEMPLATE;
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    // quota
+    OperationQuota quota = null;
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+
+    long startTime = System.nanoTime();
+    StatementType statementType = null;
+    Throwable t = null;
+    try {
+      Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
+
+      if (s == null) {
+        return RpcUtils.getTSExecuteStatementResp(
+            RpcUtils.getStatus(
+                TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+      }
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
+      quota =
+          DataNodeThrottleQuotaManager.getInstance()
+              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+      statementType = s.getType();
+      if (ENABLE_AUDIT_LOG) {
+        AuditLogger.log(statement, s);
+      }
+
+      queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+      // create and cache dataset
+      ExecutionResult result =
+          COORDINATOR.executeForTreeModel(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(clientSession),
+              statement,
+              partitionFetcher,
+              schemaFetcher,
+              req.getTimeout());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution != null && queryExecution.isQuery()) {
+          resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+
+          resp.setColumnNameIndexMap(AVG_LOAD_COLUMN_NAME_INDEX_MAP);
+          resp.setSgColumns(Collections.emptyList());
+          resp.setColumns(AVG_LOAD_HEADERS);
+          resp.setDataTypeList(AVG_LOAD_HEADER_DATA_TYPES);
+          resp.setAliasColumns(AVG_LOAD_ALIAS_COLUMNS);
+          resp.setIgnoreTimeStamp(true);
+          resp.setQueryId(queryId);
+          resp.setStatus(result.status);
+          Pair<List<ByteBuffer>, Boolean> pair =
+              QueryDataSetUtils.constructAvgLoadResult(
+                  queryExecution, DEVICE_ATTRIBUTES_MAP, serde);
+          finished = pair.right;
+          resp.setQueryResult(pair.left);
+          resp.setMoreData(!finished);
+          quota.addReadResult(resp.getQueryResult());
+        } else {
+          finished = true;
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
+        return resp;
+      }
+    } catch (Exception e) {
+      finished = true;
+      t = e;
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+    } catch (Error error) {
+      t = error;
+      throw error;
+    } finally {
+      long currentOperationCost = System.nanoTime() - startTime;
+      COORDINATOR.recordExecutionTime(queryId, currentOperationCost);
+
+      // record each operation time cost
+      if (statementType != null) {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_QUERY_STATEMENT, AVG_LOAD.name(), currentOperationCost);
+      }
+
+      if (finished) {
+        // record total time cost for one query
+        long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
+        addQueryLatency(AVG_LOAD, executionTime > 0 ? executionTime : currentOperationCost);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+      }
+      SESSION_MANAGER.updateIdleTime();
+      if (quota != null) {
+        quota.close();
+      }
+    }
+  }
+
+  @Override
+  public TSExecuteStatementResp dailyActivity(TSDailyActivityReq req) throws TException {
+    boolean finished = false;
+    long queryId = Long.MIN_VALUE;
+    String statement = String.format(DAILY_ACTIVITY_SQL_TEMPLATE, req.startTime, req.endTime);
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    // quota
+    OperationQuota quota = null;
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+
+    long startTime = System.nanoTime();
+    StatementType statementType = null;
+    Throwable t = null;
+    try {
+      Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
+
+      if (s == null) {
+        return RpcUtils.getTSExecuteStatementResp(
+            RpcUtils.getStatus(
+                TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+      }
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
+      quota =
+          DataNodeThrottleQuotaManager.getInstance()
+              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+      statementType = s.getType();
+      if (ENABLE_AUDIT_LOG) {
+        AuditLogger.log(statement, s);
+      }
+
+      queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+      // create and cache dataset
+      ExecutionResult result =
+          COORDINATOR.executeForTreeModel(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(clientSession),
+              statement,
+              partitionFetcher,
+              schemaFetcher,
+              req.getTimeout());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution != null && queryExecution.isQuery()) {
+          resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+
+          resp.setColumnNameIndexMap(DAILY_ACTIVITY_COLUMN_NAME_INDEX_MAP);
+          resp.setSgColumns(Collections.emptyList());
+          resp.setColumns(DAILY_ACTIVITY_HEADERS);
+          resp.setDataTypeList(DAILY_ACTIVITY_HEADER_DATA_TYPES);
+          resp.setAliasColumns(DAILY_ACTIVITY_ALIAS_COLUMNS);
+          resp.setIgnoreTimeStamp(false);
+          resp.setQueryId(queryId);
+          resp.setStatus(result.status);
+          Pair<List<ByteBuffer>, Boolean> pair =
+              QueryDataSetUtils.constructDailyActivityResult(queryExecution, serde);
+          finished = pair.right;
+          resp.setQueryResult(pair.left);
+          resp.setMoreData(!finished);
+          quota.addReadResult(resp.getQueryResult());
+        } else {
+          finished = true;
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
+        return resp;
+      }
+    } catch (Exception e) {
+      finished = true;
+      t = e;
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+    } catch (Error error) {
+      t = error;
+      throw error;
+    } finally {
+      long currentOperationCost = System.nanoTime() - startTime;
+      COORDINATOR.recordExecutionTime(queryId, currentOperationCost);
+
+      // record each operation time cost
+      if (statementType != null) {
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_QUERY_STATEMENT, DAILY_ACTIVITY.name(), currentOperationCost);
+      }
+
+      if (finished) {
+        // record total time cost for one query
+        long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
+        addQueryLatency(DAILY_ACTIVITY, executionTime > 0 ? executionTime : currentOperationCost);
+        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+      }
+      SESSION_MANAGER.updateIdleTime();
+      if (quota != null) {
+        quota.close();
+      }
+    }
+  }
+
+  @Override
+  public TSExecuteStatementResp breakdownFrequency(TSBreakdownFrequencyReq req) throws TException {
+    return null;
   }
 
   @Override

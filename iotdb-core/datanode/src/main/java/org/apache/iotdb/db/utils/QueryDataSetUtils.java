@@ -20,16 +20,28 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
+import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.AggrWindowIterator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.DoubleColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.TimeDuration;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.io.ByteArrayOutputStream;
@@ -37,10 +49,29 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.AVG_DAILY_DRIVING_DURATION_DATA_TYPES;
+import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.AVG_DAILY_DRIVING_SESSION_DATA_TYPES;
+import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.AVG_LOAD_DATA_TYPES;
+import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.AVG_VS_PROJ_FUEL_CONSUMPTION_DATA_TYPES;
+import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.DAILY_ACTIVITY_DATA_TYPES;
+import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.DRIVER_LEVEL;
+import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.FLEET_LEVEL;
+import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.HIGH_LOAD_DATA_TYPES;
+import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.LONG_DRIVING_SESSIONS_DATA_TYPES;
+import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.MODEL_LEVEL;
+import static org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl.NAME_LEVEL;
+import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.convertToCurrPrecision;
 
 /** TimeValuePairUtils to convert between thrift format and TsFile format. */
 public class QueryDataSetUtils {
@@ -842,5 +873,599 @@ public class QueryDataSetUtils {
       binaryValues[index] = new Binary(binaryValue);
     }
     values[columnIndex] = binaryValues;
+  }
+
+  public static Pair<List<ByteBuffer>, Boolean> constructHighLoadResult(
+      IQueryExecution queryExecution,
+      Map<String, ClientRPCServiceImpl.DeviceAttributes> deviceAttributesMap,
+      TsBlockSerde serde)
+      throws IoTDBException, IOException {
+    boolean finished;
+
+    TsBlockBuilder builder = new TsBlockBuilder(HIGH_LOAD_DATA_TYPES);
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder nameColumnBuilder = builder.getColumnBuilder(0);
+    ColumnBuilder driverColumnBuilder = builder.getColumnBuilder(1);
+    ColumnBuilder currentLoadColumnBuilder = builder.getColumnBuilder(2);
+    ColumnBuilder loadCapacityColumnBuilder = builder.getColumnBuilder(3);
+
+    while (true) {
+      Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
+      if (!optionalTsBlock.isPresent()) {
+        finished = true;
+        break;
+      }
+      TsBlock tsBlock = optionalTsBlock.get();
+
+      if (!tsBlock.isEmpty()) {
+        BinaryColumn timeSeriesColumn = (BinaryColumn) tsBlock.getColumn(0);
+        BinaryColumn valueColumn = (BinaryColumn) tsBlock.getColumn(1);
+        int currentCount = tsBlock.getPositionCount();
+        for (int i = 0; i < currentCount; i++) {
+          String timeSeries = timeSeriesColumn.getBinary(i).getStringValue(StandardCharsets.UTF_8);
+          String[] seriesArray = timeSeries.split("\\.");
+          String name = seriesArray[NAME_LEVEL];
+          String driver = seriesArray[DRIVER_LEVEL];
+          double value =
+              Double.parseDouble(valueColumn.getBinary(i).getStringValue(StandardCharsets.UTF_8));
+          double loadCapacity =
+              deviceAttributesMap.get(timeSeries.substring(0, timeSeries.length() - 13))
+                  .loadCapacity;
+
+          if (value >= 0.9 * loadCapacity) {
+            builder.declarePosition();
+            // time column
+            timeColumnBuilder.writeLong(tsBlock.getTimeByIndex(i));
+
+            // name column
+            nameColumnBuilder.writeBinary(new Binary(name, StandardCharsets.UTF_8));
+
+            // driver column
+            driverColumnBuilder.writeBinary(new Binary(driver, StandardCharsets.UTF_8));
+
+            // current_load column
+            currentLoadColumnBuilder.writeDouble(value);
+
+            // load_capacity column
+            loadCapacityColumnBuilder.writeDouble(loadCapacity);
+          }
+        }
+      }
+    }
+
+    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), finished);
+  }
+
+  public static Pair<List<ByteBuffer>, Boolean> constructLongDrivingSessionsResult(
+      IQueryExecution queryExecution, TsBlockSerde serde, int threshold)
+      throws IoTDBException, IOException {
+    boolean finished;
+
+    TsBlockBuilder builder = new TsBlockBuilder(LONG_DRIVING_SESSIONS_DATA_TYPES);
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder nameColumnBuilder = builder.getColumnBuilder(0);
+    ColumnBuilder driverColumnBuilder = builder.getColumnBuilder(1);
+
+    Binary previousDevice = new Binary("", StandardCharsets.UTF_8);
+    int count = 0;
+    while (true) {
+      Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
+      if (!optionalTsBlock.isPresent()) {
+        finished = true;
+        break;
+      }
+      TsBlock tsBlock = optionalTsBlock.get();
+
+      if (!tsBlock.isEmpty()) {
+        BinaryColumn deviceColumn = (BinaryColumn) tsBlock.getColumn(0);
+        int currentCount = tsBlock.getPositionCount();
+        for (int i = 0; i < currentCount; i++) {
+          Binary deviceId = deviceColumn.getBinary(i);
+          // TODO ty optimize Binary equals method
+          if (previousDevice.equals(deviceId)) {
+            count++;
+          } else {
+            // device changed, we need to decide whether to output previous device
+            if (count > threshold) {
+              String[] seriesArray =
+                  previousDevice.getStringValue(StandardCharsets.UTF_8).split("\\.");
+              String name = seriesArray[NAME_LEVEL];
+              String driver = seriesArray[DRIVER_LEVEL];
+              builder.declarePosition();
+              timeColumnBuilder.writeLong(0);
+              // name column
+              nameColumnBuilder.writeBinary(new Binary(name, StandardCharsets.UTF_8));
+              // driver column
+              driverColumnBuilder.writeBinary(new Binary(driver, StandardCharsets.UTF_8));
+            }
+            previousDevice = deviceId;
+            count = 1;
+          }
+        }
+      }
+    }
+
+    // last device, we need to decide whether to output previous device
+    if (count > 22) {
+      String[] seriesArray = previousDevice.getStringValue(StandardCharsets.UTF_8).split("\\.");
+      String name = seriesArray[NAME_LEVEL];
+      String driver = seriesArray[DRIVER_LEVEL];
+      builder.declarePosition();
+      timeColumnBuilder.writeLong(0);
+      // name column
+      nameColumnBuilder.writeBinary(new Binary(name, StandardCharsets.UTF_8));
+      // driver column
+      driverColumnBuilder.writeBinary(new Binary(driver, StandardCharsets.UTF_8));
+    }
+
+    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), finished);
+  }
+
+  public static Pair<List<ByteBuffer>, Boolean> constructAvgVsProjectedFuelConsumptionResult(
+      IQueryExecution queryExecution,
+      Map<String, ClientRPCServiceImpl.DeviceAttributes> deviceAttributesMap,
+      TsBlockSerde serde)
+      throws IoTDBException, IOException {
+    boolean finished;
+
+    Map<String, AvgIntermediateResult> map = new HashMap<>();
+    while (true) {
+      Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
+      if (!optionalTsBlock.isPresent()) {
+        finished = true;
+        break;
+      }
+      TsBlock tsBlock = optionalTsBlock.get();
+
+      if (!tsBlock.isEmpty()) {
+        BinaryColumn deviceColumn = (BinaryColumn) tsBlock.getColumn(0);
+        DoubleColumn sumFuelColumn = (DoubleColumn) tsBlock.getColumn(1);
+        LongColumn countFuelColumn = (LongColumn) tsBlock.getColumn(2);
+
+        int currentCount = tsBlock.getPositionCount();
+        for (int i = 0; i < currentCount; i++) {
+          String deviceId = deviceColumn.getBinary(i).getStringValue(StandardCharsets.UTF_8);
+          double nominalFuelConsumption = deviceAttributesMap.get(deviceId).nominalFuelConsumption;
+          String[] seriesArray = deviceId.split("\\.");
+          String model = seriesArray[MODEL_LEVEL];
+          AvgIntermediateResult result =
+              map.computeIfAbsent(model, k -> new AvgIntermediateResult());
+          long count = countFuelColumn.getLong(i);
+          result.count += count;
+          result.fuelSum += sumFuelColumn.getDouble(i);
+          result.nominalFuelSum += (nominalFuelConsumption * count);
+        }
+      }
+    }
+
+    int size = map.size();
+    TsBlockBuilder builder = new TsBlockBuilder(size, AVG_VS_PROJ_FUEL_CONSUMPTION_DATA_TYPES);
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder fuelColumnBuilder = builder.getColumnBuilder(0);
+    ColumnBuilder avgFuelConsumptionColumnBuilder = builder.getColumnBuilder(1);
+    ColumnBuilder nomimalFuelConsumptionColumnBuilder = builder.getColumnBuilder(2);
+
+    map.forEach(
+        (k, v) -> {
+          timeColumnBuilder.writeLong(0);
+          fuelColumnBuilder.writeBinary(new Binary(k, StandardCharsets.UTF_8));
+          avgFuelConsumptionColumnBuilder.writeDouble(v.fuelSum / v.count);
+          nomimalFuelConsumptionColumnBuilder.writeDouble(v.nominalFuelSum / v.count);
+        });
+
+    builder.declarePositions(size);
+
+    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), finished);
+  }
+
+  private static class AvgIntermediateResult {
+    long count = 0;
+    double fuelSum = 0.0d;
+
+    double nominalFuelSum = 0.0d;
+  }
+
+  public static Pair<List<ByteBuffer>, Boolean> constructAvgDailyDrivingDurationResult(
+      IQueryExecution queryExecution, TsBlockSerde serde, long startTime, long endTime)
+      throws IoTDBException, IOException {
+    boolean finished;
+
+    TsBlockBuilder builder = new TsBlockBuilder(AVG_DAILY_DRIVING_DURATION_DATA_TYPES);
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder fleetColumnBuilder = builder.getColumnBuilder(0);
+    ColumnBuilder nameColumnBuilder = builder.getColumnBuilder(1);
+    ColumnBuilder driverColumnBuilder = builder.getColumnBuilder(2);
+    ColumnBuilder avgDailyHoursColumnBuilder = builder.getColumnBuilder(3);
+
+    Binary previousDevice = new Binary("", StandardCharsets.UTF_8);
+    Binary fleet = null;
+    Binary name = null;
+    Binary driver = null;
+
+    TimeDuration interval = new TimeDuration(0, convertToCurrPrecision(1, TimeUnit.DAYS));
+    AggrWindowIterator timeRangeIterator =
+        new AggrWindowIterator(startTime, endTime, interval, interval, true, true);
+    TimeRange currentTimeRange = timeRangeIterator.nextTimeRange();
+    int count = 0;
+    while (true) {
+      Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
+      if (!optionalTsBlock.isPresent()) {
+        finished = true;
+        break;
+      }
+      TsBlock tsBlock = optionalTsBlock.get();
+
+      if (!tsBlock.isEmpty()) {
+        TimeColumn timeColumn = tsBlock.getTimeColumn();
+        BinaryColumn deviceColumn = (BinaryColumn) tsBlock.getColumn(0);
+        int currentCount = tsBlock.getPositionCount();
+        for (int i = 0; i < currentCount; i++) {
+          Binary deviceId = deviceColumn.getBinary(i);
+          long currentTime = timeColumn.getLong(i);
+          if (previousDevice.equals(deviceId)) {
+            // calculate current dat
+            if (currentTimeRange.contains(
+                currentTime)) { // current time range for current device is not finished
+              count++;
+            } else {
+              // previous day's result is done
+              builder.declarePosition();
+              timeColumnBuilder.writeLong(currentTimeRange.getMin());
+              fleetColumnBuilder.writeBinary(fleet);
+              nameColumnBuilder.writeBinary(name);
+              driverColumnBuilder.writeBinary(driver);
+              avgDailyHoursColumnBuilder.writeDouble(count / 6.0d);
+
+              // move time range to next one that contains the current time
+              currentTimeRange = timeRangeIterator.nextTimeRange();
+              while (!currentTimeRange.contains(currentTime)) {
+                builder.declarePosition();
+                timeColumnBuilder.writeLong(currentTimeRange.getMin());
+                fleetColumnBuilder.writeBinary(fleet);
+                nameColumnBuilder.writeBinary(name);
+                driverColumnBuilder.writeBinary(driver);
+                avgDailyHoursColumnBuilder.writeDouble(0.0d);
+                currentTimeRange = timeRangeIterator.nextTimeRange();
+              }
+              count = 1;
+            }
+          } else { // device changed, we need to decide whether to output previous device
+
+            if (fleet != null) {
+              // construct remaining data for previous device
+              do {
+                builder.declarePosition();
+                timeColumnBuilder.writeLong(currentTimeRange.getMin());
+                fleetColumnBuilder.writeBinary(fleet);
+                nameColumnBuilder.writeBinary(name);
+                driverColumnBuilder.writeBinary(driver);
+                avgDailyHoursColumnBuilder.writeDouble(count / 6.0d);
+                currentTimeRange = timeRangeIterator.nextTimeRange();
+                count = 0;
+              } while (timeRangeIterator.hasNextTimeRange());
+            }
+
+            // reset
+            previousDevice = deviceId;
+            String[] splitArray = deviceId.getStringValue(StandardCharsets.UTF_8).split("\\.");
+            fleet = new Binary(splitArray[FLEET_LEVEL], StandardCharsets.UTF_8);
+            name = new Binary(splitArray[NAME_LEVEL], StandardCharsets.UTF_8);
+            driver = new Binary(splitArray[DRIVER_LEVEL], StandardCharsets.UTF_8);
+            timeRangeIterator.reset();
+
+            // move time range to next one that contains the current time
+            currentTimeRange = timeRangeIterator.nextTimeRange();
+            while (!currentTimeRange.contains(currentTime)) {
+              builder.declarePosition();
+              timeColumnBuilder.writeLong(currentTimeRange.getMin());
+              fleetColumnBuilder.writeBinary(fleet);
+              nameColumnBuilder.writeBinary(name);
+              driverColumnBuilder.writeBinary(driver);
+              avgDailyHoursColumnBuilder.writeDouble(0.0d);
+              currentTimeRange = timeRangeIterator.nextTimeRange();
+            }
+            count = 1;
+          }
+        }
+      }
+    }
+
+    // output last device
+    if (fleet != null) {
+      // construct remaining data for last device
+      do {
+        builder.declarePosition();
+        timeColumnBuilder.writeLong(currentTimeRange.getMin());
+        fleetColumnBuilder.writeBinary(fleet);
+        nameColumnBuilder.writeBinary(name);
+        driverColumnBuilder.writeBinary(driver);
+        avgDailyHoursColumnBuilder.writeDouble(count / 6.0d);
+        currentTimeRange = timeRangeIterator.nextTimeRange();
+        count = 0;
+      } while (timeRangeIterator.hasNextTimeRange());
+    }
+
+    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), finished);
+  }
+
+  public static Pair<List<ByteBuffer>, Boolean> constructAvgDailyDrivingSessionResult(
+      IQueryExecution queryExecution, TsBlockSerde serde, long startTime, long endTime)
+      throws IoTDBException, IOException {
+    boolean finished;
+
+    TsBlockBuilder builder = new TsBlockBuilder(AVG_DAILY_DRIVING_SESSION_DATA_TYPES);
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder nameColumnBuilder = builder.getColumnBuilder(0);
+    ColumnBuilder durationColumnBuilder = builder.getColumnBuilder(1);
+
+    int numOfTenMinutesInOneDay = 144;
+    List<Double> velocityList = new ArrayList<>(numOfTenMinutesInOneDay);
+    List<Long> timeList = new ArrayList<>(numOfTenMinutesInOneDay);
+    long dayDuration = convertToCurrPrecision(1, TimeUnit.DAYS);
+    int day = 0;
+    while (true) {
+      Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
+      if (!optionalTsBlock.isPresent()) {
+        finished = true;
+        break;
+      }
+      TsBlock tsBlock = optionalTsBlock.get();
+
+      if (!tsBlock.isEmpty()) {
+        TimeColumn timeColumn = tsBlock.getTimeColumn();
+        BinaryColumn deviceColumn = (BinaryColumn) tsBlock.getColumn(0);
+        DoubleColumn velocityColumn = (DoubleColumn) tsBlock.getColumn(1);
+        int currentCount = tsBlock.getPositionCount();
+        for (int i = 0; i < currentCount; i++) {
+          long currentTime = timeColumn.getLong(i);
+          double velocity = velocityColumn.getDouble(i);
+          timeList.add(currentTime);
+          velocityList.add(velocityColumn.isNull(i) ? null : velocity);
+
+          if (timeList.size() == numOfTenMinutesInOneDay) {
+            builder.declarePosition();
+            timeColumnBuilder.writeLong(startTime + day * dayDuration);
+            nameColumnBuilder.writeBinary(
+                new Binary(
+                    deviceColumn
+                        .getBinary(i)
+                        .getStringValue(StandardCharsets.UTF_8)
+                        .split("\\.")[NAME_LEVEL],
+                    StandardCharsets.UTF_8));
+
+            // calculate avg driving duration for one day
+            long durationSum = 0;
+            long durationCount = 0;
+            Long start = null;
+            for (int index = 0; index < numOfTenMinutesInOneDay; index++) {
+              Double v = velocityList.get(index);
+              if (v != null && v > 5) {
+                if (start == null) {
+                  start = timeList.get(index);
+                }
+              } else {
+                if (start != null) {
+                  // one driving duration
+                  durationSum += (timeList.get(index) - start);
+                  durationCount++;
+                  start = null;
+                }
+              }
+            }
+
+            if (start != null) {
+              // one driving duration
+              durationSum += (startTime + (day + 1) * dayDuration - start);
+              durationCount++;
+            }
+            durationColumnBuilder.writeLong(durationSum / durationCount);
+
+            timeList.clear();
+            velocityList.clear();
+
+            day++;
+            // 10 days is done, move to next device
+            if (day == 10) {
+              day = 0;
+            }
+          }
+        }
+      }
+    }
+
+    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), finished);
+  }
+
+  public static Pair<List<ByteBuffer>, Boolean> constructAvgLoadResult(
+      IQueryExecution queryExecution,
+      Map<String, ClientRPCServiceImpl.DeviceAttributes> deviceAttributesMap,
+      TsBlockSerde serde)
+      throws IoTDBException, IOException {
+    boolean finished;
+
+    Map<AvgLoadKey, AvgLoadIntermediateResult> map = new HashMap<>();
+
+    while (true) {
+      Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
+      if (!optionalTsBlock.isPresent()) {
+        finished = true;
+        break;
+      }
+      TsBlock tsBlock = optionalTsBlock.get();
+
+      if (!tsBlock.isEmpty()) {
+        BinaryColumn deviceColumn = (BinaryColumn) tsBlock.getColumn(0);
+        DoubleColumn avgLoadColumn = (DoubleColumn) tsBlock.getColumn(1);
+        int currentCount = tsBlock.getPositionCount();
+        for (int i = 0; i < currentCount; i++) {
+          if (avgLoadColumn.isNull(i)) {
+            continue;
+          }
+          String deviceId = deviceColumn.getBinary(i).getStringValue(StandardCharsets.UTF_8);
+          String[] deviceArray = deviceId.split("\\.");
+          String fleet = deviceArray[FLEET_LEVEL];
+          String model = deviceArray[MODEL_LEVEL];
+          double avgLoad = avgLoadColumn.getDouble(i);
+          double loadCapacity = deviceAttributesMap.get(deviceId).loadCapacity;
+          AvgLoadKey key = new AvgLoadKey(fleet, model, loadCapacity);
+          AvgLoadIntermediateResult intermediateResult =
+              map.computeIfAbsent(key, k -> new AvgLoadIntermediateResult());
+          intermediateResult.sum += (avgLoad / loadCapacity);
+          intermediateResult.count++;
+        }
+      }
+    }
+
+    int size = map.size();
+
+    TsBlockBuilder builder = new TsBlockBuilder(size, AVG_LOAD_DATA_TYPES);
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder fleetColumnBuilder = builder.getColumnBuilder(0);
+    ColumnBuilder modelColumnBuilder = builder.getColumnBuilder(1);
+    ColumnBuilder loadCapacityColumnBuilder = builder.getColumnBuilder(2);
+    ColumnBuilder avgLoadColumnBuilder = builder.getColumnBuilder(3);
+
+    map.forEach(
+        (k, v) -> {
+          timeColumnBuilder.writeLong(0L);
+          fleetColumnBuilder.writeBinary(new Binary(k.fleet, StandardCharsets.UTF_8));
+          modelColumnBuilder.writeBinary(new Binary(k.model, StandardCharsets.UTF_8));
+          loadCapacityColumnBuilder.writeDouble(k.loadCapacity);
+          avgLoadColumnBuilder.writeDouble(v.sum / v.count);
+        });
+
+    builder.declarePositions(size);
+
+    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), finished);
+  }
+
+  private static class AvgLoadIntermediateResult {
+    long count = 0;
+
+    double sum = 0.0d;
+  }
+
+  private static class AvgLoadKey {
+    private final String fleet;
+
+    private final String model;
+
+    private final double loadCapacity;
+
+    public AvgLoadKey(String fleet, String model, double loadCapacity) {
+      this.fleet = fleet;
+      this.model = model;
+      this.loadCapacity = loadCapacity;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      AvgLoadKey that = (AvgLoadKey) o;
+      return Double.compare(loadCapacity, that.loadCapacity) == 0
+          && Objects.equals(fleet, that.fleet)
+          && Objects.equals(model, that.model);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(fleet, model, loadCapacity);
+    }
+  }
+
+  public static Pair<List<ByteBuffer>, Boolean> constructDailyActivityResult(
+      IQueryExecution queryExecution, TsBlockSerde serde) throws IoTDBException, IOException {
+    boolean finished;
+
+    Map<DailyActivityKey, DailyActivityValue> map = new HashMap<>();
+
+    long dayDuration = convertToCurrPrecision(1, TimeUnit.DAYS);
+
+    while (true) {
+      Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
+      if (!optionalTsBlock.isPresent()) {
+        finished = true;
+        break;
+      }
+      TsBlock tsBlock = optionalTsBlock.get();
+
+      if (!tsBlock.isEmpty()) {
+        TimeColumn timeColumn = tsBlock.getTimeColumn();
+        BinaryColumn deviceColumn = (BinaryColumn) tsBlock.getColumn(0);
+        int currentCount = tsBlock.getPositionCount();
+        for (int i = 0; i < currentCount; i++) {
+          String deviceId = deviceColumn.getBinary(i).getStringValue(StandardCharsets.UTF_8);
+          String[] deviceArray = deviceId.split("\\.");
+          String fleet = deviceArray[FLEET_LEVEL];
+          String model = deviceArray[MODEL_LEVEL];
+          long day = timeColumn.getLong(i) / dayDuration * dayDuration;
+          DailyActivityKey key = new DailyActivityKey(fleet, model, day);
+          DailyActivityValue value = map.computeIfAbsent(key, k -> new DailyActivityValue());
+          value.count++;
+        }
+      }
+    }
+
+    int size = map.size();
+
+    TsBlockBuilder builder = new TsBlockBuilder(size, DAILY_ACTIVITY_DATA_TYPES);
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder fleetColumnBuilder = builder.getColumnBuilder(0);
+    ColumnBuilder modelColumnBuilder = builder.getColumnBuilder(1);
+    ColumnBuilder dailyActivityColumnBuilder = builder.getColumnBuilder(2);
+
+    map.forEach(
+        (k, v) -> {
+          timeColumnBuilder.writeLong(k.day);
+          fleetColumnBuilder.writeBinary(new Binary(k.fleet, StandardCharsets.UTF_8));
+          modelColumnBuilder.writeBinary(new Binary(k.model, StandardCharsets.UTF_8));
+          dailyActivityColumnBuilder.writeLong(v.count / 144);
+        });
+
+    builder.declarePositions(size);
+
+    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), finished);
+  }
+
+  private static class DailyActivityKey {
+    private final String fleet;
+
+    private final String model;
+
+    private final long day;
+
+    public DailyActivityKey(String fleet, String model, long day) {
+      this.fleet = fleet;
+      this.model = model;
+      this.day = day;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      DailyActivityKey that = (DailyActivityKey) o;
+      return day == that.day
+          && Objects.equals(fleet, that.fleet)
+          && Objects.equals(model, that.model);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(fleet, model, day);
+    }
+  }
+
+  private static class DailyActivityValue {
+    long count = 0;
   }
 }
