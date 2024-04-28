@@ -98,26 +98,28 @@ public class IndexScan implements RelationalPlanOptimizer {
               .map(e -> e.getKey().getName())
               .collect(Collectors.toList());
 
-      Expression indexExpression = context.getPredicate();
-      if (indexExpression != null) {
+      List<Expression> resultIndexExpressions = new ArrayList<>();
+      Expression originalPredicate = context.getPredicate();
+      if (originalPredicate != null) {
         Set<String> idOrAttributeColumnNames =
             node.getIdAndAttributeIndexMap().keySet().stream()
                 .map(Symbol::getName)
                 .collect(Collectors.toSet());
-        if (indexExpression instanceof LogicalExpression) {
-          for (Expression subExpression : ((LogicalExpression) indexExpression).getTerms()) {
-            if (Boolean.FALSE.equals(
+        if (originalPredicate instanceof LogicalExpression) {
+          for (Expression subExpression : ((LogicalExpression) originalPredicate).getTerms()) {
+            if (Boolean.TRUE.equals(
                 new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames)
                     .process(subExpression))) {
-              indexExpression = null;
-              break;
+              resultIndexExpressions.add(subExpression);
             }
           }
         } else {
           if (Boolean.FALSE.equals(
               new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames)
-                  .process(indexExpression))) {
-            indexExpression = null;
+                  .process(originalPredicate))) {
+            resultIndexExpressions = Collections.emptyList();
+          } else {
+            resultIndexExpressions = Collections.singletonList(originalPredicate);
           }
         }
       }
@@ -129,7 +131,7 @@ public class IndexScan implements RelationalPlanOptimizer {
                   new QualifiedObjectName(
                       context.getSessionInfo().getDatabaseName().get(),
                       node.getQualifiedTableName()),
-                  Collections.singletonList(indexExpression),
+                  resultIndexExpressions,
                   attributeColumns);
       node.setDeviceEntries(deviceEntries);
 
@@ -148,25 +150,30 @@ public class IndexScan implements RelationalPlanOptimizer {
           fetchDataPartitionByDevices(deviceSet, database, globalTimeFilter, partitionFetcher);
       context.getAnalysis().setDataPartition(dataPartition);
 
-      if (dataPartition.getDataPartitionMap().size() != 1) {
-        throw new IllegalStateException("Table model can only process data only in data region!");
+      if (dataPartition.getDataPartitionMap().size() > 1) {
+        throw new IllegalStateException(
+            "Table model can only process data only in one data region yet!");
       }
 
-      // TODO add the real impl
-      TRegionReplicaSet regionReplicaSet =
-          dataPartition
-              .getDataPartitionMap()
-              .values()
-              .iterator()
-              .next()
-              .values()
-              .iterator()
-              .next()
-              .values()
-              .iterator()
-              .next()
-              .get(0);
-      node.setRegionReplicaSet(regionReplicaSet);
+      if (dataPartition.getDataPartitionMap().isEmpty()) {
+        node.setRegionReplicaSet(new TRegionReplicaSet());
+      } else {
+        // TODO add the real impl
+        TRegionReplicaSet regionReplicaSet =
+            dataPartition
+                .getDataPartitionMap()
+                .values()
+                .iterator()
+                .next()
+                .values()
+                .iterator()
+                .next()
+                .values()
+                .iterator()
+                .next()
+                .get(0);
+        node.setRegionReplicaSet(regionReplicaSet);
+      }
 
       return node;
     }
