@@ -109,6 +109,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -143,6 +144,8 @@ public class ProcedureManager {
 
   public static final long PROCEDURE_WAIT_TIME_OUT = COMMON_CONFIG.getConnectionTimeoutInMS();
   private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 10;
+  private static final String PROCEDURE_TIMEOUT_MESSAGE =
+      "Timed out to wait for procedure return. The procedure is still running.";
 
   private final ConfigManager configManager;
   private ProcedureExecutor<ConfigNodeProcedureEnv> executor;
@@ -567,14 +570,23 @@ public class ProcedureManager {
                   return false;
                 })
             .findAny();
-    if (anotherMigrateProcedure.isPresent()) {
+    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    if (TConsensusGroupType.DataRegion == regionGroupId.getType()
+        && ConsensusFactory.SIMPLE_CONSENSUS.equals(conf.getDataRegionConsensusProtocolClass())) {
+      failMessage =
+          "The region you are trying to migrate is using SimpleConsensus, and SimpleConsensus not supports region migration.";
+    } else if (TConsensusGroupType.SchemaRegion == regionGroupId.getType()
+        && ConsensusFactory.SIMPLE_CONSENSUS.equals(conf.getSchemaRegionConsensusProtocolClass())) {
+      failMessage =
+          "The region you are trying to migrate is using SimpleConsensus, and SimpleConsensus not supports region migration.";
+    } else if (anotherMigrateProcedure.isPresent()) {
       failMessage =
           String.format(
               "Submit RegionMigrateProcedure failed, "
                   + "because another RegionMigrateProcedure of the same consensus group %d is already in processing. "
-                  + "A consensus group is able to have at most 1 RegionMigrateProcedure at the same time"
-                  + "For further information, you can search [pid%d] in log.",
-              regionGroupId, anotherMigrateProcedure.get().getProcId());
+                  + "A consensus group is able to have at most 1 RegionMigrateProcedure at the same time. "
+                  + "For further information, please search [pid%d] in log. ",
+              regionGroupId.getId(), anotherMigrateProcedure.get().getProcId());
     } else if (originalDataNode == null) {
       failMessage =
           String.format(
@@ -654,6 +666,7 @@ public class ProcedureManager {
             .getLocation();
     // select coordinator for adding peer
     RegionMaintainHandler handler = new RegionMaintainHandler(configManager);
+    // TODO: choose the DataNode which has lowest load
     final TDataNodeLocation coordinatorForAddPeer =
         handler
             .filterDataNodeWithOtherRegionReplica(
@@ -833,7 +846,7 @@ public class ProcedureManager {
         return statusList.get(0);
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -850,7 +863,7 @@ public class ProcedureManager {
         return statusList.get(0);
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -867,7 +880,7 @@ public class ProcedureManager {
         return statusList.get(0);
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -884,7 +897,7 @@ public class ProcedureManager {
         return statusList.get(0);
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -901,7 +914,7 @@ public class ProcedureManager {
         return statusList.get(0);
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -947,7 +960,7 @@ public class ProcedureManager {
         return RpcUtils.SUCCESS_STATUS;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -964,7 +977,7 @@ public class ProcedureManager {
         return RpcUtils.SUCCESS_STATUS;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -981,7 +994,7 @@ public class ProcedureManager {
         return statusList.get(0);
       } else {
         return new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode())
@@ -999,7 +1012,7 @@ public class ProcedureManager {
         return statusList.get(0);
       } else {
         return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1016,7 +1029,7 @@ public class ProcedureManager {
         return RpcUtils.SUCCESS_STATUS;
       } else {
         return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode())
@@ -1034,7 +1047,7 @@ public class ProcedureManager {
         return statusList.get(0);
       } else {
         return new TSStatus(TSStatusCode.CREATE_CONSUMER_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CREATE_CONSUMER_ERROR.getStatusCode())
@@ -1052,7 +1065,7 @@ public class ProcedureManager {
         return statusList.get(0);
       } else {
         return new TSStatus(TSStatusCode.DROP_CONSUMER_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.DROP_CONSUMER_ERROR.getStatusCode())
@@ -1070,7 +1083,7 @@ public class ProcedureManager {
         return RpcUtils.SUCCESS_STATUS;
       } else {
         return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
@@ -1088,7 +1101,7 @@ public class ProcedureManager {
         return statusList.get(0);
       } else {
         return new TSStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR.getStatusCode())
@@ -1106,7 +1119,7 @@ public class ProcedureManager {
         return statusList.get(0);
       } else {
         return new TSStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
+            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR.getStatusCode())
@@ -1165,10 +1178,9 @@ public class ProcedureManager {
       final Procedure<ConfigNodeProcedureEnv> finishedProcedure =
           executor.getResultOrProcedure(procedureId);
       if (!finishedProcedure.isFinished()) {
-        // the procedure is still executing
+        // The procedure is still executing
         statusList.add(
-            RpcUtils.getStatus(
-                TSStatusCode.OVERLAP_WITH_EXISTING_TASK, "Procedure execution timed out."));
+            RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK, PROCEDURE_TIMEOUT_MESSAGE));
         isSucceed = false;
         continue;
       }
@@ -1200,6 +1212,14 @@ public class ProcedureManager {
       }
     }
     return isSucceed;
+  }
+
+  private static String wrapTimeoutMessageForPipeProcedure(String message) {
+    if (message.equals(PROCEDURE_TIMEOUT_MESSAGE)) {
+      return message
+          + " Please manually check later whether the procedure is executed successfully.";
+    }
+    return message;
   }
 
   public static void sleepWithoutInterrupt(final long timeToSleep) {

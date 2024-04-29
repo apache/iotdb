@@ -105,8 +105,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private static final String[] RECEIVER_FILE_BASE_DIRS = IOTDB_CONFIG.getPipeReceiverFileDirs();
   private static FolderManager folderManager = null;
 
-  private final PipeStatementTSStatusVisitor statusVisitor = new PipeStatementTSStatusVisitor();
-  private final PipeStatementExceptionVisitor exceptionVisitor =
+  public static final PipePlanToStatementVisitor PLAN_TO_STATEMENT_VISITOR =
+      new PipePlanToStatementVisitor();
+  private static final PipeStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
+      new PipeStatementTSStatusVisitor();
+  private static final PipeStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
       new PipeStatementExceptionVisitor();
   private final PipeStatementToBatchVisitor batchVisitor = new PipeStatementToBatchVisitor();
 
@@ -201,8 +204,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           receiverId.get(),
           status);
       return new TPipeTransferResp(status);
-    } catch (final IOException e) {
-      final String error = String.format("Serialization error during pipe receiving, %s", e);
+    } catch (Exception e) {
+      final String error =
+          String.format("Exception %s encountered while handling request %s.", e.getMessage(), req);
       LOGGER.warn("Receiver id = {}: {}", receiverId.get(), error, e);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
@@ -328,7 +332,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 .alterLogicalViewByPipe((AlterLogicalViewNode) req.getPlanNode()))
         : new TPipeTransferResp(
             executeStatementAndClassifyExceptions(
-                new PipePlanToStatementVisitor().process(req.getPlanNode(), null)));
+                PLAN_TO_STATEMENT_VISITOR.process(req.getPlanNode(), null)));
   }
 
   private TPipeTransferResp handleTransferConfigPlan(final TPipeTransferReq req) {
@@ -360,7 +364,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             receiverId.get(),
             statement,
             result);
-        return statement.accept(statusVisitor, result);
+        return statement.accept(STATEMENT_STATUS_VISITOR, result);
       }
     } catch (final Exception e) {
       LOGGER.warn(
@@ -368,7 +372,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           receiverId.get(),
           statement,
           e);
-      return statement.accept(exceptionVisitor, e);
+      return statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
     }
   }
 

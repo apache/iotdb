@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
@@ -311,6 +312,91 @@ public class TsFileProcessor {
 
     tsFileResource.updateProgressIndex(insertRowNode.getProgressIndex());
     // RecordScheduleMemTableCost
+    costsForMetrics[3] += System.nanoTime() - startTime;
+  }
+
+  public void insert(InsertRowsNode insertRowsNode, long[] costsForMetrics)
+      throws WriteProcessException {
+
+    if (workMemTable == null) {
+      long startTime = System.nanoTime();
+      createNewWorkingMemTable();
+      // recordCreateMemtableBlockCost
+      costsForMetrics[0] += System.nanoTime() - startTime;
+      WritingMetrics.getInstance()
+          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
+    }
+
+    long[] memIncrements = null;
+
+    long memControlStartTime = System.nanoTime();
+    if (insertRowsNode.isAligned()) {
+      for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
+        memIncrements =
+            checkAlignedMemCostAndAddToTspInfo(
+                insertRowNode.getDeviceID(), insertRowNode.getMeasurements(),
+                insertRowNode.getDataTypes(), insertRowNode.getValues());
+      }
+    } else {
+      for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
+        memIncrements =
+            checkMemCostAndAddToTspInfo(
+                insertRowNode.getDeviceID(), insertRowNode.getMeasurements(),
+                insertRowNode.getDataTypes(), insertRowNode.getValues());
+      }
+    }
+    // recordScheduleMemoryBlockCost
+    costsForMetrics[1] += System.nanoTime() - memControlStartTime;
+
+    long startTime = System.nanoTime();
+    WALFlushListener walFlushListener;
+    try {
+      walFlushListener = walNode.log(workMemTable.getMemTableId(), insertRowsNode);
+      if (walFlushListener.waitForResult() == AbstractResultListener.Status.FAILURE) {
+        throw walFlushListener.getCause();
+      }
+    } catch (Exception e) {
+      rollbackMemoryInfo(memIncrements);
+      throw new WriteProcessException(
+          String.format(
+              "%s: %s write WAL failed",
+              storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
+          e);
+    } finally {
+      // recordScheduleWalCost
+      costsForMetrics[2] += System.nanoTime() - startTime;
+    }
+
+    startTime = System.nanoTime();
+
+    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
+    if (!insertRowsNode.isGeneratedByPipe()) {
+      workMemTable.markAsNotGeneratedByPipe();
+    }
+    PipeInsertionDataNodeListener.getInstance()
+        .listenToInsertNode(
+            dataRegionInfo.getDataRegion().getDataRegionId(),
+            walFlushListener.getWalEntryHandler(),
+            insertRowsNode,
+            tsFileResource);
+    for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
+
+      if (insertRowNode.isAligned()) {
+        workMemTable.insertAlignedRow(insertRowNode);
+      } else {
+        workMemTable.insert(insertRowNode);
+      }
+
+      // update start time of this memtable
+      tsFileResource.updateStartTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
+      // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
+      // for unsequence tsfile, we have to update the endTime for each insertion.
+      if (!sequence) {
+        tsFileResource.updateEndTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
+      }
+    }
+    tsFileResource.updateProgressIndex(insertRowsNode.getProgressIndex());
+    // recordScheduleMemTableCost
     costsForMetrics[3] += System.nanoTime() - startTime;
   }
 

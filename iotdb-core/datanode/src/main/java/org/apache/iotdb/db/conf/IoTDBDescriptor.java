@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -1066,6 +1067,11 @@ public class IoTDBDescriptor {
     loadIoTConsensusProps(properties);
   }
 
+  private void reloadConsensusProps(Properties properties) {
+    loadIoTConsensusProps(properties);
+    DataRegionConsensusImpl.reloadConsensusConfig();
+  }
+
   private void loadIoTConsensusProps(Properties properties) {
     conf.setMaxLogEntriesNumPerBatch(
         Integer.parseInt(
@@ -1721,6 +1727,8 @@ public class IoTDBDescriptor {
                   "merge_threshold_of_explain_analyze",
                   String.valueOf(conf.getMergeThresholdOfExplainAnalyze()))));
 
+      // update Consensus config
+      reloadConsensusProps(properties);
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }

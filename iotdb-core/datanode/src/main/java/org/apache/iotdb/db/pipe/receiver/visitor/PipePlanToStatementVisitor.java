@@ -34,8 +34,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Int
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -54,11 +60,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
 
   @Override
-  public Statement visitPlan(PlanNode node, Void context) {
+  public Statement visitPlan(final PlanNode node, final Void context) {
     throw new UnsupportedOperationException(
         String.format(
             "PipePlanToStatementVisitor does not support visiting general plan, PlanNode: %s",
@@ -66,8 +73,48 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   }
 
   @Override
-  public CreateTimeSeriesStatement visitCreateTimeSeries(CreateTimeSeriesNode node, Void context) {
-    CreateTimeSeriesStatement statement = new CreateTimeSeriesStatement();
+  public InsertRowStatement visitInsertRow(final InsertRowNode node, final Void context) {
+    final InsertRowStatement statement = new InsertRowStatement();
+    statement.setDevicePath(node.getDevicePath());
+    statement.setTime(node.getTime());
+    statement.setMeasurements(node.getMeasurements());
+    statement.setDataTypes(node.getDataTypes());
+    statement.setValues(node.getValues());
+    statement.setNeedInferType(node.isNeedInferType());
+    statement.setAligned(node.isAligned());
+    statement.setMeasurementSchemas(node.getMeasurementSchemas());
+    return statement;
+  }
+
+  @Override
+  public InsertTabletStatement visitInsertTablet(final InsertTabletNode node, final Void context) {
+    final InsertTabletStatement statement = new InsertTabletStatement();
+    statement.setDevicePath(node.getDevicePath());
+    statement.setMeasurements(node.getMeasurements());
+    statement.setTimes(node.getTimes());
+    statement.setColumns(node.getColumns());
+    statement.setBitMaps(node.getBitMaps());
+    statement.setRowCount(node.getRowCount());
+    statement.setDataTypes(node.getDataTypes());
+    statement.setAligned(node.isAligned());
+    statement.setMeasurementSchemas(node.getMeasurementSchemas());
+    return statement;
+  }
+
+  @Override
+  public InsertRowsStatement visitInsertRows(final InsertRowsNode node, final Void context) {
+    final InsertRowsStatement statement = new InsertRowsStatement();
+    statement.setInsertRowStatementList(
+        node.getInsertRowNodeList().stream()
+            .map(insertRowNode -> visitInsertRow(insertRowNode, context))
+            .collect(Collectors.toList()));
+    return statement;
+  }
+
+  @Override
+  public CreateTimeSeriesStatement visitCreateTimeSeries(
+      final CreateTimeSeriesNode node, final Void context) {
+    final CreateTimeSeriesStatement statement = new CreateTimeSeriesStatement();
     statement.setPath(node.getPath());
     statement.setDataType(node.getDataType());
     statement.setEncoding(node.getEncoding());
@@ -81,8 +128,8 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
 
   @Override
   public CreateAlignedTimeSeriesStatement visitCreateAlignedTimeSeries(
-      CreateAlignedTimeSeriesNode node, Void context) {
-    CreateAlignedTimeSeriesStatement statement = new CreateAlignedTimeSeriesStatement();
+      final CreateAlignedTimeSeriesNode node, final Void context) {
+    final CreateAlignedTimeSeriesStatement statement = new CreateAlignedTimeSeriesStatement();
     statement.setDataTypes(node.getDataTypes());
     statement.setCompressors(node.getCompressors());
     statement.setEncodings(node.getEncodings());
@@ -96,17 +143,17 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
 
   @Override
   public CreateMultiTimeSeriesStatement visitCreateMultiTimeSeries(
-      CreateMultiTimeSeriesNode node, Void context) {
-    CreateMultiTimeSeriesStatement statement = new CreateMultiTimeSeriesStatement();
+      final CreateMultiTimeSeriesNode node, final Void context) {
+    final CreateMultiTimeSeriesStatement statement = new CreateMultiTimeSeriesStatement();
 
-    List<PartialPath> paths = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    List<TSEncoding> encodings = new ArrayList<>();
-    List<CompressionType> compressors = new ArrayList<>();
-    List<Map<String, String>> propsList = new ArrayList<>();
-    List<String> aliasList = new ArrayList<>();
-    List<Map<String, String>> tagsList = new ArrayList<>();
-    List<Map<String, String>> attributesList = new ArrayList<>();
+    final List<PartialPath> paths = new ArrayList<>();
+    final List<TSDataType> dataTypes = new ArrayList<>();
+    final List<TSEncoding> encodings = new ArrayList<>();
+    final List<CompressionType> compressors = new ArrayList<>();
+    final List<Map<String, String>> propsList = new ArrayList<>();
+    final List<String> aliasList = new ArrayList<>();
+    final List<Map<String, String>> tagsList = new ArrayList<>();
+    final List<Map<String, String>> attributesList = new ArrayList<>();
 
     for (Map.Entry<PartialPath, MeasurementGroup> path2Group :
         node.getMeasurementGroupMap().entrySet()) {
@@ -146,8 +193,9 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   }
 
   @Override
-  public AlterTimeSeriesStatement visitAlterTimeSeries(AlterTimeSeriesNode node, Void context) {
-    AlterTimeSeriesStatement statement = new AlterTimeSeriesStatement();
+  public AlterTimeSeriesStatement visitAlterTimeSeries(
+      final AlterTimeSeriesNode node, final Void context) {
+    final AlterTimeSeriesStatement statement = new AlterTimeSeriesStatement();
     statement.setAlterMap(node.getAlterMap());
     statement.setAlterType(node.getAlterType());
     statement.setAttributesMap(node.getAttributesMap());
@@ -159,7 +207,7 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
 
   @Override
   public InternalCreateTimeSeriesStatement visitInternalCreateTimeSeries(
-      InternalCreateTimeSeriesNode node, Void context) {
+      final InternalCreateTimeSeriesNode node, final Void context) {
     return new InternalCreateTimeSeriesStatement(
         node.getDevicePath(),
         node.getMeasurementGroup().getMeasurements(),
@@ -170,36 +218,37 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   }
 
   @Override
-  public ActivateTemplateStatement visitActivateTemplate(ActivateTemplateNode node, Void context) {
-    ActivateTemplateStatement statement = new ActivateTemplateStatement();
+  public ActivateTemplateStatement visitActivateTemplate(
+      final ActivateTemplateNode node, final Void context) {
+    final ActivateTemplateStatement statement = new ActivateTemplateStatement();
     statement.setPath(node.getActivatePath());
     return statement;
   }
 
   @Override
   public BatchActivateTemplateStatement visitInternalBatchActivateTemplate(
-      InternalBatchActivateTemplateNode node, Void context) {
+      final InternalBatchActivateTemplateNode node, final Void context) {
     return new BatchActivateTemplateStatement(
         new ArrayList<>(node.getTemplateActivationMap().keySet()));
   }
 
   @Override
   public InternalCreateMultiTimeSeriesStatement visitInternalCreateMultiTimeSeries(
-      InternalCreateMultiTimeSeriesNode node, Void context) {
+      final InternalCreateMultiTimeSeriesNode node, final Void context) {
     return new InternalCreateMultiTimeSeriesStatement(node.getDeviceMap());
   }
 
   @Override
   public BatchActivateTemplateStatement visitBatchActivateTemplate(
-      BatchActivateTemplateNode node, Void context) {
+      final BatchActivateTemplateNode node, final Void context) {
     return new BatchActivateTemplateStatement(
         new ArrayList<>(node.getTemplateActivationMap().keySet()));
   }
 
   @Override
   public CreateLogicalViewStatement visitCreateLogicalView(
-      CreateLogicalViewNode node, Void context) {
-    CreateLogicalViewStatement statement = new CreateLogicalViewStatement();
+      final CreateLogicalViewNode node, final Void context) {
+    final CreateLogicalViewStatement statement = new CreateLogicalViewStatement();
     statement.setTargetFullPaths(node.getViewPathList());
     statement.setViewExpressions(new ArrayList<>(node.getViewPathToSourceExpressionMap().values()));
     return statement;
@@ -208,8 +257,8 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   // We do not support AlterLogicalViewNode parsing and use direct rpc instead
 
   @Override
-  public DeleteDataStatement visitDeleteData(DeleteDataNode node, Void context) {
-    DeleteDataStatement statement = new DeleteDataStatement();
+  public DeleteDataStatement visitDeleteData(DeleteDataNode node, final Void context) {
+    final DeleteDataStatement statement = new DeleteDataStatement();
     statement.setDeleteEndTime(node.getDeleteEndTime());
     statement.setDeleteStartTime(node.getDeleteStartTime());
     statement.setPathList(node.getPathList());
