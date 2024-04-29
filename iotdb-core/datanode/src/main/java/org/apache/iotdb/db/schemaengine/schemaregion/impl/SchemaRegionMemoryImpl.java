@@ -455,7 +455,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       isRecovering = true;
 
       long tagSnapshotStartTime = System.currentTimeMillis();
-      tagManager = TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath, regionStatistics);
+      tagManager =
+          TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath, regionStatistics);
       logger.info(
           "Tag snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
@@ -988,15 +989,15 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException, IOException {
     // upsert alias
     upsertAlias(alias, fullPath);
-    if(tagsMap != null && !regionStatistics.isAllowToCreateNewSeries()) {
-        throw new SeriesOverflowException(
-                regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
+    if (tagsMap != null && !regionStatistics.isAllowToCreateNewSeries()) {
+      throw new SeriesOverflowException(
+          regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
     IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     if (tagsMap == null && attributesMap == null) {
       return;
     }
-    
+
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
       long offset = tagManager.writeTagFile(tagsMap, attributesMap);
@@ -1014,10 +1015,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private void upsertAlias(String alias, PartialPath fullPath)
       throws MetadataException, IOException {
-    if(alias != null) {
+    if (alias != null) {
       if (!regionStatistics.isAllowToCreateNewSeries()) {
         throw new SeriesOverflowException(
-                regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
+            regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
       }
       if (mtree.changeAlias(alias, fullPath)) {
         // persist to WAL
@@ -1061,7 +1062,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException, IOException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException(
-              regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
+          regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
     IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     // no tag or attribute, we need to add a new record in log
@@ -1108,7 +1109,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException, IOException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException(
-              regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
+          regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
     IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {
@@ -1135,7 +1136,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException, IOException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException(
-              regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
+          regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
     IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {

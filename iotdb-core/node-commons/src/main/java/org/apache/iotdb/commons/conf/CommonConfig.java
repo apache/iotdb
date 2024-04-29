@@ -254,7 +254,6 @@ public class CommonConfig {
   private int tagAttributeEachMaxNum = 3;
   private int tagAttributeEachMaxSize = 30;
 
-
   // maximum number of Cluster Databases allowed
   private int databaseLimitThreshold = -1;
 
@@ -1100,11 +1099,11 @@ public class CommonConfig {
     this.tagAttributeTotalSize = tagAttributeTotalSize;
   }
 
-  public int getTagAttributeEachMaxNum(){
+  public int getTagAttributeEachMaxNum() {
     return tagAttributeEachMaxNum;
   }
 
-  public int getTagAttributeEachMaxSize(){
+  public int getTagAttributeEachMaxSize() {
     return tagAttributeEachMaxSize;
   }
 

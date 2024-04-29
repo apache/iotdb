@@ -54,8 +54,10 @@ public class TagLogFile implements AutoCloseable {
   private static final int MAX_LENGTH =
       CommonDescriptor.getInstance().getConfig().getTagAttributeTotalSize();
 
-  private static final int MAX_ENTRY_NUM = CommonDescriptor.getInstance().getConfig().getTagAttributeEachMaxNum();
-  private static final int MAX_ENTRY_Size = CommonDescriptor.getInstance().getConfig().getTagAttributeEachMaxSize();
+  private static final int MAX_ENTRY_NUM =
+      CommonDescriptor.getInstance().getConfig().getTagAttributeEachMaxNum();
+  private static final int MAX_ENTRY_Size =
+      CommonDescriptor.getInstance().getConfig().getTagAttributeEachMaxSize();
 
   private static final int RECORD_FLUSH_INTERVAL =
       IoTDBDescriptor.getInstance().getConfig().getTagAttributeFlushInterval();
@@ -113,24 +115,25 @@ public class TagLogFile implements AutoCloseable {
     return ReadWriteIOUtils.readMap(byteBuffer);
   }
 
-  public static ByteBuffer parseByteBuffer(FileChannel fileChannel, long position) throws IOException {
-    // 读取第一个块
+  public static ByteBuffer parseByteBuffer(FileChannel fileChannel, long position)
+      throws IOException {
+    // Read the first block
     ByteBuffer byteBuffer = ByteBuffer.allocate(MAX_LENGTH);
     fileChannel.read(byteBuffer, position);
     byteBuffer.flip();
-    if (byteBuffer.limit() > 0) { // 表明该位置有数据
-      int firstInt = ReadWriteIOUtils.readInt(byteBuffer); // 读取第一个int
+    if (byteBuffer.limit() > 0) {// This indicates that there is data at this position
+      int firstInt = ReadWriteIOUtils.readInt(byteBuffer); // first int
       byteBuffer.position(0);
-      if (firstInt < -1) { // 表明这个位置是blockNum，原有的数据占据多个block
+      if (firstInt < -1) { // This position is blockNum, the original data occupies multiple blocks
         int blockNum = -firstInt;
         ByteBuffer byteBuffers = ByteBuffer.allocate(blockNum * MAX_LENGTH);
         byteBuffers.put(byteBuffer);
-        byteBuffers.position(4); // 跳过blockNum
+        byteBuffers.position(4); // Skip blockNum
         List<Long> blockOffset = new ArrayList<>();
         blockOffset.add(position);
         for (int i = 1; i < blockNum; i++) {
           blockOffset.add(ReadWriteIOUtils.readLong(byteBuffers));
-          // 每读取一个offset，就用filechannel的read读出来
+          // read one offset, then use filechannel's read to read it
           byteBuffers.position(MAX_LENGTH * i);
           byteBuffers.limit(MAX_LENGTH * (i + 1));
           fileChannel.read(byteBuffers, blockOffset.get(i));
@@ -146,26 +149,26 @@ public class TagLogFile implements AutoCloseable {
   private List<Long> ParseOffsetList(long position) throws IOException {
     List<Long> blockOffset = new ArrayList<>();
     blockOffset.add(position);
-    // 读取第一个块
+    // Read the first block
     ByteBuffer byteBuffer = ByteBuffer.allocate(MAX_LENGTH);
     fileChannel.read(byteBuffer, position);
     byteBuffer.flip();
-    if (byteBuffer.limit() > 0) { // 表明该位置有数据
-      int firstInt = ReadWriteIOUtils.readInt(byteBuffer); // 读取第一个int
+    if (byteBuffer.limit() > 0) { // This indicates that there is data at this position
+      int firstInt = ReadWriteIOUtils.readInt(byteBuffer); // first int
       byteBuffer.position(0);
-      if (firstInt < -1) { // 表明这个位置是blockNum，原有的数据占据多个block
+      if (firstInt < -1) { // This position is blockNum, the original data occupies multiple blocks
         int blockNum = -firstInt;
         int blockOffsetStoreLen =
-            (((blockNum - 1) * Long.BYTES + 4) / MAX_LENGTH + 1) * MAX_LENGTH; // blockOffset存储的长度
+            (((blockNum - 1) * Long.BYTES + 4) / MAX_LENGTH + 1) * MAX_LENGTH; // blockOffset storage length
         ByteBuffer blockBuffer = ByteBuffer.allocate(blockOffsetStoreLen);
         blockBuffer.put(byteBuffer);
-        blockBuffer.position(4); // 跳过blockNum
+        blockBuffer.position(4); // Skip blockNum
 
         for (int i = 1; i < blockNum; i++) {
           blockOffset.add(ReadWriteIOUtils.readLong(blockBuffer));
-          // 每读取一个offset，就用filechannel的read读出来
+          // Every time you read an offset, use filechannel's read to read it
           if (MAX_LENGTH * (i + 1)
-              <= blockOffsetStoreLen) { // 相比于直接读取bytebuffer减了一些读取操作，只读offset的内容
+              <= blockOffsetStoreLen) { // Compared with directly reading bytebuffer, some reading operations are reduced, only the content of offset is read
             blockBuffer.position(MAX_LENGTH * i);
             blockBuffer.limit(MAX_LENGTH * (i + 1));
             fileChannel.read(blockBuffer, blockOffset.get(i));
@@ -201,34 +204,32 @@ public class TagLogFile implements AutoCloseable {
    * @return beginning position of the record in tagFile
    */
   private synchronized long write(ByteBuffer byteBuffer, long position) throws IOException {
-    // 矫正写入初始偏移量
+    // Correct the initial offset of the write
     if (position < 0) {
       // append the record to file tail
       position = fileChannel.size();
     }
-    // 读取原有的数据，获取原有的空间偏移量
+    // Read the original data to get the original space offset
     List<Long> blockOffset = ParseOffsetList(position);
-    // 占位符块
-    ByteBuffer byteBufferNull = ByteBuffer.allocate(MAX_LENGTH);
-    // 写入实际的数据
+    // write read data
     int blockNumReal = byteBuffer.capacity() / MAX_LENGTH;
     if (blockNumReal < 1) {
       throw new RuntimeException(
           "ByteBuffer capacity is smaller than tagAttributeTotalSize, which is not allowed.");
     }
     if (blockNumReal == 1 && blockOffset.size() == 1) {
-      // 实际写入的数据占据1个block
+      // If the original data occupies only one block and the new data occupies only one block, the original space is used
       fileChannel.write(byteBuffer, blockOffset.get(0));
     } else {
-      if (blockOffset.size() > blockNumReal) { // 如果现在比原有的空间小，那么还会使用原有的空间
+      if (blockOffset.size() > blockNumReal) { // if the original space is larger than the new space, the original space is used
         ByteBuffer byteBufferFinal = ByteBuffer.allocate(blockOffset.size() * MAX_LENGTH);
         byteBufferFinal.putInt(-blockOffset.size());
         for (int i = 1; i < blockOffset.size(); i++) {
           byteBufferFinal.putLong(blockOffset.get(i));
         }
-        if (blockNumReal > 1) { // 实际数据占据1block，但是以前占据多个block，按照多个block处理
+        if (blockNumReal > 1) { // real data occupies multiple blocks
           byteBuffer.position((blockNumReal - 1) * Long.BYTES + 4);
-        } else { // 实际数据占据多个block
+        } else { // real data occupies only one block
           byteBuffer.position(0);
         }
         byteBufferFinal.put(byteBuffer);
@@ -238,31 +239,31 @@ public class TagLogFile implements AutoCloseable {
           fileChannel.write(byteBufferFinal, blockOffset.get(i));
         }
       } else {
-        // 如果现在等于或者大于原有的空间，需要在末尾补充新的空间
-        // 准备偏移量数据的bytebuffer
+        // if the original space is smaller than the new space, the new space is used
+        // prepare the bytebuffer to store the offset of each block
         int blockOffsetStoreLen = (blockNumReal - 1) * Long.BYTES + 4;
         ByteBuffer byteBufferOffset = ByteBuffer.allocate(blockOffsetStoreLen);
         byteBufferOffset.putInt(-blockNumReal);
 
-        // 写入已有的bytebuffer数据
+        // write the data to the file
         for (int i = 0; i < blockNumReal; i++) {
           byteBuffer.position(i * MAX_LENGTH);
           byteBuffer.limit((i + 1) * MAX_LENGTH);
 
-          if (i < blockOffset.size()) { // 说明现在写的空间是原来就有的空间
-            if (i > 0) { // 首个块的偏移量不记录
+          if (i < blockOffset.size()) { // what we want to write is the original space
+            if (i > 0) { // first block has been written
               byteBufferOffset.putLong(blockOffset.get(i));
             }
             fileChannel.write(byteBuffer, blockOffset.get(i));
-          } else { // 说明现在想要写的空间是原来没有的
-            // TODO: 以后可以将这里的从最后开始写，修改为先写空闲块，空闲块没了再从最后开始写
+          } else { // what we want to write is the new space
+            // TODO
             byteBufferOffset.putLong(fileChannel.size());
             blockOffset.add(fileChannel.size());
             fileChannel.write(byteBuffer, fileChannel.size());
           }
         }
 
-        // 写入byteBufferOffset
+        // write the offset of each block to the file
         byteBufferOffset.flip();
         for (int i = 0; i < blockOffset.size(); i++) {
           byteBufferOffset.position(i * MAX_LENGTH);
@@ -293,18 +294,19 @@ public class TagLogFile implements AutoCloseable {
     if (TotalMapSize <= MAX_LENGTH) {
       byteBuffer = ByteBuffer.allocate(MAX_LENGTH);
     } else {
+      // get from Num*MAX_LENGTH < TotalMapSize + 4 + Long.BYTES*Num <= MAX_LENGTH*(Num + 1)
       double blockNumMinLimit =
           (TotalMapSize + 4 - MAX_LENGTH)
               / (double)
-                  (MAX_LENGTH - Long.BYTES); // 这个式子是不等式的计算结果，Num*MAX_LENGTH < TotalMapSize + 4 +
-      // Long.BYTES*Num <= MAX_LENGTH*(Num + 1)
-      int blockNum = (int) Math.round(Math.ceil(blockNumMinLimit)) + 1; // 在结果的范围内最多有两个解，这个取小的解，节约空间
+                  (MAX_LENGTH - Long.BYTES);
+      int blockNum = (int) Math.round(Math.ceil(blockNumMinLimit)) + 1; // there are two solution, but choose the smaller one
 
       byteBuffer = ByteBuffer.allocate(blockNum * MAX_LENGTH);
+      // 4 bytes for blockNumSize, blockNum*Long.BYTES for blockOffset
       byteBuffer.position(
           4
               + (blockNum - 1)
-                  * Long.BYTES); // 4 bytes for blockNumSize, blockNum*Long.BYTES for blockOffset
+                  * Long.BYTES);
     }
     serializeMap(tagMap, byteBuffer);
     serializeMap(attributeMap, byteBuffer);
@@ -316,12 +318,12 @@ public class TagLogFile implements AutoCloseable {
   public static int calculateMapSize(Map<String, String> map) throws MetadataException {
     int length = 0;
     if (map != null) {
-      if(map.size() > MAX_ENTRY_NUM){
+      if (map.size() > MAX_ENTRY_NUM) {
         throw new MetadataException("the emtry num of the map is over the tagAttributeMaxNum");
       }
       length += 4; // mapSize is 4 byte
-      for (Map.Entry<String, String> entry :
-          map.entrySet()) { // while mapSize is 0, this for loop will not be executed
+      // while mapSize is 0, this for loop will not be executed
+      for (Map.Entry<String, String> entry : map.entrySet()) {
         int entryLength = 0;
         String key = entry.getKey();
         String value = entry.getValue();
@@ -341,8 +343,9 @@ public class TagLogFile implements AutoCloseable {
                   .length; // only value is not null then add value length, while value is null,
           // only store the valueSize marker which is -1 (4 bytes)
         }
-        if(entryLength > MAX_ENTRY_Size){
-          throw new MetadataException("An emtry of the map has a size which is over the tagAttributeMaxSize");
+        if (entryLength > MAX_ENTRY_Size) {
+          throw new MetadataException(
+              "An emtry of the map has a size which is over the tagAttributeMaxSize");
         }
         length += entryLength;
       }
@@ -358,7 +361,6 @@ public class TagLogFile implements AutoCloseable {
       if (map == null) {
         ReadWriteIOUtils.write(0, byteBuffer);
       } else {
-//        if(map.size() > )
         ReadWriteIOUtils.write(map, byteBuffer);
       }
     } catch (BufferOverflowException e) {
