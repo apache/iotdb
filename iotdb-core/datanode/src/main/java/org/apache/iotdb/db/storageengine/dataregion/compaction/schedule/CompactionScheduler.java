@@ -203,9 +203,6 @@ public class CompactionScheduler {
           "Compaction task start check failed because disk free ratio is less than disk_space_warning_threshold");
       return false;
     }
-    if (task.getEstimatedMemoryCost() > SystemInfo.getInstance().getMemorySizeForCompaction()) {
-      return false;
-    }
     return true;
   }
 
@@ -248,6 +245,9 @@ public class CompactionScheduler {
       TsFileManager tsFileManager, long timePartition, CompactionScheduleSummary summary)
       throws InterruptedException {
     if (!config.isEnableCrossSpaceCompaction()) {
+      return 0;
+    }
+    if (CompactionTaskManager.getInstance().isWaitingQueueFull()) {
       return 0;
     }
     String logicalStorageGroupName = tsFileManager.getStorageGroupName();
