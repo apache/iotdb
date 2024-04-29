@@ -275,6 +275,7 @@ public abstract class InsertBaseStatement extends Statement {
       this.cause = cause;
     }
   }
+
   // endregion
 
   // region functions used by analyzing logical views

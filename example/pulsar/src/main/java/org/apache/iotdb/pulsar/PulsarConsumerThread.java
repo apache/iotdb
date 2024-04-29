@@ -47,6 +47,7 @@ public class PulsarConsumerThread implements Runnable {
     this.consumer = consumer;
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
   }
+
   /** insert data to IoTDB */
   private void insert(String data) throws IoTDBConnectionException, StatementExecutionException {
     String[] dataArray = data.split(",");

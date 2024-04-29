@@ -201,18 +201,24 @@ public class DataRegion implements IDataRegionForQuery {
    * partitionLatestFlushedTimeForEachDevice)
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
+
   /** Condition to safely delete data region. */
   private final Condition deletedCondition = insertLock.writeLock().newCondition();
+
   /** Data region has been deleted or not. */
   private volatile boolean deleted = false;
+
   /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
   private final Object closeStorageGroupCondition = new Object();
+
   /**
    * Avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a read is executed.
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
+
   /** time partition id in the database -> {@link TsFileProcessor} for this time partition. */
   private final TreeMap<Long, TsFileProcessor> workSequenceTsFileProcessors = new TreeMap<>();
+
   /** time partition id in the database -> {@link TsFileProcessor} for this time partition. */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
 
@@ -225,10 +231,13 @@ public class DataRegion implements IDataRegionForQuery {
 
   /** data region id. */
   private final String dataRegionId;
+
   /** database name. */
   private final String databaseName;
+
   /** database system directory. */
   private File storageGroupSysDir;
+
   /** manage seqFileList and unSeqFileList. */
   private final TsFileManager tsFileManager;
 
@@ -242,15 +251,19 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private final HashMap<Long, VersionController> timePartitionIdVersionControllerMap =
       new HashMap<>();
+
   /**
    * When the data in a database is older than dataTTL, it is considered invalid and will be
    * eventually removed.
    */
   private long dataTTL = Long.MAX_VALUE;
+
   /** File system factory (local or hdfs). */
   private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+
   /** File flush policy. */
   private TsFileFlushPolicy fileFlushPolicy;
+
   /**
    * The max file versions in each partition. By recording this, if several IoTDB instances have the
    * same policy of closing file and their ingestion is identical, then files of the same version in
@@ -258,12 +271,16 @@ public class DataRegion implements IDataRegionForQuery {
    * across different instances. partition number -> max version number
    */
   private Map<Long, Long> partitionMaxFileVersions = new ConcurrentHashMap<>();
+
   /** database info for mem control. */
   private final DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
+
   /** whether it's ready from recovery. */
   private boolean isReady = false;
+
   /** close file listeners. */
   private List<CloseFileListener> customCloseFileListeners = Collections.emptyList();
+
   /** flush listeners. */
   private List<FlushListener> customFlushListeners = Collections.emptyList();
 
@@ -378,6 +395,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     /** number of already recovered files. */
     private long recoveredFilesNum;
+
     /** last recovery log time. */
     private long lastLogTime;
 
@@ -3281,7 +3299,9 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /** @return the disk space occupied by this data region, unit is MB */
+  /**
+   * @return the disk space occupied by this data region, unit is MB
+   */
   public long countRegionDiskSize() {
     AtomicLong diskSize = new AtomicLong(0);
     TierManager.getInstance()

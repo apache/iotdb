@@ -47,11 +47,13 @@ public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritab
 
   /** all datasets corresponding to one specific split */
   private List<QueryDataSet> dataSetList = new ArrayList<>();
+
   /**
    * List for name of devices. The order corresponds to the order of dataSetList. Means that
    * deviceIdList[i] is the name of device for dataSetList[i].
    */
   private List<String> deviceIdList = new ArrayList<>();
+
   /** The index of QueryDataSet that is currently processed */
   private int currentIndex = 0;
 

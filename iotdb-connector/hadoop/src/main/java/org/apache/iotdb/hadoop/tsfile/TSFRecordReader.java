@@ -55,6 +55,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
 
   /** all */
   private List<QueryDataSet> dataSetList = new ArrayList<>();
+
   /**
    * List for name of devices. The order corresponds to the order of dataSetList. Means that
    * deviceIdList[i] is the name of device for dataSetList[i].
@@ -62,6 +63,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
   private List<String> deviceIdList = new ArrayList<>();
 
   private List<Field> fields = null;
+
   /** The index of QueryDataSet that is currently processed */
   private int currentIndex = 0;
 

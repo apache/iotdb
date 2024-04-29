@@ -115,6 +115,7 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
   public ViewExpression visitTimeStampOperand(TimestampOperand timestampOperand, Void context) {
     return new TimestampViewOperand();
   }
+
   // endregion
 
   // region Unary Expressions
@@ -165,6 +166,7 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
         regularExpression.getPattern(),
         regularExpression.isNot());
   }
+
   // endregion
 
   // region Binary Expressions
@@ -215,6 +217,7 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
         this.getExpressionsForBinaryExpression(subtractionExpression);
     return new SubtractionViewExpression(pair.left, pair.right);
   }
+
   // endregion
 
   // region Binary: Compare Binary Expression
@@ -265,6 +268,7 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
         this.getExpressionsForBinaryExpression(nonEqualExpression);
     return new NonEqualViewExpression(pair.left, pair.right);
   }
+
   // endregion
 
   // region Binary : Logic Binary Expression
@@ -283,6 +287,7 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
         this.getExpressionsForBinaryExpression(logicOrExpression);
     return new LogicOrViewExpression(pair.left, pair.right);
   }
+
   // endregion
 
   // endregion
@@ -296,6 +301,7 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
     ViewExpression third = this.process(betweenExpression.getSecondExpression(), null);
     return new BetweenViewExpression(first, second, third, betweenExpression.isNotBetween());
   }
+
   // endregion
 
   // region FunctionExpression

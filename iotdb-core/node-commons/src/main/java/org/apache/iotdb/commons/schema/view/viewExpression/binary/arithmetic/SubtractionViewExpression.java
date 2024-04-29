@@ -40,6 +40,7 @@ public class SubtractionViewExpression extends ArithmeticBinaryViewExpression {
   public SubtractionViewExpression(InputStream inputStream) {
     super(inputStream);
   }
+
   // endregion
 
   // region common interfaces that have to be implemented

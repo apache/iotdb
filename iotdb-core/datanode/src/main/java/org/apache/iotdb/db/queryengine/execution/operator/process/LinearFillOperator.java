@@ -54,6 +54,7 @@ public class LinearFillOperator implements ProcessOperator {
    * be called once in LinearFillOperator.next().
    */
   private boolean canCallNext;
+
   // indicate whether there is more TsBlock for child operator
   private boolean noMoreTsBlock;
 

@@ -43,8 +43,10 @@ public class HDFSTSRecord implements Writable {
 
   /** timestamp of this TSRecord. */
   private long time;
+
   /** deviceId of this TSRecord. */
   private String deviceId;
+
   /** all value of this TSRecord. */
   private List<DataPoint> dataPointList = new ArrayList<>();
 

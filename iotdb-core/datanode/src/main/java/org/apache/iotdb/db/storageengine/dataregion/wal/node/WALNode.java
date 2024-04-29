@@ -213,6 +213,7 @@ public class WALNode implements IWALNode {
   public void unpinMemTable(long memTableId) throws MemTablePinException {
     checkpointManager.unpinMemTable(memTableId);
   }
+
   // endregion
 
   // region Task to delete outdated .wal files
@@ -602,6 +603,7 @@ public class WALNode implements IWALNode {
           && !isContainsActiveOrPinnedMemTable(versionId);
     }
   }
+
   // endregion
 
   // region Search interfaces for consensus group
@@ -619,16 +621,22 @@ public class WALNode implements IWALNode {
   private class PlanNodeIterator implements ReqIterator {
     /** search index of next element */
     private long nextSearchIndex;
+
     /** files to search */
     private File[] filesToSearch = null;
+
     /** index of current searching file in the filesToSearch */
     private int currentFileIndex = -1;
+
     /** true means filesToSearch and currentFileIndex are outdated, call updateFilesToSearch */
     private boolean needUpdatingFilesToSearch = true;
+
     /** batch store insert nodes */
     private final LinkedList<IndexedConsensusRequest> insertNodes = new LinkedList<>();
+
     /** iterator of insertNodes */
     private ListIterator<IndexedConsensusRequest> itr = null;
+
     /** last broken wal file's version id */
     private long brokenFileId = -1;
 
@@ -927,6 +935,7 @@ public class WALNode implements IWALNode {
   public long getTotalSize() {
     return WALManager.getInstance().getTotalDiskUsage();
   }
+
   // endregion
 
   @Override

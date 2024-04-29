@@ -87,15 +87,19 @@ public class PartitionCache {
 
   /** the size of partitionCache */
   private final int cacheSize = config.getPartitionCacheSize();
+
   /** the cache of database */
   private final Set<String> storageGroupCache = Collections.synchronizedSet(new HashSet<>());
+
   /** storage -> schemaPartitionTable */
   private final Cache<String, SchemaPartitionTable> schemaPartitionCache;
+
   /** storage -> dataPartitionTable */
   private final Cache<String, DataPartitionTable> dataPartitionCache;
 
   /** the latest time when groupIdToReplicaSetMap updated. */
   private final AtomicLong latestUpdateTime = new AtomicLong(0);
+
   /** TConsensusGroupId -> TRegionReplicaSet */
   private final Map<TConsensusGroupId, TRegionReplicaSet> groupIdToReplicaSetMap = new HashMap<>();
 
@@ -611,6 +615,7 @@ public class PartitionCache {
       schemaPartitionCacheLock.writeLock().unlock();
     }
   }
+
   // endregion
 
   // region data partition cache

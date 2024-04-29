@@ -51,6 +51,7 @@ public class IoTDBMetricManager extends AbstractMetricManager {
 
   /** The clock which is used in Metric system */
   private final Clock clock = Clock.SYSTEM;
+
   /** The histogram config which is used to create IoTDBTimer and IoTDBHistogram */
   private final DistributionStatisticConfig IoTDBDistributionStatisticConfig;
 

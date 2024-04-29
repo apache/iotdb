@@ -331,7 +331,9 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     }
   }
 
-  /** @return Map<RegionGroupId, RegionPriority> */
+  /**
+   * @return Map<RegionGroupId, RegionPriority>
+   */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRegionPriorityMap() {
     priorityMapLock.readLock().lock();
     try {
