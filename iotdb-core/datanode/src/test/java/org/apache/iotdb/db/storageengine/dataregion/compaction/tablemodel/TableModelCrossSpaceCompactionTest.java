@@ -173,8 +173,8 @@ public class TableModelCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource resource1 = createEmptyFileAndResource(true);
     try (CompactionTableModelTestFileWriter writer =
         new CompactionTableModelTestFileWriter(resource1)) {
-      writer.registerTableSchema("t1", Arrays.asList("id1", "id2"));
-      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2"));
+      writer.registerTableSchema("db1.db1.t1", Arrays.asList("id1", "id2"));
+      writer.startChunkGroup("db1.db1.t1", Arrays.asList("id_field1", "id_field2"));
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
@@ -186,8 +186,8 @@ public class TableModelCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource resource2 = createEmptyFileAndResource(true);
     try (CompactionTableModelTestFileWriter writer =
         new CompactionTableModelTestFileWriter(resource2)) {
-      writer.registerTableSchema("t2", Arrays.asList("id1", "id2", "id3"));
-      writer.startChunkGroup("t2", Arrays.asList("id_field1", "id_field2", "id_field3"));
+      writer.registerTableSchema("db1.db1.t2", Arrays.asList("id1", "id2", "id3"));
+      writer.startChunkGroup("db1.db1.t2", Arrays.asList("id_field1", "id_field2", "id_field3"));
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
@@ -205,8 +205,8 @@ public class TableModelCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource resource3 = createEmptyFileAndResource(false);
     try (CompactionTableModelTestFileWriter writer =
         new CompactionTableModelTestFileWriter(resource3)) {
-      writer.registerTableSchema("t1", Arrays.asList("id1", "id2"));
-      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2"));
+      writer.registerTableSchema("db1.db1.t1", Arrays.asList("id1", "id2"));
+      writer.startChunkGroup("db1.db1.t1", Arrays.asList("id_field1", "id_field2"));
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
@@ -223,8 +223,8 @@ public class TableModelCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource resource4 = createEmptyFileAndResource(false);
     try (CompactionTableModelTestFileWriter writer =
         new CompactionTableModelTestFileWriter(resource4)) {
-      writer.registerTableSchema("t2", Arrays.asList("id1", "id2", "id3"));
-      writer.startChunkGroup("t2", Arrays.asList("id_field1", "id_field2", "id_field3"));
+      writer.registerTableSchema("db1.db1.t2", Arrays.asList("id1", "id2", "id3"));
+      writer.startChunkGroup("db1.db1.t2", Arrays.asList("id_field1", "id_field2", "id_field3"));
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
@@ -255,6 +255,7 @@ public class TableModelCrossSpaceCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    // Assert can not pass for now
     TsFileResource targetResource0 = tsFileManager.getTsFileList(true).get(0);
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetResource0.getTsFile().getAbsolutePath())) {

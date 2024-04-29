@@ -267,8 +267,8 @@ public class TableModelInnerSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource resource1 = createEmptyFileAndResource(true);
     try (CompactionTableModelTestFileWriter writer =
         new CompactionTableModelTestFileWriter(resource1)) {
-      writer.registerTableSchema("t1", Arrays.asList("id1", "id2"));
-      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2"));
+      writer.registerTableSchema("db1.db1.t1", Arrays.asList("id1", "id2"));
+      writer.startChunkGroup("db1.db1.t1", Arrays.asList("id_field1", "id_field2"));
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
