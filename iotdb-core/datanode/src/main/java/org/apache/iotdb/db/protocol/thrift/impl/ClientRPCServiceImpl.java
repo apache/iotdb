@@ -96,6 +96,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -200,6 +201,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -277,6 +279,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private static final String MODEL_COLUMN_NAME = "model";
 
   private static final String STATUS_COLUMN_NAME = "status";
+
+  private static final String ATTRIBUTE_COLUMN_NAME = "attr";
 
   private static final String HIGH_LOAD_SQL_TEMPLATE =
       "select last" + CURRENT_LOAD_COLUMN_NAME + " from root.diagnostics.%s.**";
@@ -519,7 +523,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private static final List<Byte> BREAKDOWN_FREQUENCY_ALIAS_COLUMNS =
       new ArrayList<>(Bytes.asList(new BitSet().toByteArray()));
 
-  private static final Map<String, DeviceAttributes> DEVICE_ATTRIBUTES_MAP = new HashMap<>();
+  private volatile Map<String, DeviceAttributes> deviceAttributesHashMap = null;
 
   public static class DeviceAttributes {
     public final double nominalFuelConsumption;
@@ -2487,6 +2491,98 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     return executeAggregationQueryInternal(req, OLD_SELECT_RESULT);
   }
 
+  private Map<String, DeviceAttributes> getDeviceAttributesHashMap() {
+    if (deviceAttributesHashMap == null) {
+      synchronized (this) {
+        if (deviceAttributesHashMap == null) {
+          ShowTimeSeriesStatement statement =
+              new ShowTimeSeriesStatement(
+                  new PartialPath(new String[] {"root", "**", ATTRIBUTE_COLUMN_NAME}), false);
+          long queryId = SessionManager.getInstance().requestQueryId();
+          Throwable t = null;
+          try {
+            ExecutionResult executionResult =
+                COORDINATOR.executeForTreeModel(
+                    statement,
+                    queryId,
+                    null,
+                    "show timeseries root.**." + ATTRIBUTE_COLUMN_NAME,
+                    partitionFetcher,
+                    schemaFetcher,
+                    Long.MAX_VALUE);
+            if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              throw new RuntimeException(
+                  String.format(
+                      "cannot fetch schema, status is: %s, msg is: %s",
+                      executionResult.status.getCode(), executionResult.status.getMessage()));
+            }
+            Map<String, DeviceAttributes> tmp = new HashMap<>();
+            try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
+              while (COORDINATOR.getQueryExecution(queryId).hasNextResult()) {
+                // The query will be transited to FINISHED when invoking getBatchResult() at the
+                // last time
+                // So we don't need to clean up it manually
+                Optional<TsBlock> tsBlock;
+                try {
+                  tsBlock = COORDINATOR.getQueryExecution(queryId).getBatchResult();
+                } catch (IoTDBException e) {
+                  t = e;
+                  throw new RuntimeException("Fetch Schema failed. ", e);
+                }
+                if (!tsBlock.isPresent()) {
+                  break;
+                }
+                TsBlock res = tsBlock.get();
+                if (!res.isEmpty()) {
+                  Column timeSeriesColumn = res.getColumn(0);
+                  Column attributeColumn = res.getColumn(7);
+                  for (int i = 0, n = res.getPositionCount(); i < n; i++) {
+                    String timeSeries =
+                        timeSeriesColumn.getBinary(i).getStringValue(StandardCharsets.UTF_8);
+                    Map<String, Double> parsedMap = new HashMap<>();
+                    if (!attributeColumn.isNull(i)) {
+                      // deserialize method is inferred from TimeSeriesSchemaSource.mapToString
+                      String mapString =
+                          attributeColumn.getBinary(i).getStringValue(StandardCharsets.UTF_8);
+                      // remove { and } at start index and end index
+                      mapString = mapString.substring(1, mapString.length() - 1);
+                      for (String entry : mapString.split(",")) {
+                        String[] tmpArray = entry.split(":");
+                        // remove " and " at start index and end index
+                        String key = tmpArray[0].substring(1, tmpArray[0].length() - 1);
+                        String value = tmpArray[1].substring(1, tmpArray[1].length() - 1);
+                        if (NOMINAL_FUEL_CONSUMPTION_COLUMN_NAME.equals(key)
+                            || LOAD_CAPACITY_COLUMN_NAME.equals(key)
+                            || FUEL_CONSUMPTION_COLUMN_NAME.equals(key)) {
+                          parsedMap.put(key, Double.parseDouble(value));
+                        }
+                      }
+                    }
+
+                    // remove .attr
+                    tmp.put(
+                        timeSeries.substring(0, timeSeries.length() - 5),
+                        new DeviceAttributes(
+                            parsedMap.getOrDefault(NOMINAL_FUEL_CONSUMPTION_COLUMN_NAME, 1.0d),
+                            parsedMap.getOrDefault(LOAD_CAPACITY_COLUMN_NAME, 1.0d),
+                            parsedMap.getOrDefault(FUEL_CONSUMPTION_COLUMN_NAME, 1.0d)));
+                  }
+                }
+              }
+              deviceAttributesHashMap = tmp;
+            }
+          } catch (Throwable throwable) {
+            t = throwable;
+            throw throwable;
+          } finally {
+            COORDINATOR.cleanupQueryExecution(queryId, null, t);
+          }
+        }
+      }
+    }
+    return deviceAttributesHashMap;
+  }
+
   @Override
   public TSExecuteStatementResp highLoad(TSHighLoadReq req) throws TException {
     boolean finished = false;
@@ -2558,7 +2654,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setStatus(result.status);
           Pair<List<ByteBuffer>, Boolean> pair =
               QueryDataSetUtils.constructHighLoadResult(
-                  queryExecution, DEVICE_ATTRIBUTES_MAP, serde);
+                  queryExecution, getDeviceAttributesHashMap(), serde);
           finished = pair.right;
           resp.setQueryResult(pair.left);
           resp.setMoreData(!finished);
@@ -2905,7 +3001,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setStatus(result.status);
           Pair<List<ByteBuffer>, Boolean> pair =
               QueryDataSetUtils.constructAvgVsProjectedFuelConsumptionResult(
-                  queryExecution, DEVICE_ATTRIBUTES_MAP, serde);
+                  queryExecution, getDeviceAttributesHashMap(), serde);
           finished = pair.right;
           resp.setQueryResult(pair.left);
           resp.setMoreData(!finished);
@@ -3258,7 +3354,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setStatus(result.status);
           Pair<List<ByteBuffer>, Boolean> pair =
               QueryDataSetUtils.constructAvgLoadResult(
-                  queryExecution, DEVICE_ATTRIBUTES_MAP, serde);
+                  queryExecution, getDeviceAttributesHashMap(), serde);
           finished = pair.right;
           resp.setQueryResult(pair.left);
           resp.setMoreData(!finished);
