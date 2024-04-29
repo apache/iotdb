@@ -31,9 +31,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.tsfile.read.common.block.column.DoubleColumn;
-import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
@@ -899,8 +896,8 @@ public class QueryDataSetUtils {
       TsBlock tsBlock = optionalTsBlock.get();
 
       if (!tsBlock.isEmpty()) {
-        BinaryColumn timeSeriesColumn = (BinaryColumn) tsBlock.getColumn(0);
-        BinaryColumn valueColumn = (BinaryColumn) tsBlock.getColumn(1);
+        Column timeSeriesColumn = tsBlock.getColumn(0);
+        Column valueColumn = tsBlock.getColumn(1);
         int currentCount = tsBlock.getPositionCount();
         for (int i = 0; i < currentCount; i++) {
           String timeSeries = timeSeriesColumn.getBinary(i).getStringValue(StandardCharsets.UTF_8);
@@ -960,7 +957,7 @@ public class QueryDataSetUtils {
       TsBlock tsBlock = optionalTsBlock.get();
 
       if (!tsBlock.isEmpty()) {
-        BinaryColumn deviceColumn = (BinaryColumn) tsBlock.getColumn(0);
+        Column deviceColumn = tsBlock.getColumn(0);
         int currentCount = tsBlock.getPositionCount();
         for (int i = 0; i < currentCount; i++) {
           Binary deviceId = deviceColumn.getBinary(i);
@@ -1025,9 +1022,9 @@ public class QueryDataSetUtils {
       TsBlock tsBlock = optionalTsBlock.get();
 
       if (!tsBlock.isEmpty()) {
-        BinaryColumn deviceColumn = (BinaryColumn) tsBlock.getColumn(0);
-        DoubleColumn sumFuelColumn = (DoubleColumn) tsBlock.getColumn(1);
-        LongColumn countFuelColumn = (LongColumn) tsBlock.getColumn(2);
+        Column deviceColumn = tsBlock.getColumn(0);
+        Column sumFuelColumn = tsBlock.getColumn(1);
+        Column countFuelColumn = tsBlock.getColumn(2);
 
         int currentCount = tsBlock.getPositionCount();
         for (int i = 0; i < currentCount; i++) {
@@ -1110,7 +1107,7 @@ public class QueryDataSetUtils {
 
       if (!tsBlock.isEmpty()) {
         TimeColumn timeColumn = tsBlock.getTimeColumn();
-        BinaryColumn deviceColumn = (BinaryColumn) tsBlock.getColumn(0);
+        Column deviceColumn = tsBlock.getColumn(0);
         int currentCount = tsBlock.getPositionCount();
         for (int i = 0; i < currentCount; i++) {
           Binary deviceId = deviceColumn.getBinary(i);
@@ -1230,8 +1227,8 @@ public class QueryDataSetUtils {
 
       if (!tsBlock.isEmpty()) {
         TimeColumn timeColumn = tsBlock.getTimeColumn();
-        BinaryColumn deviceColumn = (BinaryColumn) tsBlock.getColumn(0);
-        DoubleColumn velocityColumn = (DoubleColumn) tsBlock.getColumn(1);
+        Column deviceColumn = tsBlock.getColumn(0);
+        Column velocityColumn = tsBlock.getColumn(1);
         int currentCount = tsBlock.getPositionCount();
         for (int i = 0; i < currentCount; i++) {
           long currentTime = timeColumn.getLong(i);
@@ -1315,8 +1312,8 @@ public class QueryDataSetUtils {
       TsBlock tsBlock = optionalTsBlock.get();
 
       if (!tsBlock.isEmpty()) {
-        BinaryColumn deviceColumn = (BinaryColumn) tsBlock.getColumn(0);
-        DoubleColumn avgLoadColumn = (DoubleColumn) tsBlock.getColumn(1);
+        Column deviceColumn = tsBlock.getColumn(0);
+        Column avgLoadColumn = tsBlock.getColumn(1);
         int currentCount = tsBlock.getPositionCount();
         for (int i = 0; i < currentCount; i++) {
           if (avgLoadColumn.isNull(i)) {
@@ -1422,7 +1419,7 @@ public class QueryDataSetUtils {
 
       if (!tsBlock.isEmpty()) {
         TimeColumn timeColumn = tsBlock.getTimeColumn();
-        BinaryColumn deviceColumn = (BinaryColumn) tsBlock.getColumn(0);
+        Column deviceColumn = tsBlock.getColumn(0);
         int currentCount = tsBlock.getPositionCount();
         for (int i = 0; i < currentCount; i++) {
           String deviceId = deviceColumn.getBinary(i).getStringValue(StandardCharsets.UTF_8);
@@ -1536,9 +1533,9 @@ public class QueryDataSetUtils {
           && !totalTsBlock.isEmpty()
           && statusTsBlock != null
           && !statusTsBlock.isEmpty()) {
-        BinaryColumn deviceColumn = (BinaryColumn) totalTsBlock.getColumn(0);
-        LongColumn totalColumn = (LongColumn) totalTsBlock.getColumn(1);
-        LongColumn statusColumn = (LongColumn) statusTsBlock.getColumn(1);
+        Column deviceColumn = totalTsBlock.getColumn(0);
+        Column totalColumn = totalTsBlock.getColumn(1);
+        Column statusColumn = statusTsBlock.getColumn(1);
         while (totalIndex < totalTsBlock.getPositionCount()
             && statusIndex < statusTsBlock.getPositionCount()) {
           long currentTotal = totalColumn.getLong(totalIndex);

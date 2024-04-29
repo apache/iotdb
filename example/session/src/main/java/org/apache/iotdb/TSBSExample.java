@@ -87,8 +87,8 @@ public class TSBSExample {
         try (SessionDataSet dataSet =
             session.executeQueryStatement(
                 String.format(
-                    "select avg(velocity) from root.readings.%s.** group by([startTime, endTime), 10m) having avg(velocity) < 1 align by device",
-                    args[2]))) {
+                    "select avg(velocity) from root.readings.%s.** where time >= %d and time < %d having avg(velocity) < 1 align by device",
+                    args[2], Long.parseLong(args[3]), Long.parseLong(args[4])))) {
           SessionDataSet.DataIterator iterator = dataSet.iterator();
           long count = 0;
           while (iterator.next()) {

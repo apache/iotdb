@@ -285,7 +285,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private static final String ATTRIBUTE_COLUMN_NAME = "attr";
 
   private static final String HIGH_LOAD_SQL_TEMPLATE =
-      "select last" + CURRENT_LOAD_COLUMN_NAME + " from root.diagnostics.%s.**";
+      "select last " + CURRENT_LOAD_COLUMN_NAME + " from root.diagnostics.%s.**";
 
   private static final List<String> HIGH_LOAD_HEADERS =
       ImmutableList.of(
