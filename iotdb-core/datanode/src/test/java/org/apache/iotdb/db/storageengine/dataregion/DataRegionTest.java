@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -866,7 +867,7 @@ public class DataRegionTest {
   @Test
   public void testInsertUnSequenceRows()
       throws IllegalPathException, WriteProcessRejectException, QueryProcessException,
-          DataRegionException {
+          DataRegionException, TsFileProcessorException {
     int defaultAvgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
     config.setAvgSeriesPointNumberThreshold(2);
     DataRegion dataRegion1 = new DummyDataRegion(systemDir, "root.Rows");
@@ -901,7 +902,7 @@ public class DataRegionTest {
   @Test
   public void testSmallReportProportionInsertRow()
       throws WriteProcessException, QueryProcessException, IllegalPathException, IOException,
-          DataRegionException {
+          DataRegionException, TsFileProcessorException {
     double defaultValue = config.getWriteMemoryVariationReportProportion();
     config.setWriteMemoryVariationReportProportion(0);
     DataRegion dataRegion1 = new DummyDataRegion(systemDir, "root.ln22");

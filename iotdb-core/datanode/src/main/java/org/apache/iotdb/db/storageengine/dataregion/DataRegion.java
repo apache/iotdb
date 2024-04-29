@@ -1548,13 +1548,12 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** delete tsfile */
-  public void syncDeleteDataFiles() {
+  public void syncDeleteDataFiles() throws TsFileProcessorException {
     logger.info(
         "{} will close all files for deleting data files", databaseName + "-" + dataRegionId);
     writeLock("syncDeleteDataFiles");
     try {
-
-      syncCloseAllWorkingTsFileProcessors();
+      forceCloseAllWorkingTsFileProcessors();
       // normally, mergingModification is just need to be closed by after a merge task is finished.
       // we close it here just for IT test.
       closeAllResources();
@@ -1735,7 +1734,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** close all working tsfile processors */
-  public List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
+  List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
     writeLock("asyncCloseAllWorkingTsFileProcessors");
     List<Future<?>> futures = new ArrayList<>();
     try {
