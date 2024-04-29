@@ -136,6 +136,20 @@ public class TimePartitionManager {
     }
   }
 
+  public void removeTimePartitionInfo(DataRegionId dataRegionId) {
+    synchronized (timePartitionInfoMap) {
+      Map<Long, TimePartitionInfo> timePartitionInfoMapForRegion =
+          timePartitionInfoMap.remove(dataRegionId);
+      if (timePartitionInfoMapForRegion != null) {
+        for (TimePartitionInfo timePartitionInfo : timePartitionInfoMapForRegion.values()) {
+          if (timePartitionInfo != null) {
+            memCost -= timePartitionInfo.memSize + Long.BYTES;
+          }
+        }
+      }
+    }
+  }
+
   @TestOnly
   public TimePartitionInfo getTimePartitionInfo(DataRegionId dataRegionId, long timePartitionId) {
     synchronized (timePartitionInfoMap) {

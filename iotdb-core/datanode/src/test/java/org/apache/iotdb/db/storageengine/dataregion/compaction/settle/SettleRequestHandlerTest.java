@@ -29,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -79,7 +80,7 @@ public class SettleRequestHandlerTest {
   }
 
   @After
-  public void tearDown() throws StorageEngineException, IOException {
+  public void tearDown() throws StorageEngineException, IOException, TsFileProcessorException {
     WALManager.getInstance().stop();
     FlushManager.getInstance().stop();
     if (dataRegion != null) {

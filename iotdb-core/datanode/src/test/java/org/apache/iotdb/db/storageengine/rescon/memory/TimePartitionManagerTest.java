@@ -105,6 +105,9 @@ public class TimePartitionManagerTest {
     timePartitionManager.updateAfterFlushing(new DataRegionId(0), 1L, 107L, 60L, true);
 
     Assert.assertNull(timePartitionManager.getTimePartitionInfo(new DataRegionId(3), 0L));
+
+    timePartitionManager.removeTimePartitionInfo(new DataRegionId(4));
+    Assert.assertNull(timePartitionManager.getTimePartitionInfo(new DataRegionId(4), 0L));
   }
 
   @Test
