@@ -54,6 +54,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -205,11 +206,10 @@ public class LoadCache {
    * @param sample the latest heartbeat sample
    */
   public void cacheConfigNodeHeartbeatSample(int nodeId, NodeHeartbeatSample sample) {
-    if (nodeCacheMap.containsKey(nodeId)) {
-      // Only cache sample when the corresponding loadCache exists
-      nodeCacheMap.get(nodeId).cacheHeartbeatSample(sample);
-    }
-    heartbeatProcessingMap.get(nodeId).set(false);
+    // Only cache sample when the corresponding loadCache exists
+    Optional.ofNullable(nodeCacheMap.get(nodeId))
+        .ifPresent(node -> node.cacheHeartbeatSample(sample));
+    Optional.ofNullable(heartbeatProcessingMap.get(nodeId)).ifPresent(node -> node.set(false));
   }
 
   /**
@@ -219,11 +219,10 @@ public class LoadCache {
    * @param sample the latest heartbeat sample
    */
   public void cacheDataNodeHeartbeatSample(int nodeId, NodeHeartbeatSample sample) {
-    if (nodeCacheMap.containsKey(nodeId)) {
-      // Only cache sample when the corresponding loadCache exists
-      nodeCacheMap.get(nodeId).cacheHeartbeatSample(sample);
-    }
-    heartbeatProcessingMap.get(nodeId).set(false);
+    // Only cache sample when the corresponding loadCache exists
+    Optional.ofNullable(nodeCacheMap.get(nodeId))
+        .ifPresent(node -> node.cacheHeartbeatSample(sample));
+    Optional.ofNullable(heartbeatProcessingMap.get(nodeId)).ifPresent(node -> node.set(false));
   }
 
   public void resetHeartbeatProcessing(int nodeId) {
@@ -275,10 +274,9 @@ public class LoadCache {
       int nodeId,
       RegionHeartbeatSample sample,
       boolean overwrite) {
-    if (regionGroupCacheMap.containsKey(regionGroupId)) {
-      // Only cache sample when the corresponding loadCache exists
-      regionGroupCacheMap.get(regionGroupId).cacheHeartbeatSample(nodeId, sample, overwrite);
-    }
+    // Only cache sample when the corresponding loadCache exists
+    Optional.ofNullable(regionGroupCacheMap.get(regionGroupId))
+        .ifPresent(group -> group.cacheHeartbeatSample(nodeId, sample, overwrite));
   }
 
   /**
@@ -299,10 +297,9 @@ public class LoadCache {
    */
   public void cacheConsensusSample(
       TConsensusGroupId regionGroupId, ConsensusGroupHeartbeatSample sample) {
-    if (consensusGroupCacheMap.containsKey(regionGroupId)) {
-      // Only cache sample when the corresponding loadCache exists
-      consensusGroupCacheMap.get(regionGroupId).cacheHeartbeatSample(sample);
-    }
+    // Only cache sample when the corresponding loadCache exists
+    Optional.ofNullable(consensusGroupCacheMap.get(regionGroupId))
+        .ifPresent(group -> group.cacheHeartbeatSample(sample));
   }
 
   /** Update the NodeStatistics of all Nodes. */

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,10 +61,9 @@ public class RegionGroupCache {
    */
   public void cacheHeartbeatSample(
       int dataNodeId, RegionHeartbeatSample newHeartbeatSample, boolean overwrite) {
-    if (regionCacheMap.containsKey(dataNodeId)) {
-      // Only cache sample when the corresponding loadCache exists
-      regionCacheMap.get(dataNodeId).cacheHeartbeatSample(newHeartbeatSample, overwrite);
-    }
+    // Only cache sample when the corresponding loadCache exists
+    Optional.ofNullable(regionCacheMap.get(dataNodeId))
+        .ifPresent(region -> region.cacheHeartbeatSample(newHeartbeatSample, overwrite));
   }
 
   @TestOnly
