@@ -111,7 +111,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final Map<Integer, PipeTaskMeta> currentConsensusGroupId2PipeTaskMeta =
         currentPipeRuntimeMeta.getConsensusGroupId2TaskMetaMap();
 
-    // deep copy reused attributes
+    // Deep copy reused attributes
     updatedPipeStaticMeta =
         new PipeStaticMeta(
             alterPipeRequest.getPipeName(),
