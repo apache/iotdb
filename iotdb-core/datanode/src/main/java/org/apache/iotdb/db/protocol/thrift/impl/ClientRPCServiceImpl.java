@@ -274,6 +274,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final String NOMINAL_FUEL_CONSUMPTION_COLUMN_NAME = "nominal_fuel_consumption";
 
+  private static final String FUEL_CAPACITY_COLUMN_NAME = "fuel_capacity";
+
   private static final String FLEET_COLUMN_NAME = "fleet";
 
   private static final String MODEL_COLUMN_NAME = "model";
@@ -2497,7 +2499,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         if (deviceAttributesHashMap == null) {
           ShowTimeSeriesStatement statement =
               new ShowTimeSeriesStatement(
-                  new PartialPath(new String[] {"root", "**", ATTRIBUTE_COLUMN_NAME}), false);
+                  new PartialPath(new String[] {"root", "attributes", "*", ATTRIBUTE_COLUMN_NAME}),
+                  false);
           long queryId = SessionManager.getInstance().requestQueryId();
           Throwable t = null;
           try {
@@ -2506,7 +2509,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                     statement,
                     queryId,
                     null,
-                    "show timeseries root.**." + ATTRIBUTE_COLUMN_NAME,
+                    "show timeseries root.attributes.*" + ATTRIBUTE_COLUMN_NAME,
                     partitionFetcher,
                     schemaFetcher,
                     Long.MAX_VALUE);
@@ -2553,19 +2556,19 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                         String value = tmpArray[1].substring(1, tmpArray[1].length() - 1);
                         if (NOMINAL_FUEL_CONSUMPTION_COLUMN_NAME.equals(key)
                             || LOAD_CAPACITY_COLUMN_NAME.equals(key)
-                            || FUEL_CONSUMPTION_COLUMN_NAME.equals(key)) {
+                            || FUEL_CAPACITY_COLUMN_NAME.equals(key)) {
                           parsedMap.put(key, Double.parseDouble(value));
                         }
                       }
                     }
 
-                    // remove .attr
+                    // remove root.attributes. and .attr
                     tmp.put(
-                        timeSeries.substring(0, timeSeries.length() - 5),
+                        timeSeries.substring(16, timeSeries.length() - 5),
                         new DeviceAttributes(
                             parsedMap.getOrDefault(NOMINAL_FUEL_CONSUMPTION_COLUMN_NAME, 1.0d),
                             parsedMap.getOrDefault(LOAD_CAPACITY_COLUMN_NAME, 1.0d),
-                            parsedMap.getOrDefault(FUEL_CONSUMPTION_COLUMN_NAME, 1.0d)));
+                            parsedMap.getOrDefault(FUEL_CAPACITY_COLUMN_NAME, 1.0d)));
                   }
                 }
               }
@@ -2649,7 +2652,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setColumns(HIGH_LOAD_HEADERS);
           resp.setDataTypeList(HIGH_LOAD_HEADER_DATA_TYPES);
           resp.setAliasColumns(HIGH_LOAD_ALIAS_COLUMNS);
-          resp.setIgnoreTimeStamp(false);
+          resp.setIgnoreTimeStamp(true);
           resp.setQueryId(queryId);
           resp.setStatus(result.status);
           Pair<List<ByteBuffer>, Boolean> pair =

@@ -909,9 +909,7 @@ public class QueryDataSetUtils {
           String driver = seriesArray[DRIVER_LEVEL];
           double value =
               Double.parseDouble(valueColumn.getBinary(i).getStringValue(StandardCharsets.UTF_8));
-          double loadCapacity =
-              deviceAttributesMap.get(timeSeries.substring(0, timeSeries.length() - 13))
-                  .loadCapacity;
+          double loadCapacity = deviceAttributesMap.get(name).loadCapacity;
 
           if (value >= 0.9 * loadCapacity) {
             builder.declarePosition();
@@ -934,7 +932,11 @@ public class QueryDataSetUtils {
       }
     }
 
-    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), finished);
+    return new Pair<>(
+        builder.isEmpty()
+            ? Collections.emptyList()
+            : Collections.singletonList(serde.serialize(builder.build())),
+        finished);
   }
 
   public static Pair<List<ByteBuffer>, Boolean> constructLongDrivingSessionsResult(
@@ -999,7 +1001,11 @@ public class QueryDataSetUtils {
       driverColumnBuilder.writeBinary(new Binary(driver, StandardCharsets.UTF_8));
     }
 
-    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), finished);
+    return new Pair<>(
+        builder.isEmpty()
+            ? Collections.emptyList()
+            : Collections.singletonList(serde.serialize(builder.build())),
+        finished);
   }
 
   public static Pair<List<ByteBuffer>, Boolean> constructAvgVsProjectedFuelConsumptionResult(
@@ -1026,9 +1032,11 @@ public class QueryDataSetUtils {
         int currentCount = tsBlock.getPositionCount();
         for (int i = 0; i < currentCount; i++) {
           String deviceId = deviceColumn.getBinary(i).getStringValue(StandardCharsets.UTF_8);
-          double nominalFuelConsumption = deviceAttributesMap.get(deviceId).nominalFuelConsumption;
           String[] seriesArray = deviceId.split("\\.");
           String model = seriesArray[MODEL_LEVEL];
+          String name = seriesArray[NAME_LEVEL];
+          double nominalFuelConsumption = deviceAttributesMap.get(name).nominalFuelConsumption;
+
           AvgIntermediateResult result =
               map.computeIfAbsent(model, k -> new AvgIntermediateResult());
           long count = countFuelColumn.getLong(i);
@@ -1056,7 +1064,11 @@ public class QueryDataSetUtils {
 
     builder.declarePositions(size);
 
-    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), finished);
+    return new Pair<>(
+        builder.isEmpty()
+            ? Collections.emptyList()
+            : Collections.singletonList(serde.serialize(builder.build())),
+        finished);
   }
 
   private static class AvgIntermediateResult {
@@ -1186,7 +1198,11 @@ public class QueryDataSetUtils {
       } while (timeRangeIterator.hasNextTimeRange());
     }
 
-    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), finished);
+    return new Pair<>(
+        builder.isEmpty()
+            ? Collections.emptyList()
+            : Collections.singletonList(serde.serialize(builder.build())),
+        finished);
   }
 
   public static Pair<List<ByteBuffer>, Boolean> constructAvgDailyDrivingSessionResult(
@@ -1274,7 +1290,11 @@ public class QueryDataSetUtils {
       }
     }
 
-    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), finished);
+    return new Pair<>(
+        builder.isEmpty()
+            ? Collections.emptyList()
+            : Collections.singletonList(serde.serialize(builder.build())),
+        finished);
   }
 
   public static Pair<List<ByteBuffer>, Boolean> constructAvgLoadResult(
@@ -1306,8 +1326,9 @@ public class QueryDataSetUtils {
           String[] deviceArray = deviceId.split("\\.");
           String fleet = deviceArray[FLEET_LEVEL];
           String model = deviceArray[MODEL_LEVEL];
+          String name = deviceArray[NAME_LEVEL];
           double avgLoad = avgLoadColumn.getDouble(i);
-          double loadCapacity = deviceAttributesMap.get(deviceId).loadCapacity;
+          double loadCapacity = deviceAttributesMap.get(name).loadCapacity;
           AvgLoadKey key = new AvgLoadKey(fleet, model, loadCapacity);
           AvgLoadIntermediateResult intermediateResult =
               map.computeIfAbsent(key, k -> new AvgLoadIntermediateResult());
@@ -1337,7 +1358,11 @@ public class QueryDataSetUtils {
 
     builder.declarePositions(size);
 
-    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), finished);
+    return new Pair<>(
+        builder.isEmpty()
+            ? Collections.emptyList()
+            : Collections.singletonList(serde.serialize(builder.build())),
+        finished);
   }
 
   private static class AvgLoadIntermediateResult {
@@ -1430,7 +1455,11 @@ public class QueryDataSetUtils {
 
     builder.declarePositions(size);
 
-    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), finished);
+    return new Pair<>(
+        builder.isEmpty()
+            ? Collections.emptyList()
+            : Collections.singletonList(serde.serialize(builder.build())),
+        finished);
   }
 
   private static class DailyActivityKey {
@@ -1572,6 +1601,10 @@ public class QueryDataSetUtils {
 
     builder.declarePositions(size);
 
-    return new Pair<>(Collections.singletonList(serde.serialize(builder.build())), true);
+    return new Pair<>(
+        builder.isEmpty()
+            ? Collections.emptyList()
+            : Collections.singletonList(serde.serialize(builder.build())),
+        true);
   }
 }

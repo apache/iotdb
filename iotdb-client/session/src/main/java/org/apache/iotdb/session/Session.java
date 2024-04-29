@@ -861,6 +861,47 @@ public class Session implements ISession {
     return executeStatementMayRedirect(sql, queryTimeoutInMs);
   }
 
+  public SessionDataSet tsbsIoTHighLoad(String fleet)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      return defaultSessionConnection.executeTSBSHighLoad(fleet, queryTimeoutInMs);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        // retry
+        try {
+          return defaultSessionConnection.executeTSBSHighLoad(fleet, queryTimeoutInMs);
+        } catch (RedirectException redirectException) {
+          logger.error("{} redirect twice", fleet, redirectException);
+          throw new StatementExecutionException(fleet + " redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
+  }
+
+  public SessionDataSet tsbsIoTBreakdownFrequency(long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      return defaultSessionConnection.executeTSBSBreakDownFrequency(
+          startTime, endTime, queryTimeoutInMs);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        // retry
+        try {
+          return defaultSessionConnection.executeTSBSBreakDownFrequency(
+              startTime, endTime, queryTimeoutInMs);
+        } catch (RedirectException redirectException) {
+          throw new StatementExecutionException("redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
+  }
+
   /**
    * execute query sql with explicit timeout
    *

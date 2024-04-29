@@ -34,6 +34,7 @@ import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateR
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
+import org.apache.iotdb.service.rpc.thrift.TSBreakdownFrequencyReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
@@ -45,6 +46,7 @@ import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
+import org.apache.iotdb.service.rpc.thrift.TSHighLoadReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -427,6 +429,85 @@ public class SessionConnection {
     RpcUtils.verifySuccess(execResp.getStatus());
     return new SessionDataSet(
         sql,
+        execResp.getColumns(),
+        execResp.getDataTypeList(),
+        execResp.columnNameIndexMap,
+        execResp.getQueryId(),
+        statementId,
+        client,
+        sessionId,
+        execResp.queryResult,
+        execResp.isIgnoreTimeStamp(),
+        timeout,
+        execResp.moreData,
+        session.fetchSize);
+  }
+
+  protected SessionDataSet executeTSBSHighLoad(String fleet, long timeout)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSHighLoadReq execReq =
+        new TSHighLoadReq(sessionId, statementId, fleet, session.fetchSize, timeout);
+    TSExecuteStatementResp execResp;
+    try {
+      execResp = client.highLoad(execReq);
+      RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          execReq.setSessionId(sessionId);
+          execReq.setStatementId(statementId);
+          execResp = client.highLoad(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+
+    RpcUtils.verifySuccess(execResp.getStatus());
+    return new SessionDataSet(
+        "high-load",
+        execResp.getColumns(),
+        execResp.getDataTypeList(),
+        execResp.columnNameIndexMap,
+        execResp.getQueryId(),
+        statementId,
+        client,
+        sessionId,
+        execResp.queryResult,
+        execResp.isIgnoreTimeStamp(),
+        timeout,
+        execResp.moreData,
+        session.fetchSize);
+  }
+
+  protected SessionDataSet executeTSBSBreakDownFrequency(long startTime, long endTime, long timeout)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSBreakdownFrequencyReq execReq =
+        new TSBreakdownFrequencyReq(
+            sessionId, statementId, startTime, endTime, session.fetchSize, timeout);
+    TSExecuteStatementResp execResp;
+    try {
+      execResp = client.breakdownFrequency(execReq);
+      RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          execReq.setSessionId(sessionId);
+          execReq.setStatementId(statementId);
+          execResp = client.breakdownFrequency(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+
+    RpcUtils.verifySuccess(execResp.getStatus());
+    return new SessionDataSet(
+        "breakdown-frequency",
         execResp.getColumns(),
         execResp.getDataTypeList(),
         execResp.columnNameIndexMap,
