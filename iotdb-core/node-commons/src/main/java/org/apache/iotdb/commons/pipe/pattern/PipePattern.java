@@ -96,7 +96,7 @@ public abstract class PipePattern {
 
     // 3. If neither "source.path" nor "source.pattern" is specified,
     // this pipe source will match all data.
-    return new PrefixPipePattern(null);
+    return new IoTDBPipePattern(null);
   }
 
   public abstract String getDefaultPattern();

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.extractor.dataregion;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBExtractor;
+import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -133,7 +134,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
         PipePattern.parsePipePatternFromSourceParameters(validator.getParameters());
 
     // Check whether the pattern is legal
-    validatePattern(pattern);
+    validatePattern(pattern, insertionDeletionListeningOptionPair.getRight());
 
     // Validate extractor.history.enable and extractor.realtime.enable
     validator
@@ -207,9 +208,14 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     realtimeExtractor.validate(validator);
   }
 
-  private void validatePattern(final PipePattern pattern) {
+  private void validatePattern(final PipePattern pattern, final boolean isDeleteData) {
     if (!pattern.isLegal()) {
       throw new IllegalArgumentException(String.format("Pattern \"%s\" is illegal.", pattern));
+    }
+    if (isDeleteData
+        && !(pattern instanceof IoTDBPipePattern && ((IoTDBPipePattern) pattern).isPrefix())) {
+      throw new IllegalArgumentException(
+          "The source path be an IoTDB-style pattern and ends with '**' when schema transfer is included.");
     }
   }
 
