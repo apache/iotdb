@@ -20,9 +20,6 @@ package org.apache.iotdb.itbase.runtime;
 
 import org.apache.iotdb.jdbc.Config;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -34,11 +31,9 @@ import java.util.List;
 /** The implementation of {@link ClusterTestStatement} in cluster test. */
 public class ClusterTestStatement implements Statement {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterTestStatement.class);
-
   private static final int DEFAULT_QUERY_TIMEOUT = 120;
-  private final List<Statement> writeStatements = new ArrayList<>();
-  private final List<String> writEndpoints = new ArrayList<>();
+  private final Statement writeStatement;
+  private final String writEndpoint;
   private final List<Statement> readStatements = new ArrayList<>();
   private final List<String> readEndpoints = new ArrayList<>();
   private boolean closed = false;
@@ -46,34 +41,16 @@ public class ClusterTestStatement implements Statement {
   private int queryTimeout = DEFAULT_QUERY_TIMEOUT;
   private int fetchSize = Config.DEFAULT_FETCH_SIZE;
 
-  public ClusterTestStatement(
-      List<NodeConnection> writeConnections, List<NodeConnection> readConnections)
+  public ClusterTestStatement(NodeConnection writeConnection, List<NodeConnection> readConnections)
       throws SQLException {
-    for (NodeConnection writeConnection : writeConnections) {
-      try {
-        Statement writeStatement = writeConnection.getUnderlyingConnecton().createStatement();
-        this.writeStatements.add(writeStatement);
-        this.writEndpoints.add(writeConnection.toString());
-        updateConfig(writeStatement, 0);
-      } catch (SQLException e) {
-        LOGGER.warn("Cannot create write statement from connection {}.", writeConnection, e);
-      }
-    }
-//    if (this.writeStatements.isEmpty()) {
-//      throw new SQLException("Cannot create any write statement from connections.");
-//    }
+    this.writeStatement = writeConnection.getUnderlyingConnecton().createStatement();
+    updateConfig(writeStatement, 0);
+    writEndpoint = writeConnection.toString();
     for (NodeConnection readConnection : readConnections) {
-      try {
-        Statement readStatement = readConnection.getUnderlyingConnecton().createStatement();
-        this.readStatements.add(readStatement);
-        this.readEndpoints.add(readConnection.toString());
-        updateConfig(readStatement, queryTimeout);
-      } catch (SQLException e) {
-        LOGGER.warn("Cannot create read statement from connection {}.", readConnection, e);
-      }
-    }
-    if (this.readStatements.isEmpty()) {
-      throw new SQLException("Cannot create any read statement from connections %s.");
+      Statement readStatement = readConnection.getUnderlyingConnecton().createStatement();
+      this.readStatements.add(readStatement);
+      this.readEndpoints.add(readConnection.toString());
+      updateConfig(readStatement, queryTimeout);
     }
   }
 
@@ -89,24 +66,22 @@ public class ClusterTestStatement implements Statement {
 
   @Override
   public int executeUpdate(String sql) throws SQLException {
-    return writeStatements.stream().findAny().get().executeUpdate(sql);
+    return writeStatement.executeUpdate(sql);
   }
 
   @Override
   public void close() throws SQLException {
     List<String> endpoints = new ArrayList<>();
-    endpoints.addAll(writEndpoints);
+    endpoints.add(writEndpoint);
     endpoints.addAll(readEndpoints);
     RequestDelegate<Void> delegate = new ParallelRequestDelegate<>(endpoints, queryTimeout);
-    writeStatements.forEach(
-        writeStatement ->
-            delegate.addRequest(
-                () -> {
-                  if (writeStatement != null) {
-                    writeStatement.close();
-                  }
-                  return null;
-                }));
+    delegate.addRequest(
+        () -> {
+          if (writeStatement != null) {
+            writeStatement.close();
+          }
+          return null;
+        });
 
     readStatements.forEach(
         r ->
@@ -127,12 +102,12 @@ public class ClusterTestStatement implements Statement {
 
   @Override
   public int getMaxFieldSize() throws SQLException {
-    return writeStatements.stream().findAny().get().getMaxFieldSize();
+    return writeStatement.getMaxFieldSize();
   }
 
   @Override
   public void setMaxFieldSize(int max) throws SQLException {
-    writeStatements.stream().findAny().get().setMaxFieldSize(max);
+    writeStatement.setMaxFieldSize(max);
   }
 
   @Override
@@ -150,7 +125,7 @@ public class ClusterTestStatement implements Statement {
 
   @Override
   public void setEscapeProcessing(boolean enable) throws SQLException {
-    writeStatements.stream().findAny().get().setEscapeProcessing(enable);
+    writeStatement.setEscapeProcessing(enable);
     for (Statement readStatement : readStatements) {
       readStatement.setEscapeProcessing(enable);
     }
@@ -168,7 +143,7 @@ public class ClusterTestStatement implements Statement {
     } else {
       queryTimeout = DEFAULT_QUERY_TIMEOUT;
     }
-    writeStatements.stream().findAny().get().setQueryTimeout(queryTimeout);
+    writeStatement.setQueryTimeout(queryTimeout);
     for (Statement readStatement : readStatements) {
       readStatement.setQueryTimeout(queryTimeout);
     }
@@ -196,7 +171,7 @@ public class ClusterTestStatement implements Statement {
 
   @Override
   public boolean execute(String sql) throws SQLException {
-    return writeStatements.stream().findAny().get().execute(sql);
+    return writeStatement.execute(sql);
   }
 
   @Override
@@ -207,7 +182,7 @@ public class ClusterTestStatement implements Statement {
 
   @Override
   public int getUpdateCount() throws SQLException {
-    return writeStatements.stream().findAny().get().getUpdateCount();
+    return writeStatement.getUpdateCount();
   }
 
   @Override
@@ -228,7 +203,7 @@ public class ClusterTestStatement implements Statement {
   @Override
   public void setFetchSize(int rows) throws SQLException {
     this.fetchSize = rows;
-    writeStatements.stream().findAny().get().setFetchSize(fetchSize);
+    writeStatement.setFetchSize(fetchSize);
     for (Statement readStatement : readStatements) {
       readStatement.setFetchSize(fetchSize);
     }
@@ -251,17 +226,17 @@ public class ClusterTestStatement implements Statement {
 
   @Override
   public void addBatch(String sql) throws SQLException {
-    writeStatements.stream().findAny().get().addBatch(sql);
+    writeStatement.addBatch(sql);
   }
 
   @Override
   public void clearBatch() throws SQLException {
-    writeStatements.stream().findAny().get().clearBatch();
+    writeStatement.clearBatch();
   }
 
   @Override
   public int[] executeBatch() throws SQLException {
-    return writeStatements.stream().findAny().get().executeBatch();
+    return writeStatement.executeBatch();
   }
 
   @Override

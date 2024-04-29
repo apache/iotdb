@@ -35,7 +35,6 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -44,31 +43,20 @@ import java.util.concurrent.Executor;
 /** The implementation of {@link Connection} in cluster test. */
 public class ClusterTestConnection implements Connection {
 
-  private final List<NodeConnection> writeConnections;
-  private final List<NodeConnection> readConnections;
   private final NodeConnection writeConnection;
+  private final List<NodeConnection> readConnections;
   private boolean isClosed;
-
-  public ClusterTestConnection(
-      List<NodeConnection> writeConnections, List<NodeConnection> readConnections) {
-    Validate.notNull(readConnections);
-    this.writeConnections = writeConnections;
-    this.readConnections = readConnections;
-    this.writeConnection = writeConnections.stream().findAny().get();
-  }
 
   public ClusterTestConnection(
       NodeConnection writeConnection, List<NodeConnection> readConnections) {
     Validate.notNull(readConnections);
-    this.writeConnections = new ArrayList<>();
-    this.writeConnections.add(writeConnection);
-    this.readConnections = readConnections;
     this.writeConnection = writeConnection;
+    this.readConnections = readConnections;
   }
 
   @Override
   public Statement createStatement() throws SQLException {
-    return new ClusterTestStatement(writeConnections, readConnections);
+    return new ClusterTestStatement(writeConnection, readConnections);
   }
 
   @Override
@@ -108,8 +96,10 @@ public class ClusterTestConnection implements Connection {
 
   @Override
   public void close() {
-    writeConnections.forEach(NodeConnection::close);
-    readConnections.forEach(NodeConnection::close);
+    writeConnection.close();
+    for (NodeConnection conn : readConnections) {
+      conn.close();
+    }
     isClosed = true;
   }
 
