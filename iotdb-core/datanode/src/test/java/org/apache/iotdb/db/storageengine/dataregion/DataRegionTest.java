@@ -378,10 +378,7 @@ public class DataRegionTest {
 
     dataRegion.insertTablet(insertTabletNode2);
     Assert.assertTrue(SystemInfo.getInstance().getTotalMemTableSize() > 0);
-    System.out.println(SystemInfo.getInstance().getTotalMemTableSize());
-    long start = System.nanoTime();
     dataRegion.syncDeleteDataFiles();
-    System.out.println(System.nanoTime() - start);
     Assert.assertEquals(0, SystemInfo.getInstance().getTotalMemTableSize());
 
     QueryDataSource queryDataSource =
