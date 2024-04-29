@@ -51,6 +51,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -218,7 +219,8 @@ public class LoadCache {
    * @param dataNodeId the specified DataNode
    */
   public void removeRegionCache(TConsensusGroupId regionGroupId, int dataNodeId) {
-    regionGroupCacheMap.get(regionGroupId).removeRegionCache(dataNodeId);
+    Optional.of(regionGroupCacheMap.get(regionGroupId))
+        .ifPresent(cache -> cache.removeRegionCache(dataNodeId));
   }
 
   /**

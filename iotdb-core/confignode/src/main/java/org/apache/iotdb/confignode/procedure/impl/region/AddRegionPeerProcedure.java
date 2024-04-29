@@ -96,6 +96,7 @@ public class AddRegionPeerProcedure
           setKillPoint(state);
           if (status.getCode() != SUCCESS_STATUS.getStatusCode()) {
             rollback(env, handler);
+            return Flow.NO_MORE_STATE;
           }
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
