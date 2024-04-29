@@ -623,6 +623,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       SchemaFilter schemaFilter = parseTimeseriesWhereClause(ctx.timeseriesWhereClause());
       showTimeSeriesStatement.setSchemaFilter(schemaFilter);
     }
+    if (ctx.timeConditonClause() != null) {
+      showTimeSeriesStatement.setTimeCondition(
+          parseWhereClause(ctx.timeConditonClause().whereClause()));
+    }
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {
         showTimeSeriesStatement.setLimit(parseLimitClause(ctx.rowPaginationClause().limitClause()));

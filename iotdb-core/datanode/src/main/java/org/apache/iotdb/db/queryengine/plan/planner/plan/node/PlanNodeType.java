@@ -101,6 +101,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQuerySc
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -449,6 +450,7 @@ public enum PlanNodeType {
       case 92:
         return DeviceRegionScanNode.deserialize(buffer);
       case 93:
+        return TimeseriesRegionScanNode.deserialize(buffer);
       case 94:
         return RegionMergeNode.deserialize(buffer);
       default:

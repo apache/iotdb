@@ -48,11 +48,13 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -2784,12 +2786,49 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(showTimeSeriesStatement.getPathPattern());
-    SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
-    analysis.setSchemaPartitionInfo(schemaPartitionInfo);
 
-    Map<Integer, Template> templateMap =
-        schemaFetcher.checkAllRelatedTemplate(showTimeSeriesStatement.getPathPattern());
-    analysis.setRelatedTemplateInfo(templateMap);
+    if (showTimeSeriesStatement.hasTimeCondition()) {
+      // If there is time condition in SHOW TIMESERIES, we need to scan the raw data
+      WhereCondition timeCondition = showTimeSeriesStatement.getTimeCondition();
+      analyzeGlobalTimeConditionInShowMetaData(timeCondition, analysis);
+      context.generateGlobalTimeFilter(analysis);
+
+      ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, false, context);
+      if (schemaTree.isEmpty()) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        return analysis;
+      }
+      removeLogicViewMeasurement(schemaTree);
+
+      Map<PartialPath, TimeseriesSchemaInfo> timeseriesToSchemaInfo = new HashMap<>();
+      List<DeviceSchemaInfo> deviceSchemaInfoList = schemaTree.getMatchedDevices(ALL_MATCH_PATTERN);
+      Set<String> deviceSet = new HashSet<>();
+      for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfoList) {
+        boolean isAligned = deviceSchemaInfo.isAligned();
+        PartialPath devicePath = deviceSchemaInfo.getDevicePath();
+        deviceSet.add(devicePath.getFullPath());
+        for (IMeasurementSchemaInfo measurementSchemaInfo :
+            deviceSchemaInfo.getMeasurementSchemaInfoList()) {
+          MeasurementPath measurementPath =
+              new MeasurementPath(
+                  devicePath.concatNode(measurementSchemaInfo.getName()),
+                  measurementSchemaInfo.getSchema());
+          timeseriesToSchemaInfo.put(
+              measurementPath, new TimeseriesSchemaInfo(isAligned, measurementSchemaInfo));
+        }
+      }
+      showTimeSeriesStatement.setTimeseriesToSchemas(timeseriesToSchemaInfo);
+      // fetch Data partition
+      DataPartition dataPartition = fetchDataPartitionByDevices(deviceSet, schemaTree, context);
+      analysis.setDataPartitionInfo(dataPartition);
+    } else {
+      SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+
+      Map<Integer, Template> templateMap =
+          schemaFetcher.checkAllRelatedTemplate(showTimeSeriesStatement.getPathPattern());
+      analysis.setRelatedTemplateInfo(templateMap);
+    }
 
     if (showTimeSeriesStatement.isOrderByHeat()) {
       patternTree.constructTree();
@@ -2875,12 +2914,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analysis.setFinishQueryAfterAnalyze(true);
         return analysis;
       }
-      removeLogicViewMeasurement(schemaTree);
 
       // fetch Data partition
-      List<DeviceSchemaInfo> deviceSchemaInfo = schemaTree.getMatchedDevices(ALL_MATCH_PATTERN);
+      List<DeviceSchemaInfo> deviceSchemaInfoList = schemaTree.getMatchedDevices(ALL_MATCH_PATTERN);
       Map<PartialPath, Boolean> devicePathsToAlignedStatus = new HashMap<>();
-      for (DeviceSchemaInfo deviceSchema : deviceSchemaInfo) {
+      for (DeviceSchemaInfo deviceSchema : deviceSchemaInfoList) {
         devicePathsToAlignedStatus.put(deviceSchema.getDevicePath(), deviceSchema.isAligned());
       }
       showDevicesStatement.setDevicePathToAlignedStatus(devicePathsToAlignedStatus);

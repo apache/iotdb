@@ -57,7 +57,7 @@ public abstract class RegionScanNode extends SourceNode {
 
   public abstract List<PartialPath> getDevicePaths();
 
-  public abstract void setPaths(Set<PartialPath> paths);
+  public abstract void setDevicePaths(Set<PartialPath> devicePaths);
 
   @Override
   public void open() throws Exception {}

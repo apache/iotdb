@@ -56,7 +56,11 @@ public interface ISchemaFetcher {
    */
   default ISchemaTree fetchSchemaInDeviceLevel(
       PathPatternTree patternTree, MPPQueryContext context) {
-    return fetchSchema(patternTree, false, context);
+    ISchemaTree schemaTree = fetchSchema(patternTree, false, context);
+    if (schemaTree.hasLogicalViewMeasurement()) {
+      schemaTree.removeLogicalView();
+    }
+    return schemaTree;
   }
 
   /**

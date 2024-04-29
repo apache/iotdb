@@ -21,12 +21,12 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
@@ -35,7 +35,6 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,20 +42,20 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class DeviceRegionScanNode extends RegionScanNode {
-  private Map<PartialPath, Boolean> devicePathsToAligned;
+public class TimeseriesRegionScanNode extends RegionScanNode {
+  private Map<PartialPath, TimeseriesSchemaInfo> timeseriesToSchemaInfo;
 
-  public DeviceRegionScanNode(
+  public TimeseriesRegionScanNode(
       PlanNodeId planNodeId,
-      Map<PartialPath, Boolean> devicePathsToAligned,
+      Map<PartialPath, TimeseriesSchemaInfo> timeseriesToSchemaInfo,
       TRegionReplicaSet regionReplicaSet) {
     super(planNodeId);
-    this.devicePathsToAligned = devicePathsToAligned;
+    this.timeseriesToSchemaInfo = timeseriesToSchemaInfo;
     this.regionReplicaSet = regionReplicaSet;
   }
 
-  public Map<PartialPath, Boolean> getDevicePathsToAligned() {
-    return devicePathsToAligned;
+  public Map<PartialPath, TimeseriesSchemaInfo> getTimeseriesToSchemaInfo() {
+    return timeseriesToSchemaInfo;
   }
 
   @Override
@@ -66,29 +65,29 @@ public class DeviceRegionScanNode extends RegionScanNode {
 
   @Override
   public void addChild(PlanNode child) {
-    throw new UnsupportedOperationException("DeviceRegionScanNode has no children");
+    throw new UnsupportedOperationException("TimeseriesRegionScanNode does not support addChild");
   }
 
   @Override
   public PlanNode clone() {
-    return new DeviceRegionScanNode(
-        getPlanNodeId(), getDevicePathsToAligned(), getRegionReplicaSet());
+    return new TimeseriesRegionScanNode(
+        getPlanNodeId(), getTimeseriesToSchemaInfo(), getRegionReplicaSet());
   }
 
   @Override
   public List<String> getOutputColumnNames() {
     return outputCount
-        ? ColumnHeaderConstant.countDevicesColumnHeaders.stream()
+        ? ColumnHeaderConstant.countTimeSeriesColumnHeaders.stream()
             .map(ColumnHeader::getColumnName)
             .collect(Collectors.toList())
-        : ColumnHeaderConstant.showDevicesColumnHeaders.stream()
+        : ColumnHeaderConstant.showTimeSeriesColumnHeaders.stream()
             .map(ColumnHeader::getColumnName)
             .collect(Collectors.toList());
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitDeviceRegionScan(this, context);
+    return visitor.visitTimeSeriesRegionScan(this, context);
   }
 
   @Override
@@ -98,70 +97,74 @@ public class DeviceRegionScanNode extends RegionScanNode {
 
   public static PlanNode deserialize(ByteBuffer buffer) {
     int size = ReadWriteIOUtils.readInt(buffer);
-    Map<PartialPath, Boolean> devicePathsToAligned = new HashMap<>();
+    Map<PartialPath, TimeseriesSchemaInfo> timeseriesToSchemaInfo = new HashMap<>();
     for (int i = 0; i < size; i++) {
       PartialPath path = PartialPath.deserialize(buffer);
-      boolean aligned = ReadWriteIOUtils.readBool(buffer);
-      devicePathsToAligned.put(path, aligned);
+      TimeseriesSchemaInfo timeseriesSchemaInfo = TimeseriesSchemaInfo.deserialize(buffer);
+      timeseriesToSchemaInfo.put(path, timeseriesSchemaInfo);
     }
-    PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new DeviceRegionScanNode(planNodeId, devicePathsToAligned, null);
+    return new TimeseriesRegionScanNode(null, timeseriesToSchemaInfo, null);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.DEVICE_REGION_SCAN.serialize(byteBuffer);
-    ReadWriteIOUtils.write(devicePathsToAligned.size(), byteBuffer);
-    for (Map.Entry<PartialPath, Boolean> entry : devicePathsToAligned.entrySet()) {
+    PlanNodeType.TIMESERIES_REGION_SCAN.serialize(byteBuffer);
+    ReadWriteIOUtils.write(timeseriesToSchemaInfo.size(), byteBuffer);
+    for (Map.Entry<PartialPath, TimeseriesSchemaInfo> entry : timeseriesToSchemaInfo.entrySet()) {
       entry.getKey().serialize(byteBuffer);
-      ReadWriteIOUtils.write(entry.getValue(), byteBuffer);
+      entry.getValue().serializeAttributes(byteBuffer);
     }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.DEVICE_REGION_SCAN.serialize(stream);
-    ReadWriteIOUtils.write(devicePathsToAligned.size(), stream);
-    for (Map.Entry<PartialPath, Boolean> entry : devicePathsToAligned.entrySet()) {
+    PlanNodeType.TIMESERIES_REGION_SCAN.serialize(stream);
+    ReadWriteIOUtils.write(timeseriesToSchemaInfo.size(), stream);
+    for (Map.Entry<PartialPath, TimeseriesSchemaInfo> entry : timeseriesToSchemaInfo.entrySet()) {
       entry.getKey().serialize(stream);
-      ReadWriteIOUtils.write(entry.getValue(), stream);
+      entry.getValue().serializeAttributes(stream);
     }
   }
 
   @Override
   public String toString() {
     return String.format(
-        "DeviceRegionScanNode-%s:[DataRegion: %s OutputCount: %s]",
-        this.getPlanNodeId(),
-        PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()),
-        outputCount);
+        "TimeseriesRegionScanNode-%s:[DataRegion: %s OutputCount: %s]",
+        PlanNodeType.TIMESERIES_REGION_SCAN, timeseriesToSchemaInfo, outputCount);
   }
 
   @Override
   public List<PartialPath> getDevicePaths() {
-    return new ArrayList<>(devicePathsToAligned.keySet());
+    return timeseriesToSchemaInfo.keySet().stream()
+        .map(PartialPath::getDevicePath)
+        .collect(Collectors.toList());
   }
 
   @Override
-  public void setDevicePaths(Set<PartialPath> devicePaths) {
-    Map<PartialPath, Boolean> curDevicePathToStatus = new HashMap<>();
-    for (PartialPath path : devicePaths) {
-      curDevicePathToStatus.put(path, devicePathsToAligned.get(path));
+  public void setDevicePaths(Set<PartialPath> paths) {
+    Map<PartialPath, TimeseriesSchemaInfo> curTimeseriesToSchemaInfo = new HashMap<>();
+    for (Map.Entry<PartialPath, TimeseriesSchemaInfo> entry : timeseriesToSchemaInfo.entrySet()) {
+      if (paths.contains(entry.getKey().getDevicePath())) {
+        curTimeseriesToSchemaInfo.put(entry.getKey(), entry.getValue());
+      }
     }
-    this.devicePathsToAligned = curDevicePathToStatus;
+    this.timeseriesToSchemaInfo = curTimeseriesToSchemaInfo;
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
-    DeviceRegionScanNode that = (DeviceRegionScanNode) o;
-    return devicePathsToAligned.equals(that.devicePathsToAligned);
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof TimeseriesRegionScanNode)) {
+      return false;
+    }
+    TimeseriesRegionScanNode that = (TimeseriesRegionScanNode) o;
+    return timeseriesToSchemaInfo.equals(that.timeseriesToSchemaInfo);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), devicePathsToAligned);
+    return Objects.hash(super.hashCode(), timeseriesToSchemaInfo);
   }
 }

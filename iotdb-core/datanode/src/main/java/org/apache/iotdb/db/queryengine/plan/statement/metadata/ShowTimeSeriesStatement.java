@@ -21,10 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * SHOW TIMESERIES statement.
@@ -37,11 +40,11 @@ import java.util.List;
 public class ShowTimeSeriesStatement extends ShowStatement {
 
   private final PartialPath pathPattern;
-
   private SchemaFilter schemaFilter;
-
   // if is true, the result will be sorted according to the inserting frequency of the time series
   private final boolean orderByHeat;
+  private WhereCondition timeCondition;
+  private Map<PartialPath, TimeseriesSchemaInfo> timeseriesToSchemas;
 
   public ShowTimeSeriesStatement(PartialPath pathPattern, boolean orderByHeat) {
     super();
@@ -63,6 +66,26 @@ public class ShowTimeSeriesStatement extends ShowStatement {
 
   public boolean isOrderByHeat() {
     return orderByHeat;
+  }
+
+  public void setTimeCondition(WhereCondition timeCondition) {
+    this.timeCondition = timeCondition;
+  }
+
+  public WhereCondition getTimeCondition() {
+    return timeCondition;
+  }
+
+  public boolean hasTimeCondition() {
+    return timeCondition != null;
+  }
+
+  public void setTimeseriesToSchemas(Map<PartialPath, TimeseriesSchemaInfo> timeseriesToSchemas) {
+    this.timeseriesToSchemas = timeseriesToSchemas;
+  }
+
+  public Map<PartialPath, TimeseriesSchemaInfo> getTimeseriesToSchemas() {
+    return timeseriesToSchemas;
   }
 
   @Override

@@ -105,6 +105,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -168,6 +169,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitDeviceRegionScan(DeviceRegionScanNode node, C context) {
+    return visitRegionScan(node, context);
+  }
+
+  public R visitTimeSeriesRegionScan(TimeseriesRegionScanNode node, C context) {
     return visitRegionScan(node, context);
   }
 
