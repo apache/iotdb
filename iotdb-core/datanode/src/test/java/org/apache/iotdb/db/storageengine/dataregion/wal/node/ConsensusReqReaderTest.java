@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
@@ -90,6 +91,7 @@ public class ConsensusReqReaderTest {
   private void simulateFileScenario01() throws IllegalPathException {
     InsertTabletNode insertTabletNode;
     InsertRowNode insertRowNode;
+    InsertRowsNode insertRowsNode;
     // _0-0-1.wal
     insertRowNode = getInsertRowNode(devicePath);
     insertRowNode.setSearchIndex(1);
@@ -98,11 +100,11 @@ public class ConsensusReqReaderTest {
     walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // -1
     walNode.rollWALFile();
     // _1-1-1.wal
-    insertRowNode = getInsertRowNode(devicePath);
-    insertRowNode.setSearchIndex(2);
-    walNode.log(0, insertRowNode); // 2
-    walNode.log(0, insertRowNode); // 2
-    walNode.log(0, insertRowNode); // 2
+    insertRowsNode = getInsertRowsNode(devicePath);
+    insertRowsNode.setSearchIndex(2);
+    walNode.log(0, insertRowsNode); // 2
+    walNode.log(0, insertRowsNode); // 2
+    walNode.log(0, insertRowsNode); // 2
     walNode.rollWALFile();
     // _2-2-1.wal
     insertRowNode = getInsertRowNode(devicePath);
@@ -155,8 +157,8 @@ public class ConsensusReqReaderTest {
     Assert.assertEquals(3, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
       planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
-      Assert.assertTrue(planNode instanceof InsertRowNode);
-      Assert.assertEquals(2, ((InsertRowNode) planNode).getSearchIndex());
+      Assert.assertTrue(planNode instanceof InsertRowsNode);
+      Assert.assertEquals(2, ((InsertRowsNode) planNode).getSearchIndex());
     }
     Assert.assertTrue(iterator.hasNext());
     request = iterator.next();
@@ -297,8 +299,8 @@ public class ConsensusReqReaderTest {
     Assert.assertEquals(3, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
       planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
-      Assert.assertTrue(planNode instanceof InsertRowNode);
-      Assert.assertEquals(2, ((InsertRowNode) planNode).getSearchIndex());
+      Assert.assertTrue(planNode instanceof InsertRowsNode);
+      Assert.assertEquals(2, ((InsertRowsNode) planNode).getSearchIndex());
     }
 
     iterator.skipTo(4);
@@ -347,8 +349,8 @@ public class ConsensusReqReaderTest {
     Assert.assertEquals(3, request.getRequests().size());
     for (IConsensusRequest innerRequest : request.getRequests()) {
       planNode = WALEntry.deserializeForConsensus(innerRequest.serializeToByteBuffer());
-      Assert.assertTrue(planNode instanceof InsertRowNode);
-      Assert.assertEquals(2, ((InsertRowNode) planNode).getSearchIndex());
+      Assert.assertTrue(planNode instanceof InsertRowsNode);
+      Assert.assertEquals(2, ((InsertRowsNode) planNode).getSearchIndex());
     }
     Assert.assertTrue(iterator.hasNext());
     request = iterator.next();
@@ -618,7 +620,7 @@ public class ConsensusReqReaderTest {
     Assert.assertFalse(iterator.hasNext());
   }
 
-  public static InsertRowNode getInsertRowNode(String devicePath) throws IllegalPathException {
+  private static InsertRowNode getInsertRowNode(String devicePath) throws IllegalPathException {
     long time = 110L;
     TSDataType[] dataTypes =
         new TSDataType[] {
@@ -659,6 +661,69 @@ public class ConsensusReqReaderTest {
           new MeasurementSchema("s6", TSDataType.TEXT)
         });
     return insertRowNode;
+  }
+
+  private static InsertRowsNode getInsertRowsNode(String devicePath) throws IllegalPathException {
+    InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
+    long time = 111L;
+    TSDataType[] dataTypes =
+        new TSDataType[] {
+          TSDataType.DOUBLE,
+          TSDataType.FLOAT,
+          TSDataType.INT64,
+          TSDataType.INT32,
+          TSDataType.BOOLEAN,
+          TSDataType.TEXT
+        };
+
+    Object[] columns = new Object[6];
+    columns[0] = 1.0;
+    columns[1] = 2.0f;
+    columns[2] = 10000L;
+    columns[3] = 100;
+    columns[4] = false;
+    columns[5] = new Binary("hh" + 0, TSFileConfig.STRING_CHARSET);
+
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(devicePath),
+            false,
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            dataTypes,
+            time,
+            columns,
+            false);
+
+    MeasurementSchema[] schemas =
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", dataTypes[0]),
+          new MeasurementSchema("s2", dataTypes[1]),
+          new MeasurementSchema("s3", dataTypes[2]),
+          new MeasurementSchema("s4", dataTypes[3]),
+          new MeasurementSchema("s5", dataTypes[4]),
+          new MeasurementSchema("s6", dataTypes[5]),
+        };
+    insertRowNode.setMeasurementSchemas(schemas);
+    insertRowsNode.addOneInsertRowNode(insertRowNode, 0);
+
+    time = 112L;
+    insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(devicePath),
+            false,
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            dataTypes,
+            time,
+            columns,
+            false);
+
+    insertRowNode.setMeasurementSchemas(schemas);
+
+    insertRowsNode.addOneInsertRowNode(insertRowNode, 1);
+
+    return insertRowsNode;
   }
 
   private InsertTabletNode getInsertTabletNode(String devicePath, long[] times)

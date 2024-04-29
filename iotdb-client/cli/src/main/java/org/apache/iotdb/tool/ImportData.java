@@ -70,7 +70,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.jdbc.Config.IOTDB_ERROR_PREFIX;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.BOOLEAN;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.FLOAT;

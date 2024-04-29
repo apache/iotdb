@@ -23,16 +23,21 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class TsFileEpochManager {
 
@@ -79,7 +84,23 @@ public class TsFileEpochManager {
     return new PipeRealtimeEvent(
         event,
         epoch,
-        Collections.singletonMap(node.getDevicePath().getFullPath(), node.getMeasurements()),
+        node instanceof InsertRowsNode
+            ? getDevice2MeasurementsMapFromInsertRowsNode((InsertRowsNode) node)
+            : Collections.singletonMap(node.getDevicePath().getFullPath(), node.getMeasurements()),
         event.getPipePattern());
+  }
+
+  private Map<String, String[]> getDevice2MeasurementsMapFromInsertRowsNode(
+      InsertRowsNode insertRowsNode) {
+    return insertRowsNode.getInsertRowNodeList().stream()
+        .collect(
+            Collectors.toMap(
+                insertRowNode -> insertRowNode.getDevicePath().getFullPath(),
+                InsertNode::getMeasurements,
+                (oldMeasurements, newMeasurements) ->
+                    Stream.of(Arrays.asList(oldMeasurements), Arrays.asList(newMeasurements))
+                        .flatMap(Collection::stream)
+                        .distinct()
+                        .toArray(String[]::new)));
   }
 }
