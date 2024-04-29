@@ -687,14 +687,19 @@ public class IoTDBStatement implements Statement {
     try {
       this.stmtId = client.requestStatementId(sessionId);
     } catch (TException e) {
+      System.out.println("request 1 fail");
       if (reConnect()) {
+        System.out.println("reconnected");
         try {
           this.stmtId = client.requestStatementId(sessionId);
+          System.out.println("request 2 succeed");
         } catch (TException e2) {
+          System.out.println("request 2 fail");
           throw new SQLException(
               "Cannot get id for statement after reconnecting. please check server status", e2);
         }
       } else {
+        System.out.println("reconnect fail");
         throw new SQLException(
             "Cannot get id for statement after reconnecting. please check server status", e);
       }
