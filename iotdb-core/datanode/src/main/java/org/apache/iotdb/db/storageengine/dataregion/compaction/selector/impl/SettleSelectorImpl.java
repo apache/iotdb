@@ -52,6 +52,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl.DirtyStatus.NOT_SATISFIED;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl.DirtyStatus.PARTIALLY_DIRTY;
 
 public class SettleSelectorImpl implements ISettleSelector {
@@ -132,15 +133,16 @@ public class SettleSelectorImpl implements ISettleSelector {
     PartiallyDirtyResource partiallyDirtyResource = new PartiallyDirtyResource();
     try {
       for (TsFileResource resource : resources) {
-        if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
-          continue;
-        }
         boolean shouldStop = false;
         FileDirtyInfo fileDirtyInfo;
-        if (!heavySelect) {
-          fileDirtyInfo = selectFileBaseOnModSize(resource);
+        if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+          fileDirtyInfo = new FileDirtyInfo(NOT_SATISFIED);
         } else {
-          fileDirtyInfo = selectFileBaseOnDirtyData(resource);
+          if (!heavySelect) {
+            fileDirtyInfo = selectFileBaseOnModSize(resource);
+          } else {
+            fileDirtyInfo = selectFileBaseOnDirtyData(resource);
+          }
         }
 
         switch (fileDirtyInfo.status) {
