@@ -120,7 +120,7 @@ public class CommonConfig {
   private long[] tierTTLInMs = {Long.MAX_VALUE};
 
   /** The maximum number of TTL rules stored in the system, the default is 1000. */
-  private int TTLRuleCount = 1000;
+  private int ttlRuleCapacity = 1000;
 
   /** Thrift socket and connection timeout between data node and config node. */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
@@ -413,12 +413,12 @@ public class CommonConfig {
     this.tierTTLInMs = tierTTLInMs;
   }
 
-  public int getTTLRuleCount() {
-    return TTLRuleCount;
+  public int getTTlRuleCapacity() {
+    return ttlRuleCapacity;
   }
 
-  public void setTTLRuleCount(int TTLRuleCount) {
-    this.TTLRuleCount = TTLRuleCount;
+  public void setTTlRuleCapacity(int ttlRuleCapacity) {
+    this.ttlRuleCapacity = ttlRuleCapacity;
   }
 
   public int getConnectionTimeoutInMS() {

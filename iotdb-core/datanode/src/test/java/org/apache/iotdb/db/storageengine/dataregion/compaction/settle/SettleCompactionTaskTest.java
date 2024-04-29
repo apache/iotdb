@@ -86,10 +86,10 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     List<SettleCompactionTask> unseqTasks = settleSelector.selectSettleTask(unseqResources);
     Assert.assertEquals(1, seqTasks.size());
     Assert.assertEquals(1, unseqTasks.size());
-    Assert.assertEquals(6, seqTasks.get(0).getFullyDeletedFiles().size());
-    Assert.assertEquals(0, seqTasks.get(0).getPartialDeletedFiles().size());
-    Assert.assertEquals(5, unseqTasks.get(0).getFullyDeletedFiles().size());
-    Assert.assertEquals(0, unseqTasks.get(0).getPartialDeletedFiles().size());
+    Assert.assertEquals(6, seqTasks.get(0).getFullyDirtyFiles().size());
+    Assert.assertEquals(0, seqTasks.get(0).getPartiallyDirtyFiles().size());
+    Assert.assertEquals(5, unseqTasks.get(0).getFullyDirtyFiles().size());
+    Assert.assertEquals(0, unseqTasks.get(0).getPartiallyDirtyFiles().size());
 
     Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, false), Collections.emptyList());

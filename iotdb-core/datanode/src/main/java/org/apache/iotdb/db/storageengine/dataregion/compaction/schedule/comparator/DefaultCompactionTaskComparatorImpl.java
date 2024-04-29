@@ -153,24 +153,24 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
 
   public int compareSettleCompactionTask(SettleCompactionTask o1, SettleCompactionTask o2) {
     // we prefer the task with more all_deleted files
-    if (o1.getFullyDeletedFiles().size() != o2.getFullyDeletedFiles().size()) {
-      return o1.getFullyDeletedFiles().size() > o2.getFullyDeletedFiles().size() ? -1 : 1;
+    if (o1.getFullyDirtyFiles().size() != o2.getFullyDirtyFiles().size()) {
+      return o1.getFullyDirtyFiles().size() > o2.getFullyDirtyFiles().size() ? -1 : 1;
     }
     // we prefer the task with larger all_deleted files
-    if (o1.getFullyDeletedFileSize() != o2.getFullyDeletedFileSize()) {
-      return o1.getFullyDeletedFileSize() > o2.getFullyDeletedFileSize() ? -1 : 1;
+    if (o1.getFullyDirtyFileSize() != o2.getFullyDirtyFileSize()) {
+      return o1.getFullyDirtyFileSize() > o2.getFullyDirtyFileSize() ? -1 : 1;
     }
     // we prefer the task with larger mods file
     if (o1.getTotalModsSize() != o2.getTotalModsSize()) {
       return o1.getTotalModsSize() > o2.getTotalModsSize() ? -1 : 1;
     }
     // we prefer the task with more partial_deleted files
-    if (o1.getPartialDeletedFiles().size() != o2.getPartialDeletedFiles().size()) {
-      return o1.getPartialDeletedFiles().size() > o2.getPartialDeletedFiles().size() ? -1 : 1;
+    if (o1.getPartiallyDirtyFiles().size() != o2.getPartiallyDirtyFiles().size()) {
+      return o1.getPartiallyDirtyFiles().size() > o2.getPartiallyDirtyFiles().size() ? -1 : 1;
     }
     // we prefer the task with larger partial_deleted files
-    if (o1.getPartialDeletedFileSize() != o2.getPartialDeletedFileSize()) {
-      return o1.getPartialDeletedFileSize() > o2.getPartialDeletedFileSize() ? -1 : 1;
+    if (o1.getPartiallyDirtyFileSize() != o2.getPartiallyDirtyFileSize()) {
+      return o1.getPartiallyDirtyFileSize() > o2.getPartiallyDirtyFileSize() ? -1 : 1;
     }
     // we prefer task with smaller serial id
     if (o1.getSerialId() != o2.getSerialId()) {

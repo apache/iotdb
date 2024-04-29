@@ -713,10 +713,10 @@ public class IoTDBDescriptor {
         Long.parseLong(
             properties.getProperty("max_expired_time", Long.toString(conf.getMaxExpiredTime()))));
 
-    conf.setExpiredDataRate(
+    conf.setExpiredDataRatio(
         Float.parseFloat(
             properties.getProperty(
-                "expired_data_rate", Float.toString(conf.getExpiredDataRate()))));
+                "expired_data_ratio", Float.toString(conf.getExpiredDataRatio()))));
 
     conf.setEnablePartialInsert(
         Boolean.parseBoolean(

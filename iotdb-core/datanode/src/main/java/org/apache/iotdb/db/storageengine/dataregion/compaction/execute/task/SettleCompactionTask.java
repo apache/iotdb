@@ -39,17 +39,15 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * This settle task contains all_deleted files and partial_deleted files. The partial_deleted files
- * are divided into several groups, each group may contain one or several files. This task will do
- * the following two things respectively: 1. Settle all all_deleted files by deleting them directly.
- * 2. Settle partial_deleted files: put the files of each partial_deleted group into an invisible
- * innerCompactionTask, and then perform the cleanup work. The source files in a file group will be
- * compacted into a target file.
+ * This settle task contains fully_dirty files and partially_dirty files. This task will do the
+ * following two things respectively: 1. Settle all fully_dirty files by deleting them directly. 2.
+ * Settle partially_dirty files by cleaning them with inner space compaction task. The
+ * partially_dirty files will be compacted into one target file.
  */
 public class SettleCompactionTask extends InnerSpaceCompactionTask {
-  private List<TsFileResource> fullyDeletedFiles;
-  private double fullyDeletedFileSize = 0;
-  private double partialDeletedFileSize = 0;
+  private List<TsFileResource> fullyDirtyFiles;
+  private double fullyDirtyFileSize = 0;
+  private double partiallyDirtyFileSize = 0;
 
   private int fullyDeletedSuccessNum = 0;
 
@@ -58,17 +56,17 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   public SettleCompactionTask(
       long timePartition,
       TsFileManager tsFileManager,
-      List<TsFileResource> fullyDeletedFiles,
-      List<TsFileResource> partialDeletedFiles,
+      List<TsFileResource> fullyDirtyFiles,
+      List<TsFileResource> partiallyDirtyFiles,
       boolean isSequence,
       ICompactionPerformer performer,
       long serialId) {
-    super(tsFileManager, timePartition, partialDeletedFiles, isSequence, performer, serialId);
-    this.fullyDeletedFiles = fullyDeletedFiles;
-    fullyDeletedFiles.forEach(x -> fullyDeletedFileSize += x.getTsFileSize());
-    partialDeletedFiles.forEach(
+    super(tsFileManager, timePartition, partiallyDirtyFiles, isSequence, performer, serialId);
+    this.fullyDirtyFiles = fullyDirtyFiles;
+    fullyDirtyFiles.forEach(x -> fullyDirtyFileSize += x.getTsFileSize());
+    partiallyDirtyFiles.forEach(
         x -> {
-          partialDeletedFileSize += x.getTsFileSize();
+          partiallyDirtyFileSize += x.getTsFileSize();
           totalModsFileSize += x.getModFile().getSize();
         });
     this.hashCode = this.toString().hashCode();
@@ -81,7 +79,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
 
   @Override
   public List<TsFileResource> getAllSourceTsFiles() {
-    List<TsFileResource> allSourceFiles = new ArrayList<>(fullyDeletedFiles);
+    List<TsFileResource> allSourceFiles = new ArrayList<>(fullyDirtyFiles);
     allSourceFiles.addAll(selectedTsFileResourceList);
     return allSourceFiles;
   }
@@ -94,7 +92,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     if (!tsFileManager.isAllowCompaction()) {
       return true;
     }
-    if (fullyDeletedFiles.isEmpty() && selectedTsFileResourceList.isEmpty()) {
+    if (fullyDirtyFiles.isEmpty() && selectedTsFileResourceList.isEmpty()) {
       LOGGER.info(
           "{}-{} [Compaction] Settle compaction file list is empty, end it",
           storageGroupName,
@@ -103,20 +101,20 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     long startTime = System.currentTimeMillis();
 
     LOGGER.info(
-        "{}-{} [Compaction] SettleCompaction task starts with {} all_deleted files "
-            + "and {} partial_deleted files. "
-            + "All_deleted files : {}, partial_deleted files : {} . "
-            + "All_deleted files size is {} MB, "
-            + "partial_deleted file size is {} MB. "
+        "{}-{} [Compaction] SettleCompaction task starts with {} fully_dirty files "
+            + "and {} partially_dirty files. "
+            + "Fully_dirty files : {}, partially_dirty files : {} . "
+            + "Fully_dirty files size is {} MB, "
+            + "partially_dirty file size is {} MB. "
             + "Memory cost is {} MB.",
         storageGroupName,
         dataRegionId,
-        fullyDeletedFiles.size(),
+        fullyDirtyFiles.size(),
         selectedTsFileResourceList.size(),
-        fullyDeletedFiles,
+        fullyDirtyFiles,
         selectedTsFileResourceList,
-        fullyDeletedFileSize / 1024 / 1024,
-        partialDeletedFileSize / 1024 / 1024,
+        fullyDirtyFileSize / 1024 / 1024,
+        partiallyDirtyFileSize / 1024 / 1024,
         memoryCost == 0 ? 0 : (double) memoryCost / 1024 / 1024);
 
     List<TsFileResource> allSourceFiles = getAllSourceTsFiles();
@@ -125,8 +123,8 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
             allSourceFiles.get(0).getTsFile().getAbsolutePath()
                 + CompactionLogger.SETTLE_COMPACTION_LOG_NAME_SUFFIX);
     try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
-      compactionLogger.logSourceFiles(fullyDeletedFiles);
-      compactionLogger.logEmptyTargetFiles(fullyDeletedFiles);
+      compactionLogger.logSourceFiles(fullyDirtyFiles);
+      compactionLogger.logEmptyTargetFiles(fullyDirtyFiles);
       compactionLogger.logSourceFiles(selectedTsFileResourceList);
       if (!selectedTsFileResourceList.isEmpty()) {
         targetTsFileResource =
@@ -136,35 +134,35 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       }
       compactionLogger.force();
 
-      isSuccess = settleWithAllDeletedFiles();
-      // In order to prevent overlap of sequence files after settle task, partial_deleted files can
-      // only be settled after all_deleted files are settled successfully, because multiple
-      // partial_deleted files will be settled into one file.
+      isSuccess = settleWithFullyDirtyFiles();
+      // In order to prevent overlap of sequence files after settle task, partially_dirty files can
+      // only be settled after fully_dirty files are settled successfully, because multiple
+      // partially_dirty files will be settled into one file.
       if (isSuccess) {
-        settleWithPartialDeletedFiles(compactionLogger);
+        settleWithPartiallyDirtyFiles(compactionLogger);
       }
 
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       if (isSuccess) {
         LOGGER.info(
             "{}-{} [Compaction] SettleCompaction task finishes successfully, time cost is {} s, compaction speed is {} MB/s."
-                + "All_Deleted files num is {} and partial_Deleted files num is {}.",
+                + "Fully_dirty files num is {} and partially_dirty files num is {}.",
             storageGroupName,
             dataRegionId,
             String.format("%.2f", costTime),
             String.format(
                 "%.2f",
-                (fullyDeletedFileSize + partialDeletedFileSize) / 1024.0d / 1024.0d / costTime),
-            fullyDeletedFiles.size(),
+                (fullyDirtyFileSize + partiallyDirtyFileSize) / 1024.0d / 1024.0d / costTime),
+            fullyDirtyFiles.size(),
             selectedTsFileResourceList.size());
       } else {
         LOGGER.info(
             "{}-{} [Compaction] SettleCompaction task finishes with some error, time cost is {} s."
-                + "All_Deleted files num is {} and there are {} files fail to delete.",
+                + "Fully_dirty files num is {} and there are {} files fail to delete.",
             storageGroupName,
             dataRegionId,
             String.format("%.2f", costTime),
-            fullyDeletedFiles.size(),
+            fullyDirtyFiles.size(),
             allSourceFiles.size() - fullyDeletedSuccessNum);
       }
     } catch (Exception e) {
@@ -186,12 +184,12 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     return isSuccess;
   }
 
-  public boolean settleWithAllDeletedFiles() {
-    if (fullyDeletedFiles.isEmpty()) {
+  public boolean settleWithFullyDirtyFiles() {
+    if (fullyDirtyFiles.isEmpty()) {
       return true;
     }
     boolean isSuccess = true;
-    for (TsFileResource resource : fullyDeletedFiles) {
+    for (TsFileResource resource : fullyDirtyFiles) {
       if (recoverMemoryStatus) {
         tsFileManager.remove(resource, resource.isSeq());
         if (resource.getModFile().exists()) {
@@ -203,7 +201,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       if (res) {
         fullyDeletedSuccessNum++;
         LOGGER.debug(
-            "Settle task deletes all dirty tsfile {} successfully.",
+            "Settle task deletes fully_dirty tsfile {} successfully.",
             resource.getTsFile().getAbsolutePath());
         if (recoverMemoryStatus) {
           FileMetrics.getInstance()
@@ -211,7 +209,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
         }
       } else {
         LOGGER.error(
-            "Settle task fail to delete all dirty tsfile {}.",
+            "Settle task fail to delete fully_dirty tsfile {}.",
             resource.getTsFile().getAbsolutePath());
       }
       isSuccess = isSuccess && res;
@@ -219,13 +217,13 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     return isSuccess;
   }
 
-  /** Use inner compaction task to compact the partial_deleted files. */
-  private void settleWithPartialDeletedFiles(SimpleCompactionLogger logger) throws Exception {
+  /** Use inner compaction task to compact the partially_dirty files. */
+  private void settleWithPartiallyDirtyFiles(SimpleCompactionLogger logger) throws Exception {
     if (selectedTsFileResourceList.isEmpty()) {
       return;
     }
     LOGGER.info(
-        "{}-{} [Compaction] Start to settle {} {} partial_deleted filess, "
+        "{}-{} [Compaction] Start to settle {} {} partially_dirty filess, "
             + "total file size is {} MB",
         storageGroupName,
         dataRegionId,
@@ -236,7 +234,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     compact(logger);
     double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
     LOGGER.info(
-        "{}-{} [Compaction] Finish to settle {} {} partial_deleted files successfully , "
+        "{}-{} [Compaction] Finish to settle {} {} partially_dirty files successfully , "
             + "target file is {},"
             + "time cost is {} s, "
             + "compaction speed is {} MB/s, {}",
@@ -260,8 +258,8 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       if (needRecoverTaskInfoFromLogFile) {
         recoverTaskInfoFromLogFile();
       }
-      recoverAllDeletedFiles();
-      recoverPartialDeletedFiles();
+      recoverFullyDirtyFiles();
+      recoverPartiallyDirtyFiles();
       LOGGER.info(
           "{}-{} [Compaction][Recover] Finish to recover settle compaction successfully.",
           storageGroupName,
@@ -274,13 +272,13 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     }
   }
 
-  public void recoverAllDeletedFiles() {
-    if (!settleWithAllDeletedFiles()) {
-      throw new CompactionRecoverException("Failed to delete all_deleted source file.");
+  public void recoverFullyDirtyFiles() {
+    if (!settleWithFullyDirtyFiles()) {
+      throw new CompactionRecoverException("Failed to delete fully_dirty source file.");
     }
   }
 
-  private void recoverPartialDeletedFiles() throws IOException {
+  private void recoverPartiallyDirtyFiles() throws IOException {
     if (shouldRollback()) {
       rollback();
     } else {
@@ -300,9 +298,9 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     List<TsFileIdentifier> targetFileIdentifiers = logAnalyzer.getTargetFileInfos();
     List<TsFileIdentifier> deletedTargetFileIdentifiers = logAnalyzer.getDeletedTargetFileInfos();
 
-    fullyDeletedFiles = new ArrayList<>();
+    fullyDirtyFiles = new ArrayList<>();
     selectedTsFileResourceList = new ArrayList<>();
-    // recover source files, including all_deleted files and partial_deleted files
+    // recover source files, including fully_dirty files and partially_dirty files
     sourceFileIdentifiers.forEach(
         x -> {
           File sourceFile = x.getFileFromDataDirsIfAnyAdjuvantFileExists();
@@ -314,7 +312,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
             resource = new TsFileResource(sourceFile);
           }
           if (deletedTargetFileIdentifiers.contains(x)) {
-            fullyDeletedFiles.add(resource);
+            fullyDirtyFiles.add(resource);
           } else {
             selectedTsFileResourceList.add(resource);
           }
@@ -329,20 +327,20 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     return CompactionTaskType.SETTLE;
   }
 
-  public List<TsFileResource> getFullyDeletedFiles() {
-    return fullyDeletedFiles;
+  public List<TsFileResource> getFullyDirtyFiles() {
+    return fullyDirtyFiles;
   }
 
-  public List<TsFileResource> getPartialDeletedFiles() {
+  public List<TsFileResource> getPartiallyDirtyFiles() {
     return selectedTsFileResourceList;
   }
 
-  public double getFullyDeletedFileSize() {
-    return fullyDeletedFileSize;
+  public double getFullyDirtyFileSize() {
+    return fullyDirtyFileSize;
   }
 
-  public double getPartialDeletedFileSize() {
-    return partialDeletedFileSize;
+  public double getPartiallyDirtyFileSize() {
+    return partiallyDirtyFileSize;
   }
 
   public long getTotalModsSize() {
@@ -356,13 +354,13 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
         + dataRegionId
         + "-"
         + timePartition
-        + " all_deleted file num is "
-        + fullyDeletedFiles.size()
-        + ", partial_deleted file num is "
+        + " fully_dirty file num is "
+        + fullyDirtyFiles.size()
+        + ", partially_dirty file num is "
         + selectedTsFileResourceList.size()
-        + ", all_deleted files is "
-        + fullyDeletedFiles
-        + ", partial_deleted files is "
+        + ", fully_dirty files is "
+        + fullyDirtyFiles
+        + ", partially_dirty files is "
         + selectedTsFileResourceList;
   }
 
@@ -381,7 +379,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       return false;
     }
     SettleCompactionTask otherSettleCompactionTask = (SettleCompactionTask) otherTask;
-    return this.fullyDeletedFiles.equals(otherSettleCompactionTask.fullyDeletedFiles)
+    return this.fullyDirtyFiles.equals(otherSettleCompactionTask.fullyDirtyFiles)
         && this.selectedTsFileResourceList.equals(
             otherSettleCompactionTask.selectedTsFileResourceList)
         && this.performer.getClass().isInstance(otherSettleCompactionTask.performer);

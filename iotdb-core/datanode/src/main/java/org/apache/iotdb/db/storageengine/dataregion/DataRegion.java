@@ -2395,8 +2395,8 @@ public class DataRegion implements IDataRegionForQuery {
           "[TTL] {}-{} Totally select {} all-outdated files and {} partial-outdated files.",
           databaseName,
           dataRegionId,
-          summary.getAllDeletedFileNum(),
-          summary.getPartialDeletedFileNum());
+          summary.getFullyDirtyFileNum(),
+          summary.getPartiallyDirtyFileNum());
     } catch (InterruptedException e) {
       throw e;
     } catch (Throwable e) {

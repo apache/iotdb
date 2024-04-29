@@ -351,7 +351,7 @@ public class CompactionTaskComparatorTest {
             new FastCompactionPerformer(false),
             0));
     SettleCompactionTask task = (SettleCompactionTask) compactionTaskQueue.take();
-    Assert.assertEquals(targetFileName, task.getPartialDeletedFiles().get(0).getTsFile().getName());
+    Assert.assertEquals(targetFileName, task.getPartiallyDirtyFiles().get(0).getTsFile().getName());
     fakedTsFileResource.getModFile().remove();
   }
 

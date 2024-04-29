@@ -31,9 +31,9 @@ public class CompactionScheduleSummary {
   private int submitSettleCompactionTaskNum = 0;
 
   // region TTL info
-  private int allDeletedFileNum = 0;
+  private int fullyDirtyFileNum = 0;
 
-  private int partialDeletedFileNum = 0;
+  private int partiallyDirtyFileNum = 0;
   // end region
 
   public void incrementSubmitTaskNum(CompactionTaskType taskType, int num) {
@@ -62,16 +62,16 @@ public class CompactionScheduleSummary {
     switch (task.getCompactionTaskType()) {
       case INNER_SEQ:
         submitSeqInnerSpaceCompactionTaskNum += 1;
-        partialDeletedFileNum += task.getProcessedFileNum();
+        partiallyDirtyFileNum += task.getProcessedFileNum();
         break;
       case INNER_UNSEQ:
         submitUnseqInnerSpaceCompactionTaskNum += 1;
-        partialDeletedFileNum += task.getProcessedFileNum();
+        partiallyDirtyFileNum += task.getProcessedFileNum();
         break;
       case SETTLE:
         submitSettleCompactionTaskNum += 1;
-        partialDeletedFileNum += ((SettleCompactionTask) task).getPartialDeletedFiles().size();
-        allDeletedFileNum += ((SettleCompactionTask) task).getFullyDeletedFiles().size();
+        partiallyDirtyFileNum += ((SettleCompactionTask) task).getPartiallyDirtyFiles().size();
+        fullyDirtyFileNum += ((SettleCompactionTask) task).getFullyDirtyFiles().size();
         break;
       default:
         break;
@@ -107,11 +107,11 @@ public class CompactionScheduleSummary {
         > 0;
   }
 
-  public int getAllDeletedFileNum() {
-    return allDeletedFileNum;
+  public int getFullyDirtyFileNum() {
+    return fullyDirtyFileNum;
   }
 
-  public int getPartialDeletedFileNum() {
-    return partialDeletedFileNum;
+  public int getPartiallyDirtyFileNum() {
+    return partiallyDirtyFileNum;
   }
 }

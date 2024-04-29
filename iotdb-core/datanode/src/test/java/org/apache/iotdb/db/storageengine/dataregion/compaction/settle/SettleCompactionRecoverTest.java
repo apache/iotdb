@@ -59,6 +59,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
+    // params have been reset in AbstractCompactionTest.teardown
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(512);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(100);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(10);
@@ -211,7 +212,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
 
     // finish to settle all_deleted files and settle the first partial_deleted group
     task.setRecoverMemoryStatus(true);
-    task.settleWithAllDeletedFiles();
+    task.settleWithFullyDirtyFiles();
     FastCompactionPerformer performer = new FastCompactionPerformer(false);
     TsFileResource targetResource =
         TsFileNameGenerator.getSettleCompactionTargetFileResources(partialDeletedFiles, false);
@@ -300,7 +301,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
 
     // finish to settle all_deleted files and settle the first partial_deleted group
     task.setRecoverMemoryStatus(true);
-    task.settleWithAllDeletedFiles();
+    task.settleWithFullyDirtyFiles();
     FastCompactionPerformer performer = new FastCompactionPerformer(false);
     TsFileResource targetResource =
         TsFileNameGenerator.getSettleCompactionTargetFileResources(partialDeletedFiles, false);
@@ -395,7 +396,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
 
     // finish to settle all_deleted files and settle the first partial_deleted group
     task.setRecoverMemoryStatus(true);
-    task.settleWithAllDeletedFiles();
+    task.settleWithFullyDirtyFiles();
     FastCompactionPerformer performer = new FastCompactionPerformer(false);
     TsFileResource targetResource =
         TsFileNameGenerator.getSettleCompactionTargetFileResources(partialDeletedFiles, false);
@@ -487,7 +488,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
 
     // finish to settle all_deleted files and settle the first partial_deleted group
     task.setRecoverMemoryStatus(true);
-    task.settleWithAllDeletedFiles();
+    task.settleWithFullyDirtyFiles();
     FastCompactionPerformer performer = new FastCompactionPerformer(false);
     TsFileResource targetResource =
         TsFileNameGenerator.getSettleCompactionTargetFileResources(partialDeletedFiles, false);
@@ -526,7 +527,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
     targetResource.getTsFile().delete();
 
     // handle exception, delete all_deleted files
-    task.recoverAllDeletedFiles();
+    task.recoverFullyDirtyFiles();
     try {
       task.recoverTaskInfoFromLogFile();
       Assert.fail();
@@ -721,7 +722,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
 
       // finish to settle all_deleted files and settle the first partial_deleted group
       task.setRecoverMemoryStatus(true);
-      task.settleWithAllDeletedFiles();
+      task.settleWithFullyDirtyFiles();
 
       // carry out the compaction
       performer.setSourceFiles(partialDeletedFiles);
@@ -796,7 +797,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
 
     // finish to settle all_deleted files and settle the first partial_deleted group
     task.setRecoverMemoryStatus(true);
-    task.settleWithAllDeletedFiles();
+    task.settleWithFullyDirtyFiles();
     FastCompactionPerformer performer = new FastCompactionPerformer(false);
     TsFileResource targetResource =
         TsFileNameGenerator.getSettleCompactionTargetFileResources(partialDeletedFiles, false);
@@ -874,7 +875,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
 
     // finish to settle all_deleted files and settle the first partial_deleted group
     task.setRecoverMemoryStatus(true);
-    task.settleWithAllDeletedFiles();
+    task.settleWithFullyDirtyFiles();
     FastCompactionPerformer performer = new FastCompactionPerformer(false);
     TsFileResource targetResource =
         TsFileNameGenerator.getSettleCompactionTargetFileResources(partialDeletedFiles, false);
@@ -963,7 +964,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
 
     // finish to settle all_deleted files and settle the first partial_deleted group
     task.setRecoverMemoryStatus(true);
-    task.settleWithAllDeletedFiles();
+    task.settleWithFullyDirtyFiles();
     FastCompactionPerformer performer = new FastCompactionPerformer(false);
     TsFileResource targetResource =
         TsFileNameGenerator.getSettleCompactionTargetFileResources(partialDeletedFiles, false);
@@ -1058,7 +1059,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
 
     // finish to settle all_deleted files and settle the first partial_deleted group
     task.setRecoverMemoryStatus(true);
-    task.settleWithAllDeletedFiles();
+    task.settleWithFullyDirtyFiles();
     FastCompactionPerformer performer = new FastCompactionPerformer(false);
     TsFileResource targetResource =
         TsFileNameGenerator.getSettleCompactionTargetFileResources(partialDeletedFiles, false);
@@ -1098,7 +1099,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
     targetResource.getTsFile().delete();
 
     // handle exception, delete all_deleted files
-    task.recoverAllDeletedFiles();
+    task.recoverFullyDirtyFiles();
 
     try {
       task.recoverTaskInfoFromLogFile();

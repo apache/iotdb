@@ -529,10 +529,10 @@ public class IoTDBConfig {
   private long maxExpiredTime = 2_592_000_000L;
 
   /**
-   * The expired device rate. If the number of expired device in one tsfile exceeds this value, then
-   * expired data of this tsfile will be cleaned by compaction.
+   * The expired device ratio. If the number of expired device in one tsfile exceeds this value,
+   * then expired data of this tsfile will be cleaned by compaction.
    */
-  private float expiredDataRate = 0.3f;
+  private float expiredDataRatio = 0.3f;
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
   private long compactionSubmissionIntervalInMs = 60_000L;
@@ -2880,12 +2880,12 @@ public class IoTDBConfig {
     this.maxExpiredTime = maxExpiredTime;
   }
 
-  public float getExpiredDataRate() {
-    return expiredDataRate;
+  public float getExpiredDataRatio() {
+    return expiredDataRatio;
   }
 
-  public void setExpiredDataRate(float expiredDataRate) {
-    this.expiredDataRate = expiredDataRate;
+  public void setExpiredDataRatio(float expiredDataRatio) {
+    this.expiredDataRatio = expiredDataRatio;
   }
 
   public int getFileLimitPerInnerTask() {

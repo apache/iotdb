@@ -52,7 +52,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl.DirtyStatus.PARTIAL_DELETED;
+import static org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl.DirtyStatus.PARTIALLY_DIRTY;
 
 public class SettleSelectorImpl implements ISettleSelector {
   private static final Logger LOGGER =
@@ -96,7 +96,7 @@ public class SettleSelectorImpl implements ISettleSelector {
     }
   }
 
-  static class PartialDirtyResource {
+  static class PartiallyDirtyResource {
     List<TsFileResource> resources = new ArrayList<>();
     long totalFileSize = 0;
 
@@ -128,8 +128,8 @@ public class SettleSelectorImpl implements ISettleSelector {
 
   private List<SettleCompactionTask> selectTasks(List<TsFileResource> resources) {
     List<TsFileResource> fullyDirtyResource = new ArrayList<>();
-    List<PartialDirtyResource> partialDirtyResourceList = new ArrayList<>();
-    PartialDirtyResource partialDirtyResource = new PartialDirtyResource();
+    List<PartiallyDirtyResource> partiallyDirtyResourceList = new ArrayList<>();
+    PartiallyDirtyResource partiallyDirtyResource = new PartiallyDirtyResource();
     try {
       for (TsFileResource resource : resources) {
         if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
@@ -144,22 +144,22 @@ public class SettleSelectorImpl implements ISettleSelector {
         }
 
         switch (fileDirtyInfo.status) {
-          case FULLY_DELETED:
+          case FULLY_DIRTY:
             fullyDirtyResource.add(resource);
             break;
-          case PARTIAL_DELETED:
-            shouldStop = partialDirtyResource.add(resource, fileDirtyInfo.dirtyDataSize);
+          case PARTIALLY_DIRTY:
+            shouldStop = partiallyDirtyResource.add(resource, fileDirtyInfo.dirtyDataSize);
             break;
           case NOT_SATISFIED:
-            shouldStop = !partialDirtyResource.getResources().isEmpty();
+            shouldStop = !partiallyDirtyResource.getResources().isEmpty();
             break;
           default:
             // do nothing
         }
 
         if (shouldStop) {
-          partialDirtyResourceList.add(partialDirtyResource);
-          partialDirtyResource = new PartialDirtyResource();
+          partiallyDirtyResourceList.add(partiallyDirtyResource);
+          partiallyDirtyResource = new PartiallyDirtyResource();
           if (!heavySelect) {
             // Non-heavy selection is triggered more frequently. In order to avoid selecting too
             // many files containing mods for compaction when the disk is insufficient, the number
@@ -168,8 +168,8 @@ public class SettleSelectorImpl implements ISettleSelector {
           }
         }
       }
-      partialDirtyResourceList.add(partialDirtyResource);
-      return createTask(fullyDirtyResource, partialDirtyResourceList);
+      partiallyDirtyResourceList.add(partiallyDirtyResource);
+      return createTask(fullyDirtyResource, partiallyDirtyResourceList);
     } catch (Exception e) {
       LOGGER.error(
           "{}-{} cannot select file for settle compaction", storageGroupName, dataRegionId, e);
@@ -185,7 +185,7 @@ public class SettleSelectorImpl implements ISettleSelector {
     return modFile.getSize() > config.getInnerCompactionTaskSelectionModsFileThreshold()
             || !CompactionUtils.isDiskHasSpace(
                 config.getInnerCompactionTaskSelectionDiskRedundancy())
-        ? new FileDirtyInfo(PARTIAL_DELETED)
+        ? new FileDirtyInfo(PARTIALLY_DIRTY)
         : new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
   }
 
@@ -242,13 +242,13 @@ public class SettleSelectorImpl implements ISettleSelector {
         ((double) deletedDevices.size()) / ((DeviceTimeIndex) timeIndex).getDevices().size();
     if (deletedDeviceRatio == 1d) {
       // the whole file is completely dirty
-      return new FileDirtyInfo(DirtyStatus.FULLY_DELETED);
+      return new FileDirtyInfo(DirtyStatus.FULLY_DIRTY);
     }
     hasExpiredTooLong = config.getMaxExpiredTime() != Long.MAX_VALUE && hasExpiredTooLong;
-    if (hasExpiredTooLong || deletedDeviceRatio >= config.getExpiredDataRate()) {
+    if (hasExpiredTooLong || deletedDeviceRatio >= config.getExpiredDataRatio()) {
       // evaluate dirty data size in the tsfile
       return new FileDirtyInfo(
-          PARTIAL_DELETED, (long) (deletedDeviceRatio * resource.getTsFileSize()));
+          PARTIALLY_DIRTY, (long) (deletedDeviceRatio * resource.getTsFileSize()));
     }
     return new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
   }
@@ -270,12 +270,12 @@ public class SettleSelectorImpl implements ISettleSelector {
 
   private List<SettleCompactionTask> createTask(
       List<TsFileResource> fullyDirtyResources,
-      List<PartialDirtyResource> partialDirtyResourceList) {
+      List<PartiallyDirtyResource> partiallyDirtyResourceList) {
     List<SettleCompactionTask> tasks = new ArrayList<>();
-    for (int i = 0; i < partialDirtyResourceList.size(); i++) {
+    for (int i = 0; i < partiallyDirtyResourceList.size(); i++) {
       if (i == 0) {
         if (fullyDirtyResources.isEmpty()
-            && partialDirtyResourceList.get(i).getResources().isEmpty()) {
+            && partiallyDirtyResourceList.get(i).getResources().isEmpty()) {
           continue;
         }
         tasks.add(
@@ -283,12 +283,12 @@ public class SettleSelectorImpl implements ISettleSelector {
                 timePartition,
                 tsFileManager,
                 fullyDirtyResources,
-                partialDirtyResourceList.get(i).getResources(),
+                partiallyDirtyResourceList.get(i).getResources(),
                 isSeq,
                 createCompactionPerformer(),
                 tsFileManager.getNextCompactionTaskId()));
       } else {
-        if (partialDirtyResourceList.get(i).getResources().isEmpty()) {
+        if (partiallyDirtyResourceList.get(i).getResources().isEmpty()) {
           continue;
         }
         tasks.add(
@@ -296,7 +296,7 @@ public class SettleSelectorImpl implements ISettleSelector {
                 timePartition,
                 tsFileManager,
                 Collections.emptyList(),
-                partialDirtyResourceList.get(i).getResources(),
+                partiallyDirtyResourceList.get(i).getResources(),
                 isSeq,
                 createCompactionPerformer(),
                 tsFileManager.getNextCompactionTaskId()));
@@ -318,18 +318,8 @@ public class SettleSelectorImpl implements ISettleSelector {
   }
 
   enum DirtyStatus {
-    FULLY_DELETED, // the whole file is deleted
-    PARTIAL_DELETED, // the file is partial deleted
+    FULLY_DIRTY, // the whole file is dirty
+    PARTIALLY_DIRTY, // the file is partial dirty
     NOT_SATISFIED; // do not satisfy settle condition, which does not mean there is no dirty data
-
-    private long dirtyDataSize = 0;
-
-    public void setDirtyDataSize(long dirtyDataSize) {
-      this.dirtyDataSize = dirtyDataSize;
-    }
-
-    public long getDirtyDataSize() {
-      return dirtyDataSize;
-    }
   }
 }
