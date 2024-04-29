@@ -469,7 +469,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               regionStatistics,
               metric,
               measurementMNode -> {
-                regionStatistics.addMeasurement(1L);
+                if (measurementMNode.isLogicalView()) {
+                  regionStatistics.addView(1L);
+                } else {
+                  regionStatistics.addMeasurement(1L);
+                }
                 if (measurementMNode.getOffset() == -1) {
                   return;
                 }
