@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -131,6 +132,12 @@ public class WALNode implements IWALNode {
   }
 
   @Override
+  public WALFlushListener log(long memTableId, InsertRowsNode insertRowsNode) {
+    WALEntry walEntry = new WALInfoEntry(memTableId, insertRowsNode);
+    return log(walEntry);
+  }
+
+  @Override
   public WALFlushListener log(
       long memTableId, InsertTabletNode insertTabletNode, int start, int end) {
     WALEntry walEntry = new WALInfoEntry(memTableId, insertTabletNode, start, end);
@@ -227,7 +234,7 @@ public class WALNode implements IWALNode {
     private static final int MAX_RECURSION_TIME = 5;
 
     // the effective information ratio
-    private double effectiveInfoRatio = 0d;
+    private double effectiveInfoRatio = 1.0d;
 
     private List<Long> pinnedMemTableIds;
 
@@ -327,14 +334,15 @@ public class WALNode implements IWALNode {
       MemTableInfo oldestUnpinnedMemTableInfo = checkpointManager.getOldestUnpinnedMemTableInfo();
       long avgFileSize =
           getFileNum() != 0
-              ? getTotalSize() / getFileNum()
+              ? getDiskUsage() / getFileNum()
               : config.getWalFileSizeThresholdInByte();
       long totalCost =
           oldestUnpinnedMemTableInfo == null
               ? costOfActiveMemTables
               : (getCurrentWALFileVersion() - oldestUnpinnedMemTableInfo.getFirstFileVersionId())
                   * avgFileSize;
-      if (totalCost == 0) {
+      if (costOfActiveMemTables == 0 || totalCost == 0) {
+        effectiveInfoRatio = 1.0d;
         return;
       }
       effectiveInfoRatio = (double) costOfActiveMemTables / totalCost;

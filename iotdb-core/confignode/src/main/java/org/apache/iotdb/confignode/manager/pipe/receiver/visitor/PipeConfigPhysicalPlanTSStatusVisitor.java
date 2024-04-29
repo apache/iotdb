@@ -200,6 +200,15 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
+  public TSStatus visitCreateRawUser(AuthorPlan plan, TSStatus context) {
+    if (context.getCode() == TSStatusCode.USER_ALREADY_EXIST.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitCreateRawUser(plan, context);
+  }
+
+  @Override
   public TSStatus visitUpdateUser(AuthorPlan plan, TSStatus context) {
     if (context.getCode() == TSStatusCode.USER_NOT_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())

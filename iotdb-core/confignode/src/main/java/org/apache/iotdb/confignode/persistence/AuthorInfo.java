@@ -221,6 +221,9 @@ public class AuthorInfo implements SnapshotProcessor {
         case CreateUser:
           authorizer.createUser(userName, password);
           break;
+        case CreateUserWithRawPassword:
+          authorizer.createUserWithRawPassword(userName, password);
+          break;
         case CreateRoleDep:
           AuthUtils.validateRolenamePre(roleName);
           authorizer.createRole(roleName);

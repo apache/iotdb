@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -164,11 +165,12 @@ public class IoTDBDescriptor {
     try {
       return new URL(urlString);
     } catch (MalformedURLException e) {
+      LOGGER.warn("get url failed", e);
       return null;
     }
   }
 
-  /** load an property file and set TsfileDBConfig variables. */
+  /** load a property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
     URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
@@ -1051,6 +1053,11 @@ public class IoTDBDescriptor {
     loadIoTConsensusProps(properties);
   }
 
+  private void reloadConsensusProps(Properties properties) {
+    loadIoTConsensusProps(properties);
+    DataRegionConsensusImpl.reloadConsensusConfig();
+  }
+
   private void loadIoTConsensusProps(Properties properties) {
     conf.setMaxLogEntriesNumPerBatch(
         Integer.parseInt(
@@ -1706,6 +1713,8 @@ public class IoTDBDescriptor {
                   "merge_threshold_of_explain_analyze",
                   String.valueOf(conf.getMergeThresholdOfExplainAnalyze()))));
 
+      // update Consensus config
+      reloadConsensusProps(properties);
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
@@ -1848,7 +1857,8 @@ public class IoTDBDescriptor {
           throw new RuntimeException(
               "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
                   + " should be an integer, which is "
-                  + queryMemoryAllocateProportion);
+                  + queryMemoryAllocateProportion,
+              e);
         }
       }
     }
@@ -2020,7 +2030,8 @@ public class IoTDBDescriptor {
         throw new RuntimeException(
             "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion"
                 + " should be an integer, which is "
-                + readerTransformerCollectorMemoryProportion);
+                + readerTransformerCollectorMemoryProportion,
+            e);
       }
     }
   }
@@ -2125,7 +2136,8 @@ public class IoTDBDescriptor {
         configNodeUrls = configNodeUrls.trim();
         conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(configNodeUrls).get(0));
       } catch (BadNodeUrlException e) {
-        LOGGER.error("ConfigNodes are set in wrong format, please set them like 127.0.0.1:10710");
+        LOGGER.error(
+            "ConfigNodes are set in wrong format, please set them like 127.0.0.1:10710", e);
       }
     } else {
       throw new IOException(

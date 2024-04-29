@@ -51,13 +51,13 @@ public class PipeTableResp implements DataSet {
     return allPipeMeta;
   }
 
-  public PipeTableResp filter(Boolean whereClause, String pipeName) {
+  public PipeTableResp filter(final Boolean whereClause, final String pipeName) {
     if (whereClause == null || !whereClause) {
       if (pipeName == null) {
         return this;
       } else {
         final List<PipeMeta> filteredPipeMeta = new ArrayList<>();
-        for (PipeMeta pipeMeta : allPipeMeta) {
+        for (final PipeMeta pipeMeta : allPipeMeta) {
           if (pipeMeta.getStaticMeta().getPipeName().equals(pipeName)) {
             filteredPipeMeta.add(pipeMeta);
             break;
@@ -70,7 +70,7 @@ public class PipeTableResp implements DataSet {
         return this;
       } else {
         String sortedConnectorParametersString = null;
-        for (PipeMeta pipeMeta : allPipeMeta) {
+        for (final PipeMeta pipeMeta : allPipeMeta) {
           if (pipeMeta.getStaticMeta().getPipeName().equals(pipeName)) {
             sortedConnectorParametersString =
                 pipeMeta.getStaticMeta().getConnectorParameters().toString();
@@ -79,7 +79,7 @@ public class PipeTableResp implements DataSet {
         }
 
         final List<PipeMeta> filteredPipeMeta = new ArrayList<>();
-        for (PipeMeta pipeMeta : allPipeMeta) {
+        for (final PipeMeta pipeMeta : allPipeMeta) {
           if (pipeMeta
               .getStaticMeta()
               .getConnectorParameters()

@@ -534,7 +534,7 @@ public class AggregateProcessor implements PipeProcessor {
                     exception.set(e);
                   }
                   rowCollector
-                      .convertToTabletInsertionEvents()
+                      .convertToTabletInsertionEvents(false)
                       .forEach(
                           tabletEvent -> {
                             try {

@@ -74,6 +74,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -97,6 +98,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.apache.iotdb.commons.utils.FileUtils.humanReadableByteCountSI;
 
 public class IoTConsensusServerImpl {
 
@@ -126,6 +129,7 @@ public class IoTConsensusServerImpl {
   private final ScheduledExecutorService backgroundTaskService;
   private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
       IoTConsensusRateLimiter.getInstance();
+  private volatile long lastPinnedSearchIndexForMigration = -1;
 
   public IoTConsensusServerImpl(
       String storageDir,
@@ -295,13 +299,20 @@ public class IoTConsensusServerImpl {
     File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<Path> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
     AtomicLong snapshotSizeSumAtomic = new AtomicLong();
+    StringBuilder allFilesStr = new StringBuilder();
     snapshotPaths.forEach(
-        snapshotPath -> {
+        path -> {
           try {
-            snapshotSizeSumAtomic.addAndGet(Files.size(snapshotPath));
+            long fileSize = Files.size(path);
+            snapshotSizeSumAtomic.addAndGet(fileSize);
+            allFilesStr
+                .append("\n")
+                .append(path)
+                .append(" ")
+                .append(humanReadableByteCountSI(fileSize));
           } catch (IOException e) {
             logger.error(
-                "[SNAPSHOT TRANSMISSION] Calculate snapshot file's size fail: {}", snapshotPath, e);
+                "[SNAPSHOT TRANSMISSION] Calculate snapshot file's size fail: {}", path, e);
           }
         });
     final long snapshotSizeSum = snapshotSizeSumAtomic.get();
@@ -311,8 +322,10 @@ public class IoTConsensusServerImpl {
     logger.info(
         "[SNAPSHOT TRANSMISSION] Start to transmit snapshots ({} files, total size {}) from dir {}",
         snapshotPaths.size(),
-        FileUtils.byteCountToDisplaySize(snapshotSizeSum),
+        humanReadableByteCountSI(snapshotSizeSum),
         snapshotDir);
+    logger.info(
+        "[SNAPSHOT TRANSMISSION] All the files below shell be transmitted: {}", allFilesStr);
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       for (Path path : snapshotPaths) {
@@ -334,14 +347,15 @@ public class IoTConsensusServerImpl {
           transitedSnapshotSizeSum += reader.getTotalReadSize();
           transitedFilesNum++;
           logger.info(
-              "[SNAPSHOT TRANSMISSION] The overall progress for dir {}: files {}/{} done, size {}/{} done, time {} passed",
+              "[SNAPSHOT TRANSMISSION] The overall progress for dir {}: files {}/{} done, size {}/{} done, time {} passed. File {} done.",
               newSnapshotDirName,
               transitedFilesNum,
               snapshotPaths.size(),
-              FileUtils.byteCountToDisplaySize(transitedSnapshotSizeSum),
-              FileUtils.byteCountToDisplaySize(snapshotSizeSum),
+              humanReadableByteCountSI(transitedSnapshotSizeSum),
+              humanReadableByteCountSI(snapshotSizeSum),
               CommonDateTimeUtils.convertMillisecondToDurationStr(
-                  (System.nanoTime() - startTime) / 1_000_000));
+                  (System.nanoTime() - startTime) / 1_000_000),
+              path);
         } finally {
           reader.close();
         }
@@ -502,7 +516,7 @@ public class IoTConsensusServerImpl {
       if (peer.equals(thisNode)) {
         // use searchIndex for thisNode as the initialSyncIndex because targetPeer will load the
         // snapshot produced by thisNode
-        buildSyncLogChannel(targetPeer, searchIndex.get());
+        buildSyncLogChannel(targetPeer, lastPinnedSearchIndexForMigration);
       } else {
         // use RPC to tell other peers to build sync log channel to target peer
         try (SyncIoTConsensusServiceClient client =
@@ -540,14 +554,13 @@ public class IoTConsensusServerImpl {
     // The configuration will be modified during iterating because we will add the targetPeer to
     // configuration
     ImmutableList<Peer> currentMembers = ImmutableList.copyOf(this.configuration);
+    removeSyncLogChannel(targetPeer);
     for (Peer peer : currentMembers) {
       if (peer.equals(targetPeer)) {
         // if the targetPeer is the same as current peer, skip it because removing itself is illegal
         continue;
       }
-      if (peer.equals(thisNode)) {
-        removeSyncLogChannel(targetPeer);
-      } else {
+      if (!peer.equals(thisNode)) {
         // use RPC to tell other peers to build sync log channel to target peer
         try (SyncIoTConsensusServiceClient client =
             syncClientManager.borrowClient(peer.getEndpoint())) {
@@ -758,7 +771,9 @@ public class IoTConsensusServerImpl {
   }
 
   public long getMinFlushedSyncIndex() {
-    return logDispatcher.getMinFlushedSyncIndex().orElseGet(searchIndex::get);
+    return lastPinnedSearchIndexForMigration == -1
+        ? logDispatcher.getMinFlushedSyncIndex().orElseGet(searchIndex::get)
+        : lastPinnedSearchIndexForMigration;
   }
 
   public String getStorageDir() {
@@ -875,9 +890,16 @@ public class IoTConsensusServerImpl {
    * lost.
    */
   public void checkAndLockSafeDeletedSearchIndex() {
-    if (configuration.size() == 1) {
-      consensusReqReader.setSafelyDeletedSearchIndex(searchIndex.get());
-    }
+    lastPinnedSearchIndexForMigration = searchIndex.get();
+    consensusReqReader.setSafelyDeletedSearchIndex(getMinFlushedSyncIndex());
+  }
+
+  /**
+   * We should unlock safelyDeletedSearchIndex after addPeer to avoid potential data accumulation.
+   */
+  public void checkAndUnlockSafeDeletedSearchIndex() {
+    lastPinnedSearchIndexForMigration = -1;
+    checkAndUpdateSafeDeletedSearchIndex();
   }
 
   /**
@@ -941,7 +963,7 @@ public class IoTConsensusServerImpl {
   }
 
   private void renameTmpConfigurationFileToRemoveSuffix() throws IOException {
-    try (Stream<Path> stream = Files.walk(Paths.get(storageDir))) {
+    try (Stream<Path> stream = Files.list(Paths.get(storageDir))) {
       List<Path> paths =
           stream
               .filter(Files::isRegularFile)
@@ -957,18 +979,20 @@ public class IoTConsensusServerImpl {
           try {
             Files.delete(targetFile.toPath());
           } catch (IOException e) {
-            logger.error("Unexpected error occurs when delete file: {}", targetPath);
+            logger.error("Unexpected error occurs when delete file: {}", targetPath, e);
           }
         }
         if (!filePath.toFile().renameTo(targetFile)) {
           logger.error("Unexpected error occurs when rename file: {} -> {}", filePath, targetPath);
         }
       }
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
     }
   }
 
   private void deleteConfiguration() throws IOException {
-    try (Stream<Path> stream = Files.walk(Paths.get(storageDir))) {
+    try (Stream<Path> stream = Files.list(Paths.get(storageDir))) {
       stream
           .filter(Files::isRegularFile)
           .filter(filePath -> filePath.getFileName().toString().endsWith(CONFIGURATION_FILE_NAME))
@@ -983,6 +1007,8 @@ public class IoTConsensusServerImpl {
                       e);
                 }
               });
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
     }
   }
 

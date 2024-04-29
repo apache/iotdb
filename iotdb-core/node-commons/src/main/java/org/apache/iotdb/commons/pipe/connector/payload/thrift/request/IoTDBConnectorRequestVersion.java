@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
 
 public enum IoTDBConnectorRequestVersion {
   VERSION_1((byte) 1),
+  VERSION_2((byte) 2),
   ;
 
   private final byte version;
