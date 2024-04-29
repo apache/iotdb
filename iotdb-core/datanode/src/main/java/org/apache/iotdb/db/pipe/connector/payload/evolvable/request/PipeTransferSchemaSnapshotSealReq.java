@@ -45,14 +45,16 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReqV2
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferSchemaSnapshotSealReq toTPipeTransferReq(
-      String mTreeSnapshotName,
-      long mTreeSnapshotLength,
-      String tLogName,
-      long tLogLength,
-      String databaseName,
-      String typeString)
+      final String pattern,
+      final String mTreeSnapshotName,
+      final long mTreeSnapshotLength,
+      final String tLogName,
+      final long tLogLength,
+      final String databaseName,
+      final String typeString)
       throws IOException {
     final Map<String, String> parameters = new HashMap<>();
+    parameters.put(ColumnHeaderConstant.PATH_PATTERN, pattern);
     parameters.put(ColumnHeaderConstant.DATABASE, databaseName);
     parameters.put(ColumnHeaderConstant.TYPE, typeString);
     return (PipeTransferSchemaSnapshotSealReq)
@@ -67,7 +69,7 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReqV2
                 parameters);
   }
 
-  public static PipeTransferSchemaSnapshotSealReq fromTPipeTransferReq(TPipeTransferReq req) {
+  public static PipeTransferSchemaSnapshotSealReq fromTPipeTransferReq(final TPipeTransferReq req) {
     return (PipeTransferSchemaSnapshotSealReq)
         new PipeTransferSchemaSnapshotSealReq().translateFromTPipeTransferReq(req);
   }
@@ -75,14 +77,16 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReqV2
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(
-      String mTreeSnapshotName,
-      long mTreeSnapshotLength,
-      String tLogName,
-      long tLogLength,
-      String databaseName,
-      String typeString)
+      final String pattern,
+      final String mTreeSnapshotName,
+      final long mTreeSnapshotLength,
+      final String tLogName,
+      final long tLogLength,
+      final String databaseName,
+      final String typeString)
       throws IOException {
     final Map<String, String> parameters = new HashMap<>();
+    parameters.put(ColumnHeaderConstant.PATH_PATTERN, pattern);
     parameters.put(ColumnHeaderConstant.DATABASE, databaseName);
     parameters.put(ColumnHeaderConstant.TYPE, typeString);
     return new PipeTransferSchemaSnapshotSealReq()
@@ -99,7 +103,7 @@ public class PipeTransferSchemaSnapshotSealReq extends PipeTransferFileSealReqV2
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     return obj instanceof PipeTransferSchemaSnapshotSealReq && super.equals(obj);
   }
 

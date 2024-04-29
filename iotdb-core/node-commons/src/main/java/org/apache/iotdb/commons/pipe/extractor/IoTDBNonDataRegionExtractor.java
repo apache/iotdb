@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.pattern.PrefixPipePattern;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -63,7 +64,11 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
       throws Exception {
     super.customize(parameters, configuration);
 
-    final PipePattern pattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
+    PipePattern pattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
+    if (pattern instanceof PrefixPipePattern
+        && pattern.getPattern().equals(pattern.getDefaultPattern())) {
+      pattern = new IoTDBPipePattern(null);
+    }
     if (!(pattern instanceof IoTDBPipePattern && ((IoTDBPipePattern) pattern).isPrefix())) {
       throw new PipeException(
           "The source path be an IoTDB-style pattern and ends with '**' when schema transfer is included.");
@@ -176,7 +181,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     realtimeEvent =
         (PipeWritePlanEvent)
             realtimeEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-                pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+                pipeName, pipeTaskMeta, pipePattern, Long.MIN_VALUE, Long.MAX_VALUE);
     realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
     realtimeEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
     return realtimeEvent;

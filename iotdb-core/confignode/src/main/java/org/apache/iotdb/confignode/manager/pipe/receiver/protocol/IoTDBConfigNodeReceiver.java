@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeT
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
-import org.apache.iotdb.commons.pipe.pattern.PrefixPipePattern;
+import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -327,10 +327,12 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
     final Set<ConfigPhysicalPlanType> executionTypes =
         PipeConfigRegionSnapshotEvent.getConfigPhysicalPlanTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
+    final IoTDBPipePattern pattern =
+        new IoTDBPipePattern(parameters.get(ColumnHeaderConstant.PATH_PATTERN));
     final List<TSStatus> results = new ArrayList<>();
     while (generator.hasNext()) {
       IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
-          .process(generator.next(), new PrefixPipePattern("a"))
+          .process(generator.next(), pattern)
           .filter(configPhysicalPlan -> executionTypes.contains(configPhysicalPlan.getType()))
           .ifPresent(
               configPhysicalPlan ->
