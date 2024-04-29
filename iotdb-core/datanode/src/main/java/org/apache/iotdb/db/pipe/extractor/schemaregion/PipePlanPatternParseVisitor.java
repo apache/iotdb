@@ -93,19 +93,14 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
             new CreateAlignedTimeSeriesNode(
                 node.getPlanNodeId(),
                 node.getDevicePath(),
-                fromIndexToList(filteredIndexes, node.getMeasurements()),
-                fromIndexToList(filteredIndexes, node.getDataTypes()),
-                fromIndexToList(filteredIndexes, node.getEncodings()),
-                fromIndexToList(filteredIndexes, node.getCompressors()),
-                fromIndexToList(filteredIndexes, node.getAliasList()),
-                fromIndexToList(filteredIndexes, node.getTagsList()),
-                fromIndexToList(filteredIndexes, node.getAttributesList())))
+                IoTDBPipePattern.applyIndexesOnList(filteredIndexes, node.getMeasurements()),
+                IoTDBPipePattern.applyIndexesOnList(filteredIndexes, node.getDataTypes()),
+                IoTDBPipePattern.applyIndexesOnList(filteredIndexes, node.getEncodings()),
+                IoTDBPipePattern.applyIndexesOnList(filteredIndexes, node.getCompressors()),
+                IoTDBPipePattern.applyIndexesOnList(filteredIndexes, node.getAliasList()),
+                IoTDBPipePattern.applyIndexesOnList(filteredIndexes, node.getTagsList()),
+                IoTDBPipePattern.applyIndexesOnList(filteredIndexes, node.getAttributesList())))
         : Optional.empty();
-  }
-
-  public static <T> List<T> fromIndexToList(
-      final int[] filteredIndexes, final List<T> originalList) {
-    return Arrays.stream(filteredIndexes).mapToObj(originalList::get).collect(Collectors.toList());
   }
 
   @Override
@@ -180,7 +175,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
   @Override
   public Optional<PlanNode> visitActivateTemplate(
       final ActivateTemplateNode node, final IoTDBPipePattern pattern) {
-    return pattern.coversDevice(node.getActivatePath().getFullPath())
+    return pattern.matchDevice(node.getActivatePath().getFullPath())
         ? Optional.of(node)
         : Optional.empty();
   }
@@ -190,7 +185,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
       final InternalBatchActivateTemplateNode node, final IoTDBPipePattern pattern) {
     final Map<PartialPath, Pair<Integer, Integer>> filteredTemplateActivationMap =
         node.getTemplateActivationMap().entrySet().stream()
-            .filter(entry -> pattern.coversDevice(entry.getKey().getDevice()))
+            .filter(entry -> pattern.matchDevice(entry.getKey().getDevice()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     return !filteredTemplateActivationMap.isEmpty()
         ? Optional.of(
@@ -228,7 +223,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
       final BatchActivateTemplateNode node, final IoTDBPipePattern pattern) {
     final Map<PartialPath, Pair<Integer, Integer>> filteredTemplateActivationMap =
         node.getTemplateActivationMap().entrySet().stream()
-            .filter(entry -> pattern.coversDevice(entry.getKey().getDevice()))
+            .filter(entry -> pattern.matchDevice(entry.getKey().getDevice()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     return !filteredTemplateActivationMap.isEmpty()
         ? Optional.of(

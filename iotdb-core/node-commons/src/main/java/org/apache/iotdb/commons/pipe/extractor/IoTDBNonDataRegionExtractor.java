@@ -64,7 +64,9 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     super.customize(parameters, configuration);
 
     final PipePattern pattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
-    if (!(pattern instanceof IoTDBPipePattern && ((IoTDBPipePattern) pattern).isPrefix())) {
+    if (!(pattern instanceof IoTDBPipePattern
+        && (((IoTDBPipePattern) pattern).isPrefix()
+            || ((IoTDBPipePattern) pattern).isFullPath()))) {
       throw new IllegalArgumentException(
           "The source path be an IoTDB-style pattern and ends with '**' when schema transfer is included.");
     }

@@ -32,9 +32,12 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDele
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -46,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -99,6 +103,17 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
   }
 
   @Override
+  public Optional<ConfigPhysicalPlan> visitCreateSchemaTemplate(
+      final CreateSchemaTemplatePlan createSchemaTemplatePlan, final IoTDBPipePattern pattern) {
+    // This is a deserialized template and can be arbitrarily altered
+    final Template template = createSchemaTemplatePlan.getTemplate();
+    template.getSchemaMap().keySet().removeIf(pattern::matchTailNode);
+    return !template.getSchemaMap().isEmpty()
+        ? Optional.of(new CreateSchemaTemplatePlan(template.serialize().array()))
+        : Optional.empty();
+  }
+
+  @Override
   public Optional<ConfigPhysicalPlan> visitCommitSetSchemaTemplate(
       final CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan,
       final IoTDBPipePattern pattern) {
@@ -113,6 +128,28 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
       final IoTDBPipePattern pattern) {
     return pattern.matchPrefixPath(pipeUnsetSchemaTemplatePlan.getName())
         ? Optional.of(pipeUnsetSchemaTemplatePlan)
+        : Optional.empty();
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitExtendSchemaTemplate(
+      final ExtendSchemaTemplatePlan extendSchemaTemplatePlan, final IoTDBPipePattern pattern) {
+    final TemplateExtendInfo extendInfo = extendSchemaTemplatePlan.getTemplateExtendInfo();
+    final int[] filteredIndexes =
+        IntStream.range(0, extendInfo.getMeasurements().size())
+            .filter(index -> pattern.matchTailNode(extendInfo.getMeasurements().get(index)))
+            .toArray();
+    return filteredIndexes.length > 0
+        ? Optional.of(
+            new ExtendSchemaTemplatePlan(
+                new TemplateExtendInfo(
+                    extendInfo.getTemplateName(),
+                    IoTDBPipePattern.applyIndexesOnList(
+                        filteredIndexes, extendInfo.getMeasurements()),
+                    IoTDBPipePattern.applyIndexesOnList(filteredIndexes, extendInfo.getDataTypes()),
+                    IoTDBPipePattern.applyIndexesOnList(filteredIndexes, extendInfo.getEncodings()),
+                    IoTDBPipePattern.applyIndexesOnList(
+                        filteredIndexes, extendInfo.getCompressors()))))
         : Optional.empty();
   }
 

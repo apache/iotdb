@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.PipePlanPatternParseVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -105,7 +104,7 @@ public class PipeStatementPatternParseVisitor
   @Override
   public Optional<Statement> visitActivateTemplate(
       final ActivateTemplateStatement activateTemplateStatement, final IoTDBPipePattern pattern) {
-    return pattern.coversDevice(activateTemplateStatement.getPath().getFullPath())
+    return pattern.matchDevice(activateTemplateStatement.getPath().getFullPath())
         ? Optional.of(activateTemplateStatement)
         : Optional.empty();
   }
@@ -125,10 +124,10 @@ public class PipeStatementPatternParseVisitor
       return Optional.empty();
     }
     createLogicalViewStatement.setTargetFullPaths(
-        PipePlanPatternParseVisitor.fromIndexToList(
+        IoTDBPipePattern.applyIndexesOnList(
             filteredIndexes, createLogicalViewStatement.getTargetPathList()));
     createLogicalViewStatement.setViewExpressions(
-        PipePlanPatternParseVisitor.fromIndexToList(
+        IoTDBPipePattern.applyIndexesOnList(
             filteredIndexes, createLogicalViewStatement.getViewExpressions()));
 
     return Optional.of(createLogicalViewStatement);

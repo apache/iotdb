@@ -213,7 +213,9 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
       throw new IllegalArgumentException(String.format("Pattern \"%s\" is illegal.", pattern));
     }
     if (isDeleteData
-        && !(pattern instanceof IoTDBPipePattern && ((IoTDBPipePattern) pattern).isPrefix())) {
+        && !(pattern instanceof IoTDBPipePattern
+            && (((IoTDBPipePattern) pattern).isPrefix()
+                || ((IoTDBPipePattern) pattern).isFullPath()))) {
       throw new IllegalArgumentException(
           "The source path be an IoTDB-style pattern and ends with '**' when schema transfer is included.");
     }
