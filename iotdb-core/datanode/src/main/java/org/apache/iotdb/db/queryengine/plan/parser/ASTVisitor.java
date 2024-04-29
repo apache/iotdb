@@ -623,9 +623,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       SchemaFilter schemaFilter = parseTimeseriesWhereClause(ctx.timeseriesWhereClause());
       showTimeSeriesStatement.setSchemaFilter(schemaFilter);
     }
-    if (ctx.timeConditonClause() != null) {
+    if (ctx.timeConditionClause() != null) {
       showTimeSeriesStatement.setTimeCondition(
-          parseWhereClause(ctx.timeConditonClause().whereClause()));
+          parseWhereClause(ctx.timeConditionClause().whereClause()));
     }
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {
@@ -712,9 +712,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.devicesWhereClause() != null) {
       showDevicesStatement.setSchemaFilter(parseDevicesWhereClause(ctx.devicesWhereClause()));
     }
-    if (ctx.timeConditonClause() != null) {
+    if (ctx.timeConditionClause() != null) {
       showDevicesStatement.setTimeCondition(
-          parseWhereClause(ctx.timeConditonClause().whereClause()));
+          parseWhereClause(ctx.timeConditionClause().whereClause()));
     }
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {
@@ -763,6 +763,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       path = new PartialPath(SqlConstant.getSingleRootArray());
     }
+    if (ctx.timeConditionClause() != null) {
+      WhereCondition timeCondition = parseWhereClause(ctx.timeConditionClause().whereClause());
+      ShowDevicesStatement statement = new ShowDevicesStatement(path);
+      statement.setTimeCondition(timeCondition);
+      statement.setOutputCount(true);
+      return statement;
+    }
     return new CountDevicesStatement(path);
   }
 
@@ -775,6 +782,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       path = parsePrefixPath(ctx.prefixPath());
     } else {
       path = new PartialPath(SqlConstant.getSingleRootArray());
+    }
+    if (ctx.timeConditionClause() != null) {
+      WhereCondition timeCondition = parseWhereClause(ctx.timeConditionClause().whereClause());
+      ShowTimeSeriesStatement timeseriesStatement = new ShowTimeSeriesStatement(path, false);
+      timeseriesStatement.setTimeCondition(timeCondition);
+      timeseriesStatement.setOutputCount(true);
+      return timeseriesStatement;
     }
     if (ctx.INTEGER_LITERAL() != null) {
       int level = Integer.parseInt(ctx.INTEGER_LITERAL().getText());

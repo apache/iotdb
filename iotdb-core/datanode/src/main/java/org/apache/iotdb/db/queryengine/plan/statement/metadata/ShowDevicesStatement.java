@@ -42,6 +42,7 @@ public class ShowDevicesStatement extends ShowStatement {
   private SchemaFilter schemaFilter;
   private WhereCondition timeCondition;
   private Map<PartialPath, Boolean> devicePathToAlignedStatus;
+  boolean outputCount = false;
 
   public ShowDevicesStatement(PartialPath pathPattern) {
     super();
@@ -74,6 +75,14 @@ public class ShowDevicesStatement extends ShowStatement {
 
   public boolean hasSgCol() {
     return hasSgCol;
+  }
+
+  public void setOutputCount(boolean outputCount) {
+    this.outputCount = outputCount;
+  }
+
+  public boolean isOutputCount() {
+    return outputCount;
   }
 
   public void setTimeCondition(WhereCondition timeCondition) {

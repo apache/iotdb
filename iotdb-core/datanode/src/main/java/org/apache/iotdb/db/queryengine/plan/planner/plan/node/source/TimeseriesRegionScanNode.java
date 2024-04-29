@@ -48,10 +48,12 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
   public TimeseriesRegionScanNode(
       PlanNodeId planNodeId,
       Map<PartialPath, TimeseriesSchemaInfo> timeseriesToSchemaInfo,
+      boolean outputCount,
       TRegionReplicaSet regionReplicaSet) {
     super(planNodeId);
     this.timeseriesToSchemaInfo = timeseriesToSchemaInfo;
     this.regionReplicaSet = regionReplicaSet;
+    this.outputCount = outputCount;
   }
 
   public Map<PartialPath, TimeseriesSchemaInfo> getTimeseriesToSchemaInfo() {
@@ -71,7 +73,7 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
   @Override
   public PlanNode clone() {
     return new TimeseriesRegionScanNode(
-        getPlanNodeId(), getTimeseriesToSchemaInfo(), getRegionReplicaSet());
+        getPlanNodeId(), getTimeseriesToSchemaInfo(), isOutputCount(), getRegionReplicaSet());
   }
 
   @Override
@@ -103,7 +105,8 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
       TimeseriesSchemaInfo timeseriesSchemaInfo = TimeseriesSchemaInfo.deserialize(buffer);
       timeseriesToSchemaInfo.put(path, timeseriesSchemaInfo);
     }
-    return new TimeseriesRegionScanNode(null, timeseriesToSchemaInfo, null);
+    boolean outputCount = ReadWriteIOUtils.readBool(buffer);
+    return new TimeseriesRegionScanNode(null, timeseriesToSchemaInfo, outputCount, null);
   }
 
   @Override
@@ -114,6 +117,7 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
       entry.getKey().serialize(byteBuffer);
       entry.getValue().serializeAttributes(byteBuffer);
     }
+    ReadWriteIOUtils.write(outputCount, byteBuffer);
   }
 
   @Override
@@ -124,6 +128,7 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
       entry.getKey().serialize(stream);
       entry.getValue().serializeAttributes(stream);
     }
+    ReadWriteIOUtils.write(outputCount, stream);
   }
 
   @Override
@@ -160,11 +165,12 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
       return false;
     }
     TimeseriesRegionScanNode that = (TimeseriesRegionScanNode) o;
-    return timeseriesToSchemaInfo.equals(that.timeseriesToSchemaInfo);
+    return timeseriesToSchemaInfo.equals(that.timeseriesToSchemaInfo)
+        && outputCount == that.isOutputCount();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), timeseriesToSchemaInfo);
+    return Objects.hash(super.hashCode(), timeseriesToSchemaInfo, outputCount);
   }
 }

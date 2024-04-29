@@ -605,7 +605,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     if (showTimeSeriesStatement.hasTimeCondition()) {
       planBuilder =
           planBuilder
-              .planTimeseriesRegionScan(showTimeSeriesStatement.getTimeseriesToSchemas())
+              .planTimeseriesRegionScan(
+                  showTimeSeriesStatement.getTimeseriesToSchemas(),
+                  showTimeSeriesStatement.isOutputCount())
               .planLimit(limit)
               .planOffset(offset);
       return planBuilder.getRoot();
@@ -665,7 +667,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     if (showDevicesStatement.hasTimeCondition()) {
       planBuilder =
           planBuilder
-              .planDeviceRegionScan(showDevicesStatement.getDevicePathToAlignedStatus())
+              .planDeviceRegionScan(
+                  showDevicesStatement.getDevicePathToAlignedStatus(),
+                  showDevicesStatement.isOutputCount())
               .planLimit(showDevicesStatement.getLimit())
               .planOffset(showDevicesStatement.getOffset());
       return planBuilder.getRoot();

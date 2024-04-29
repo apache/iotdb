@@ -49,10 +49,12 @@ public class DeviceRegionScanNode extends RegionScanNode {
   public DeviceRegionScanNode(
       PlanNodeId planNodeId,
       Map<PartialPath, Boolean> devicePathsToAligned,
+      boolean outputCount,
       TRegionReplicaSet regionReplicaSet) {
     super(planNodeId);
     this.devicePathsToAligned = devicePathsToAligned;
     this.regionReplicaSet = regionReplicaSet;
+    this.outputCount = outputCount;
   }
 
   public Map<PartialPath, Boolean> getDevicePathsToAligned() {
@@ -72,7 +74,7 @@ public class DeviceRegionScanNode extends RegionScanNode {
   @Override
   public PlanNode clone() {
     return new DeviceRegionScanNode(
-        getPlanNodeId(), getDevicePathsToAligned(), getRegionReplicaSet());
+        getPlanNodeId(), getDevicePathsToAligned(), isOutputCount(), getRegionReplicaSet());
   }
 
   @Override
@@ -104,8 +106,9 @@ public class DeviceRegionScanNode extends RegionScanNode {
       boolean aligned = ReadWriteIOUtils.readBool(buffer);
       devicePathsToAligned.put(path, aligned);
     }
+    boolean outputCount = ReadWriteIOUtils.readBool(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new DeviceRegionScanNode(planNodeId, devicePathsToAligned, null);
+    return new DeviceRegionScanNode(planNodeId, devicePathsToAligned, outputCount, null);
   }
 
   @Override
@@ -116,6 +119,7 @@ public class DeviceRegionScanNode extends RegionScanNode {
       entry.getKey().serialize(byteBuffer);
       ReadWriteIOUtils.write(entry.getValue(), byteBuffer);
     }
+    ReadWriteIOUtils.write(outputCount, byteBuffer);
   }
 
   @Override
@@ -126,6 +130,7 @@ public class DeviceRegionScanNode extends RegionScanNode {
       entry.getKey().serialize(stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
+    ReadWriteIOUtils.write(outputCount, stream);
   }
 
   @Override
@@ -157,11 +162,12 @@ public class DeviceRegionScanNode extends RegionScanNode {
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     DeviceRegionScanNode that = (DeviceRegionScanNode) o;
-    return devicePathsToAligned.equals(that.devicePathsToAligned);
+    return devicePathsToAligned.equals(that.devicePathsToAligned)
+        && outputCount == that.isOutputCount();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), devicePathsToAligned);
+    return Objects.hash(super.hashCode(), devicePathsToAligned, outputCount);
   }
 }

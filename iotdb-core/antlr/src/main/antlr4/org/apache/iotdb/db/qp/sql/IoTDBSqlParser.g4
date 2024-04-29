@@ -178,18 +178,18 @@ aliasClause
     : ALIAS operator_eq alias
     ;
 
-timeConditonClause
+timeConditionClause
     :whereClause
     ;
 
 // ---- Show Devices
 showDevices
-    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? devicesWhereClause? timeConditonClause? rowPaginationClause?
+    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? devicesWhereClause? timeConditionClause? rowPaginationClause?
     ;
 
 // ---- Show Timeseries
 showTimeseries
-    : SHOW LATEST? TIMESERIES prefixPath? timeseriesWhereClause? timeConditonClause? rowPaginationClause?
+    : SHOW LATEST? TIMESERIES prefixPath? timeseriesWhereClause? timeConditionClause? rowPaginationClause?
     ;
 
 // ---- Show Child Paths
@@ -204,12 +204,12 @@ showChildNodes
 
 // ---- Count Devices
 countDevices
-    : COUNT DEVICES prefixPath?
+    : COUNT DEVICES prefixPath? timeConditionClause?
     ;
 
 // ---- Count Timeseries
 countTimeseries
-    : COUNT TIMESERIES prefixPath? timeseriesWhereClause? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
+    : COUNT TIMESERIES prefixPath? timeseriesWhereClause? timeConditionClause? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
     ;
 
 // ---- Count Nodes

@@ -1647,18 +1647,18 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planDeviceRegionScan(
-      Map<PartialPath, Boolean> devicePathToAlignedStatus) {
+      Map<PartialPath, Boolean> devicePathToAlignedStatus, boolean outputCount) {
     this.root =
         new DeviceRegionScanNode(
-            context.getQueryId().genPlanNodeId(), devicePathToAlignedStatus, null);
+            context.getQueryId().genPlanNodeId(), devicePathToAlignedStatus, outputCount, null);
     return this;
   }
 
   public LogicalPlanBuilder planTimeseriesRegionScan(
-      Map<PartialPath, TimeseriesSchemaInfo> timeseriesToSchemaInfo) {
+      Map<PartialPath, TimeseriesSchemaInfo> timeseriesToSchemaInfo, boolean outputCount) {
     this.root =
         new TimeseriesRegionScanNode(
-            context.getQueryId().genPlanNodeId(), timeseriesToSchemaInfo, null);
+            context.getQueryId().genPlanNodeId(), timeseriesToSchemaInfo, outputCount, null);
     return this;
   }
 }

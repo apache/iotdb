@@ -45,6 +45,7 @@ public class ShowTimeSeriesStatement extends ShowStatement {
   private final boolean orderByHeat;
   private WhereCondition timeCondition;
   private Map<PartialPath, TimeseriesSchemaInfo> timeseriesToSchemas;
+  boolean outputCount = false;
 
   public ShowTimeSeriesStatement(PartialPath pathPattern, boolean orderByHeat) {
     super();
@@ -86,6 +87,14 @@ public class ShowTimeSeriesStatement extends ShowStatement {
 
   public Map<PartialPath, TimeseriesSchemaInfo> getTimeseriesToSchemas() {
     return timeseriesToSchemas;
+  }
+
+  public void setOutputCount(boolean outputCount) {
+    this.outputCount = outputCount;
+  }
+
+  public boolean isOutputCount() {
+    return outputCount;
   }
 
   @Override
