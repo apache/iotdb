@@ -1491,6 +1491,7 @@ public class TsFileProcessor {
   public void putMemTableBackAndClose() throws TsFileProcessorException {
     if (workMemTable != null) {
       workMemTable.release();
+      dataRegionInfo.releaseStorageGroupMemCost(workMemTable.getTVListsRamCost());
       workMemTable = null;
     }
     try {

@@ -55,6 +55,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
@@ -94,8 +95,12 @@ public class DataRegionTest {
   private DataRegion dataRegion;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
+  private double preWriteMemoryVariationReportProportion =
+      config.getWriteMemoryVariationReportProportion();
+
   @Before
   public void setUp() throws Exception {
+    config.setWriteMemoryVariationReportProportion(0);
     EnvironmentUtils.envSetUp();
     dataRegion = new DummyDataRegion(systemDir, storageGroup);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
@@ -111,6 +116,7 @@ public class DataRegionTest {
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     CompactionTaskManager.getInstance().stop();
     EnvironmentUtils.cleanEnv();
+    config.setWriteMemoryVariationReportProportion(preWriteMemoryVariationReportProportion);
   }
 
   public static InsertRowNode buildInsertRowNodeByTSRecord(TSRecord record)
@@ -308,6 +314,86 @@ public class DataRegionTest {
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
+  }
+
+  @Test
+  public void testIoTDBTabletWriteAndDeleteDataRegion()
+      throws QueryProcessException, IllegalPathException, WriteProcessException,
+          TsFileProcessorException {
+    String[] measurements = new String[2];
+    measurements[0] = "s0";
+    measurements[1] = "s1";
+    TSDataType[] dataTypes = new TSDataType[2];
+    dataTypes[0] = TSDataType.INT32;
+    dataTypes[1] = TSDataType.INT64;
+
+    MeasurementSchema[] measurementSchemas = new MeasurementSchema[2];
+    measurementSchemas[0] = new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN);
+    measurementSchemas[1] = new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
+
+    long[] times = new long[100];
+    Object[] columns = new Object[2];
+    columns[0] = new int[100];
+    columns[1] = new long[100];
+
+    for (int r = 0; r < 100; r++) {
+      times[r] = r;
+      ((int[]) columns[0])[r] = 1;
+      ((long[]) columns[1])[r] = 1;
+    }
+
+    InsertTabletNode insertTabletNode1 =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.vehicle.d0"),
+            false,
+            measurements,
+            dataTypes,
+            measurementSchemas,
+            times,
+            null,
+            columns,
+            times.length);
+
+    dataRegion.insertTablet(insertTabletNode1);
+
+    for (int r = 50; r < 149; r++) {
+      times[r - 50] = r;
+      ((int[]) columns[0])[r - 50] = 1;
+      ((long[]) columns[1])[r - 50] = 1;
+    }
+
+    InsertTabletNode insertTabletNode2 =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath("root.vehicle.d0"),
+            false,
+            measurements,
+            dataTypes,
+            measurementSchemas,
+            times,
+            null,
+            columns,
+            times.length);
+
+    dataRegion.insertTablet(insertTabletNode2);
+    Assert.assertTrue(SystemInfo.getInstance().getTotalMemTableSize() > 0);
+    System.out.println(SystemInfo.getInstance().getTotalMemTableSize());
+    long start = System.nanoTime();
+    dataRegion.syncDeleteDataFiles();
+    System.out.println(System.nanoTime() - start);
+    Assert.assertEquals(0, SystemInfo.getInstance().getTotalMemTableSize());
+
+    QueryDataSource queryDataSource =
+        dataRegion.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
+            context,
+            null,
+            null);
+
+    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
   }
 
   @Test

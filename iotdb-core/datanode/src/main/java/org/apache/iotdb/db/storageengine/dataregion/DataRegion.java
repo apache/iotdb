@@ -1573,6 +1573,8 @@ public class DataRegion implements IDataRegionForQuery {
       this.tsFileManager.clear();
       lastFlushTimeMap.clearFlushedTime();
       lastFlushTimeMap.clearGlobalFlushedTime();
+      TimePartitionManager.getInstance()
+          .removeTimePartitionInfo(new DataRegionId(Integer.parseInt(dataRegionId)));
     } finally {
       writeUnlock();
     }
@@ -1770,6 +1772,7 @@ public class DataRegion implements IDataRegionForQuery {
           new ArrayList<>(workUnsequenceTsFileProcessors.values())) {
         tsFileProcessor.putMemTableBackAndClose();
       }
+      WritingMetrics.getInstance().recordActiveTimePartitionCount(-1);
     } finally {
       writeUnlock();
     }
