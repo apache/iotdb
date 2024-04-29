@@ -250,9 +250,9 @@ public class CommonConfig {
   private boolean lastCacheEnable = true;
 
   // Max size for tag and attribute of one time series
-  private int tagAttributeTotalSize = 50;
-  private int tagAttributeEachMaxNum = 3;
-  private int tagAttributeEachMaxSize = 30;
+  private int tagAttributeTotalSize = 700;
+  private int tagAttributeEachMaxNum = 20;
+  private int tagAttributeEachMaxSize = 100;
 
   // maximum number of Cluster Databases allowed
   private int databaseLimitThreshold = -1;

@@ -121,7 +121,7 @@ public class TagLogFile implements AutoCloseable {
     ByteBuffer byteBuffer = ByteBuffer.allocate(MAX_LENGTH);
     fileChannel.read(byteBuffer, position);
     byteBuffer.flip();
-    if (byteBuffer.limit() > 0) {// This indicates that there is data at this position
+    if (byteBuffer.limit() > 0) { // This indicates that there is data at this position
       int firstInt = ReadWriteIOUtils.readInt(byteBuffer); // first int
       byteBuffer.position(0);
       if (firstInt < -1) { // This position is blockNum, the original data occupies multiple blocks
@@ -159,7 +159,8 @@ public class TagLogFile implements AutoCloseable {
       if (firstInt < -1) { // This position is blockNum, the original data occupies multiple blocks
         int blockNum = -firstInt;
         int blockOffsetStoreLen =
-            (((blockNum - 1) * Long.BYTES + 4) / MAX_LENGTH + 1) * MAX_LENGTH; // blockOffset storage length
+            (((blockNum - 1) * Long.BYTES + 4) / MAX_LENGTH + 1)
+                * MAX_LENGTH; // blockOffset storage length
         ByteBuffer blockBuffer = ByteBuffer.allocate(blockOffsetStoreLen);
         blockBuffer.put(byteBuffer);
         blockBuffer.position(4); // Skip blockNum
@@ -168,7 +169,9 @@ public class TagLogFile implements AutoCloseable {
           blockOffset.add(ReadWriteIOUtils.readLong(blockBuffer));
           // Every time you read an offset, use filechannel's read to read it
           if (MAX_LENGTH * (i + 1)
-              <= blockOffsetStoreLen) { // Compared with directly reading bytebuffer, some reading operations are reduced, only the content of offset is read
+              <= blockOffsetStoreLen) { // Compared with directly reading bytebuffer, some reading
+            // operations are reduced, only the content of offset is
+            // read
             blockBuffer.position(MAX_LENGTH * i);
             blockBuffer.limit(MAX_LENGTH * (i + 1));
             fileChannel.read(blockBuffer, blockOffset.get(i));
@@ -218,10 +221,13 @@ public class TagLogFile implements AutoCloseable {
           "ByteBuffer capacity is smaller than tagAttributeTotalSize, which is not allowed.");
     }
     if (blockNumReal == 1 && blockOffset.size() == 1) {
-      // If the original data occupies only one block and the new data occupies only one block, the original space is used
+      // If the original data occupies only one block and the new data occupies only one block, the
+      // original space is used
       fileChannel.write(byteBuffer, blockOffset.get(0));
     } else {
-      if (blockOffset.size() > blockNumReal) { // if the original space is larger than the new space, the original space is used
+      if (blockOffset.size()
+          > blockNumReal) { // if the original space is larger than the new space, the original
+        // space is used
         ByteBuffer byteBufferFinal = ByteBuffer.allocate(blockOffset.size() * MAX_LENGTH);
         byteBufferFinal.putInt(-blockOffset.size());
         for (int i = 1; i < blockOffset.size(); i++) {
@@ -296,17 +302,14 @@ public class TagLogFile implements AutoCloseable {
     } else {
       // get from Num*MAX_LENGTH < TotalMapSize + 4 + Long.BYTES*Num <= MAX_LENGTH*(Num + 1)
       double blockNumMinLimit =
-          (TotalMapSize + 4 - MAX_LENGTH)
-              / (double)
-                  (MAX_LENGTH - Long.BYTES);
-      int blockNum = (int) Math.round(Math.ceil(blockNumMinLimit)) + 1; // there are two solution, but choose the smaller one
+          (TotalMapSize + 4 - MAX_LENGTH) / (double) (MAX_LENGTH - Long.BYTES);
+      int blockNum =
+          (int) Math.round(Math.ceil(blockNumMinLimit))
+              + 1; // there are two solution, but choose the smaller one
 
       byteBuffer = ByteBuffer.allocate(blockNum * MAX_LENGTH);
       // 4 bytes for blockNumSize, blockNum*Long.BYTES for blockOffset
-      byteBuffer.position(
-          4
-              + (blockNum - 1)
-                  * Long.BYTES);
+      byteBuffer.position(4 + (blockNum - 1) * Long.BYTES);
     }
     serializeMap(tagMap, byteBuffer);
     serializeMap(attributeMap, byteBuffer);

@@ -181,18 +181,14 @@ public class TagManager {
 
     int memorySize = 0;
     if (tagIndexNewSize - tagIndexOldSize == 1) {
-      // 4 is the memory occupied by the length of the string, tagKey.length() is the length of tagKey, and the last 4 is the memory occupied by the size of tagvaluemap
-      memorySize +=
-          4
-              + tagKey.length()
-              + 4;
+      // 4 is the memory occupied by the length of the string, tagKey.length() is the length of
+      // tagKey, and the last 4 is the memory occupied by the size of tagvaluemap
+      memorySize += 4 + tagKey.length() + 4;
     }
     if (tagValueMapNewSize - tagValueMapOldSize == 1) {
-      // 4 is the memory occupied by the length of the string, tagValue.length() is the length of tagValue, and the last 4 is the memory occupied by the size of measurementsSet
-      memorySize +=
-          4
-              + tagValue.length()
-              + 4;
+      // 4 is the memory occupied by the length of the string, tagValue.length() is the length of
+      // tagValue, and the last 4 is the memory occupied by the size of measurementsSet
+      memorySize += 4 + tagValue.length() + 4;
     }
     if (measurementsSetNewSize - measurementsSetOldSize == 1) {
       // 8 is the memory occupied by the length of the IMeasurementMNode
@@ -220,18 +216,16 @@ public class TagManager {
     }
     if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
       if (tagIndex.get(tagKey).remove(tagValue) != null) {
-        // 4 is the memory occupied by the length of the string, tagValue.length() is the length of tagValue, and the last 4 is the memory occupied by the size of IMeasurementMNodeSet
-        memorySize +=
-            4
-                + tagValue.length()
-                + 4;
+        // 4 is the memory occupied by the length of the string, tagValue.length() is the length of
+        // tagValue, and the last 4 is the memory occupied by the size of IMeasurementMNodeSet
+        memorySize += 4 + tagValue.length() + 4;
       }
     }
     if (tagIndex.get(tagKey).isEmpty()) {
       if (tagIndex.remove(tagKey) != null) {
-        // 4 is the memory occupied by the length of the string, tagKey.length() is the length of tagKey, and the last 4 is the memory occupied by the size of tagValueMap
-        memorySize +=
-            4 + tagKey.length() + 4;
+        // 4 is the memory occupied by the length of the string, tagKey.length() is the length of
+        // tagKey, and the last 4 is the memory occupied by the size of tagValueMap
+        memorySize += 4 + tagKey.length() + 4;
       }
     }
     releaseMemory(memorySize);
