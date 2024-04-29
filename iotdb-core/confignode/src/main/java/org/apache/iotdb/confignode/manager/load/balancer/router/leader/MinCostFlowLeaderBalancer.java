@@ -126,25 +126,26 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
       String database = databaseEntry.getKey();
       sDNodeMap.put(database, new TreeMap<>());
       sDNodeReflect.put(database, new TreeMap<>());
-      List<TConsensusGroupId> regionGroupIds = databaseEntry.getValue();
-      for (TConsensusGroupId regionGroupId : regionGroupIds) {
-        rNodeMap.put(regionGroupId, maxNode++);
-        regionLocationMap
-            .get(regionGroupId)
-            .forEach(
-                dataNodeId -> {
-                  if (isDataNodeAvailable(dataNodeId)) {
-                    if (!sDNodeMap.get(database).containsKey(dataNodeId)) {
-                      sDNodeMap.get(database).put(dataNodeId, maxNode);
-                      sDNodeReflect.get(database).put(maxNode, dataNodeId);
-                      maxNode += 1;
+      for (TConsensusGroupId regionGroupId : databaseEntry.getValue()) {
+        if (regionGroupIntersection.contains(regionGroupId)) {
+          rNodeMap.put(regionGroupId, maxNode++);
+          regionLocationMap
+              .get(regionGroupId)
+              .forEach(
+                  dataNodeId -> {
+                    if (isDataNodeAvailable(dataNodeId)) {
+                      if (!sDNodeMap.get(database).containsKey(dataNodeId)) {
+                        sDNodeMap.get(database).put(dataNodeId, maxNode);
+                        sDNodeReflect.get(database).put(maxNode, dataNodeId);
+                        maxNode += 1;
+                      }
+                      if (!tDNodeMap.containsKey(dataNodeId)) {
+                        tDNodeMap.put(dataNodeId, maxNode);
+                        maxNode += 1;
+                      }
                     }
-                    if (!tDNodeMap.containsKey(dataNodeId)) {
-                      tDNodeMap.put(dataNodeId, maxNode);
-                      maxNode += 1;
-                    }
-                  }
-                });
+                  });
+        }
       }
     }
 
@@ -166,24 +167,27 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
         databaseRegionGroupMap.entrySet()) {
       String database = databaseEntry.getKey();
       for (TConsensusGroupId regionGroupId : databaseEntry.getValue()) {
-        int rNode = rNodeMap.get(regionGroupId);
-        regionLocationMap
-            .get(regionGroupId)
-            .forEach(
-                dataNodeId -> {
-                  if (isDataNodeAvailable(dataNodeId)
-                      && isRegionAvailable(regionGroupId, dataNodeId)) {
-                    int sDNode = sDNodeMap.get(database).get(dataNodeId);
-                    // Capacity: 1, Cost: 1 if sDNode is the current leader of the rNode, 0
-                    // otherwise.
-                    // Therefore, the RegionGroup will keep the leader as constant as possible.
-                    int cost =
-                        Objects.equals(regionLeaderMap.getOrDefault(regionGroupId, -1), dataNodeId)
-                            ? 0
-                            : 1;
-                    addAdjacentEdges(rNode, sDNode, 1, cost);
-                  }
-                });
+        if (regionGroupIntersection.contains(regionGroupId)) {
+          int rNode = rNodeMap.get(regionGroupId);
+          regionLocationMap
+              .get(regionGroupId)
+              .forEach(
+                  dataNodeId -> {
+                    if (isDataNodeAvailable(dataNodeId)
+                        && isRegionAvailable(regionGroupId, dataNodeId)) {
+                      int sDNode = sDNodeMap.get(database).get(dataNodeId);
+                      // Capacity: 1, Cost: 1 if sDNode is the current leader of the rNode, 0
+                      // otherwise.
+                      // Therefore, the RegionGroup will keep the leader as constant as possible.
+                      int cost =
+                          Objects.equals(
+                                  regionLeaderMap.getOrDefault(regionGroupId, -1), dataNodeId)
+                              ? 0
+                              : 1;
+                      addAdjacentEdges(rNode, sDNode, 1, cost);
+                    }
+                  });
+        }
       }
     }
 
@@ -194,21 +198,23 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
       // Map<DataNodeId, leader number>
       Map<Integer, Integer> leaderCounter = new TreeMap<>();
       for (TConsensusGroupId regionGroupId : databaseEntry.getValue()) {
-        regionLocationMap
-            .get(regionGroupId)
-            .forEach(
-                dataNodeId -> {
-                  if (isDataNodeAvailable(dataNodeId)) {
-                    int sDNode = sDNodeMap.get(database).get(dataNodeId);
-                    int tDNode = tDNodeMap.get(dataNodeId);
-                    int leaderCount = leaderCounter.merge(dataNodeId, 1, Integer::sum);
-                    // Capacity: 1, Cost: x^2 for the x-th edge at the current sDNode.
-                    // Thus, the leader distribution will be as balance as possible within each
-                    // Database
-                    // based on the Jensen's-Inequality.
-                    addAdjacentEdges(sDNode, tDNode, 1, leaderCount * leaderCount);
-                  }
-                });
+        if (regionGroupIntersection.contains(regionGroupId)) {
+          regionLocationMap
+              .get(regionGroupId)
+              .forEach(
+                  dataNodeId -> {
+                    if (isDataNodeAvailable(dataNodeId)) {
+                      int sDNode = sDNodeMap.get(database).get(dataNodeId);
+                      int tDNode = tDNodeMap.get(dataNodeId);
+                      int leaderCount = leaderCounter.merge(dataNodeId, 1, Integer::sum);
+                      // Capacity: 1, Cost: x^2 for the x-th edge at the current sDNode.
+                      // Thus, the leader distribution will be as balance as possible within each
+                      // Database
+                      // based on the Jensen's-Inequality.
+                      addAdjacentEdges(sDNode, tDNode, 1, leaderCount * leaderCount);
+                    }
+                  });
+        }
       }
     }
 
@@ -220,7 +226,7 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
         (regionGroupId, dataNodeIds) ->
             dataNodeIds.forEach(
                 dataNodeId -> {
-                  if (isDataNodeAvailable(dataNodeId)) {
+                  if (isDataNodeAvailable(dataNodeId) && tDNodeMap.containsKey(dataNodeId)) {
                     int tDNode = tDNodeMap.get(dataNodeId);
                     int leaderCount = maxLeaderCounter.merge(dataNodeId, 1, Integer::sum);
                     // Cost: x^2 for the x-th edge at the current dNode.
