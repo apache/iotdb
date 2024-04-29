@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.tree.SchemaIterator;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowTimeSeriesResult;
@@ -56,6 +57,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.stream.Collectors.toList;
 
@@ -76,8 +78,11 @@ public class TagManager {
   private final Map<String, Map<String, Set<IMeasurementMNode<?>>>> tagIndex =
       new ConcurrentHashMap<>();
 
-  public TagManager(String sgSchemaDirPath) throws IOException {
+  private final MemSchemaRegionStatistics regionStatistics;
+  private final AtomicLong memoryUsage = new AtomicLong(0);
+  public TagManager(String sgSchemaDirPath, MemSchemaRegionStatistics regionStatistics) throws IOException {
     tagLogFile = new TagLogFile(sgSchemaDirPath, SchemaConstant.TAG_LOG);
+    this.regionStatistics = regionStatistics;
   }
 
   public synchronized boolean createSnapshot(File targetDir) {
@@ -120,7 +125,7 @@ public class TagManager {
     }
   }
 
-  public static TagManager loadFromSnapshot(File snapshotDir, String sgSchemaDirPath)
+  public static TagManager loadFromSnapshot(File snapshotDir, String sgSchemaDirPath, MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     File tagSnapshot =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.TAG_LOG_SNAPSHOT);
@@ -131,7 +136,7 @@ public class TagManager {
 
     try {
       org.apache.commons.io.FileUtils.copyFile(tagSnapshot, tagFile);
-      return new TagManager(sgSchemaDirPath);
+      return new TagManager(sgSchemaDirPath, regionStatistics);
     } catch (IOException e) {
       if (!tagFile.delete()) {
         logger.warn(
@@ -156,10 +161,35 @@ public class TagManager {
     if (tagKey == null || tagValue == null || measurementMNode == null) {
       return;
     }
-    tagIndex
-        .computeIfAbsent(tagKey, k -> new ConcurrentHashMap<>())
-        .computeIfAbsent(tagValue, v -> Collections.synchronizedSet(new HashSet<>()))
-        .add(measurementMNode);
+
+    // 原先的tagindex大小
+    int tagIndexOldSize = tagIndex.size();
+    Map<String, Set<IMeasurementMNode<?>>> tagValueMap = tagIndex.computeIfAbsent(tagKey, k -> new ConcurrentHashMap<>());
+    // 新的tagindex大小
+    int tagIndexNewSize = tagIndex.size();
+    // 旧的tagValueMap的大小
+    int tagValueMapOldSize = tagValueMap.size();
+    Set<IMeasurementMNode<?>> measurementsSet = tagValueMap.computeIfAbsent(tagValue, v -> Collections.synchronizedSet(new HashSet<>()));
+    // 新的tagValueMap的大小
+    int tagValueMapNewSize = tagValueMap.size();
+    // 旧的measurementsSet的大小
+    int measurementsSetOldSize = measurementsSet.size();
+    measurementsSet.add(measurementMNode);
+    // 新的measurementsSet的大小
+    int measurementsSetNewSize = measurementsSet.size();
+
+    // 计算新增的内存占用
+    int memorySize = 0;
+    if(tagIndexNewSize - tagIndexOldSize == 1) {
+      memorySize += 4 + tagKey.length() + 4;// 这里的4是string的长度占据的内存，tagKey.length()是tagKey的长度，最后的4是tagvaluemap的size占据的内存
+    }
+    if(tagValueMapNewSize - tagValueMapOldSize == 1) {
+      memorySize += 4 + tagValue.length() + 4;// 这里的4是string的长度占据的内存，tagValue.length()是tagValue的长度，最后的4是measurementsSet的size占据的内存
+    }
+    if(measurementsSetNewSize - measurementsSetOldSize == 1) {
+      memorySize += 8;// 这里的8是IMeasurementMNode<?>的引用的大小
+    }
+    requestMemory(memorySize);
   }
 
   public void addIndex(Map<String, String> tagsMap, IMeasurementMNode<?> measurementMNode) {
@@ -171,10 +201,25 @@ public class TagManager {
   }
 
   public void removeIndex(String tagKey, String tagValue, IMeasurementMNode<?> measurementMNode) {
-    tagIndex.get(tagKey).get(tagValue).remove(measurementMNode);
-    if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
-      tagIndex.get(tagKey).remove(tagValue);
+    if(tagKey == null || tagValue == null || measurementMNode == null) {
+      return;
     }
+    // 初始化需要释放的内存占用
+    int memorySize = 0;
+    if(tagIndex.get(tagKey).get(tagValue).remove(measurementMNode)) {
+      memorySize += 8;
+    }
+    if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
+      if(tagIndex.get(tagKey).remove(tagValue) != null) {
+        memorySize += 4 + tagValue.length() + 4;// 这里分别是指string的长度占据的内存，tagValue的长度，以及measurementsSet的size占据的内存
+      }
+    }
+    if (tagIndex.get(tagKey).isEmpty()) {
+      if(tagIndex.remove(tagKey) != null) {
+        memorySize += 4 + tagKey.length() + 4;// 这里分别是指string的长度占据的内存，tagKey的长度，以及tagValueMap的size占据的内存
+      }
+    }
+    releaseMemory(memorySize);
   }
 
   private List<IMeasurementMNode<?>> getMatchedTimeseriesInIndex(TagFilter tagFilter) {
@@ -323,13 +368,9 @@ public class TagManager {
                     entry.getValue(),
                     node.getOffset()));
           }
-          tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
-          if (tagIndex.get(entry.getKey()).get(entry.getValue()).isEmpty()) {
-            tagIndex.get(entry.getKey()).remove(entry.getValue());
-            if (tagIndex.get(entry.getKey()).isEmpty()) {
-              tagIndex.remove(entry.getKey());
-            }
-          }
+
+          removeIndex(entry.getKey(), entry.getValue(), node);
+
         } else {
           if (logger.isDebugEnabled()) {
             logger.debug(
@@ -381,6 +422,7 @@ public class TagManager {
             }
 
             removeIndex(key, beforeValue, leafMNode);
+
           } else {
             if (logger.isDebugEnabled()) {
               logger.debug(
@@ -500,42 +542,30 @@ public class TagManager {
     // persist the change to disk
     tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
 
-    Map<String, Set<IMeasurementMNode<?>>> tagVal2LeafMNodeSet;
-    Set<IMeasurementMNode<?>> nodeSet;
-    for (Map.Entry<String, String> entry : deleteTag.entrySet()) {
-      String key = entry.getKey();
-      String value = entry.getValue();
-      // change the tag inverted index map
-      tagVal2LeafMNodeSet = tagIndex.get(key);
-      if (tagVal2LeafMNodeSet != null) {
-        nodeSet = tagVal2LeafMNodeSet.get(value);
-        if (nodeSet != null) {
+    if (!deleteTag.isEmpty()) {
+      for (Map.Entry<String, String> entry : deleteTag.entrySet()) {
+        if (tagIndex.containsKey((entry.getKey())) && tagIndex.get(entry.getKey()).containsKey(entry.getValue())) {
           if (logger.isDebugEnabled()) {
             logger.debug(
-                String.format(
-                    String.format(DEBUG_MSG, "Drop" + TAG_FORMAT, leafMNode.getFullPath()),
-                    entry.getKey(),
-                    entry.getValue(),
-                    leafMNode.getOffset()));
+                    String.format(
+                            String.format(DEBUG_MSG, "Drop" + TAG_FORMAT, leafMNode.getFullPath()),
+                            entry.getKey(),
+                            entry.getValue(),
+                            leafMNode.getOffset()));
           }
 
-          nodeSet.remove(leafMNode);
-          if (nodeSet.isEmpty()) {
-            tagVal2LeafMNodeSet.remove(value);
-            if (tagVal2LeafMNodeSet.isEmpty()) {
-              tagIndex.remove(key);
-            }
+          removeIndex(entry.getKey(), entry.getValue(), leafMNode);
+
+        } else {
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                    String.format(
+                            String.format(DEBUG_MSG_1, "Drop" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                            entry.getKey(),
+                            entry.getValue(),
+                            leafMNode.getOffset(),
+                            tagIndex.containsKey(entry.getKey())));
           }
-        }
-      } else {
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              String.format(
-                  String.format(DEBUG_MSG_1, "Drop" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
-                  key,
-                  value,
-                  leafMNode.getOffset(),
-                  tagIndex.containsKey(key)));
         }
       }
     }
@@ -593,7 +623,8 @@ public class TagManager {
                   leafMNode.getOffset()));
         }
 
-        tagIndex.get(key).get(beforeValue).remove(leafMNode);
+        removeIndex(key, beforeValue, leafMNode);
+
       } else {
         if (logger.isDebugEnabled()) {
           logger.debug(
@@ -650,7 +681,7 @@ public class TagManager {
                   leafMNode.getOffset()));
         }
 
-        tagIndex.get(oldKey).get(value).remove(leafMNode);
+        removeIndex(oldKey, value, leafMNode);
 
       } else {
         if (logger.isDebugEnabled()) {
@@ -704,9 +735,24 @@ public class TagManager {
 
   public void clear() throws IOException {
     this.tagIndex.clear();
+    releaseMemory((int) memoryUsage.get());
     if (tagLogFile != null) {
       tagLogFile.close();
       tagLogFile = null;
+    }
+  }
+
+  private void requestMemory(int size) {
+    if (regionStatistics != null) {
+      memoryUsage.addAndGet(size);
+      regionStatistics.requestMemory(size);
+    }
+  }
+
+  private void releaseMemory(int size) {
+    if (regionStatistics != null) {
+      memoryUsage.addAndGet(-size);
+      regionStatistics.releaseMemory(size);
     }
   }
 }

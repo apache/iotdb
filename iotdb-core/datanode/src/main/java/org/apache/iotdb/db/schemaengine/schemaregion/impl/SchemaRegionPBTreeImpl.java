@@ -33,10 +33,7 @@ import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
-import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
@@ -193,7 +190,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       // do not write log when recover
       isRecovering = true;
 
-      tagManager = new TagManager(schemaRegionDirPath);
+      tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mtree =
           new MTreeBelowSGCachedImpl(
               new PartialPath(storageGroupFullPath),
@@ -509,7 +506,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       isRecovering = true;
 
       long tagSnapshotStartTime = System.currentTimeMillis();
-      tagManager = TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath);
+      tagManager = TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath, regionStatistics);
       logger.info(
           "Tag snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
@@ -1068,6 +1065,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       throws MetadataException, IOException {
     // upsert alias
     upsertAlias(alias, fullPath);
+    while (!regionStatistics.isAllowToCreateNewSeries()) {
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
+    }
     IMeasurementMNode<ICachedMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     try {
       if (tagsMap == null && attributesMap == null) {
@@ -1094,9 +1094,14 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   private void upsertAlias(String alias, PartialPath fullPath)
       throws MetadataException, IOException {
-    if (mtree.changeAlias(alias, fullPath)) {
-      // persist to WAL
-      writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(fullPath, alias));
+    if(alias != null) {
+      while (!regionStatistics.isAllowToCreateNewSeries()) {
+        ReleaseFlushMonitor.getInstance().waitIfReleasing();
+      }
+      if (mtree.changeAlias(alias, fullPath)) {
+        // persist to WAL
+        writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(fullPath, alias));
+      }
     }
   }
 
@@ -1136,6 +1141,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @Override
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
+    while (!regionStatistics.isAllowToCreateNewSeries()) {
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
+    }
     IMeasurementMNode<ICachedMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     try {
       // no tag or attribute, we need to add a new record in log
@@ -1190,6 +1198,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException {
+    while (!regionStatistics.isAllowToCreateNewSeries()) {
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
+    }
     IMeasurementMNode<ICachedMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     try {
       if (leafMNode.getOffset() < 0) {
@@ -1217,6 +1228,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException {
+    while (!regionStatistics.isAllowToCreateNewSeries()) {
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
+    }
     IMeasurementMNode<ICachedMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     try {
       if (leafMNode.getOffset() < 0) {
