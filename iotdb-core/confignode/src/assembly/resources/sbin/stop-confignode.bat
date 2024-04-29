@@ -23,14 +23,14 @@ set current_dir=%~dp0
 set superior_dir=%current_dir%\..\
 
 for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^cn_internal_port"
-%superior_dir%\conf\iotdb-confignode.properties') do (
+"%superior_dir%\conf\iotdb-confignode.properties"') do (
   set cn_internal_port=%%i
 )
 
 echo "check whether the cn_internal_port is used..., port is %cn_internal_port%"
 
 for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "cn_internal_address"
-%superior_dir%\conf\iotdb-confignode.properties') do (
+"%superior_dir%\conf\iotdb-confignode.properties"') do (
   set cn_internal_address=%%i
 )
 
