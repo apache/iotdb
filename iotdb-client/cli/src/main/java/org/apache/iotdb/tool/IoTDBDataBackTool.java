@@ -189,7 +189,6 @@ public class IoTDBDataBackTool {
       countDataNodeFile(targetDirString.toString(), copyMap, dnDataDirsMap, dnMapProperties);
       countNodeBack(targetDirString.toString(), copyMap);
 
-
       for (Map.Entry<String, String> entry : copyMap.entrySet()) {
         countFiles(entry.getKey());
       }
@@ -290,30 +289,44 @@ public class IoTDBDataBackTool {
     delFile(filename);
   }
 
-  private static void isDirectoryInsideOrSame(Map<String,String> copyMap) {
+  private static void isDirectoryInsideOrSame(Map<String, String> copyMap) {
     for (Map.Entry<String, String> sourceEntry : copyMap.entrySet()) {
       for (Map.Entry<String, String> targetEntry : copyMap.entrySet()) {
         File file = new File(sourceEntry.getKey());
-        if(file.exists()){
-          Path targetPath=Paths.get(targetEntry.getValue());
-          Path parentPath=Paths.get(sourceEntry.getKey());
+        if (file.exists()) {
+          Path targetPath = Paths.get(targetEntry.getValue());
+          Path parentPath = Paths.get(sourceEntry.getKey());
           Path normalizedTargetPath = targetPath.normalize();
           Path normalizedParentPath = parentPath.normalize();
-          if(normalizedTargetPath.startsWith(normalizedParentPath) || normalizedTargetPath.equals(normalizedParentPath)){
-            if(targetDirParam.length()>0 && targetDataDirParam.length()>0 && targetWalDirParam.length()>0){
-              LOGGER.error("The directory to be backed up cannot be in the source directory, please check:{},{},{}", targetDirParam,targetDataDirParam,targetWalDirParam);
+          if (normalizedTargetPath.startsWith(normalizedParentPath)
+              || normalizedTargetPath.equals(normalizedParentPath)) {
+            if (targetDirParam.length() > 0
+                && targetDataDirParam.length() > 0
+                && targetWalDirParam.length() > 0) {
+              LOGGER.error(
+                  "The directory to be backed up cannot be in the source directory, please check:{},{},{}",
+                  targetDirParam,
+                  targetDataDirParam,
+                  targetWalDirParam);
               System.exit(0);
-            }else if(targetDirParam.length()>0&& targetDataDirParam.length()>0){
-              LOGGER.error("The directory to be backed up cannot be in the source directory, please check:{},{}", targetDirParam,targetDataDirParam);
+            } else if (targetDirParam.length() > 0 && targetDataDirParam.length() > 0) {
+              LOGGER.error(
+                  "The directory to be backed up cannot be in the source directory, please check:{},{}",
+                  targetDirParam,
+                  targetDataDirParam);
               System.exit(0);
-            }else if(targetDirParam.length()>0 && targetWalDirParam.length()>0){
-              LOGGER.error("The directory to be backed up cannot be in the source directory, please check:{},{}", targetDirParam,targetWalDirParam);
+            } else if (targetDirParam.length() > 0 && targetWalDirParam.length() > 0) {
+              LOGGER.error(
+                  "The directory to be backed up cannot be in the source directory, please check:{},{}",
+                  targetDirParam,
+                  targetWalDirParam);
               System.exit(0);
-            }else if(targetDirParam.length()>0){
-              LOGGER.error("The directory to be backed up cannot be in the source directory, please check:{}", targetDirParam);
+            } else if (targetDirParam.length() > 0) {
+              LOGGER.error(
+                  "The directory to be backed up cannot be in the source directory, please check:{}",
+                  targetDirParam);
               System.exit(0);
             }
-
           }
         }
       }
