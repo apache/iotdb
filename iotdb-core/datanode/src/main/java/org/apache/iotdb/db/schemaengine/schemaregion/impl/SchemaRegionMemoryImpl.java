@@ -196,7 +196,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       if (!SystemInfo.getInstance()
           .addDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax())) {
         throw new MetadataException(
-            "Total allocated direct memory for wal buffer will be "
+            "Total allocated memory for direct buffer will be "
                 + (SystemInfo.getInstance().getDirectBufferMemoryCost() + memCost)
                 + ", which is greater than limit mem cost: "
                 + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
