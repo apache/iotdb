@@ -194,8 +194,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
           .addDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax())) {
         throw new MetadataException(
             "Total allocated direct memory for wal buffer will be "
-                + SystemInfo.getInstance().getDirectBufferMemoryCost()
-                + memCost
+                + (SystemInfo.getInstance().getDirectBufferMemoryCost() + memCost)
                 + ", which is greater than limit mem cost: "
                 + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
       }

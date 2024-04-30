@@ -3413,8 +3413,7 @@ public class DataRegion implements IDataRegionForQuery {
     if (!SystemInfo.getInstance().addDirectBufferMemoryCost(acquireDirectBufferMemCost)) {
       throw new DataRegionException(
           "Total allocated direct memory for wal buffer will be "
-              + SystemInfo.getInstance().getDirectBufferMemoryCost()
-              + acquireDirectBufferMemCost
+              + (SystemInfo.getInstance().getDirectBufferMemoryCost() + acquireDirectBufferMemCost)
               + ", which is greater than limit mem cost: "
               + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
     }
