@@ -76,6 +76,10 @@ for %%a in (%*) do (
             )
         )
     )
+    if "%%a"=="--help" (
+           echo Usage: health_check.bat [-ips ^<ip1^> ^<port1^> ^<port2^>,^<ip2^> ^<port3^> ^<port4^>] [-o ^<all/local/remote^>]
+           exit /b 1
+        )
 )
 
 set endpoints=!ips!
@@ -188,8 +192,14 @@ set confignode_mem= %memory_size_in_mb%
 set datanode_mem=%datanode_mem%
 set confignode_mem=%confignode_mem%
 
-set /A datanode_mem=!datanode_mem! / 1024
-set /A confignode_mem=!confignode_mem! / 1024
+set datanode_mem=%datanode_mem%
+set confignode_mem=%confignode_mem%
+
+for /f %%i in ('powershell.exe -Command "[math]::Round(%datanode_mem% / 1024, 2)"') do set datanode_mem=%%i
+for /f %%i in ('powershell.exe -Command "[math]::Round(%confignode_mem% / 1024, 2)"') do set confignode_mem=%%i
+
+echo datanode_mem=%datanode_mem%
+echo confignode_mem=%confignode_mem%
 echo Check: Installation Environment(Memory)
 echo Requirement: Allocate sufficient memory for IoTDB
 
@@ -291,7 +301,6 @@ for %%a in (%spacedirs%) do (
     for %%b in ("!string:;=" "!") do (
         set "subString=%%~b"
         for %%c in ("!subString:,=" "!") do (
-
             if not exist "%%c\" (
                     mkdir "%%c" > nul 2>&1
                     if errorlevel 1 (
@@ -309,19 +318,20 @@ for %%a in (%spacedirs%) do (
                     )
                 ) else (
                     echo test > "%%c\tempfile.txt"
-                    if errorlevel 1 (
-                    if defined operation_dirs (
-                                    set operation_dirs=!operation_dirs!,%%c lacks write permission
-                                ) else (
-                                    set operation_dirs=%%c lacks write permission
-                                )
-                    ) else (
-                    if defined operation_dirs (
-                                    set operation_dirs=!operation_dirs!,%%c has write permission
-                                ) else (
-                                    set operation_dirs=%%c has write permission
-                                )
+                    if EXIST "%%c\tempfile.txt" (
+                        if defined operation_dirs (
+                            set operation_dirs=!operation_dirs!,%%c has write permission
+                        ) else (
+                            set operation_dirs=%%c has write permission
+                        )
                         del "%%c\tempfile.txt" >nul 2>&1
+
+                    ) else (
+                        if defined operation_dirs (
+                             set operation_dirs=!operation_dirs!,%%c lacks write permission
+                        ) else (
+                             set operation_dirs=%%c lacks write permission
+                        )
                     )
                 )
         )
