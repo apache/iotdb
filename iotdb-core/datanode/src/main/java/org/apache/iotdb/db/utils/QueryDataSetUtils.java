@@ -876,7 +876,9 @@ public class QueryDataSetUtils {
   public static Pair<List<ByteBuffer>, Boolean> constructHighLoadResult(
       IQueryExecution queryExecution,
       Map<String, ClientRPCServiceImpl.DeviceAttributes> deviceAttributesMap,
-      TsBlockSerde serde)
+      TsBlockSerde serde,
+      int timeSeriesColumnIndex,
+      int valueColumnIndex)
       throws IoTDBException, IOException {
     boolean finished;
 
@@ -896,8 +898,8 @@ public class QueryDataSetUtils {
       TsBlock tsBlock = optionalTsBlock.get();
 
       if (!tsBlock.isEmpty()) {
-        Column timeSeriesColumn = tsBlock.getColumn(0);
-        Column valueColumn = tsBlock.getColumn(1);
+        Column timeSeriesColumn = tsBlock.getColumn(timeSeriesColumnIndex);
+        Column valueColumn = tsBlock.getColumn(valueColumnIndex);
         int currentCount = tsBlock.getPositionCount();
         for (int i = 0; i < currentCount; i++) {
           String timeSeries = timeSeriesColumn.getBinary(i).getStringValue(StandardCharsets.UTF_8);
@@ -937,7 +939,7 @@ public class QueryDataSetUtils {
   }
 
   public static Pair<List<ByteBuffer>, Boolean> constructLongDrivingSessionsResult(
-      IQueryExecution queryExecution, TsBlockSerde serde, int threshold)
+      IQueryExecution queryExecution, TsBlockSerde serde, int threshold, int deviceColumnIndex)
       throws IoTDBException, IOException {
     boolean finished;
 
@@ -957,7 +959,7 @@ public class QueryDataSetUtils {
       TsBlock tsBlock = optionalTsBlock.get();
 
       if (!tsBlock.isEmpty()) {
-        Column deviceColumn = tsBlock.getColumn(0);
+        Column deviceColumn = tsBlock.getColumn(deviceColumnIndex);
         int currentCount = tsBlock.getPositionCount();
         for (int i = 0; i < currentCount; i++) {
           Binary deviceId = deviceColumn.getBinary(i);
@@ -1008,7 +1010,10 @@ public class QueryDataSetUtils {
   public static Pair<List<ByteBuffer>, Boolean> constructAvgVsProjectedFuelConsumptionResult(
       IQueryExecution queryExecution,
       Map<String, ClientRPCServiceImpl.DeviceAttributes> deviceAttributesMap,
-      TsBlockSerde serde)
+      TsBlockSerde serde,
+      int deviceColumnIndex,
+      int sumFuelColumnIndex,
+      int countFuelColumnIndex)
       throws IoTDBException, IOException {
     boolean finished;
 
@@ -1022,9 +1027,9 @@ public class QueryDataSetUtils {
       TsBlock tsBlock = optionalTsBlock.get();
 
       if (!tsBlock.isEmpty()) {
-        Column deviceColumn = tsBlock.getColumn(0);
-        Column sumFuelColumn = tsBlock.getColumn(1);
-        Column countFuelColumn = tsBlock.getColumn(2);
+        Column deviceColumn = tsBlock.getColumn(deviceColumnIndex);
+        Column sumFuelColumn = tsBlock.getColumn(sumFuelColumnIndex);
+        Column countFuelColumn = tsBlock.getColumn(countFuelColumnIndex);
 
         int currentCount = tsBlock.getPositionCount();
         for (int i = 0; i < currentCount; i++) {
@@ -1076,7 +1081,11 @@ public class QueryDataSetUtils {
   }
 
   public static Pair<List<ByteBuffer>, Boolean> constructAvgDailyDrivingDurationResult(
-      IQueryExecution queryExecution, TsBlockSerde serde, long startTime, long endTime)
+      IQueryExecution queryExecution,
+      TsBlockSerde serde,
+      long startTime,
+      long endTime,
+      int deviceColumnIndex)
       throws IoTDBException, IOException {
     boolean finished;
 
@@ -1107,7 +1116,7 @@ public class QueryDataSetUtils {
 
       if (!tsBlock.isEmpty()) {
         TimeColumn timeColumn = tsBlock.getTimeColumn();
-        Column deviceColumn = tsBlock.getColumn(0);
+        Column deviceColumn = tsBlock.getColumn(deviceColumnIndex);
         int currentCount = tsBlock.getPositionCount();
         for (int i = 0; i < currentCount; i++) {
           Binary deviceId = deviceColumn.getBinary(i);
@@ -1203,7 +1212,12 @@ public class QueryDataSetUtils {
   }
 
   public static Pair<List<ByteBuffer>, Boolean> constructAvgDailyDrivingSessionResult(
-      IQueryExecution queryExecution, TsBlockSerde serde, long startTime, long endTime)
+      IQueryExecution queryExecution,
+      TsBlockSerde serde,
+      long startTime,
+      long endTime,
+      int deviceColumnIndex,
+      int avgColumnIndex)
       throws IoTDBException, IOException {
     boolean finished;
 
@@ -1227,8 +1241,8 @@ public class QueryDataSetUtils {
 
       if (!tsBlock.isEmpty()) {
         TimeColumn timeColumn = tsBlock.getTimeColumn();
-        Column deviceColumn = tsBlock.getColumn(0);
-        Column velocityColumn = tsBlock.getColumn(1);
+        Column deviceColumn = tsBlock.getColumn(deviceColumnIndex);
+        Column velocityColumn = tsBlock.getColumn(avgColumnIndex);
         int currentCount = tsBlock.getPositionCount();
         for (int i = 0; i < currentCount; i++) {
           long currentTime = timeColumn.getLong(i);
@@ -1272,7 +1286,7 @@ public class QueryDataSetUtils {
               durationSum += (startTime + (day + 1) * dayDuration - start);
               durationCount++;
             }
-            durationColumnBuilder.writeLong(durationSum / durationCount);
+            durationColumnBuilder.writeLong(durationCount == 0 ? 0 : durationSum / durationCount);
 
             timeList.clear();
             velocityList.clear();
@@ -1297,7 +1311,9 @@ public class QueryDataSetUtils {
   public static Pair<List<ByteBuffer>, Boolean> constructAvgLoadResult(
       IQueryExecution queryExecution,
       Map<String, ClientRPCServiceImpl.DeviceAttributes> deviceAttributesMap,
-      TsBlockSerde serde)
+      TsBlockSerde serde,
+      int deviceColumnIndex,
+      int avgColumnIndex)
       throws IoTDBException, IOException {
     boolean finished;
 
@@ -1312,8 +1328,8 @@ public class QueryDataSetUtils {
       TsBlock tsBlock = optionalTsBlock.get();
 
       if (!tsBlock.isEmpty()) {
-        Column deviceColumn = tsBlock.getColumn(0);
-        Column avgLoadColumn = tsBlock.getColumn(1);
+        Column deviceColumn = tsBlock.getColumn(deviceColumnIndex);
+        Column avgLoadColumn = tsBlock.getColumn(avgColumnIndex);
         int currentCount = tsBlock.getPositionCount();
         for (int i = 0; i < currentCount; i++) {
           if (avgLoadColumn.isNull(i)) {
@@ -1402,7 +1418,8 @@ public class QueryDataSetUtils {
   }
 
   public static Pair<List<ByteBuffer>, Boolean> constructDailyActivityResult(
-      IQueryExecution queryExecution, TsBlockSerde serde) throws IoTDBException, IOException {
+      IQueryExecution queryExecution, TsBlockSerde serde, int deviceColumnIndex)
+      throws IoTDBException, IOException {
     boolean finished;
 
     Map<DailyActivityKey, DailyActivityValue> map = new HashMap<>();
@@ -1419,7 +1436,7 @@ public class QueryDataSetUtils {
 
       if (!tsBlock.isEmpty()) {
         TimeColumn timeColumn = tsBlock.getTimeColumn();
-        Column deviceColumn = tsBlock.getColumn(0);
+        Column deviceColumn = tsBlock.getColumn(deviceColumnIndex);
         int currentCount = tsBlock.getPositionCount();
         for (int i = 0; i < currentCount; i++) {
           String deviceId = deviceColumn.getBinary(i).getStringValue(StandardCharsets.UTF_8);
@@ -1497,7 +1514,12 @@ public class QueryDataSetUtils {
   }
 
   public static Pair<List<ByteBuffer>, Boolean> constructBreakdownFrequencyResult(
-      IQueryExecution queryExecution1, IQueryExecution queryExecution2, TsBlockSerde serde)
+      IQueryExecution queryExecution1,
+      IQueryExecution queryExecution2,
+      TsBlockSerde serde,
+      int deviceColumnIndex,
+      int totalColumnIndex,
+      int statusColumnIndex)
       throws IoTDBException, IOException {
 
     Map<String, DailyActivityValue> map = new HashMap<>();
@@ -1533,9 +1555,9 @@ public class QueryDataSetUtils {
           && !totalTsBlock.isEmpty()
           && statusTsBlock != null
           && !statusTsBlock.isEmpty()) {
-        Column deviceColumn = totalTsBlock.getColumn(0);
-        Column totalColumn = totalTsBlock.getColumn(1);
-        Column statusColumn = statusTsBlock.getColumn(1);
+        Column deviceColumn = totalTsBlock.getColumn(deviceColumnIndex);
+        Column totalColumn = totalTsBlock.getColumn(totalColumnIndex);
+        Column statusColumn = statusTsBlock.getColumn(statusColumnIndex);
         while (totalIndex < totalTsBlock.getPositionCount()
             && statusIndex < statusTsBlock.getPositionCount()) {
           long currentTotal = totalColumn.getLong(totalIndex);

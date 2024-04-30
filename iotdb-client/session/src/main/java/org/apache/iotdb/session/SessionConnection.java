@@ -33,6 +33,10 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSAvgDailyDrivingDurationReq;
+import org.apache.iotdb.service.rpc.thrift.TSAvgDailyDrivingSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSAvgLoadReq;
+import org.apache.iotdb.service.rpc.thrift.TSAvgVsProjectedFuelConsumptionReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSBreakdownFrequencyReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
@@ -41,6 +45,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSDailyActivityReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
@@ -56,6 +61,8 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
+import org.apache.iotdb.service.rpc.thrift.TSLongDailySessionsReq;
+import org.apache.iotdb.service.rpc.thrift.TSLongDrivingSessionsReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
@@ -468,6 +475,287 @@ public class SessionConnection {
     RpcUtils.verifySuccess(execResp.getStatus());
     return new SessionDataSet(
         "high-load",
+        execResp.getColumns(),
+        execResp.getDataTypeList(),
+        execResp.columnNameIndexMap,
+        execResp.getQueryId(),
+        statementId,
+        client,
+        sessionId,
+        execResp.queryResult,
+        execResp.isIgnoreTimeStamp(),
+        timeout,
+        execResp.moreData,
+        session.fetchSize);
+  }
+
+  protected SessionDataSet executeTSBSLongDrivingSessions(
+      String fleet, long startTime, long endTime, long timeout)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSLongDrivingSessionsReq execReq =
+        new TSLongDrivingSessionsReq(
+            sessionId, statementId, fleet, startTime, endTime, session.fetchSize, timeout);
+    TSExecuteStatementResp execResp;
+    try {
+      execResp = client.longDrivingSessions(execReq);
+      RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          execReq.setSessionId(sessionId);
+          execReq.setStatementId(statementId);
+          execResp = client.longDrivingSessions(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+
+    RpcUtils.verifySuccess(execResp.getStatus());
+    return new SessionDataSet(
+        "long-driving-sessions",
+        execResp.getColumns(),
+        execResp.getDataTypeList(),
+        execResp.columnNameIndexMap,
+        execResp.getQueryId(),
+        statementId,
+        client,
+        sessionId,
+        execResp.queryResult,
+        execResp.isIgnoreTimeStamp(),
+        timeout,
+        execResp.moreData,
+        session.fetchSize);
+  }
+
+  protected SessionDataSet executeTSBSLongDailySessions(
+      String fleet, long startTime, long endTime, long timeout)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSLongDailySessionsReq execReq =
+        new TSLongDailySessionsReq(
+            sessionId, statementId, fleet, startTime, endTime, session.fetchSize, timeout);
+    TSExecuteStatementResp execResp;
+    try {
+      execResp = client.longDailySessions(execReq);
+      RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          execReq.setSessionId(sessionId);
+          execReq.setStatementId(statementId);
+          execResp = client.longDailySessions(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+
+    RpcUtils.verifySuccess(execResp.getStatus());
+    return new SessionDataSet(
+        "long-daily-sessions",
+        execResp.getColumns(),
+        execResp.getDataTypeList(),
+        execResp.columnNameIndexMap,
+        execResp.getQueryId(),
+        statementId,
+        client,
+        sessionId,
+        execResp.queryResult,
+        execResp.isIgnoreTimeStamp(),
+        timeout,
+        execResp.moreData,
+        session.fetchSize);
+  }
+
+  protected SessionDataSet executeTSBSAvgVsProjectedFuelConsumption(long timeout)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSAvgVsProjectedFuelConsumptionReq execReq =
+        new TSAvgVsProjectedFuelConsumptionReq(sessionId, statementId, session.fetchSize, timeout);
+    TSExecuteStatementResp execResp;
+    try {
+      execResp = client.avgVsProjectedFuelConsumption(execReq);
+      RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          execReq.setSessionId(sessionId);
+          execReq.setStatementId(statementId);
+          execResp = client.avgVsProjectedFuelConsumption(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+
+    RpcUtils.verifySuccess(execResp.getStatus());
+    return new SessionDataSet(
+        "avg-vs-projected-fuel-consumption",
+        execResp.getColumns(),
+        execResp.getDataTypeList(),
+        execResp.columnNameIndexMap,
+        execResp.getQueryId(),
+        statementId,
+        client,
+        sessionId,
+        execResp.queryResult,
+        execResp.isIgnoreTimeStamp(),
+        timeout,
+        execResp.moreData,
+        session.fetchSize);
+  }
+
+  protected SessionDataSet executeTSBSAvgDailyDrivingDuration(
+      long startTime, long endTime, long timeout)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSAvgDailyDrivingDurationReq execReq =
+        new TSAvgDailyDrivingDurationReq(
+            sessionId, statementId, startTime, endTime, session.fetchSize, timeout);
+    TSExecuteStatementResp execResp;
+    try {
+      execResp = client.avgDailyDrivingDuration(execReq);
+      RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          execReq.setSessionId(sessionId);
+          execReq.setStatementId(statementId);
+          execResp = client.avgDailyDrivingDuration(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+
+    RpcUtils.verifySuccess(execResp.getStatus());
+    return new SessionDataSet(
+        "avg-daily-driving-duration",
+        execResp.getColumns(),
+        execResp.getDataTypeList(),
+        execResp.columnNameIndexMap,
+        execResp.getQueryId(),
+        statementId,
+        client,
+        sessionId,
+        execResp.queryResult,
+        execResp.isIgnoreTimeStamp(),
+        timeout,
+        execResp.moreData,
+        session.fetchSize);
+  }
+
+  protected SessionDataSet executeTSBSAvgDailyDrivingSession(
+      long startTime, long endTime, long timeout)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSAvgDailyDrivingSessionReq execReq =
+        new TSAvgDailyDrivingSessionReq(
+            sessionId, statementId, startTime, endTime, session.fetchSize, timeout);
+    TSExecuteStatementResp execResp;
+    try {
+      execResp = client.avgDailyDrivingSession(execReq);
+      RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          execReq.setSessionId(sessionId);
+          execReq.setStatementId(statementId);
+          execResp = client.avgDailyDrivingSession(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+
+    RpcUtils.verifySuccess(execResp.getStatus());
+    return new SessionDataSet(
+        "avg-daily-driving-session",
+        execResp.getColumns(),
+        execResp.getDataTypeList(),
+        execResp.columnNameIndexMap,
+        execResp.getQueryId(),
+        statementId,
+        client,
+        sessionId,
+        execResp.queryResult,
+        execResp.isIgnoreTimeStamp(),
+        timeout,
+        execResp.moreData,
+        session.fetchSize);
+  }
+
+  protected SessionDataSet executeTSBSAvgLoad(long timeout)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSAvgLoadReq execReq = new TSAvgLoadReq(sessionId, statementId, session.fetchSize, timeout);
+    TSExecuteStatementResp execResp;
+    try {
+      execResp = client.avgLoad(execReq);
+      RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          execReq.setSessionId(sessionId);
+          execReq.setStatementId(statementId);
+          execResp = client.avgLoad(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+
+    RpcUtils.verifySuccess(execResp.getStatus());
+    return new SessionDataSet(
+        "avg-load",
+        execResp.getColumns(),
+        execResp.getDataTypeList(),
+        execResp.columnNameIndexMap,
+        execResp.getQueryId(),
+        statementId,
+        client,
+        sessionId,
+        execResp.queryResult,
+        execResp.isIgnoreTimeStamp(),
+        timeout,
+        execResp.moreData,
+        session.fetchSize);
+  }
+
+  protected SessionDataSet executeTSBSDailyActivity(long startTime, long endTime, long timeout)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSDailyActivityReq execReq =
+        new TSDailyActivityReq(
+            sessionId, statementId, startTime, endTime, session.fetchSize, timeout);
+    TSExecuteStatementResp execResp;
+    try {
+      execResp = client.dailyActivity(execReq);
+      RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          execReq.setSessionId(sessionId);
+          execReq.setStatementId(statementId);
+          execResp = client.dailyActivity(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+
+    RpcUtils.verifySuccess(execResp.getStatus());
+    return new SessionDataSet(
+        "daily-activity",
         execResp.getColumns(),
         execResp.getDataTypeList(),
         execResp.columnNameIndexMap,

@@ -97,6 +97,85 @@ public class TSBSExample {
           System.out.println("total lines: " + count);
         }
         break;
+      case "long-driving-sessions":
+        try (SessionDataSet dataSet =
+            session.tsbsIoTLongDrivingSessions(
+                args[2], Long.parseLong(args[3]), Long.parseLong(args[4]))) {
+          SessionDataSet.DataIterator iterator = dataSet.iterator();
+          long count = 0;
+          while (iterator.next()) {
+            count++;
+          }
+          System.out.println("total lines: " + count);
+        }
+        break;
+      case "long-daily-sessions":
+        try (SessionDataSet dataSet =
+            session.tsbsIoTLongDailySessions(
+                args[2], Long.parseLong(args[3]), Long.parseLong(args[4]))) {
+          SessionDataSet.DataIterator iterator = dataSet.iterator();
+          long count = 0;
+          while (iterator.next()) {
+            count++;
+          }
+          System.out.println("total lines: " + count);
+        }
+        break;
+      case "avg-vs-projected-fuel-consumption":
+        try (SessionDataSet dataSet = session.tsbsIoTAvgVsProjectedFuelConsumption()) {
+          SessionDataSet.DataIterator iterator = dataSet.iterator();
+          long count = 0;
+          while (iterator.next()) {
+            count++;
+          }
+          System.out.println("total lines: " + count);
+        }
+        break;
+      case "avg-daily-driving-duration":
+        try (SessionDataSet dataSet =
+            session.tsbsIoTAvgDailyDrivingDuration(
+                Long.parseLong(args[2]), Long.parseLong(args[3]))) {
+          SessionDataSet.DataIterator iterator = dataSet.iterator();
+          long count = 0;
+          while (iterator.next()) {
+            count++;
+          }
+          System.out.println("total lines: " + count);
+        }
+        break;
+      case "avg-daily-driving-session":
+        try (SessionDataSet dataSet =
+            session.tsbsIoTAvgDailyDrivingSession(
+                Long.parseLong(args[2]), Long.parseLong(args[3]))) {
+          SessionDataSet.DataIterator iterator = dataSet.iterator();
+          long count = 0;
+          while (iterator.next()) {
+            count++;
+          }
+          System.out.println("total lines: " + count);
+        }
+        break;
+      case "avg-load":
+        try (SessionDataSet dataSet = session.tsbsIoTAvgLoad()) {
+          SessionDataSet.DataIterator iterator = dataSet.iterator();
+          long count = 0;
+          while (iterator.next()) {
+            count++;
+          }
+          System.out.println("total lines: " + count);
+        }
+        break;
+      case "daily-activity":
+        try (SessionDataSet dataSet =
+            session.tsbsIoTDailyActivity(Long.parseLong(args[2]), Long.parseLong(args[3]))) {
+          SessionDataSet.DataIterator iterator = dataSet.iterator();
+          long count = 0;
+          while (iterator.next()) {
+            count++;
+          }
+          System.out.println("total lines: " + count);
+        }
+        break;
       case "breakdown-frequency":
         try (SessionDataSet dataSet =
             session.tsbsIoTBreakdownFrequency(Long.parseLong(args[2]), Long.parseLong(args[3]))) {

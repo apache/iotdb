@@ -881,6 +881,150 @@ public class Session implements ISession {
     }
   }
 
+  public SessionDataSet tsbsIoTLongDrivingSessions(String fleet, long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      return defaultSessionConnection.executeTSBSLongDrivingSessions(
+          fleet, startTime, endTime, queryTimeoutInMs);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        // retry
+        try {
+          return defaultSessionConnection.executeTSBSLongDrivingSessions(
+              fleet, startTime, endTime, queryTimeoutInMs);
+        } catch (RedirectException redirectException) {
+          throw new StatementExecutionException("redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
+  }
+
+  public SessionDataSet tsbsIoTLongDailySessions(String fleet, long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      return defaultSessionConnection.executeTSBSLongDailySessions(
+          fleet, startTime, endTime, queryTimeoutInMs);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        // retry
+        try {
+          return defaultSessionConnection.executeTSBSLongDailySessions(
+              fleet, startTime, endTime, queryTimeoutInMs);
+        } catch (RedirectException redirectException) {
+          throw new StatementExecutionException("redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
+  }
+
+  public SessionDataSet tsbsIoTAvgVsProjectedFuelConsumption()
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      return defaultSessionConnection.executeTSBSAvgVsProjectedFuelConsumption(queryTimeoutInMs);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        // retry
+        try {
+          return defaultSessionConnection.executeTSBSAvgVsProjectedFuelConsumption(
+              queryTimeoutInMs);
+        } catch (RedirectException redirectException) {
+          throw new StatementExecutionException("redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
+  }
+
+  public SessionDataSet tsbsIoTAvgDailyDrivingDuration(long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      return defaultSessionConnection.executeTSBSAvgDailyDrivingDuration(
+          startTime, endTime, queryTimeoutInMs);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        // retry
+        try {
+          return defaultSessionConnection.executeTSBSAvgDailyDrivingDuration(
+              startTime, endTime, queryTimeoutInMs);
+        } catch (RedirectException redirectException) {
+          throw new StatementExecutionException("redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
+  }
+
+  public SessionDataSet tsbsIoTAvgDailyDrivingSession(long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      return defaultSessionConnection.executeTSBSAvgDailyDrivingSession(
+          startTime, endTime, queryTimeoutInMs);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        // retry
+        try {
+          return defaultSessionConnection.executeTSBSAvgDailyDrivingSession(
+              startTime, endTime, queryTimeoutInMs);
+        } catch (RedirectException redirectException) {
+          throw new StatementExecutionException("redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
+  }
+
+  public SessionDataSet tsbsIoTAvgLoad()
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      return defaultSessionConnection.executeTSBSAvgLoad(queryTimeoutInMs);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        // retry
+        try {
+          return defaultSessionConnection.executeTSBSAvgLoad(queryTimeoutInMs);
+        } catch (RedirectException redirectException) {
+          throw new StatementExecutionException("redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
+  }
+
+  public SessionDataSet tsbsIoTDailyActivity(long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      return defaultSessionConnection.executeTSBSDailyActivity(
+          startTime, endTime, queryTimeoutInMs);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        // retry
+        try {
+          return defaultSessionConnection.executeTSBSDailyActivity(
+              startTime, endTime, queryTimeoutInMs);
+        } catch (RedirectException redirectException) {
+          throw new StatementExecutionException("redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
+  }
+
   public SessionDataSet tsbsIoTBreakdownFrequency(long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException {
     try {

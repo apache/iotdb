@@ -214,6 +214,9 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.TIMESERIES;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.VALUE;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementType.AVG_DAILY_DRIVING_DURATION;
@@ -318,9 +321,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private static final String LONG_DRIVING_SESSIONS_SQL_TEMPLATE =
       "select avg("
           + VELOCITY_COLUMN_NAME
-          + ") from root.readings.%s.** GROUP BY([%d, %d), 10m) ALIGN BY DEVICE HAVING avg("
+          + ") from root.readings.%s.** GROUP BY([%d, %d), 10m) HAVING avg("
           + VELOCITY_COLUMN_NAME
-          + ") > 1";
+          + ") > 1 ALIGN BY DEVICE";
 
   private static final List<String> LONG_DRIVING_SESSIONS_HEADERS =
       ImmutableList.of(NAME_COLUMN_NAME, DRIVER_COLUMN_NAME);
@@ -449,11 +452,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       ImmutableList.of(
           TSDataType.TEXT.toString(),
           TSDataType.TEXT.toString(),
-          TSDataType.TEXT.toString(),
+          TSDataType.DOUBLE.toString(),
           TSDataType.DOUBLE.toString());
 
   public static final List<TSDataType> AVG_LOAD_DATA_TYPES =
-      ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.DOUBLE);
+      ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT, TSDataType.DOUBLE, TSDataType.DOUBLE);
 
   private static final Map<String, Integer> AVG_LOAD_COLUMN_NAME_INDEX_MAP = new HashMap<>();
 
@@ -2655,9 +2658,16 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setIgnoreTimeStamp(true);
           resp.setQueryId(queryId);
           resp.setStatus(result.status);
+          Map<String, Integer> map = queryExecution.getDatasetHeader().getColumnNameIndexMap();
+          int timeSeriesColumnIndex = map == null ? 0 : map.getOrDefault(TIMESERIES, 0);
+          int valueColumnIndex = map == null ? 1 : map.getOrDefault(VALUE, 1);
           Pair<List<ByteBuffer>, Boolean> pair =
               QueryDataSetUtils.constructHighLoadResult(
-                  queryExecution, getDeviceAttributesHashMap(), serde);
+                  queryExecution,
+                  getDeviceAttributesHashMap(),
+                  serde,
+                  timeSeriesColumnIndex,
+                  valueColumnIndex);
           finished = pair.right;
           resp.setQueryResult(pair.left);
           resp.setMoreData(!finished);
@@ -2770,8 +2780,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setIgnoreTimeStamp(true);
           resp.setQueryId(queryId);
           resp.setStatus(result.status);
+          Map<String, Integer> map = queryExecution.getDatasetHeader().getColumnNameIndexMap();
+          int deviceColumn = map == null ? 0 : map.getOrDefault(DEVICE, 0);
           Pair<List<ByteBuffer>, Boolean> pair =
-              QueryDataSetUtils.constructLongDrivingSessionsResult(queryExecution, serde, 22);
+              QueryDataSetUtils.constructLongDrivingSessionsResult(
+                  queryExecution, serde, 22, deviceColumn);
           finished = pair.right;
           resp.setQueryResult(pair.left);
           resp.setMoreData(!finished);
@@ -2886,8 +2899,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setIgnoreTimeStamp(true);
           resp.setQueryId(queryId);
           resp.setStatus(result.status);
+          Map<String, Integer> map = queryExecution.getDatasetHeader().getColumnNameIndexMap();
+          int deviceColumn = map == null ? 0 : map.getOrDefault(DEVICE, 0);
           Pair<List<ByteBuffer>, Boolean> pair =
-              QueryDataSetUtils.constructLongDrivingSessionsResult(queryExecution, serde, 60);
+              QueryDataSetUtils.constructLongDrivingSessionsResult(
+                  queryExecution, serde, 60, deviceColumn);
           finished = pair.right;
           resp.setQueryResult(pair.left);
           resp.setMoreData(!finished);
@@ -3002,9 +3018,20 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setIgnoreTimeStamp(true);
           resp.setQueryId(queryId);
           resp.setStatus(result.status);
+          Map<String, Integer> map = queryExecution.getDatasetHeader().getColumnNameIndexMap();
+          int deviceColumnIndex = map == null ? 0 : map.getOrDefault(DEVICE, 0);
+          int sumFuelColumnIndex =
+              map == null ? 1 : map.getOrDefault("sum(" + FUEL_CONSUMPTION_COLUMN_NAME + ")", 1);
+          int countFuelColumnIndex =
+              map == null ? 2 : map.getOrDefault("count(" + FUEL_CONSUMPTION_COLUMN_NAME + ")", 2);
           Pair<List<ByteBuffer>, Boolean> pair =
               QueryDataSetUtils.constructAvgVsProjectedFuelConsumptionResult(
-                  queryExecution, getDeviceAttributesHashMap(), serde);
+                  queryExecution,
+                  getDeviceAttributesHashMap(),
+                  serde,
+                  deviceColumnIndex,
+                  sumFuelColumnIndex,
+                  countFuelColumnIndex);
           finished = pair.right;
           resp.setQueryResult(pair.left);
           resp.setMoreData(!finished);
@@ -3121,9 +3148,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setIgnoreTimeStamp(false);
           resp.setQueryId(queryId);
           resp.setStatus(result.status);
+          Map<String, Integer> map = queryExecution.getDatasetHeader().getColumnNameIndexMap();
+
           Pair<List<ByteBuffer>, Boolean> pair =
               QueryDataSetUtils.constructAvgDailyDrivingDurationResult(
-                  queryExecution, serde, req.startTime, req.endTime);
+                  queryExecution,
+                  serde,
+                  req.startTime,
+                  req.endTime,
+                  map == null ? 0 : map.getOrDefault(DEVICE, 0));
           finished = pair.right;
           resp.setQueryResult(pair.left);
           resp.setMoreData(!finished);
@@ -3239,9 +3272,16 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setIgnoreTimeStamp(false);
           resp.setQueryId(queryId);
           resp.setStatus(result.status);
+          Map<String, Integer> map = queryExecution.getDatasetHeader().getColumnNameIndexMap();
+          int deviceColumnIndex = map == null ? 0 : map.getOrDefault(DEVICE, 0);
           Pair<List<ByteBuffer>, Boolean> pair =
               QueryDataSetUtils.constructAvgDailyDrivingSessionResult(
-                  queryExecution, serde, req.startTime, req.endTime);
+                  queryExecution,
+                  serde,
+                  req.startTime,
+                  req.endTime,
+                  deviceColumnIndex,
+                  1 - deviceColumnIndex);
           finished = pair.right;
           resp.setQueryResult(pair.left);
           resp.setMoreData(!finished);
@@ -3355,9 +3395,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setIgnoreTimeStamp(true);
           resp.setQueryId(queryId);
           resp.setStatus(result.status);
+          Map<String, Integer> map = queryExecution.getDatasetHeader().getColumnNameIndexMap();
+          int deviceColumnIndex = map == null ? 0 : map.getOrDefault(DEVICE, 0);
           Pair<List<ByteBuffer>, Boolean> pair =
               QueryDataSetUtils.constructAvgLoadResult(
-                  queryExecution, getDeviceAttributesHashMap(), serde);
+                  queryExecution,
+                  getDeviceAttributesHashMap(),
+                  serde,
+                  deviceColumnIndex,
+                  1 - deviceColumnIndex);
           finished = pair.right;
           resp.setQueryResult(pair.left);
           resp.setMoreData(!finished);
@@ -3468,8 +3514,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setIgnoreTimeStamp(false);
           resp.setQueryId(queryId);
           resp.setStatus(result.status);
+          Map<String, Integer> map = queryExecution.getDatasetHeader().getColumnNameIndexMap();
           Pair<List<ByteBuffer>, Boolean> pair =
-              QueryDataSetUtils.constructDailyActivityResult(queryExecution, serde);
+              QueryDataSetUtils.constructDailyActivityResult(
+                  queryExecution, serde, map == null ? 0 : map.getOrDefault(DEVICE, 0));
           finished = pair.right;
           resp.setQueryResult(pair.left);
           resp.setMoreData(!finished);
@@ -3603,9 +3651,18 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setIgnoreTimeStamp(true);
           resp.setQueryId(queryId1);
           resp.setStatus(result1.status);
+          int deviceColumnIndex1 =
+              queryExecution1.getDatasetHeader().getColumnNameIndexMap().getOrDefault(DEVICE, 0);
+          int deviceColumnIndex2 =
+              queryExecution2.getDatasetHeader().getColumnNameIndexMap().getOrDefault(DEVICE, 0);
           Pair<List<ByteBuffer>, Boolean> pair =
               QueryDataSetUtils.constructBreakdownFrequencyResult(
-                  queryExecution1, queryExecution2, serde);
+                  queryExecution1,
+                  queryExecution2,
+                  serde,
+                  deviceColumnIndex1,
+                  1 - deviceColumnIndex1,
+                  1 - deviceColumnIndex2);
           finished = pair.right;
           resp.setQueryResult(pair.left);
           resp.setMoreData(!finished);
