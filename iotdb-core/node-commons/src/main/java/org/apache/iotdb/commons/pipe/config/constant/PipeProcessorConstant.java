@@ -66,6 +66,16 @@ public class PipeProcessorConstant {
       "processor.sdt.max-time-interval";
   public static final long PROCESSOR_SDT_MAX_TIME_INTERVAL_DEFAULT_VALUE = Long.MAX_VALUE;
 
+  public static final String PROCESSOR_CV_COMPRESSION_DEVIATION_KEY =
+      "processor.cv-sampling.compression-deviation";
+  public static final double PROCESSOR_CV_COMPRESSION_DEVIATION_DEFAULT_VALUE = 0;
+  public static final String PROCESSOR_CV_MIN_TIME_INTERVAL_KEY =
+      "processor.cv-sampling.min-time-interval";
+  public static final long PROCESSOR_CV_MIN_TIME_INTERVAL_DEFAULT_VALUE = 0;
+  public static final String PROCESSOR_CV_MAX_TIME_INTERVAL_KEY =
+      "processor.cv-sampling.max-time-interval";
+  public static final long PROCESSOR_CV_MAX_TIME_INTERVAL_DEFAULT_VALUE = Long.MAX_VALUE;
+
   public static final String PROCESSOR_OUTPUT_SERIES_KEY = "processor.output-series";
 
   private PipeProcessorConstant() {
