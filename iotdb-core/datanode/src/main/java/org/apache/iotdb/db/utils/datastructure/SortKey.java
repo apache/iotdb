@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlock;
 
 public class SortKey {
 

@@ -39,8 +39,8 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,12 +93,27 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
   @Override
   public void transfer(final Event event) throws Exception {
     if (event instanceof PipeConfigRegionWritePlanEvent) {
-      doTransfer((PipeConfigRegionWritePlanEvent) event);
+      doTransferWrapper((PipeConfigRegionWritePlanEvent) event);
     } else if (event instanceof PipeConfigRegionSnapshotEvent) {
-      doTransfer((PipeConfigRegionSnapshotEvent) event);
+      doTransferWrapper((PipeConfigRegionSnapshotEvent) event);
     } else if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn(
           "IoTDBConfigRegionConnector does not support transferring generic event: {}.", event);
+    }
+  }
+
+  private void doTransferWrapper(
+      final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent) throws PipeException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeConfigRegionWritePlanEvent.increaseReferenceCount(
+          IoTDBConfigRegionConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeConfigRegionWritePlanEvent);
+    } finally {
+      pipeConfigRegionWritePlanEvent.decreaseReferenceCount(
+          IoTDBConfigRegionConnector.class.getName(), false);
     }
   }
 
@@ -141,6 +156,21 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Successfully transferred config event {}.", pipeConfigRegionWritePlanEvent);
+    }
+  }
+
+  private void doTransferWrapper(final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
+      throws PipeException, IOException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeConfigRegionSnapshotEvent.increaseReferenceCount(
+          IoTDBConfigRegionConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeConfigRegionSnapshotEvent);
+    } finally {
+      pipeConfigRegionSnapshotEvent.decreaseReferenceCount(
+          IoTDBConfigRegionConnector.class.getName(), false);
     }
   }
 

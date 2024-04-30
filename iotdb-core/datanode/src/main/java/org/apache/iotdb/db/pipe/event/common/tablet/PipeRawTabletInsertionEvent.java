@@ -30,7 +30,8 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.tsfile.write.record.Tablet;
+
+import org.apache.tsfile.write.record.Tablet;
 
 import java.util.Objects;
 import java.util.function.BiConsumer;
@@ -222,6 +223,11 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
           new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, pipePattern);
     }
     return dataContainer.convertToTablet();
+  }
+
+  public long count() {
+    final Tablet covertedTablet = shouldParseTimeOrPattern() ? convertToTablet() : tablet;
+    return (long) covertedTablet.rowSize * covertedTablet.getSchemas().size();
   }
 
   /////////////////////////// parsePatternOrTime ///////////////////////////

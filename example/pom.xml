@@ -39,7 +39,6 @@
         <module>schema</module>
         <module>session</module>
         <module>trigger</module>
-        <module>tsfile</module>
         <module>udf</module>
     </modules>
     <build>

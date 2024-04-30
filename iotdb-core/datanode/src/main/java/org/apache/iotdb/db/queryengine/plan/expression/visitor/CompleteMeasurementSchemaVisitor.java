@@ -95,7 +95,11 @@ public class CompleteMeasurementSchemaVisitor extends ExpressionVisitor<Expressi
     } catch (Exception notAMeasurementPath) {
       List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(path).left;
       if (actualPaths.size() != 1) {
-        throw new SemanticException(new BrokenViewException(path.getFullPath(), actualPaths));
+        if (actualPaths.isEmpty()) {
+          throw new SemanticException(new BrokenViewException(path.getFullPath()));
+        } else {
+          throw new SemanticException(new BrokenViewException(path.getFullPath(), actualPaths));
+        }
       }
       return new TimeSeriesOperand(actualPaths.get(0));
     }

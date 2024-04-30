@@ -25,8 +25,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
+import org.apache.tsfile.exception.write.WriteProcessException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -105,6 +105,9 @@ public class TimePartitionManagerTest {
     timePartitionManager.updateAfterFlushing(new DataRegionId(0), 1L, 107L, 60L, true);
 
     Assert.assertNull(timePartitionManager.getTimePartitionInfo(new DataRegionId(3), 0L));
+
+    timePartitionManager.removeTimePartitionInfo(new DataRegionId(4));
+    Assert.assertNull(timePartitionManager.getTimePartitionInfo(new DataRegionId(4), 0L));
   }
 
   @Test

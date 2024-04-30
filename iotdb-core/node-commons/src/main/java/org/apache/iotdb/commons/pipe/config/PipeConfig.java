@@ -135,6 +135,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeListeningQueueTransferSnapshotThreshold();
   }
 
+  public int getPipeSnapshotExecutionMaxBatchSize() {
+    return COMMON_CONFIG.getPipeSnapshotExecutionMaxBatchSize();
+  }
+
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
   public boolean isSeperatedPipeHeartbeatEnabled() {
@@ -241,6 +245,20 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMemoryExpanderIntervalSeconds();
   }
 
+  /////////////////////////////// TwoStage ///////////////////////////////
+
+  public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
+    return COMMON_CONFIG.getTwoStageAggregateMaxCombinerLiveTimeInMs();
+  }
+
+  public long getTwoStageAggregateDataRegionInfoCacheTimeInMs() {
+    return COMMON_CONFIG.getTwoStageAggregateDataRegionInfoCacheTimeInMs();
+  }
+
+  public long getTwoStageAggregateSenderEndPointsCacheInMs() {
+    return COMMON_CONFIG.getTwoStageAggregateSenderEndPointsCacheInMs();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
@@ -291,6 +309,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeListeningQueueTransferSnapshotThreshold: {}",
         getPipeListeningQueueTransferSnapshotThreshold());
+    LOGGER.info("PipeSnapshotExecutionMaxBatchSize: {}", getPipeSnapshotExecutionMaxBatchSize());
 
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());
@@ -332,6 +351,17 @@ public class PipeConfig {
     LOGGER.info(
         "PipeMemoryAllocateForTsFileSequenceReaderInBytes: {}",
         getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
+    LOGGER.info("PipeMemoryExpanderIntervalSeconds: {}", getPipeMemoryExpanderIntervalSeconds());
+
+    LOGGER.info(
+        "TwoStageAggregateMaxCombinerLiveTimeInMs: {}",
+        getTwoStageAggregateMaxCombinerLiveTimeInMs());
+    LOGGER.info(
+        "TwoStageAggregateDataRegionInfoCacheTimeInMs: {}",
+        getTwoStageAggregateDataRegionInfoCacheTimeInMs());
+    LOGGER.info(
+        "TwoStageAggregateSenderEndPointsCacheInMs: {}",
+        getTwoStageAggregateSenderEndPointsCacheInMs());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

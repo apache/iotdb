@@ -86,11 +86,11 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogica
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,7 +104,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info of one certain
@@ -226,7 +226,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   private Consumer<IMeasurementMNode<ICachedMNode>> measurementInitProcess() {
     return measurementMNode -> {
-      regionStatistics.addMeasurement(1L);
+      if (measurementMNode.isLogicalView()) {
+        regionStatistics.addView(1L);
+      } else {
+        regionStatistics.addMeasurement(1L);
+      }
       if (measurementMNode.getOffset() == -1) {
         return;
       }
@@ -944,7 +948,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     mtree.rollbackSchemaBlackList(path);
   }
 
-  /** @param path full path from root to leaf node */
+  /**
+   * @param path full path from root to leaf node
+   */
   private void deleteOneTimeseriesUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
     IMeasurementMNode<ICachedMNode> measurementMNode = mtree.deleteTimeseries(path);
@@ -955,6 +961,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       regionStatistics.deleteMeasurement(1L);
     }
   }
+
   // endregion
 
   // region Interfaces for get and auto create device
@@ -981,6 +988,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       throw new MetadataException(e);
     }
   }
+
   // endregion
 
   // region Interfaces for metadata info Query
@@ -1236,6 +1244,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   private void removeFromTagInvertedIndex(IMeasurementMNode<ICachedMNode> node) throws IOException {
     tagManager.removeFromTagInvertedIndex(node);
   }
+
   // endregion
 
   // region Interfaces and Implementation for Template operations
@@ -1345,6 +1354,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       throws MetadataException {
     return mtree.getNodeReader(showNodesPlan);
   }
+
   // endregion
 
   private static class RecoverOperationResult {

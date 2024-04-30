@@ -62,8 +62,11 @@ public class IoTConsensusRPCService extends ThriftService implements IoTConsensu
 
   @Override
   public void initTProcessor()
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException,
-          NoSuchMethodException, InvocationTargetException {
+      throws ClassNotFoundException,
+          IllegalAccessException,
+          InstantiationException,
+          NoSuchMethodException,
+          InvocationTargetException {
     processor = new IoTConsensusIService.AsyncProcessor<>(iotConsensusRPCServiceProcessor);
   }
 

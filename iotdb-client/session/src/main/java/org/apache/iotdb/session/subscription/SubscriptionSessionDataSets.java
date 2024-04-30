@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet;
 
 import java.util.ArrayList;
 import java.util.Iterator;

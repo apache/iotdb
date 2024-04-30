@@ -47,9 +47,9 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>common-api</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.apache.tsfile</groupId>
+            <artifactId>common</artifactId>
+            <version>${tsfile.version}</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

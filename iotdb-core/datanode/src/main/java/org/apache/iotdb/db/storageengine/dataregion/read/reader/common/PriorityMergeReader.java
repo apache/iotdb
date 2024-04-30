@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
+
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
 import java.util.Objects;

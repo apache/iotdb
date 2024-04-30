@@ -26,13 +26,12 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.manager.pipe.resource.snapshot.PipeConfigNodeSnapshotResourceManager;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collection;
@@ -67,7 +66,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
         Collections.unmodifiableSet(
             new HashSet<>(
                 Arrays.asList(
-                    ConfigPhysicalPlanType.CreateUser.getPlanType(),
+                    ConfigPhysicalPlanType.CreateUserWithRawPassword.getPlanType(),
                     ConfigPhysicalPlanType.GrantUser.getPlanType()))));
     SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
         CNSnapshotFileType.USER_ROLE,
@@ -89,17 +88,17 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
   }
 
   public PipeConfigRegionSnapshotEvent(
-      String snapshotPath, String templateFilePath, CNSnapshotFileType type) {
+      final String snapshotPath, final String templateFilePath, final CNSnapshotFileType type) {
     this(snapshotPath, templateFilePath, type, null, null, null);
   }
 
   public PipeConfigRegionSnapshotEvent(
-      String snapshotPath,
-      String templateFilePath,
-      CNSnapshotFileType type,
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern) {
+      final String snapshotPath,
+      final String templateFilePath,
+      final CNSnapshotFileType type,
+      final String pipeName,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern) {
     super(pipeName, pipeTaskMeta, pattern, PipeConfigNodeSnapshotResourceManager.getInstance());
     this.snapshotPath = snapshotPath;
     this.templateFilePath = Objects.nonNull(templateFilePath) ? templateFilePath : "";
@@ -119,14 +118,14 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
   }
 
   @Override
-  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
       snapshotPath = resourceManager.increaseSnapshotReference(snapshotPath);
       if (!templateFilePath.isEmpty()) {
         templateFilePath = resourceManager.increaseSnapshotReference(templateFilePath);
       }
       return true;
-    } catch (IOException e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           String.format(
               "Increase reference count for snapshot %s error. Holder Message: %s",
@@ -137,14 +136,14 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
       resourceManager.decreaseSnapshotReference(snapshotPath);
       if (!templateFilePath.isEmpty()) {
         resourceManager.decreaseSnapshotReference(templateFilePath);
       }
       return true;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           String.format(
               "Decrease reference count for snapshot %s error. Holder Message: %s",
@@ -156,18 +155,18 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime) {
+      final String pipeName,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime) {
     return new PipeConfigRegionSnapshotEvent(
         snapshotPath, templateFilePath, fileType, pipeName, pipeTaskMeta, pattern);
   }
 
   @Override
   public ByteBuffer serializeToByteBuffer() {
-    ByteBuffer result =
+    final ByteBuffer result =
         ByteBuffer.allocate(
             2 * Byte.BYTES
                 + 2 * Integer.BYTES
@@ -181,7 +180,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
   }
 
   @Override
-  public void deserializeFromByteBuffer(ByteBuffer buffer) {
+  public void deserializeFromByteBuffer(final ByteBuffer buffer) {
     fileType = CNSnapshotFileType.deserialize(ReadWriteIOUtils.readByte(buffer));
     snapshotPath = ReadWriteIOUtils.readString(buffer);
     templateFilePath = ReadWriteIOUtils.readString(buffer);
@@ -189,7 +188,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
 
   /////////////////////////////// Type parsing ///////////////////////////////
 
-  public static boolean needTransferSnapshot(Set<ConfigPhysicalPlanType> listenedTypeSet) {
+  public static boolean needTransferSnapshot(final Set<ConfigPhysicalPlanType> listenedTypeSet) {
     final Set<Short> types =
         SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.values().stream()
             .flatMap(Collection::stream)
@@ -201,7 +200,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
     return !types.isEmpty();
   }
 
-  public void confineTransferredTypes(Set<ConfigPhysicalPlanType> listenedTypeSet) {
+  public void confineTransferredTypes(final Set<ConfigPhysicalPlanType> listenedTypeSet) {
     final Set<Short> types =
         new HashSet<>(SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.get(fileType));
     types.retainAll(
@@ -211,7 +210,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
     transferredTypes = types;
   }
 
-  public static Set<ConfigPhysicalPlanType> getConfigPhysicalPlanTypeSet(String sealTypes) {
+  public static Set<ConfigPhysicalPlanType> getConfigPhysicalPlanTypeSet(final String sealTypes) {
     return sealTypes.isEmpty()
         ? Collections.emptySet()
         : Arrays.stream(sealTypes.split(","))
@@ -231,5 +230,14 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
             snapshotPath, templateFilePath, fileType)
         + " - "
         + super.toString();
+  }
+
+  @Override
+  public String coreReportMessage() {
+    return String.format(
+            "PipeConfigRegionSnapshotEvent{snapshotPath=%s, templateFilePath=%s, fileType=%s}",
+            snapshotPath, templateFilePath, fileType)
+        + " - "
+        + super.coreReportMessage();
   }
 }

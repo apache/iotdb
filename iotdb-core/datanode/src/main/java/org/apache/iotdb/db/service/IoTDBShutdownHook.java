@@ -89,9 +89,7 @@ public class IoTDBShutdownHook extends Thread {
         .getConfig()
         .getDataRegionConsensusProtocolClass()
         .equals(ConsensusFactory.RATIS_CONSENSUS)) {
-      DataRegionConsensusImpl.getInstance()
-          .getAllConsensusGroupIds()
-          .parallelStream()
+      DataRegionConsensusImpl.getInstance().getAllConsensusGroupIds().parallelStream()
           .forEach(
               id -> {
                 try {

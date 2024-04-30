@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.value;
 
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.TsPrimitiveType;
 
 // this interface declares the simplest storage operation of lastCacheValue
 public interface ILastCacheValue {

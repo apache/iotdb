@@ -44,8 +44,8 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -232,7 +232,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         });
   }
 
-  /** @param event the {@link Event} from the {@link StorageEngine} */
+  /**
+   * @param event the {@link Event} from the {@link StorageEngine}
+   */
   public final void extract(PipeRealtimeEvent event) {
     if (isDbNameCoveredByPattern) {
       event.skipParsingPattern();
@@ -290,7 +292,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
 
     if (!pendingQueue.waitedOffer(event)) {
-      // this would not happen, but just in case.
+      // This would not happen, but just in case.
       // pendingQueue is unbounded, so it should never reach capacity.
       LOGGER.error(
           "extract: pending queue of PipeRealtimeDataRegionHybridExtractor {} "
@@ -301,7 +303,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       // Do not report exception since the PipeHeartbeatEvent doesn't affect
       // the correction of pipe progress.
 
-      // ignore this event.
+      // Ignore this event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
     }
   }
@@ -344,7 +346,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName())) {
       return event.getEvent();
     } else {
-      // if the event's reference count can not be increased, it means the data represented by
+      // If the event's reference count can not be increased, it means the data represented by
       // this event is not reliable anymore. the data has been lost. we simply discard this
       // event and report the exception to PipeRuntimeAgent.
       final String errorMessage =

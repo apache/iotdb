@@ -27,8 +27,8 @@ import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOp
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimestampViewOperand;
 import org.apache.iotdb.commons.schema.view.viewExpression.multi.FunctionViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.ternary.BetweenViewExpression;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
 

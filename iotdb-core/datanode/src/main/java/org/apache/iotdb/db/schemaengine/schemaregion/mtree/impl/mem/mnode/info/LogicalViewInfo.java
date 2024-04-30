@@ -28,8 +28,9 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpressionType;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 /**
  * This structure is used in ViewMNode. It stores all information except the name of this view. The
@@ -39,6 +40,7 @@ public class LogicalViewInfo implements IMeasurementInfo {
 
   /** tag/attribute's start offset in tag file */
   private long offset = -1;
+
   /** whether this measurement is pre deleted and considered in black list */
   private boolean preDeleted = false;
 
@@ -58,7 +60,9 @@ public class LogicalViewInfo implements IMeasurementInfo {
     return false;
   }
 
-  /** @return return the path of alias series if this view is alias series; else return null. */
+  /**
+   * @return return the path of alias series if this view is alias series; else return null.
+   */
   public PartialPath getAliasSeriesPath() {
     if (this.isAliasSeries()) {
       if (this.getExpression().getExpressionType() == ViewExpressionType.TIMESERIES) {
@@ -80,6 +84,7 @@ public class LogicalViewInfo implements IMeasurementInfo {
   public void setExpression(ViewExpression expression) {
     this.schema.setExpression(expression);
   }
+
   // endregion
 
   // region IMeasurementInfo interfaces

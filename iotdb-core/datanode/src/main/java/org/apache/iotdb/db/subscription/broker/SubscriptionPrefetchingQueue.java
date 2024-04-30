@@ -32,12 +32,13 @@ import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -144,23 +145,23 @@ public class SubscriptionPrefetchingQueue {
       }
 
       if (event instanceof TabletInsertionEvent) {
-        Tablet tablet = convertToTablet((TabletInsertionEvent) event);
-        if (Objects.isNull(tablet)) {
+        final List<Tablet> tabletList = convertToTablets((TabletInsertionEvent) event);
+        if (Objects.isNull(tabletList) || tabletList.isEmpty()) {
           continue;
         }
-        tablets.add(tablet);
+        tablets.addAll(tabletList);
         enrichedEvents.add((EnrichedEvent) event);
         if (tablets.size() >= limit) {
           break;
         }
       } else if (event instanceof PipeTsFileInsertionEvent) {
-        for (TabletInsertionEvent tabletInsertionEvent :
+        for (final TabletInsertionEvent tabletInsertionEvent :
             ((PipeTsFileInsertionEvent) event).toTabletInsertionEvents()) {
-          Tablet tablet = convertToTablet(tabletInsertionEvent);
-          if (Objects.isNull(tablet)) {
+          final List<Tablet> tabletList = convertToTablets(tabletInsertionEvent);
+          if (Objects.isNull(tabletList) || tabletList.isEmpty()) {
             continue;
           }
-          tablets.add(tablet);
+          tablets.addAll(tabletList);
         }
         enrichedEvents.add((EnrichedEvent) event);
         if (tablets.size() >= limit) {
@@ -218,23 +219,24 @@ public class SubscriptionPrefetchingQueue {
     }
   }
 
-  /////////////////////////////// utility ///////////////////////////////
+  /////////////////////////////// Utility ///////////////////////////////
 
-  private Tablet convertToTablet(TabletInsertionEvent tabletInsertionEvent) {
+  private List<Tablet> convertToTablets(TabletInsertionEvent tabletInsertionEvent) {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      return ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
+      return ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablets();
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      return ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
+      return Collections.singletonList(
+          ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
     }
 
     LOGGER.warn(
         "Subscription: Only support convert PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent to tablet. Ignore {}.",
         tabletInsertionEvent);
-    return null;
+    return Collections.emptyList();
   }
 
   private String generateSubscriptionCommitId() {
-    // subscription commit id format: {DataNodeId}#{RebootTimes}#{TopicName}_{BrokerId}#{Id}
+    // Subscription commit id format: {DataNodeId}#{RebootTimes}#{TopicName}_{BrokerId}#{Id}
     // Recording data node ID and reboot times to address potential stale commit IDs caused by
     // leader transfers or restarts.
     return IoTDBDescriptor.getInstance().getConfig().getDataNodeId()

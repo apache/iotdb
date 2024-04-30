@@ -27,10 +27,10 @@ import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MaxDiskUsableSpace
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.RandomOnDiskUsableSpaceStrategy;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
-import org.apache.iotdb.tsfile.utils.FSUtils;
 
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.fileSystem.FSType;
+import org.apache.tsfile.utils.FSUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,19 +53,24 @@ public class TierManager {
   private static final Logger logger = LoggerFactory.getLogger(TierManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private DirectoryStrategyType directoryStrategyType = DirectoryStrategyType.SEQUENCE_STRATEGY;
+
   /**
    * seq folder manager of each storage tier, managing both data directories and multi-dir strategy
    */
   private final List<FolderManager> seqTiers = new ArrayList<>();
+
   /**
    * unSeq folder manager of each storage tier, managing both data directories and multi-dir
    * strategy
    */
   private final List<FolderManager> unSeqTiers = new ArrayList<>();
+
   /** seq file folder's rawFsPath path -> tier level */
   private final Map<String, Integer> seqDir2TierLevel = new HashMap<>();
+
   /** unSeq file folder's rawFsPath path -> tier level */
   private final Map<String, Integer> unSeqDir2TierLevel = new HashMap<>();
+
   /** total space of each tier, Long.MAX_VALUE when one tier contains remote storage */
   private long[] tierDiskTotalSpace;
 

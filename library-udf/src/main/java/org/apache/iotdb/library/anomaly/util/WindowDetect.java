@@ -84,12 +84,16 @@ public class WindowDetect {
     repaired = Util.toDoubleArray(repairedList);
   }
 
-  /** @return the time */
+  /**
+   * @return the time
+   */
   public long[] getTime() {
     return time;
   }
 
-  /** @return the repaired */
+  /**
+   * @return the repaired
+   */
   public double[] getRepaired() {
     return repaired;
   }

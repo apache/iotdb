@@ -58,6 +58,7 @@ public abstract class TernaryViewExpression extends ViewExpression {
     this.secondExpression = ViewExpression.deserialize(inputStream);
     this.thirdExpression = ViewExpression.deserialize(inputStream);
   }
+
   // endregion
 
   // region common interfaces that have to be implemented
@@ -89,6 +90,7 @@ public abstract class TernaryViewExpression extends ViewExpression {
     ViewExpression.serialize(secondExpression, stream);
     ViewExpression.serialize(thirdExpression, stream);
   }
+
   // endregion
 
   public ViewExpression getFirstExpression() {

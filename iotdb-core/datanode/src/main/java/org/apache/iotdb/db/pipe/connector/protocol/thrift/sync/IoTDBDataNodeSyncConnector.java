@@ -35,8 +35,8 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,7 +67,7 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
                     .filter(tEndPoint -> tEndPoint.getPort() == iotdbConfig.getRpcPort())
                     .map(TEndPoint::getIp)
                     .collect(Collectors.toList()));
-          } catch (UnknownHostException e) {
+          } catch (final UnknownHostException e) {
             LOGGER.warn("Unknown host when checking pipe sink IP.", e);
             return false;
           }
@@ -90,6 +90,21 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
         new IoTDBDataNodeSyncClientManager(
             nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache, loadBalanceStrategy);
     return clientManager;
+  }
+
+  protected void doTransferWrapper(
+      final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent) throws PipeException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
+          IoTDBDataNodeSyncConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeSchemaRegionWritePlanEvent);
+    } finally {
+      pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
+          IoTDBDataNodeSyncConnector.class.getName(), false);
+    }
   }
 
   protected void doTransfer(final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)

@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionAlignedChunkReader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
+
+import org.apache.tsfile.file.header.PageHeader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -33,9 +34,9 @@ public class AlignedPageElement extends PageElement {
   private final List<PageHeader> valuePageHeaders;
 
   // compressed page data
-  private final ByteBuffer timePageData;
+  private ByteBuffer timePageData;
 
-  private final List<ByteBuffer> valuePageDataList;
+  private List<ByteBuffer> valuePageDataList;
 
   private final CompactionAlignedChunkReader chunkReader;
 
@@ -64,6 +65,9 @@ public class AlignedPageElement extends PageElement {
     pointReader =
         chunkReader.getPagePointReader(
             timePageHeader, valuePageHeaders, timePageData, valuePageDataList);
+    // friendly for gc
+    timePageData = null;
+    valuePageDataList = null;
   }
 
   @Override

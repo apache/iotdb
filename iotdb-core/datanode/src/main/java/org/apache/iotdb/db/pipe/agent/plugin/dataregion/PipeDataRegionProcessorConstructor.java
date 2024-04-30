@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.processor.aggregate.operator.processor.StandardS
 import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.TumblingWindowingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.sdt.SwingingDoorTrendingSamplingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.tumbling.TumblingTimeSamplingProcessor;
+import org.apache.iotdb.db.pipe.processor.twostage.plugin.TwoStageCountProcessor;
 
 class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
 
@@ -57,5 +58,7 @@ class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.TUMBLING_WINDOWING_PROCESSOR.getPipePluginName(),
         TumblingWindowingProcessor::new);
+    pluginConstructors.put(
+        BuiltinPipePlugin.COUNT_POINT_PROCESSOR.getPipePluginName(), TwoStageCountProcessor::new);
   }
 }
