@@ -73,6 +73,9 @@ public class CompactionTableSchemaCollector {
       for (Map.Entry<String, TableSchema> entry : tableSchemaMap.entrySet()) {
         String tableName = entry.getKey();
         TableSchema currentTableSchema = entry.getValue();
+        if (isTreeModel(currentTableSchema)) {
+          continue;
+        }
         // merge all id columns, measurement schema will be generated automatically when end chunk
         // group
         CompactionTableSchema collectedTableSchema =
@@ -86,5 +89,9 @@ public class CompactionTableSchemaCollector {
     }
     targetTableSchemaMap.values().forEach(targetSchema::registerTableSchema);
     return targetSchema;
+  }
+
+  private static boolean isTreeModel(TableSchema tableSchema) {
+    return tableSchema.getTableName().startsWith("root.");
   }
 }
