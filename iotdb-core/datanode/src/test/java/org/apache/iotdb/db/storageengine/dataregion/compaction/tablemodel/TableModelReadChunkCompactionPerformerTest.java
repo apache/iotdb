@@ -167,7 +167,7 @@ public class TableModelReadChunkCompactionPerformerTest extends AbstractCompacti
         new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
       TableSchema tableSchema = tsFileMetadata.getTableSchemaMap().get("root.testsg");
-      Assert.assertEquals(2, tableSchema.getColumnTypes().size());
+      Assert.assertEquals(3, tableSchema.getColumnTypes().size());
       Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
           reader.getAllTimeseriesMetadata(true);
       for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
@@ -295,6 +295,21 @@ public class TableModelReadChunkCompactionPerformerTest extends AbstractCompacti
           CompressionType.LZ4);
       writer.endChunkGroup();
 
+      writer.startChunkGroup("node1.node2.device");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+
+      writer.startChunkGroup("node1.node2.node3.device");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
       writer.endFile();
     }
 
@@ -308,7 +323,7 @@ public class TableModelReadChunkCompactionPerformerTest extends AbstractCompacti
         new TsFileSequenceReader(
             tsFileManager.getTsFileList(true).get(0).getTsFile().getAbsolutePath())) {
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      Assert.assertEquals(2, tsFileMetadata.getTableSchemaMap().size());
+      Assert.assertEquals(3, tsFileMetadata.getTableSchemaMap().size());
     }
   }
 }

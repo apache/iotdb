@@ -185,8 +185,8 @@ public class TableModelReadPointCompactionPerformerTest extends AbstractCompacti
     TsFileResource resource2 = createEmptyFileAndResource(true);
     try (CompactionTableModelTestFileWriter writer =
         new CompactionTableModelTestFileWriter(resource2)) {
-      writer.registerTableSchema("db1.t1", Arrays.asList("id1", "id2"));
-      writer.startChunkGroup("db1.t1", Arrays.asList("id_field1", "id_field2"));
+      writer.registerTableSchema("db1.db1.t1", Arrays.asList("id1", "id2"));
+      writer.startChunkGroup("db1.db1.t1", Arrays.asList("id_field1", "id_field2"));
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
@@ -195,6 +195,14 @@ public class TableModelReadPointCompactionPerformerTest extends AbstractCompacti
       writer.endChunkGroup();
 
       writer.startChunkGroup("d1");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+
+      writer.startChunkGroup("node1.node2.device");
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
@@ -215,7 +223,7 @@ public class TableModelReadPointCompactionPerformerTest extends AbstractCompacti
         new TsFileSequenceReader(
             tsFileManager.getTsFileList(true).get(0).getTsFile().getAbsolutePath())) {
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      Assert.assertEquals(2, tsFileMetadata.getTableSchemaMap().size());
+      Assert.assertEquals(3, tsFileMetadata.getTableSchemaMap().size());
     }
   }
 

@@ -130,7 +130,7 @@ public class FileReaderManager {
         tsFileReader = new TsFileSequenceReader(filePath);
         byte versionNumber = tsFileReader.readVersionNumber();
         if (versionNumber != TSFileConfig.VERSION_NUMBER
-            && versionNumber != TSFileConfig.VERSION_NUMBER - 1) {
+            && versionNumber != TSFileConfig.VERSION_NUMBER_V3) {
           tsFileReader.close();
           throw new IOException("The version of this TsFile is not correct.");
         }
