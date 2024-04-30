@@ -130,7 +130,7 @@ public class TagLogFile implements AutoCloseable {
         byteBuffers.put(byteBuffer);
         byteBuffers.position(4); // Skip blockNum
         for (int i = 1; i < blockNum; i++) {
-          Long nextPosition = ReadWriteIOUtils.readLong(byteBuffers);
+          long nextPosition = ReadWriteIOUtils.readLong(byteBuffers);
           // read one offset, then use filechannel's read to read it
           byteBuffers.position(MAX_LENGTH * i);
           byteBuffers.limit(MAX_LENGTH * (i + 1));

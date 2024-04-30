@@ -178,14 +178,14 @@ public class TagManager {
     measurementsSet.add(measurementMNode);
     int measurementsSetNewSize = measurementsSet.size();
 
-    int memorySize = 0;
+    long memorySize = 0;
     if (tagIndexNewSize - tagIndexOldSize == 1) {
       // the last 4 is the memory occupied by the size of tagvaluemap
-      memorySize += (int) (RamUsageEstimator.sizeOf(tagKey) + 4);
+      memorySize += RamUsageEstimator.sizeOf(tagKey) + 4;
     }
     if (tagValueMapNewSize - tagValueMapOldSize == 1) {
       // the last 4 is the memory occupied by the size of measurementsSet
-      memorySize += (int) (RamUsageEstimator.sizeOf(tagValue) + 4);
+      memorySize += RamUsageEstimator.sizeOf(tagValue) + 4;
     }
     if (measurementsSetNewSize - measurementsSetOldSize == 1) {
       // 8 is the memory occupied by the length of the IMeasurementMNode
@@ -207,20 +207,20 @@ public class TagManager {
       return;
     }
     // init memory size
-    int memorySize = 0;
+    long memorySize = 0;
     if (tagIndex.get(tagKey).get(tagValue).remove(measurementMNode)) {
       memorySize += RamUsageEstimator.NUM_BYTES_OBJECT_REF + 4;
     }
     if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
       if (tagIndex.get(tagKey).remove(tagValue) != null) {
         // the last 4 is the memory occupied by the size of IMeasurementMNodeSet
-        memorySize += (int) (RamUsageEstimator.sizeOf(tagValue) + 4);
+        memorySize += RamUsageEstimator.sizeOf(tagValue) + 4;
       }
     }
     if (tagIndex.get(tagKey).isEmpty()) {
       if (tagIndex.remove(tagKey) != null) {
         // the last 4 is the memory occupied by the size of tagValueMap
-        memorySize += (int) (RamUsageEstimator.sizeOf(tagKey) + 4);
+        memorySize += RamUsageEstimator.sizeOf(tagKey) + 4;
       }
     }
     releaseMemory(memorySize);
@@ -747,13 +747,13 @@ public class TagManager {
     }
   }
 
-  private void requestMemory(int size) {
+  private void requestMemory(long size) {
     if (regionStatistics != null) {
       regionStatistics.requestMemory(size);
     }
   }
 
-  private void releaseMemory(int size) {
+  private void releaseMemory(long size) {
     if (regionStatistics != null) {
       regionStatistics.releaseMemory(size);
     }
