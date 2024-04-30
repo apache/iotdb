@@ -344,6 +344,10 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
         (database, regionGroupIds) ->
             regionGroupIds.forEach(
                 regionGroupId -> {
+                  int originalLeader = regionLeaderMap.getOrDefault(regionGroupId, -1);
+                  if (!regionGroupIntersection.contains(regionGroupId)) {
+                    result.put(regionGroupId, originalLeader);
+                  }
                   boolean matchLeader = false;
                   for (int currentEdge = nodeHeadEdge[rNodeMap.get(regionGroupId)];
                       currentEdge >= 0;
@@ -355,7 +359,7 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
                     }
                   }
                   if (!matchLeader) {
-                    result.put(regionGroupId, regionLeaderMap.getOrDefault(regionGroupId, -1));
+                    result.put(regionGroupId, originalLeader);
                   }
                 }));
 
