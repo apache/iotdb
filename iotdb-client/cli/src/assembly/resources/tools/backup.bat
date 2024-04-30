@@ -91,15 +91,19 @@ echo ------------------------------------------
 echo Starting IoTDB Client Data Back Script
 echo ------------------------------------------
 
-set CLASSPATH=%CLASSPATH%;"%IOTDB_HOME%\lib\*"
+set CLASSPATH="%IOTDB_HOME%\lib\*"
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.tool.IoTDBDataBackTool
 
 set logsDir="%IOTDB_HOME%\logs"
 if not exist "%logsDir%" (
     mkdir "%logsDir%"
 )
+for /F "tokens=2 delims==" %%G in ('wmic OS Get localdatetime /value') do set "logDate=%%G"
+set "logDate=%logDate:~0,8%"
 
-start /B "" cmd /C "%JAVA_HOME%\bin\java -DIOTDB_HOME=!IOTDB_HOME! !JAVA_OPTS! -cp !CLASSPATH! !MAIN_CLASS! %* > %logsDir%\iotdb-data-back.log 2>&1"
+set "logFilename=log-iotdb-data-back-%logDate%.log"
+
+start /B "" cmd /C "("%JAVA_HOME%\bin\java" -DIOTDB_HOME=!IOTDB_HOME! !JAVA_OPTS! -cp !CLASSPATH! !MAIN_CLASS! %*) > "%logsDir%\%logFilename%" 2>&1"
 exit /b
 
 :checkIfIOTDBProcess
