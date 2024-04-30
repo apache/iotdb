@@ -1138,15 +1138,6 @@ public class IoTDBDescriptor {
       conf.setWalBufferSize(walBufferSize);
     }
 
-    double maxWalBufferOffHeapMemorySizeProportion =
-        Double.parseDouble(
-            properties.getProperty(
-                "max_wal_buffer_off_heap_memory_size_proportion",
-                Double.toString(conf.getMaxWalBufferOffHeapMemorySizeProportion())));
-    if (maxWalBufferOffHeapMemorySizeProportion > 0) {
-      conf.setMaxWalBufferOffHeapMemorySizeProportion(maxWalBufferOffHeapMemorySizeProportion);
-    }
-
     int walBufferQueueCapacity =
         Integer.parseInt(
             properties.getProperty(
