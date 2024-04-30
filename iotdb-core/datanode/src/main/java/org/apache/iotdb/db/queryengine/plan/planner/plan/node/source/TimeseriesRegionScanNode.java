@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -35,6 +36,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -107,6 +109,11 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
     }
     boolean outputCount = ReadWriteIOUtils.readBool(buffer);
     return new TimeseriesRegionScanNode(null, timeseriesToSchemaInfo, outputCount, null);
+  }
+
+  @TestOnly
+  public List<PartialPath> getMeasurementPath() {
+    return new ArrayList<>(timeseriesToSchemaInfo.keySet());
   }
 
   @Override

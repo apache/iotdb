@@ -28,6 +28,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TimeSeriesSchemaSource.mapToString;
 
@@ -51,8 +52,8 @@ public class TimeseriesSchemaInfo {
     this.tags = mapToString(schemaInfo.getTagMap());
     Pair<String, String> deadbandInfo =
         MetaUtils.parseDeadbandInfo(schemaInfo.getSchema().getProps());
-    this.deadband = deadbandInfo.left;
-    this.deadbandParameters = deadbandInfo.right;
+    this.deadband = deadbandInfo.left == null ? "" : deadbandInfo.left;
+    this.deadbandParameters = deadbandInfo.right == null ? "" : deadbandInfo.right;
   }
 
   public TimeseriesSchemaInfo(
@@ -101,6 +102,30 @@ public class TimeseriesSchemaInfo {
     String deadband = ReadWriteIOUtils.readString(buffer);
     String deadbandParameters = ReadWriteIOUtils.readString(buffer);
     return new TimeseriesSchemaInfo(
+        isAligned, dataType, encoding, compression, tags, deadband, deadbandParameters);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    TimeseriesSchemaInfo that = (TimeseriesSchemaInfo) obj;
+    return isAligned == that.isAligned
+        && dataType.equals(that.dataType)
+        && encoding.equals(that.encoding)
+        && compression.equals(that.compression)
+        && tags.equals(that.tags)
+        && deadband.equals(that.deadband)
+        && deadbandParameters.equals(that.deadbandParameters);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
         isAligned, dataType, encoding, compression, tags, deadband, deadbandParameters);
   }
 }
