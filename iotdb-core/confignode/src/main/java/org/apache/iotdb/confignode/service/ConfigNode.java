@@ -297,10 +297,10 @@ public class ConfigNode implements ConfigNodeMBean {
                 x -> ThreadName.getThreadPoolTheThreadBelongs(x).name()));
   }
 
-  private void initConfigManager() {
+  void initConfigManager() {
     try {
-      this.configManager = new ConfigManager();
-    } catch (Exception e) {
+      configManager = new ConfigManager();
+    } catch (IOException e) {
       LOGGER.error("Can't start ConfigNode consensus group!", e);
       stop();
     }
