@@ -41,6 +41,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.Schem
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.TimeseriesReaderWithViewFetch;
 
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +58,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.stream.Collectors.toList;
 
@@ -79,7 +79,6 @@ public class TagManager {
       new ConcurrentHashMap<>();
 
   private final MemSchemaRegionStatistics regionStatistics;
-  private final AtomicLong memoryUsage = new AtomicLong(0);
 
   public TagManager(String sgSchemaDirPath, MemSchemaRegionStatistics regionStatistics)
       throws IOException {
@@ -181,18 +180,16 @@ public class TagManager {
 
     int memorySize = 0;
     if (tagIndexNewSize - tagIndexOldSize == 1) {
-      // 4 is the memory occupied by the length of the string, tagKey.length() is the length of
-      // tagKey, and the last 4 is the memory occupied by the size of tagvaluemap
-      memorySize += 4 + tagKey.length() + 4;
+      // the last 4 is the memory occupied by the size of tagvaluemap
+      memorySize += (int) (RamUsageEstimator.sizeOf(tagKey) + 4);
     }
     if (tagValueMapNewSize - tagValueMapOldSize == 1) {
-      // 4 is the memory occupied by the length of the string, tagValue.length() is the length of
-      // tagValue, and the last 4 is the memory occupied by the size of measurementsSet
-      memorySize += 4 + tagValue.length() + 4;
+      // the last 4 is the memory occupied by the size of measurementsSet
+      memorySize += (int) (RamUsageEstimator.sizeOf(tagValue) + 4);
     }
     if (measurementsSetNewSize - measurementsSetOldSize == 1) {
       // 8 is the memory occupied by the length of the IMeasurementMNode
-      memorySize += 8;
+      memorySize += RamUsageEstimator.NUM_BYTES_OBJECT_REF + 4;
     }
     requestMemory(memorySize);
   }
@@ -212,20 +209,18 @@ public class TagManager {
     // init memory size
     int memorySize = 0;
     if (tagIndex.get(tagKey).get(tagValue).remove(measurementMNode)) {
-      memorySize += 8;
+      memorySize += RamUsageEstimator.NUM_BYTES_OBJECT_REF + 4;
     }
     if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
       if (tagIndex.get(tagKey).remove(tagValue) != null) {
-        // 4 is the memory occupied by the length of the string, tagValue.length() is the length of
-        // tagValue, and the last 4 is the memory occupied by the size of IMeasurementMNodeSet
-        memorySize += 4 + tagValue.length() + 4;
+        // the last 4 is the memory occupied by the size of IMeasurementMNodeSet
+        memorySize += (int) (RamUsageEstimator.sizeOf(tagValue) + 4);
       }
     }
     if (tagIndex.get(tagKey).isEmpty()) {
       if (tagIndex.remove(tagKey) != null) {
-        // 4 is the memory occupied by the length of the string, tagKey.length() is the length of
-        // tagKey, and the last 4 is the memory occupied by the size of tagValueMap
-        memorySize += 4 + tagKey.length() + 4;
+        // the last 4 is the memory occupied by the size of tagValueMap
+        memorySize += (int) (RamUsageEstimator.sizeOf(tagKey) + 4);
       }
     }
     releaseMemory(memorySize);
@@ -746,7 +741,6 @@ public class TagManager {
 
   public void clear() throws IOException {
     this.tagIndex.clear();
-    releaseMemory((int) memoryUsage.get());
     if (tagLogFile != null) {
       tagLogFile.close();
       tagLogFile = null;
@@ -755,14 +749,12 @@ public class TagManager {
 
   private void requestMemory(int size) {
     if (regionStatistics != null) {
-      memoryUsage.addAndGet(size);
       regionStatistics.requestMemory(size);
     }
   }
 
   private void releaseMemory(int size) {
     if (regionStatistics != null) {
-      memoryUsage.addAndGet(-size);
       regionStatistics.releaseMemory(size);
     }
   }

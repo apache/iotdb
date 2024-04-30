@@ -55,9 +55,9 @@ public class TagLogFile implements AutoCloseable {
       CommonDescriptor.getInstance().getConfig().getTagAttributeTotalSize();
 
   private static final int MAX_ENTRY_NUM =
-      CommonDescriptor.getInstance().getConfig().getTagAttributeEachMaxNum();
+      CommonDescriptor.getInstance().getConfig().getTagAttributeMaxNum();
   private static final int MAX_ENTRY_Size =
-      CommonDescriptor.getInstance().getConfig().getTagAttributeEachMaxSize();
+      CommonDescriptor.getInstance().getConfig().getTagAttributeEntryMaxSize();
 
   private static final int RECORD_FLUSH_INTERVAL =
       IoTDBDescriptor.getInstance().getConfig().getTagAttributeFlushInterval();
@@ -129,14 +129,12 @@ public class TagLogFile implements AutoCloseable {
         ByteBuffer byteBuffers = ByteBuffer.allocate(blockNum * MAX_LENGTH);
         byteBuffers.put(byteBuffer);
         byteBuffers.position(4); // Skip blockNum
-        List<Long> blockOffset = new ArrayList<>();
-        blockOffset.add(position);
         for (int i = 1; i < blockNum; i++) {
-          blockOffset.add(ReadWriteIOUtils.readLong(byteBuffers));
+          Long nextPosition = ReadWriteIOUtils.readLong(byteBuffers);
           // read one offset, then use filechannel's read to read it
           byteBuffers.position(MAX_LENGTH * i);
           byteBuffers.limit(MAX_LENGTH * (i + 1));
-          fileChannel.read(byteBuffers, blockOffset.get(i));
+          fileChannel.read(byteBuffers, nextPosition);
           byteBuffers.position(4 + i * Long.BYTES);
         }
         byteBuffers.limit(byteBuffers.capacity());
@@ -146,7 +144,7 @@ public class TagLogFile implements AutoCloseable {
     return byteBuffer;
   }
 
-  private List<Long> ParseOffsetList(long position) throws IOException {
+  private List<Long> parseOffsetList(long position) throws IOException {
     List<Long> blockOffset = new ArrayList<>();
     blockOffset.add(position);
     // Read the first block
@@ -213,7 +211,7 @@ public class TagLogFile implements AutoCloseable {
       position = fileChannel.size();
     }
     // Read the original data to get the original space offset
-    List<Long> blockOffset = ParseOffsetList(position);
+    List<Long> blockOffset = parseOffsetList(position);
     // write read data
     int blockNumReal = byteBuffer.capacity() / MAX_LENGTH;
     if (blockNumReal < 1) {
@@ -225,9 +223,8 @@ public class TagLogFile implements AutoCloseable {
       // original space is used
       fileChannel.write(byteBuffer, blockOffset.get(0));
     } else {
-      if (blockOffset.size()
-          > blockNumReal) { // if the original space is larger than the new space, the original
-        // space is used
+      // if the original space is larger than the new space, the original space is used
+      if (blockOffset.size() >= blockNumReal) {
         ByteBuffer byteBufferFinal = ByteBuffer.allocate(blockOffset.size() * MAX_LENGTH);
         byteBufferFinal.putInt(-blockOffset.size());
         for (int i = 1; i < blockOffset.size(); i++) {
@@ -256,12 +253,14 @@ public class TagLogFile implements AutoCloseable {
           byteBuffer.position(i * MAX_LENGTH);
           byteBuffer.limit((i + 1) * MAX_LENGTH);
 
-          if (i < blockOffset.size()) { // what we want to write is the original space
+          // what we want to write is the original space
+          if (i < blockOffset.size()) {
             if (i > 0) { // first block has been written
               byteBufferOffset.putLong(blockOffset.get(i));
             }
             fileChannel.write(byteBuffer, blockOffset.get(i));
-          } else { // what we want to write is the new space
+          } else {
+            // what we want to write is the new space
             // TODO
             byteBufferOffset.putLong(fileChannel.size());
             blockOffset.add(fileChannel.size());
@@ -295,17 +294,16 @@ public class TagLogFile implements AutoCloseable {
 
   private ByteBuffer convertMapToByteBuffer(
       Map<String, String> tagMap, Map<String, String> attributeMap) throws MetadataException {
-    int TotalMapSize = calculateMapSize(tagMap) + calculateMapSize(attributeMap);
+    int totalMapSize = calculateMapSize(tagMap) + calculateMapSize(attributeMap);
     ByteBuffer byteBuffer;
-    if (TotalMapSize <= MAX_LENGTH) {
+    if (totalMapSize <= MAX_LENGTH) {
       byteBuffer = ByteBuffer.allocate(MAX_LENGTH);
     } else {
-      // get from Num*MAX_LENGTH < TotalMapSize + 4 + Long.BYTES*Num <= MAX_LENGTH*(Num + 1)
-      double blockNumMinLimit =
-          (TotalMapSize + 4 - MAX_LENGTH) / (double) (MAX_LENGTH - Long.BYTES);
-      int blockNum =
-          (int) Math.round(Math.ceil(blockNumMinLimit))
-              + 1; // there are two solution, but choose the smaller one
+      // get the minSolution from Num*MAX_LENGTH < TotalMapSize + 4 + Long.BYTES*Num <=
+      // MAX_LENGTH*(Num + 1)
+      double NumMinLimit = (totalMapSize + 4 - MAX_LENGTH) / (double) (MAX_LENGTH - Long.BYTES);
+      // blockNum = num + 1
+      int blockNum = (int) Math.ceil(NumMinLimit) + 1;
 
       byteBuffer = ByteBuffer.allocate(blockNum * MAX_LENGTH);
       // 4 bytes for blockNumSize, blockNum*Long.BYTES for blockOffset

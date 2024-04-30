@@ -251,8 +251,8 @@ public class CommonConfig {
 
   // Max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
-  private int tagAttributeEachMaxNum = 20;
-  private int tagAttributeEachMaxSize = 100;
+  private int tagAttributeMaxNum = 20;
+  private int tagAttributeEntryMaxSize = 100;
 
   // maximum number of Cluster Databases allowed
   private int databaseLimitThreshold = -1;
@@ -1099,12 +1099,20 @@ public class CommonConfig {
     this.tagAttributeTotalSize = tagAttributeTotalSize;
   }
 
-  public int getTagAttributeEachMaxNum() {
-    return tagAttributeEachMaxNum;
+  public int getTagAttributeMaxNum() {
+    return tagAttributeMaxNum;
   }
 
-  public int getTagAttributeEachMaxSize() {
-    return tagAttributeEachMaxSize;
+  public void setTagAttributeMaxNum(int tagAttributeMaxNum) {
+    this.tagAttributeMaxNum = tagAttributeMaxNum;
+  }
+
+  public int getTagAttributeEntryMaxSize() {
+    return tagAttributeEntryMaxSize;
+  }
+
+  public void setTagAttributeEntryMaxSize(int tagAttributeEntryMaxSize) {
+    this.tagAttributeEntryMaxSize = tagAttributeEntryMaxSize;
   }
 
   public int getDatabaseLimitThreshold() {
