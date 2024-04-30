@@ -290,7 +290,9 @@ public class FullOuterTimeJoinOperator extends AbstractConsumeAllOperator {
         || children.get(currentChildIndex) == null;
   }
 
-  /** @param currentInputIndex index of the input TsBlock */
+  /**
+   * @param currentInputIndex index of the input TsBlock
+   */
   @Override
   protected void processCurrentInputTsBlock(int currentInputIndex) {
     updateTimeSelector(currentInputIndex);

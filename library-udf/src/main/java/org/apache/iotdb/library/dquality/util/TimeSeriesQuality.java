@@ -204,12 +204,16 @@ public class TimeSeriesQuality {
     return 1 - (valueCnt + variationCnt + speedCnt + speedchangeCnt) * 0.25 / cnt;
   }
 
-  /** @return the downtime */
+  /**
+   * @return the downtime
+   */
   public boolean isDowntime() {
     return downtime;
   }
 
-  /** @param downtime the downtime to set */
+  /**
+   * @param downtime the downtime to set
+   */
   public void setDowntime(boolean downtime) {
     this.downtime = downtime;
   }

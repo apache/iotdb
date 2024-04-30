@@ -874,7 +874,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     measurementMNode.setPreDeleted(false);
   }
 
-  /** @param path full path from root to leaf node */
+  /**
+   * @param path full path from root to leaf node
+   */
   private void deleteOneTimeseriesUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
     IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeseries(path);
@@ -885,6 +887,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       regionStatistics.deleteMeasurement(1L);
     }
   }
+
   // endregion
 
   // region Interfaces for get and auto create device
@@ -910,6 +913,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throw new MetadataException(e);
     }
   }
+
   // endregion
 
   // region Interfaces for metadata info Query
@@ -1130,6 +1134,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private void removeFromTagInvertedIndex(IMeasurementMNode<IMemMNode> node) throws IOException {
     tagManager.removeFromTagInvertedIndex(node);
   }
+
   // endregion
 
   // region Interfaces and Implementation for Template operations

@@ -32,6 +32,7 @@ public class SwingingDoorTrendingFilter<T> {
    * open up
    */
   private double upperDoor;
+
   /**
    * The minimum curLowerSlope between the lastStoredPoint to the current point lowerDoor can only
    * open downward

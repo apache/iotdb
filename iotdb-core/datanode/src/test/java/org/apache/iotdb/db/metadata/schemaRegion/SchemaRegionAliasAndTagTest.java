@@ -56,6 +56,7 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
     super.setUp();
     schemaRegion = getSchemaRegion("root.sg", 0);
   }
+
   /**
    * Prepare timeseries
    *

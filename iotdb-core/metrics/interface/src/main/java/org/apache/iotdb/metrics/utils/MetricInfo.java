@@ -34,10 +34,13 @@ public class MetricInfo {
 
   private static final Logger logger = LoggerFactory.getLogger(MetricInfo.class);
   private static final Integer PAIR_SIZE = 2;
+
   /** The name of metric. */
   private final String name;
+
   /** The tags of metric. */
   private final Map<String, String> tags = new LinkedHashMap<>();
+
   /** The metaInfo of metric. */
   private final MetaInfo metaInfo;
 
@@ -134,6 +137,7 @@ public class MetricInfo {
   public static class MetaInfo {
     /** The type of metric. */
     private final MetricType type;
+
     /** The tag keys of metric. */
     private final Set<String> tagNames;
 

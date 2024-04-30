@@ -948,7 +948,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     mtree.rollbackSchemaBlackList(path);
   }
 
-  /** @param path full path from root to leaf node */
+  /**
+   * @param path full path from root to leaf node
+   */
   private void deleteOneTimeseriesUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
     IMeasurementMNode<ICachedMNode> measurementMNode = mtree.deleteTimeseries(path);
@@ -959,6 +961,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       regionStatistics.deleteMeasurement(1L);
     }
   }
+
   // endregion
 
   // region Interfaces for get and auto create device
@@ -985,6 +988,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       throw new MetadataException(e);
     }
   }
+
   // endregion
 
   // region Interfaces for metadata info Query
@@ -1240,6 +1244,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   private void removeFromTagInvertedIndex(IMeasurementMNode<ICachedMNode> node) throws IOException {
     tagManager.removeFromTagInvertedIndex(node);
   }
+
   // endregion
 
   // region Interfaces and Implementation for Template operations
@@ -1349,6 +1354,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       throws MetadataException {
     return mtree.getNodeReader(showNodesPlan);
   }
+
   // endregion
 
   private static class RecoverOperationResult {

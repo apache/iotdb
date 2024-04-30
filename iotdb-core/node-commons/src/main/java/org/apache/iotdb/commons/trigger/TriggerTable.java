@@ -49,6 +49,7 @@ public class TriggerTable {
   public TriggerTable(Map<String, TriggerInformation> triggerTable) {
     this.triggerTable = triggerTable;
   }
+
   // for createTrigger
   public void addTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
     triggerTable.put(triggerName, triggerInformation);

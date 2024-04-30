@@ -304,6 +304,10 @@ public class RegionMigrateService implements IService {
               regionId,
               i,
               e);
+        } catch (Exception e) {
+          addPeerSucceed = false;
+          throwable = e;
+          taskLogger.warn("Unexpected exception", e);
         }
         if (addPeerSucceed || throwable instanceof InterruptedException) {
           break;
@@ -402,6 +406,10 @@ public class RegionMigrateService implements IService {
               regionId,
               i,
               e);
+        } catch (Exception e) {
+          removePeerSucceed = false;
+          throwable = e;
+          taskLogger.warn("Unexpected exception", e);
         }
         if (removePeerSucceed || throwable instanceof InterruptedException) {
           break;

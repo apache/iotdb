@@ -60,6 +60,7 @@ public class InViewExpression extends UnaryViewExpression {
       throw new RuntimeException(e);
     }
   }
+
   // endregion
 
   // region common interfaces that have to be implemented
@@ -91,6 +92,7 @@ public class InViewExpression extends UnaryViewExpression {
     ReadWriteIOUtils.write(isNotIn, stream);
     ReadWriteIOUtils.writeStringList(this.valueList, stream);
   }
+
   // endregion
 
   public boolean isNotIn() {
