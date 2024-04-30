@@ -240,6 +240,11 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     getLoadManager().forceUpdateConsensusGroupCache(successTransferMap);
   }
 
+  public synchronized void balanceRegionLeaderAndPriority() {
+    balanceRegionLeader();
+    balanceRegionPriority();
+  }
+
   /** Balance cluster RegionGroup route priority through configured algorithm. */
   private synchronized void balanceRegionPriority() {
     priorityMapLock.writeLock().lock();
@@ -295,6 +300,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
     long broadcastTime = System.currentTimeMillis();
     Map<TConsensusGroupId, TRegionReplicaSet> tmpPriorityMap = getRegionPriorityMap();
+    LOGGER.info("region map: {}", tmpPriorityMap);
     AsyncClientHandler<TRegionRouteReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
             DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
@@ -310,21 +316,17 @@ public class RouteBalancer implements IClusterStatusSubscriber {
         regionPriorityEntry : differentPriorityMap.entrySet()) {
       if (!Objects.equals(
           regionPriorityEntry.getValue().getRight(), regionPriorityEntry.getValue().getLeft())) {
-        try {
-          LOGGER.info(
-              "[RegionPriority]\t {}: {}->{}",
-              regionPriorityEntry.getKey(),
-              regionPriorityEntry.getValue().getLeft() == null
-                  ? "null"
-                  : regionPriorityEntry.getValue().getLeft().getDataNodeLocations().stream()
-                      .map(TDataNodeLocation::getDataNodeId)
-                      .collect(Collectors.toList()),
-              regionPriorityEntry.getValue().getRight().getDataNodeLocations().stream()
-                  .map(TDataNodeLocation::getDataNodeId)
-                  .collect(Collectors.toList()));
-        } catch (Exception e) {
-          LOGGER.error("Unexpected exception", e);
-        }
+        LOGGER.info(
+            "[RegionPriority]\t {}: {}->{}",
+            regionPriorityEntry.getKey(),
+            regionPriorityEntry.getValue().getLeft() == null
+                ? "null"
+                : regionPriorityEntry.getValue().getLeft().getDataNodeLocations().stream()
+                    .map(TDataNodeLocation::getDataNodeId)
+                    .collect(Collectors.toList()),
+            regionPriorityEntry.getValue().getRight().getDataNodeLocations().stream()
+                .map(TDataNodeLocation::getDataNodeId)
+                .collect(Collectors.toList()));
       }
     }
   }

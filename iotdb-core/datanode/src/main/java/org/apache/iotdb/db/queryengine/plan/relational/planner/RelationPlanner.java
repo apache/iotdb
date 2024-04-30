@@ -14,6 +14,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -49,6 +50,7 @@ import static java.util.Objects.requireNonNull;
 public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
+  private final MPPQueryContext queryContext;
   private final QueryId idAllocator;
   private final SessionInfo sessionInfo;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
@@ -56,18 +58,19 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   public RelationPlanner(
       Analysis analysis,
       SymbolAllocator symbolAllocator,
-      QueryId idAllocator,
+      MPPQueryContext queryContext,
       SessionInfo sessionInfo,
       Map<NodeRef<Node>, RelationPlan> recursiveSubqueries) {
     requireNonNull(analysis, "analysis is null");
     requireNonNull(symbolAllocator, "symbolAllocator is null");
-    requireNonNull(idAllocator, "idAllocator is null");
+    requireNonNull(queryContext, "queryContext is null");
     requireNonNull(sessionInfo, "session is null");
     requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
 
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
-    this.idAllocator = idAllocator;
+    this.queryContext = queryContext;
+    this.idAllocator = queryContext.getQueryId();
     this.sessionInfo = sessionInfo;
     this.recursiveSubqueries = recursiveSubqueries;
   }
@@ -75,7 +78,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitQuery(Query node, Void context) {
     return new QueryPlanner(
-            analysis, symbolAllocator, idAllocator, sessionInfo, recursiveSubqueries)
+            analysis, symbolAllocator, queryContext, sessionInfo, recursiveSubqueries)
         .plan(node);
   }
 
@@ -133,7 +136,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitQuerySpecification(QuerySpecification node, Void context) {
     return new QueryPlanner(
-            analysis, symbolAllocator, idAllocator, sessionInfo, recursiveSubqueries)
+            analysis, symbolAllocator, queryContext, sessionInfo, recursiveSubqueries)
         .plan(node);
   }
 

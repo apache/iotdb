@@ -39,16 +39,16 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
     this(null, false);
   }
 
-  public PipeSchemaRegionWritePlanEvent(PlanNode planNode, boolean isGeneratedByPipe) {
+  public PipeSchemaRegionWritePlanEvent(final PlanNode planNode, final boolean isGeneratedByPipe) {
     this(planNode, null, null, null, isGeneratedByPipe);
   }
 
   public PipeSchemaRegionWritePlanEvent(
-      PlanNode planNode,
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      boolean isGeneratedByPipe) {
+      final PlanNode planNode,
+      final String pipeName,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final boolean isGeneratedByPipe) {
     super(pipeName, pipeTaskMeta, pattern, isGeneratedByPipe);
     this.planNode = planNode;
   }
@@ -59,19 +59,19 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime) {
+      final String pipeName,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime) {
     return new PipeSchemaRegionWritePlanEvent(
         planNode, pipeName, pipeTaskMeta, pattern, isGeneratedByPipe);
   }
 
   @Override
   public ByteBuffer serializeToByteBuffer() {
-    ByteBuffer planBuffer = planNode.serializeToByteBuffer();
-    ByteBuffer result = ByteBuffer.allocate(Byte.BYTES * 2 + planBuffer.limit());
+    final ByteBuffer planBuffer = planNode.serializeToByteBuffer();
+    final ByteBuffer result = ByteBuffer.allocate(Byte.BYTES * 2 + planBuffer.limit());
     ReadWriteIOUtils.write(PipeSchemaSerializableEventType.SCHEMA_WRITE_PLAN.getType(), result);
     ReadWriteIOUtils.write(isGeneratedByPipe, result);
     result.put(planBuffer);
@@ -79,8 +79,24 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
   }
 
   @Override
-  public void deserializeFromByteBuffer(ByteBuffer buffer) {
+  public void deserializeFromByteBuffer(final ByteBuffer buffer) {
     isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
     planNode = PlanNodeType.deserialize(buffer);
+  }
+
+  /////////////////////////// Object ///////////////////////////
+
+  @Override
+  public String toString() {
+    return String.format("PipeConfigRegionWritePlanEvent{planNode=%s}", planNode)
+        + " - "
+        + super.toString();
+  }
+
+  @Override
+  public String coreReportMessage() {
+    return String.format("PipeConfigRegionWritePlanEvent{planNode=%s}", planNode)
+        + " - "
+        + super.coreReportMessage();
   }
 }

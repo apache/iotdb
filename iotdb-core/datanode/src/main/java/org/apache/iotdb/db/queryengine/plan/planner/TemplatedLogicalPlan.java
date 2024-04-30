@@ -117,7 +117,9 @@ public class TemplatedLogicalPlan {
           .getExpressionTypes()
           .forEach(
               (key, value) ->
-                  context.getTypeProvider().setType(key.getNode().getOutputSymbol(), value));
+                  context
+                      .getTypeProvider()
+                      .setTreeModelType(key.getNode().getOutputSymbol(), value));
     }
 
     context

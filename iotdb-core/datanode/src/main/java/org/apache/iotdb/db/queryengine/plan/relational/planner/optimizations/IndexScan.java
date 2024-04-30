@@ -20,7 +20,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -34,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.Predic
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
@@ -98,33 +98,7 @@ public class IndexScan implements RelationalPlanOptimizer {
               .map(e -> e.getKey().getName())
               .collect(Collectors.toList());
 
-      Expression indexExpression = context.getPredicate();
-      if (indexExpression != null) {
-        Set<String> idOrAttributeColumnNames =
-            node.getAssignments().entrySet().stream()
-                .filter(
-                    e ->
-                        TsTableColumnCategory.ID.equals(e.getValue().getColumnCategory())
-                            || ATTRIBUTE.equals(e.getValue().getColumnCategory()))
-                .map(e -> e.getKey().getName())
-                .collect(Collectors.toSet());
-        if (indexExpression instanceof LogicalExpression) {
-          for (Expression subExpression : ((LogicalExpression) indexExpression).getTerms()) {
-            if (Boolean.FALSE.equals(
-                new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames)
-                    .process(subExpression))) {
-              indexExpression = null;
-              break;
-            }
-          }
-        } else {
-          if (Boolean.FALSE.equals(
-              new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames)
-                  .process(indexExpression))) {
-            indexExpression = null;
-          }
-        }
-      }
+      List<Expression> conjExpressions = getConjunctionExpressions(context.getPredicate(), node);
 
       List<DeviceEntry> deviceEntries =
           context
@@ -133,7 +107,7 @@ public class IndexScan implements RelationalPlanOptimizer {
                   new QualifiedObjectName(
                       context.getSessionInfo().getDatabaseName().get(),
                       node.getQualifiedTableName()),
-                  Collections.singletonList(indexExpression),
+                  conjExpressions,
                   attributeColumns);
       node.setDeviceEntries(deviceEntries);
 
@@ -152,27 +126,62 @@ public class IndexScan implements RelationalPlanOptimizer {
           fetchDataPartitionByDevices(deviceSet, database, globalTimeFilter, partitionFetcher);
       context.getAnalysis().setDataPartition(dataPartition);
 
-      if (dataPartition.getDataPartitionMap().size() != 1) {
-        throw new IllegalStateException("Table model can only process data only in data region!");
+      if (dataPartition.getDataPartitionMap().size() > 1) {
+        throw new IllegalStateException(
+            "Table model can only process data only in one data region yet!");
       }
 
-      // TODO add the real impl
-      TRegionReplicaSet regionReplicaSet =
-          dataPartition
-              .getDataPartitionMap()
-              .values()
-              .iterator()
-              .next()
-              .values()
-              .iterator()
-              .next()
-              .values()
-              .iterator()
-              .next()
-              .get(0);
-      node.setRegionReplicaSet(regionReplicaSet);
+      if (dataPartition.getDataPartitionMap().isEmpty()) {
+        context.getAnalysis().setFinishQueryAfterAnalyze();
+      } else {
+        // TODO add the real impl
+        TRegionReplicaSet regionReplicaSet =
+            dataPartition
+                .getDataPartitionMap()
+                .values()
+                .iterator()
+                .next()
+                .values()
+                .iterator()
+                .next()
+                .values()
+                .iterator()
+                .next()
+                .get(0);
+        node.setRegionReplicaSet(regionReplicaSet);
+      }
 
       return node;
+    }
+  }
+
+  private static List<Expression> getConjunctionExpressions(
+      Expression predicate, TableScanNode node) {
+    if (predicate != null) {
+      List<Expression> resultExpressions = new ArrayList<>();
+      Set<String> idOrAttributeColumnNames =
+          node.getIdAndAttributeIndexMap().keySet().stream()
+              .map(Symbol::getName)
+              .collect(Collectors.toSet());
+      if (predicate instanceof LogicalExpression) {
+        for (Expression subExpression : ((LogicalExpression) predicate).getTerms()) {
+          if (Boolean.TRUE.equals(
+              new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames)
+                  .process(subExpression))) {
+            resultExpressions.add(subExpression);
+          }
+        }
+      } else {
+        if (Boolean.FALSE.equals(
+            new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames).process(predicate))) {
+          resultExpressions = Collections.emptyList();
+        } else {
+          resultExpressions = Collections.singletonList(predicate);
+        }
+      }
+      return resultExpressions;
+    } else {
+      return Collections.emptyList();
     }
   }
 

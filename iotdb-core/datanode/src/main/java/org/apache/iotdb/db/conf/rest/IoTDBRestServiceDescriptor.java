@@ -163,6 +163,7 @@ public class IoTDBRestServiceDescriptor {
     try {
       return new URL(urlString);
     } catch (MalformedURLException e) {
+      logger.warn("get url failed", e);
       return null;
     }
   }

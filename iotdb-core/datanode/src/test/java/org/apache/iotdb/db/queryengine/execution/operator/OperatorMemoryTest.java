@@ -976,9 +976,9 @@ public class OperatorMemoryTest {
     try {
       MeasurementPath measurementPath = new MeasurementPath("root.sg.d1.s1", TSDataType.TEXT);
       TypeProvider typeProvider = new TypeProvider();
-      typeProvider.setType("count(root.sg.d1.s1)", TSDataType.INT64);
-      typeProvider.setType("min_time(root.sg.d1.s1)", TSDataType.INT64);
-      typeProvider.setType("first_value(root.sg.d1.s1)", TSDataType.TEXT);
+      typeProvider.setTreeModelType("count(root.sg.d1.s1)", TSDataType.INT64);
+      typeProvider.setTreeModelType("min_time(root.sg.d1.s1)", TSDataType.INT64);
+      typeProvider.setTreeModelType("first_value(root.sg.d1.s1)", TSDataType.TEXT);
 
       // case1: without group by, step is SINGLE
       List<AggregationDescriptor> aggregationDescriptors1 =
@@ -1235,8 +1235,8 @@ public class OperatorMemoryTest {
 
     MeasurementPath measurementPath = new MeasurementPath("root.sg.d1.s1", TSDataType.TEXT);
     TypeProvider typeProvider = new TypeProvider();
-    typeProvider.setType("count(root.sg.d1.s1)", TSDataType.INT64);
-    typeProvider.setType("first_value(root.sg.d1.s1)", TSDataType.TEXT);
+    typeProvider.setTreeModelType("count(root.sg.d1.s1)", TSDataType.INT64);
+    typeProvider.setTreeModelType("first_value(root.sg.d1.s1)", TSDataType.TEXT);
 
     List<AggregationDescriptor> aggregationDescriptors =
         Arrays.asList(
@@ -1308,8 +1308,8 @@ public class OperatorMemoryTest {
 
     MeasurementPath measurementPath = new MeasurementPath("root.sg.d1.s1", TSDataType.TEXT);
     TypeProvider typeProvider = new TypeProvider();
-    typeProvider.setType("count(root.sg.d1.s1)", TSDataType.INT64);
-    typeProvider.setType("first_value(root.sg.d1.s1)", TSDataType.TEXT);
+    typeProvider.setTreeModelType("count(root.sg.d1.s1)", TSDataType.INT64);
+    typeProvider.setTreeModelType("first_value(root.sg.d1.s1)", TSDataType.TEXT);
 
     List<AggregationDescriptor> aggregationDescriptors =
         Arrays.asList(
@@ -1388,8 +1388,8 @@ public class OperatorMemoryTest {
 
     MeasurementPath measurementPath = new MeasurementPath("root.sg.d1.s1", TSDataType.TEXT);
     TypeProvider typeProvider = new TypeProvider();
-    typeProvider.setType("count(root.sg.d1.s1)", TSDataType.INT64);
-    typeProvider.setType("first_value(root.sg.d1.s1)", TSDataType.TEXT);
+    typeProvider.setTreeModelType("count(root.sg.d1.s1)", TSDataType.INT64);
+    typeProvider.setTreeModelType("first_value(root.sg.d1.s1)", TSDataType.TEXT);
 
     List<AggregationDescriptor> aggregationDescriptors =
         Arrays.asList(

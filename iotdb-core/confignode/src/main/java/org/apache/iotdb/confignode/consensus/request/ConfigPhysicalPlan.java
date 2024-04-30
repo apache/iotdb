@@ -315,6 +315,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RevokeRole:
         case RevokeRoleFromUser:
         case UpdateUser:
+        case CreateUserWithRawPassword:
           plan = new AuthorPlan(configPhysicalPlanType);
           break;
         case ApplyConfigNode:

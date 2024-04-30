@@ -217,7 +217,7 @@ public class AggregationUtil {
     for (AggregationDescriptor descriptor : aggregationDescriptors) {
       List<TSDataType> outPutDataTypes =
           descriptor.getOutputColumnNames().stream()
-              .map(typeProvider::getType)
+              .map(typeProvider::getTreeModelType)
               .collect(Collectors.toList());
       for (TSDataType tsDataType : outPutDataTypes) {
         timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType);

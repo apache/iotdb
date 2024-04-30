@@ -89,11 +89,11 @@ public class ExportData extends AbstractDataTool {
   private static final String EXPORT_SQL_TYPE_NAME = "sql";
 
   private static final String ALIGNED_ARGS = "aligned";
-  private static final String ALIGNED_NAME = "create the aligned insert sql";
+  private static final String ALIGNED_NAME = "export aligned insert sql";
   private static final String LINES_PER_FILE_ARGS = "linesPerFile";
   private static final String LINES_PER_FILE_ARGS_NAME = "Lines Per File";
 
-  private static final String TSFILEDB_CLI_PREFIX = "ExportCsv";
+  private static final String TSFILEDB_CLI_PREFIX = "ExportData";
 
   private static final String DUMP_FILE_NAME_DEFAULT = "dump";
   private static String targetFile = DUMP_FILE_NAME_DEFAULT;
@@ -109,6 +109,8 @@ public class ExportData extends AbstractDataTool {
   private static int linesPerFile = 10000;
 
   private static long timeout = -1;
+
+  private static Boolean aligned = false;
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
@@ -231,6 +233,9 @@ public class ExportData extends AbstractDataTool {
     if (commandLine.getOptionValue(LINES_PER_FILE_ARGS) != null) {
       linesPerFile = Integer.parseInt(commandLine.getOptionValue(LINES_PER_FILE_ARGS));
     }
+    if (commandLine.getOptionValue(ALIGNED_ARGS) != null) {
+      aligned = Boolean.valueOf(commandLine.getOptionValue(ALIGNED_ARGS));
+    }
   }
 
   /**
@@ -273,7 +278,7 @@ public class ExportData extends AbstractDataTool {
             .desc(
                 "Output time Format in csv file. "
                     + "You can choose 1) timestamp, number, long 2) ISO8601, default 3) "
-                    + "user-defined pattern like yyyy-MM-dd\\ HH:mm:ss, default ISO8601 (optional)")
+                    + "user-defined pattern like yyyy-MM-dd\\ HH:mm:ss, default ISO8601.\n OutPut timestamp in sql file, No matter what time format is set(optional)")
             .build();
     options.addOption(opTimeFormat);
 
@@ -316,7 +321,7 @@ public class ExportData extends AbstractDataTool {
         Option.builder(ALIGNED_ARGS)
             .argName(ALIGNED_NAME)
             .hasArg()
-            .desc("Whether to use the interface of aligned (optional)")
+            .desc("Whether export to sql of aligned (only sql optional)")
             .build();
     options.addOption(opAligned);
 
@@ -525,10 +530,10 @@ public class ExportData extends AbstractDataTool {
             timeseries.remove(0);
           }
           String sqlMiddle = null;
-          if (Boolean.TRUE.equals(ALIGNED_ARGS)) {
-            sqlMiddle = " ALIGNED VALUES (" + timeTrans(rowRecord.getTimestamp()) + ",";
+          if (Boolean.TRUE.equals(aligned)) {
+            sqlMiddle = " ALIGNED VALUES (" + rowRecord.getTimestamp() + ",";
           } else {
-            sqlMiddle = " VALUES (" + timeTrans(rowRecord.getTimestamp()) + ",";
+            sqlMiddle = " VALUES (" + rowRecord.getTimestamp() + ",";
           }
           List<String> values = new ArrayList<>();
           if (headers.contains("Device")) {
@@ -560,7 +565,7 @@ public class ExportData extends AbstractDataTool {
             writer.write(
                 "INSERT INTO "
                     + deviceName
-                    + " (TIMESTAMP,"
+                    + "(TIMESTAMP,"
                     + String.join(",", headersTemp)
                     + ")"
                     + sqlMiddle

@@ -259,7 +259,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
             context
                 .queryContext
                 .getTypeProvider()
-                .setType(partialFunctionExpression.getOutputSymbol(), dataType);
+                .setTreeModelType(partialFunctionExpression.getOutputSymbol(), dataType);
           }
           newPartialOutputColumns.add(partialFunctionExpression.getOutputSymbol());
         }
