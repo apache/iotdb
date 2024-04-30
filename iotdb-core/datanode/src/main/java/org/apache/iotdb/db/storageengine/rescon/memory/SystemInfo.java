@@ -379,9 +379,11 @@ public class SystemInfo {
 
   public void allocateWriteMemory() {
     totalDirectBufferMemorySizeLimit =
-        (long)
-            (config.getMaxOffHeapMemoryBytes()
-                * config.getMaxWalBufferOffHeapMemorySizeProportion());
+        config.getMaxOffHeapMemoryBytes() == 0
+            ? Long.MAX_VALUE
+            : (long)
+                (config.getMaxOffHeapMemoryBytes()
+                    * config.getMaxWalBufferOffHeapMemorySizeProportion());
     memorySizeForMemtable =
         (long)
             (config.getAllocateMemoryForStorageEngine() * config.getWriteProportionForMemtable());
