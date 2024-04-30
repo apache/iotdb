@@ -347,6 +347,7 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
                   int originalLeader = regionLeaderMap.getOrDefault(regionGroupId, -1);
                   if (!regionGroupIntersection.contains(regionGroupId)) {
                     result.put(regionGroupId, originalLeader);
+                    return;
                   }
                   boolean matchLeader = false;
                   for (int currentEdge = nodeHeadEdge[rNodeMap.get(regionGroupId)];
