@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.join.merge;
 
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.statement.component.NullOrdering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
@@ -61,6 +62,25 @@ public class MergeSortComparator {
       boolean asc = sortItemList.get(i).getOrdering() == Ordering.ASC;
       boolean nullFirst = sortItemList.get(i).getNullOrdering() == NullOrdering.FIRST;
       list.add(genSingleComparator(asc, index, dataType, nullFirst));
+    }
+
+    return list.size() == 1 ? list.get(0) : new ComparatorChain<>(list);
+  }
+
+  public static Comparator<SortKey> getComparatorForTable(
+      List<SortOrder> sortOrderList, List<Integer> indexList, List<TSDataType> dataTypeList) {
+
+    // use code-gen compile this comparator
+    List<Comparator<SortKey>> list = new ArrayList<>(indexList.size());
+    for (int i = 0; i < indexList.size(); i++) {
+      int index = indexList.get(i);
+      if (index == -2) {
+        continue;
+      }
+      TSDataType dataType = dataTypeList.get(i);
+      SortOrder sortOrder = sortOrderList.get(i);
+      list.add(
+          genSingleComparator(sortOrder.isAscending(), index, dataType, sortOrder.isNullsFirst()));
     }
 
     return list.size() == 1 ? list.get(0) : new ComparatorChain<>(list);

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -58,7 +59,7 @@ public class InsertRowsNode extends InsertNode {
    */
   private List<Integer> insertRowNodeIndexList;
 
-  /** the InsertRowsNode list */
+  /** The {@link InsertRowNode} list */
   private List<InsertRowNode> insertRowNodeList;
 
   public InsertRowsNode(PlanNodeId id) {
@@ -74,7 +75,7 @@ public class InsertRowsNode extends InsertNode {
     this.insertRowNodeList = insertRowNodeList;
   }
 
-  /** record the result of insert rows */
+  /** Record the result of insert rows */
   private Map<Integer, TSStatus> results = new HashMap<>();
 
   public List<Integer> getInsertRowNodeIndexList() {
@@ -227,14 +228,14 @@ public class InsertRowsNode extends InsertNode {
     List<TEndPoint> redirectInfo = new ArrayList<>();
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);
-      // data region for insert row node
+      // Data region for insert row node
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
                   insertRowNode.devicePath.getFullPath(),
                   TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()));
-      // collect redirectInfo
+      // Collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
       InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
       if (tmpNode != null) {

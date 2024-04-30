@@ -65,11 +65,6 @@ public abstract class IrVisitor<R, C> extends AstVisitor<R, C> {
     return visitExpression(node, context);
   }
 
-  //    protected R visitConstant(Constant node, C context)
-  //    {
-  //        return visitExpression(node, context);
-  //    }
-
   protected R visitInPredicate(InPredicate node, C context) {
     return visitExpression(node, context);
   }
@@ -78,11 +73,6 @@ public abstract class IrVisitor<R, C> extends AstVisitor<R, C> {
     return visitExpression(node, context);
   }
 
-  //    protected R visitLambdaExpression(LambdaExpression node, C context)
-  //    {
-  //        return visitExpression(node, context);
-  //    }
-
   protected R visitSimpleCaseExpression(SimpleCaseExpression node, C context) {
     return visitExpression(node, context);
   }
@@ -90,11 +80,6 @@ public abstract class IrVisitor<R, C> extends AstVisitor<R, C> {
   protected R visitNullIfExpression(NullIfExpression node, C context) {
     return visitExpression(node, context);
   }
-
-  //    protected R visitArithmeticNegation(ArithmeticNegation node, C context)
-  //    {
-  //        return visitExpression(node, context);
-  //    }
 
   protected R visitNotExpression(NotExpression node, C context) {
     return visitExpression(node, context);
@@ -107,11 +92,6 @@ public abstract class IrVisitor<R, C> extends AstVisitor<R, C> {
   protected R visitIsNullPredicate(IsNullPredicate node, C context) {
     return visitExpression(node, context);
   }
-
-  //    protected R visitSubscriptExpression(SubscriptExpression node, C context)
-  //    {
-  //        return visitExpression(node, context);
-  //    }
 
   protected R visitLogicalExpression(LogicalExpression node, C context) {
     return visitExpression(node, context);
@@ -128,9 +108,4 @@ public abstract class IrVisitor<R, C> extends AstVisitor<R, C> {
   protected R visitSymbolReference(SymbolReference node, C context) {
     return visitExpression(node, context);
   }
-
-  //    protected R visitBindExpression(BindExpression node, C context)
-  //    {
-  //        return visitExpression(node, context);
-  //    }
 }

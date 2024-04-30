@@ -43,18 +43,18 @@ import static org.apache.iotdb.db.relational.sql.tree.LogicalExpression.Operator
 public final class NormalizeOrExpressionRewriter {
 
   public static Expression normalizeOrExpression(Expression expression) {
-    return ExpressionTreeRewriter.rewriteWith(new Visitor(), expression);
+    return new Visitor().process(expression, null);
   }
 
   private NormalizeOrExpressionRewriter() {}
 
-  private static class Visitor extends ExpressionRewriter<Void> {
+  private static class Visitor extends RewritingVisitor<Void> {
+
     @Override
-    public Expression rewriteLogicalExpression(
-        LogicalExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+    public Expression visitLogicalExpression(LogicalExpression node, Void context) {
       List<Expression> terms =
           node.getTerms().stream()
-              .map(expression -> treeRewriter.rewrite(expression, context))
+              .map(expression -> process(expression, context))
               .collect(toImmutableList());
 
       if (node.getOperator() == AND) {

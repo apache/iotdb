@@ -47,11 +47,11 @@ public class PipeStaticMeta {
   }
 
   public PipeStaticMeta(
-      String pipeName,
-      long creationTime,
-      Map<String, String> extractorAttributes,
-      Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes) {
+      final String pipeName,
+      final long creationTime,
+      final Map<String, String> extractorAttributes,
+      final Map<String, String> processorAttributes,
+      final Map<String, String> connectorAttributes) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     extractorParameters = new PipeParameters(extractorAttributes);
@@ -90,28 +90,28 @@ public class PipeStaticMeta {
     return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
   }
 
-  public void serialize(OutputStream outputStream) throws IOException {
+  public void serialize(final OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(pipeName, outputStream);
     ReadWriteIOUtils.write(creationTime, outputStream);
 
     ReadWriteIOUtils.write(extractorParameters.getAttribute().size(), outputStream);
-    for (Map.Entry<String, String> entry : extractorParameters.getAttribute().entrySet()) {
+    for (final Map.Entry<String, String> entry : extractorParameters.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
     ReadWriteIOUtils.write(processorParameters.getAttribute().size(), outputStream);
-    for (Map.Entry<String, String> entry : processorParameters.getAttribute().entrySet()) {
+    for (final Map.Entry<String, String> entry : processorParameters.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
     ReadWriteIOUtils.write(connectorParameters.getAttribute().size(), outputStream);
-    for (Map.Entry<String, String> entry : connectorParameters.getAttribute().entrySet()) {
+    for (final Map.Entry<String, String> entry : connectorParameters.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
   }
 
-  public static PipeStaticMeta deserialize(InputStream inputStream) throws IOException {
+  public static PipeStaticMeta deserialize(final InputStream inputStream) throws IOException {
     final PipeStaticMeta pipeStaticMeta = new PipeStaticMeta();
 
     pipeStaticMeta.pipeName = ReadWriteIOUtils.readString(inputStream);
@@ -143,7 +143,7 @@ public class PipeStaticMeta {
     return pipeStaticMeta;
   }
 
-  public static PipeStaticMeta deserialize(ByteBuffer byteBuffer) {
+  public static PipeStaticMeta deserialize(final ByteBuffer byteBuffer) {
     final PipeStaticMeta pipeStaticMeta = new PipeStaticMeta();
 
     pipeStaticMeta.pipeName = ReadWriteIOUtils.readString(byteBuffer);
@@ -176,14 +176,14 @@ public class PipeStaticMeta {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeStaticMeta that = (PipeStaticMeta) obj;
+    final PipeStaticMeta that = (PipeStaticMeta) obj;
     return pipeName.equals(that.pipeName)
         && creationTime == that.creationTime
         && extractorParameters.equals(that.extractorParameters)
@@ -218,7 +218,8 @@ public class PipeStaticMeta {
   public static final String SYSTEM_PIPE_PREFIX = "__";
   public static final String SUBSCRIPTION_PIPE_PREFIX = SYSTEM_PIPE_PREFIX + "subscription.";
 
-  public static String generateSubscriptionPipeName(String topicName, String consumerGroupId) {
+  public static String generateSubscriptionPipeName(
+      final String topicName, final String consumerGroupId) {
     return SUBSCRIPTION_PIPE_PREFIX + topicName + "_" + consumerGroupId;
   }
 }

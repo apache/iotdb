@@ -16,6 +16,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -42,7 +43,12 @@ public class SortNode extends SingleChildProcessNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitSort(this, context);
   }
 
   @Override
@@ -54,5 +60,9 @@ public class SortNode extends SingleChildProcessNode {
   @Override
   public List<Symbol> getOutputSymbols() {
     return child.getOutputSymbols();
+  }
+
+  public OrderingScheme getOrderingScheme() {
+    return orderingScheme;
   }
 }

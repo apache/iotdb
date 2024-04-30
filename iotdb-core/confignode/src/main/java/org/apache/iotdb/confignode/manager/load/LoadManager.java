@@ -115,11 +115,13 @@ public class LoadManager {
    * Allocate DataPartitions.
    *
    * @param unassignedDataPartitionSlotsMap DataPartitionSlots that should be assigned
+   * @throws DatabaseNotExistsException If some specific Databases don't exist
+   * @throws NoAvailableRegionGroupException If there are no available RegionGroups
    * @return Map<DatabaseName, DataPartitionTable>, the allocating result
    */
   public Map<String, DataPartitionTable> allocateDataPartition(
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap)
-      throws NoAvailableRegionGroupException {
+      throws DatabaseNotExistsException, NoAvailableRegionGroupException {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 
@@ -434,5 +436,9 @@ public class LoadManager {
 
   public LoadCache getLoadCache() {
     return loadCache;
+  }
+
+  public RouteBalancer getRouteBalancer() {
+    return routeBalancer;
   }
 }

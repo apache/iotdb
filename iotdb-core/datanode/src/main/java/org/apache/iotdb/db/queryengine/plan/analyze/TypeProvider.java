@@ -42,36 +42,35 @@ import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOper
 
 public class TypeProvider {
 
-  private final Map<String, TSDataType> typeMap;
+  private final Map<String, TSDataType> treeModelTypeMap;
 
   private TemplatedInfo templatedInfo;
 
   public TypeProvider() {
-    this.typeMap = new HashMap<>();
-    types = null;
+    this.treeModelTypeMap = new HashMap<>();
   }
 
-  public TypeProvider(Map<String, TSDataType> typeMap, TemplatedInfo templatedInfo) {
-    this.typeMap = typeMap;
+  public TypeProvider(Map<String, TSDataType> treeModelTypeMap, TemplatedInfo templatedInfo) {
+    this.treeModelTypeMap = treeModelTypeMap;
     this.templatedInfo = templatedInfo;
     // The type of TimeStampOperand is INT64
-    this.typeMap.putIfAbsent(TIMESTAMP_EXPRESSION_STRING, TSDataType.INT64);
-    types = null;
+    this.treeModelTypeMap.putIfAbsent(TIMESTAMP_EXPRESSION_STRING, TSDataType.INT64);
+    this.tableModelTypes = null;
   }
 
-  public TSDataType getType(String symbol) {
-    return typeMap.get(symbol);
+  public TSDataType getTreeModelType(String symbol) {
+    return treeModelTypeMap.get(symbol);
   }
 
-  public void setType(String symbol, TSDataType dataType) {
+  public void setTreeModelType(String symbol, TSDataType dataType) {
     // DataType of NullOperand is null, we needn't put it into TypeProvider
     if (dataType != null) {
-      this.typeMap.put(symbol, dataType);
+      this.treeModelTypeMap.put(symbol, dataType);
     }
   }
 
-  public Map<String, TSDataType> getTypeMap() {
-    return this.typeMap;
+  public Map<String, TSDataType> getTreeModelTypeMap() {
+    return this.treeModelTypeMap;
   }
 
   public void setTemplatedInfo(TemplatedInfo templatedInfo) {
@@ -84,7 +83,7 @@ public class TypeProvider {
 
   // ----------------------used for relational model----------------------------
 
-  private final Map<Symbol, Type> types;
+  private Map<Symbol, Type> tableModelTypes = new HashMap<>();
 
   public static TypeProvider viewOf(Map<Symbol, Type> types) {
     return new TypeProvider(types);
@@ -98,43 +97,50 @@ public class TypeProvider {
     return new TypeProvider(ImmutableMap.of());
   }
 
-  public TypeProvider(Map<Symbol, Type> types) {
-    this.types = types;
+  public TypeProvider(Map<Symbol, Type> tableModelTypes) {
+    this.tableModelTypes = tableModelTypes;
 
-    this.typeMap = null;
+    this.treeModelTypeMap = null;
   }
 
   public TypeProvider(
-      Map<String, TSDataType> typeMap, TemplatedInfo templatedInfo, Map<Symbol, Type> types) {
-    this.typeMap = typeMap;
+      Map<String, TSDataType> treeModelTypeMap,
+      TemplatedInfo templatedInfo,
+      Map<Symbol, Type> tableModelTypes) {
+    this.treeModelTypeMap = treeModelTypeMap;
     this.templatedInfo = templatedInfo;
-    this.types = types;
+
+    this.tableModelTypes = tableModelTypes;
   }
 
   public Type getTableModelType(Symbol symbol) {
     requireNonNull(symbol, "symbol is null");
 
-    Type type = types.get(symbol);
-    checkArgument(type != null, "no type found for symbol '%s'", symbol);
+    Type type = tableModelTypes.get(symbol);
+    checkArgument(type != null, "no type found for symbol '%s' in TypeProvider", symbol);
 
     return type;
+  }
+
+  public boolean isSymbolExist(Symbol symbol) {
+    return tableModelTypes.containsKey(symbol);
   }
 
   public void putTableModelType(Symbol symbol, Type type) {
     requireNonNull(symbol, "symbol is null");
 
-    types.put(symbol, type);
+    tableModelTypes.put(symbol, type);
   }
 
-  public Map<Symbol, Type> allTypes() {
+  public Map<Symbol, Type> allTableModelTypes() {
     // types may be a HashMap, so creating an ImmutableMap here would add extra cost when allTypes
     // gets called frequently
-    return Collections.unmodifiableMap(types);
+    return Collections.unmodifiableMap(tableModelTypes);
   }
 
   public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(typeMap.size(), byteBuffer);
-    for (Map.Entry<String, TSDataType> entry : typeMap.entrySet()) {
+    ReadWriteIOUtils.write(treeModelTypeMap.size(), byteBuffer);
+    for (Map.Entry<String, TSDataType> entry : treeModelTypeMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
       ReadWriteIOUtils.write(entry.getValue().ordinal(), byteBuffer);
     }
@@ -146,11 +152,11 @@ public class TypeProvider {
       templatedInfo.serialize(byteBuffer);
     }
 
-    if (types == null) {
+    if (tableModelTypes == null) {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     } else {
-      ReadWriteIOUtils.write(types.size(), byteBuffer);
-      for (Map.Entry<Symbol, Type> entry : types.entrySet()) {
+      ReadWriteIOUtils.write(tableModelTypes.size(), byteBuffer);
+      for (Map.Entry<Symbol, Type> entry : tableModelTypes.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey().getName(), byteBuffer);
         ReadWriteIOUtils.write(entry.getValue().getTypeEnum().ordinal(), byteBuffer);
       }
@@ -158,8 +164,8 @@ public class TypeProvider {
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(typeMap.size(), stream);
-    for (Map.Entry<String, TSDataType> entry : typeMap.entrySet()) {
+    ReadWriteIOUtils.write(treeModelTypeMap.size(), stream);
+    for (Map.Entry<String, TSDataType> entry : treeModelTypeMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue().ordinal(), stream);
     }
@@ -171,11 +177,11 @@ public class TypeProvider {
       templatedInfo.serialize(stream);
     }
 
-    if (types == null) {
+    if (tableModelTypes == null) {
       ReadWriteIOUtils.write((byte) 0, stream);
     } else {
-      ReadWriteIOUtils.write(types.size(), stream);
-      for (Map.Entry<Symbol, Type> entry : types.entrySet()) {
+      ReadWriteIOUtils.write(tableModelTypes.size(), stream);
+      for (Map.Entry<Symbol, Type> entry : tableModelTypes.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey().getName(), stream);
         ReadWriteIOUtils.write(entry.getValue().getTypeEnum().ordinal(), stream);
       }
@@ -223,11 +229,11 @@ public class TypeProvider {
       return false;
     }
     TypeProvider that = (TypeProvider) o;
-    return Objects.equals(typeMap, that.typeMap);
+    return Objects.equals(treeModelTypeMap, that.treeModelTypeMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(typeMap);
+    return Objects.hash(treeModelTypeMap);
   }
 }
