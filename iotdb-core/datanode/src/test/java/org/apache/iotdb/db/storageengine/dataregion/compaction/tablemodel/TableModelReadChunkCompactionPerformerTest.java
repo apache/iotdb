@@ -22,13 +22,16 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.tablemodel;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.TsFileMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -39,10 +42,14 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
-public class TableModelCrossSpaceCompactionTest extends AbstractCompactionTest {
+public class TableModelReadChunkCompactionPerformerTest extends AbstractCompactionTest {
 
   private final String oldThreadName = Thread.currentThread().getName();
 
@@ -66,8 +73,7 @@ public class TableModelCrossSpaceCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testCrossSpaceCompactionOfTwoTableModelWithFastCompactionPerformer()
-      throws IOException {
+  public void testSequenceInnerSpaceCompactionOfTwoTableModel() throws IOException {
     TsFileResource resource1 = createEmptyFileAndResource(true);
     try (CompactionTableModelTestFileWriter writer =
         new CompactionTableModelTestFileWriter(resource1)) {
@@ -84,45 +90,8 @@ public class TableModelCrossSpaceCompactionTest extends AbstractCompactionTest {
     TsFileResource resource2 = createEmptyFileAndResource(true);
     try (CompactionTableModelTestFileWriter writer =
         new CompactionTableModelTestFileWriter(resource2)) {
-      writer.registerTableSchema("t2", Arrays.asList("id1", "id2", "id3"));
-      writer.startChunkGroup("t2", Arrays.asList("id_field1", "id_field2", "id_field3"));
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1",
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s2",
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.endChunkGroup();
-      writer.endFile();
-    }
-
-    TsFileResource resource3 = createEmptyFileAndResource(false);
-    try (CompactionTableModelTestFileWriter writer =
-        new CompactionTableModelTestFileWriter(resource3)) {
-      writer.registerTableSchema("t1", Arrays.asList("id1", "id2"));
-      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2"));
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1",
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s2",
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.endChunkGroup();
-      writer.endFile();
-    }
-    TsFileResource resource4 = createEmptyFileAndResource(false);
-    try (CompactionTableModelTestFileWriter writer =
-        new CompactionTableModelTestFileWriter(resource4)) {
-      writer.registerTableSchema("t2", Arrays.asList("id1", "id2", "id3"));
-      writer.startChunkGroup("t2", Arrays.asList("id_field1", "id_field2", "id_field3"));
+      writer.registerTableSchema("t1", Arrays.asList("id1", "id2", "id3"));
+      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2", "id_field3"));
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
@@ -138,43 +107,29 @@ public class TableModelCrossSpaceCompactionTest extends AbstractCompactionTest {
     }
     seqResources.add(resource1);
     seqResources.add(resource2);
-    unseqResources.add(resource3);
-    unseqResources.add(resource4);
     tsFileManager.addAll(seqResources, true);
-    tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionTask task =
-        new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            unseqResources,
-            new FastCompactionPerformer(true),
-            0,
-            0);
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
-    TsFileResource targetResource0 = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetResource = tsFileManager.getTsFileList(true).get(0);
     try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(targetResource0.getTsFile().getAbsolutePath())) {
+        new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      Assert.assertEquals(1, tsFileMetadata.getTableSchemaMap().size());
-    }
-    TsFileResource targetResource1 = tsFileManager.getTsFileList(true).get(1);
-    try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(targetResource1.getTsFile().getAbsolutePath())) {
-      TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      Assert.assertEquals(1, tsFileMetadata.getTableSchemaMap().size());
+      TableSchema tableSchema = tsFileMetadata.getTableSchemaMap().get("t1");
+      Assert.assertEquals(5, tableSchema.getColumnTypes().size());
+      Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
+          reader.getAllTimeseriesMetadata(true);
+      Assert.assertEquals(2, allTimeseriesMetadata.size());
     }
   }
 
   @Test
-  public void testCrossSpaceCompactionOfTwoTableModelWithReadPointCompactionPerformer()
-      throws IOException {
+  public void testSequenceInnerSpaceCompactionOfTwoV4TreeModel() throws IOException {
     TsFileResource resource1 = createEmptyFileAndResource(true);
-    try (CompactionTableModelTestFileWriter writer =
-        new CompactionTableModelTestFileWriter(resource1)) {
-      writer.registerTableSchema("db1.db1.t1", Arrays.asList("id1", "id2"));
-      writer.startChunkGroup("db1.db1.t1", Arrays.asList("id_field1", "id_field2"));
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource1)) {
+      writer.startChunkGroup("d1");
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
@@ -184,47 +139,8 @@ public class TableModelCrossSpaceCompactionTest extends AbstractCompactionTest {
       writer.endFile();
     }
     TsFileResource resource2 = createEmptyFileAndResource(true);
-    try (CompactionTableModelTestFileWriter writer =
-        new CompactionTableModelTestFileWriter(resource2)) {
-      writer.registerTableSchema("db1.db1.t2", Arrays.asList("id1", "id2", "id3"));
-      writer.startChunkGroup("db1.db1.t2", Arrays.asList("id_field1", "id_field2", "id_field3"));
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1",
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s2",
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.endChunkGroup();
-      writer.endFile();
-    }
-
-    TsFileResource resource3 = createEmptyFileAndResource(false);
-    try (CompactionTableModelTestFileWriter writer =
-        new CompactionTableModelTestFileWriter(resource3)) {
-      writer.registerTableSchema("db1.db1.t1", Arrays.asList("id1", "id2"));
-      writer.startChunkGroup("db1.db1.t1", Arrays.asList("id_field1", "id_field2"));
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1",
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s2",
-          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
-          TSEncoding.PLAIN,
-          CompressionType.LZ4);
-      writer.endChunkGroup();
-      writer.endFile();
-    }
-    TsFileResource resource4 = createEmptyFileAndResource(false);
-    try (CompactionTableModelTestFileWriter writer =
-        new CompactionTableModelTestFileWriter(resource4)) {
-      writer.registerTableSchema("db1.db1.t2", Arrays.asList("id1", "id2", "id3"));
-      writer.startChunkGroup("db1.db1.t2", Arrays.asList("id_field1", "id_field2", "id_field3"));
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource2)) {
+      writer.startChunkGroup("d1");
       writer.generateSimpleNonAlignedSeriesToCurrentDevice(
           "s1",
           new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
@@ -240,33 +156,159 @@ public class TableModelCrossSpaceCompactionTest extends AbstractCompactionTest {
     }
     seqResources.add(resource1);
     seqResources.add(resource2);
-    unseqResources.add(resource3);
-    unseqResources.add(resource4);
     tsFileManager.addAll(seqResources, true);
-    tsFileManager.addAll(unseqResources, false);
 
-    CrossSpaceCompactionTask task =
-        new CrossSpaceCompactionTask(
-            0,
-            tsFileManager,
-            seqResources,
-            unseqResources,
-            new ReadPointCompactionPerformer(),
-            0,
-            0);
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
-    // Assert can not pass for now
-    TsFileResource targetResource0 = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetResource = tsFileManager.getTsFileList(true).get(0);
     try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(targetResource0.getTsFile().getAbsolutePath())) {
+        new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      Assert.assertEquals(1, tsFileMetadata.getTableSchemaMap().size());
+      TableSchema tableSchema = tsFileMetadata.getTableSchemaMap().get("root.testsg");
+      Assert.assertEquals(2, tableSchema.getColumnTypes().size());
+      Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
+          reader.getAllTimeseriesMetadata(true);
+      for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
+          allTimeseriesMetadata.entrySet()) {
+        Assert.assertEquals(2, entry.getValue().size());
+      }
     }
-    TsFileResource targetResource1 = tsFileManager.getTsFileList(true).get(1);
+  }
+
+  @Test
+  public void testSequenceInnerSpaceCompactionOfTableModelAndTreeModel() throws IOException {
+    TsFileResource resource1 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource1)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    TsFileResource resource2 = createEmptyFileAndResource(true);
+    try (CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource2)) {
+      writer.registerTableSchema("t1", Arrays.asList("id1", "id2"));
+      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2"));
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqResources.add(resource1);
+    seqResources.add(resource2);
+    tsFileManager.addAll(seqResources, true);
+
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+    Assert.assertTrue(task.start());
+    TsFileResource targetResource = tsFileManager.getTsFileList(true).get(0);
     try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(targetResource1.getTsFile().getAbsolutePath())) {
+        new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      Assert.assertEquals(1, tsFileMetadata.getTableSchemaMap().size());
+      Assert.assertEquals(2, tsFileMetadata.getTableSchemaMap().size());
+    }
+  }
+
+  @Test
+  public void testSequenceInnerSpaceCompactionOfTwoV4TreeModelCanNotMatchTableSchema()
+      throws IOException {
+    TsFileResource resource1 = createEmptyFileAndResource(true);
+    try (CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource1)) {
+      writer.registerTableSchema("t1", Arrays.asList("id1", "id2"));
+      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2"));
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    TsFileResource resource2 = createEmptyFileAndResource(true);
+    try (CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource2)) {
+      writer.registerTableSchema("t1", Arrays.asList("id1", "id3"));
+      writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field3"));
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s2",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqResources.add(resource1);
+    seqResources.add(resource2);
+    tsFileManager.addAll(seqResources, true);
+
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+    Assert.assertFalse(task.start());
+  }
+
+  @Test
+  public void testCompactionWithV3Tsfile() throws IOException {
+    String pathStr =
+        this.getClass().getClassLoader().getResource("v3tsfile/compaction-test-tsfile").getFile();
+    File v3TsFile = new File(pathStr);
+    File v3TsFileResource = new File(pathStr + ".resource");
+    TsFileResource resource1 = createEmptyFileAndResource(true);
+    Files.copy(v3TsFile.toPath(), resource1.getTsFile().toPath());
+    Files.copy(
+        v3TsFileResource.toPath(), new File(resource1.getTsFilePath() + ".resource").toPath());
+    resource1.deserialize();
+
+    TsFileResource resource2 = createEmptyFileAndResource(true);
+    try (CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource2)) {
+      writer.registerTableSchema("db1.t1", Arrays.asList("id1", "id2"));
+      writer.startChunkGroup("db1.t1", Arrays.asList("id_field1", "id_field2"));
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+
+      writer.startChunkGroup("d3");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+
+      writer.endFile();
+    }
+
+    seqResources.add(resource1);
+    seqResources.add(resource2);
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+    Assert.assertTrue(task.start());
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(
+            tsFileManager.getTsFileList(true).get(0).getTsFile().getAbsolutePath())) {
+      TsFileMetadata tsFileMetadata = reader.readFileMetadata();
+      Assert.assertEquals(2, tsFileMetadata.getTableSchemaMap().size());
     }
   }
 }
