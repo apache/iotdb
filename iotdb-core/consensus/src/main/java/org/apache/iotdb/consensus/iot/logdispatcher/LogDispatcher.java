@@ -357,7 +357,7 @@ public class LogDispatcher {
             // we may block here if there is no requests in the queue
             IndexedConsensusRequest request =
                 pendingEntries.poll(PENDING_REQUEST_TAKING_TIME_OUT_IN_SEC, TimeUnit.SECONDS);
-            if (request != null) {
+            if (request != null && !Thread.interrupted()) {
               bufferedEntries.add(request);
               // If write pressure is low, we simply sleep a little to reduce the number of RPC
               if (pendingEntries.size() <= config.getReplication().getMaxLogEntriesNumPerBatch()
