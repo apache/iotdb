@@ -534,7 +534,7 @@ public class AggregateProcessor implements PipeProcessor {
                     exception.set(e);
                   }
                   rowCollector
-                      .convertToTabletInsertionEvents()
+                      .convertToTabletInsertionEvents(false)
                       .forEach(
                           tabletEvent -> {
                             try {
@@ -773,6 +773,7 @@ public class AggregateProcessor implements PipeProcessor {
             == 0) {
       pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).clear();
       pipeName2timeSeries2TimeSeriesRuntimeStateMap.remove(pipeName);
+      pipeName2LastValueReceiveTimeMap.remove(pipeName);
     }
     if (Objects.nonNull(windowingProcessor)) {
       windowingProcessor.close();

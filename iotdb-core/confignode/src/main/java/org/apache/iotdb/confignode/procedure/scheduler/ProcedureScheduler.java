@@ -75,7 +75,9 @@ public interface ProcedureScheduler {
    */
   void yield(Procedure proc);
 
-  /** @return true if there are procedures available to process, otherwise false. */
+  /**
+   * @return true if there are procedures available to process, otherwise false.
+   */
   boolean hasRunnables();
 
   /**

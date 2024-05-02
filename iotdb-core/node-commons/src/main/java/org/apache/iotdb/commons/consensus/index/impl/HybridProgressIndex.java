@@ -173,6 +173,10 @@ public class HybridProgressIndex extends ProgressIndex {
         return this;
       }
 
+      if (progressIndex instanceof StateProgressIndex) {
+        return progressIndex.updateToMinimumEqualOrIsAfterProgressIndex(this);
+      }
+
       if (!(progressIndex instanceof HybridProgressIndex)) {
         type2Index.compute(
             progressIndex.getType().getType(),

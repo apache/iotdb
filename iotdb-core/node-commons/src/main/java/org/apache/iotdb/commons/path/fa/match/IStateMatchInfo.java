@@ -30,7 +30,9 @@ import java.util.Iterator;
  */
 public interface IStateMatchInfo {
 
-  /** @return whether current matched state has a final state */
+  /**
+   * @return whether current matched state has a final state
+   */
   boolean hasFinalState();
 
   /**
@@ -51,7 +53,9 @@ public interface IStateMatchInfo {
    */
   boolean isSingleFuzzyMatchTransition();
 
-  /** @return one of the matched state */
+  /**
+   * @return one of the matched state
+   */
   IFAState getOneMatchedState();
 
   void addMatchedState(IFAState state);
@@ -62,19 +66,29 @@ public interface IStateMatchInfo {
    */
   IFAState getMatchedState(int stateOrdinal);
 
-  /** @return size of current matched states */
+  /**
+   * @return size of current matched states
+   */
   int getMatchedStateSize();
 
-  /** @return the ordinal of the source state in matched order */
+  /**
+   * @return the ordinal of the source state in matched order
+   */
   int getSourceStateOrdinal();
 
-  /** @param sourceStateOrdinal the ordinal of the source state in matched order */
+  /**
+   * @param sourceStateOrdinal the ordinal of the source state in matched order
+   */
   void setSourceStateOrdinal(int sourceStateOrdinal);
 
-  /** @return the iterator of current checking source states' transition */
+  /**
+   * @return the iterator of current checking source states' transition
+   */
   Iterator<IFATransition> getSourceTransitionIterator();
 
-  /** @param sourceTransitionIterator the iterator of current checking source states' transition */
+  /**
+   * @param sourceTransitionIterator the iterator of current checking source states' transition
+   */
   void setSourceTransitionIterator(Iterator<IFATransition> sourceTransitionIterator);
 
   IFAState getScopeMatchedState();

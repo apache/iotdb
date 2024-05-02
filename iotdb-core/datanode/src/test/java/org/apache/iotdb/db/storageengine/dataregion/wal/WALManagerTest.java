@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -56,10 +57,13 @@ public class WALManagerTest {
         TestConstant.BASE_OUTPUT_PATH.concat("wal_test3")
       };
   private String[] prevWalDirs;
+  private String prevConsensus;
 
   @Before
   public void setUp() throws Exception {
+    prevConsensus = config.getDataRegionConsensusProtocolClass();
     prevWalDirs = commonConfig.getWalDirs();
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     commonConfig.setWalDirs(walDirs);
     EnvironmentUtils.envSetUp();
   }
@@ -70,6 +74,7 @@ public class WALManagerTest {
     for (String walDir : walDirs) {
       EnvironmentUtils.cleanDir(walDir);
     }
+    config.setDataRegionConsensusProtocolClass(prevConsensus);
     commonConfig.setWalDirs(prevWalDirs);
   }
 

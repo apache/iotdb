@@ -126,6 +126,7 @@ public class Session implements ISession {
   protected boolean useSSL;
   protected String trustStore;
   protected String trustStorePwd;
+
   /**
    * Timeout of query can be set by users. A negative number means using the default configuration
    * of server. And value 0 will disable the function of query timeout.
@@ -3539,7 +3540,9 @@ public class Session implements ISession {
     defaultSessionConnection.pruneSchemaTemplate(req);
   }
 
-  /** @return Amount of measurements in the template */
+  /**
+   * @return Amount of measurements in the template
+   */
   @Override
   public int countMeasurementsInTemplate(String name)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3550,7 +3553,9 @@ public class Session implements ISession {
     return resp.getCount();
   }
 
-  /** @return If the node specified by the path is a measurement. */
+  /**
+   * @return If the node specified by the path is a measurement.
+   */
   @Override
   public boolean isMeasurementInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3562,7 +3567,9 @@ public class Session implements ISession {
     return resp.result;
   }
 
-  /** @return if there is a node correspond to the path in the template. */
+  /**
+   * @return if there is a node correspond to the path in the template.
+   */
   @Override
   public boolean isPathExistInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3574,7 +3581,9 @@ public class Session implements ISession {
     return resp.result;
   }
 
-  /** @return All paths of measurements in the template. */
+  /**
+   * @return All paths of measurements in the template.
+   */
   @Override
   public List<String> showMeasurementsInTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3586,7 +3595,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All paths of measurements under the pattern in the template. */
+  /**
+   * @return All paths of measurements under the pattern in the template.
+   */
   @Override
   public List<String> showMeasurementsInTemplate(String templateName, String pattern)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3598,7 +3609,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All template names. */
+  /**
+   * @return All template names.
+   */
   @Override
   public List<String> showAllTemplates()
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3609,7 +3622,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All paths have been set to designated template. */
+  /**
+   * @return All paths have been set to designated template.
+   */
   @Override
   public List<String> showPathsTemplateSetOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3620,7 +3635,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All paths are using designated template. */
+  /**
+   * @return All paths are using designated template.
+   */
   @Override
   public List<String> showPathsTemplateUsingOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {

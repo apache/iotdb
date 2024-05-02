@@ -68,5 +68,6 @@ public interface UDAF extends UDF {
    */
   default void removeState(State state, State removed) {
     throw new UnsupportedOperationException(getClass().getName());
-  };
+  }
+  ;
 }

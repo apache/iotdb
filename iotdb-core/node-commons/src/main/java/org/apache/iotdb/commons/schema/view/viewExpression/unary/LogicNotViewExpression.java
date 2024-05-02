@@ -40,6 +40,7 @@ public class LogicNotViewExpression extends UnaryViewExpression {
   public LogicNotViewExpression(InputStream inputStream) {
     super(ViewExpression.deserialize(inputStream));
   }
+
   // endregion
 
   // region common interfaces that have to be implemented

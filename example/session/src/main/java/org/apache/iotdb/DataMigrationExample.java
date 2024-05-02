@@ -59,7 +59,9 @@ public class DataMigrationExample {
   private static final int CONCURRENCY = 5;
 
   public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException, ExecutionException,
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          ExecutionException,
           InterruptedException {
 
     // the thread used for dataMigration must be smaller than session pool size

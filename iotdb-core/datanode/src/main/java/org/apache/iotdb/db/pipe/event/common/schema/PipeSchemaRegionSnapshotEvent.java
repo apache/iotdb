@@ -56,9 +56,19 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
         PlanNodeType.CREATE_ALIGNED_TIME_SERIES.getNodeType(),
         StatementType.CREATE_ALIGNED_TIME_SERIES);
     PLAN_NODE_2_STATEMENT_TYPE_MAP.put(
+        PlanNodeType.INTERNAL_CREATE_MULTI_TIMESERIES.getNodeType(),
+        StatementType.INTERNAL_CREATE_MULTI_TIMESERIES);
+
+    PLAN_NODE_2_STATEMENT_TYPE_MAP.put(
         PlanNodeType.ACTIVATE_TEMPLATE.getNodeType(), StatementType.ACTIVATE_TEMPLATE);
     PLAN_NODE_2_STATEMENT_TYPE_MAP.put(
+        PlanNodeType.BATCH_ACTIVATE_TEMPLATE.getNodeType(), StatementType.BATCH_ACTIVATE_TEMPLATE);
+
+    PLAN_NODE_2_STATEMENT_TYPE_MAP.put(
         PlanNodeType.CREATE_LOGICAL_VIEW.getNodeType(), StatementType.CREATE_LOGICAL_VIEW);
+    // For logical view
+    PLAN_NODE_2_STATEMENT_TYPE_MAP.put(
+        PlanNodeType.ALTER_TIME_SERIES.getNodeType(), StatementType.ALTER_TIME_SERIES);
   }
 
   public PipeSchemaRegionSnapshotEvent() {
@@ -67,17 +77,17 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
   }
 
   public PipeSchemaRegionSnapshotEvent(
-      String mTreeSnapshotPath, String tagLogSnapshotPath, String databaseName) {
+      final String mTreeSnapshotPath, final String tagLogSnapshotPath, final String databaseName) {
     this(mTreeSnapshotPath, tagLogSnapshotPath, databaseName, null, null, null);
   }
 
   public PipeSchemaRegionSnapshotEvent(
-      String mTreeSnapshotPath,
-      String tagLogSnapshotPath,
-      String databaseName,
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern) {
+      final String mTreeSnapshotPath,
+      final String tagLogSnapshotPath,
+      final String databaseName,
+      final String pipeName,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern) {
     super(pipeName, pipeTaskMeta, pattern, PipeResourceManager.snapshot());
     this.mTreeSnapshotPath = mTreeSnapshotPath;
     this.tagLogSnapshotPath = Objects.nonNull(tagLogSnapshotPath) ? tagLogSnapshotPath : "";
@@ -97,14 +107,14 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
   }
 
   @Override
-  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
       mTreeSnapshotPath = resourceManager.increaseSnapshotReference(mTreeSnapshotPath);
       if (!tagLogSnapshotPath.isEmpty()) {
         tagLogSnapshotPath = resourceManager.increaseSnapshotReference(tagLogSnapshotPath);
       }
       return true;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           String.format(
               "Increase reference count for mTree snapshot %s or tLog %s error. Holder Message: %s",
@@ -115,14 +125,14 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
       resourceManager.decreaseSnapshotReference(mTreeSnapshotPath);
       if (!tagLogSnapshotPath.isEmpty()) {
         resourceManager.decreaseSnapshotReference(tagLogSnapshotPath);
       }
       return true;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           String.format(
               "Decrease reference count for mTree snapshot %s or tLog %s error. Holder Message: %s",
@@ -134,18 +144,18 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime) {
+      final String pipeName,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime) {
     return new PipeSchemaRegionSnapshotEvent(
         mTreeSnapshotPath, tagLogSnapshotPath, databaseName, pipeName, pipeTaskMeta, pattern);
   }
 
   @Override
   public ByteBuffer serializeToByteBuffer() {
-    ByteBuffer result =
+    final ByteBuffer result =
         ByteBuffer.allocate(
             Byte.BYTES
                 + 3 * Integer.BYTES
@@ -160,7 +170,7 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
   }
 
   @Override
-  public void deserializeFromByteBuffer(ByteBuffer buffer) {
+  public void deserializeFromByteBuffer(final ByteBuffer buffer) {
     mTreeSnapshotPath = ReadWriteIOUtils.readString(buffer);
     tagLogSnapshotPath = ReadWriteIOUtils.readString(buffer);
     databaseName = ReadWriteIOUtils.readString(buffer);
@@ -168,22 +178,23 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
 
   /////////////////////////////// Type parsing ///////////////////////////////
 
-  public static boolean needTransferSnapshot(Set<PlanNodeType> listenedTypeSet) {
+  public static boolean needTransferSnapshot(final Set<PlanNodeType> listenedTypeSet) {
     final Set<Short> types = new HashSet<>(PLAN_NODE_2_STATEMENT_TYPE_MAP.keySet());
     types.retainAll(
         listenedTypeSet.stream().map(PlanNodeType::getNodeType).collect(Collectors.toSet()));
     return !types.isEmpty();
   }
 
-  public void confineTransferredTypes(Set<PlanNodeType> listenedTypeSet) {
+  public void confineTransferredTypes(final Set<PlanNodeType> listenedTypeSet) {
     final Set<Short> types = new HashSet<>(PLAN_NODE_2_STATEMENT_TYPE_MAP.keySet());
     types.retainAll(
         listenedTypeSet.stream().map(PlanNodeType::getNodeType).collect(Collectors.toSet()));
     transferredTypes = types;
   }
 
-  public static Set<StatementType> getStatementTypeSet(String sealTypes) {
-    Map<Short, StatementType> statementTypeMap = new HashMap<>(PLAN_NODE_2_STATEMENT_TYPE_MAP);
+  public static Set<StatementType> getStatementTypeSet(final String sealTypes) {
+    final Map<Short, StatementType> statementTypeMap =
+        new HashMap<>(PLAN_NODE_2_STATEMENT_TYPE_MAP);
     statementTypeMap
         .keySet()
         .retainAll(
@@ -200,5 +211,14 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
             mTreeSnapshotPath, tagLogSnapshotPath, databaseName)
         + " - "
         + super.toString();
+  }
+
+  @Override
+  public String coreReportMessage() {
+    return String.format(
+            "PipeSchemaRegionSnapshotEvent{mTreeSnapshotPath=%s, tagLogSnapshotPath=%s, databaseName=%s}",
+            mTreeSnapshotPath, tagLogSnapshotPath, databaseName)
+        + " - "
+        + super.coreReportMessage();
   }
 }

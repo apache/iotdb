@@ -66,6 +66,7 @@ public class BetweenViewExpression extends TernaryViewExpression {
       throw new RuntimeException(e);
     }
   }
+
   // endregion
 
   // region common interfaces that have to be implemented
@@ -104,6 +105,7 @@ public class BetweenViewExpression extends TernaryViewExpression {
     super.serialize(stream);
     ReadWriteIOUtils.write(isNotBetween, stream);
   }
+
   // endregion
 
   public boolean isNotBetween() {

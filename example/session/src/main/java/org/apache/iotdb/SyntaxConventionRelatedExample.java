@@ -47,6 +47,7 @@ public class SyntaxConventionRelatedExample {
 
   private static Session session;
   private static final String LOCAL_HOST = "127.0.0.1";
+
   /**
    * if you want to create a time series named root.sg1.select, a possible SQL statement would be
    * like: create timeseries root.sg1.select with datatype=FLOAT, encoding=RLE As described before,

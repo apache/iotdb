@@ -131,7 +131,9 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
       final TimeWindowStateProgressIndex thisTimeWindowStateProgressIndex = this;
       final TimeWindowStateProgressIndex thatTimeWindowStateProgressIndex =
           (TimeWindowStateProgressIndex) progressIndex;
-      return thatTimeWindowStateProgressIndex.timeSeries2TimestampWindowBufferPairMap.entrySet()
+      return thatTimeWindowStateProgressIndex
+          .timeSeries2TimestampWindowBufferPairMap
+          .entrySet()
           .stream()
           .noneMatch(
               entry ->
