@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
@@ -49,6 +51,10 @@ import java.util.List;
  *             |              ->        Aggregation
  *        Aggregation
  * <pre>3.
+ *        ColumnInject
+ *             |              ->     RawDataAggregation
+ *     RawDataAggregation
+ * <pre>4.
  *        ColumnInject
  *             |              ->  SlidingWindowAggregation
  *  SlidingWindowAggregation
@@ -107,6 +113,15 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
     public PlanNode visitColumnInject(ColumnInjectNode node, Void context) {
       PlanNode child = node.getChild();
 
+      boolean columnInjectPushDown = doPushDown(child);
+
+      if (columnInjectPushDown) {
+        return child;
+      }
+      return node;
+    }
+
+    private boolean doPushDown(PlanNode child) {
       boolean columnInjectPushDown = true;
       if (child instanceof SeriesAggregationSourceNode) {
         ((SeriesAggregationSourceNode) child).setOutputEndTime(true);
@@ -114,14 +129,14 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
         ((SlidingWindowAggregationNode) child).setOutputEndTime(true);
       } else if (child instanceof AggregationNode) {
         ((AggregationNode) child).setOutputEndTime(true);
+      } else if (child instanceof RawDataAggregationNode) {
+        ((RawDataAggregationNode) child).setOutputEndTime(true);
+      } else if (child instanceof ProjectNode) {
+        return doPushDown(((ProjectNode) child).getChild());
       } else {
         columnInjectPushDown = false;
       }
-
-      if (columnInjectPushDown) {
-        return child;
-      }
-      return node;
+      return columnInjectPushDown;
     }
   }
 }

@@ -82,7 +82,7 @@ public class AggregationPushDown implements PlanOptimizer {
     boolean isAlignByDevice = queryStatement.isAlignByDevice();
     if (isAlignByDevice) {
       // check any of the devices
-      String device = analysis.getDeviceList().get(0).getDevice();
+      String device = analysis.getDeviceList().get(0).toString();
       return cannotUseStatistics(
           analysis.getDeviceToAggregationExpressions().get(device),
           analysis.getDeviceToSourceTransformExpressions().get(device));
@@ -160,13 +160,18 @@ public class AggregationPushDown implements PlanOptimizer {
     public PlanNode visitRawDataAggregation(RawDataAggregationNode node, RewriterContext context) {
       PlanNode child = node.getChild();
       if (child instanceof FullOuterTimeJoinNode || child instanceof SeriesScanSourceNode) {
-        if (child instanceof SeriesScanSourceNode) {
+        boolean isSingleSource = child instanceof SeriesScanSourceNode;
+        if (isSingleSource) {
           // only one source, check partition
         }
 
         List<AggregationDescriptor> aggregationDescriptorList = node.getAggregationDescriptorList();
 
         boolean needCheckAscending = node.getGroupByTimeParameter() == null;
+        if (isSingleSource && ((SeriesScanSourceNode) child).getPushDownPredicate() != null) {
+          needCheckAscending = false;
+        }
+
         Map<PartialPath, List<AggregationDescriptor>> sourceToAscendingAggregationsMap =
             new HashMap<>();
         Map<PartialPath, List<AggregationDescriptor>> sourceToDescendingAggregationsMap =
@@ -229,8 +234,16 @@ public class AggregationPushDown implements PlanOptimizer {
           }
         }
 
+        if (isSingleSource && ((SeriesScanSourceNode) child).getPushDownPredicate() != null) {
+          Expression pushDownPredicate = ((SeriesScanSourceNode) child).getPushDownPredicate();
+          sourceNodeList.forEach(
+              sourceNode -> {
+                ((SeriesAggregationSourceNode) sourceNode).setPushDownPredicate(pushDownPredicate);
+              });
+        }
+
         PlanNode resultNode = convergeWithTimeJoin(sourceNodeList, node.getScanOrder(), context);
-        resultNode = planProject(resultNode, node.getChild(), context);
+        resultNode = planProject(resultNode, node, context);
         return resultNode;
       }
       // cannot push down

@@ -293,12 +293,12 @@ public class QueryExecution implements IQueryExecution {
       distributedPlan.getInstances().forEach(instance -> instance.setHighestPriority(true));
     }
 
-    if (isQuery() && LOGGER.isDebugEnabled()) {
-      LOGGER.debug(
-          "distribution plan done. Fragment instance count is {}, details is: \n {}",
-          distributedPlan.getInstances().size(),
-          printFragmentInstances(distributedPlan.getInstances()));
-    }
+    //    if (isQuery() && LOGGER.isDebugEnabled()) {
+    LOGGER.info(
+        "distribution plan done. Fragment instance count is {}, details is: \n {}",
+        distributedPlan.getInstances().size(),
+        printFragmentInstances(distributedPlan.getInstances()));
+    //    }
 
     // check timeout after building distribution plan because it could be time-consuming in some
     // cases.

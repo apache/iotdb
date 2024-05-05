@@ -61,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceView
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
@@ -106,6 +107,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -669,6 +671,29 @@ public class LogicalPlanBuilder {
     return this;
   }
 
+  public LogicalPlanBuilder planGroupByTag(
+      Map<Expression, Set<Expression>> crossGroupByExpressions,
+      List<String> tagKeys,
+      Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+          tagValuesToGroupedTimeseriesOperands,
+      GroupByTimeParameter groupByTimeParameter,
+      Ordering scanOrder) {
+    if (tagKeys == null) {
+      return this;
+    }
+
+    this.root =
+        createGroupByTagNode(
+            tagKeys,
+            tagValuesToGroupedTimeseriesOperands,
+            crossGroupByExpressions.keySet(),
+            Collections.singletonList(this.getRoot()),
+            AggregationStep.FINAL,
+            groupByTimeParameter,
+            scanOrder);
+    return this;
+  }
+
   public LogicalPlanBuilder planRawDataAggregation(
       Set<Expression> aggregationExpressions,
       Expression groupByExpression,
@@ -766,6 +791,61 @@ public class LogicalPlanBuilder {
         groupByLevelDescriptors,
         groupByTimeParameter,
         scanOrder);
+  }
+
+  private PlanNode createGroupByTagNode(
+      List<String> tagKeys,
+      Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+          tagValuesToGroupedTimeseriesOperands,
+      Collection<Expression> groupByTagOutputExpressions,
+      List<PlanNode> children,
+      AggregationStep curStep,
+      GroupByTimeParameter groupByTimeParameter,
+      Ordering scanOrder) {
+    Map<List<String>, List<CrossSeriesAggregationDescriptor>> tagValuesToAggregationDescriptors =
+        new HashMap<>();
+    for (List<String> tagValues : tagValuesToGroupedTimeseriesOperands.keySet()) {
+      LinkedHashMap<Expression, List<Expression>> groupedTimeseriesOperands =
+          tagValuesToGroupedTimeseriesOperands.get(tagValues);
+      List<CrossSeriesAggregationDescriptor> aggregationDescriptors = new ArrayList<>();
+
+      // Bind an AggregationDescriptor for each GroupByTagOutputExpression
+      for (Expression groupByTagOutputExpression : groupByTagOutputExpressions) {
+        boolean added = false;
+        for (Expression expression : groupedTimeseriesOperands.keySet()) {
+          if (expression.equals(groupByTagOutputExpression)) {
+            String functionName = ((FunctionExpression) expression).getFunctionName();
+            CrossSeriesAggregationDescriptor aggregationDescriptor =
+                new CrossSeriesAggregationDescriptor(
+                    functionName,
+                    curStep,
+                    groupedTimeseriesOperands.get(expression),
+                    ((FunctionExpression) expression).getFunctionAttributes(),
+                    expression.getExpressions());
+            aggregationDescriptors.add(aggregationDescriptor);
+            added = true;
+            break;
+          }
+        }
+        if (!added) {
+          aggregationDescriptors.add(null);
+        }
+      }
+      tagValuesToAggregationDescriptors.put(tagValues, aggregationDescriptors);
+    }
+
+    updateTypeProvider(groupByTagOutputExpressions);
+    updateTypeProviderWithConstantType(tagKeys, TSDataType.TEXT);
+    return new GroupByTagNode(
+        context.getQueryId().genPlanNodeId(),
+        children,
+        groupByTimeParameter,
+        scanOrder,
+        tagKeys,
+        tagValuesToAggregationDescriptors,
+        groupByTagOutputExpressions.stream()
+            .map(Expression::getExpressionString)
+            .collect(Collectors.toList()));
   }
 
   private List<AggregationDescriptor> constructAggregationDescriptorList(

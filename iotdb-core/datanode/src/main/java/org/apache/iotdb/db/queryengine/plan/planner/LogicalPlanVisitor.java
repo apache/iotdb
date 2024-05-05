@@ -280,6 +280,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
       boolean outputPartial =
           queryStatement.isGroupByLevel()
+              || queryStatement.isGroupByTag()
               || (queryStatement.isGroupByTime()
                   && analysis.getGroupByTimeParameter().hasOverlap());
       AggregationStep curStep = outputPartial ? AggregationStep.PARTIAL : AggregationStep.SINGLE;
@@ -295,7 +296,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
       if (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap()) {
         curStep =
-            queryStatement.isGroupByLevel() ? AggregationStep.INTERMEDIATE : AggregationStep.FINAL;
+            (queryStatement.isGroupByLevel() || queryStatement.isGroupByTag())
+                ? AggregationStep.INTERMEDIATE
+                : AggregationStep.FINAL;
         planBuilder =
             planBuilder.planSlidingWindowAggregation(
                 aggregationExpressions,
@@ -308,6 +311,14 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         planBuilder =
             planBuilder.planGroupByLevel(
                 analysis.getCrossGroupByExpressions(),
+                analysis.getGroupByTimeParameter(),
+                queryStatement.getResultTimeOrder());
+      } else if (queryStatement.isGroupByTag()) {
+        planBuilder =
+            planBuilder.planGroupByTag(
+                analysis.getCrossGroupByExpressions(),
+                analysis.getTagKeys(),
+                analysis.getTagValuesToGroupedTimeseriesOperands(),
                 analysis.getGroupByTimeParameter(),
                 queryStatement.getResultTimeOrder());
       }
