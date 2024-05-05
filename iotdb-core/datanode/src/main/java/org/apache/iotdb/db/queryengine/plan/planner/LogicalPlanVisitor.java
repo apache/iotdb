@@ -323,12 +323,14 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 queryStatement.getResultTimeOrder());
       }
 
-      if (queryStatement.isGroupByTime() && queryStatement.isOutputEndTime()) {
+      if (queryStatement.isOutputEndTime()) {
         context.getTypeProvider().setType(ENDTIME, TSDataType.INT64);
-        planBuilder =
-            planBuilder.planEndTimeColumnInject(
-                analysis.getGroupByTimeParameter(),
-                queryStatement.getResultTimeOrder().isAscending());
+        if (queryStatement.isGroupByTime()) {
+          planBuilder =
+              planBuilder.planEndTimeColumnInject(
+                  analysis.getGroupByTimeParameter(),
+                  queryStatement.getResultTimeOrder().isAscending());
+        }
       }
     }
 
