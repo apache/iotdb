@@ -22,9 +22,12 @@ package org.apache.iotdb.db.queryengine.execution.operator;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.queryengine.execution.MemoryMeasurable;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import io.airlift.units.Duration;
 
@@ -33,17 +36,23 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
+
 /**
  * Contains information about {@link Operator} execution.
  *
  * <p>Not thread-safe.
  */
-public class OperatorContext {
+public class OperatorContext implements MemoryMeasurable {
 
   private static Duration maxRunTime =
       new Duration(
           IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
           TimeUnit.MILLISECONDS);
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(OperatorContext.class)
+          + RamUsageEstimator.shallowSizeOfInstance(String.class);
 
   private final int operatorId;
   // It seems it's never used.
@@ -183,5 +192,12 @@ public class OperatorContext {
   @Override
   public int hashCode() {
     return Objects.hash(operatorId);
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + sizeOfCharArray(operatorType.length())
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(planNodeId);
   }
 }

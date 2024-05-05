@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
@@ -39,6 +40,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -51,6 +53,9 @@ import java.util.concurrent.TimeUnit;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class TopKOperator implements ProcessOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TopKOperator.class);
   private final OperatorContext operatorContext;
 
   private final List<Operator> childrenOperators;
@@ -250,6 +255,16 @@ public class TopKOperator implements ProcessOperator {
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     return (topValue - resultReturnSize) * getMemoryUsageOfOneMergeSortKey();
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + childrenOperators.stream()
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+            .sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + RamUsageEstimator.sizeOf(canCallNext);
   }
 
   private void initResultTsBlock() {

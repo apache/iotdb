@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
@@ -34,6 +35,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Map;
@@ -42,6 +44,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 public class DeviceViewIntoOperator extends AbstractIntoOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DeviceViewIntoOperator.class);
 
   private final Map<String, Map<PartialPath, Map<String, InputLocation>>>
       deviceToTargetPathSourceInputLocationMap;
@@ -172,5 +177,12 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
               sourceTargetPathPair.right.getDevice(), sourceTargetPathPair.right.getMeasurement()));
       resultTsBlockBuilder.declarePosition();
     }
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(child)
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext);
   }
 }

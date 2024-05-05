@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
@@ -26,6 +27,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -36,6 +38,9 @@ import java.util.List;
 import java.util.Optional;
 
 public class SchemaFetchMergeOperator implements ProcessOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SchemaFetchMergeOperator.class);
 
   private final OperatorContext operatorContext;
   private final List<Operator> children;
@@ -150,5 +155,15 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
       retainedSize += child.calculateRetainedSizeAfterCallingNext();
     }
     return retainedSize;
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + children.stream()
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+            .sum()
+        + storageGroupList.stream().mapToLong(RamUsageEstimator::sizeOf).sum();
   }
 }

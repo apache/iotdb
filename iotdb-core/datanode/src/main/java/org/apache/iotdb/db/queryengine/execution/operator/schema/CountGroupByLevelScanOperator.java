@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.ISchemaSource;
@@ -34,6 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -54,6 +56,12 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
   private static final List<TSDataType> OUTPUT_DATA_TYPES =
       ImmutableList.of(TSDataType.TEXT, TSDataType.INT64);
 
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CountGroupByLevelScanOperator.class);
+
   private final PlanNodeId sourceId;
   private final OperatorContext operatorContext;
   private final int level;
@@ -64,9 +72,6 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
   private ListenableFuture<?> isBlocked;
   private TsBlock next;
   private boolean isFinished;
-
-  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
-      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   public CountGroupByLevelScanOperator(
       PlanNodeId sourceId,
@@ -217,5 +222,12 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
     if (schemaReader != null) {
       schemaReader.close();
     }
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(sourceId);
   }
 }

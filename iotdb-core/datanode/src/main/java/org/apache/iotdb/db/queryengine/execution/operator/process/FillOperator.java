@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -33,6 +35,8 @@ import static java.util.Objects.requireNonNull;
 /** Used for previous and constant value fill. */
 public class FillOperator implements ProcessOperator {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(FillOperator.class);
   private final OperatorContext operatorContext;
   private final IFill[] fillArray;
   private final Operator child;
@@ -110,5 +114,12 @@ public class FillOperator implements ProcessOperator {
   @Override
   public long calculateMaxReturnSize() {
     return child.calculateMaxReturnSize();
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(child)
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext);
   }
 }

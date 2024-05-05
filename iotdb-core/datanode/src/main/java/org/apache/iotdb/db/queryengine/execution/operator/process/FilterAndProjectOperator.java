@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.CaseWhenThenColumnTransformer;
@@ -38,6 +39,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -45,6 +47,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FilterAndProjectOperator implements ProcessOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(FilterAndProjectOperator.class);
 
   private final Operator inputOperator;
 
@@ -360,5 +365,12 @@ public class FilterAndProjectOperator implements ProcessOperator {
     } else {
       throw new UnsupportedOperationException("Unsupported ColumnTransformer");
     }
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(inputOperator)
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext);
   }
 }

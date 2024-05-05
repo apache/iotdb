@@ -349,4 +349,12 @@ public class LocalExecutionPlanContext {
   public TemplatedInfo getTemplatedInfo() {
     return typeProvider.getTemplatedInfo();
   }
+
+  public Map<PlanNodeId, List<PipelineMemoryEstimator>> getParentPlanNodeIdToMemoryEstimator() {
+    return parentPlanNodeIdToMemoryEstimator;
+  }
+
+  public void invalidateParentPlanNodeIdToMemoryEstimator() {
+    parentPlanNodeIdToMemoryEstimator = null;
+  }
 }

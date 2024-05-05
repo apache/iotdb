@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.queryengine.execution.MemoryMeasurable;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -36,6 +39,8 @@ import java.util.NoSuchElementException;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class CountMergeOperator implements ProcessOperator {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CountMergeOperator.class);
   private final OperatorContext operatorContext;
 
   private final TsBlock[] childrenTsBlocks;
@@ -161,5 +166,12 @@ public class CountMergeOperator implements ProcessOperator {
     for (Operator child : children) {
       child.close();
     }
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + children.stream().mapToLong(MemoryMeasurable::getEstimatedMemoryUsageInBytes).sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext);
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.ISchemaSource;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaRea
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -42,6 +44,9 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
 
   private static final List<TSDataType> OUTPUT_DATA_TYPES =
       Collections.singletonList(TSDataType.INT64);
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SchemaCountOperator.class);
 
   private final PlanNodeId sourceId;
   private final OperatorContext operatorContext;
@@ -176,5 +181,12 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
       schemaReader.close();
       schemaReader = null;
     }
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(sourceId);
   }
 }

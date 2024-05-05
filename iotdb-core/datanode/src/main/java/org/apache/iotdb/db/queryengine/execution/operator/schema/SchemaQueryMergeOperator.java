@@ -19,16 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
 
 public class SchemaQueryMergeOperator implements ProcessOperator {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SchemaQueryMergeOperator.class);
   private final OperatorContext operatorContext;
 
   private final List<Operator> children;
@@ -105,5 +109,14 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
       retainedSize += child.calculateRetainedSizeAfterCallingNext();
     }
     return retainedSize;
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + children.stream()
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+            .sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext);
   }
 }

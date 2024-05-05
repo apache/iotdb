@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryMeasurable;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -25,8 +27,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
-public class PlanNodeId {
+public class PlanNodeId implements MemoryMeasurable {
   private final String id;
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(PlanNodeId.class)
+          + RamUsageEstimator.shallowSizeOfInstance(String.class);
 
   public PlanNodeId(String id) {
     this.id = id;
@@ -68,5 +74,10 @@ public class PlanNodeId {
 
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(id, stream);
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE + RamUsageEstimator.sizeOfCharArray(id.length());
   }
 }

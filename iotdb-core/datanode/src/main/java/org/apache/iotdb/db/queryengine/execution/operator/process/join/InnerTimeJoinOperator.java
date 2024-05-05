@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.join;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
@@ -31,6 +32,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -43,6 +45,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class InnerTimeJoinOperator implements ProcessOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(InnerTimeJoinOperator.class);
 
   private final OperatorContext operatorContext;
 
@@ -395,6 +400,17 @@ public class InnerTimeJoinOperator implements ProcessOperator {
     }
     // max cached TsBlock
     return currentRetainedSize - minChildReturnSize;
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + children.stream()
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+            .sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + RamUsageEstimator.sizeOf(canCallNext)
+        + RamUsageEstimator.sizeOf(inputIndex);
   }
 
   /**

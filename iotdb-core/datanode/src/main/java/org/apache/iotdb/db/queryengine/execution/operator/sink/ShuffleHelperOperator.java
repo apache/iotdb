@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.sink;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -32,6 +34,10 @@ import java.util.List;
 import java.util.Set;
 
 public class ShuffleHelperOperator implements Operator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShuffleHelperOperator.class)
+          + RamUsageEstimator.shallowSizeOfInstance(DownStreamChannelIndex.class);
   private final OperatorContext operatorContext;
   private final List<Operator> children;
 
@@ -153,5 +159,15 @@ public class ShuffleHelperOperator implements Operator {
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     return 0L;
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + children.stream()
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+            .sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(sinkHandle);
   }
 }

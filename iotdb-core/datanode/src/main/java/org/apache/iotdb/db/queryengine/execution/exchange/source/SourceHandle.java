@@ -38,6 +38,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -118,6 +119,11 @@ public class SourceHandle implements ISourceHandle {
       DataExchangeCostMetricSet.getInstance();
   private static final DataExchangeCountMetricSet DATA_EXCHANGE_COUNT_METRIC_SET =
       DataExchangeCountMetricSet.getInstance();
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SourceHandle.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class) * 2
+          + RamUsageEstimator.shallowSizeOfInstance(String.class) * 3;
 
   @SuppressWarnings("squid:S107")
   public SourceHandle(
@@ -475,6 +481,14 @@ public class SourceHandle implements ISourceHandle {
         localFragmentInstanceId.getFragmentId(),
         fullFragmentInstanceId,
         localPlanNodeId);
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + RamUsageEstimator.sizeOfCharArray(threadName.length())
+        + RamUsageEstimator.sizeOfCharArray(localPlanNodeId.length())
+        + RamUsageEstimator.sizeOfCharArray(fullFragmentInstanceId.length());
   }
 
   @TestOnly

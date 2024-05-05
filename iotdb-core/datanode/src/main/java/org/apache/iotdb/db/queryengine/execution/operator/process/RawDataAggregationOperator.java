@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.WindowParameter
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
@@ -46,6 +48,9 @@ import static org.apache.iotdb.db.queryengine.execution.operator.window.WindowMa
  * <p>Return aggregation result in many time intervals once.
  */
 public class RawDataAggregationOperator extends SingleInputAggregationOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RawDataAggregationOperator.class);
 
   private final IWindowManager windowManager;
 
@@ -221,6 +226,13 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   @Override
   protected void updateResultTsBlock() {
     windowManager.appendAggregationResult(resultTsBlockBuilder, aggregators);
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(child)
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext);
   }
 
   private boolean skipPreviousWindowAndInitCurWindow() {

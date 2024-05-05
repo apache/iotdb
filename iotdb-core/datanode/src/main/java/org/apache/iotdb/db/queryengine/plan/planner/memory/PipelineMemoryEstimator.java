@@ -42,7 +42,7 @@ public abstract class PipelineMemoryEstimator {
   public abstract long calculateEstimatedMemorySize();
 
   protected long calculateRetainedMemorySize() {
-    return root.calculateRetainedSizeAfterCallingNext()
+    return root.getEstimatedMemoryUsageInBytes()
         + children.stream()
             .map(PipelineMemoryEstimator::calculateRetainedMemorySize)
             .reduce(0L, Long::sum);

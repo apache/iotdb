@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -121,6 +122,11 @@ public class SinkChannel implements ISinkChannel {
       DataExchangeCostMetricSet.getInstance();
   private static final DataExchangeCountMetricSet DATA_EXCHANGE_COUNT_METRIC_SET =
       DataExchangeCountMetricSet.getInstance();
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SinkChannel.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class) * 2
+          + RamUsageEstimator.shallowSizeOfInstance(String.class) * 4;
 
   @SuppressWarnings("squid:S107")
   public SinkChannel(
@@ -315,6 +321,15 @@ public class SinkChannel implements ISinkChannel {
   @Override
   public synchronized long getBufferRetainedSizeInBytes() {
     return bufferRetainedSizeInBytes;
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + RamUsageEstimator.sizeOfCharArray(threadName.length())
+        + RamUsageEstimator.sizeOfCharArray(localPlanNodeId.length())
+        + RamUsageEstimator.sizeOfCharArray(remotePlanNodeId.length())
+        + RamUsageEstimator.sizeOfCharArray(fullFragmentInstanceId.length());
   }
 
   public ByteBuffer getSerializedTsBlock(int partition, int sequenceId) {

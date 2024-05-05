@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
@@ -68,6 +69,11 @@ public class ShuffleSinkHandle implements ISinkHandle {
   /** max bytes this ShuffleSinkHandle can reserve. */
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShuffleSinkHandle.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class)
+          + RamUsageEstimator.shallowSizeOfInstance(DownStreamChannelIndex.class);
 
   public ShuffleSinkHandle(
       TFragmentInstanceId localFragmentInstanceId,
@@ -252,6 +258,17 @@ public class ShuffleSinkHandle implements ISinkHandle {
     this.maxBytesCanReserve = maxBytesCanReserve;
     downStreamChannelList.forEach(
         sinkHandle -> sinkHandle.setMaxBytesCanReserve(maxBytesCanReserve));
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + downStreamChannelList.stream()
+            .map(ISink::getEstimatedMemoryUsageInBytes)
+            .reduce(Long::sum)
+            .orElse(0L)
+        + RamUsageEstimator.sizeOf(channelOpened)
+        + RamUsageEstimator.sizeOf(hasSetNoMoreTsBlocks);
   }
 
   private void checkState() {

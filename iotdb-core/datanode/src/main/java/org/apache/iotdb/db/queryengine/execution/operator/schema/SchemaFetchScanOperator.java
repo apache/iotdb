@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -33,6 +34,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
@@ -54,6 +56,9 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SchemaFetchScanOperator.class);
 
   public SchemaFetchScanOperator(
       PlanNodeId planNodeId,
@@ -142,5 +147,12 @@ public class SchemaFetchScanOperator implements SourceOperator {
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     return 0L;
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(sourceId);
   }
 }

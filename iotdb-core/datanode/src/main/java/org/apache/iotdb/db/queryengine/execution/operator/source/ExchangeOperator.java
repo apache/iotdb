@@ -19,16 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
 public class ExchangeOperator implements SourceOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ExchangeOperator.class);
 
   private final OperatorContext operatorContext;
 
@@ -136,5 +141,13 @@ public class ExchangeOperator implements SourceOperator {
       blockedDependencyDriver = SettableFuture.create();
     }
     return blockedDependencyDriver;
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(sourceId)
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(sourceHandle);
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -29,6 +30,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import org.apache.commons.lang3.Validate;
 
@@ -39,6 +41,8 @@ import java.util.concurrent.TimeUnit;
 
 public class TagAggregationOperator extends AbstractConsumeAllOperator {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TagAggregationOperator.class);
   private final List<List<String>> groups;
   private final List<List<Aggregator>> groupedAggregators;
 
@@ -186,5 +190,19 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
   protected TsBlock getNextTsBlock(int childIndex) throws Exception {
     consumedIndices[childIndex] = 0;
     return children.get(childIndex).nextWithTimer();
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + children.stream()
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+            .sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + RamUsageEstimator.sizeOf(canCallNext)
+        + RamUsageEstimator.sizeOf(consumedIndices)
+        + groups.stream()
+            .mapToLong(group -> group.stream().mapToLong(RamUsageEstimator::sizeOf).sum())
+            .sum();
   }
 }

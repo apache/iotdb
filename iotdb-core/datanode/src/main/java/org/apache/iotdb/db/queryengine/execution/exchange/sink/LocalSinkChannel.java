@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
@@ -55,6 +56,11 @@ public class LocalSinkChannel implements ISinkChannel {
 
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LocalSinkChannel.class)
+          + +RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class)
+          + RamUsageEstimator.shallowSizeOfInstance(SharedTsBlockQueue.class);
 
   public LocalSinkChannel(SharedTsBlockQueue queue, SinkListener sinkListener) {
     this.sinkListener = Validate.notNull(sinkListener, "sinkListener can not be null.");
@@ -236,6 +242,11 @@ public class LocalSinkChannel implements ISinkChannel {
     if (maxBytesCanReserve < queue.getMaxBytesCanReserve()) {
       queue.setMaxBytesCanReserve(maxBytesCanReserve);
     }
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE;
   }
 
   // region ============ ISinkChannel related ============

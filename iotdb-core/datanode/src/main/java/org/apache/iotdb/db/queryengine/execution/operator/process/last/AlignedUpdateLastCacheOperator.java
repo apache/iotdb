@@ -22,14 +22,21 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 /** update last cache for aligned series. */
 public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AlignedUpdateLastCacheOperator.class)
+          + RamUsageEstimator.shallowSizeOfInstance(AlignedPath.class)
+          + RamUsageEstimator.shallowSizeOfInstance(PartialPath.class);
 
   private final AlignedPath seriesPath;
 
@@ -92,5 +99,15 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
       long lastTime, TsPrimitiveType lastValue, MeasurementPath measurementPath, String type) {
     LastQueryUtil.appendLastValue(
         tsBlockBuilder, lastTime, measurementPath.getFullPath(), lastValue.getStringValue(), type);
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(child)
+        + RamUsageEstimator.sizeOf(databaseName)
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPathWithoutClassSize(devicePath)
+        + MemoryEstimationHelper.getEstimatedSizeOfAlignedPathWithoutClassSize(seriesPath);
   }
 }

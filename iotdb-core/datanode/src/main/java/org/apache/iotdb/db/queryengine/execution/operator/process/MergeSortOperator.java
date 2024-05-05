@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
@@ -30,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -41,6 +43,9 @@ import java.util.concurrent.TimeUnit;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class MergeSortOperator extends AbstractConsumeAllOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(MergeSortOperator.class);
 
   private final List<TSDataType> dataTypes;
   private final TsBlockBuilder tsBlockBuilder;
@@ -212,6 +217,17 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
       currentRetainedSize += (maxReturnSize + child.calculateRetainedSizeAfterCallingNext());
     }
     return currentRetainedSize - minChildReturnSize;
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + children.stream()
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+            .sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + RamUsageEstimator.sizeOf(canCallNext)
+        + RamUsageEstimator.sizeOf(noMoreTsBlocks);
   }
 
   // region helper function used in prepareInput

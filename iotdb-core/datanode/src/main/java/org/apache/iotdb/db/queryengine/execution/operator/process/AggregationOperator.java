@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
@@ -27,6 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,6 +43,9 @@ import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil
  * intermediate tsBlock input will contain the result of many time intervals.
  */
 public class AggregationOperator extends AbstractConsumeAllOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AggregationOperator.class);
 
   private final ITimeRangeIterator timeRangeIterator;
   // Current interval of aggregation window [curStartTime, curEndTime)
@@ -174,5 +179,15 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
           curTimeRange.getMax());
     }
     curTimeRange = null;
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + children.stream()
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+            .sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + RamUsageEstimator.sizeOf(canCallNext);
   }
 }

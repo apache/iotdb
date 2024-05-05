@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
@@ -35,6 +36,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
@@ -49,6 +51,9 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.utils.sort.SortBufferManager.SORT_BUFFER_SIZE;
 
 public class SortOperator implements ProcessOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SortOperator.class);
   private final OperatorContext operatorContext;
   private final Operator inputOperator;
   private final TsBlockBuilder tsBlockBuilder;
@@ -362,5 +367,13 @@ public class SortOperator implements ProcessOperator {
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     return inputOperator.calculateRetainedSizeAfterCallingNext() + SORT_BUFFER_SIZE;
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(inputOperator)
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + RamUsageEstimator.sizeOf(noMoreData);
   }
 }

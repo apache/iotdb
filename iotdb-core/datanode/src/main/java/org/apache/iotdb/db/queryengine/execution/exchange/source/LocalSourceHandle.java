@@ -28,6 +28,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
@@ -60,7 +61,12 @@ public class LocalSourceHandle implements ISourceHandle {
   private static final TsBlockSerde serde = new TsBlockSerde();
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();
-  // For pipeline
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LocalSourceHandle.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class)
+          + RamUsageEstimator.shallowSizeOfInstance(String.class) * 2
+          + +RamUsageEstimator.shallowSizeOfInstance(SharedTsBlockQueue.class);
 
   public LocalSourceHandle(
       SharedTsBlockQueue queue, SourceHandleListener sourceHandleListener, String threadName) {
@@ -263,5 +269,12 @@ public class LocalSourceHandle implements ISourceHandle {
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
     // do nothing, the maxBytesCanReserve of SharedTsBlockQueue should be set by corresponding
     // LocalSinkChannel
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + RamUsageEstimator.sizeOfCharArray(threadName.length())
+        + RamUsageEstimator.sizeOfCharArray(localPlanNodeId.length());
   }
 }

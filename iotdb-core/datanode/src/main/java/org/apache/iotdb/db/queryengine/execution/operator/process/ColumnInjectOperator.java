@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.columngenerator.ColumnGenerator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -32,6 +34,9 @@ import com.google.common.util.concurrent.ListenableFuture;
  * StaticColumnGenerator which is decided when analyzing.
  */
 public class ColumnInjectOperator implements ProcessOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ColumnInjectOperator.class);
   private final OperatorContext operatorContext;
   private final Operator child;
   private final int targetInjectIndex;
@@ -111,5 +116,12 @@ public class ColumnInjectOperator implements ProcessOperator {
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     return child.calculateRetainedSizeAfterCallingNext();
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(child)
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext);
   }
 }

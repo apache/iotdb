@@ -85,6 +85,8 @@ public class LocalExecutionPlanner {
 
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
+    // set the map to null for gc
+    context.invalidateParentPlanNodeIdToMemoryEstimator();
 
     // check whether current free memory is enough to execute current query
     long estimatedMemorySize = checkMemory(memoryEstimator, instanceContext.getStateMachine());
@@ -111,6 +113,8 @@ public class LocalExecutionPlanner {
 
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
+    // set the map to null for gc
+    context.invalidateParentPlanNodeIdToMemoryEstimator();
 
     // check whether current free memory is enough to execute current query
     checkMemory(memoryEstimator, instanceContext.getStateMachine());
@@ -133,7 +137,15 @@ public class LocalExecutionPlanner {
       return 0;
     }
 
-    long estimatedMemorySize = memoryEstimator.calculateEstimatedMemorySize();
+    long estimatedMemorySize = memoryEstimator.getRoot().calculateMaxPeekMemory();
+    long estimatedMemorySize1 = memoryEstimator.calculateEstimatedMemorySize();
+    LOGGER.warn(
+        "Estimated memory size by root is: {}, by estimator is {}, for FragmentInstance {}, Root Operator is {}",
+        estimatedMemorySize,
+        estimatedMemorySize1,
+        stateMachine.getFragmentInstanceId().getFragmentInstanceId(),
+        memoryEstimator.getRoot().getClass().getSimpleName());
+
     QueryRelatedResourceMetricSet.getInstance().updateEstimatedMemory(estimatedMemorySize);
 
     synchronized (this) {

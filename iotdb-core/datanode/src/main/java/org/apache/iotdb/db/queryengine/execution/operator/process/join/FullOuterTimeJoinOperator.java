@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.join;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AbstractConsumeAllOperator;
@@ -32,6 +33,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -42,6 +44,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class FullOuterTimeJoinOperator extends AbstractConsumeAllOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(FullOuterTimeJoinOperator.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TimeSelector.class);
 
   /** Start index for each input TsBlocks and size of it is equal to inputTsBlocks. */
   private final int[] inputIndex;
@@ -329,5 +335,18 @@ public class FullOuterTimeJoinOperator extends AbstractConsumeAllOperator {
   protected boolean isEmpty(int columnIndex) {
     return inputTsBlocks[columnIndex] == null
         || inputTsBlocks[columnIndex].getPositionCount() == inputIndex[columnIndex];
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + children.stream()
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+            .sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + RamUsageEstimator.sizeOf(canCallNext)
+        + RamUsageEstimator.sizeOf(noMoreTsBlocks)
+        + RamUsageEstimator.sizeOf(inputIndex)
+        + RamUsageEstimator.sizeOf(shadowInputIndex);
   }
 }

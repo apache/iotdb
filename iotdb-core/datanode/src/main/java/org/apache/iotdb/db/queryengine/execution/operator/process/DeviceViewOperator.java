@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -31,6 +32,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.NullColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -51,6 +53,8 @@ import java.util.List;
  */
 public class DeviceViewOperator implements ProcessOperator {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DeviceViewOperator.class);
   private final OperatorContext operatorContext;
   // The size devices and deviceOperators should be the same.
   private final List<String> devices;
@@ -189,5 +193,15 @@ public class DeviceViewOperator implements ProcessOperator {
       max = Math.max(max, operator.calculateRetainedSizeAfterCallingNext());
     }
     return max;
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + devices.stream().mapToLong(RamUsageEstimator::sizeOf).sum()
+        + deviceOperators.stream()
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+            .sum();
   }
 }

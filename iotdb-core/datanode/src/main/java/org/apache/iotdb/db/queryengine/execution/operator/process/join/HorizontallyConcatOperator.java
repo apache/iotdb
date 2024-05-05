@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.join;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AbstractConsumeAllOperator;
@@ -29,6 +30,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
@@ -42,6 +44,9 @@ import static com.google.common.base.Preconditions.checkArgument;
  * <p>HorizontallyConcat(A,B) is: [1, 1.0, true; 2, 2.0, false]
  */
 public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(HorizontallyConcatOperator.class);
 
   /** Start index for each input TsBlocks and size of it is equal to inputTsBlocks. */
   private final int[] inputIndex;
@@ -172,5 +177,16 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
   protected TsBlock getNextTsBlock(int childIndex) throws Exception {
     inputIndex[childIndex] = 0;
     return children.get(childIndex).nextWithTimer();
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + children.stream()
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+            .sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + RamUsageEstimator.sizeOf(inputIndex)
+        + RamUsageEstimator.sizeOf(canCallNext);
   }
 }

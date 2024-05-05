@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.queryengine.execution.MemoryMeasurable;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -47,6 +49,7 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
@@ -63,7 +66,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_MERGE_READER_ALIGNED;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_MERGE_READER_NONALIGNED;
 
-public class SeriesScanUtil {
+public class SeriesScanUtil implements MemoryMeasurable {
 
   protected final QueryContext context;
 
@@ -109,6 +112,14 @@ public class SeriesScanUtil {
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SeriesScanUtil.class)
+          + RamUsageEstimator.shallowSizeOfInstance(IDeviceID.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TimeOrderUtils.class)
+          + RamUsageEstimator.shallowSizeOfInstance(PaginationController.class)
+          + RamUsageEstimator.shallowSizeOfInstance(SeriesScanOptions.class)
+          + RamUsageEstimator.shallowSizeOfInstance(PartialPath.class);
 
   public SeriesScanUtil(
       PartialPath seriesPath,
@@ -1524,5 +1535,12 @@ public class SeriesScanUtil {
     public void setCurSeqFileIndex(QueryDataSource dataSource) {
       curSeqFileIndex = 0;
     }
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + deviceID.ramBytesUsed()
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPathWithoutClassSize(seriesPath);
   }
 }

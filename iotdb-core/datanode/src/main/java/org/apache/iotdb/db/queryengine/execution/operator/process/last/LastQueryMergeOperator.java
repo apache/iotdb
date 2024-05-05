@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
@@ -44,6 +45,9 @@ import static org.apache.iotdb.db.queryengine.execution.operator.process.last.La
 public class LastQueryMergeOperator implements ProcessOperator {
 
   public static final long MAP_NODE_RETRAINED_SIZE = 16L + Location.INSTANCE_SIZE;
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LastQueryMergeOperator.class);
 
   private final OperatorContext operatorContext;
 
@@ -302,6 +306,19 @@ public class LastQueryMergeOperator implements ProcessOperator {
     return (childrenSum - minChildReturnSize)
         + TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber()
             * MAP_NODE_RETRAINED_SIZE;
+  }
+
+  @Override
+  public long getEstimatedMemoryUsageInBytes() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + RamUsageEstimator.sizeOf(inputIndex)
+        + RamUsageEstimator.sizeOf(noMoreTsBlocks)
+        + (children == null
+            ? 0
+            : children.stream()
+                .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+                .sum());
   }
 
   /**
