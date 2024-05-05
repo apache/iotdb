@@ -22,16 +22,11 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.cache;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheUpdating;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
 
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.cache.CacheMemoryControlUtil.estimateStringSize;
 
 public class TableDeviceSchemaCache {
 
@@ -75,89 +70,6 @@ public class TableDeviceSchemaCache {
           new TableId(database, tableName),
           new TableDeviceId(deviceId),
           new TableDeviceCacheEntry(attributeMap));
-    } finally {
-      readWriteLock.readLock().unlock();
-    }
-  }
-
-  public void addAttribute(
-      String database, String tableName, String[] deviceId, Map<String, String> attributeMap) {
-    readWriteLock.readLock().lock();
-    try {
-      dualKeyCache.update(
-          new IDualKeyCacheUpdating<TableId, TableDeviceId, TableDeviceCacheEntry>() {
-            @Override
-            public TableId getFirstKey() {
-              return new TableId(database, tableName);
-            }
-
-            @Override
-            public TableDeviceId[] getSecondKeyList() {
-              return new TableDeviceId[] {new TableDeviceId(deviceId)};
-            }
-
-            @Override
-            public int updateValue(int index, TableDeviceCacheEntry value) {
-              if (index > 0) {
-                return 0;
-              }
-              Map<String, String> existingMap = value.getAttributeMap();
-              AtomicInteger updatedSize = new AtomicInteger(0);
-              for (Map.Entry<String, String> entry : attributeMap.entrySet()) {
-                existingMap.compute(
-                    entry.getKey(),
-                    (k, v) -> {
-                      if (v == null) {
-                        updatedSize.getAndAdd(
-                            estimateStringSize(entry.getKey())
-                                + estimateStringSize(entry.getValue()));
-                      } else {
-                        updatedSize.getAndAdd(
-                            estimateStringSize(entry.getValue()) - estimateStringSize(v));
-                      }
-                      return entry.getValue();
-                    });
-              }
-              return updatedSize.get();
-            }
-          });
-    } finally {
-      readWriteLock.readLock().unlock();
-    }
-  }
-
-  public void removeAttribute(
-      String database, String tableName, String[] deviceId, List<String> attributeNameList) {
-    readWriteLock.readLock().lock();
-    try {
-      dualKeyCache.update(
-          new IDualKeyCacheUpdating<TableId, TableDeviceId, TableDeviceCacheEntry>() {
-            @Override
-            public TableId getFirstKey() {
-              return new TableId(database, tableName);
-            }
-
-            @Override
-            public TableDeviceId[] getSecondKeyList() {
-              return new TableDeviceId[] {new TableDeviceId(deviceId)};
-            }
-
-            @Override
-            public int updateValue(int index, TableDeviceCacheEntry value) {
-              if (index > 0) {
-                return 0;
-              }
-              Map<String, String> existingMap = value.getAttributeMap();
-              int updatedSize = 0;
-              for (String key : attributeNameList) {
-                String existingValue = existingMap.remove(key);
-                if (existingValue != null) {
-                  updatedSize -= (estimateStringSize(key) + estimateStringSize(existingValue));
-                }
-              }
-              return updatedSize;
-            }
-          });
     } finally {
       readWriteLock.readLock().unlock();
     }

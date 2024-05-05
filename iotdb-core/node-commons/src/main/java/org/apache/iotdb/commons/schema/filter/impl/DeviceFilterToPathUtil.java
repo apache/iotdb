@@ -56,6 +56,7 @@ public class DeviceFilterToPathUtil {
         OrFilter orFilter = (OrFilter) schemaFilter;
         if (orFilter.getLeft().getSchemaFilterType().equals(SchemaFilterType.DEVICE_ID)
             && orFilter.getRight().getSchemaFilterType().equals(SchemaFilterType.DEVICE_ID)) {
+          // todo nested orFilter
           DeviceIdFilter deviceIdFilter = (DeviceIdFilter) orFilter.getLeft();
           nodes[deviceIdFilter.getIndex() + 3] = deviceIdFilter.getValue();
           deviceIdFilter = (DeviceIdFilter) orFilter.getLeft();

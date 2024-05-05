@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.queryengine.plan.statement.internal;
+package org.apache.iotdb.db.queryengine.plan.statement.table;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
