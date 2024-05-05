@@ -233,7 +233,9 @@ public class DataRegionStateMachine extends BaseStateMachine {
   @Override
   public TSStatus write(IConsensusRequest request) {
     try {
-      return write((PlanNode) request);
+      PlanNode planNode = (PlanNode) request;
+      planNode.markAsGeneratedByConsensus();
+      return write(planNode);
     } catch (IllegalArgumentException e) {
       logger.error(e.getMessage(), e);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
