@@ -144,6 +144,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.table.CreateTableDeviceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.table.FetchTableDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.table.ShowTableDevicesStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -3719,6 +3720,33 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             tableName,
             DataNodeTableCache.getInstance().getTable(database, tableName),
             statement.getIdDeterminedFilterList());
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath devicePattern : devicePatternList) {
+      patternTree.appendFullPath(devicePattern, ONE_LEVEL_PATH_WILDCARD);
+    }
+
+    SchemaPartition partition =
+        partitionFetcher.getOrCreateSchemaPartition(
+            patternTree, context.getSession().getUserName());
+
+    analysis.setSchemaPartitionInfo(partition);
+
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitFetchTableDevices(
+      FetchTableDevicesStatement statement, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(statement);
+
+    String database = statement.getDatabase();
+    String tableName = statement.getTableName();
+
+    List<PartialPath> devicePatternList =
+        DeviceFilterToPathUtil.convertToDevicePath(
+            database, tableName, statement.getDeviceIdList());
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath devicePattern : devicePatternList) {
       patternTree.appendFullPath(devicePattern, ONE_LEVEL_PATH_WILDCARD);

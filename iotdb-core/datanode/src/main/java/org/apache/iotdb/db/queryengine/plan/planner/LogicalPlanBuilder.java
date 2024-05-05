@@ -55,9 +55,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TableDeviceScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.table.TableDeviceFetchNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.table.TableDeviceScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
@@ -1660,6 +1661,22 @@ public class LogicalPlanBuilder {
             tableName,
             idDeterminedFilterList,
             idFuzzyFilterList,
+            columnHeaderList,
+            null);
+    return this;
+  }
+
+  public LogicalPlanBuilder planTableDeviceFetchSource(
+      String database,
+      String tableName,
+      List<String[]> deviceIdList,
+      List<ColumnHeader> columnHeaderList) {
+    this.root =
+        new TableDeviceFetchNode(
+            context.getQueryId().genPlanNodeId(),
+            database,
+            tableName,
+            deviceIdList,
             columnHeaderList,
             null);
     return this;

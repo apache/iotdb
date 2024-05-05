@@ -54,9 +54,9 @@ public class TableDeviceSchemaCache {
       String database, String tableName, String[] deviceId) {
     readWriteLock.readLock().lock();
     try {
-      return dualKeyCache
-          .get(new TableId(database, tableName), new TableDeviceId(deviceId))
-          .getAttributeMap();
+      TableDeviceCacheEntry entry =
+          dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
+      return entry == null ? null : entry.getAttributeMap();
     } finally {
       readWriteLock.readLock().unlock();
     }

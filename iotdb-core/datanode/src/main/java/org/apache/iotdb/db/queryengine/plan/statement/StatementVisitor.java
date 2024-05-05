@@ -123,6 +123,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuota
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.table.CreateTableDeviceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.table.FetchTableDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.table.ShowTableDevicesStatement;
 
 /**
@@ -614,6 +615,10 @@ public abstract class StatementVisitor<R, C> {
   }
 
   public R visitShowTableDevices(ShowTableDevicesStatement statement, C context) {
+    return visitStatement(statement, context);
+  }
+
+  public R visitFetchTableDevices(FetchTableDevicesStatement statement, C context) {
     return visitStatement(statement, context);
   }
 }

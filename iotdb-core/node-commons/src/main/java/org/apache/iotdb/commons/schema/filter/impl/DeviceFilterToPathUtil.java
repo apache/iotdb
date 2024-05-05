@@ -83,4 +83,19 @@ public class DeviceFilterToPathUtil {
 
     return pathList;
   }
+
+  public static List<PartialPath> convertToDevicePath(
+      String database, String tableName, List<String[]> deviceIdList) {
+    List<PartialPath> devicePathList = new ArrayList<>(deviceIdList.size());
+    String[] nodes;
+    for (String[] idValues : deviceIdList) {
+      nodes = new String[idValues.length + 3];
+      nodes[0] = PATH_ROOT;
+      nodes[1] = database;
+      nodes[2] = tableName;
+      System.arraycopy(idValues, 0, nodes, 3, idValues.length);
+      devicePathList.add(new PartialPath(nodes));
+    }
+    return devicePathList;
+  }
 }

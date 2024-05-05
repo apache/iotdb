@@ -1361,6 +1361,13 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       ShowTableDevicesPlan showTableDevicesPlan) {
     throw new UnsupportedOperationException();
   }
+
+  @Override
+  public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(List<PartialPath> devicePathList)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
   // endregion
 
   private static class RecoverOperationResult {

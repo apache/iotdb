@@ -97,6 +97,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.table.CreateTableDeviceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.table.FetchTableDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.table.ShowTableDevicesStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -1036,19 +1037,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       ShowTableDevicesStatement statement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
-    List<TsTableColumnSchema> columnSchemaList =
-        DataNodeTableCache.getInstance()
-            .getTable(statement.getDatabase(), statement.getTableName())
-            .getColumnList();
-
-    List<ColumnHeader> columnHeaderList = new ArrayList<>(columnSchemaList.size());
-    for (TsTableColumnSchema columnSchema : columnSchemaList) {
-      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)
-          || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
-        columnHeaderList.add(
-            new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()));
-      }
-    }
+    List<ColumnHeader> columnHeaderList =
+        getColumnHeaderList(statement.getDatabase(), statement.getTableName());
 
     analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
 
@@ -1059,6 +1049,43 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 statement.getTableName(),
                 statement.getIdDeterminedFilterList(),
                 statement.getIdFuzzyFilterList(),
+                columnHeaderList)
+            .planSchemaQueryMerge(false);
+
+    return planBuilder.getRoot();
+  }
+
+  private List<ColumnHeader> getColumnHeaderList(String database, String tableName) {
+    List<TsTableColumnSchema> columnSchemaList =
+        DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList();
+
+    List<ColumnHeader> columnHeaderList = new ArrayList<>(columnSchemaList.size());
+    for (TsTableColumnSchema columnSchema : columnSchemaList) {
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)
+          || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
+        columnHeaderList.add(
+            new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()));
+      }
+    }
+    return columnHeaderList;
+  }
+
+  @Override
+  public PlanNode visitFetchTableDevices(
+      FetchTableDevicesStatement statement, MPPQueryContext context) {
+    LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+
+    List<ColumnHeader> columnHeaderList =
+        getColumnHeaderList(statement.getDatabase(), statement.getTableName());
+
+    analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
+
+    planBuilder =
+        planBuilder
+            .planTableDeviceFetchSource(
+                statement.getDatabase(),
+                statement.getTableName(),
+                statement.getDeviceIdList(),
                 columnHeaderList)
             .planSchemaQueryMerge(false);
 

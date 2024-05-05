@@ -82,10 +82,17 @@ public class TableModelSchemaFetcher {
 
   public void validateDeviceSchema(
       ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context) {
-    ValidateResult cacheValidateResult = validateDeviceSchemaInCache(schemaValidation);
-    ValidateResult fetchValidateResult =
-        fetchAndValidateDeviceSchema(schemaValidation, cacheValidateResult, context);
-    autoCreateDeviceSchema(schemaValidation, fetchValidateResult, context);
+    ValidateResult validateResult = validateDeviceSchemaInCache(schemaValidation);
+
+    if (!validateResult.missingDeviceIndexList.isEmpty()
+        || !validateResult.attributeMissingInCacheDeviceIndexList.isEmpty()) {
+      validateResult = fetchAndValidateDeviceSchema(schemaValidation, validateResult, context);
+    }
+
+    if (!validateResult.missingDeviceIndexList.isEmpty()
+        || !validateResult.attributeUpdateDeviceIndexList.isEmpty()) {
+      autoCreateDeviceSchema(schemaValidation, validateResult, context);
+    }
   }
 
   private ValidateResult validateDeviceSchemaInCache(
@@ -139,6 +146,14 @@ public class TableModelSchemaFetcher {
             new FetchTableDevicesStatement(
                 schemaValidation.getDatabase(), schemaValidation.getTableName(), targetDeviceList),
             context);
+
+    for (Map.Entry<TableDeviceId, Map<String, String>> entry : fetchedDeviceSchema.entrySet()) {
+      cache.put(
+          schemaValidation.getDatabase(),
+          schemaValidation.getTableName(),
+          entry.getKey().getIdValues(),
+          entry.getValue());
+    }
 
     ValidateResult result = new ValidateResult();
     for (int index : previousValidateResult.missingDeviceIndexList) {
@@ -195,7 +210,7 @@ public class TableModelSchemaFetcher {
     ExecutionResult executionResult =
         Coordinator.getInstance()
             .executeForTreeModel(
-                null,
+                statement,
                 queryId,
                 SessionManager.getInstance()
                     .getSessionInfo(SessionManager.getInstance().getCurrSession()),

@@ -109,4 +109,12 @@ public class SchemaSourceFactory {
     return new TableDeviceSchemaSource(
         database, tableName, idDeterminedFilterList, idFuzzyFilterList, columnHeaderList);
   }
+
+  public static ISchemaSource<IDeviceSchemaInfo> getTableDeviceFetchSource(
+      String database,
+      String tableName,
+      List<String[]> deviceIdList,
+      List<ColumnHeader> columnHeaderList) {
+    return new TableDeviceFetchSource(database, tableName, deviceIdList, columnHeaderList);
+  }
 }

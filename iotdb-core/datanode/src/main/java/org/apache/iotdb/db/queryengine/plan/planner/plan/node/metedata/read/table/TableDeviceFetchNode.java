@@ -1,12 +1,31 @@
-package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.table;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -18,37 +37,33 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class TableDeviceScanNode extends SchemaQueryScanNode {
+public class TableDeviceFetchNode extends SchemaQueryScanNode {
 
   private String database;
 
   private String tableName;
 
-  private List<SchemaFilter> idDeterminedFilterList;
-
-  private List<SchemaFilter> idFuzzyFilterList;
+  private List<String[]> deviceIdList;
 
   private List<ColumnHeader> columnHeaderList;
 
   private TRegionReplicaSet schemaRegionReplicaSet;
 
-  public TableDeviceScanNode(PlanNodeId id) {
+  public TableDeviceFetchNode(PlanNodeId id) {
     super(id);
   }
 
-  public TableDeviceScanNode(
+  public TableDeviceFetchNode(
       PlanNodeId id,
       String database,
       String tableName,
-      List<SchemaFilter> idDeterminedFilterList,
-      List<SchemaFilter> idFuzzyFilterList,
+      List<String[]> deviceIdList,
       List<ColumnHeader> columnHeaderList,
       TRegionReplicaSet regionReplicaSet) {
     super(id);
     this.database = database;
     this.tableName = tableName;
-    this.idDeterminedFilterList = idDeterminedFilterList;
-    this.idFuzzyFilterList = idFuzzyFilterList;
+    this.deviceIdList = deviceIdList;
     this.columnHeaderList = columnHeaderList;
     this.schemaRegionReplicaSet = regionReplicaSet;
   }
@@ -61,12 +76,8 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
     return tableName;
   }
 
-  public List<SchemaFilter> getIdDeterminedFilterList() {
-    return idDeterminedFilterList;
-  }
-
-  public List<SchemaFilter> getIdFuzzyFilterList() {
-    return idFuzzyFilterList;
+  public List<String[]> getDeviceIdList() {
+    return deviceIdList;
   }
 
   public List<ColumnHeader> getColumnHeaderList() {
@@ -91,12 +102,11 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
 
   @Override
   public PlanNode clone() {
-    return new TableDeviceScanNode(
+    return new TableDeviceFetchNode(
         getPlanNodeId(),
         database,
         tableName,
-        idDeterminedFilterList,
-        idFuzzyFilterList,
+        deviceIdList,
         columnHeaderList,
         schemaRegionReplicaSet);
   }
@@ -108,18 +118,16 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.TABLE_DEVICE_SCAN.serialize(byteBuffer);
+    PlanNodeType.TABLE_DEVICE_FETCH.serialize(byteBuffer);
     ReadWriteIOUtils.write(database, byteBuffer);
     ReadWriteIOUtils.write(tableName, byteBuffer);
 
-    ReadWriteIOUtils.write(idDeterminedFilterList.size(), byteBuffer);
-    for (SchemaFilter schemaFilter : idDeterminedFilterList) {
-      SchemaFilter.serialize(schemaFilter, byteBuffer);
-    }
-
-    ReadWriteIOUtils.write(idFuzzyFilterList.size(), byteBuffer);
-    for (SchemaFilter schemaFilter : idFuzzyFilterList) {
-      SchemaFilter.serialize(schemaFilter, byteBuffer);
+    ReadWriteIOUtils.write(deviceIdList.size(), byteBuffer);
+    for (String[] deviceId : deviceIdList) {
+      ReadWriteIOUtils.write(deviceId.length, byteBuffer);
+      for (String idValue : deviceId) {
+        ReadWriteIOUtils.write(idValue, byteBuffer);
+      }
     }
 
     ReadWriteIOUtils.write(columnHeaderList.size(), byteBuffer);
@@ -130,18 +138,16 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.TABLE_DEVICE_SCAN.serialize(stream);
+    PlanNodeType.TABLE_DEVICE_FETCH.serialize(stream);
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(tableName, stream);
 
-    ReadWriteIOUtils.write(idDeterminedFilterList.size(), stream);
-    for (SchemaFilter schemaFilter : idDeterminedFilterList) {
-      SchemaFilter.serialize(schemaFilter, stream);
-    }
-
-    ReadWriteIOUtils.write(idFuzzyFilterList.size(), stream);
-    for (SchemaFilter schemaFilter : idFuzzyFilterList) {
-      SchemaFilter.serialize(schemaFilter, stream);
+    ReadWriteIOUtils.write(deviceIdList.size(), stream);
+    for (String[] deviceId : deviceIdList) {
+      ReadWriteIOUtils.write(deviceId.length, stream);
+      for (String idValue : deviceId) {
+        ReadWriteIOUtils.write(idValue, stream);
+      }
     }
 
     ReadWriteIOUtils.write(columnHeaderList.size(), stream);
@@ -150,20 +156,19 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
     }
   }
 
-  public static TableDeviceScanNode deserialize(ByteBuffer buffer) {
+  public static TableDeviceFetchNode deserialize(ByteBuffer buffer) {
     String database = ReadWriteIOUtils.readString(buffer);
     String tableName = ReadWriteIOUtils.readString(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
-    List<SchemaFilter> idDeterminedFilterList = new ArrayList<>(size);
+    List<String[]> deviceIdList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
-      idDeterminedFilterList.add(SchemaFilter.deserialize(buffer));
-    }
-
-    size = ReadWriteIOUtils.readInt(buffer);
-    List<SchemaFilter> idFuzzyFilterList = new ArrayList<>(size);
-    for (int i = 0; i < size; i++) {
-      idFuzzyFilterList.add(SchemaFilter.deserialize(buffer));
+      int length = ReadWriteIOUtils.readInt(buffer);
+      String[] nodes = new String[length];
+      for (int j = 0; j < length; j++) {
+        nodes[j] = ReadWriteIOUtils.readString(buffer);
+      }
+      deviceIdList.add(nodes);
     }
 
     size = ReadWriteIOUtils.readInt(buffer);
@@ -173,31 +178,24 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
     }
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new TableDeviceScanNode(
-        planNodeId,
-        database,
-        tableName,
-        idDeterminedFilterList,
-        idFuzzyFilterList,
-        columnHeaderList,
-        null);
+    return new TableDeviceFetchNode(
+        planNodeId, database, tableName, deviceIdList, columnHeaderList, null);
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitTableDeviceScan(this, context);
+    return visitor.visitTableDeviceFetch(this, context);
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof TableDeviceScanNode)) return false;
+    if (!(o instanceof TableDeviceFetchNode)) return false;
     if (!super.equals(o)) return false;
-    TableDeviceScanNode that = (TableDeviceScanNode) o;
+    TableDeviceFetchNode that = (TableDeviceFetchNode) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
-        && Objects.equals(idDeterminedFilterList, that.idDeterminedFilterList)
-        && Objects.equals(idFuzzyFilterList, that.idFuzzyFilterList)
+        && Objects.equals(deviceIdList, that.deviceIdList)
         && Objects.equals(columnHeaderList, that.columnHeaderList)
         && Objects.equals(schemaRegionReplicaSet, that.schemaRegionReplicaSet);
   }
@@ -208,8 +206,7 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
         super.hashCode(),
         database,
         tableName,
-        idDeterminedFilterList,
-        idFuzzyFilterList,
+        deviceIdList,
         columnHeaderList,
         schemaRegionReplicaSet);
   }

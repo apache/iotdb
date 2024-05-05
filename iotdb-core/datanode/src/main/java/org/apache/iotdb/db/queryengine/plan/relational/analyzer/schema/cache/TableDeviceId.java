@@ -35,6 +35,10 @@ public class TableDeviceId {
     return idValues[index];
   }
 
+  public String[] getIdValues() {
+    return idValues;
+  }
+
   public int estimateSize() {
     int size = 8 + 8 + 8 + 4; // object header + reference + String[] header + String.length
     for (String node : idValues) {

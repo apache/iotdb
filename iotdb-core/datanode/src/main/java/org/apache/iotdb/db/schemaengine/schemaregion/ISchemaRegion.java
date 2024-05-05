@@ -317,5 +317,8 @@ public interface ISchemaRegion {
 
   ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(ShowTableDevicesPlan showTableDevicesPlan)
       throws MetadataException;
+
+  ISchemaReader<IDeviceSchemaInfo> getDeviceReader(List<PartialPath> devicePathList)
+      throws MetadataException;
   // endregion
 }

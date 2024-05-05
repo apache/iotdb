@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
@@ -35,6 +36,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
@@ -59,6 +61,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegio
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegionPlanSerializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MTreeBelowSGMemoryImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowNodesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
@@ -66,6 +69,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl.ShowTableDevi
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.schemaregion.tag.TagManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.FilterContainsVisitor;
@@ -90,6 +94,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPre
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
@@ -101,8 +106,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -1284,6 +1291,85 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         showTableDevicesPlan.getDevicePattern(),
         showTableDevicesPlan.getAttributeFilter(),
         (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
+  }
+
+  @Override
+  public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(List<PartialPath> devicePathList)
+      throws MetadataException {
+    return new ISchemaReader<IDeviceSchemaInfo>() {
+
+      Iterator<PartialPath> devicePathIterator = devicePathList.listIterator();
+
+      IDeviceSchemaInfo next = null;
+
+      Throwable t = null;
+
+      @Override
+      public boolean isSuccess() {
+        return t == null;
+      }
+
+      @Override
+      public Throwable getFailure() {
+        return t;
+      }
+
+      @Override
+      public ListenableFuture<?> isBlocked() {
+        return NOT_BLOCKED;
+      }
+
+      @Override
+      public boolean hasNext() {
+        if (next == null) {
+          tryGetNext();
+        }
+        return next != null;
+      }
+
+      @Override
+      public IDeviceSchemaInfo next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        IDeviceSchemaInfo result = next;
+        next = null;
+        return result;
+      }
+
+      private void tryGetNext() {
+        while (devicePathIterator.hasNext()) {
+          try {
+            IMemMNode node = mtree.getNodeByPath(devicePathIterator.next());
+            if (!node.isDevice()) {
+              continue;
+            }
+            IDeviceMNode<IMemMNode> deviceNode = node.getAsDeviceMNode();
+            ShowDevicesResult result =
+                new ShowDevicesResult(
+                    deviceNode.getFullPath(),
+                    deviceNode.isAlignedNullable(),
+                    deviceNode.getSchemaTemplateId());
+            result.setAttributeProvider(
+                k ->
+                    deviceAttributeStore.getAttribute(
+                        ((TableDeviceInfo<IMemMNode>) deviceNode.getDeviceInfo())
+                            .getAttributePointer(),
+                        k));
+            next = result;
+            break;
+          } catch (PathNotExistException e) {
+            continue;
+          } catch (Throwable e) {
+            t = e;
+            return;
+          }
+        }
+      }
+
+      @Override
+      public void close() throws Exception {}
+    };
   }
 
   // endregion
