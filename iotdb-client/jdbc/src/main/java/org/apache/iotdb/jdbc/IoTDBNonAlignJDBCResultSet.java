@@ -54,6 +54,7 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   private TSQueryNonAlignDataSet tsQueryNonAlignDataSet;
   private byte[][] times; // used for disable align
   private List<String> sgColumns = null;
+
   // for disable align clause
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   IoTDBNonAlignJDBCResultSet(

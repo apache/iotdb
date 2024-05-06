@@ -85,20 +85,20 @@ IF EXIST "%CONFIGNODE_CONF%\confignode-env.bat" (
 @REM CHECK THE PORT USAGES
 IF EXIST "%CONFIGNODE_CONF%\iotdb-confignode.properties" (
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_internal_port"
-    %CONFIGNODE_CONF%\iotdb-confignode.properties') do (
+    "%CONFIGNODE_CONF%\iotdb-confignode.properties"') do (
       set cn_internal_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_consensus_port"
-    %CONFIGNODE_CONF%\iotdb-confignode.properties') do (
+    "%CONFIGNODE_CONF%\iotdb-confignode.properties"') do (
       set cn_consensus_port=%%i
   )
 ) ELSE IF EXIST "%CONFIGNODE_HOME%\conf\iotdb-confignode.properties" (
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_internal_port"
-      %CONFIGNODE_HOME%\conf\iotdb-confignode.properties') do (
+      "%CONFIGNODE_HOME%\conf\iotdb-confignode.properties"') do (
         set cn_internal_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_consensus_port"
-      %CONFIGNODE_HOME%\conf\iotdb-confignode.properties') do (
+      "%CONFIGNODE_HOME%\conf\iotdb-confignode.properties"') do (
         set cn_consensus_port=%%i
   )
 ) ELSE (
@@ -150,7 +150,7 @@ set JAVA_OPTS=-ea^
 
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
-if EXIST %CONFIGNODE_HOME%\lib (set CLASSPATH="%CONFIGNODE_HOME%\lib\*") else set CLASSPATH="%CONFIGNODE_HOME%\..\lib\*"
+if EXIST "%CONFIGNODE_HOME%\lib" (set CLASSPATH="%CONFIGNODE_HOME%\lib\*") else set CLASSPATH="%CONFIGNODE_HOME%\..\lib\*"
 set CLASSPATH=%CLASSPATH%;iotdb.ConfigNode
 goto okClasspath
 

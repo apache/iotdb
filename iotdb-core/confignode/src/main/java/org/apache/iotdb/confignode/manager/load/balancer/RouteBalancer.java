@@ -240,6 +240,11 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     getLoadManager().forceUpdateConsensusGroupCache(successTransferMap);
   }
 
+  public synchronized void balanceRegionLeaderAndPriority() {
+    balanceRegionLeader();
+    balanceRegionPriority();
+  }
+
   /** Balance cluster RegionGroup route priority through configured algorithm. */
   private synchronized void balanceRegionPriority() {
     priorityMapLock.writeLock().lock();
@@ -295,6 +300,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
     long broadcastTime = System.currentTimeMillis();
     Map<TConsensusGroupId, TRegionReplicaSet> tmpPriorityMap = getRegionPriorityMap();
+    LOGGER.info("region map: {}", tmpPriorityMap);
     AsyncClientHandler<TRegionRouteReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
             DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
@@ -325,7 +331,9 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     }
   }
 
-  /** @return Map<RegionGroupId, RegionPriority> */
+  /**
+   * @return Map<RegionGroupId, RegionPriority>
+   */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRegionPriorityMap() {
     priorityMapLock.readLock().lock();
     try {

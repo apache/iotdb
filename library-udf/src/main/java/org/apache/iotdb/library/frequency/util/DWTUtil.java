@@ -26,8 +26,10 @@ import java.util.List;
 public class DWTUtil {
   /** The number of coefficients. */
   private int ncof;
+
   /** layers to decompose，When transforming, point numbers should be no less than ncof. */
   private int layer;
+
   /** Centering. */
   private int ioff;
 

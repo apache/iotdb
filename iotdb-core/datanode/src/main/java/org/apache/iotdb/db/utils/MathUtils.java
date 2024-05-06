@@ -28,6 +28,7 @@ public class MathUtils {
   private MathUtils() {
     throw new IllegalStateException("Utility class");
   }
+
   /**
    * @param data data should be less than Long.MAX_VALUE. otherwise Math.round() will return wrong
    *     value.

@@ -548,6 +548,7 @@ public class CompactionSchedulerTest {
           .setFileLimitPerInnerTask(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=true
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
@@ -769,6 +770,7 @@ public class CompactionSchedulerTest {
           .setFileLimitPerInnerTask(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=false
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
@@ -870,6 +872,7 @@ public class CompactionSchedulerTest {
           .setFileLimitPerInnerTask(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=false enable_unseq_space_compaction=false
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
@@ -957,6 +960,7 @@ public class CompactionSchedulerTest {
           .setFileLimitPerInnerTask(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=true
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
@@ -1057,6 +1061,7 @@ public class CompactionSchedulerTest {
           .setFileLimitPerInnerTask(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=false enable_unseq_space_compaction=true
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
@@ -1167,6 +1172,7 @@ public class CompactionSchedulerTest {
           .setEnableCrossSpaceCompaction(prevEnableCrossCompaction);
     }
   }
+
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=false
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
@@ -1489,6 +1495,7 @@ public class CompactionSchedulerTest {
           .setFileLimitPerInnerTask(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=false
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=2
@@ -1606,6 +1613,7 @@ public class CompactionSchedulerTest {
           .setFileLimitPerInnerTask(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=false enable_unseq_space_compaction=false
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=2

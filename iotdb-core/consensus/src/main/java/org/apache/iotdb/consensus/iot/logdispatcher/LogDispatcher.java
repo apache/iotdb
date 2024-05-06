@@ -365,6 +365,14 @@ public class LogDispatcher {
                 Thread.sleep(config.getReplication().getMaxWaitingTimeForAccumulatingBatchInMs());
               }
             }
+            // Immediately check for interrupts after poll and sleep
+            if (Thread.interrupted()) {
+              throw new InterruptedException("Interrupted after polling and sleeping");
+            }
+          }
+          // Immediately check for interrupts after a time-consuming getBatch() operation
+          if (Thread.interrupted()) {
+            throw new InterruptedException("Interrupted after getting a batch");
           }
           logDispatcherThreadMetrics.recordConstructBatchTime(System.nanoTime() - startTime);
           // we may block here if the synchronization pipeline is full
@@ -389,8 +397,7 @@ public class LogDispatcher {
       // safely.
       //
       // Use minFlushedSyncIndex here to reserve the WAL which are not flushed and support kill -9.
-      long currentSafelyDeletedSearchIndex = impl.getMinFlushedSyncIndex();
-      reader.setSafelyDeletedSearchIndex(currentSafelyDeletedSearchIndex);
+      reader.setSafelyDeletedSearchIndex(impl.getMinFlushedSyncIndex());
       // notify
       if (impl.unblockWrite()) {
         impl.signal();

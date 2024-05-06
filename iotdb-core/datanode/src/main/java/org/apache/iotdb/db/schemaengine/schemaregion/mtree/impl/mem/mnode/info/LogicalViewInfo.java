@@ -40,6 +40,7 @@ public class LogicalViewInfo implements IMeasurementInfo {
 
   /** tag/attribute's start offset in tag file */
   private long offset = -1;
+
   /** whether this measurement is pre deleted and considered in black list */
   private boolean preDeleted = false;
 
@@ -59,7 +60,9 @@ public class LogicalViewInfo implements IMeasurementInfo {
     return false;
   }
 
-  /** @return return the path of alias series if this view is alias series; else return null. */
+  /**
+   * @return return the path of alias series if this view is alias series; else return null.
+   */
   public PartialPath getAliasSeriesPath() {
     if (this.isAliasSeries()) {
       if (this.getExpression().getExpressionType() == ViewExpressionType.TIMESERIES) {
@@ -81,6 +84,7 @@ public class LogicalViewInfo implements IMeasurementInfo {
   public void setExpression(ViewExpression expression) {
     this.schema.setExpression(expression);
   }
+
   // endregion
 
   // region IMeasurementInfo interfaces

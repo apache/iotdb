@@ -73,6 +73,7 @@ public class WALInfoEntry extends WALEntry {
             .serializeToWAL(buffer, tabletInfo.tabletStart, tabletInfo.tabletEnd);
         break;
       case INSERT_ROW_NODE:
+      case INSERT_ROWS_NODE:
       case DELETE_DATA_NODE:
       case MEMORY_TABLE_SNAPSHOT:
         value.serializeToWAL(buffer);

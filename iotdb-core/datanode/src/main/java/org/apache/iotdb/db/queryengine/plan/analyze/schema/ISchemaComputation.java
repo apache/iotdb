@@ -37,7 +37,9 @@ public interface ISchemaComputation {
 
   String[] getMeasurements();
 
-  /** @param isAligned whether the fetched device is aligned */
+  /**
+   * @param isAligned whether the fetched device is aligned
+   */
   void computeDevice(boolean isAligned);
 
   /**
@@ -69,7 +71,9 @@ public interface ISchemaComputation {
    */
   void recordRangeOfLogicalViewSchemaListNow();
 
-  /** @return the recorded range of logical view schema list. */
+  /**
+   * @return the recorded range of logical view schema list.
+   */
   Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded();
 
   /**

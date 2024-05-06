@@ -293,6 +293,7 @@ public abstract class AbstractEnv implements BaseEnv {
         });
     testJDBCConnection();
   }
+
   /**
    * check whether all nodes' status match the provided predicate with RPC. after retryCount times,
    * if the status of all nodes still not match the predicate, throw AssertionError.
