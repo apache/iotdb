@@ -949,7 +949,9 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
   }
 
-  /** @return false -> receiver crashed */
+  /**
+   * @return false -> receiver crashed
+   */
   private boolean insertRowRecordEnrichedByConsumerGroupId(
       final List<String> columnNameList, final RowRecord record, final String consumerGroupId)
       throws Exception {

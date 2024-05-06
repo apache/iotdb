@@ -54,6 +54,7 @@ public class InnerTimeJoinOperator implements ProcessOperator {
 
   private final List<Operator> children;
   private final int inputOperatorsCount;
+
   /** TsBlock from child operator. Only one cache now. */
   private final TsBlock[] inputTsBlocks;
 

@@ -196,7 +196,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       // do not write log when recover
       isRecovering = true;
 
-      tagManager = new TagManager(schemaRegionDirPath);
+      tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mtree =
           new MTreeBelowSGMemoryImpl(
               new PartialPath(storageGroupFullPath),
@@ -455,7 +455,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       isRecovering = true;
 
       long tagSnapshotStartTime = System.currentTimeMillis();
-      tagManager = TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath);
+      tagManager =
+          TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath, regionStatistics);
       logger.info(
           "Tag snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
@@ -469,7 +470,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               regionStatistics,
               metric,
               measurementMNode -> {
-                regionStatistics.addMeasurement(1L);
+                if (measurementMNode.isLogicalView()) {
+                  regionStatistics.addView(1L);
+                } else {
+                  regionStatistics.addMeasurement(1L);
+                }
                 if (measurementMNode.getOffset() == -1) {
                   return;
                 }
@@ -870,7 +875,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     measurementMNode.setPreDeleted(false);
   }
 
-  /** @param path full path from root to leaf node */
+  /**
+   * @param path full path from root to leaf node
+   */
   private void deleteOneTimeseriesUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
     IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeseries(path);
@@ -881,6 +888,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       regionStatistics.deleteMeasurement(1L);
     }
   }
+
   // endregion
 
   // region Interfaces for get and auto create device
@@ -906,6 +914,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throw new MetadataException(e);
     }
   }
+
   // endregion
 
   // region Interfaces for metadata info Query
@@ -984,6 +993,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException, IOException {
     // upsert alias
     upsertAlias(alias, fullPath);
+    if (tagsMap != null && !regionStatistics.isAllowToCreateNewSeries()) {
+      throw new SeriesOverflowException(
+          regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
+    }
     IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     if (tagsMap == null && attributesMap == null) {
       return;
@@ -1006,9 +1019,15 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private void upsertAlias(String alias, PartialPath fullPath)
       throws MetadataException, IOException {
-    if (mtree.changeAlias(alias, fullPath)) {
-      // persist to WAL
-      writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(fullPath, alias));
+    if (alias != null) {
+      if (!regionStatistics.isAllowToCreateNewSeries()) {
+        throw new SeriesOverflowException(
+            regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
+      }
+      if (mtree.changeAlias(alias, fullPath)) {
+        // persist to WAL
+        writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(fullPath, alias));
+      }
     }
   }
 
@@ -1045,6 +1064,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
+      throw new SeriesOverflowException(
+          regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
+    }
     IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
@@ -1088,6 +1111,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
+      throw new SeriesOverflowException(
+          regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
+    }
     IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
@@ -1111,6 +1138,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
+      throw new SeriesOverflowException(
+          regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
+    }
     IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
@@ -1126,6 +1157,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private void removeFromTagInvertedIndex(IMeasurementMNode<IMemMNode> node) throws IOException {
     tagManager.removeFromTagInvertedIndex(node);
   }
+
   // endregion
 
   // region Interfaces and Implementation for Template operations

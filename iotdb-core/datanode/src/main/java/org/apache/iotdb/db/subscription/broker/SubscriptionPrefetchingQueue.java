@@ -62,7 +62,9 @@ public abstract class SubscriptionPrefetchingQueue {
 
   /////////////////////////////// commit ///////////////////////////////
 
-  /** @return {@code true} if commit successfully */
+  /**
+   * @return {@code true} if commit successfully
+   */
   public boolean commit(final SubscriptionCommitContext commitContext) {
     final SubscriptionEvent event = uncommittedEvents.get(commitContext);
     if (Objects.isNull(event)) {

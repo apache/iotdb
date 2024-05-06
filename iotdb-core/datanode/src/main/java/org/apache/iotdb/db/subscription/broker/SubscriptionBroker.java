@@ -99,7 +99,9 @@ public class SubscriptionBroker {
             .pollTsFile(consumerId, fileName, writingOffset));
   }
 
-  /** @return list of successful commit contexts */
+  /**
+   * @return list of successful commit contexts
+   */
   public List<SubscriptionCommitContext> commit(
       final List<SubscriptionCommitContext> commitContexts) {
     final List<SubscriptionCommitContext> successfulCommitContexts = new ArrayList<>();

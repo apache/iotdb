@@ -80,7 +80,9 @@ public class TopicMeta {
     return config;
   }
 
-  /** @return true if the consumer group did not already subscribe this topic */
+  /**
+   * @return true if the consumer group did not already subscribe this topic
+   */
   public boolean addSubscribedConsumerGroup(String consumerGroupId) {
     return subscribedConsumerGroupIds.add(consumerGroupId);
   }

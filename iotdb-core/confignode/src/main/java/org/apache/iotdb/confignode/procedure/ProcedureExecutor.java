@@ -772,7 +772,9 @@ public class ProcedureExecutor<Env> {
       return getName() + "(pid=" + (p == null ? NO_PROC_ID : p.getProcId() + ")");
     }
 
-    /** @return the time since the current procedure is running */
+    /**
+     * @return the time since the current procedure is running
+     */
     public long getCurrentRunTime() {
       return System.currentTimeMillis() - startTime.get();
     }

@@ -119,7 +119,9 @@ public class SubscriptionPolledMessage {
 
   //////////////////////////// serialization ////////////////////////////
 
-  /** @return true -> byte buffer is not null */
+  /**
+   * @return true -> byte buffer is not null
+   */
   public boolean trySerialize() {
     if (Objects.isNull(byteBuffer)) {
       try {

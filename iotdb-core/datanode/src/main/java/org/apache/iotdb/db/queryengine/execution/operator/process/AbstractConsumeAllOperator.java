@@ -37,6 +37,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
     implements ProcessOperator {
   protected final List<Operator> children;
   protected final int inputOperatorsCount;
+
   /** TsBlock from child operator. Only one cache now. */
   protected TsBlock[] inputTsBlocks;
 
@@ -155,7 +156,9 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
     return !isEmpty(currentChildIndex) || children.get(currentChildIndex) == null;
   }
 
-  /** @param currentInputIndex index of the input TsBlock */
+  /**
+   * @param currentInputIndex index of the input TsBlock
+   */
   protected void processCurrentInputTsBlock(int currentInputIndex) {
     // do nothing here, the subclass have its own implementation
   }

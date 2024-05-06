@@ -78,7 +78,9 @@ public class SubscriptionBrokerAgent {
     return broker.pollTsFile(consumerId, topicName, fileName, writingOffset);
   }
 
-  /** @return list of successful commit contexts */
+  /**
+   * @return list of successful commit contexts
+   */
   public List<SubscriptionCommitContext> commit(
       final ConsumerConfig consumerConfig, final List<SubscriptionCommitContext> commitContexts) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
@@ -104,7 +106,9 @@ public class SubscriptionBrokerAgent {
     consumerGroupIdToSubscriptionBroker.put(consumerGroupId, broker);
   }
 
-  /** @return true -> if drop broker success */
+  /**
+   * @return true -> if drop broker success
+   */
   public synchronized boolean dropBroker(final String consumerGroupId) {
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {

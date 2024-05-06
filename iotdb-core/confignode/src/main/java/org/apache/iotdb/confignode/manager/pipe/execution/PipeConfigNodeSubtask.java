@@ -52,6 +52,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
 
   // Pipe plugins for this subtask
   private PipeExtractor extractor;
+
   // TODO: currently unused
   @SuppressWarnings("unused")
   private PipeProcessor processor;

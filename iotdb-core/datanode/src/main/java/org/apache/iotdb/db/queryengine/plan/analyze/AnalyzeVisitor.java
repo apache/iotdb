@@ -3615,6 +3615,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowLogicalViewHeader());
     return analysis;
   }
+
   // endregion view
 
   @Override

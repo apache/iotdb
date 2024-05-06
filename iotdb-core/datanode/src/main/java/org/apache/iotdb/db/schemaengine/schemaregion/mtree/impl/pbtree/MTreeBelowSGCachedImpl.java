@@ -933,6 +933,7 @@ public class MTreeBelowSGCachedImpl {
           path.getFullPath(), SchemaConstant.MEASUREMENT_MNODE_TYPE);
     }
   }
+
   // endregion
 
   // region Interfaces and Implementation for Logical View

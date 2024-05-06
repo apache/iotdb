@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -30,10 +31,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -44,7 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class InsertRowsNode extends InsertNode {
+public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   /**
    * Suppose there is an InsertRowsNode, which contains 5 InsertRowNodes,
@@ -58,7 +62,7 @@ public class InsertRowsNode extends InsertNode {
    */
   private List<Integer> insertRowNodeIndexList;
 
-  /** the InsertRowsNode list */
+  /** The {@link InsertRowNode} list */
   private List<InsertRowNode> insertRowNodeList;
 
   public InsertRowsNode(PlanNodeId id) {
@@ -74,7 +78,7 @@ public class InsertRowsNode extends InsertNode {
     this.insertRowNodeList = insertRowNodeList;
   }
 
-  /** record the result of insert rows */
+  /** Record the result of insert rows */
   private Map<Integer, TSStatus> results = new HashMap<>();
 
   public List<Integer> getInsertRowNodeIndexList() {
@@ -227,14 +231,14 @@ public class InsertRowsNode extends InsertNode {
     List<TEndPoint> redirectInfo = new ArrayList<>();
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);
-      // data region for insert row node
+      // Data region for insert row node
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
                   insertRowNode.devicePath.getFullPath(),
                   TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()));
-      // collect redirectInfo
+      // Collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
       InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
       if (tmpNode != null) {
@@ -258,7 +262,10 @@ public class InsertRowsNode extends InsertNode {
 
   @Override
   public long getMinTime() {
-    throw new NotImplementedException();
+    return insertRowNodeList.stream()
+        .map(InsertRowNode::getMinTime)
+        .reduce(Long::min)
+        .orElse(Long.MAX_VALUE);
   }
 
   @Override
@@ -266,4 +273,79 @@ public class InsertRowsNode extends InsertNode {
     this.progressIndex = progressIndex;
     insertRowNodeList.forEach(insertRowNode -> insertRowNode.setProgressIndex(progressIndex));
   }
+
+  // region serialize & deserialize methods for WAL
+  /** Serialized size for wal. */
+  @Override
+  public int serializedSize() {
+    return Short.BYTES + Long.BYTES + subSerializeSize();
+  }
+
+  private int subSerializeSize() {
+    int size = Integer.BYTES;
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      size += insertRowNode.subSerializeSize();
+    }
+    return size;
+  }
+
+  /**
+   * Compared with {@link this#serialize(ByteBuffer)}, more info: search index, less info:
+   * isNeedInferType
+   */
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    buffer.putShort(PlanNodeType.INSERT_ROWS.getNodeType());
+    buffer.putLong(searchIndex);
+    subSerialize(buffer);
+  }
+
+  private void subSerialize(IWALByteBufferView buffer) {
+    buffer.putInt(insertRowNodeList.size());
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      insertRowNode.subSerialize(buffer);
+    }
+  }
+
+  /**
+   * Deserialize from wal.
+   *
+   * @param stream - DataInputStream
+   * @return InsertRowNode
+   * @throws IOException - If an I/O error occurs.
+   * @throws IllegalArgumentException - If meets illegal argument.
+   */
+  public static InsertRowsNode deserializeFromWAL(DataInputStream stream) throws IOException {
+    // we do not store plan node id in wal entry
+    InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
+    long searchIndex = stream.readLong();
+    int listSize = stream.readInt();
+    for (int i = 0; i < listSize; i++) {
+      InsertRowNode insertRowNode = InsertRowNode.subDeserializeFromWAL(stream);
+      insertRowsNode.addOneInsertRowNode(insertRowNode, i);
+    }
+    insertRowsNode.setSearchIndex(searchIndex);
+    return insertRowsNode;
+  }
+
+  /**
+   * Deserialize from wal.
+   *
+   * @param buffer - ByteBuffer
+   * @return InsertRowNode
+   * @throws IllegalArgumentException - If meets illegal argument
+   */
+  public static InsertRowsNode deserializeFromWAL(ByteBuffer buffer) {
+    // we do not store plan node id in wal entry
+    InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
+    long searchIndex = buffer.getLong();
+    int listSize = buffer.getInt();
+    for (int i = 0; i < listSize; i++) {
+      InsertRowNode insertRowNode = InsertRowNode.subDeserializeFromWAL(buffer);
+      insertRowsNode.addOneInsertRowNode(insertRowNode, i);
+    }
+    insertRowsNode.setSearchIndex(searchIndex);
+    return insertRowsNode;
+  }
+  // endregion
 }

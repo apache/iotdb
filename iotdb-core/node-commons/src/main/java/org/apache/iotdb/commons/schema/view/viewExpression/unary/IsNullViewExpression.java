@@ -53,6 +53,7 @@ public class IsNullViewExpression extends UnaryViewExpression {
       throw new RuntimeException(e);
     }
   }
+
   // endregion
 
   // region common interfaces that have to be implemented
@@ -82,6 +83,7 @@ public class IsNullViewExpression extends UnaryViewExpression {
     super.serialize(stream);
     ReadWriteIOUtils.write(isNot, stream);
   }
+
   // endregion
 
   public boolean isNot() {

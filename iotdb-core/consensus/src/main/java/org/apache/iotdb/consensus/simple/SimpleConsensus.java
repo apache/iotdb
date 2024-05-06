@@ -260,6 +260,11 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
+  public void reloadConsensusConfig(ConsensusConfig consensusConfig) {
+    // do not support reload consensus config for now
+  }
+
+  @Override
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
     throw new ConsensusException("SimpleConsensus does not support reset peer list");
   }
