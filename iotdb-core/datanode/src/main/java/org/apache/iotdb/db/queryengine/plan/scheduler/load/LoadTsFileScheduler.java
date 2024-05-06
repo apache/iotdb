@@ -122,6 +122,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
   private final LoadTsFileDataCacheMemoryBlock block;
+  private final LoadTsFileRateLimiter loadTsFileRateLimiter;
 
   public LoadTsFileScheduler(
       DistributedQueryPlan distributedQueryPlan,
@@ -139,6 +140,7 @@ public class LoadTsFileScheduler implements IScheduler {
     this.allReplicaSets = new HashSet<>();
     this.isGeneratedByPipe = isGeneratedByPipe;
     this.block = LoadTsFileMemoryManager.getInstance().allocateDataCacheMemoryBlock();
+    this.loadTsFileRateLimiter = new LoadTsFileRateLimiter();
 
     for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
       tsFileNodeList.add((LoadSingleTsFileNode) fragmentInstance.getFragment().getPlanNodeTree());
@@ -394,8 +396,8 @@ public class LoadTsFileScheduler implements IScheduler {
       return false;
     }
 
-    LoadTsFileRateLimiter.getInstance()
-        .acquireWrittenBytesWithLoadWriteRateLimiter(node.getTsFileResource().getTsFileSize());
+    loadTsFileRateLimiter.acquireWrittenBytesWithLoadWriteRateLimiter(
+        node.getTsFileResource().getTsFileSize());
 
     // add metrics
     DataRegion dataRegion =

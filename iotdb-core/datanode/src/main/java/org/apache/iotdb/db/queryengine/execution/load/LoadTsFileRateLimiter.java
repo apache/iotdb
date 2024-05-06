@@ -28,9 +28,13 @@ public class LoadTsFileRateLimiter {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private final RateLimiter loadWriteRateLimiter;
+  private RateLimiter loadWriteRateLimiter;
 
-  private double throughoutMbPerSec = CONFIG.getCompactionWriteThroughputMbPerSec();
+  private double throughoutMbPerSec = CONFIG.getLoadWriteThroughputMbPerSecond();
+
+  public LoadTsFileRateLimiter() {
+    loadWriteRateLimiter = RateLimiter.create(throughoutMbPerSec);
+  }
 
   private void setWritePointRate(final double throughoutMbPerSec) {
     double throughout = throughoutMbPerSec * 1024.0 * 1024.0;
@@ -57,20 +61,5 @@ public class LoadTsFileRateLimiter {
         return;
       }
     }
-  }
-
-  ///////////////////////////  Singleton  ///////////////////////////
-  private LoadTsFileRateLimiter() {
-    loadWriteRateLimiter =
-        RateLimiter.create(
-            IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec());
-  }
-
-  public static LoadTsFileRateLimiter getInstance() {
-    return LoadTsFileRateLimiterHolder.INSTANCE;
-  }
-
-  private static class LoadTsFileRateLimiterHolder {
-    private static final LoadTsFileRateLimiter INSTANCE = new LoadTsFileRateLimiter();
   }
 }

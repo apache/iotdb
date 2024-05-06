@@ -80,6 +80,8 @@ public class LoadTsFileManager {
   private final Map<String, CleanupTask> uuid2CleanupTask = new ConcurrentHashMap<>();
   private final PriorityBlockingQueue<CleanupTask> cleanupTaskQueue = new PriorityBlockingQueue<>();
 
+  private static final LoadTsFileRateLimiter loadTsFileRateLimiter = new LoadTsFileRateLimiter();
+
   public LoadTsFileManager() {
     this.loadDir = SystemFileFactory.INSTANCE.getFile(CONFIG.getLoadTsFileDir());
 
@@ -326,8 +328,8 @@ public class LoadTsFileManager {
                 databaseName -> {
                   long writePointCount = getTsFileWritePointCount(writer);
 
-                  LoadTsFileRateLimiter.getInstance()
-                      .acquireWrittenBytesWithLoadWriteRateLimiter(tsFileResource.getTsFileSize());
+                  loadTsFileRateLimiter.acquireWrittenBytesWithLoadWriteRateLimiter(
+                      tsFileResource.getTsFileSize());
 
                   // Report load tsFile points to IoTDB flush metrics
                   MemTableFlushTask.recordFlushPointsMetricInternal(
