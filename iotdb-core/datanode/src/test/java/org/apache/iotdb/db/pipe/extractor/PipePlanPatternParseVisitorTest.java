@@ -46,7 +46,6 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
