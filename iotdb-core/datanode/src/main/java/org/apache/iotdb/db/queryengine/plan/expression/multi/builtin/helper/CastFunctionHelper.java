@@ -27,8 +27,9 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransform
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CastFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar.CastFunctionTransformer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.Map;
 

@@ -26,7 +26,7 @@ public class PipeExtractorConstant {
 
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";
-  public static final String EXTRACTOR_INCLUSION_DEFAULT_VALUE = "all";
+  public static final String EXTRACTOR_INCLUSION_DEFAULT_VALUE = "data.insert";
 
   public static final String EXTRACTOR_EXCLUSION_KEY = "extractor.inclusion.exclusion";
   public static final String SOURCE_EXCLUSION_KEY = "source.inclusion.exclusion";
@@ -78,6 +78,10 @@ public class PipeExtractorConstant {
   public static final String SOURCE_START_TIME_KEY = "source.start-time";
   public static final String EXTRACTOR_END_TIME_KEY = "extractor.end-time";
   public static final String SOURCE_END_TIME_KEY = "source.end-time";
+
+  public static final String EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark-interval-ms";
+  public static final String SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark-interval-ms";
+  public static final long EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE = -1; // -1 means no watermark
 
   private PipeExtractorConstant() {
     throw new IllegalStateException("Utility class");

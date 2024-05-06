@@ -35,12 +35,12 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNo
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -277,7 +277,9 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** @return All registered DataNodes. */
+  /**
+   * @return All registered DataNodes.
+   */
   public List<TDataNodeConfiguration> getRegisteredDataNodes() {
     List<TDataNodeConfiguration> result;
     dataNodeInfoReadWriteLock.readLock().lock();
@@ -289,7 +291,9 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** @return The specified registered DataNode. */
+  /**
+   * @return The specified registered DataNode.
+   */
   public TDataNodeConfiguration getRegisteredDataNode(int dataNodeId) {
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
@@ -299,7 +303,9 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
-  /** @return The specified registered DataNodes. */
+  /**
+   * @return The specified registered DataNodes.
+   */
   public List<TDataNodeConfiguration> getRegisteredDataNodes(List<Integer> dataNodeIds) {
     List<TDataNodeConfiguration> result = new ArrayList<>();
     dataNodeInfoReadWriteLock.readLock().lock();
@@ -404,7 +410,9 @@ public class NodeInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  /** @return All registered ConfigNodes. */
+  /**
+   * @return All registered ConfigNodes.
+   */
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {
     List<TConfigNodeLocation> result;
     configNodeInfoReadWriteLock.readLock().lock();
@@ -416,7 +424,9 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** @return The specified registered ConfigNode. */
+  /**
+   * @return The specified registered ConfigNode.
+   */
   public List<TConfigNodeLocation> getRegisteredConfigNodes(List<Integer> configNodeIds) {
     List<TConfigNodeLocation> result = new ArrayList<>();
     configNodeInfoReadWriteLock.readLock().lock();
@@ -433,7 +443,9 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** @return all nodes buildInfo */
+  /**
+   * @return all nodes buildInfo
+   */
   public Map<Integer, TNodeVersionInfo> getNodeVersionInfo() {
     Map<Integer, TNodeVersionInfo> result = new HashMap<>(nodeVersionInfo.size());
     versionInfoReadWriteLock.readLock().lock();

@@ -43,6 +43,7 @@ public class RoundRobinStrategy extends AbstractNodeAllocationStrategy {
   private int nodeCursor = -1;
   // each wal node has a unique int value identifier
   private int nodeIdCounter = -1;
+
   // endregion
 
   public RoundRobinStrategy(int maxWalNodeNum) {

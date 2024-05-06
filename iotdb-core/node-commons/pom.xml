@@ -41,9 +41,9 @@
             <version>1.3.2-SNAPSHOT</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>common-api</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.apache.tsfile</groupId>
+            <artifactId>common</artifactId>
+            <version>${tsfile.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -76,9 +76,9 @@
             <version>1.3.2-SNAPSHOT</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
+            <groupId>org.apache.tsfile</groupId>
             <artifactId>tsfile</artifactId>
-            <version>1.3.2-SNAPSHOT</version>
+            <version>${tsfile.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -185,10 +185,10 @@
                 <executions>
                     <execution>
                         <id>bundle-manifest</id>
+                        <phase>process-classes</phase>
                         <goals>
                             <goal>manifest</goal>
                         </goals>
-                        <phase>process-classes</phase>
                     </execution>
                 </executions>
             </plugin>
@@ -204,6 +204,7 @@
                     </includeOnlyProperties>
                     <commitIdGenerationMode>full</commitIdGenerationMode>
                     <failOnNoGitDirectory>false</failOnNoGitDirectory>
+                    <failOnUnableToExtractRepoInfo>false</failOnUnableToExtractRepoInfo>
                     <offline>true</offline>
                     <gitDescribe>
                         <dirty>-dev</dirty>
@@ -212,10 +213,10 @@
                 <executions>
                     <execution>
                         <id>get-the-git-infos</id>
+                        <phase>generate-resources</phase>
                         <goals>
                             <goal>revision</goal>
                         </goals>
-                        <phase>initialize</phase>
                     </execution>
                 </executions>
             </plugin>
@@ -258,11 +259,11 @@
                 <executions>
                     <execution>
                         <id>run-integration-tests</id>
+                        <phase>integration-test</phase>
                         <goals>
                             <goal>integration-test</goal>
                             <goal>verify</goal>
                         </goals>
-                        <phase>integration-test</phase>
                     </execution>
                 </executions>
             </plugin>

@@ -33,8 +33,8 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,10 +66,13 @@ public class FragmentInstanceContext extends QueryContext {
   private List<PartialPath> sourcePaths;
   // Shared by all scan operators in this fragment instance to avoid memory problem
   private QueryDataSource sharedQueryDataSource;
+
   /** closed tsfile used in this fragment instance. */
   private Set<TsFileResource> closedFilePaths;
+
   /** unClosed tsfile used in this fragment instance. */
   private Set<TsFileResource> unClosedFilePaths;
+
   /** check if there is tmp file to be deleted. */
   private boolean mayHaveTmpFile = false;
 

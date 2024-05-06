@@ -22,10 +22,10 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -100,7 +100,9 @@ public class RegionGroup {
     replicaSet.getDataNodeLocations().sort(TDataNodeLocation::compareTo);
   }
 
-  /** @param deltaMap Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count> */
+  /**
+   * @param deltaMap Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count>
+   */
   public void updateSlotCountMap(Map<TSeriesPartitionSlot, AtomicLong> deltaMap) {
     deltaMap.forEach(
         ((seriesPartitionSlot, delta) -> {

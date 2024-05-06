@@ -22,7 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
+import org.apache.tsfile.read.common.block.TsBlock;
 
 public interface IAnalysis {
 

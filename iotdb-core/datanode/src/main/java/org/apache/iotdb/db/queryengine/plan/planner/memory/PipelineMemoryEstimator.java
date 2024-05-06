@@ -38,6 +38,7 @@ public abstract class PipelineMemoryEstimator {
     this.dependencyPipelineIndex = dependencyPipelineIndex;
     this.children = new LinkedList<>();
   }
+
   /** Calculate the estimated memory size of the pipeline. */
   public abstract long calculateEstimatedMemorySize();
 

@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.leaf;
 
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.Type;
 
 public class ConstantColumnTransformer extends LeafColumnTransformer {
 

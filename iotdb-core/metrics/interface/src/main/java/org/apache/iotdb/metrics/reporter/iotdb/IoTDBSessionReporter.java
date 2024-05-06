@@ -31,8 +31,8 @@ import org.apache.iotdb.metrics.utils.ReporterType;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +56,7 @@ public class IoTDBSessionReporter extends IoTDBReporter {
 
   /** The manager of metrics. */
   protected AbstractMetricManager metricManager;
+
   /** The session pool to write metrics. */
   protected SessionPool sessionPool;
 

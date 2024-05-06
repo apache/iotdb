@@ -19,8 +19,9 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.db.queryengine.execution.MemoryMeasurable;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

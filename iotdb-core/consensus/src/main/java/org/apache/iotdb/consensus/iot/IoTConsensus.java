@@ -57,6 +57,7 @@ import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.logdispatcher.IoTConsensusMemoryManager;
 import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCService;
 import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCServiceProcessor;
+import org.apache.iotdb.consensus.iot.snapshot.IoTConsensusRateLimiter;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -91,7 +92,7 @@ public class IoTConsensus implements IConsensus {
       new ConcurrentHashMap<>();
   private final IoTConsensusRPCService service;
   private final RegisterManager registerManager = new RegisterManager();
-  private final IoTConsensusConfig config;
+  private IoTConsensusConfig config;
   private final IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
@@ -120,6 +121,13 @@ public class IoTConsensus implements IConsensus {
         .init(
             config.getIotConsensusConfig().getReplication().getAllocateMemoryForConsensus(),
             config.getIotConsensusConfig().getReplication().getAllocateMemoryForQueue());
+    // init IoTConsensus Rate Limiter
+    IoTConsensusRateLimiter.getInstance()
+        .init(
+            config
+                .getIotConsensusConfig()
+                .getReplication()
+                .getRegionMigrationSpeedLimitBytesPerSecond());
   }
 
   @Override
@@ -272,13 +280,13 @@ public class IoTConsensus implements IConsensus {
         (k, v) -> {
           exist.set(true);
           v.stop();
-          FileUtils.deleteFileOrDirectory(new File(buildPeerDir(storageDir, groupId)));
           return null;
         });
-    KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
     if (!exist.get()) {
       throw new ConsensusGroupNotExistException(groupId);
     }
+    FileUtils.deleteFileOrDirectory(new File(buildPeerDir(storageDir, groupId)));
+    KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
   }
 
   @Override
@@ -300,8 +308,8 @@ public class IoTConsensus implements IConsensus {
       impl.takeSnapshot();
 
       // step 3: transit snapshot
-      logger.info("[IoTConsensus] start to transit snapshot...");
-      impl.transitSnapshot(peer);
+      logger.info("[IoTConsensus] start to transmit snapshot...");
+      impl.transmitSnapshot(peer);
 
       // step 4: let the new peer load snapshot
       logger.info("[IoTConsensus] trigger new peer to load snapshot...");
@@ -333,6 +341,8 @@ public class IoTConsensus implements IConsensus {
             "[IoTConsensus] failed to cleanup side effects after failed to add remote peer", mpe);
       }
       throw new ConsensusException(e);
+    } finally {
+      impl.checkAndUnlockSafeDeletedSearchIndex();
     }
   }
 
@@ -454,6 +464,15 @@ public class IoTConsensus implements IConsensus {
   @Override
   public String getRegionDirFromConsensusGroupId(ConsensusGroupId groupId) {
     return buildPeerDir(storageDir, groupId);
+  }
+
+  @Override
+  public void reloadConsensusConfig(ConsensusConfig consensusConfig) {
+    config = consensusConfig.getIotConsensusConfig();
+
+    // only update region migration speed limit for now
+    IoTConsensusRateLimiter.getInstance()
+        .init(config.getReplication().getRegionMigrationSpeedLimitBytesPerSecond());
   }
 
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)

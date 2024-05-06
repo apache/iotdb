@@ -22,7 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.util.List;
 
@@ -36,7 +37,9 @@ public interface ISchemaComputation {
 
   String[] getMeasurements();
 
-  /** @param isAligned whether the fetched device is aligned */
+  /**
+   * @param isAligned whether the fetched device is aligned
+   */
   void computeDevice(boolean isAligned);
 
   /**
@@ -68,7 +71,9 @@ public interface ISchemaComputation {
    */
   void recordRangeOfLogicalViewSchemaListNow();
 
-  /** @return the recorded range of logical view schema list. */
+  /**
+   * @return the recorded range of logical view schema list.
+   */
   Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded();
 
   /**

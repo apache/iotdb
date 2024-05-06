@@ -35,7 +35,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -49,9 +48,11 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   private Set<PlanNodeType> listenedTypeSet = new HashSet<>();
 
-  // TODO: Delete this
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void customize(
+      final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
+      throws Exception {
+    // TODO: Delete this
     if (IoTDBDescriptor.getInstance()
         .getConfig()
         .getSchemaRegionConsensusProtocolClass()
@@ -59,12 +60,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
       throw new PipeException(
           "IoTDBSchemaRegionExtractor does not transferring events under simple consensus");
     }
-    super.validate(validator);
-  }
 
-  @Override
-  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
-      throws Exception {
     super.customize(parameters, configuration);
 
     schemaRegionId = new SchemaRegionId(regionId);
@@ -110,18 +106,25 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
+  protected long getMaxBlockingTimeMs() {
+    // The dataNode processor can sleep if it supplies null
+    // Here we return immediately to be consistent with the data region extractor
+    return 0;
+  }
+
+  @Override
   protected AbstractPipeListeningQueue getListeningQueue() {
     return PipeAgent.runtime().schemaListener(schemaRegionId);
   }
 
   @Override
-  protected boolean isTypeListened(Event event) {
+  protected boolean isTypeListened(final Event event) {
     return listenedTypeSet.contains(
         ((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType());
   }
 
   @Override
-  protected void confineHistoricalEventTransferTypes(PipeSnapshotEvent event) {
+  protected void confineHistoricalEventTransferTypes(final PipeSnapshotEvent event) {
     ((PipeSchemaRegionSnapshotEvent) event).confineTransferredTypes(listenedTypeSet);
   }
 

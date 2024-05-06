@@ -26,11 +26,10 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Abst
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskQueue;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
+import org.apache.tsfile.exception.write.WriteProcessException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -39,6 +38,7 @@ import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -168,14 +168,14 @@ public class CompactionTaskQueueTest extends AbstractCompactionTest {
   private AbstractCompactionTask prepareTask(long memCost, int fileNum, long timePartition)
       throws IOException, MetadataException, WriteProcessException {
     createFiles(1, 1, 1, 1, 1, 1, 1, 1, true, true);
-    for (TsFileResource seqResource : seqResources) {
-      seqResource.setStatusForTest(TsFileResourceStatus.COMPACTION_CANDIDATE);
-    }
+    seqResources
+        .get(seqResources.size() - 1)
+        .setStatusForTest(TsFileResourceStatus.COMPACTION_CANDIDATE);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
             timePartition,
             tsFileManager,
-            seqResources,
+            Collections.singletonList(seqResources.get(seqResources.size() - 1)),
             true,
             new ReadChunkCompactionPerformer(),
             0);

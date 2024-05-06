@@ -22,9 +22,10 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -70,7 +71,9 @@ public interface ITimeIndex {
    */
   Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource);
 
-  /** @return whether end time is empty (Long.MIN_VALUE) */
+  /**
+   * @return whether end time is empty (Long.MIN_VALUE)
+   */
   boolean endTimeEmpty();
 
   /**
@@ -79,7 +82,9 @@ public interface ITimeIndex {
    */
   boolean stillLives(long ttlLowerBound);
 
-  /** @return Calculate file index ram size */
+  /**
+   * @return Calculate file index ram size
+   */
   long calculateRamSize();
 
   /**

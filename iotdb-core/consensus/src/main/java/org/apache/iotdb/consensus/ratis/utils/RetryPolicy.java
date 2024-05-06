@@ -25,6 +25,7 @@ import java.util.function.Function;
 
 public class RetryPolicy<RESP> {
   private final Function<RESP, Boolean> retryHandler;
+
   /** -1 means retry indefinitely */
   private final int maxAttempts;
 

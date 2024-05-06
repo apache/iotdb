@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -64,20 +65,38 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
 
     try {
       if (event instanceof PipeSchemaRegionWritePlanEvent) {
-        doTransfer(socket, (PipeSchemaRegionWritePlanEvent) event);
+        doTransferWrapper(socket, (PipeSchemaRegionWritePlanEvent) event);
       } else if (event instanceof PipeSchemaRegionSnapshotEvent) {
-        doTransfer(socket, (PipeSchemaRegionSnapshotEvent) event);
+        doTransferWrapper(socket, (PipeSchemaRegionSnapshotEvent) event);
       } else if (!(event instanceof PipeHeartbeatEvent)) {
         LOGGER.warn(
             "IoTDBSchemaRegionAirGapConnector does not support transferring generic event: {}.",
             event);
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       isSocketAlive.set(socketIndex, false);
 
       throw new PipeConnectionException(
-          String.format("Network error when transfer event %s, because %s.", event, e.getMessage()),
+          String.format(
+              "Network error when transfer event %s, because %s.",
+              ((EnrichedEvent) event).coreReportMessage(), e.getMessage()),
           e);
+    }
+  }
+
+  private void doTransferWrapper(
+      final Socket socket, final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
+      throws PipeException, IOException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeSchemaRegionSnapshotEvent.increaseReferenceCount(
+          IoTDBSchemaRegionAirGapConnector.class.getName())) {
+        return;
+      }
+      doTransfer(socket, pipeSchemaRegionSnapshotEvent);
+    } finally {
+      pipeSchemaRegionSnapshotEvent.decreaseReferenceCount(
+          IoTDBSchemaRegionAirGapConnector.class.getName(), false);
     }
   }
 

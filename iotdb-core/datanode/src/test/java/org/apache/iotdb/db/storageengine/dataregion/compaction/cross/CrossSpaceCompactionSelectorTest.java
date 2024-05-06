@@ -26,7 +26,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskQueue;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
@@ -36,13 +35,12 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
+import org.apache.tsfile.exception.write.WriteProcessException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.util.List;
@@ -185,7 +183,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
   @Test
   public void testSelectWithTooManySourceFiles()
-      throws IOException, MetadataException, WriteProcessException, InterruptedException,
+      throws IOException,
+          MetadataException,
+          WriteProcessException,
+          InterruptedException,
           ExecutionException {
     int oldMaxFileNumForCompaction = SystemInfo.getInstance().getTotalFileLimitForCompaction();
     SystemInfo.getInstance().setTotalFileLimitForCompactionTask(1);
@@ -597,13 +598,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     FileCannotTransitToCompactingException.class,
                     crossSpaceCompactionTask::transitSourceFilesToMerging);
 
-                FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
-                    Mockito.mock(FixedPriorityBlockingQueue.class);
-                Mockito.when(mockQueue.take())
-                    .thenReturn(crossSpaceCompactionTask)
-                    .thenThrow(new InterruptedException());
-                CompactionWorker worker = new CompactionWorker(0, mockQueue);
-                worker.run();
+                crossSpaceCompactionTask.resetCompactionCandidateStatusForAllSourceFiles();
+                crossSpaceCompactionTask.handleTaskCleanup();
 
                 for (int i = 0; i < seqResources.size(); i++) {
                   TsFileResource resource = seqResources.get(i);
@@ -948,13 +944,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     FileCannotTransitToCompactingException.class,
                     crossSpaceCompactionTask::transitSourceFilesToMerging);
 
-                FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
-                    Mockito.mock(FixedPriorityBlockingQueue.class);
-                Mockito.when(mockQueue.take())
-                    .thenReturn(crossSpaceCompactionTask)
-                    .thenThrow(new InterruptedException());
-                CompactionWorker worker = new CompactionWorker(0, mockQueue);
-                worker.run();
+                crossSpaceCompactionTask.resetCompactionCandidateStatusForAllSourceFiles();
+                crossSpaceCompactionTask.handleTaskCleanup();
 
                 for (int i = 0; i < seqResources.size(); i++) {
                   TsFileResource resource = seqResources.get(i);
@@ -1433,13 +1424,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     FileCannotTransitToCompactingException.class,
                     crossSpaceCompactionTask::transitSourceFilesToMerging);
 
-                FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
-                    Mockito.mock(FixedPriorityBlockingQueue.class);
-                Mockito.when(mockQueue.take())
-                    .thenReturn(crossSpaceCompactionTask)
-                    .thenThrow(new InterruptedException());
-                CompactionWorker worker = new CompactionWorker(0, mockQueue);
-                worker.run();
+                crossSpaceCompactionTask.resetCompactionCandidateStatusForAllSourceFiles();
+                crossSpaceCompactionTask.handleTaskCleanup();
 
                 for (int i = 0; i < unseqResources.size(); i++) {
                   TsFileResource resource = unseqResources.get(i);
@@ -1782,14 +1768,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     "cross space compaction task should be invalid.",
                     FileCannotTransitToCompactingException.class,
                     crossSpaceCompactionTask::transitSourceFilesToMerging);
-
-                FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
-                    Mockito.mock(FixedPriorityBlockingQueue.class);
-                Mockito.when(mockQueue.take())
-                    .thenReturn(crossSpaceCompactionTask)
-                    .thenThrow(new InterruptedException());
-                CompactionWorker worker = new CompactionWorker(0, mockQueue);
-                worker.run();
+                crossSpaceCompactionTask.resetCompactionCandidateStatusForAllSourceFiles();
+                crossSpaceCompactionTask.handleTaskCleanup();
 
                 for (int i = 0; i < unseqResources.size(); i++) {
                   TsFileResource resource = unseqResources.get(i);

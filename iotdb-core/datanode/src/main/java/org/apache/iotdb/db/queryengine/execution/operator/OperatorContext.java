@@ -27,9 +27,9 @@ import org.apache.iotdb.db.queryengine.execution.MemoryMeasurable;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import io.airlift.units.Duration;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.HashMap;
 import java.util.Map;

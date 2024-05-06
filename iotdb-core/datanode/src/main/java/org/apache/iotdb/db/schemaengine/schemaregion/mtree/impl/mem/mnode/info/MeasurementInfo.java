@@ -20,17 +20,21 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info;
 
 import org.apache.iotdb.commons.schema.node.info.IMeasurementInfo;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 public class MeasurementInfo implements IMeasurementInfo {
 
   /** alias name of this measurement */
   protected String alias;
+
   /** tag/attribute's start offset in tag file */
   private long offset = -1;
+
   /** measurement's Schema for one timeseries represented by current leaf node */
   private IMeasurementSchema schema;
+
   /** whether this measurement is pre deleted and considered in black list */
   private boolean preDeleted = false;
 

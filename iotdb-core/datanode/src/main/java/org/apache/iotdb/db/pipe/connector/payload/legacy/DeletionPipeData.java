@@ -24,7 +24,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader.DeletionLoader;
 import org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader.ILoader;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

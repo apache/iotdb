@@ -38,9 +38,9 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

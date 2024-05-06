@@ -22,7 +22,8 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.sca
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.tsfile.enums.TSDataType;
 
 import java.io.IOException;
 

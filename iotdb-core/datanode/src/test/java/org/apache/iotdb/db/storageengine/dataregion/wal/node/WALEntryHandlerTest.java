@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
@@ -37,11 +38,11 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
@@ -97,7 +98,7 @@ public class WALEntryHandlerTest {
   }
 
   @Test(expected = MemTablePinException.class)
-  public void pinDeletedMemTable() throws Exception {
+  public void pinDeletedMemTable1() throws Exception {
     IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
     WALFlushListener flushListener =
@@ -110,8 +111,22 @@ public class WALEntryHandlerTest {
     handler.pinMemTable();
   }
 
+  @Test(expected = MemTablePinException.class)
+  public void pinDeletedMemTable2() throws Exception {
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
+    WALFlushListener flushListener =
+        walNode1.log(
+            memTable.getMemTableId(), getInsertRowsNode(devicePath, System.currentTimeMillis()));
+    walNode1.onMemTableFlushed(memTable);
+    Awaitility.await().until(() -> walNode1.isAllWALEntriesConsumed());
+    // pin flushed memTable
+    WALEntryHandler handler = flushListener.getWalEntryHandler();
+    handler.pinMemTable();
+  }
+
   @Test
-  public void pinMemTable() throws Exception {
+  public void pinMemTable1() throws Exception {
     IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
     InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
@@ -143,8 +158,41 @@ public class WALEntryHandlerTest {
         WALEntry.deserializeForConsensus(itr.next().getRequests().get(0).serializeToByteBuffer()));
   }
 
+  @Test
+  public void pinMemTable2() throws Exception {
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
+    InsertRowsNode node1 = getInsertRowsNode(devicePath, System.currentTimeMillis());
+    node1.setSearchIndex(1);
+    WALFlushListener flushListener = walNode1.log(memTable.getMemTableId(), node1);
+    // pin memTable
+    WALEntryHandler handler = flushListener.getWalEntryHandler();
+    handler.pinMemTable();
+    // roll wal file
+    walNode1.rollWALFile();
+    InsertRowsNode node2 = getInsertRowsNode(devicePath, System.currentTimeMillis());
+    node2.setSearchIndex(2);
+    walNode1.log(memTable.getMemTableId(), node2);
+    walNode1.onMemTableFlushed(memTable);
+    walNode1.rollWALFile();
+    // find node1
+    ConsensusReqReader.ReqIterator itr = walNode1.getReqIterator(1);
+    assertTrue(itr.hasNext());
+    assertEquals(
+        node1,
+        WALEntry.deserializeForConsensus(itr.next().getRequests().get(0).serializeToByteBuffer()));
+    // try to delete flushed but pinned memTable
+    walNode1.deleteOutdatedFiles();
+    // try to find node1
+    itr = walNode1.getReqIterator(1);
+    assertTrue(itr.hasNext());
+    assertEquals(
+        node1,
+        WALEntry.deserializeForConsensus(itr.next().getRequests().get(0).serializeToByteBuffer()));
+  }
+
   @Test(expected = MemTablePinException.class)
-  public void unpinDeletedMemTable() throws Exception {
+  public void unpinDeletedMemTable1() throws Exception {
     IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
     WALFlushListener flushListener =
@@ -156,8 +204,21 @@ public class WALEntryHandlerTest {
     handler.unpinMemTable();
   }
 
+  @Test(expected = MemTablePinException.class)
+  public void unpinDeletedMemTable2() throws Exception {
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
+    WALFlushListener flushListener =
+        walNode1.log(
+            memTable.getMemTableId(), getInsertRowsNode(devicePath, System.currentTimeMillis()));
+    walNode1.onMemTableFlushed(memTable);
+    // pin flushed memTable
+    WALEntryHandler handler = flushListener.getWalEntryHandler();
+    handler.unpinMemTable();
+  }
+
   @Test
-  public void unpinFlushedMemTable() throws Exception {
+  public void unpinFlushedMemTable1() throws Exception {
     IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
     WALFlushListener flushListener =
@@ -180,7 +241,30 @@ public class WALEntryHandlerTest {
   }
 
   @Test
-  public void unpinMemTable() throws Exception {
+  public void unpinFlushedMemTable2() throws Exception {
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
+    WALFlushListener flushListener =
+        walNode1.log(
+            memTable.getMemTableId(), getInsertRowsNode(devicePath, System.currentTimeMillis()));
+    WALEntryHandler handler = flushListener.getWalEntryHandler();
+    // pin twice
+    handler.pinMemTable();
+    handler.pinMemTable();
+    walNode1.onMemTableFlushed(memTable);
+    Awaitility.await().until(() -> walNode1.isAllWALEntriesConsumed());
+    // unpin 1
+    CheckpointManager checkpointManager = walNode1.getCheckpointManager();
+    handler.unpinMemTable();
+    MemTableInfo oldestMemTableInfo = checkpointManager.getOldestUnpinnedMemTableInfo();
+    assertNull(oldestMemTableInfo);
+    // unpin 2
+    handler.unpinMemTable();
+    assertNull(checkpointManager.getOldestUnpinnedMemTableInfo());
+  }
+
+  @Test
+  public void unpinMemTable1() throws Exception {
     IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
     InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
@@ -209,7 +293,36 @@ public class WALEntryHandlerTest {
   }
 
   @Test
-  public void getUnFlushedValue() throws Exception {
+  public void unpinMemTable2() throws Exception {
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
+    InsertRowsNode node1 = getInsertRowsNode(devicePath, System.currentTimeMillis());
+    node1.setSearchIndex(1);
+    WALFlushListener flushListener = walNode1.log(memTable.getMemTableId(), node1);
+    // pin memTable
+    WALEntryHandler handler = flushListener.getWalEntryHandler();
+    handler.pinMemTable();
+    walNode1.onMemTableFlushed(memTable);
+    // roll wal file
+    walNode1.rollWALFile();
+    walNode1.rollWALFile();
+    // find node1
+    ConsensusReqReader.ReqIterator itr = walNode1.getReqIterator(1);
+    assertTrue(itr.hasNext());
+    assertEquals(
+        node1,
+        WALEntry.deserializeForConsensus(itr.next().getRequests().get(0).serializeToByteBuffer()));
+    // unpin flushed memTable
+    handler.unpinMemTable();
+    // try to delete flushed but pinned memTable
+    walNode1.deleteOutdatedFiles();
+    // try to find node1
+    itr = walNode1.getReqIterator(1);
+    assertFalse(itr.hasNext());
+  }
+
+  @Test
+  public void getUnFlushedValue1() throws Exception {
     IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
     InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
@@ -223,7 +336,21 @@ public class WALEntryHandlerTest {
   }
 
   @Test
-  public void getFlushedValue() throws Exception {
+  public void getUnFlushedValue2() throws Exception {
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
+    InsertRowsNode node1 = getInsertRowsNode(devicePath, System.currentTimeMillis());
+    node1.setSearchIndex(1);
+    WALFlushListener flushListener = walNode1.log(memTable.getMemTableId(), node1);
+    // pin memTable
+    WALEntryHandler handler = flushListener.getWalEntryHandler();
+    handler.pinMemTable();
+    walNode1.onMemTableFlushed(memTable);
+    assertEquals(node1, handler.getInsertNode());
+  }
+
+  @Test
+  public void getFlushedValue1() throws Exception {
     IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
     walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
     InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
@@ -239,7 +366,23 @@ public class WALEntryHandlerTest {
   }
 
   @Test
-  public void testConcurrentGetValue() throws Exception {
+  public void getFlushedValue2() throws Exception {
+    IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
+    walNode1.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
+    InsertRowsNode node1 = getInsertRowsNode(devicePath, System.currentTimeMillis());
+    node1.setSearchIndex(1);
+    WALFlushListener flushListener = walNode1.log(memTable.getMemTableId(), node1);
+    // pin memTable
+    WALEntryHandler handler = flushListener.getWalEntryHandler();
+    handler.pinMemTable();
+    walNode1.onMemTableFlushed(memTable);
+    // wait until wal flushed
+    Awaitility.await().until(() -> walNode1.isAllWALEntriesConsumed());
+    assertEquals(node1, handler.getInsertNode());
+  }
+
+  @Test
+  public void testConcurrentGetValue1() throws Exception {
     int threadsNum = 10;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
@@ -292,6 +435,60 @@ public class WALEntryHandlerTest {
     executorService.shutdown();
   }
 
+  @Test
+  public void testConcurrentGetValue2() throws Exception {
+    int threadsNum = 10;
+    ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
+    List<Future<Void>> futures = new ArrayList<>();
+    for (int i = 0; i < threadsNum; ++i) {
+      WALNode walNode = i % 2 == 0 ? walNode1 : walNode2;
+      String logDirectory = i % 2 == 0 ? logDirectory1 : logDirectory2;
+      Callable<Void> writeTask =
+          () -> {
+            IMemTable memTable = new PrimitiveMemTable(databasePath, dataRegionId);
+            walNode.onMemTableCreated(memTable, logDirectory + "/" + "fake.tsfile");
+
+            List<WALFlushListener> walFlushListeners = new ArrayList<>();
+            List<InsertRowsNode> expectedInsertRowsNodes = new ArrayList<>();
+            try {
+              for (int j = 0; j < 1_000; ++j) {
+                long memTableId = memTable.getMemTableId();
+                InsertRowsNode node =
+                    getInsertRowsNode(devicePath + memTableId, System.currentTimeMillis());
+                expectedInsertRowsNodes.add(node);
+                WALFlushListener walFlushListener = walNode.log(memTableId, node);
+                walFlushListeners.add(walFlushListener);
+              }
+            } catch (IllegalPathException e) {
+              fail();
+            }
+
+            // wait until wal flushed
+            Awaitility.await().until(walNode::isAllWALEntriesConsumed);
+
+            walFlushListeners.get(0).getWalEntryHandler().pinMemTable();
+            walNode.onMemTableFlushed(memTable);
+
+            for (int j = 0; j < expectedInsertRowsNodes.size(); ++j) {
+              InsertRowsNode expect = expectedInsertRowsNodes.get(j);
+              InsertRowsNode actual =
+                  (InsertRowsNode) walFlushListeners.get(j).getWalEntryHandler().getInsertNode();
+              assertEquals(expect, actual);
+            }
+
+            walFlushListeners.get(0).getWalEntryHandler().unpinMemTable();
+            return null;
+          };
+      Future<Void> future = executorService.submit(writeTask);
+      futures.add(future);
+    }
+    // wait until all write tasks are done
+    for (Future<Void> future : futures) {
+      future.get();
+    }
+    executorService.shutdown();
+  }
+
   private InsertRowNode getInsertRowNode(String devicePath, long time) throws IllegalPathException {
     TSDataType[] dataTypes =
         new TSDataType[] {
@@ -327,5 +524,63 @@ public class WALEntryHandlerTest {
     }
     node.setMeasurementSchemas(schemas);
     return node;
+  }
+
+  private InsertRowsNode getInsertRowsNode(String devicePath, long firstTime)
+      throws IllegalPathException {
+    TSDataType[] dataTypes =
+        new TSDataType[] {
+          TSDataType.DOUBLE,
+          TSDataType.FLOAT,
+          TSDataType.INT64,
+          TSDataType.INT32,
+          TSDataType.BOOLEAN,
+          TSDataType.TEXT
+        };
+
+    Object[] columns = new Object[6];
+    columns[0] = 1.0d;
+    columns[1] = 2f;
+    columns[2] = 10000L;
+    columns[3] = 100;
+    columns[4] = false;
+    columns[5] = new Binary("hh" + 0, TSFileConfig.STRING_CHARSET);
+
+    InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(devicePath),
+            false,
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            dataTypes,
+            firstTime,
+            columns,
+            false);
+    MeasurementSchema[] schemas = new MeasurementSchema[6];
+    for (int i = 0; i < 6; i++) {
+      schemas[i] = new MeasurementSchema("s" + (i + 1), dataTypes[i]);
+    }
+    node.setMeasurementSchemas(schemas);
+
+    InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
+    insertRowsNode.addOneInsertRowNode(node, 0);
+
+    node =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(devicePath),
+            false,
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            dataTypes,
+            firstTime + 10,
+            columns,
+            false);
+    schemas = new MeasurementSchema[6];
+    for (int i = 0; i < 6; i++) {
+      schemas[i] = new MeasurementSchema("s" + (i + 1), dataTypes[i]);
+    }
+    node.setMeasurementSchemas(schemas);
+    insertRowsNode.addOneInsertRowNode(node, 1);
+    return insertRowsNode;
   }
 }

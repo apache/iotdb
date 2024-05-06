@@ -20,9 +20,10 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.udf.api.type.Type;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.util.Comparator;
 import java.util.Objects;
