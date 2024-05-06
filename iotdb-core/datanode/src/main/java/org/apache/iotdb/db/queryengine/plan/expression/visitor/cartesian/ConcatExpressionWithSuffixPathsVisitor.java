@@ -27,7 +27,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+
+import org.apache.tsfile.common.constant.TsFileConstant;
 
 import java.util.ArrayList;
 import java.util.Collections;

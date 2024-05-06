@@ -22,7 +22,8 @@ package org.apache.iotdb.pipe.api.access;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 import org.apache.iotdb.pipe.api.type.Binary;
 import org.apache.iotdb.pipe.api.type.Type;
-import org.apache.iotdb.tsfile.read.common.Path;
+
+import org.apache.tsfile.read.common.Path;
 
 import java.util.List;
 

@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.IChunkReader;
-import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
+
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.reader.IChunkReader;
+import org.apache.tsfile.read.reader.IPageReader;
+import org.apache.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
 import java.util.Collections;

@@ -19,19 +19,19 @@
 package org.apache.iotdb.commons.udf.utils;
 
 /**
- * Transform between {@link org.apache.iotdb.tsfile.utils.Binary} and {@link
+ * Transform between {@link org.apache.tsfile.utils.Binary} and {@link
  * org.apache.iotdb.udf.api.type.Binary}
  */
 public class UDFBinaryTransformer {
   private UDFBinaryTransformer() {}
 
-  public static org.apache.iotdb.tsfile.utils.Binary transformToBinary(
+  public static org.apache.tsfile.utils.Binary transformToBinary(
       org.apache.iotdb.udf.api.type.Binary binary) {
-    return binary == null ? null : new org.apache.iotdb.tsfile.utils.Binary(binary.getValues());
+    return binary == null ? null : new org.apache.tsfile.utils.Binary(binary.getValues());
   }
 
   public static org.apache.iotdb.udf.api.type.Binary transformToUDFBinary(
-      org.apache.iotdb.tsfile.utils.Binary binary) {
+      org.apache.tsfile.utils.Binary binary) {
     return binary == null ? null : new org.apache.iotdb.udf.api.type.Binary(binary.getValues());
   }
 }

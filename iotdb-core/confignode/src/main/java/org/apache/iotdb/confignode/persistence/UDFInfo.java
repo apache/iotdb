@@ -35,9 +35,9 @@ import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.function.FunctionTableResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -41,6 +41,7 @@ public abstract class CompareBinaryViewExpression extends BinaryViewExpression {
   protected CompareBinaryViewExpression(InputStream inputStream) {
     super(inputStream);
   }
+
   // endregion
 
   // region common interfaces that have to be implemented

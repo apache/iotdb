@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.TimeRange;
 
 /**
  * This interface used for iteratively generating aggregated time windows in GROUP BY query.
@@ -32,7 +32,9 @@ public interface ITimeRangeIterator {
   /** return the first time range by sorting order. */
   TimeRange getFirstTimeRange();
 
-  /** @return whether current iterator has next time range. */
+  /**
+   * @return whether current iterator has next time range.
+   */
   boolean hasNextTimeRange();
 
   /**

@@ -34,8 +34,8 @@ import org.apache.iotdb.confignode.manager.load.balancer.partition.DataPartition
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +43,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -108,12 +109,14 @@ public class PartitionBalancer {
    * Allocate DataPartitions
    *
    * @param unassignedDataPartitionSlotsMap DataPartitionSlots that should be assigned
+   * @throws DatabaseNotExistsException If some specific Databases don't exist
+   * @throws NoAvailableRegionGroupException If there are no available RegionGroups
    * @return Map<DatabaseName, DataPartitionTable>, the allocating result
    */
   public Map<String, DataPartitionTable> allocateDataPartition(
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap)
-      throws NoAvailableRegionGroupException {
-    Map<String, DataPartitionTable> result = new HashMap<>();
+      throws DatabaseNotExistsException, NoAvailableRegionGroupException {
+    Map<String, DataPartitionTable> result = new TreeMap<>();
 
     for (Map.Entry<String, Map<TSeriesPartitionSlot, TTimeSlotList>> slotsMapEntry :
         unassignedDataPartitionSlotsMap.entrySet()) {
@@ -133,6 +136,9 @@ public class PartitionBalancer {
       }
 
       DataPartitionTable dataPartitionTable = new DataPartitionTable();
+      if (!dataPartitionPolicyTableMap.containsKey(database)) {
+        throw new DatabaseNotExistsException(database);
+      }
       DataPartitionPolicyTable allotTable = dataPartitionPolicyTableMap.get(database);
       try {
         allotTable.acquireLock();

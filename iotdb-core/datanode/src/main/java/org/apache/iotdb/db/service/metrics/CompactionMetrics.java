@@ -246,6 +246,7 @@ public class CompactionMetrics implements IMetricSet {
     }
     totalCompactionReadInfoCounter.inc(byteNum);
   }
+
   // endregion
 
   // region compaction summary info
@@ -292,6 +293,7 @@ public class CompactionMetrics implements IMetricSet {
     totalDeserializedChunkCounter.inc(summary.getDeserializeChunkCount());
     totalMergedChunkCounter.inc(summary.getMergedChunkNum());
   }
+
   // endregion
 
   // region task info

@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
@@ -65,12 +66,12 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import io.airlift.units.Duration;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,6 +113,8 @@ public class LoadTsFileScheduler implements IScheduler {
       IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() >> 2;
   private static final int TRANSMIT_LIMIT =
       CommonDescriptor.getInstance().getConfig().getTTimePartitionSlotTransmitLimit();
+
+  private static final Set<String> LOADING_FILE_SET = new HashSet<>();
 
   private final MPPQueryContext queryContext;
   private final QueryStateMachine stateMachine;
@@ -155,14 +158,23 @@ public class LoadTsFileScheduler implements IScheduler {
       boolean isLoadSuccess = true;
 
       for (int i = 0; i < tsFileNodeListSize; ++i) {
-        LoadSingleTsFileNode node = tsFileNodeList.get(i);
-        boolean isLoadSingleTsFileSuccess = true;
-        try {
-          if (node.isTsFileEmpty()) {
-            LOGGER.info(
-                "Load skip TsFile {}, because it has no data.",
-                node.getTsFileResource().getTsFilePath());
+        final LoadSingleTsFileNode node = tsFileNodeList.get(i);
+        final String filePath = node.getTsFileResource().getTsFilePath();
 
+        boolean isLoadSingleTsFileSuccess = true;
+        boolean shouldRemoveFileFromLoadingSet = false;
+        try {
+          synchronized (LOADING_FILE_SET) {
+            if (LOADING_FILE_SET.contains(filePath)) {
+              throw new LoadFileException(
+                  String.format("TsFile %s is loading by another scheduler.", filePath));
+            }
+            LOADING_FILE_SET.add(filePath);
+          }
+          shouldRemoveFileFromLoadingSet = true;
+
+          if (node.isTsFileEmpty()) {
+            LOGGER.info("Load skip TsFile {}, because it has no data.", filePath);
           } else if (!node.needDecodeTsFile(
               slotList ->
                   partitionFetcher.queryDataPartition(
@@ -170,7 +182,6 @@ public class LoadTsFileScheduler implements IScheduler {
                       queryContext.getSession().getUserName()))) { // do not decode, load locally
             isLoadSingleTsFileSuccess = loadLocally(node);
             node.clean();
-
           } else { // need decode, load locally or remotely, use two phases method
             String uuid = UUID.randomUUID().toString();
             dispatcher.setUuid(uuid);
@@ -185,33 +196,36 @@ public class LoadTsFileScheduler implements IScheduler {
               isLoadSingleTsFileSuccess = false;
             }
           }
+
           if (isLoadSingleTsFileSuccess) {
             LOGGER.info(
                 "Load TsFile {} Successfully, load process [{}/{}]",
-                node.getTsFileResource().getTsFilePath(),
+                filePath,
                 i + 1,
                 tsFileNodeListSize);
           } else {
             isLoadSuccess = false;
             LOGGER.warn(
                 "Can not Load TsFile {}, load process [{}/{}]",
-                node.getTsFileResource().getTsFilePath(),
+                filePath,
                 i + 1,
                 tsFileNodeListSize);
           }
         } catch (Exception e) {
           isLoadSuccess = false;
           stateMachine.transitionToFailed(e);
-          LOGGER.warn(
-              "LoadTsFileScheduler loads TsFile {} error",
-              node.getTsFileResource().getTsFilePath(),
-              e);
+          LOGGER.warn("LoadTsFileScheduler loads TsFile {} error", filePath, e);
+        } finally {
+          if (shouldRemoveFileFromLoadingSet) {
+            synchronized (LOADING_FILE_SET) {
+              LOADING_FILE_SET.remove(filePath);
+            }
+          }
         }
       }
       if (isLoadSuccess) {
         stateMachine.transitionToFinished();
       }
-
     } finally {
       LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
     }

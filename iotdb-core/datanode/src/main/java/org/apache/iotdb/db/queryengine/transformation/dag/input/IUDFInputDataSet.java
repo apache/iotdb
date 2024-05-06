@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.input;
 
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.tsfile.enums.TSDataType;
 
 import java.io.IOException;
 import java.util.List;

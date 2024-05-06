@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -54,10 +55,10 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener.Status;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.utils.TsFileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,6 +128,12 @@ public class WALNode implements IWALNode {
   @Override
   public WALFlushListener log(long memTableId, InsertRowNode insertRowNode) {
     WALEntry walEntry = new WALInfoEntry(memTableId, insertRowNode);
+    return log(walEntry);
+  }
+
+  @Override
+  public WALFlushListener log(long memTableId, InsertRowsNode insertRowsNode) {
+    WALEntry walEntry = new WALInfoEntry(memTableId, insertRowsNode);
     return log(walEntry);
   }
 
@@ -206,6 +213,7 @@ public class WALNode implements IWALNode {
   public void unpinMemTable(long memTableId) throws MemTablePinException {
     checkpointManager.unpinMemTable(memTableId);
   }
+
   // endregion
 
   // region Task to delete outdated .wal files
@@ -227,7 +235,7 @@ public class WALNode implements IWALNode {
     private static final int MAX_RECURSION_TIME = 5;
 
     // the effective information ratio
-    private double effectiveInfoRatio = 0d;
+    private double effectiveInfoRatio = 1.0d;
 
     private List<Long> pinnedMemTableIds;
 
@@ -325,14 +333,17 @@ public class WALNode implements IWALNode {
       // calculate effective information ratio
       long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
       MemTableInfo oldestUnpinnedMemTableInfo = checkpointManager.getOldestUnpinnedMemTableInfo();
+      long avgFileSize =
+          getFileNum() != 0
+              ? getDiskUsage() / getFileNum()
+              : config.getWalFileSizeThresholdInByte();
       long totalCost =
           oldestUnpinnedMemTableInfo == null
               ? costOfActiveMemTables
-              : (getCurrentWALFileVersion()
-                      - oldestUnpinnedMemTableInfo.getFirstFileVersionId()
-                      + 1)
-                  * config.getWalFileSizeThresholdInByte();
-      if (totalCost == 0) {
+              : (getCurrentWALFileVersion() - oldestUnpinnedMemTableInfo.getFirstFileVersionId())
+                  * avgFileSize;
+      if (costOfActiveMemTables == 0 || totalCost == 0) {
+        effectiveInfoRatio = 1.0d;
         return;
       }
       effectiveInfoRatio = (double) costOfActiveMemTables / totalCost;
@@ -461,6 +472,9 @@ public class WALNode implements IWALNode {
         logger.error("Fail to get data region processor for {}", oldestTsFile, e);
         return false;
       }
+      if (dataRegion == null) {
+        return false;
+      }
 
       // snapshot or flush memTable, flush memTable when it belongs to an old time partition, or
       // it's snapshot count or size reach threshold.
@@ -573,7 +587,7 @@ public class WALNode implements IWALNode {
       // If this set is empty, there is a case where WalEntry has been logged but not persisted,
       // because WalEntry is persisted asynchronously. In this case, the file cannot be deleted
       // directly, so it is considered active
-      if (memTableIdsOfCurrentWal == null || memTableIdsOfCurrentWal.isEmpty()) {
+      if (memTableIdsOfCurrentWal == null) {
         return true;
       }
       return !Collections.disjoint(
@@ -589,6 +603,7 @@ public class WALNode implements IWALNode {
           && !isContainsActiveOrPinnedMemTable(versionId);
     }
   }
+
   // endregion
 
   // region Search interfaces for consensus group
@@ -606,16 +621,22 @@ public class WALNode implements IWALNode {
   private class PlanNodeIterator implements ReqIterator {
     /** search index of next element */
     private long nextSearchIndex;
+
     /** files to search */
     private File[] filesToSearch = null;
+
     /** index of current searching file in the filesToSearch */
     private int currentFileIndex = -1;
+
     /** true means filesToSearch and currentFileIndex are outdated, call updateFilesToSearch */
     private boolean needUpdatingFilesToSearch = true;
+
     /** batch store insert nodes */
     private final LinkedList<IndexedConsensusRequest> insertNodes = new LinkedList<>();
+
     /** iterator of insertNodes */
     private ListIterator<IndexedConsensusRequest> itr = null;
+
     /** last broken wal file's version id */
     private long brokenFileId = -1;
 
@@ -914,6 +935,7 @@ public class WALNode implements IWALNode {
   public long getTotalSize() {
     return WALManager.getInstance().getTotalDiskUsage();
   }
+
   // endregion
 
   @Override

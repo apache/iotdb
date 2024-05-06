@@ -25,9 +25,10 @@ import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.TimeSer
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowState;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.AbstractWindowingProcessor;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

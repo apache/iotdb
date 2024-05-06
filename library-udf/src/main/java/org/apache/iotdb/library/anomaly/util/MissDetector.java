@@ -130,22 +130,30 @@ public class MissDetector {
     }
   }
 
-  /** @return the minLength */
+  /**
+   * @return the minLength
+   */
   public int getMinLength() {
     return minLength;
   }
 
-  /** @param minLength the minLength to set */
+  /**
+   * @param minLength the minLength to set
+   */
   public void setMinLength(int minLength) {
     this.minLength = minLength;
   }
 
-  /** @return the threshold */
+  /**
+   * @return the threshold
+   */
   public double getThreshold() {
     return threshold;
   }
 
-  /** @param threshold the threshold to set */
+  /**
+   * @param threshold the threshold to set
+   */
   public void setThreshold(double threshold) {
     this.threshold = threshold;
   }
@@ -176,32 +184,44 @@ public class MissDetector {
       return end - start;
     }
 
-    /** @return the start */
+    /**
+     * @return the start
+     */
     public int getStart() {
       return start;
     }
 
-    /** @param start the start to set */
+    /**
+     * @param start the start to set
+     */
     public void setStart(int start) {
       this.start = start;
     }
 
-    /** @return the end */
+    /**
+     * @return the end
+     */
     public int getEnd() {
       return end;
     }
 
-    /** @param end the end to set */
+    /**
+     * @param end the end to set
+     */
     public void setEnd(int end) {
       this.end = end;
     }
 
-    /** @return the slope */
+    /**
+     * @return the slope
+     */
     public double getSlope() {
       return slope;
     }
 
-    /** @param slope the slope to set */
+    /**
+     * @param slope the slope to set
+     */
     public void setSlope(double slope) {
       this.slope = slope;
     }
@@ -218,22 +238,30 @@ public class MissDetector {
     }
   }
 
-  /** @return the predictLabel */
+  /**
+   * @return the predictLabel
+   */
   public IntArrayList getPredictLabel() {
     return predictLabel;
   }
 
-  /** @return the len */
+  /**
+   * @return the len
+   */
   public int getLen() {
     return len;
   }
 
-  /** @return the time */
+  /**
+   * @return the time
+   */
   public LongArrayList getTime() {
     return time;
   }
 
-  /** @return the value */
+  /**
+   * @return the value
+   */
   public DoubleArrayList getValue() {
     return value;
   }

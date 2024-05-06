@@ -29,12 +29,13 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.AlignedPr
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.DescPriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.IMetadata;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.List;

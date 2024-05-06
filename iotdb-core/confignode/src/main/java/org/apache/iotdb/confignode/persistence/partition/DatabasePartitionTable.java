@@ -32,11 +32,11 @@ import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoLi
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +56,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class DatabasePartitionTable {
   private static final Logger LOGGER = LoggerFactory.getLogger(DatabasePartitionTable.class);
@@ -112,15 +113,11 @@ public class DatabasePartitionTable {
                 new RegionGroup(CommonDateTimeUtils.currentTime(), replicaSet)));
   }
 
-  /** @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup */
-  public List<TRegionReplicaSet> getAllReplicaSets() {
-    List<TRegionReplicaSet> result = new ArrayList<>();
-
-    for (RegionGroup regionGroup : regionGroupMap.values()) {
-      result.add(regionGroup.getReplicaSet());
-    }
-
-    return result;
+  /**
+   * @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup
+   */
+  public Stream<TRegionReplicaSet> getAllReplicaSets() {
+    return regionGroupMap.values().stream().map(RegionGroup::getReplicaSet);
   }
 
   /**

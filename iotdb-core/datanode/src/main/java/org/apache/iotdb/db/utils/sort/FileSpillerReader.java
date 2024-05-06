@@ -22,9 +22,10 @@ package org.apache.iotdb.db.utils.sort;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
+
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

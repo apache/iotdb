@@ -22,7 +22,8 @@ package org.apache.iotdb.db.queryengine.transformation.datastructure;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.TemporaryQueryDataFileService;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
+
+import org.apache.tsfile.utils.PublicBAOS;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;

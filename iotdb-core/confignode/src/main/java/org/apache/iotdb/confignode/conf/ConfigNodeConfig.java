@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
-import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -187,7 +187,7 @@ public class ConfigNodeConfig {
   private long unknownDataNodeDetectInterval = heartbeatIntervalInMs;
 
   /** The policy of cluster RegionGroups' leader distribution. */
-  private String leaderDistributionPolicy = ILeaderBalancer.CFD_POLICY;
+  private String leaderDistributionPolicy = AbstractLeaderBalancer.CFD_POLICY;
 
   /** Whether to enable auto leader balance for Ratis consensus protocol. */
   private boolean enableAutoLeaderBalanceForRatisConsensus = true;

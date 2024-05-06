@@ -121,7 +121,8 @@ public class ExpressionUtils {
     Expression resultExpression =
         new CaseWhenThenExpression(
             childExpressions // transform to List<WhenThenExpression>
-                .subList(0, childExpressions.size() - 1).stream()
+                .subList(0, childExpressions.size() - 1)
+                .stream()
                 .map(WhenThenExpression.class::cast)
                 .collect(Collectors.toList()),
             childExpressions.get(childExpressions.size() - 1));

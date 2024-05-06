@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
@@ -154,13 +155,21 @@ public class WALNodeRecoverTask implements Runnable {
       while (walReader.hasNext()) {
         WALEntry walEntry = walReader.next();
         long searchIndex = DEFAULT_SEARCH_INDEX;
-        if (walEntry.getType() == WALEntryType.INSERT_TABLET_NODE
-            || walEntry.getType() == WALEntryType.INSERT_ROW_NODE) {
-          InsertNode insertNode = (InsertNode) walEntry.getValue();
-          if (insertNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
-            searchIndex = insertNode.getSearchIndex();
-            lastSearchIndex = Math.max(lastSearchIndex, insertNode.getSearchIndex());
-            fileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
+        if (walEntry.getType().needSearch()) {
+          if (walEntry.getType() != WALEntryType.DELETE_DATA_NODE) {
+            InsertNode insertNode = (InsertNode) walEntry.getValue();
+            if (insertNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
+              searchIndex = insertNode.getSearchIndex();
+              lastSearchIndex = Math.max(lastSearchIndex, insertNode.getSearchIndex());
+              fileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
+            }
+          } else {
+            DeleteDataNode deleteNode = (DeleteDataNode) walEntry.getValue();
+            if (deleteNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
+              searchIndex = deleteNode.getSearchIndex();
+              lastSearchIndex = Math.max(lastSearchIndex, deleteNode.getSearchIndex());
+              fileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
+            }
           }
         }
         metaData.add(walEntry.serializedSize(), searchIndex, walEntry.getMemTableId());

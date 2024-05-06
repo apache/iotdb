@@ -130,9 +130,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -382,6 +382,7 @@ public class ConfigPlanExecutor {
       case RevokeRole:
       case RevokeRoleFromUser:
       case UpdateUser:
+      case CreateUserWithRawPassword:
       case CreateUserDep:
       case CreateRoleDep:
       case DropUserDep:
@@ -579,8 +580,7 @@ public class ConfigPlanExecutor {
     }
 
     AtomicBoolean result = new AtomicBoolean(true);
-    snapshotProcessorList
-        .parallelStream()
+    snapshotProcessorList.parallelStream()
         .forEach(
             x -> {
               try {

@@ -22,9 +22,9 @@ package org.apache.iotdb.commons.schema.view.viewExpression.unary;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpressionType;
 import org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -72,6 +72,7 @@ public class RegularViewExpression extends UnaryViewExpression {
       throw new RuntimeException(e);
     }
   }
+
   // endregion
 
   // region common interfaces that have to be implemented
@@ -108,6 +109,7 @@ public class RegularViewExpression extends UnaryViewExpression {
     ReadWriteIOUtils.write(patternString, stream);
     ReadWriteIOUtils.write(isNot, stream);
   }
+
   // endregion
   public String getPatternString() {
     return patternString;

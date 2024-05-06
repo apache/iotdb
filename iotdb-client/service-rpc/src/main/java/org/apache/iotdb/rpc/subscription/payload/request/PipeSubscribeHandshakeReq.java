@@ -21,7 +21,8 @@ package org.apache.iotdb.rpc.subscription.payload.request;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
+
+import org.apache.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

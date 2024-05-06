@@ -20,17 +20,18 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Map;
 
-/** Like {@link org.apache.iotdb.tsfile.utils.ReadWriteIOUtils}. */
+/** Like {@link org.apache.tsfile.utils.ReadWriteIOUtils}. */
 public class WALWriteUtils {
   public static final int BOOLEAN_LEN = ReadWriteIOUtils.BOOLEAN_LEN;
   public static final int SHORT_LEN = ReadWriteIOUtils.SHORT_LEN;

@@ -22,7 +22,8 @@ package org.apache.iotdb.commons.schema.view.viewExpression.multi;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpressionType;
 import org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -99,6 +100,7 @@ public class FunctionViewExpression extends ViewExpression {
       throw new RuntimeException(e);
     }
   }
+
   // endregion
 
   // region common interfaces that have to be implemented
@@ -177,6 +179,7 @@ public class FunctionViewExpression extends ViewExpression {
       ViewExpression.serialize(expression, stream);
     }
   }
+
   // endregion
 
   public String getFunctionName() {

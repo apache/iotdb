@@ -188,7 +188,9 @@ public class StreamMissDetector {
     return minLength;
   }
 
-  /** @param minLength the minLength to set */
+  /**
+   * @param minLength the minLength to set
+   */
   public void setMinLength(int minLength) {
     this.minLength = minLength;
   }

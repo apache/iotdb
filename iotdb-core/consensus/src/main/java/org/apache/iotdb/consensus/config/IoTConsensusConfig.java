@@ -248,6 +248,7 @@ public class IoTConsensusConfig {
     private final long checkpointGap;
     private final long allocateMemoryForConsensus;
     private final long allocateMemoryForQueue;
+    private final long regionMigrationSpeedLimitBytesPerSecond;
 
     private Replication(
         int maxLogEntriesNumPerBatch,
@@ -262,7 +263,8 @@ public class IoTConsensusConfig {
         long throttleTimeOutMs,
         long checkpointGap,
         long allocateMemoryForConsensus,
-        double maxMemoryRatioForQueue) {
+        double maxMemoryRatioForQueue,
+        long regionMigrationSpeedLimitBytesPerSecond) {
       this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
       this.maxSizePerBatch = maxSizePerBatch;
       this.maxPendingBatchesNum = maxPendingBatchesNum;
@@ -276,6 +278,7 @@ public class IoTConsensusConfig {
       this.checkpointGap = checkpointGap;
       this.allocateMemoryForConsensus = allocateMemoryForConsensus;
       this.allocateMemoryForQueue = (long) (allocateMemoryForConsensus * maxMemoryRatioForQueue);
+      this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
     }
 
     public int getMaxLogEntriesNumPerBatch() {
@@ -330,6 +333,10 @@ public class IoTConsensusConfig {
       return allocateMemoryForQueue;
     }
 
+    public long getRegionMigrationSpeedLimitBytesPerSecond() {
+      return regionMigrationSpeedLimitBytesPerSecond;
+    }
+
     public static Replication.Builder newBuilder() {
       return new Replication.Builder();
     }
@@ -350,6 +357,7 @@ public class IoTConsensusConfig {
       private long checkpointGap = 500;
       private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
       private double maxMemoryRatioForQueue = 0.6;
+      private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
 
       public Replication.Builder setMaxLogEntriesNumPerBatch(int maxLogEntriesNumPerBatch) {
         this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
@@ -418,6 +426,12 @@ public class IoTConsensusConfig {
         return this;
       }
 
+      public Builder setRegionMigrationSpeedLimitBytesPerSecond(
+          long regionMigrationSpeedLimitBytesPerSecond) {
+        this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
+        return this;
+      }
+
       public Replication build() {
         return new Replication(
             maxLogEntriesNumPerBatch,
@@ -432,7 +446,8 @@ public class IoTConsensusConfig {
             throttleTimeOutMs,
             checkpointGap,
             allocateMemoryForConsensus,
-            maxMemoryRatioForQueue);
+            maxMemoryRatioForQueue,
+            regionMigrationSpeedLimitBytesPerSecond);
       }
     }
   }
