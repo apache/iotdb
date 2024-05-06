@@ -22,7 +22,10 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 public abstract class UDFQueryTransformer extends Transformer {
 
@@ -44,7 +47,10 @@ public abstract class UDFQueryTransformer extends Transformer {
     if (terminated) {
       return false;
     }
-    executor.terminate();
+    // Some UDTF still generate new data in terminate method
+    TimeColumnBuilder timeColumnBuilder = new TimeColumnBuilder(null, 1);
+    ColumnBuilder valueColumnBuilder = TypeUtils.initColumnBuilder(tsDataType, 1);
+    executor.terminate(timeColumnBuilder, valueColumnBuilder);
     terminated = true;
     return true;
   }

@@ -148,8 +148,7 @@ public class UDTFExecutor {
         dataTypes[i] = columns[i].getDataType();
       }
 
-      PointCollectorAdaptor collector =
-          new PointCollectorAdaptor(timeColumnBuilder, valueColumnBuilder);
+      collector = new PointCollectorAdaptor(timeColumnBuilder, valueColumnBuilder);
       // iterate each row
       for (int i = 0; i < rowCount; i++) {
         // collect values from columns
@@ -199,9 +198,18 @@ public class UDTFExecutor {
     return cachedColumns;
   }
 
-  public void terminate() {
+  public void terminate(TimeColumnBuilder timeColumnBuilder, ColumnBuilder valueColumnBuilder) {
     try {
+      collector = new PointCollectorAdaptor(timeColumnBuilder, valueColumnBuilder);
       udtf.terminate(collector);
+
+      // Some terminate method won't produce new data
+      TimeColumn timeColumn = collector.buildTimeColumn();
+      Column valueColumn = collector.buildValueColumn();
+      if (valueColumn.getPositionCount() != 0) {
+        cachedColumns = new Column[] {valueColumn, timeColumn};
+        outputStorage.putColumn(timeColumn, valueColumn);
+      }
     } catch (Exception e) {
       onError("terminate(PointCollector)", e);
     }
