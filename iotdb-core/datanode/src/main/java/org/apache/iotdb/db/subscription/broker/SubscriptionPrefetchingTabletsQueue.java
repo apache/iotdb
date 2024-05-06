@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -129,11 +130,11 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
       }
 
       if (event instanceof TabletInsertionEvent) {
-        final Tablet tablet = convertToTablet((TabletInsertionEvent) event);
-        if (Objects.isNull(tablet)) {
+        final List<Tablet> currentTablets = convertToTablets((TabletInsertionEvent) event);
+        if (currentTablets.isEmpty()) {
           continue;
         }
-        tablets.add(tablet);
+        tablets.addAll(currentTablets);
         enrichedEvents.add((EnrichedEvent) event);
         if (tablets.size() >= limit) {
           break;
@@ -141,11 +142,11 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
       } else if (event instanceof PipeTsFileInsertionEvent) {
         for (final TabletInsertionEvent tabletInsertionEvent :
             ((PipeTsFileInsertionEvent) event).toTabletInsertionEvents()) {
-          final Tablet tablet = convertToTablet(tabletInsertionEvent);
-          if (Objects.isNull(tablet)) {
+          final List<Tablet> currentTablets = convertToTablets(tabletInsertionEvent);
+          if (Objects.isNull(currentTablets)) {
             continue;
           }
-          tablets.add(tablet);
+          tablets.addAll(currentTablets);
         }
         enrichedEvents.add((EnrichedEvent) event);
         if (tablets.size() >= limit) {
@@ -215,17 +216,18 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
 
   /////////////////////////////// utility ///////////////////////////////
 
-  private Tablet convertToTablet(final TabletInsertionEvent tabletInsertionEvent) {
+  private List<Tablet> convertToTablets(final TabletInsertionEvent tabletInsertionEvent) {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      return ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
+      return ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablets();
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      return ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet();
+      return Collections.singletonList(
+          ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
     }
 
     LOGGER.warn(
         "Subscription: SubscriptionPrefetchingTabletsQueue {} only support convert PipeInsertNodeTabletInsertionEvent or PipeRawTabletInsertionEvent to tablet. Ignore {}.",
         this,
         tabletInsertionEvent);
-    return null;
+    return Collections.emptyList();
   }
 }
