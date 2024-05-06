@@ -407,7 +407,6 @@ public class PipePlanPatternParseVisitorTest {
             .orElseThrow(AssertionError::new));
   }
 
-  @Ignore("Wait for the intersection bug to fix")
   @Test
   public void testDeleteData() throws IllegalPathException {
     Assert.assertEquals(

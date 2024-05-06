@@ -306,7 +306,6 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
             .getNodeNameList());
   }
 
-  @Ignore("Wait for the intersection bug to fix")
   @Test
   public void testPipeDeleteTimeSeries() throws IllegalPathException, IOException {
     final PathPatternTree patternTree = new PathPatternTree();
@@ -326,7 +325,6 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
             .getAllPathPatterns());
   }
 
-  @Ignore("Wait for the intersection bug to fix")
   @Test
   public void testPipeDeleteLogicalView() throws IllegalPathException, IOException {
     final PathPatternTree patternTree = new PathPatternTree();
@@ -346,7 +344,6 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
             .getAllPathPatterns());
   }
 
-  @Ignore("Wait for the intersection bug to fix")
   @Test
   public void testPipeDeactivateTemplate() throws IllegalPathException {
     final Template template1 = newSchemaTemplate("template1");
@@ -389,7 +386,6 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
         Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
   }
 
-  @Ignore("Wait for the intersection bug to fix")
   @Test
   public void testSetTTL() throws IllegalPathException {
     final List<SetTTLPlan> plans =
