@@ -44,6 +44,7 @@ import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
@@ -1688,7 +1689,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               createPipeStatement.getProcessorAttributes(),
               createPipeStatement.getConnectorAttributes());
     } catch (Exception e) {
-      LOGGER.info("Failed to validate pipe statement, because {}", e.getMessage(), e);
+      LOGGER.info("Failed to validate create pipe statement, because {}", e.getMessage(), e);
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
@@ -1746,7 +1747,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         PipeAgent.plugin().validateConnector(pipeName, alterPipeStatement.getConnectorAttributes());
       }
     } catch (Exception e) {
-      LOGGER.info("Failed to validate pipe statement, because {}", e.getMessage(), e);
+      LOGGER.info("Failed to validate alter pipe statement, because {}", e.getMessage(), e);
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
@@ -1928,18 +1929,30 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> createTopic(CreateTopicStatement createTopicStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    final String topicName = createTopicStatement.getTopicName();
+    final Map<String, String> topicAttributes = createTopicStatement.getTopicAttributes();
+
+    // Validate topic config
+    final TopicMeta temporaryTopicMeta =
+        new TopicMeta(topicName, System.currentTimeMillis(), topicAttributes);
+    try {
+      PipeAgent.plugin().validateExtractor(temporaryTopicMeta.generateExtractorAttributes());
+      PipeAgent.plugin().validateExtractor(temporaryTopicMeta.generateProcessorAttributes());
+    } catch (Exception e) {
+      LOGGER.info("Failed to validate create topic statement, because {}", e.getMessage(), e);
+      future.setException(
+          new IoTDBException(e.getMessage(), TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode()));
+      return future;
+    }
+
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TCreateTopicReq req =
-          new TCreateTopicReq()
-              .setTopicName(createTopicStatement.getTopicName())
-              .setTopicAttributes(createTopicStatement.getTopicAttributes());
+          new TCreateTopicReq().setTopicName(topicName).setTopicAttributes(topicAttributes);
       final TSStatus tsStatus = configNodeClient.createTopic(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to create topic {} in config node, status is {}.",
-            createTopicStatement.getTopicName(),
-            tsStatus);
+        LOGGER.warn("Failed to create topic {} in config node, status is {}.", topicName, tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
