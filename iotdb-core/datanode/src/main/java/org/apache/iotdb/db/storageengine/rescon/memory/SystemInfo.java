@@ -378,6 +378,8 @@ public class SystemInfo {
   }
 
   public void allocateWriteMemory() {
+    // when we can't get the OffHeapMemory variable from environment, it will be 0
+    // and the limit should not be effective
     totalDirectBufferMemorySizeLimit =
         config.getMaxOffHeapMemoryBytes() == 0
             ? Long.MAX_VALUE

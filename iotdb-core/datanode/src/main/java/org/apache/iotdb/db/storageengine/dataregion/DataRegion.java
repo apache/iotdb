@@ -3488,6 +3488,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void releaseDirectBufferMemory() {
     SystemInfo.getInstance().decreaseDirectBufferMemoryCost(directBufferMemoryCost);
+    // avoid repeated deletion
     this.directBufferMemoryCost = 0;
   }
 

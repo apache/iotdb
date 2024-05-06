@@ -46,6 +46,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -420,22 +421,7 @@ public class IoTDBDescriptor {
                 Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
 
     String offHeapMemoryStr = System.getProperty("OFF_HEAP_MEMORY");
-    if (offHeapMemoryStr != null) {
-      offHeapMemoryStr = offHeapMemoryStr.toLowerCase();
-      if (!offHeapMemoryStr.endsWith("b")) {
-        offHeapMemoryStr += "b";
-      }
-      long unit = 1;
-      if (offHeapMemoryStr.endsWith("kb")) {
-        unit = 1024L;
-      } else if (offHeapMemoryStr.endsWith("mb")) {
-        unit = 1048576L;
-      } else if (offHeapMemoryStr.endsWith("gb")) {
-        unit = 1073741824L;
-      }
-      offHeapMemoryStr = offHeapMemoryStr.replaceAll("\\D", "");
-      conf.setMaxOffHeapMemoryBytes(Long.parseLong(offHeapMemoryStr) * unit);
-    }
+    conf.setMaxOffHeapMemoryBytes(MemUtils.strToBytesCnt(offHeapMemoryStr));
 
     conf.setIoTaskQueueSizeForFlushing(
         Integer.parseInt(
