@@ -194,15 +194,23 @@ public class ElasticSerializableTVList {
     int begin = 0, end = 0;
     int total = timeColumn.getPositionCount();
     while (total > 0) {
-      int consumed = Math.min(total, internalTVListCapacity) - pointCount % internalTVListCapacity;
+      int consumed;
+      TimeColumn insertedTimeColumn;
+      Column insertedValueColumn;
+      if (total + pointCount % internalTVListCapacity < internalTVListCapacity) {
+        consumed = total;
+        insertedTimeColumn = timeColumn;
+        insertedValueColumn = valueColumn;
+      } else {
+        consumed = internalTVListCapacity - pointCount % internalTVListCapacity;
+        // Construct sub-regions
+        insertedTimeColumn = (TimeColumn) timeColumn.getRegion(begin, consumed);
+        insertedValueColumn = valueColumn.getRegion(begin, consumed);
+      }
       end += consumed;
 
-      // Construct sub-regions
-      TimeColumn subTimeRegion = (TimeColumn) timeColumn.getRegion(begin, consumed);
-      Column subValueRegion = valueColumn.getRegion(begin, consumed);
-
       // Fill row record list
-      cache.get(pointCount / internalTVListCapacity).putColumns(subTimeRegion, subValueRegion);
+      cache.get(pointCount / internalTVListCapacity).putColumns(insertedTimeColumn, insertedValueColumn);
 
       total -= consumed;
       pointCount += consumed;

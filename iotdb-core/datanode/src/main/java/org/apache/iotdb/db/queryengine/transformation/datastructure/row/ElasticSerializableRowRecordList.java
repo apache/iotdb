@@ -56,7 +56,7 @@ public class ElasticSerializableRowRecordList {
 
   protected List<Integer> blockCount;
 
-  protected int size;
+  protected int rowCount;
   protected int evictionUpperBound;
 
   protected boolean disableMemoryControl;
@@ -97,7 +97,7 @@ public class ElasticSerializableRowRecordList {
     bitMaps = new ArrayList<>();
     blockCount = new ArrayList<>();
 
-    size = 0;
+    rowCount = 0;
     evictionUpperBound = 0;
 
     disableMemoryControl = true;
@@ -137,14 +137,14 @@ public class ElasticSerializableRowRecordList {
     bitMaps = new ArrayList<>();
     blockCount = new ArrayList<>();
 
-    size = 0;
+    rowCount = 0;
     evictionUpperBound = 0;
 
     disableMemoryControl = true;
   }
 
   public int size() {
-    return size;
+    return rowCount;
   }
 
   public TSDataType[] getDataTypes() {
@@ -241,11 +241,11 @@ public class ElasticSerializableRowRecordList {
   private void put(Object[] rowRecord, boolean hasNullField)
       throws IOException, QueryProcessException {
     checkExpansion();
-    cache.get(size / internalRowRecordListCapacity).putRow(rowRecord);
+    cache.get(rowCount / internalRowRecordListCapacity).putRow(rowRecord);
     if (hasNullField) {
-      bitMaps.get(size / internalRowRecordListCapacity).mark(size % internalRowRecordListCapacity);
+      bitMaps.get(rowCount / internalRowRecordListCapacity).mark(rowCount % internalRowRecordListCapacity);
     }
-    ++size;
+    ++rowCount;
 
     if (!disableMemoryControl) {
       totalByteArrayLengthLimit +=
@@ -270,22 +270,28 @@ public class ElasticSerializableRowRecordList {
     int begin = 0, end = 0;
     int total = columns[0].getPositionCount();
     while (total > 0) {
-      int consumed =
-          Math.min(total, internalRowRecordListCapacity) - size % internalRowRecordListCapacity;
-      end += consumed;
-
-      // Construct sub-regions
-      Column[] subRegions = new Column[columns.length];
-      for (int i = 0; i < columns.length; i++) {
-        subRegions[i] = columns[i].getRegion(begin, consumed);
+      int consumed;
+      Column[] insertedColumns;
+      if (total + rowCount % internalRowRecordListCapacity < internalRowRecordListCapacity) {
+        consumed = total;
+        insertedColumns = columns;
+      } else {
+        consumed = internalRowRecordListCapacity - rowCount % internalRowRecordListCapacity;
+        // Construct sub-regions
+        insertedColumns = new Column[columns.length];
+        for (int i = 0; i < columns.length; i++) {
+          insertedColumns[i] = columns[i].getRegion(begin, consumed);
+        }
       }
 
+      end += consumed;
+
       // Fill row record list and bitmap
-      cache.get(size / internalRowRecordListCapacity).putColumns(subRegions);
-      markBitMapByColumns(subRegions, begin, end);
+      cache.get(rowCount / internalRowRecordListCapacity).putColumns(insertedColumns);
+      markBitMapByColumns(insertedColumns, begin, end);
 
       total -= consumed;
-      size += consumed;
+      rowCount += consumed;
       begin = end;
 
       if (total > 0) {
@@ -300,13 +306,13 @@ public class ElasticSerializableRowRecordList {
 
     while (nullCount > 0) {
       int consumed =
-          Math.min(nullCount, internalRowRecordListCapacity) - size % internalRowRecordListCapacity;
+          Math.min(nullCount, internalRowRecordListCapacity) - rowCount % internalRowRecordListCapacity;
 
-      cache.get(size / internalRowRecordListCapacity).putNulls(consumed);
+      cache.get(rowCount / internalRowRecordListCapacity).putNulls(consumed);
       markBitMapByGivenNullCount(consumed);
 
       nullCount -= consumed;
-      size += consumed;
+      rowCount += consumed;
 
       if (nullCount > 0) {
         doExpansion();
@@ -315,7 +321,7 @@ public class ElasticSerializableRowRecordList {
   }
 
   private void checkExpansion() {
-    if (size % internalRowRecordListCapacity == 0) {
+    if (rowCount % internalRowRecordListCapacity == 0) {
       doExpansion();
     }
   }
@@ -333,9 +339,9 @@ public class ElasticSerializableRowRecordList {
   }
 
   private void markBitMapByColumns(Column[] columns, int from, int to) {
-    BitMap bitmap = bitMaps.get(size / internalRowRecordListCapacity);
+    BitMap bitmap = bitMaps.get(rowCount / internalRowRecordListCapacity);
 
-    int offset = size % internalRowRecordListCapacity;
+    int offset = rowCount % internalRowRecordListCapacity;
     for (int i = from; i < to; i++) {
       for (Column column : columns) {
         if (column.isNull(i)) {
@@ -347,21 +353,21 @@ public class ElasticSerializableRowRecordList {
   }
 
   private void markBitMapByGivenNullCount(int nullCount) {
-    BitMap bitmap = bitMaps.get(size / internalRowRecordListCapacity);
+    BitMap bitmap = bitMaps.get(rowCount / internalRowRecordListCapacity);
 
-    int offset = size % internalRowRecordListCapacity;
+    int offset = rowCount % internalRowRecordListCapacity;
     for (int i = 0; i < nullCount; i++) {
       bitmap.mark(offset + i);
     }
   }
 
   protected void checkMemoryUsage() throws IOException, QueryProcessException {
-    if (size % MEMORY_CHECK_THRESHOLD != 0 || totalByteArrayLength <= totalByteArrayLengthLimit) {
+    if (rowCount % MEMORY_CHECK_THRESHOLD != 0 || totalByteArrayLength <= totalByteArrayLengthLimit) {
       return;
     }
 
     int newByteArrayLengthForMemoryControl = byteArrayLengthForMemoryControl;
-    while ((long) newByteArrayLengthForMemoryControl * size < totalByteArrayLength) {
+    while ((long) newByteArrayLengthForMemoryControl * rowCount < totalByteArrayLength) {
       newByteArrayLengthForMemoryControl *= 2;
     }
     int newInternalTVListCapacity =
@@ -377,7 +383,7 @@ public class ElasticSerializableRowRecordList {
     int delta =
         (int)
             ((totalByteArrayLength - totalByteArrayLengthLimit)
-                / size
+                / rowCount
                 / indexListOfTextFields.length
                 / SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL);
     newByteArrayLengthForMemoryControl =
@@ -409,13 +415,13 @@ public class ElasticSerializableRowRecordList {
       newElasticSerializableRowRecordList.rowLists.add(null);
       newElasticSerializableRowRecordList.bitMaps.add(null);
     }
-    newElasticSerializableRowRecordList.size =
+    newElasticSerializableRowRecordList.rowCount =
         internalListEvictionUpperBound * newInternalRowRecordListCapacity;
     newElasticSerializableRowRecordList.putNulls(
-        evictionUpperBound - newElasticSerializableRowRecordList.size);
+        evictionUpperBound - newElasticSerializableRowRecordList.rowCount);
 
-    ColumnBuilder[] builders = constructColumnBuilders(dataTypes, size - evictionUpperBound);
-    for (int i = evictionUpperBound; i < size; ++i) {
+    ColumnBuilder[] builders = constructColumnBuilders(dataTypes, rowCount - evictionUpperBound);
+    for (int i = evictionUpperBound; i < rowCount; ++i) {
       Object[] row = getRowRecord(i);
       appendRowInColumnBuilders(dataTypes, row, builders);
     }
@@ -429,7 +435,7 @@ public class ElasticSerializableRowRecordList {
 
     byteArrayLengthForMemoryControl = newByteArrayLengthForMemoryControl;
     totalByteArrayLengthLimit =
-        (long) size * indexListOfTextFields.length * byteArrayLengthForMemoryControl;
+        (long) rowCount * indexListOfTextFields.length * byteArrayLengthForMemoryControl;
   }
 
   /**
