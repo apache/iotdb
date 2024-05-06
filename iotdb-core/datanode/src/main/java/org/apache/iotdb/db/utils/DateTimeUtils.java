@@ -25,6 +25,7 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.queryengine.plan.parser.SqlParseError;
+import org.apache.iotdb.tsfile.utils.DateUtils;
 import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import org.antlr.v4.runtime.CharStream;
@@ -35,7 +36,6 @@ import org.antlr.v4.runtime.atn.PredictionMode;
 import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -45,7 +45,6 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
-import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -73,7 +72,6 @@ public class DateTimeUtils {
     }
   }
 
-  private static final LocalDate BASE_DATE = LocalDate.of(0, 1, 1);
   private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
   public static final DateTimeFormatter ISO_LOCAL_DATE_WIDTH_1_2;
 
@@ -857,25 +855,7 @@ public class DateTimeUtils {
     return astVisitor.parseDateExpression(parser1.dateExpression(), "ms");
   }
 
-  public static Integer parseDateExpressionToInt(String dateExpression, ZoneId zoneId) {
-    try {
-      LocalDate date = LocalDate.parse(dateExpression, DATE_FORMATTER);
-      return (int) BASE_DATE.until(date, ChronoUnit.DAYS);
-    } catch (DateTimeParseException e) {
-      try {
-        Long timestamp = parseDateTimeExpressionToLong(dateExpression, zoneId);
-        return parseDateExpressionToInt(timestamp, zoneId);
-      } catch (Exception e1) {
-        throw new DateTimeParseException(
-            "Invalid date format. Please use YYYY-MM-DD or TIMESTAMP format.", dateExpression, 0);
-      }
-    }
-  }
-
-  public static Integer parseDateExpressionToInt(long timestamp, ZoneId zoneId) {
-    ZonedDateTime dateTime =
-        ZonedDateTime.ofInstant(
-            Instant.ofEpochMilli(CAST_TIMESTAMP_TO_MS.apply(timestamp)), zoneId);
-    return (int) BASE_DATE.until(dateTime.toLocalDateTime(), ChronoUnit.DAYS);
+  public static Integer parseDateExpressionToInt(String dateExpression) {
+    return DateUtils.parseDateExpressionToInt(dateExpression);
   }
 }

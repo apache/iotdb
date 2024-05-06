@@ -557,6 +557,7 @@ public final class ValueFilterOperators {
   private static boolean statisticsNotAvailable(Statistics<?> statistics) {
     return statistics.getType() == TSDataType.TEXT
         || statistics.getType() == TSDataType.BOOLEAN
+        || statistics.getType() == TSDataType.BLOB
         || statistics.isEmpty();
   }
 

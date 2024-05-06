@@ -931,4 +931,14 @@ public class BytesUtils {
   public static Binary valueOf(String value) {
     return new Binary(stringToBytes(value));
   }
+
+  public static String parseBlobByteArrayToString(byte[] input) {
+    StringBuilder hexString = new StringBuilder("0x");
+    if (input != null) {
+      for (byte b : input) {
+        hexString.append(String.format("%02x", b));
+      }
+    }
+    return hexString.toString();
+  }
 }

@@ -107,7 +107,8 @@ public class ReadOnlyMemChunk {
           }
           break;
         case TEXT:
-        case BYTEA:
+        case BLOB:
+        case STRING:
           for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBinary(i));
           }

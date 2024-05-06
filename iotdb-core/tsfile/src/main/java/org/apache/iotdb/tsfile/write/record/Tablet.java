@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.DateUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -187,6 +188,7 @@ public class Tablet {
     }
     switch (dataType) {
       case TEXT:
+      case STRING:
         {
           Binary[] sensor = (Binary[]) values[indexOfSchema];
           if (value instanceof Binary) {
@@ -197,6 +199,12 @@ public class Tablet {
                     ? new Binary((String) value, TSFileConfig.STRING_CHARSET)
                     : Binary.EMPTY_VALUE;
           }
+          break;
+        }
+      case BLOB:
+        {
+          Binary[] sensor = (Binary[]) values[indexOfSchema];
+          sensor[rowIndex] = value != null ? (Binary) value : Binary.EMPTY_VALUE;
           break;
         }
       case FLOAT:
@@ -211,7 +219,17 @@ public class Tablet {
           sensor[rowIndex] = value != null ? (int) value : Integer.MIN_VALUE;
           break;
         }
+      case DATE:
+        {
+          int[] sensor = (int[]) values[indexOfSchema];
+          sensor[rowIndex] =
+              value != null
+                  ? DateUtils.parseDateExpressionToInt((String) value)
+                  : Integer.MIN_VALUE;
+          break;
+        }
       case INT64:
+      case TIMESTAMP:
         {
           long[] sensor = (long[]) values[indexOfSchema];
           sensor[rowIndex] = value != null ? (long) value : Long.MIN_VALUE;
@@ -277,9 +295,11 @@ public class Tablet {
     Object valueColumn;
     switch (dataType) {
       case INT32:
+      case DATE:
         valueColumn = new int[maxRowNumber];
         break;
       case INT64:
+      case TIMESTAMP:
         valueColumn = new long[maxRowNumber];
         break;
       case FLOAT:
@@ -292,6 +312,8 @@ public class Tablet {
         valueColumn = new boolean[maxRowNumber];
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         valueColumn = new Binary[maxRowNumber];
         break;
       default:
@@ -333,13 +355,17 @@ public class Tablet {
         break;
       case INT32:
       case FLOAT:
+      case DATE:
         valueOccupation += rowSize * 4;
         break;
       case INT64:
       case DOUBLE:
+      case TIMESTAMP:
         valueOccupation += rowSize * 8;
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         valueOccupation += rowSize * 4;
         Binary[] binaries = (Binary[]) values[columnIndex];
         for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
@@ -430,12 +456,14 @@ public class Tablet {
     if (column != null) {
       switch (dataType) {
         case INT32:
+        case DATE:
           int[] intValues = (int[]) column;
           for (int j = 0; j < rowSize; j++) {
             ReadWriteIOUtils.write(intValues[j], stream);
           }
           break;
         case INT64:
+        case TIMESTAMP:
           long[] longValues = (long[]) column;
           for (int j = 0; j < rowSize; j++) {
             ReadWriteIOUtils.write(longValues[j], stream);
@@ -460,6 +488,8 @@ public class Tablet {
           }
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           Binary[] binaryValues = (Binary[]) column;
           for (int j = 0; j < rowSize; j++) {
             ReadWriteIOUtils.write(BytesUtils.boolToByte(binaryValues[j] != null), stream);
@@ -559,6 +589,7 @@ public class Tablet {
             values[i] = boolValues;
             break;
           case INT32:
+          case DATE:
             int[] intValues = new int[rowSize];
             for (int index = 0; index < rowSize; index++) {
               intValues[index] = ReadWriteIOUtils.readInt(byteBuffer);
@@ -566,6 +597,7 @@ public class Tablet {
             values[i] = intValues;
             break;
           case INT64:
+          case TIMESTAMP:
             long[] longValues = new long[rowSize];
             for (int index = 0; index < rowSize; index++) {
               longValues[index] = ReadWriteIOUtils.readLong(byteBuffer);
@@ -587,6 +619,8 @@ public class Tablet {
             values[i] = doubleValues;
             break;
           case TEXT:
+          case BLOB:
+          case STRING:
             Binary[] binaryValues = new Binary[rowSize];
             for (int index = 0; index < rowSize; index++) {
               boolean isNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
@@ -667,6 +701,7 @@ public class Tablet {
 
       switch (schemas.get(i).getType()) {
         case INT32:
+        case DATE:
           int[] thisIntValues = (int[]) values[i];
           int[] thatIntValues = (int[]) thatValues[i];
           if (thisIntValues.length < rowSize || thatIntValues.length < rowSize) {
@@ -679,6 +714,7 @@ public class Tablet {
           }
           break;
         case INT64:
+        case TIMESTAMP:
           long[] thisLongValues = (long[]) values[i];
           long[] thatLongValues = (long[]) thatValues[i];
           if (thisLongValues.length < rowSize || thatLongValues.length < rowSize) {
@@ -727,6 +763,8 @@ public class Tablet {
           }
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           Binary[] thisBinaryValues = (Binary[]) values[i];
           Binary[] thatBinaryValues = (Binary[]) thatValues[i];
           if (thisBinaryValues.length < rowSize || thatBinaryValues.length < rowSize) {

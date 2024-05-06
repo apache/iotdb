@@ -58,8 +58,11 @@ public enum TSDataType {
   /** DATE. */
   DATE((byte) 9),
 
-  /** BYTEA. */
-  BYTEA((byte) 10);
+  /** BLOB. */
+  BLOB((byte) 10),
+
+  /** STRING */
+  STRING((byte) 11);
 
   private final byte type;
 
@@ -104,7 +107,9 @@ public enum TSDataType {
       case 9:
         return TSDataType.DATE;
       case 10:
-        return TSDataType.BYTEA;
+        return TSDataType.BLOB;
+      case 11:
+        return TSDataType.STRING;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }
@@ -144,7 +149,8 @@ public enum TSDataType {
         return 4;
         // For text: return the size of reference here
       case TEXT:
-      case BYTEA:
+      case BLOB:
+      case STRING:
       case INT64:
       case DOUBLE:
       case VECTOR:
@@ -176,12 +182,13 @@ public enum TSDataType {
       case INT64:
       case FLOAT:
       case DOUBLE:
-      case TIMESTAMP:
-      case DATE:
         return true;
       case BOOLEAN:
       case TEXT:
-      case BYTEA:
+      case BLOB:
+      case TIMESTAMP:
+      case DATE:
+      case STRING:
       case VECTOR:
         return false;
       default:
@@ -205,7 +212,8 @@ public enum TSDataType {
       case BOOLEAN:
       case TIMESTAMP:
       case DATE:
-      case BYTEA:
+      case BLOB:
+      case STRING:
         return true;
       case VECTOR:
         return false;

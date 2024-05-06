@@ -109,22 +109,22 @@ public class ConvertPredicateToFilterVisitor
   private <T extends Comparable<T>> ValueFilterOperators.ValueNotIn<T> constructNotInFilter(
       PartialPath path, Set<String> stringValues, Context context) {
     int measurementIndex = context.getMeasurementIndex(path.getMeasurement());
-    Set<T> values = constructInSet(stringValues, context.getType(path), context.getZoneId());
+    Set<T> values = constructInSet(stringValues, context.getType(path));
     return ValueFilterApi.notIn(measurementIndex, values);
   }
 
   private <T extends Comparable<T>> ValueFilterOperators.ValueIn<T> constructInFilter(
       PartialPath path, Set<String> stringValues, Context context) {
     int measurementIndex = context.getMeasurementIndex(path.getMeasurement());
-    Set<T> values = constructInSet(stringValues, context.getType(path), context.getZoneId());
+    Set<T> values = constructInSet(stringValues, context.getType(path));
     return ValueFilterApi.in(measurementIndex, values);
   }
 
   private <T extends Comparable<T>> Set<T> constructInSet(
-      Set<String> stringValues, TSDataType dataType, ZoneId zoneId) {
+      Set<String> stringValues, TSDataType dataType) {
     Set<T> values = new HashSet<>();
     for (String valueString : stringValues) {
-      values.add(getValue(valueString, dataType, zoneId));
+      values.add(getValue(valueString, dataType));
     }
     return values;
   }
@@ -255,11 +255,7 @@ public class ConvertPredicateToFilterVisitor
       Context context) {
     PartialPath path = ((TimeSeriesOperand) timeseriesOperand).getPath();
     int measurementIndex = context.getMeasurementIndex(path.getMeasurement());
-    T value =
-        getValue(
-            ((ConstantOperand) constantOperand).getValueString(),
-            context.getType(path),
-            context.getZoneId());
+    T value = getValue(((ConstantOperand) constantOperand).getValueString(), context.getType(path));
 
     switch (expressionType) {
       case EQUAL_TO:
@@ -325,16 +321,8 @@ public class ConvertPredicateToFilterVisitor
     int measurementIndex = context.getMeasurementIndex(path.getMeasurement());
     TSDataType dataType = context.getType(path);
 
-    T minValue =
-        getValue(
-            ((ConstantOperand) minValueConstantOperand).getValueString(),
-            dataType,
-            context.getZoneId());
-    T maxValue =
-        getValue(
-            ((ConstantOperand) maxValueConstantOperand).getValueString(),
-            dataType,
-            context.getZoneId());
+    T minValue = getValue(((ConstantOperand) minValueConstantOperand).getValueString(), dataType);
+    T maxValue = getValue(((ConstantOperand) maxValueConstantOperand).getValueString(), dataType);
 
     if (minValue == maxValue) {
       return isNot
@@ -347,8 +335,7 @@ public class ConvertPredicateToFilterVisitor
   }
 
   @SuppressWarnings("unchecked")
-  public static <T extends Comparable<T>> T getValue(
-      String valueString, TSDataType dataType, ZoneId zoneId) {
+  public static <T extends Comparable<T>> T getValue(String valueString, TSDataType dataType) {
     try {
       switch (dataType) {
         case INT32:
@@ -369,13 +356,13 @@ public class ConvertPredicateToFilterVisitor
             throw new IllegalArgumentException(
                 String.format("\"%s\" cannot be cast to [%s]", valueString, dataType));
           }
-        case BYTEA:
+        case BLOB:
           return (T) new Binary(BaseEncoding.base16().decode(valueString));
         case TEXT:
+        case STRING:
           return (T) new Binary(valueString, TSFileConfig.STRING_CHARSET);
         case DATE:
-          long timestamp = Long.parseLong(valueString);
-          return (T) DateTimeUtils.parseDateExpressionToInt(timestamp, zoneId);
+          return (T) DateTimeUtils.parseDateExpressionToInt(valueString);
         default:
           throw new UnsupportedOperationException(
               String.format("Unsupported data type %s", dataType));

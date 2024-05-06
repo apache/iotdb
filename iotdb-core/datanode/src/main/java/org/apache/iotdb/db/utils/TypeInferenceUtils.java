@@ -121,8 +121,9 @@ public class TypeInferenceUtils {
       } else if ("NaN".equals(strValue)) {
         return nanStringInferType;
       } else if (isBytea(strValue)) {
-        return TSDataType.BYTEA;
+        return TSDataType.BLOB;
       } else {
+        // TODO: use string as default data type
         return TSDataType.TEXT;
       }
     }
@@ -323,6 +324,10 @@ public class TypeInferenceUtils {
       case DOUBLE:
       case BOOLEAN:
       case TEXT:
+      case DATE:
+      case TIMESTAMP:
+      case BLOB:
+      case STRING:
         return false;
       default:
         throw new IllegalArgumentException("Unknown data type: " + fromType);

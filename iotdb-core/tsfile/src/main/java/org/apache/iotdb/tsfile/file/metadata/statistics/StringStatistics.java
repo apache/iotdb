@@ -34,9 +34,9 @@ import java.util.Objects;
 
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 
-public class ByteaStatistics extends Statistics<Binary> {
+public class StringStatistics extends Statistics<Binary> {
   public static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(ByteaStatistics.class)
+      RamUsageEstimator.shallowSizeOfInstance(StringStatistics.class)
           + 4 * RamUsageEstimator.shallowSizeOfInstance(Binary.class);
 
   private static final Binary EMPTY_VALUE = new Binary("", TSFileConfig.STRING_CHARSET);
@@ -48,7 +48,7 @@ public class ByteaStatistics extends Statistics<Binary> {
 
   @Override
   public TSDataType getType() {
-    return TSDataType.BYTEA;
+    return TSDataType.BLOB;
   }
 
   /** The output of this method should be identical to the method "serializeStats(outputStream)". */
@@ -145,7 +145,7 @@ public class ByteaStatistics extends Statistics<Binary> {
 
   @Override
   protected void mergeStatisticsValue(Statistics<Binary> stats) {
-    ByteaStatistics stringStats = (ByteaStatistics) stats;
+    StringStatistics stringStats = (StringStatistics) stats;
     if (isEmpty) {
       initializeStats(
           stringStats.getFirstValue(),
@@ -218,7 +218,7 @@ public class ByteaStatistics extends Statistics<Binary> {
     if (!super.equals(o)) {
       return false;
     }
-    ByteaStatistics that = (ByteaStatistics) o;
+    StringStatistics that = (StringStatistics) o;
     return firstValue.equals(that.firstValue)
         && lastValue.equals(that.lastValue)
         && minValue.equals(that.minValue)

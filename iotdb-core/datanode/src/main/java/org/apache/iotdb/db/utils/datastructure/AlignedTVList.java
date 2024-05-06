@@ -183,6 +183,8 @@ public abstract class AlignedTVList extends TVList {
       }
       switch (dataTypes.get(i)) {
         case TEXT:
+        case BLOB:
+        case STRING:
           ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
               columnValue != null ? (Binary) columnValue : Binary.EMPTY_VALUE;
           memoryBinaryChunkSize[i] +=
@@ -198,10 +200,12 @@ public abstract class AlignedTVList extends TVList {
               columnValue != null ? (float) columnValue : Float.MIN_VALUE;
           break;
         case INT32:
+        case DATE:
           ((int[]) columnValues.get(arrayIndex))[elementIndex] =
               columnValue != null ? (int) columnValue : Integer.MIN_VALUE;
           break;
         case INT64:
+        case TIMESTAMP:
           ((long[]) columnValues.get(arrayIndex))[elementIndex] =
               columnValue != null ? (long) columnValue : Long.MIN_VALUE;
           break;
@@ -276,6 +280,8 @@ public abstract class AlignedTVList extends TVList {
       }
       switch (dataTypes.get(columnIndex)) {
         case TEXT:
+        case BLOB:
+        case STRING:
           Binary valueT = ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
           vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.TEXT, valueT);
           break;
@@ -291,10 +297,12 @@ public abstract class AlignedTVList extends TVList {
           vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.FLOAT, valueF);
           break;
         case INT32:
+        case DATE:
           int valueI = ((int[]) columnValues.get(arrayIndex))[elementIndex];
           vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.INT32, valueI);
           break;
         case INT64:
+        case TIMESTAMP:
           long valueL = ((long[]) columnValues.get(arrayIndex))[elementIndex];
           vector[columnIndex] = TsPrimitiveType.getByType(TSDataType.INT64, valueL);
           break;
@@ -332,15 +340,19 @@ public abstract class AlignedTVList extends TVList {
     for (int i = 0; i < timestamps.size(); i++) {
       switch (dataType) {
         case TEXT:
+        case STRING:
+        case BLOB:
           columnValue.add(getPrimitiveArraysByType(TSDataType.TEXT));
           break;
         case FLOAT:
           columnValue.add(getPrimitiveArraysByType(TSDataType.FLOAT));
           break;
         case INT32:
+        case DATE:
           columnValue.add(getPrimitiveArraysByType(TSDataType.INT32));
           break;
         case INT64:
+        case TIMESTAMP:
           columnValue.add(getPrimitiveArraysByType(TSDataType.INT64));
           break;
         case DOUBLE:
@@ -576,6 +588,8 @@ public abstract class AlignedTVList extends TVList {
   protected Object cloneValue(TSDataType type, Object value) {
     switch (type) {
       case TEXT:
+      case BLOB:
+      case STRING:
         Binary[] valueT = (Binary[]) value;
         Binary[] cloneT = new Binary[valueT.length];
         System.arraycopy(valueT, 0, cloneT, 0, valueT.length);
@@ -586,11 +600,13 @@ public abstract class AlignedTVList extends TVList {
         System.arraycopy(valueF, 0, cloneF, 0, valueF.length);
         return cloneF;
       case INT32:
+      case DATE:
         int[] valueI = (int[]) value;
         int[] cloneI = new int[valueI.length];
         System.arraycopy(valueI, 0, cloneI, 0, valueI.length);
         return cloneI;
       case INT64:
+      case TIMESTAMP:
         long[] valueL = (long[]) value;
         long[] cloneL = new long[valueL.length];
         System.arraycopy(valueL, 0, cloneL, 0, valueL.length);
@@ -759,6 +775,8 @@ public abstract class AlignedTVList extends TVList {
       List<Object> columnValues = values.get(i);
       switch (dataTypes.get(i)) {
         case TEXT:
+        case BLOB:
+        case STRING:
           Binary[] arrayT = ((Binary[]) columnValues.get(arrayIndex));
           System.arraycopy(value[i], idx, arrayT, elementIndex, remaining);
 
@@ -776,10 +794,12 @@ public abstract class AlignedTVList extends TVList {
           System.arraycopy(value[i], idx, arrayF, elementIndex, remaining);
           break;
         case INT32:
+        case DATE:
           int[] arrayI = ((int[]) columnValues.get(arrayIndex));
           System.arraycopy(value[i], idx, arrayI, elementIndex, remaining);
           break;
         case INT64:
+        case TIMESTAMP:
           long[] arrayL = ((long[]) columnValues.get(arrayIndex));
           System.arraycopy(value[i], idx, arrayL, elementIndex, remaining);
           break;
@@ -987,9 +1007,11 @@ public abstract class AlignedTVList extends TVList {
             valueBuilder.writeBoolean(getBooleanByValueIndex(originRowIndex, columnIndex));
             break;
           case INT32:
+          case DATE:
             valueBuilder.writeInt(getIntByValueIndex(originRowIndex, columnIndex));
             break;
           case INT64:
+          case TIMESTAMP:
             valueBuilder.writeLong(getLongByValueIndex(originRowIndex, columnIndex));
             break;
           case FLOAT:
@@ -1007,6 +1029,8 @@ public abstract class AlignedTVList extends TVList {
                     encodingList.get(columnIndex)));
             break;
           case TEXT:
+          case BLOB:
+          case STRING:
             valueBuilder.writeBinary(getBinaryByValueIndex(originRowIndex, columnIndex));
             break;
           default:
@@ -1035,6 +1059,8 @@ public abstract class AlignedTVList extends TVList {
     for (int columnIndex = 0; columnIndex < values.size(); ++columnIndex) {
       switch (dataTypes.get(columnIndex)) {
         case TEXT:
+        case BLOB:
+        case STRING:
           for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
             size += ReadWriteIOUtils.sizeToWrite(getBinaryByValueIndex(rowIdx, columnIndex));
           }
@@ -1043,9 +1069,11 @@ public abstract class AlignedTVList extends TVList {
           size += rowCount * Float.BYTES;
           break;
         case INT32:
+        case DATE:
           size += rowCount * Integer.BYTES;
           break;
         case INT64:
+        case TIMESTAMP:
           size += rowCount * Long.BYTES;
           break;
         case DOUBLE:
@@ -1084,6 +1112,8 @@ public abstract class AlignedTVList extends TVList {
         // value
         switch (dataTypes.get(columnIndex)) {
           case TEXT:
+          case BLOB:
+          case STRING:
             Binary valueT = ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
             // In some scenario, the Binary in AlignedTVList will be null if this field is empty in
             // current row. We need to handle this scenario to get rid of NPE. See the similar issue
@@ -1102,10 +1132,12 @@ public abstract class AlignedTVList extends TVList {
             buffer.putFloat(valueF);
             break;
           case INT32:
+          case DATE:
             int valueI = ((int[]) columnValues.get(arrayIndex))[elementIndex];
             buffer.putInt(valueI);
             break;
           case INT64:
+          case TIMESTAMP:
             long valueL = ((long[]) columnValues.get(arrayIndex))[elementIndex];
             buffer.putLong(valueL);
             break;
@@ -1147,6 +1179,8 @@ public abstract class AlignedTVList extends TVList {
       Object valuesOfOneColumn;
       switch (dataTypes.get(columnIndex)) {
         case TEXT:
+        case BLOB:
+        case STRING:
           Binary[] binaryValues = new Binary[rowCount];
           for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
             binaryValues[rowIndex] = ReadWriteIOUtils.readBinary(stream);
@@ -1167,6 +1201,7 @@ public abstract class AlignedTVList extends TVList {
           valuesOfOneColumn = floatValues;
           break;
         case INT32:
+        case DATE:
           int[] intValues = new int[rowCount];
           for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
             intValues[rowIndex] = stream.readInt();
@@ -1177,6 +1212,7 @@ public abstract class AlignedTVList extends TVList {
           valuesOfOneColumn = intValues;
           break;
         case INT64:
+        case TIMESTAMP:
           long[] longValues = new long[rowCount];
           for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
             longValues[rowIndex] = stream.readLong();

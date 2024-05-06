@@ -81,7 +81,8 @@ public class SchemaUtils {
     textSet.add(TSEncoding.PLAIN);
     textSet.add(TSEncoding.DICTIONARY);
     schemaChecker.put(TSDataType.TEXT, textSet);
-    schemaChecker.put(TSDataType.BYTEA, textSet);
+    schemaChecker.put(TSDataType.BLOB, textSet);
+    schemaChecker.put(TSDataType.STRING, textSet);
   }
 
   /**

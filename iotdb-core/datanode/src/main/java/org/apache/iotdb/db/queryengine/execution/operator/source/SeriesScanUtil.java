@@ -903,9 +903,11 @@ public class SeriesScanUtil {
         builder.getColumnBuilder(0).writeBoolean(timeValuePair.getValue().getBoolean());
         break;
       case INT32:
+      case DATE:
         builder.getColumnBuilder(0).writeInt(timeValuePair.getValue().getInt());
         break;
       case INT64:
+      case TIMESTAMP:
         builder.getColumnBuilder(0).writeLong(timeValuePair.getValue().getLong());
         break;
       case FLOAT:
@@ -915,6 +917,8 @@ public class SeriesScanUtil {
         builder.getColumnBuilder(0).writeDouble(timeValuePair.getValue().getDouble());
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
         break;
       case VECTOR:

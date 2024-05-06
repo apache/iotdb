@@ -134,7 +134,8 @@ public class TsBlockBuilder {
                   tsBlockBuilderStatus.createColumnBuilderStatus(), initialExpectedEntries);
           break;
         case TEXT:
-        case BYTEA:
+        case BLOB:
+        case STRING:
           valueColumnBuilders[i] =
               new BinaryColumnBuilder(
                   tsBlockBuilderStatus.createColumnBuilderStatus(), initialExpectedEntries);

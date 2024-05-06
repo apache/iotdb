@@ -62,12 +62,12 @@ public class BinaryLiteral extends Literal {
 
   @Override
   public boolean isDataTypeConsistency(TSDataType dataType) {
-    return dataType == TSDataType.BYTEA;
+    return dataType == TSDataType.BLOB;
   }
 
   @Override
   public String getDataTypeString() {
-    return TSDataType.BYTEA.toString();
+    return TSDataType.BLOB.toString();
   }
 
   @Override

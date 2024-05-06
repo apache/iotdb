@@ -433,7 +433,9 @@ public class ExportTsFile extends AbstractTsFileTool {
       case "DATE":
         return TSDataType.DATE;
       case "BYTEA":
-        return TSDataType.BYTEA;
+        return TSDataType.BLOB;
+      case "STRING":
+        return TSDataType.STRING;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }

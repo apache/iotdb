@@ -42,7 +42,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionAnalyzeVisitor;
 
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -237,9 +236,8 @@ public class PredicateSimplifier extends ExpressionAnalyzeVisitor<Expression, Vo
 
   private <T extends Comparable<T>> boolean lessThan(
       ConstantOperand operand1, ConstantOperand operand2) {
-    // only need to compare the value of the constant operand, so the zoneId is not important
-    T value1 = getValue(operand1.getValueString(), operand1.getDataType(), ZoneId.systemDefault());
-    T value2 = getValue(operand2.getValueString(), operand2.getDataType(), ZoneId.systemDefault());
+    T value1 = getValue(operand1.getValueString(), operand1.getDataType());
+    T value2 = getValue(operand2.getValueString(), operand2.getDataType());
     return value1.compareTo(value2) < 0;
   }
 

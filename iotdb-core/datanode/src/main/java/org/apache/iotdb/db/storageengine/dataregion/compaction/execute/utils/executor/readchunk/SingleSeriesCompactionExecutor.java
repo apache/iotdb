@@ -308,7 +308,8 @@ public class SingleSeriesCompactionExecutor {
   private void writeTimeAndValueToChunkWriter(TimeValuePair timeValuePair) {
     switch (chunkWriter.getDataType()) {
       case TEXT:
-      case BYTEA:
+      case BLOB:
+      case STRING:
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
         break;
       case FLOAT:

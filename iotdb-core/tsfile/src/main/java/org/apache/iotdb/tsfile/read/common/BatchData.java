@@ -221,7 +221,8 @@ public class BatchData {
         doubleRet.add(new double[capacity]);
         break;
       case TEXT:
-      case BYTEA:
+      case BLOB:
+      case STRING:
         binaryRet = new ArrayList<>();
         binaryRet.add(new Binary[capacity]);
         break;

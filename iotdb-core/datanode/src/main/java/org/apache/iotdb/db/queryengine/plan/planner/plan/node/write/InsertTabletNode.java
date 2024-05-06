@@ -853,7 +853,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         }
         break;
       case TEXT:
-      case BYTEA:
+      case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = start; j < end; j++) {
           buffer.putInt(binaryValues[j].getLength());

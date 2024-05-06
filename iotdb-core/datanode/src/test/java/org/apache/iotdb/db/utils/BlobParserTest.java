@@ -26,7 +26,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
-public class ByteaParserTest {
+public class BlobParserTest {
 
   @Test
   public void testHexString() {
@@ -35,33 +35,33 @@ public class ByteaParserTest {
     assertArrayEquals(
         "Hex conversion failed for valid input.",
         expected1,
-        CommonUtils.parseByteaStringToByteArray(validHex1));
+        CommonUtils.parseBlobStringToByteArray(validHex1));
     String validHex2 = "X'0f'";
     byte[] expected2 = new byte[] {(byte) 0x0f};
     assertArrayEquals(
         "Hex conversion failed for single byte.",
         expected2,
-        CommonUtils.parseByteaStringToByteArray(validHex2));
+        CommonUtils.parseBlobStringToByteArray(validHex2));
     String validHex3 = "X''";
     byte[] expected3 = new byte[] {};
     assertArrayEquals(
         "Hex conversion failed for empty hex.",
         expected3,
-        CommonUtils.parseByteaStringToByteArray(validHex3));
+        CommonUtils.parseBlobStringToByteArray(validHex3));
   }
 
   @Test
   public void testInvalidHexString() {
     String invalidHex1 = "X'1g'";
     try {
-      CommonUtils.parseByteaStringToByteArray(invalidHex1);
+      CommonUtils.parseBlobStringToByteArray(invalidHex1);
       fail("Expected an IllegalArgumentException for invalid hex character");
     } catch (SemanticException e) {
       // Test passes
     }
     String invalidHex2 = "X'GG'";
     try {
-      CommonUtils.parseByteaStringToByteArray(invalidHex2);
+      CommonUtils.parseBlobStringToByteArray(invalidHex2);
       fail("Expected an IllegalArgumentException for non-hex characters");
     } catch (SemanticException e) {
       // Test passes

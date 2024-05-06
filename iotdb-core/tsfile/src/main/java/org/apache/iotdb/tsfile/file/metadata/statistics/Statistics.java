@@ -81,8 +81,10 @@ public abstract class Statistics<T extends Serializable> {
         return new TimestampStatistics();
       case TEXT:
         return new BinaryStatistics();
-      case BYTEA:
-        return new ByteaStatistics();
+      case STRING:
+        return new StringStatistics();
+      case BLOB:
+        return new BlobStatistics();
       case BOOLEAN:
         return new BooleanStatistics();
       case DOUBLE:
@@ -108,8 +110,10 @@ public abstract class Statistics<T extends Serializable> {
         return TimestampStatistics.INSTANCE_SIZE;
       case TEXT:
         return BinaryStatistics.INSTANCE_SIZE;
-      case BYTEA:
-        return ByteaStatistics.INSTANCE_SIZE;
+      case STRING:
+        return StringStatistics.INSTANCE_SIZE;
+      case BLOB:
+        return BlobStatistics.INSTANCE_SIZE;
       case BOOLEAN:
         return BooleanStatistics.INSTANCE_SIZE;
       case DOUBLE:

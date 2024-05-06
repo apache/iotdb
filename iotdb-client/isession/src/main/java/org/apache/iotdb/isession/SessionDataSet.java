@@ -215,7 +215,8 @@ public class SessionDataSet implements ISessionDataSet {
             field.setDoubleV(doubleValue);
             break;
           case TEXT:
-          case BYTEA:
+          case BLOB:
+          case STRING:
             field.setBinaryV(ioTDBRpcDataSet.getBinary(datasetColumnIndex));
             break;
           default:

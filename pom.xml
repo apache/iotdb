@@ -35,6 +35,7 @@
     <modules>
         <module>iotdb-api</module>
         <module>iotdb-client</module>
+        <module>integration-test</module>
         <module>iotdb-connector</module>
         <module>iotdb-core</module>
         <module>iotdb-protocol</module>

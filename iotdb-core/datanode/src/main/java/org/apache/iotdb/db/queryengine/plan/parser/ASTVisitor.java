@@ -3053,7 +3053,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (constantContext.BINARY_LITERAL() != null) {
       BinaryLiteral binaryLiteral = new BinaryLiteral(text);
       return new ConstantOperand(
-          TSDataType.BYTEA, BaseEncoding.base16().encode(binaryLiteral.getValues()));
+          TSDataType.BLOB, BaseEncoding.base16().encode(binaryLiteral.getValues()));
     } else if (constantContext.dateExpression() != null) {
       return new ConstantOperand(
           TSDataType.INT64,

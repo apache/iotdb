@@ -608,7 +608,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           WALWriteUtils.write((Double) values[i], buffer);
           break;
         case TEXT:
-        case BYTEA:
+        case BLOB:
+        case STRING:
           WALWriteUtils.write((Binary) values[i], buffer);
           break;
         default:

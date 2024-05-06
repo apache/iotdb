@@ -122,4 +122,7 @@ public class SessionIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testCreateTimeSeries() {}
 }

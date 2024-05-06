@@ -160,7 +160,8 @@ public class PageReader implements IPageReader {
           }
           break;
         case TEXT:
-        case BYTEA:
+        case BLOB:
+        case STRING:
           Binary aBinary = valueDecoder.readBinary(valueBuffer);
           if (!isDeleted(timestamp) && (allSatisfy || recordFilter.satisfy(timestamp, aBinary))) {
             pageData.putBinary(timestamp, aBinary);
@@ -295,7 +296,8 @@ public class PageReader implements IPageReader {
         }
         break;
       case TEXT:
-      case BYTEA:
+      case BLOB:
+      case STRING:
         while (timeDecoder.hasNext(timeBuffer)) {
           long timestamp = timeDecoder.readLong(timeBuffer);
           Binary aBinary = valueDecoder.readBinary(valueBuffer);

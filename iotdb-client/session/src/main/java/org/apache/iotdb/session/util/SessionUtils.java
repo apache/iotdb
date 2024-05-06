@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.DateUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -92,9 +93,11 @@ public class SessionUtils {
           res += 1;
           break;
         case INT32:
+        case DATE:
           res += Integer.BYTES;
           break;
         case INT64:
+        case TIMESTAMP:
           res += Long.BYTES;
           break;
         case FLOAT:
@@ -104,12 +107,17 @@ public class SessionUtils {
           res += Double.BYTES;
           break;
         case TEXT:
+        case STRING:
           res += Integer.BYTES;
           if (values.get(i) instanceof Binary) {
             res += ((Binary) values.get(i)).getValues().length;
           } else {
             res += ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET).length;
           }
+          break;
+        case BLOB:
+          res += Integer.BYTES;
+          res += ((Binary) values.get(i)).getValues().length;
           break;
         default:
           throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
@@ -141,6 +149,10 @@ public class SessionUtils {
         case INT32:
           ReadWriteIOUtils.write((Integer) values.get(i), buffer);
           break;
+        case DATE:
+          ReadWriteIOUtils.write(
+              DateUtils.parseDateExpressionToInt((String) values.get(i)), buffer);
+          break;
         case INT64:
         case TIMESTAMP:
           ReadWriteIOUtils.write((Long) values.get(i), buffer);
@@ -152,12 +164,18 @@ public class SessionUtils {
           ReadWriteIOUtils.write((Double) values.get(i), buffer);
           break;
         case TEXT:
+        case STRING:
           byte[] bytes;
           if (values.get(i) instanceof Binary) {
             bytes = ((Binary) values.get(i)).getValues();
           } else {
             bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
           }
+          ReadWriteIOUtils.write(bytes.length, buffer);
+          buffer.put(bytes);
+          break;
+        case BLOB:
+          bytes = ((Binary) values.get(i)).getValues();
           ReadWriteIOUtils.write(bytes.length, buffer);
           buffer.put(bytes);
           break;

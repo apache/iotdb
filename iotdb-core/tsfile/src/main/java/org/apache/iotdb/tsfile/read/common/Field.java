@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.exception.NullFieldException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.DateUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 /**
@@ -54,15 +56,19 @@ public class Field {
           out.setFloatV(field.getFloatV());
           break;
         case INT64:
+        case TIMESTAMP:
           out.setLongV(field.getLongV());
           break;
         case INT32:
+        case DATE:
           out.setIntV(field.getIntV());
           break;
         case BOOLEAN:
           out.setBoolV(field.getBoolV());
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           out.setBinaryV(field.getBinaryV());
           break;
         default:
@@ -157,14 +163,20 @@ public class Field {
         return String.valueOf(boolV);
       case INT32:
         return String.valueOf(intV);
+      case DATE:
+        return DateUtils.formatDate(intV);
       case INT64:
+      case TIMESTAMP:
         return String.valueOf(longV);
       case FLOAT:
         return String.valueOf(floatV);
       case DOUBLE:
         return String.valueOf(doubleV);
       case TEXT:
+      case STRING:
         return binaryV.toString();
+      case BLOB:
+        return BytesUtils.parseBlobByteArrayToString(binaryV.getValues());
       default:
         throw new UnSupportedDataTypeException(dataType.toString());
     }
@@ -185,12 +197,17 @@ public class Field {
       case FLOAT:
         return getFloatV();
       case INT64:
+      case TIMESTAMP:
         return getLongV();
       case INT32:
         return getIntV();
+      case DATE:
+        return DateUtils.formatDate(getIntV());
       case BOOLEAN:
         return getBoolV();
       case TEXT:
+      case BLOB:
+      case STRING:
         return getBinaryV();
       default:
         throw new UnSupportedDataTypeException(dataType.toString());
@@ -204,9 +221,11 @@ public class Field {
     Field field = new Field(dataType);
     switch (dataType) {
       case INT32:
+      case DATE:
         field.setIntV((int) value);
         break;
       case INT64:
+      case TIMESTAMP:
         field.setLongV((long) value);
         break;
       case FLOAT:
@@ -219,6 +238,8 @@ public class Field {
         field.setBoolV((boolean) value);
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         field.setBinaryV((Binary) value);
         break;
       default:
@@ -233,9 +254,11 @@ public class Field {
         field.setBoolV(value.getBoolean());
         break;
       case INT32:
+      case DATE:
         field.setIntV(value.getInt());
         break;
       case INT64:
+      case TIMESTAMP:
         field.setLongV(value.getLong());
         break;
       case FLOAT:
@@ -245,6 +268,8 @@ public class Field {
         field.setDoubleV(value.getDouble());
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         field.setBinaryV(value.getBinary());
         break;
       default:

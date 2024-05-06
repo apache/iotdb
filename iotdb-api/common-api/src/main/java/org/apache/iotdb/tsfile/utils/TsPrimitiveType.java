@@ -46,7 +46,8 @@ public abstract class TsPrimitiveType implements Serializable {
       case DOUBLE:
         return new TsPrimitiveType.TsDouble();
       case TEXT:
-      case BYTEA:
+      case BLOB:
+      case STRING:
         return new TsPrimitiveType.TsBinary();
       case VECTOR:
         return new TsPrimitiveType.TsVector();
@@ -76,7 +77,8 @@ public abstract class TsPrimitiveType implements Serializable {
       case DOUBLE:
         return new TsPrimitiveType.TsDouble((double) v);
       case TEXT:
-      case BYTEA:
+      case BLOB:
+      case STRING:
         return new TsPrimitiveType.TsBinary((Binary) v);
       case VECTOR:
         return new TsPrimitiveType.TsVector((TsPrimitiveType[]) v);

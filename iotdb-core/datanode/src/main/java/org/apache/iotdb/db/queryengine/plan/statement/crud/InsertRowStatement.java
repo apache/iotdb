@@ -135,9 +135,11 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
           values[i] = ReadWriteIOUtils.readBool(buffer);
           break;
         case INT32:
+        case DATE:
           values[i] = ReadWriteIOUtils.readInt(buffer);
           break;
         case INT64:
+        case TIMESTAMP:
           values[i] = ReadWriteIOUtils.readLong(buffer);
           break;
         case FLOAT:
@@ -147,6 +149,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
           values[i] = ReadWriteIOUtils.readDouble(buffer);
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           values[i] = ReadWriteIOUtils.readBinary(buffer);
           break;
         default:

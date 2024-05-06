@@ -3291,7 +3291,8 @@ public class Session implements ISession {
         }
         return sortedDoubleValues;
       case TEXT:
-      case BYTEA:
+      case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) valueList;
         Binary[] sortedBinaryValues = new Binary[binaryValues.length];
         for (int i = 0; i < index.length; i++) {

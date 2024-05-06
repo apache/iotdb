@@ -95,6 +95,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
           }
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           for (int row = 0; row < tsBlock.getPositionCount(); row++) {
             if (!tsBlock.getColumn(column).isNull(row)) {
               long time = tsBlock.getTimeColumn().getLong(row);
@@ -111,6 +113,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
           }
           break;
         case INT32:
+        case DATE:
           for (int row = 0; row < tsBlock.getPositionCount(); row++) {
             if (!tsBlock.getColumn(column).isNull(row)) {
               long time = tsBlock.getTimeColumn().getLong(row);
@@ -119,6 +122,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
           }
           break;
         case INT64:
+        case TIMESTAMP:
           for (int row = 0; row < tsBlock.getPositionCount(); row++) {
             if (!tsBlock.getColumn(column).isNull(row)) {
               long time = tsBlock.getTimeColumn().getLong(row);

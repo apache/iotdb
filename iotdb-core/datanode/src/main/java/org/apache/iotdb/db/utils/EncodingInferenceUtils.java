@@ -47,7 +47,8 @@ public class EncodingInferenceUtils {
       case DOUBLE:
         return conf.getDefaultDoubleEncoding();
       case TEXT:
-      case BYTEA:
+      case BLOB:
+      case STRING:
         return conf.getDefaultTextEncoding();
       default:
         throw new UnSupportedDataTypeException(

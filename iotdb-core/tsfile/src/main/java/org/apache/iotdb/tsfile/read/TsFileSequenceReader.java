@@ -1856,7 +1856,8 @@ public class TsFileSequenceReader implements AutoCloseable {
                           chunkStatistics.update(timeStamp, value.getBoolean());
                           break;
                         case TEXT:
-                        case BYTEA:
+                        case BLOB:
+                        case STRING:
                           chunkStatistics.update(timeStamp, value.getBinary());
                           break;
                         default:
@@ -1894,7 +1895,8 @@ public class TsFileSequenceReader implements AutoCloseable {
                         chunkStatistics.update(batchData.currentTime(), batchData.getBoolean());
                         break;
                       case TEXT:
-                      case BYTEA:
+                      case BLOB:
+                      case STRING:
                         chunkStatistics.update(batchData.currentTime(), batchData.getBinary());
                         break;
                       default:
