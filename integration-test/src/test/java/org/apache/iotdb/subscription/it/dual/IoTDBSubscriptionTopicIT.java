@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.subscription.it.dual;
 
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -32,6 +35,7 @@ import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.write.record.Tablet;
 import org.awaitility.Awaitility;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -92,6 +96,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+    assertTopicCount(1);
 
     // Subscribe on sender and insert on receiver
     final AtomicBoolean isClosed = new AtomicBoolean(false);
@@ -193,6 +198,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+    assertTopicCount(1);
 
     // Subscribe on sender and insert on receiver
     final AtomicBoolean isClosed = new AtomicBoolean(false);
@@ -290,6 +296,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+    assertTopicCount(1);
 
     // Subscribe on sender and insert on receiver
     final AtomicBoolean isClosed = new AtomicBoolean(false);
@@ -413,6 +420,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+    assertTopicCount(3);
 
     // Subscribe on sender and insert on receiver
     final Set<String> topics = new HashSet<>();
@@ -487,11 +495,35 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
   }
 
-  @Test
-  public void testInvalidTopicConfig() {
+  public void testTopicInvalidConfig() throws Exception {
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
 
+    // Scenario 1: invalid time
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      final Properties properties = new Properties();
+      properties.put(TopicConstant.START_TIME_KEY, "2024-01-32");
+      properties.put(TopicConstant.END_TIME_KEY, "now");
+      session.createTopic("topic1", properties);
+      fail();
+    } catch (final Exception ignored) {
+    }
+    assertTopicCount(0);
+
+    // Scenario 2: test when 'start-time' is greater than 'end-time'
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      final Properties properties = new Properties();
+      properties.put(TopicConstant.START_TIME_KEY, "2001.01.01T08:00:00");
+      properties.put(TopicConstant.END_TIME_KEY, "2000.01.01T08:00:00");
+      session.createTopic("topic1", properties);
+      fail();
+    } catch (final Exception ignored) {
+    }
+    assertTopicCount(0);
+
+    // Scenario 3: test when 'format' is 'TsFileReader'
     final List<Properties> configs = new ArrayList<>();
     {
       final Properties config = new Properties();
@@ -521,6 +553,16 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         fail();
       } catch (final Exception ignored) {
       }
+    }
+    assertTopicCount(0);
+  }
+
+  private void assertTopicCount(final int count) throws Exception {
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final List<TShowTopicInfo> showTopicResult =
+          client.showTopic(new TShowTopicReq()).topicInfoList;
+      Assert.assertEquals(count, showTopicResult.size());
     }
   }
 }

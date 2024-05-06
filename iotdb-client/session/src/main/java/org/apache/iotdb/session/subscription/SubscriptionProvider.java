@@ -56,8 +56,8 @@ final class SubscriptionProvider extends SubscriptionSession {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionProvider.class);
 
-  private final String consumerId;
-  private final String consumerGroupId;
+  private String consumerId;
+  private String consumerGroupId;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
   private final AtomicBoolean isAvailable = new AtomicBoolean(false);
@@ -94,6 +94,14 @@ final class SubscriptionProvider extends SubscriptionSession {
     return dataNodeId;
   }
 
+  String getConsumerId() {
+    return consumerId;
+  }
+
+  String getConsumerGroupId() {
+    return consumerGroupId;
+  }
+
   TEndPoint getEndPoint() {
     return endPoint;
   }
@@ -104,9 +112,9 @@ final class SubscriptionProvider extends SubscriptionSession {
 
   /////////////////////////////// open & close ///////////////////////////////
 
-  synchronized int handshake() throws SubscriptionException, IoTDBConnectionException {
+  synchronized void handshake() throws SubscriptionException, IoTDBConnectionException {
     if (!isClosed.get()) {
-      return -1;
+      return;
     }
 
     super.open();
@@ -114,14 +122,18 @@ final class SubscriptionProvider extends SubscriptionSession {
     final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
-    dataNodeId = handshake(new ConsumerConfig(consumerAttributes));
+
+    final PipeSubscribeHandshakeResp resp = handshake(new ConsumerConfig(consumerAttributes));
+    dataNodeId = resp.getDataNodeId();
+    consumerId = resp.getConsumerId();
+    consumerGroupId = resp.getConsumerGroupId();
 
     isClosed.set(false);
     setAvailable();
-    return dataNodeId;
   }
 
-  int handshake(final ConsumerConfig consumerConfig) throws SubscriptionException {
+  PipeSubscribeHandshakeResp handshake(final ConsumerConfig consumerConfig)
+      throws SubscriptionException {
     final PipeSubscribeHandshakeReq req;
     try {
       req = PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig);
@@ -148,9 +160,7 @@ final class SubscriptionProvider extends SubscriptionSession {
       throw new SubscriptionNonRetryableException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
-    final PipeSubscribeHandshakeResp handshakeResp =
-        PipeSubscribeHandshakeResp.fromTPipeSubscribeResp(resp);
-    return handshakeResp.getDataNodeId();
+    return PipeSubscribeHandshakeResp.fromTPipeSubscribeResp(resp);
   }
 
   @Override
