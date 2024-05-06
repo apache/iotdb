@@ -64,8 +64,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private final String username;
   private final String password;
 
-  private final String consumerId;
-  private final String consumerGroupId;
+  private String consumerId;
+  private String consumerGroupId;
 
   private final long heartbeatIntervalMs;
   private final long endpointsSyncIntervalMs;
@@ -322,9 +322,22 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// subscription provider ///////////////////////////////
 
-  SubscriptionProvider constructProvider(final TEndPoint endPoint) {
-    return new SubscriptionProvider(
-        endPoint, this.username, this.password, this.consumerId, this.consumerGroupId);
+  SubscriptionProvider constructProviderAndHandshake(final TEndPoint endPoint)
+      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+    final SubscriptionProvider provider =
+        new SubscriptionProvider(
+            endPoint, this.username, this.password, this.consumerId, this.consumerGroupId);
+    provider.handshake();
+
+    // update consumer id and consumer group id if not exist
+    if (Objects.isNull(this.consumerId)) {
+      this.consumerId = provider.getConsumerId();
+    }
+    if (Objects.isNull(this.consumerGroupId)) {
+      this.consumerGroupId = provider.getConsumerGroupId();
+    }
+
+    return provider;
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
@@ -337,12 +350,12 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       final int defaultDataNodeId;
 
       try {
-        defaultProvider = constructProvider(endPoint);
-        defaultDataNodeId = defaultProvider.handshake();
+        defaultProvider = constructProviderAndHandshake(endPoint);
       } catch (final Exception e) {
         LOGGER.warn("Failed to create connection with {}, exception: {}", endPoint, e.getMessage());
         continue; // try next endpoint
       }
+      defaultDataNodeId = defaultProvider.getDataNodeId();
       addProvider(defaultDataNodeId, defaultProvider);
 
       final Map<Integer, TEndPoint> allEndPoints;
@@ -363,8 +376,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
         final SubscriptionProvider provider;
         try {
-          provider = constructProvider(entry.getValue());
-          provider.handshake();
+          provider = constructProviderAndHandshake(entry.getValue());
         } catch (final Exception e) {
           LOGGER.warn(
               "Failed to create connection with {}, exception: {}, will retry later...",
