@@ -278,6 +278,10 @@ public class AggregationPushDown implements PlanOptimizer {
                   ((SeriesAggregationSourceNode) sourceNode)
                       .setPushDownPredicate(pushDownPredicate));
         }
+        sourceNodeList.forEach(
+            sourceNode ->
+                ((SeriesAggregationSourceNode) sourceNode)
+                    .setOutputEndTime(node.isOutputEndTime()));
 
         PlanNode resultNode = convergeWithTimeJoin(sourceNodeList, node.getScanOrder(), context);
         resultNode = planProject(resultNode, node, context);

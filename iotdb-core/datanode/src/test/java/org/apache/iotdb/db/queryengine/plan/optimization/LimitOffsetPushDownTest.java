@@ -238,11 +238,13 @@ public class LimitOffsetPushDownTest {
   }
 
   private void checkPushDown(String sql, PlanNode rawPlan, PlanNode optPlan) {
-    OptimizationTestUtil.checkPushDown(new LimitOffsetPushDown(), sql, rawPlan, optPlan);
+    OptimizationTestUtil.checkPushDown(
+        Collections.emptyList(), new LimitOffsetPushDown(), sql, rawPlan, optPlan);
   }
 
   private void checkCannotPushDown(String sql, PlanNode rawPlan) {
-    OptimizationTestUtil.checkCannotPushDown(new LimitOffsetPushDown(), sql, rawPlan);
+    OptimizationTestUtil.checkCannotPushDown(
+        Collections.emptyList(), new LimitOffsetPushDown(), sql, rawPlan);
   }
 
   // test for limit/offset push down in group by time

@@ -19,29 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
-import org.apache.iotdb.common.rpc.thrift.TAggregationType;
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analyzer;
-import org.apache.iotdb.db.queryengine.plan.analyze.FakePartitionFetcherImpl;
-import org.apache.iotdb.db.queryengine.plan.analyze.FakeSchemaFetcherImpl;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
-import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import org.apache.tsfile.utils.TimeDuration;
-import org.junit.Assert;
 import org.junit.Test;
 
-import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -49,38 +36,26 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.getAggregationDescriptor;
 import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.schemaMap;
 
 public class ColumnInjectionPushDownTest {
 
   private void checkPushDown(String sql, PlanNode rawPlan, PlanNode optPlan) {
-    Statement statement = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
-
-    MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
-    Analyzer analyzer =
-        new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
-    Analysis analysis = analyzer.analyze(statement);
-
-    PlanNode actualPlan = new LogicalPlanner(context).plan(analysis).getRootNode();
-    Assert.assertEquals(rawPlan, actualPlan);
-
-    PlanNode actualOptPlan = new ColumnInjectionPushDown().optimize(actualPlan, analysis, context);
-    Assert.assertEquals(optPlan, actualOptPlan);
+    OptimizationTestUtil.checkPushDown(
+        Arrays.asList(new PredicatePushDown(), new AggregationPushDown()),
+        new ColumnInjectionPushDown(),
+        sql,
+        rawPlan,
+        optPlan);
   }
 
   private void checkCannotPushDown(String sql, PlanNode rawPlan) {
-    Statement statement = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
-
-    MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
-    Analyzer analyzer =
-        new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
-    Analysis analysis = analyzer.analyze(statement);
-
-    PlanNode actualPlan = new LogicalPlanner(context).plan(analysis).getRootNode();
-    Assert.assertEquals(rawPlan, actualPlan);
-
-    PlanNode actualOptPlan = new ColumnInjectionPushDown().optimize(actualPlan, analysis, context);
-    Assert.assertEquals(actualPlan, actualOptPlan);
+    OptimizationTestUtil.checkCannotPushDown(
+        Arrays.asList(new PredicatePushDown(), new AggregationPushDown()),
+        new ColumnInjectionPushDown(),
+        sql,
+        rawPlan);
   }
 
   @Test
@@ -653,13 +628,5 @@ public class ColumnInjectionPushDownTest {
                                 "__endTime", "count(root.sg.d2.a.s1)", "count(root.sg.d2.a.s2)"))
                         .getRoot()))
             .getRoot());
-  }
-
-  private AggregationDescriptor getAggregationDescriptor(AggregationStep step, String path) {
-    return new AggregationDescriptor(
-        TAggregationType.COUNT.name().toLowerCase(),
-        step,
-        Collections.singletonList(new TimeSeriesOperand(schemaMap.get(path))),
-        new HashMap<>());
   }
 }

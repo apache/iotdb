@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -29,9 +30,12 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.FakePartitionFetcherImpl;
 import org.apache.iotdb.db.queryengine.plan.analyze.FakeSchemaFetcherImpl;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -41,6 +45,7 @@ import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class OptimizationTestUtil {
@@ -104,7 +109,11 @@ public class OptimizationTestUtil {
   }
 
   public static void checkPushDown(
-      PlanOptimizer optimizer, String sql, PlanNode rawPlan, PlanNode optPlan) {
+      List<PlanOptimizer> preOptimizers,
+      PlanOptimizer optimizer,
+      String sql,
+      PlanNode rawPlan,
+      PlanNode optPlan) {
     Statement statement = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
 
     MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
@@ -114,13 +123,17 @@ public class OptimizationTestUtil {
 
     PlanNode actualPlan =
         new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
+    for (PlanOptimizer preOptimizer : preOptimizers) {
+      actualPlan = preOptimizer.optimize(actualPlan, analysis, context);
+    }
     Assert.assertEquals(rawPlan, actualPlan);
 
     PlanNode actualOptPlan = optimizer.optimize(actualPlan, analysis, context);
     Assert.assertEquals(optPlan, actualOptPlan);
   }
 
-  public static void checkCannotPushDown(PlanOptimizer optimizer, String sql, PlanNode rawPlan) {
+  public static void checkCannotPushDown(
+      List<PlanOptimizer> preOptimizers, PlanOptimizer optimizer, String sql, PlanNode rawPlan) {
     Statement statement = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
 
     MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
@@ -130,9 +143,20 @@ public class OptimizationTestUtil {
 
     PlanNode actualPlan =
         new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
+    for (PlanOptimizer preOptimizer : preOptimizers) {
+      actualPlan = preOptimizer.optimize(actualPlan, analysis, context);
+    }
     Assert.assertEquals(rawPlan, actualPlan);
 
     PlanNode actualOptPlan = optimizer.optimize(actualPlan, analysis, context);
     Assert.assertEquals(actualPlan, actualOptPlan);
+  }
+
+  public static AggregationDescriptor getAggregationDescriptor(AggregationStep step, String path) {
+    return new AggregationDescriptor(
+        TAggregationType.COUNT.name().toLowerCase(),
+        step,
+        Collections.singletonList(new TimeSeriesOperand(schemaMap.get(path))),
+        new HashMap<>());
   }
 }
