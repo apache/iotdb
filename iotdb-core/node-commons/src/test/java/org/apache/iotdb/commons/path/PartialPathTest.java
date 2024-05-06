@@ -742,6 +742,14 @@ public class PartialPathTest {
         new PartialPath("root.sg1.d2.s1"),
         new PartialPath("root.sg1.d1.**"),
         Collections.emptySet());
+    checkIntersect(
+        new PartialPath("root.*.d.s1"),
+        new PartialPath("root.db.d.**"),
+        new HashSet<PartialPath>() {
+          {
+            add(new PartialPath("root.db.d.s1"));
+          }
+        });
   }
 
   private void checkIntersect(PartialPath pattern, PartialPath prefix, Set<PartialPath> expected) {
