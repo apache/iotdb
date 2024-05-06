@@ -167,7 +167,6 @@ public class QueryExecution implements IQueryExecution {
     checkTimeOutForQuery();
     doLogicalPlan();
     doDistributedPlan();
-    LOGGER.error("Finish planning");
 
     // update timeout after finishing plan stage
     context.setTimeOut(
