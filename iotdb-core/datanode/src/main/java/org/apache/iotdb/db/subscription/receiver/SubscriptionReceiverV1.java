@@ -456,7 +456,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
               "Subscription: something unexpected happened when closing: %s, req: %s", e, req);
       LOGGER.warn(exceptionMessage);
       return PipeSubscribeCloseResp.toTPipeSubscribeResp(
-          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_COMMIT_ERROR, exceptionMessage));
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_CLOSE_ERROR, exceptionMessage));
     }
   }
 
