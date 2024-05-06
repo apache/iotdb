@@ -62,6 +62,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_T
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
+import static org.apache.iotdb.db.schemaengine.schemaregion.tag.TagLogFile.parseByteBuffer;
 
 public class SRStatementGenerator implements Iterator<Statement>, Iterable<Statement> {
 
@@ -385,9 +386,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
   private Pair<Map<String, String>, Map<String, String>> getTagsAndAttributes(long offset)
       throws IOException {
     if (tagFileChannel != null) {
-      ByteBuffer byteBuffer = ByteBuffer.allocate(COMMON_CONFIG.getTagAttributeTotalSize());
-      tagFileChannel.read(byteBuffer, offset);
-      byteBuffer.flip();
+      ByteBuffer byteBuffer = parseByteBuffer(tagFileChannel, offset);
       Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
           new Pair<>(ReadWriteIOUtils.readMap(byteBuffer), ReadWriteIOUtils.readMap(byteBuffer));
       return tagsAndAttributes;
