@@ -395,13 +395,36 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       // all the value chunks is empty chunk
       return;
     }
-    ModificationFile modificationFile = ModificationFile.getNormalMods(tsFileResource);
-    if (!modificationFile.exists()) {
-      return;
-    }
+
     List<Modification> modifications =
         modificationCache.computeIfAbsent(
-            tsFileResource, r -> new ArrayList<>(modificationFile.getModifications()));
+            tsFileResource,
+            r -> {
+              List<Modification> list =
+                  new LinkedList<>(ModificationFile.getNormalMods(r).getModifications());
+              // add outdated device mods by ttl
+              for (IDeviceID device : r.getDevices()) {
+                // TODO: remove deviceId conversion
+                long timeLowerBound =
+                    CommonDateTimeUtils.currentTime()
+                        - DataNodeTTLCache.getInstance()
+                            .getTTL(((PlainDeviceID) device).toStringID());
+                if (r.getStartTime(device) < timeLowerBound) {
+                  try {
+                    list.add(
+                        new Deletion(
+                            CompactionPathUtils.getPath(device)
+                                .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
+                            Long.MAX_VALUE,
+                            Long.MIN_VALUE,
+                            timeLowerBound));
+                  } catch (IllegalPathException e) {
+                    throw new RuntimeException(e);
+                  }
+                }
+              }
+              return list;
+            });
 
     // construct the input params List<List<Modification>> for QueryUtils.modifyAlignedChunkMetaData
     AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
@@ -613,13 +636,18 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                               - DataNodeTTLCache.getInstance()
                                   .getTTL(((PlainDeviceID) device).toStringID());
                       if (r.getStartTime(device) < timeLowerBound) {
-                        list.add(
-                            new Deletion(
-                                path.getDevicePath()
-                                    .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
-                                Long.MAX_VALUE,
-                                Long.MIN_VALUE,
-                                timeLowerBound));
+                        try {
+                          list.add(
+                              new Deletion(
+                                  CompactionPathUtils.getPath(device)
+                                      .getDevicePath()
+                                      .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
+                                  Long.MAX_VALUE,
+                                  Long.MIN_VALUE,
+                                  timeLowerBound));
+                        } catch (IllegalPathException e) {
+                          throw new RuntimeException(e);
+                        }
                       }
                     }
                     return list;

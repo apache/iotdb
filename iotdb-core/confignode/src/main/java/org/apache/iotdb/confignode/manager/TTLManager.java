@@ -64,7 +64,7 @@ public class TTLManager {
     if (ttlInfo.getTTLCount() >= ttlCountThreshold) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.OVERSIZE_TTL.getStatusCode());
       errorStatus.setMessage(
-          "The number of TTL stored in the system has reached threshold %d, please increase the ttl_count parameter.");
+          "The number of TTL stored in the system has reached threshold %d, please increase the ttl_rule_capacity parameter.");
       return errorStatus;
     }
 
