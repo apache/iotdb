@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
@@ -51,6 +52,10 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
         Thread.sleep(TimeUnit.SECONDS.toMillis(1));
         continue;
       }
+      if (task instanceof InnerSpaceCompactionTask
+          && ((InnerSpaceCompactionTask) task).getSumOfCompactionCount() == 0) {
+        CompactionTaskManager.getInstance().getZeroLevelInnerCompactionTaskNum().decrementAndGet();
+      }
       return task;
     }
   }
@@ -75,6 +80,10 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
   }
 
   private void dropCompactionTask(AbstractCompactionTask task) {
+    if (task instanceof InnerSpaceCompactionTask
+        && ((InnerSpaceCompactionTask) task).getSumOfCompactionCount() == 0) {
+      CompactionTaskManager.getInstance().getZeroLevelInnerCompactionTaskNum().decrementAndGet();
+    }
     task.resetCompactionCandidateStatusForAllSourceFiles();
     task.handleTaskCleanup();
     task.releaseOccupiedResources();
