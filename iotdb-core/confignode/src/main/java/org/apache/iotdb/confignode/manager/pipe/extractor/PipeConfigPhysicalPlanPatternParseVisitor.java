@@ -27,9 +27,11 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeSetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -44,6 +46,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +81,12 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
     return Optional.of(plan);
   }
 
+  // Note: This will return true even if the pattern matches the database precisely,
+  // like database is "root.db.a" and pattern is "root.db.a". In this case, none of
+  // the data and time series under this database will be transferred, however we
+  // interpret user's pattern as "send precisely the database" and transfer it
+  // nonetheless.
+  // Other matches using "matchPrefixPath" are with the same principle.
   @Override
   public Optional<ConfigPhysicalPlan> visitCreateDatabase(
       final DatabaseSchemaPlan createDatabasePlan, final IoTDBPipePattern pattern) {
@@ -107,7 +116,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
       final CreateSchemaTemplatePlan createSchemaTemplatePlan, final IoTDBPipePattern pattern) {
     // This is a deserialized template and can be arbitrarily altered
     final Template template = createSchemaTemplatePlan.getTemplate();
-    template.getSchemaMap().keySet().removeIf(pattern::matchTailNode);
+    template.getSchemaMap().keySet().removeIf(measurement -> !pattern.matchTailNode(measurement));
     return !template.getSchemaMap().isEmpty()
         ? Optional.of(new CreateSchemaTemplatePlan(template.serialize().array()))
         : Optional.empty();
@@ -117,7 +126,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
   public Optional<ConfigPhysicalPlan> visitCommitSetSchemaTemplate(
       final CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan,
       final IoTDBPipePattern pattern) {
-    return pattern.matchPrefixPath(commitSetSchemaTemplatePlan.getName())
+    return pattern.matchPrefixPath(commitSetSchemaTemplatePlan.getPath())
         ? Optional.of(commitSetSchemaTemplatePlan)
         : Optional.empty();
   }
@@ -126,7 +135,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
   public Optional<ConfigPhysicalPlan> visitPipeUnsetSchemaTemplate(
       final PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan,
       final IoTDBPipePattern pattern) {
-    return pattern.matchPrefixPath(pipeUnsetSchemaTemplatePlan.getName())
+    return pattern.matchPrefixPath(pipeUnsetSchemaTemplatePlan.getPath())
         ? Optional.of(pipeUnsetSchemaTemplatePlan)
         : Optional.empty();
   }
@@ -254,6 +263,21 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
                             .collect(Collectors.toList())));
     return !newTemplateSetInfo.isEmpty()
         ? Optional.of(new PipeDeactivateTemplatePlan(newTemplateSetInfo))
+        : Optional.empty();
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitTTL(
+      final SetTTLPlan setTTLPlan, final IoTDBPipePattern pattern) {
+    final List<PartialPath> intersectionList =
+        pattern.getIntersection(new PartialPath(setTTLPlan.getDatabasePathPattern()));
+    return !intersectionList.isEmpty()
+        ? Optional.of(
+            new PipeSetTTLPlan(
+                intersectionList.stream()
+                    .map(
+                        path -> new SetTTLPlan(Arrays.asList(path.getNodes()), setTTLPlan.getTTL()))
+                    .collect(Collectors.toList())))
         : Optional.empty();
   }
 }

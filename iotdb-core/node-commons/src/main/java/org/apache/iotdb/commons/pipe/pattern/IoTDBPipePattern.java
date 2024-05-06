@@ -156,6 +156,7 @@ public class IoTDBPipePattern extends PipePattern {
   public PathPatternTree getIntersection(final PathPatternTree patternTree) {
     final PathPatternTree thisPatternTree = new PathPatternTree();
     thisPatternTree.appendPathPattern(patternPartialPath);
+    thisPatternTree.constructTree();
     return patternTree.intersectWithFullPathPrefixTree(thisPatternTree);
   }
 

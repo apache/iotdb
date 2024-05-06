@@ -185,7 +185,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
       final InternalBatchActivateTemplateNode node, final IoTDBPipePattern pattern) {
     final Map<PartialPath, Pair<Integer, Integer>> filteredTemplateActivationMap =
         node.getTemplateActivationMap().entrySet().stream()
-            .filter(entry -> pattern.matchDevice(entry.getKey().getDevice()))
+            .filter(entry -> pattern.matchDevice(entry.getKey().getFullPath()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     return !filteredTemplateActivationMap.isEmpty()
         ? Optional.of(
@@ -223,7 +223,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
       final BatchActivateTemplateNode node, final IoTDBPipePattern pattern) {
     final Map<PartialPath, Pair<Integer, Integer>> filteredTemplateActivationMap =
         node.getTemplateActivationMap().entrySet().stream()
-            .filter(entry -> pattern.matchDevice(entry.getKey().getDevice()))
+            .filter(entry -> pattern.matchDevice(entry.getKey().getFullPath()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     return !filteredTemplateActivationMap.isEmpty()
         ? Optional.of(

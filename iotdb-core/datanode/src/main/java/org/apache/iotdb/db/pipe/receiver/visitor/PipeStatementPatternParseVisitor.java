@@ -80,6 +80,7 @@ public class PipeStatementPatternParseVisitor
     }
     final CreateAlignedTimeSeriesStatement targetCreateAlignedTimeSeriesStatement =
         new CreateAlignedTimeSeriesStatement();
+    targetCreateAlignedTimeSeriesStatement.setDevicePath(statement.getDevicePath());
     Arrays.stream(filteredIndexes)
         .forEach(
             index -> {
