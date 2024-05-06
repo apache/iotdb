@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
@@ -77,7 +78,7 @@ public class PipeConnectorSubtaskManager {
             .contains(new DataRegionId(environment.getRegionId()));
 
     final int connectorNum;
-    String attributeSortedString = new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
+    String attributeSortedString = generateAttributeSortedString(pipeConnectorParameters);
     if (isDataRegionConnector) {
       connectorNum =
           pipeConnectorParameters.getIntOrDefault(
@@ -199,6 +200,13 @@ public class PipeConnectorSubtaskManager {
         .get(attributeSortedString)
         .get(0)
         .getPendingQueue();
+  }
+
+  private String generateAttributeSortedString(final PipeParameters pipeConnectorParameters) {
+    final TreeMap<String, String> sortedStringSourceMap =
+        new TreeMap<>(pipeConnectorParameters.getAttribute());
+    sortedStringSourceMap.remove(SystemConstant.RESTART_KEY);
+    return sortedStringSourceMap.toString();
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
