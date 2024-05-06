@@ -1388,7 +1388,7 @@ public class PipelineBuilderTest {
                       .getChildren()
                       .get(1)
                       .getRoot()
-                      .calculateRetainedSizeAfterCallingNext()
+                      .getEstimatedMemoryUsageInBytes()
                   * 2,
           rootPipelineMemoryEstimator.calculateEstimatedMemorySize());
 

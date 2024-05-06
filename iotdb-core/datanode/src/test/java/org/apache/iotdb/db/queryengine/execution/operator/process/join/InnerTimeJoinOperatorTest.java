@@ -166,6 +166,11 @@ public class InnerTimeJoinOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
+            return 0;
+          }
         };
 
     Operator rightChild =
@@ -246,6 +251,11 @@ public class InnerTimeJoinOperatorTest {
 
           @Override
           public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
             return 0;
           }
         };
@@ -445,6 +455,11 @@ public class InnerTimeJoinOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
+            return 0;
+          }
         };
 
     Operator rightChild =
@@ -565,6 +580,11 @@ public class InnerTimeJoinOperatorTest {
 
           @Override
           public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
             return 0;
           }
         };
@@ -752,6 +772,11 @@ public class InnerTimeJoinOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
+            return 0;
+          }
         };
 
     Operator child2 =
@@ -846,6 +871,11 @@ public class InnerTimeJoinOperatorTest {
 
           @Override
           public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
             return 0;
           }
         };
@@ -1046,6 +1076,11 @@ public class InnerTimeJoinOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
+            return 0;
+          }
         };
 
     Operator child2 =
@@ -1142,6 +1177,11 @@ public class InnerTimeJoinOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
+            return 0;
+          }
         };
 
     Operator child3 =
@@ -1232,6 +1272,11 @@ public class InnerTimeJoinOperatorTest {
 
           @Override
           public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
             return 0;
           }
         };
@@ -1410,6 +1455,11 @@ public class InnerTimeJoinOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
+            return 0;
+          }
         };
 
     Operator child2 =
@@ -1506,6 +1556,11 @@ public class InnerTimeJoinOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
+            return 0;
+          }
         };
 
     Operator child3 =
@@ -1596,6 +1651,11 @@ public class InnerTimeJoinOperatorTest {
 
           @Override
           public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
             return 0;
           }
         };

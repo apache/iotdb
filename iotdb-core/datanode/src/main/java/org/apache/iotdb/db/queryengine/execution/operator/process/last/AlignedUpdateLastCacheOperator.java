@@ -108,6 +108,6 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
         + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(child)
         + RamUsageEstimator.sizeOf(databaseName)
         + MemoryEstimationHelper.getEstimatedSizeOfPartialPathWithoutClassSize(devicePath)
-        + MemoryEstimationHelper.getEstimatedSizeOfAlignedPathWithoutClassSize(seriesPath);
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPathWithoutClassSize(seriesPath);
   }
 }

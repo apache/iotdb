@@ -137,14 +137,7 @@ public class LocalExecutionPlanner {
       return 0;
     }
 
-    long estimatedMemorySize = memoryEstimator.getRoot().calculateMaxPeekMemory();
-    long estimatedMemorySize1 = memoryEstimator.calculateEstimatedMemorySize();
-    LOGGER.warn(
-        "Estimated memory size by root is: {}, by estimator is {}, for FragmentInstance {}, Root Operator is {}",
-        estimatedMemorySize,
-        estimatedMemorySize1,
-        stateMachine.getFragmentInstanceId().getFragmentInstanceId(),
-        memoryEstimator.getRoot().getClass().getSimpleName());
+    long estimatedMemorySize = memoryEstimator.calculateEstimatedMemorySize();
 
     QueryRelatedResourceMetricSet.getInstance().updateEstimatedMemory(estimatedMemorySize);
 

@@ -36,8 +36,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
-
 /**
  * Contains information about {@link Operator} execution.
  *
@@ -51,8 +49,7 @@ public class OperatorContext implements MemoryMeasurable {
           TimeUnit.MILLISECONDS);
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(OperatorContext.class)
-          + RamUsageEstimator.shallowSizeOfInstance(String.class);
+      RamUsageEstimator.shallowSizeOfInstance(OperatorContext.class);
 
   private final int operatorId;
   // It seems it's never used.
@@ -197,7 +194,7 @@ public class OperatorContext implements MemoryMeasurable {
   @Override
   public long getEstimatedMemoryUsageInBytes() {
     return INSTANCE_SIZE
-        + sizeOfCharArray(operatorType.length())
+        + RamUsageEstimator.sizeOf(operatorType)
         + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(planNodeId);
   }
 }

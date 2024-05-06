@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
+import javax.annotation.Nullable;
+
 import java.util.Arrays;
 
 public class MemoryEstimationHelper {
@@ -31,25 +33,13 @@ public class MemoryEstimationHelper {
   }
 
   /* Responsible for null check. */
-  public static long getEstimatedSizeOfMemoryMeasurableObject(MemoryMeasurable memoryMeasurable) {
+  public static long getEstimatedSizeOfMemoryMeasurableObject(
+      @Nullable final MemoryMeasurable memoryMeasurable) {
     return memoryMeasurable == null ? 0 : memoryMeasurable.getEstimatedMemoryUsageInBytes();
   }
 
-  public static long getEstimatedSizeOfAlignedPathWithoutClassSize(AlignedPath partialPath) {
-    if (partialPath == null) {
-      return 0;
-    }
-    long totalSize = getEstimatedSizeOfPartialPathWithoutClassSize(partialPath);
-    totalSize +=
-        partialPath.getMeasurementList().stream().mapToLong(RamUsageEstimator::sizeOf).sum();
-    totalSize +=
-        partialPath.getSchemaList().stream()
-            .mapToLong(schema -> RamUsageEstimator.sizeOf(schema.getMeasurementId()))
-            .sum();
-    return totalSize;
-  }
-
-  public static long getEstimatedSizeOfPartialPathWithoutClassSize(PartialPath partialPath) {
+  public static long getEstimatedSizeOfPartialPathWithoutClassSize(
+      @Nullable final PartialPath partialPath) {
     if (partialPath == null) {
       return 0;
     }
@@ -58,8 +48,18 @@ public class MemoryEstimationHelper {
     if (nodes != null && nodes.length > 0) {
       totalSize += Arrays.stream(nodes).mapToLong(RamUsageEstimator::sizeOf).sum();
     }
+    if (partialPath instanceof AlignedPath) {
+      AlignedPath alignedPath = (AlignedPath) partialPath;
+      totalSize +=
+          alignedPath.getMeasurementList().stream().mapToLong(RamUsageEstimator::sizeOf).sum();
+      totalSize +=
+          alignedPath.getSchemaList().stream()
+              .mapToLong(schema -> RamUsageEstimator.sizeOf(schema.getMeasurementId()))
+              .sum();
+    } else {
+      totalSize += RamUsageEstimator.sizeOf(partialPath.getMeasurement());
+    }
     // String member of Path
-    totalSize += RamUsageEstimator.sizeOf(partialPath.getMeasurement());
     totalSize += RamUsageEstimator.sizeOf(partialPath.getDevice());
     totalSize += RamUsageEstimator.sizeOf(partialPath.getFullPath());
     return totalSize;

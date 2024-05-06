@@ -31,8 +31,7 @@ public class PlanNodeId implements MemoryMeasurable {
   private final String id;
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(PlanNodeId.class)
-          + RamUsageEstimator.shallowSizeOfInstance(String.class);
+      RamUsageEstimator.shallowSizeOfInstance(PlanNodeId.class);
 
   public PlanNodeId(String id) {
     this.id = id;
@@ -78,6 +77,6 @@ public class PlanNodeId implements MemoryMeasurable {
 
   @Override
   public long getEstimatedMemoryUsageInBytes() {
-    return INSTANCE_SIZE + RamUsageEstimator.sizeOfCharArray(id.length());
+    return INSTANCE_SIZE + RamUsageEstimator.sizeOf(id);
   }
 }

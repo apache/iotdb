@@ -183,6 +183,11 @@ public class LinearFillOperatorTest {
                 public long calculateRetainedSizeAfterCallingNext() {
                   return 0;
                 }
+
+                @Override
+                public long getEstimatedMemoryUsageInBytes() {
+                  return 0;
+                }
               });
 
       int count = 0;
@@ -399,6 +404,11 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public long calculateRetainedSizeAfterCallingNext() {
+                  return 0;
+                }
+
+                @Override
+                public long getEstimatedMemoryUsageInBytes() {
                   return 0;
                 }
               });
@@ -619,6 +629,11 @@ public class LinearFillOperatorTest {
                 public long calculateRetainedSizeAfterCallingNext() {
                   return 0;
                 }
+
+                @Override
+                public long getEstimatedMemoryUsageInBytes() {
+                  return 0;
+                }
               });
 
       int count = 0;
@@ -837,6 +852,11 @@ public class LinearFillOperatorTest {
                 public long calculateRetainedSizeAfterCallingNext() {
                   return 0;
                 }
+
+                @Override
+                public long getEstimatedMemoryUsageInBytes() {
+                  return 0;
+                }
               });
 
       int count = 0;
@@ -1003,6 +1023,11 @@ public class LinearFillOperatorTest {
                 public long calculateRetainedSizeAfterCallingNext() {
                   return 0;
                 }
+
+                @Override
+                public long getEstimatedMemoryUsageInBytes() {
+                  return 0;
+                }
               });
 
       int count = 0;
@@ -1128,6 +1153,11 @@ public class LinearFillOperatorTest {
                 public long calculateRetainedSizeAfterCallingNext() {
                   return 0;
                 }
+
+                @Override
+                public long getEstimatedMemoryUsageInBytes() {
+                  return 0;
+                }
               });
 
       int count = 0;
@@ -1251,6 +1281,11 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public long calculateRetainedSizeAfterCallingNext() {
+                  return 0;
+                }
+
+                @Override
+                public long getEstimatedMemoryUsageInBytes() {
                   return 0;
                 }
               });

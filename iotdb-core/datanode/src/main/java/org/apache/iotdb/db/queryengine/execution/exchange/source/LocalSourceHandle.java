@@ -65,7 +65,6 @@ public class LocalSourceHandle implements ISourceHandle {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(LocalSourceHandle.class)
           + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class)
-          + RamUsageEstimator.shallowSizeOfInstance(String.class) * 2
           + +RamUsageEstimator.shallowSizeOfInstance(SharedTsBlockQueue.class);
 
   public LocalSourceHandle(
@@ -274,7 +273,7 @@ public class LocalSourceHandle implements ISourceHandle {
   @Override
   public long getEstimatedMemoryUsageInBytes() {
     return INSTANCE_SIZE
-        + RamUsageEstimator.sizeOfCharArray(threadName.length())
-        + RamUsageEstimator.sizeOfCharArray(localPlanNodeId.length());
+        + RamUsageEstimator.sizeOf(threadName)
+        + RamUsageEstimator.sizeOf(localPlanNodeId);
   }
 }

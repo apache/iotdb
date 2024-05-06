@@ -122,8 +122,7 @@ public class SourceHandle implements ISourceHandle {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(SourceHandle.class)
-          + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class) * 2
-          + RamUsageEstimator.shallowSizeOfInstance(String.class) * 3;
+          + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class) * 2;
 
   @SuppressWarnings("squid:S107")
   public SourceHandle(
@@ -486,9 +485,9 @@ public class SourceHandle implements ISourceHandle {
   @Override
   public long getEstimatedMemoryUsageInBytes() {
     return INSTANCE_SIZE
-        + RamUsageEstimator.sizeOfCharArray(threadName.length())
-        + RamUsageEstimator.sizeOfCharArray(localPlanNodeId.length())
-        + RamUsageEstimator.sizeOfCharArray(fullFragmentInstanceId.length());
+        + RamUsageEstimator.sizeOf(threadName)
+        + RamUsageEstimator.sizeOf(localPlanNodeId)
+        + RamUsageEstimator.sizeOf(fullFragmentInstanceId);
   }
 
   @TestOnly

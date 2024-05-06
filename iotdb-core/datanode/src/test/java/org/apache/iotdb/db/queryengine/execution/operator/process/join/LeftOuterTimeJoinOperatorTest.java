@@ -164,6 +164,11 @@ public class LeftOuterTimeJoinOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
+            return 0;
+          }
         };
 
     Operator rightChild =
@@ -244,6 +249,11 @@ public class LeftOuterTimeJoinOperatorTest {
 
           @Override
           public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
             return 0;
           }
         };
@@ -444,6 +454,11 @@ public class LeftOuterTimeJoinOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
+            return 0;
+          }
         };
 
     Operator rightChild =
@@ -564,6 +579,11 @@ public class LeftOuterTimeJoinOperatorTest {
 
           @Override
           public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
             return 0;
           }
         };
@@ -767,6 +787,11 @@ public class LeftOuterTimeJoinOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
+            return 0;
+          }
         };
 
     Operator rightChild =
@@ -847,6 +872,11 @@ public class LeftOuterTimeJoinOperatorTest {
 
           @Override
           public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
             return 0;
           }
         };

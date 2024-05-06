@@ -147,6 +147,11 @@ public class LastQueryMergeOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
+            return 0;
+          }
         };
 
     Operator operator2 =
@@ -214,6 +219,11 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
             return 0;
           }
         };
@@ -362,6 +372,11 @@ public class LastQueryMergeOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
+            return 0;
+          }
         };
 
     Operator operator2 =
@@ -430,6 +445,11 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long getEstimatedMemoryUsageInBytes() {
             return 0;
           }
         };
