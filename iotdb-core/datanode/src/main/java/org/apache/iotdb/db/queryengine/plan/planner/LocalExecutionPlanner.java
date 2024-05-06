@@ -41,9 +41,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
- * Operator tree, but in the future, we may split one fragment instance into multiple pipeline to
- * run a fragment instance parallel and take full advantage of multi-cores
+ * Used to plan a fragment instance. One fragment instance could be split into multiple pipelines so
+ * that a fragment instance could be run in parallel, and thus we can take full advantages of
+ * multi-cores.
  */
 public class LocalExecutionPlanner {
 
