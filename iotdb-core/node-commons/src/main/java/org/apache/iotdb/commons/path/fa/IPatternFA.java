@@ -65,10 +65,14 @@ public interface IPatternFA {
    */
   IFAState getNextState(IFAState sourceState, IFATransition transition);
 
-  /** @return the initial state of this FA */
+  /**
+   * @return the initial state of this FA
+   */
   IFAState getInitialState();
 
-  /** @return the size of states this FA has */
+  /**
+   * @return the size of states this FA has
+   */
   int getStateSize();
 
   /**
@@ -97,7 +101,9 @@ public interface IPatternFA {
       return this;
     }
 
-    /** @param patternTree the included PartialPath must be a prefix or a fullPath */
+    /**
+     * @param patternTree the included PartialPath must be a prefix or a fullPath
+     */
     public Builder patternTree(PathPatternTree patternTree) {
       this.patternTree = patternTree;
       return this;

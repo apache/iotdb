@@ -196,7 +196,9 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     return deviceIsAlignedResultMap;
   }
 
-  /** @return {@link TabletInsertionEvent} in a streaming way */
+  /**
+   * @return {@link TabletInsertionEvent} in a streaming way
+   */
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
     return () ->
         new Iterator<TabletInsertionEvent>() {

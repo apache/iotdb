@@ -68,6 +68,7 @@ public class QueryExecutionMetricSet implements IMetricSet {
                 metricService.remove(
                     MetricType.TIMER, Metric.DISPATCHER.toString(), Tag.STAGE.toString(), stage));
   }
+
   // endregion
 
   // region query execution
@@ -136,6 +137,7 @@ public class QueryExecutionMetricSet implements IMetricSet {
                     Tag.STAGE.toString(),
                     stage));
   }
+
   // endregion
 
   // region query aggregation
@@ -165,6 +167,7 @@ public class QueryExecutionMetricSet implements IMetricSet {
                 metricService.remove(
                     MetricType.TIMER, Metric.AGGREGATION.toString(), Tag.FROM.toString(), from));
   }
+
   // endregion
 
   @Override

@@ -27,6 +27,7 @@ public class FileInfo {
   // max aligned series num in one device. If there is no aligned series in this file, then it
   // turns to be -1.
   int maxAlignedSeriesNumInDevice = -1;
+
   // max chunk num of one device in this tsfile
   @SuppressWarnings("squid:S1068")
   int maxDeviceChunkNum = 0;
