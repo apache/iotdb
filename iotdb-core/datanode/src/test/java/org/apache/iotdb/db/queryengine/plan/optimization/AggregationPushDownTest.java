@@ -96,7 +96,7 @@ public class AggregationPushDownTest {
                 schemaMap.get("root.sg.d1.s1"),
                 aggregationDescriptorList,
                 groupByTimeParameter,
-                true)
+                false)
             .columnInject("2", groupByTimeParameter)
             .getRoot());
   }
@@ -136,7 +136,7 @@ public class AggregationPushDownTest {
                 schemaMap.get("aligned_root.sg.d2.a.s1"),
                 aggregationDescriptorList,
                 groupByTimeParameter,
-                true)
+                false)
             .columnInject("2", groupByTimeParameter)
             .getRoot());
   }
@@ -195,7 +195,7 @@ public class AggregationPushDownTest {
                 schemaMap.get("root.sg.d1.s1"),
                 aggregationDescriptorList1,
                 groupByTimeParameter,
-                true)
+                false)
             .slidingWindow("2", aggregationDescriptorList2, groupByTimeParameter, false)
             .columnInject("3", groupByTimeParameter)
             .getRoot());
