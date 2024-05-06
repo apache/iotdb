@@ -1938,7 +1938,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         new TopicMeta(topicName, System.currentTimeMillis(), topicAttributes);
     try {
       PipeAgent.plugin().validateExtractor(temporaryTopicMeta.generateExtractorAttributes());
-      PipeAgent.plugin().validateExtractor(temporaryTopicMeta.generateProcessorAttributes());
+      PipeAgent.plugin().validateProcessor(temporaryTopicMeta.generateProcessorAttributes());
     } catch (Exception e) {
       LOGGER.info("Failed to validate create topic statement, because {}", e.getMessage(), e);
       future.setException(
