@@ -69,6 +69,7 @@ public class IoTDBCreateStorageGroupIT extends AbstractSchemaIT {
   public void tearDown() throws Exception {
     clearSchema();
   }
+
   /** The test creates three databases */
   @Test
   public void testCreateStorageGroup() throws Exception {

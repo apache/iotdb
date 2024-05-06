@@ -88,6 +88,7 @@ public class WalCheckerTest {
         int fakeMemTableId = 1;
         List<WALEntry> walEntries = new ArrayList<>();
         walEntries.add(new WALInfoEntry(fakeMemTableId, WALFileTest.getInsertRowNode(DEVICE_ID)));
+        walEntries.add(new WALInfoEntry(fakeMemTableId, WALFileTest.getInsertRowsNode(DEVICE_ID)));
         walEntries.add(
             new WALInfoEntry(fakeMemTableId, WALFileTest.getInsertTabletNode(DEVICE_ID)));
         walEntries.add(new WALInfoEntry(fakeMemTableId, WALFileTest.getDeleteDataNode(DEVICE_ID)));
@@ -127,6 +128,7 @@ public class WalCheckerTest {
         int fakeMemTableId = 1;
         List<WALEntry> walEntries = new ArrayList<>();
         walEntries.add(new WALInfoEntry(fakeMemTableId, WALFileTest.getInsertRowNode(DEVICE_ID)));
+        walEntries.add(new WALInfoEntry(fakeMemTableId, WALFileTest.getInsertRowsNode(DEVICE_ID)));
         walEntries.add(
             new WALInfoEntry(fakeMemTableId, WALFileTest.getInsertTabletNode(DEVICE_ID)));
         walEntries.add(new WALInfoEntry(fakeMemTableId, WALFileTest.getDeleteDataNode(DEVICE_ID)));

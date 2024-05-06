@@ -54,6 +54,7 @@ public class DeviceIDFactory {
   private DeviceIDFactory() {
     getDeviceIDFunction = PlainDeviceID::new;
   }
+
   // endregion
 
   /**

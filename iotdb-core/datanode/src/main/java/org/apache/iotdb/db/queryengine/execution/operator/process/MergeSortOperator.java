@@ -227,7 +227,9 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
         || children.get(currentChildIndex) == null;
   }
 
-  /** @param currentInputIndex index of the input TsBlock */
+  /**
+   * @param currentInputIndex index of the input TsBlock
+   */
   @Override
   protected void processCurrentInputTsBlock(int currentInputIndex) {
     mergeSortHeap.push(new MergeSortKey(inputTsBlocks[currentInputIndex], 0, currentInputIndex));

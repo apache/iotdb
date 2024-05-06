@@ -53,6 +53,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 @SuppressWarnings("squid:S6548")
 public class TsFileAndModSettleTool {
   private static final Logger logger = LoggerFactory.getLogger(TsFileAndModSettleTool.class);
+
   // TsFilePath -> SettleCheckStatus
   @SuppressWarnings("squid:S1104")
   public Map<String, Integer> recoverSettleFileMap = new HashMap<>();

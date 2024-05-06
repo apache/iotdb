@@ -80,6 +80,7 @@ public class ConfigNodeInfo {
       }
     }
   }
+
   // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     ConfigNodeInfoHolder.INSTANCE = new ConfigNodeInfo();

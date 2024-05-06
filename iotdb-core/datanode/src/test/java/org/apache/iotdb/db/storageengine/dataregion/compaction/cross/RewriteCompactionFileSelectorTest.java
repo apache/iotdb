@@ -134,7 +134,10 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
    */
   @Test
   public void testFileOpenSelection()
-      throws MergeException, IOException, WriteProcessException, NoSuchFieldException,
+      throws MergeException,
+          IOException,
+          WriteProcessException,
+          NoSuchFieldException,
           IllegalAccessException {
     File file =
         new File(
