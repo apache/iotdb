@@ -57,4 +57,12 @@ public class ConsumerConfig extends PipeParameters {
   public String getConsumerGroupId() {
     return getString(ConsumerConstant.CONSUMER_GROUP_ID_KEY);
   }
+
+  public void setConsumerId(final String consumerId) {
+    attributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
+  }
+
+  public void setConsumerGroupId(final String consumerGroupId) {
+    attributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
+  }
 }
