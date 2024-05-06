@@ -137,7 +137,7 @@ public class LocalExecutionPlanner {
       return 0;
     }
 
-    long estimatedMemorySize = memoryEstimator.calculateEstimatedMemorySize();
+    long estimatedMemorySize = memoryEstimator.getEstimatedMemoryUsageInBytes();
 
     QueryRelatedResourceMetricSet.getInstance().updateEstimatedMemory(estimatedMemorySize);
 

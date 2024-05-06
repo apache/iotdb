@@ -29,10 +29,10 @@ public class ConsumeAllChildrenPipelineMemoryEstimator extends PipelineMemoryEst
   }
 
   @Override
-  public long calculateEstimatedMemorySize() {
+  public long calculateEstimatedRunningMemorySize() {
     return root.calculateMaxPeekMemoryWithCounter()
         + children.stream()
-            .map(PipelineMemoryEstimator::calculateEstimatedMemorySize)
+            .map(PipelineMemoryEstimator::calculateEstimatedRunningMemorySize)
             .reduce(0L, Long::sum);
   }
 }

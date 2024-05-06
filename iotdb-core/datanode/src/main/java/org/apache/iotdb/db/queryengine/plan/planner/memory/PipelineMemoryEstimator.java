@@ -39,8 +39,18 @@ public abstract class PipelineMemoryEstimator {
     this.children = new LinkedList<>();
   }
 
-  /** Calculate the estimated memory size of the pipeline. */
-  public abstract long calculateEstimatedMemorySize();
+  /**
+   * Get the memory usage in bytes of this pipeline. This method takes into account the memory usage
+   * of the children pipelines. EstimatedSize = RunningMemorySize + RetainedMemorySize
+   *
+   * @return memory usage in bytes.
+   */
+  public long getEstimatedMemoryUsageInBytes() {
+    return calculateEstimatedRunningMemorySize() + calculateRetainedMemorySize();
+  }
+
+  /** Calculate the estimated running memory size of the pipeline. */
+  public abstract long calculateEstimatedRunningMemorySize();
 
   protected long calculateRetainedMemorySize() {
     return root.getEstimatedMemoryUsageInBytes()

@@ -34,23 +34,18 @@ public class ConsumeChildrenOneByOnePipelineMemoryEstimator extends PipelineMemo
   }
 
   @Override
-  public long calculateEstimatedMemorySize() {
+  public long calculateEstimatedRunningMemorySize() {
     // EstimatedSize = root.calculateMaxPeekMemoryWithCounter() + sum(children's estimated size) *
-    // runningChildrenNum / children.size() + retainedSize of not running children
+    // runningChildrenNum / children.size()
     return children.isEmpty()
         ? root.calculateMaxPeekMemoryWithCounter()
         : (long)
             (root.calculateMaxPeekMemoryWithCounter()
                 + children.stream()
-                        .map(PipelineMemoryEstimator::calculateEstimatedMemorySize)
+                        .map(PipelineMemoryEstimator::calculateEstimatedRunningMemorySize)
                         .reduce(0L, Long::sum)
                     / (double) (children.size())
-                    * getConcurrentRunningChildrenNum()
-                + children.stream()
-                        .map(PipelineMemoryEstimator::calculateRetainedMemorySize)
-                        .reduce(0L, Long::sum)
-                    / (double) (children.size())
-                    * (children.size() - getConcurrentRunningChildrenNum()));
+                    * getConcurrentRunningChildrenNum());
   }
 
   private long getConcurrentRunningChildrenNum() {

@@ -120,8 +120,8 @@ public class PipelineBuilderTest {
       PipelineMemoryEstimator pipelineMemoryEstimator =
           context.constructPipelineMemoryEstimator(root, null, fullOuterTimeJoinNode, -1);
       assertEquals(
-          root.calculateMaxPeekMemoryWithCounter(),
-          pipelineMemoryEstimator.calculateEstimatedMemorySize());
+          root.calculateMaxPeekMemoryWithCounter() + root.getEstimatedMemoryUsageInBytes(),
+          pipelineMemoryEstimator.getEstimatedMemoryUsageInBytes());
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -191,9 +191,9 @@ public class PipelineBuilderTest {
       assertEquals(
           root.calculateMaxPeekMemoryWithCounter()
               + rootPipelineMemoryEstimator.getChildren().stream()
-                  .map(PipelineMemoryEstimator::calculateEstimatedMemorySize)
+                  .map(PipelineMemoryEstimator::calculateEstimatedRunningMemorySize)
                   .reduce(0L, Long::sum),
-          rootPipelineMemoryEstimator.calculateEstimatedMemorySize());
+          rootPipelineMemoryEstimator.calculateEstimatedRunningMemorySize());
 
       List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
           rootPipelineMemoryEstimator.getChildren();
@@ -1336,7 +1336,7 @@ public class PipelineBuilderTest {
           rootPipelineMemoryEstimator.getClass());
       assertEquals(
           root.calculateMaxPeekMemoryWithCounter(),
-          rootPipelineMemoryEstimator.calculateEstimatedMemorySize());
+          rootPipelineMemoryEstimator.calculateEstimatedRunningMemorySize());
 
       List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
           rootPipelineMemoryEstimator.getChildren();
@@ -1381,16 +1381,10 @@ public class PipelineBuilderTest {
       assertEquals(
           root.calculateMaxPeekMemoryWithCounter()
               + rootPipelineMemoryEstimator.getChildren().stream()
-                      .map(PipelineMemoryEstimator::calculateEstimatedMemorySize)
+                      .map(PipelineMemoryEstimator::calculateEstimatedRunningMemorySize)
                       .reduce(0L, Long::sum)
-                  / 3
-              + rootPipelineMemoryEstimator
-                      .getChildren()
-                      .get(1)
-                      .getRoot()
-                      .getEstimatedMemoryUsageInBytes()
-                  * 2,
-          rootPipelineMemoryEstimator.calculateEstimatedMemorySize());
+                  / 3,
+          rootPipelineMemoryEstimator.calculateEstimatedRunningMemorySize());
 
       List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
           rootPipelineMemoryEstimator.getChildren();
