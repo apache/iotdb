@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.commons.udf.utils;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.type.Type;
+
+import org.apache.tsfile.enums.TSDataType;
 
 import java.util.List;
 import java.util.stream.Collectors;

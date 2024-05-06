@@ -39,18 +39,19 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
-import org.apache.iotdb.tsfile.utils.TimeDuration;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.factory.FilterFactory;
+import org.apache.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.tsfile.utils.TimeDuration;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.TimeZone;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
+import static org.apache.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
 
 public class ConvertPredicateToTimeFilterVisitor extends PredicateVisitor<Filter, Void> {
 

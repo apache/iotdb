@@ -21,7 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.snapshot;
 
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+
+import org.apache.tsfile.common.constant.TsFileConstant;
 
 import java.io.File;
 import java.util.Arrays;

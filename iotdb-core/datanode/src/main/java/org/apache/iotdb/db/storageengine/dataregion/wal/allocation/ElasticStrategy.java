@@ -46,6 +46,7 @@ public class ElasticStrategy extends AbstractNodeAllocationStrategy {
   private final Map<String, WALNode> uniqueId2Nodes = new HashMap<>();
   // each wal node has a unique long value identifier
   private int nodeIdCounter = -1;
+
   // endregion
 
   public ElasticStrategy() {

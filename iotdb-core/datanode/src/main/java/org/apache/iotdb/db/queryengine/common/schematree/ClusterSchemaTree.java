@@ -38,9 +38,10 @@ import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisit
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -69,6 +70,7 @@ public class ClusterSchemaTree implements ISchemaTree {
 
   /** a flag recording whether there is logical view in this schema tree. */
   private boolean hasLogicalMeasurementPath = false;
+
   /** used to judge schema tree type */
   private boolean hasNormalTimeSeries = false;
 

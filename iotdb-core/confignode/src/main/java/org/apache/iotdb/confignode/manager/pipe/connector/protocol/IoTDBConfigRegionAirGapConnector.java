@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBAirGapConnector;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigNodeHandshakeV1Req;
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigNodeHandshakeV2Req;
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigPlanReq;
@@ -109,20 +110,38 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
 
     try {
       if (event instanceof PipeConfigRegionWritePlanEvent) {
-        doTransfer(socket, (PipeConfigRegionWritePlanEvent) event);
+        doTransferWrapper(socket, (PipeConfigRegionWritePlanEvent) event);
       } else if (event instanceof PipeConfigRegionSnapshotEvent) {
-        doTransfer(socket, (PipeConfigRegionSnapshotEvent) event);
+        doTransferWrapper(socket, (PipeConfigRegionSnapshotEvent) event);
       } else if (!(event instanceof PipeHeartbeatEvent)) {
         LOGGER.warn(
             "IoTDBConfigRegionAirGapConnector does not support transferring generic event: {}.",
             event);
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       isSocketAlive.set(socketIndex, false);
 
       throw new PipeConnectionException(
-          String.format("Network error when transfer event %s, because %s.", event, e.getMessage()),
+          String.format(
+              "Network error when transfer event %s, because %s.",
+              ((EnrichedEvent) event).coreReportMessage(), e.getMessage()),
           e);
+    }
+  }
+
+  private void doTransferWrapper(
+      final Socket socket, final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent)
+      throws PipeException, IOException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeConfigRegionWritePlanEvent.increaseReferenceCount(
+          IoTDBConfigRegionAirGapConnector.class.getName())) {
+        return;
+      }
+      doTransfer(socket, pipeConfigRegionWritePlanEvent);
+    } finally {
+      pipeConfigRegionWritePlanEvent.decreaseReferenceCount(
+          IoTDBConfigRegionAirGapConnector.class.getName(), false);
     }
   }
 
@@ -145,6 +164,22 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
               .setMessage(errorMessage),
           errorMessage,
           pipeConfigRegionWritePlanEvent.toString());
+    }
+  }
+
+  private void doTransferWrapper(
+      final Socket socket, final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
+      throws PipeException, IOException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeConfigRegionSnapshotEvent.increaseReferenceCount(
+          IoTDBConfigRegionAirGapConnector.class.getName())) {
+        return;
+      }
+      doTransfer(socket, pipeConfigRegionSnapshotEvent);
+    } finally {
+      pipeConfigRegionSnapshotEvent.decreaseReferenceCount(
+          IoTDBConfigRegionAirGapConnector.class.getName(), false);
     }
   }
 

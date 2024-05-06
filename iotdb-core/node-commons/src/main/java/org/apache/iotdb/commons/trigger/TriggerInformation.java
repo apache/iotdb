@@ -25,8 +25,9 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -53,10 +54,12 @@ public class TriggerInformation {
 
   /** indicate this Trigger is Stateful or Stateless */
   private boolean isStateful;
+
   /** only used for Stateful Trigger */
   private TDataNodeLocation dataNodeLocation;
 
   private FailureStrategy failureStrategy;
+
   /** MD5 of the Jar File */
   private String jarFileMD5;
 

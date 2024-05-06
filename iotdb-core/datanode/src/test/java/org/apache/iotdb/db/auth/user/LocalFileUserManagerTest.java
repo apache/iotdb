@@ -183,4 +183,12 @@ public class LocalFileUserManagerTest {
       assertEquals(users[i].getName(), usernames.get(i + 1));
     }
   }
+
+  @Test
+  public void testCreateUserRawPassword() throws AuthException {
+    Assert.assertTrue(
+        manager.createUser("testRaw", AuthUtils.encryptPassword("password1"), true, false));
+    User user = manager.getUser("testRaw");
+    Assert.assertEquals(user.getPassword(), AuthUtils.encryptPassword("password1"));
+  }
 }

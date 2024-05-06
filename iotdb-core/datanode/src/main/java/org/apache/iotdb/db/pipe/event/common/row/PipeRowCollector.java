@@ -27,8 +27,9 @@ import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -111,11 +112,11 @@ public class PipeRowCollector implements RowCollector {
     this.tablet = null;
   }
 
-  public Iterable<TabletInsertionEvent> convertToTabletInsertionEvents() {
+  public List<TabletInsertionEvent> convertToTabletInsertionEvents(final boolean shouldReport) {
     collectTabletInsertionEvent();
 
     final int eventListSize = tabletInsertionEventList.size();
-    if (eventListSize > 0) { // The last event should report progress
+    if (eventListSize > 0 && shouldReport) { // The last event should report progress
       ((PipeRawTabletInsertionEvent) tabletInsertionEventList.get(eventListSize - 1))
           .markAsNeedToReport();
     }

@@ -69,6 +69,7 @@ public class CompactionTaskManager implements IService {
   // The thread pool that executes the compaction task. The default number of threads for this pool
   // is 10.
   private WrappedThreadPoolExecutor taskExecutionPool;
+  private volatile boolean stopAllCompactionWorker = false;
 
   // The thread pool that executes the sub compaction task.
   private WrappedThreadPoolExecutor subCompactionTaskExecutionPool;
@@ -82,7 +83,21 @@ public class CompactionTaskManager implements IService {
       storageGroupTasks = new ConcurrentHashMap<>();
   private final AtomicInteger finishedTaskNum = new AtomicInteger(0);
 
-  private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
+  private final RateLimiter mergeWriteRateLimiter =
+      RateLimiter.create(
+          config.getCompactionWriteThroughputMbPerSec() <= 0
+              ? Double.MAX_VALUE
+              : config.getCompactionWriteThroughputMbPerSec() * 1024.0 * 1024.0);
+  private final RateLimiter compactionReadOperationRateLimiter =
+      RateLimiter.create(
+          config.getCompactionReadOperationPerSec() <= 0
+              ? Double.MAX_VALUE
+              : config.getCompactionReadOperationPerSec());
+  private final RateLimiter compactionReadThroughputRateLimiter =
+      RateLimiter.create(
+          config.getCompactionReadThroughputMbPerSec() <= 0
+              ? Double.MAX_VALUE
+              : config.getCompactionReadThroughputMbPerSec() * 1024.0 * 1024.0);
 
   private volatile boolean init = false;
 
@@ -90,6 +105,10 @@ public class CompactionTaskManager implements IService {
 
   public static CompactionTaskManager getInstance() {
     return INSTANCE;
+  }
+
+  public boolean isStopAllCompactionWorker() {
+    return stopAllCompactionWorker;
   }
 
   @Override
@@ -127,6 +146,7 @@ public class CompactionTaskManager implements IService {
 
   @Override
   public void stop() {
+    stopAllCompactionWorker = true;
     if (taskExecutionPool != null) {
       subCompactionTaskExecutionPool.shutdownNow();
       taskExecutionPool.shutdownNow();
@@ -139,6 +159,7 @@ public class CompactionTaskManager implements IService {
 
   @Override
   public void waitAndStop(long milliseconds) {
+    stopAllCompactionWorker = true;
     if (taskExecutionPool != null) {
       awaitTermination(subCompactionTaskExecutionPool, milliseconds);
       awaitTermination(taskExecutionPool, milliseconds);
@@ -258,19 +279,36 @@ public class CompactionTaskManager implements IService {
   }
 
   public RateLimiter getMergeWriteRateLimiter() {
-    setWriteMergeRate(
-        IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec());
     return mergeWriteRateLimiter;
   }
 
-  private void setWriteMergeRate(final double throughoutMbPerSec) {
-    double throughout = throughoutMbPerSec * 1024.0 * 1024.0;
+  public RateLimiter getCompactionReadRateLimiter() {
+    return compactionReadThroughputRateLimiter;
+  }
+
+  public RateLimiter getCompactionReadOperationRateLimiter() {
+    return compactionReadOperationRateLimiter;
+  }
+
+  public void setWriteMergeRate(final double throughoutMbPerSec) {
+    setRate(mergeWriteRateLimiter, throughoutMbPerSec * 1024.0 * 1024.0);
+  }
+
+  public void setCompactionReadOperationRate(final double readOperationPerSec) {
+    setRate(compactionReadOperationRateLimiter, readOperationPerSec);
+  }
+
+  public void setCompactionReadThroughputRate(final double throughputMbPerSec) {
+    setRate(compactionReadThroughputRateLimiter, throughputMbPerSec * 1024.0 * 1024.0);
+  }
+
+  private void setRate(RateLimiter rateLimiter, double rate) {
     // if throughout = 0, disable rate limiting
-    if (throughout <= 0) {
-      throughout = Double.MAX_VALUE;
+    if (rate <= 0) {
+      rate = Double.MAX_VALUE;
     }
-    if (mergeWriteRateLimiter.getRate() != throughout) {
-      mergeWriteRateLimiter.setRate(throughout);
+    if (Math.abs(rateLimiter.getRate() - rate) > 0.0001) {
+      rateLimiter.setRate(rate);
     }
   }
 
@@ -427,6 +465,7 @@ public class CompactionTaskManager implements IService {
   }
 
   public void restart() throws InterruptedException {
+    stopAllCompactionWorker = true;
     if (IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0) {
       if (subCompactionTaskExecutionPool != null) {
         this.subCompactionTaskExecutionPool.shutdownNow();
@@ -453,6 +492,7 @@ public class CompactionTaskManager implements IService {
       init = true;
     }
     init = true;
+    stopAllCompactionWorker = false;
     logger.info("Compaction task manager started.");
   }
 

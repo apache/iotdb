@@ -23,8 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,6 +92,24 @@ public class LeaderBalancerComparisonTest {
 
       // Basic test
       Map<TConsensusGroupId, Integer> greedyLeaderDistribution = new ConcurrentHashMap<>();
+      Map<Integer, NodeStatistics> allRunningDataNodeStatistics = new TreeMap<>();
+      for (int i = 0; i < dataNodeNum; i++) {
+        allRunningDataNodeStatistics.put(i, new NodeStatistics(NodeStatus.Running));
+      }
+      Map<TConsensusGroupId, Map<Integer, RegionStatistics>> allRunningRegionStatistics =
+          new TreeMap<>();
+      regionReplicaSetMap.forEach(
+          (regionGroupId, regionReplicaSet) -> {
+            Map<Integer, RegionStatistics> regionStatistics = new TreeMap<>();
+            regionReplicaSet
+                .getDataNodeLocations()
+                .forEach(
+                    dataNodeLocation ->
+                        regionStatistics.put(
+                            dataNodeLocation.getDataNodeId(),
+                            new RegionStatistics(RegionStatus.Running)));
+            allRunningRegionStatistics.put(regionGroupId, regionStatistics);
+          });
       Statistics greedyStatistics =
           doBalancing(
               dataNodeNum,
@@ -95,7 +117,8 @@ public class LeaderBalancerComparisonTest {
               GREEDY_LEADER_BALANCER,
               regionReplicaSetMap,
               regionLeaderMap,
-              new HashSet<>(),
+              allRunningDataNodeStatistics,
+              allRunningRegionStatistics,
               greedyLeaderDistribution);
       Map<TConsensusGroupId, Integer> mcfLeaderDistribution = new ConcurrentHashMap<>();
       Statistics mcfStatistics =
@@ -105,7 +128,8 @@ public class LeaderBalancerComparisonTest {
               MIN_COST_FLOW_LEADER_BALANCER,
               regionReplicaSetMap,
               regionLeaderMap,
-              new HashSet<>(),
+              allRunningDataNodeStatistics,
+              allRunningRegionStatistics,
               mcfLeaderDistribution);
       if (isCommandLineMode) {
         LOGGER.info("[Basic test]");
@@ -126,6 +150,30 @@ public class LeaderBalancerComparisonTest {
         }
         disabledDataNodeSet.add(dataNodeId);
       }
+      Map<Integer, NodeStatistics> disabledDataNodeStatistics = new TreeMap<>();
+      for (int i = 0; i < dataNodeNum; i++) {
+        disabledDataNodeStatistics.put(
+            i,
+            disabledDataNodeSet.contains(i)
+                ? new NodeStatistics(NodeStatus.Unknown)
+                : new NodeStatistics(NodeStatus.Running));
+      }
+      Map<TConsensusGroupId, Map<Integer, RegionStatistics>> disabledRegionStatistics =
+          new TreeMap<>();
+      regionReplicaSetMap.forEach(
+          (regionGroupId, regionReplicaSet) -> {
+            Map<Integer, RegionStatistics> regionStatistics = new TreeMap<>();
+            regionReplicaSet
+                .getDataNodeLocations()
+                .forEach(
+                    dataNodeLocation ->
+                        regionStatistics.put(
+                            dataNodeLocation.getDataNodeId(),
+                            disabledDataNodeSet.contains(dataNodeLocation.getDataNodeId())
+                                ? new RegionStatistics(RegionStatus.Unknown)
+                                : new RegionStatistics(RegionStatus.Running)));
+            disabledRegionStatistics.put(regionGroupId, regionStatistics);
+          });
       greedyStatistics =
           doBalancing(
               dataNodeNum,
@@ -133,7 +181,8 @@ public class LeaderBalancerComparisonTest {
               GREEDY_LEADER_BALANCER,
               regionReplicaSetMap,
               greedyLeaderDistribution,
-              disabledDataNodeSet,
+              disabledDataNodeStatistics,
+              disabledRegionStatistics,
               greedyLeaderDistribution);
       mcfStatistics =
           doBalancing(
@@ -142,7 +191,8 @@ public class LeaderBalancerComparisonTest {
               MIN_COST_FLOW_LEADER_BALANCER,
               regionReplicaSetMap,
               mcfLeaderDistribution,
-              disabledDataNodeSet,
+              disabledDataNodeStatistics,
+              disabledRegionStatistics,
               mcfLeaderDistribution);
       if (isCommandLineMode) {
         LOGGER.info("[Disaster test]");
@@ -161,7 +211,8 @@ public class LeaderBalancerComparisonTest {
               GREEDY_LEADER_BALANCER,
               regionReplicaSetMap,
               greedyLeaderDistribution,
-              new HashSet<>(),
+              allRunningDataNodeStatistics,
+              allRunningRegionStatistics,
               greedyLeaderDistribution);
       mcfStatistics =
           doBalancing(
@@ -170,7 +221,8 @@ public class LeaderBalancerComparisonTest {
               MIN_COST_FLOW_LEADER_BALANCER,
               regionReplicaSetMap,
               mcfLeaderDistribution,
-              new HashSet<>(),
+              allRunningDataNodeStatistics,
+              allRunningRegionStatistics,
               mcfLeaderDistribution);
       if (isCommandLineMode) {
         LOGGER.info("[Recovery test]");
@@ -254,10 +306,11 @@ public class LeaderBalancerComparisonTest {
   private Statistics doBalancing(
       int dataNodeNum,
       int regionGroupNum,
-      ILeaderBalancer leaderBalancer,
+      AbstractLeaderBalancer leaderBalancer,
       Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap,
       Map<TConsensusGroupId, Integer> regionLeaderMap,
-      Set<Integer> disabledDataNodeSet,
+      Map<Integer, NodeStatistics> nodeStatisticsMap,
+      Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap,
       Map<TConsensusGroupId, Integer> stableLeaderDistribution) {
 
     Statistics result = new Statistics();
@@ -266,7 +319,11 @@ public class LeaderBalancerComparisonTest {
     for (int rounds = 0; rounds < 1000; rounds++) {
       Map<TConsensusGroupId, Integer> currentDistribution =
           leaderBalancer.generateOptimalLeaderDistribution(
-              new TreeMap<>(), regionReplicaSetMap, lastDistribution, disabledDataNodeSet);
+              new TreeMap<>(),
+              regionReplicaSetMap,
+              lastDistribution,
+              nodeStatisticsMap,
+              regionStatisticsMap);
       if (currentDistribution.equals(lastDistribution)) {
         // The leader distribution is stable
         result.rounds = rounds;

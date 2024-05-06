@@ -37,8 +37,8 @@ import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.ReporterType;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,15 +52,20 @@ import java.util.function.ToDoubleFunction;
 /** MetricService is the entry to get all metric features. */
 public abstract class AbstractMetricService {
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractMetricService.class);
+
   /** The config of metric service. */
   protected static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
+
   /** The metric manager of metric service. */
   protected AbstractMetricManager metricManager = new DoNothingMetricManager();
+
   /** The metric reporter of metric service. */
   protected CompositeReporter compositeReporter = new CompositeReporter();
+
   /** The internal reporter of metric service. */
   protected IoTDBInternalReporter internalReporter = new IoTDBInternalMemoryReporter();
+
   /** The list of metric sets. */
   protected Set<IMetricSet> metricSets = new HashSet<>();
 

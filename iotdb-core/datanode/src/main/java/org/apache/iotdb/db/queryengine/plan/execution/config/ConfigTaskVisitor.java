@@ -156,7 +156,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
+
+import org.apache.tsfile.exception.NotImplementedException;
 
 public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryContext> {
 

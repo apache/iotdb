@@ -35,12 +35,14 @@ public class SimpleFileVersionController implements VersionController {
   private static final Logger logger = LoggerFactory.getLogger(SimpleFileVersionController.class);
   public static final String FILE_PREFIX = "Version-";
   public static final String UPGRADE_DIR = "upgrade";
+
   /**
    * Every time currVersion - prevVersion >= saveInterval, currVersion is persisted and prevVersion
    * is set to currVersion. When recovering from file, the version number is automatically increased
    * by saveInterval to avoid conflicts.
    */
   private static long saveInterval = 100;
+
   /** time partition id to dividing time series into different database */
   private long timePartitionId;
 

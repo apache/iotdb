@@ -58,6 +58,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
@@ -93,8 +94,10 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   private IoTDBThriftAsyncPipeTransferBatchReqBuilder tabletBatchBuilder;
 
+  private final AtomicBoolean isClosed = new AtomicBoolean(false);
+
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
     retryConnector.validate(validator);
 
@@ -109,7 +112,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
 
@@ -145,7 +149,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+  public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     transferQueuedEventsIfNecessary();
 
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
@@ -173,9 +177,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         // We increase the reference count for this event to determine if the event may be released.
         if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
             IoTDBDataRegionAsyncConnector.class.getName())) {
-          LOGGER.error(
-              "PipeInsertNodeTabletInsertionEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
-              pipeInsertNodeTabletInsertionEvent.coreReportMessage());
+          pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
+              IoTDBDataRegionAsyncConnector.class.getName(), false);
           return;
         }
 
@@ -197,9 +200,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         // We increase the reference count for this event to determine if the event may be released.
         if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
             IoTDBDataRegionAsyncConnector.class.getName())) {
-          LOGGER.error(
-              "PipeRawTabletInsertionEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
-              pipeRawTabletInsertionEvent.coreReportMessage());
+          pipeRawTabletInsertionEvent.decreaseReferenceCount(
+              IoTDBDataRegionAsyncConnector.class.getName(), false);
           return;
         }
 
@@ -216,41 +218,43 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
   }
 
-  private void transfer(PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler) {
+  private void transfer(
+      final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler) {
     AsyncPipeDataTransferServiceClient client = null;
     try {
       client = clientManager.borrowClient();
       pipeTransferTabletBatchEventHandler.transfer(client);
-    } catch (Exception ex) {
+    } catch (final Exception ex) {
       logOnClientException(client, ex);
       pipeTransferTabletBatchEventHandler.onError(ex);
     }
   }
 
-  private void transfer(PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler) {
+  private void transfer(
+      final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler) {
     AsyncPipeDataTransferServiceClient client = null;
     try {
       client = clientManager.borrowClient();
       pipeTransferInsertNodeReqHandler.transfer(client);
-    } catch (Exception ex) {
+    } catch (final Exception ex) {
       logOnClientException(client, ex);
       pipeTransferInsertNodeReqHandler.onError(ex);
     }
   }
 
-  private void transfer(PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler) {
+  private void transfer(final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler) {
     AsyncPipeDataTransferServiceClient client = null;
     try {
       client = clientManager.borrowClient();
       pipeTransferTabletReqHandler.transfer(client);
-    } catch (Exception ex) {
+    } catch (final Exception ex) {
       logOnClientException(client, ex);
       pipeTransferTabletReqHandler.onError(ex);
     }
   }
 
   @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+  public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     transferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
 
@@ -266,9 +270,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeTsFileInsertionEvent.increaseReferenceCount(
         IoTDBDataRegionAsyncConnector.class.getName())) {
-      LOGGER.error(
-          "PipeTsFileInsertionEvent {} can not be transferred because the reference count can not be increased, the data represented by this event is lost",
-          pipeTsFileInsertionEvent.coreReportMessage());
+      pipeTsFileInsertionEvent.decreaseReferenceCount(
+          IoTDBDataRegionAsyncConnector.class.getName(), false);
       return;
     }
 
@@ -284,19 +287,19 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   private void transfer(
-      PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler) {
+      final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler) {
     AsyncPipeDataTransferServiceClient client = null;
     try {
       client = clientManager.borrowClient();
       pipeTransferTsFileInsertionEventHandler.transfer(client);
-    } catch (Exception ex) {
+    } catch (final Exception ex) {
       logOnClientException(client, ex);
       pipeTransferTsFileInsertionEventHandler.onError(ex);
     }
   }
 
   @Override
-  public void transfer(Event event) throws Exception {
+  public void transfer(final Event event) throws Exception {
     transferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
 
@@ -312,13 +315,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   //////////////////////////// Leader cache update ////////////////////////////
 
-  public void updateLeaderCache(String deviceId, TEndPoint endPoint) {
+  public void updateLeaderCache(final String deviceId, final TEndPoint endPoint) {
     clientManager.updateLeaderCache(deviceId, endPoint);
   }
 
   //////////////////////////// Exception handlers ////////////////////////////
 
-  private void logOnClientException(AsyncPipeDataTransferServiceClient client, Exception e) {
+  private void logOnClientException(
+      final AsyncPipeDataTransferServiceClient client, final Exception e) {
     if (client == null) {
       LOGGER.warn(THRIFT_ERROR_FORMATTER_WITHOUT_ENDPOINT, e);
     } else {
@@ -387,10 +391,37 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    *
    * @param event event to retry
    */
-  public synchronized void addFailureEventToRetryQueue(Event event) {
+  public synchronized void addFailureEventToRetryQueue(final Event event) {
+    if (isClosed.get()) {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
+      }
+      return;
+    }
+
     retryEventQueue.offer(event);
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Added event {} to retry queue.", event);
+    }
+  }
+
+  /**
+   * Add failure events to retry queue.
+   *
+   * @param events events to retry
+   */
+  public synchronized void addFailureEventsToRetryQueue(final Iterable<Event> events) {
+    for (final Event event : events) {
+      addFailureEventToRetryQueue(event);
+    }
+  }
+
+  public synchronized void clearRetryEventsReferenceCount() {
+    while (!retryEventQueue.isEmpty()) {
+      final Event event = retryEventQueue.poll();
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
+      }
     }
   }
 
@@ -404,17 +435,26 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
    * its queued events in the output pipe connector.
    */
-  public synchronized void discardEventsOfPipe(String pipeNameToDrop) {
+  public synchronized void discardEventsOfPipe(final String pipeNameToDrop) {
     retryEventQueue.removeIf(
-        event ->
-            event instanceof EnrichedEvent
-                && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName()));
+        event -> {
+          if (event instanceof EnrichedEvent
+              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
+            ((EnrichedEvent) event)
+                .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
+            return true;
+          }
+          return false;
+        });
   }
 
   @Override
   // synchronized to avoid close connector when transfer event
   public synchronized void close() throws Exception {
+    isClosed.set(true);
+
     retryConnector.close();
+    clearRetryEventsReferenceCount();
 
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();

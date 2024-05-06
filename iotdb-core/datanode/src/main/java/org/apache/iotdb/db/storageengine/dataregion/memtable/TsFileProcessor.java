@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
@@ -66,14 +67,14 @@ import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,6 +112,7 @@ public class TsFileProcessor {
 
   /** Database info for mem control. */
   private final DataRegionInfo dataRegionInfo;
+
   /** Tsfile processor info for mem control. */
   private TsFileProcessorInfo tsFileProcessorInfo;
 
@@ -128,6 +130,7 @@ public class TsFileProcessor {
 
   /** Time range index to indicate this processor belongs to which time range */
   private long timeRangeId;
+
   /**
    * Whether the processor is in the queue of the FlushManager or being flushed by a flush thread.
    */
@@ -135,6 +138,7 @@ public class TsFileProcessor {
 
   /** A lock to mutual exclude read and read */
   private final ReadWriteLock flushQueryLock = new ReentrantReadWriteLock();
+
   /**
    * It is set by the StorageGroupProcessor and checked by flush threads. (If shouldClose == true
    * and its flushingMemTables are all flushed, then the flush thread will close this file.)
@@ -309,6 +313,91 @@ public class TsFileProcessor {
 
     tsFileResource.updateProgressIndex(insertRowNode.getProgressIndex());
     // RecordScheduleMemTableCost
+    costsForMetrics[3] += System.nanoTime() - startTime;
+  }
+
+  public void insert(InsertRowsNode insertRowsNode, long[] costsForMetrics)
+      throws WriteProcessException {
+
+    if (workMemTable == null) {
+      long startTime = System.nanoTime();
+      createNewWorkingMemTable();
+      // recordCreateMemtableBlockCost
+      costsForMetrics[0] += System.nanoTime() - startTime;
+      WritingMetrics.getInstance()
+          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
+    }
+
+    long[] memIncrements = null;
+
+    long memControlStartTime = System.nanoTime();
+    if (insertRowsNode.isAligned()) {
+      for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
+        memIncrements =
+            checkAlignedMemCostAndAddToTspInfo(
+                insertRowNode.getDeviceID(), insertRowNode.getMeasurements(),
+                insertRowNode.getDataTypes(), insertRowNode.getValues());
+      }
+    } else {
+      for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
+        memIncrements =
+            checkMemCostAndAddToTspInfo(
+                insertRowNode.getDeviceID(), insertRowNode.getMeasurements(),
+                insertRowNode.getDataTypes(), insertRowNode.getValues());
+      }
+    }
+    // recordScheduleMemoryBlockCost
+    costsForMetrics[1] += System.nanoTime() - memControlStartTime;
+
+    long startTime = System.nanoTime();
+    WALFlushListener walFlushListener;
+    try {
+      walFlushListener = walNode.log(workMemTable.getMemTableId(), insertRowsNode);
+      if (walFlushListener.waitForResult() == AbstractResultListener.Status.FAILURE) {
+        throw walFlushListener.getCause();
+      }
+    } catch (Exception e) {
+      rollbackMemoryInfo(memIncrements);
+      throw new WriteProcessException(
+          String.format(
+              "%s: %s write WAL failed",
+              storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
+          e);
+    } finally {
+      // recordScheduleWalCost
+      costsForMetrics[2] += System.nanoTime() - startTime;
+    }
+
+    startTime = System.nanoTime();
+
+    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
+    if (!insertRowsNode.isGeneratedByPipe()) {
+      workMemTable.markAsNotGeneratedByPipe();
+    }
+    PipeInsertionDataNodeListener.getInstance()
+        .listenToInsertNode(
+            dataRegionInfo.getDataRegion().getDataRegionId(),
+            walFlushListener.getWalEntryHandler(),
+            insertRowsNode,
+            tsFileResource);
+    for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
+
+      if (insertRowNode.isAligned()) {
+        workMemTable.insertAlignedRow(insertRowNode);
+      } else {
+        workMemTable.insert(insertRowNode);
+      }
+
+      // update start time of this memtable
+      tsFileResource.updateStartTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
+      // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
+      // for unsequence tsfile, we have to update the endTime for each insertion.
+      if (!sequence) {
+        tsFileResource.updateEndTime(insertRowNode.getDeviceID(), insertRowNode.getTime());
+      }
+    }
+    tsFileResource.updateProgressIndex(insertRowsNode.getProgressIndex());
+    // recordScheduleMemTableCost
     costsForMetrics[3] += System.nanoTime() - startTime;
   }
 
@@ -1491,6 +1580,7 @@ public class TsFileProcessor {
   public void putMemTableBackAndClose() throws TsFileProcessorException {
     if (workMemTable != null) {
       workMemTable.release();
+      dataRegionInfo.releaseStorageGroupMemCost(workMemTable.getTVListsRamCost());
       workMemTable = null;
     }
     try {
@@ -1498,6 +1588,8 @@ public class TsFileProcessor {
     } catch (IOException e) {
       throw new TsFileProcessorException(e);
     }
+    tsFileProcessorInfo.clear();
+    dataRegionInfo.closeTsFileProcessorAndReportToSystem(this);
   }
 
   public void setTsFileProcessorInfo(TsFileProcessorInfo tsFileProcessorInfo) {

@@ -21,7 +21,8 @@ package org.apache.iotdb.commons.consensus.index.impl;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
 
@@ -137,7 +138,7 @@ public class MetaProgressIndex extends ProgressIndex {
     lock.writeLock().lock();
     try {
       if (!(progressIndex instanceof MetaProgressIndex)) {
-        return this;
+        return ProgressIndex.blendProgressIndex(this, progressIndex);
       }
 
       this.index = Math.max(this.index, ((MetaProgressIndex) progressIndex).index);

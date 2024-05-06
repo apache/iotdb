@@ -103,10 +103,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
 
   public static Consumer<KillPointContext> actionOfRestartCluster =
       context -> {
-        context
-            .getEnv()
-            .getNodeWrapperList()
-            .parallelStream()
+        context.getEnv().getNodeWrapperList().parallelStream()
             .forEach(AbstractNodeWrapper::stopForcibly);
         LOGGER.info("Cluster has been stopped");
         context.getEnv().getNodeWrapperList().parallelStream().forEach(AbstractNodeWrapper::start);
@@ -307,8 +304,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
   }
 
   private void restartDataNodes(List<DataNodeWrapper> dataNodeWrappers) {
-    dataNodeWrappers
-        .parallelStream()
+    dataNodeWrappers.parallelStream()
         .forEach(
             nodeWrapper -> {
               nodeWrapper.stop();

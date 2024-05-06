@@ -85,19 +85,19 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.Arithmet
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.read.common.type.BooleanType;
-import org.apache.iotdb.tsfile.read.common.type.LongType;
-import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
-import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import com.google.common.collect.Sets;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.IntColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.read.common.type.BooleanType;
+import org.apache.tsfile.read.common.type.LongType;
+import org.apache.tsfile.read.common.type.TypeEnum;
+import org.apache.tsfile.utils.TimeDuration;
 import org.junit.Test;
 import org.mockito.Mockito;
 

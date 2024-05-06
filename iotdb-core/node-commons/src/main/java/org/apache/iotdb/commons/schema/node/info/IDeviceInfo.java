@@ -46,10 +46,14 @@ public interface IDeviceInfo<N extends IMNode<N>> {
 
   void setSchemaTemplateId(int schemaTemplateId);
 
-  /** @return the logic id of template set or activated on this node, id>=-1 */
+  /**
+   * @return the logic id of template set or activated on this node, id>=-1
+   */
   int getSchemaTemplateId();
 
-  /** @return the template id with current state, may be negative since unset or deactivation */
+  /**
+   * @return the template id with current state, may be negative since unset or deactivation
+   */
   int getSchemaTemplateIdWithState();
 
   boolean isPreDeactivateTemplate();

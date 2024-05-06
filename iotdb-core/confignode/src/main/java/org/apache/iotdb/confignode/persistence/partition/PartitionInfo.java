@@ -64,13 +64,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,6 +119,7 @@ public class PartitionInfo implements SnapshotProcessor {
   /** For Cluster Partition. */
   // For allocating Regions
   private final AtomicInteger nextRegionGroupId;
+
   // Map<DatabaseName, DatabasePartitionInfo>
   private final Map<String, DatabasePartitionTable> databasePartitionTables;
 
@@ -669,12 +670,9 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return Deep copy of all Regions' RegionReplicaSet
    */
   public List<TRegionReplicaSet> getAllReplicaSets() {
-    List<TRegionReplicaSet> result = new ArrayList<>();
-    databasePartitionTables
-        .values()
-        .forEach(
-            databasePartitionTable -> result.addAll(databasePartitionTable.getAllReplicaSets()));
-    return result;
+    return databasePartitionTables.values().stream()
+        .flatMap(DatabasePartitionTable::getAllReplicaSets)
+        .collect(Collectors.toList());
   }
 
   /**
@@ -704,7 +702,7 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public List<TRegionReplicaSet> getAllReplicaSets(String database) {
     if (databasePartitionTables.containsKey(database)) {
-      return databasePartitionTables.get(database).getAllReplicaSets();
+      return databasePartitionTables.get(database).getAllReplicaSets().collect(Collectors.toList());
     } else {
       return Collections.emptyList();
     }

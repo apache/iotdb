@@ -29,7 +29,9 @@ import java.nio.ByteBuffer;
 public class NullViewOperand extends LeafViewOperand {
 
   // region member variables and init functions
-  public NullViewOperand() {};
+  public NullViewOperand() {}
+  ;
+
   // endregion
 
   // region common interfaces that have to be implemented

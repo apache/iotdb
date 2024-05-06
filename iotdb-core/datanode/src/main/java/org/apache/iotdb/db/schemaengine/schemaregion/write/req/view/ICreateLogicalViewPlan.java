@@ -46,10 +46,14 @@ public interface ICreateLogicalViewPlan extends ISchemaRegionPlan {
    */
   int getViewSize();
 
-  /** @return return a map, from view path (the targets) to source expression. */
+  /**
+   * @return return a map, from view path (the targets) to source expression.
+   */
   Map<PartialPath, ViewExpression> getViewPathToSourceExpressionMap();
 
-  /** @return return a list of target paths (paths of views). */
+  /**
+   * @return return a list of target paths (paths of views).
+   */
   List<PartialPath> getViewPathList();
 
   /**

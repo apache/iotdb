@@ -45,7 +45,8 @@ import org.apache.iotdb.commons.schema.view.viewExpression.unary.LogicNotViewExp
 import org.apache.iotdb.commons.schema.view.viewExpression.unary.NegationViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.unary.RegularViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -72,7 +73,9 @@ public abstract class ViewExpression {
 
   public abstract ViewExpressionType getExpressionType();
 
-  /** @return if this view expression is a leaf node, return true; else return false. */
+  /**
+   * @return if this view expression is a leaf node, return true; else return false.
+   */
   public final boolean isLeafOperand() {
     return isLeafOperandInternal();
   }

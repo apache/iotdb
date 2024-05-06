@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
 
+import org.apache.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -227,6 +227,11 @@ public class CommonConfig {
   private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
+  private int pipeSnapshotExecutionMaxBatchSize = 1000;
+
+  private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000; // 8 minutes
+  private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000; // 3 minutes
+  private long twoStageAggregateSenderEndPointsCacheInMs = 3 * 60 * 1000; // 3 minutes
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
@@ -246,6 +251,8 @@ public class CommonConfig {
 
   // Max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
+  private int tagAttributeMaxNum = 20;
+  private int tagAttributeEntryMaxSize = 100;
 
   // maximum number of Cluster Databases allowed
   private int databaseLimitThreshold = -1;
@@ -961,6 +968,42 @@ public class CommonConfig {
     this.pipeListeningQueueTransferSnapshotThreshold = pipeListeningQueueTransferSnapshotThreshold;
   }
 
+  public int getPipeSnapshotExecutionMaxBatchSize() {
+    return pipeSnapshotExecutionMaxBatchSize;
+  }
+
+  public void setPipeSnapshotExecutionMaxBatchSize(int pipeSnapshotExecutionMaxBatchSize) {
+    this.pipeSnapshotExecutionMaxBatchSize = pipeSnapshotExecutionMaxBatchSize;
+  }
+
+  public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
+    return twoStageAggregateMaxCombinerLiveTimeInMs;
+  }
+
+  public void setTwoStageAggregateMaxCombinerLiveTimeInMs(
+      long twoStageAggregateMaxCombinerLiveTimeInMs) {
+    this.twoStageAggregateMaxCombinerLiveTimeInMs = twoStageAggregateMaxCombinerLiveTimeInMs;
+  }
+
+  public long getTwoStageAggregateDataRegionInfoCacheTimeInMs() {
+    return twoStageAggregateDataRegionInfoCacheTimeInMs;
+  }
+
+  public void setTwoStageAggregateDataRegionInfoCacheTimeInMs(
+      long twoStageAggregateDataRegionInfoCacheTimeInMs) {
+    this.twoStageAggregateDataRegionInfoCacheTimeInMs =
+        twoStageAggregateDataRegionInfoCacheTimeInMs;
+  }
+
+  public long getTwoStageAggregateSenderEndPointsCacheInMs() {
+    return twoStageAggregateSenderEndPointsCacheInMs;
+  }
+
+  public void setTwoStageAggregateSenderEndPointsCacheInMs(
+      long twoStageAggregateSenderEndPointsCacheInMs) {
+    this.twoStageAggregateSenderEndPointsCacheInMs = twoStageAggregateSenderEndPointsCacheInMs;
+  }
+
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {
     return subscriptionSubtaskExecutorMaxThreadNum;
   }
@@ -1054,6 +1097,22 @@ public class CommonConfig {
 
   public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
     this.tagAttributeTotalSize = tagAttributeTotalSize;
+  }
+
+  public int getTagAttributeMaxNum() {
+    return tagAttributeMaxNum;
+  }
+
+  public void setTagAttributeMaxNum(int tagAttributeMaxNum) {
+    this.tagAttributeMaxNum = tagAttributeMaxNum;
+  }
+
+  public int getTagAttributeEntryMaxSize() {
+    return tagAttributeEntryMaxSize;
+  }
+
+  public void setTagAttributeEntryMaxSize(int tagAttributeEntryMaxSize) {
+    this.tagAttributeEntryMaxSize = tagAttributeEntryMaxSize;
   }
 
   public int getDatabaseLimitThreshold() {

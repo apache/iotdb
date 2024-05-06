@@ -63,6 +63,7 @@ public class AuthUtils {
   private AuthUtils() {
     // Empty constructor
   }
+
   /**
    * This filed only for pre version. When we do a major version upgrade, it can be removed
    * directly.
@@ -320,6 +321,7 @@ public class AuthUtils {
     }
     return false;
   }
+
   /**
    * Add privilege
    *

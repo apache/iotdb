@@ -143,6 +143,8 @@ public class ExportDataTestIT extends AbstractScript {
             "root",
             "-td",
             "target",
+            "-type",
+            "sql",
             "-q",
             "select * from root.test.t2 where time > 1 and time < 1000000000000",
             "&",
@@ -216,8 +218,10 @@ public class ExportDataTestIT extends AbstractScript {
             "root",
             "-td",
             "target",
+            "-type",
+            "sql",
             "-q",
-            "select * from root.**");
+            "select * from root.test.t2 where time > 1 and time < 1000000000000");
     builder2.environment().put("CLASSPATH", libPath);
     testOutput(builder2, output2, 0);
   }

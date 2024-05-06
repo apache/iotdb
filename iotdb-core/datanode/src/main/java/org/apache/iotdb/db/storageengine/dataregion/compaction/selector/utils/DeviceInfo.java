@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 public class DeviceInfo {
   public IDeviceID deviceId;

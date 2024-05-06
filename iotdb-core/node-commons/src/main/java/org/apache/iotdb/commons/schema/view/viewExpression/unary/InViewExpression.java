@@ -22,7 +22,8 @@ package org.apache.iotdb.commons.schema.view.viewExpression.unary;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpressionType;
 import org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -59,6 +60,7 @@ public class InViewExpression extends UnaryViewExpression {
       throw new RuntimeException(e);
     }
   }
+
   // endregion
 
   // region common interfaces that have to be implemented
@@ -90,6 +92,7 @@ public class InViewExpression extends UnaryViewExpression {
     ReadWriteIOUtils.write(isNotIn, stream);
     ReadWriteIOUtils.writeStringList(this.valueList, stream);
   }
+
   // endregion
 
   public boolean isNotIn() {

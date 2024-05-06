@@ -41,6 +41,7 @@ public class MultiplicationViewExpression extends ArithmeticBinaryViewExpression
   public MultiplicationViewExpression(InputStream inputStream) {
     super(inputStream);
   }
+
   // endregion
 
   // region common interfaces that have to be implemented

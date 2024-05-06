@@ -26,9 +26,9 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,6 +86,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
   public static final String ROLE_SUFFIX = "_role";
 
   private final String userDirPath;
+
   /**
    * Reused buffer for primitive types encoding/decoding, which aim to reduce memory fragments. Use
    * ThreadLocal for thread safety.

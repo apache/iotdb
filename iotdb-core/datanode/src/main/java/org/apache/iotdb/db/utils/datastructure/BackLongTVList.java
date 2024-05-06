@@ -19,7 +19,8 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.tsfile.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.List;

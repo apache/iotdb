@@ -27,7 +27,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ca
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.basic.CachedBasicMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.CachedMNodeContainer;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 public class CachedMeasurementMNode extends AbstractMeasurementMNode<ICachedMNode, CachedBasicMNode>
     implements ICachedMNode {
