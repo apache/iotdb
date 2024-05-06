@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
@@ -125,7 +124,8 @@ public abstract class BinaryTransformer extends Transformer {
         if (leftColumns[0].isNull(leftConsumed) || rightColumns[0].isNull(rightConsumed)) {
           valueBuilder.appendNull();
         } else {
-          transformAndCache(leftColumns[0], leftConsumed, rightColumns[0], rightConsumed, valueBuilder);
+          transformAndCache(
+              leftColumns[0], leftConsumed, rightColumns[0], rightConsumed, valueBuilder);
         }
 
         leftConsumed++;
@@ -134,7 +134,7 @@ public abstract class BinaryTransformer extends Transformer {
 
       Column values = valueBuilder.build();
       if (isCurrentConstant) {
-        return new Column[] { values };
+        return new Column[] {values};
       }
       Column times;
       if (isLeftReaderConstant) {
@@ -142,7 +142,7 @@ public abstract class BinaryTransformer extends Transformer {
       } else {
         times = leftColumns[1].getRegion(leftOffset, count);
       }
-      return new Column[] { values, times };
+      return new Column[] {values, times};
     }
 
     Column leftTimes = leftColumns[1], leftValues = leftColumns[0];
@@ -173,8 +173,10 @@ public abstract class BinaryTransformer extends Transformer {
 
     Column times = timeBuilder.build();
     Column values = valueBuilder.build();
-    return new Column[] { values, times };
+    return new Column[] {values, times};
   }
 
-  protected abstract void transformAndCache(Column leftValues, int leftIndex, Column rightValues, int rightIndex, ColumnBuilder builder) throws QueryProcessException, IOException;
+  protected abstract void transformAndCache(
+      Column leftValues, int leftIndex, Column rightValues, int rightIndex, ColumnBuilder builder)
+      throws QueryProcessException, IOException;
 }

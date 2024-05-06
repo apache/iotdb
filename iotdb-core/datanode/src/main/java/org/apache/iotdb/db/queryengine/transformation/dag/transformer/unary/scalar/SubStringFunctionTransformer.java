@@ -35,22 +35,20 @@ public class SubStringFunctionTransformer extends UnaryTransformer {
   private int beginPosition;
   private int endPosition;
 
-  public SubStringFunctionTransformer(
-      LayerReader layerReader, int beginPosition, int length) {
+  public SubStringFunctionTransformer(LayerReader layerReader, int beginPosition, int length) {
     super(layerReader);
     this.endPosition =
         (length == Integer.MAX_VALUE ? Integer.MAX_VALUE : beginPosition + length - 1);
     this.beginPosition = beginPosition > 0 ? beginPosition - 1 : 0;
 
     if (layerReaderDataType != TSDataType.TEXT) {
-      throw new UnSupportedDataTypeException(
-          "Unsupported data type: " + layerReaderDataType);
+      throw new UnSupportedDataTypeException("Unsupported data type: " + layerReaderDataType);
     }
   }
 
   @Override
   public TSDataType[] getDataTypes() {
-    return new TSDataType[]{TSDataType.TEXT};
+    return new TSDataType[] {TSDataType.TEXT};
   }
 
   @Override

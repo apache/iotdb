@@ -363,7 +363,7 @@ public class BatchData {
     // Fill the whole array
     while (insertSize > 0) {
       int consumed = Math.min(insertSize, capacity - writeCurArrayIndex);
-      consumed = start + consumed > times.length? times.length - start : consumed;
+      consumed = start + consumed > times.length ? times.length - start : consumed;
 
       // Insert a whole time array
       long[] targetTimes = timeRet.get(writeCurListIndex);
@@ -524,7 +524,7 @@ public class BatchData {
     // Fill the whole array
     while (insertSize > 0) {
       int consumed = Math.min(insertSize, capacity - writeCurArrayIndex);
-      consumed = start + consumed > times.length? times.length - start : consumed;
+      consumed = start + consumed > times.length ? times.length - start : consumed;
 
       // Insert a whole time array
       long[] targetTimes = timeRet.get(writeCurListIndex);
@@ -687,7 +687,7 @@ public class BatchData {
     // Fill the whole array
     while (insertSize > 0) {
       int consumed = Math.min(insertSize, capacity - writeCurArrayIndex);
-      consumed = start + consumed > times.length? times.length - start : consumed;
+      consumed = start + consumed > times.length ? times.length - start : consumed;
 
       // Insert a whole time array
       long[] targetTimes = timeRet.get(writeCurListIndex);
@@ -848,7 +848,7 @@ public class BatchData {
     // Fill the whole array
     while (insertSize > 0) {
       int consumed = Math.min(insertSize, capacity - writeCurArrayIndex);
-      consumed = start + consumed > times.length? times.length - start : consumed;
+      consumed = start + consumed > times.length ? times.length - start : consumed;
 
       // Insert a whole time array
       long[] targetTimes = timeRet.get(writeCurListIndex);
@@ -1010,7 +1010,7 @@ public class BatchData {
     // Fill the whole array
     while (insertSize > 0) {
       int consumed = Math.min(insertSize, capacity - writeCurArrayIndex);
-      consumed = start + consumed > times.length? times.length - start : consumed;
+      consumed = start + consumed > times.length ? times.length - start : consumed;
 
       // Insert a whole time array
       long[] targetTimes = timeRet.get(writeCurListIndex);
@@ -1173,7 +1173,7 @@ public class BatchData {
     // Fill the whole array
     while (insertSize > 0) {
       int consumed = Math.min(insertSize, capacity - writeCurArrayIndex);
-      consumed = start + consumed > times.length? times.length - start : consumed;
+      consumed = start + consumed > times.length ? times.length - start : consumed;
 
       // Insert a whole time array
       long[] targetTimes = timeRet.get(writeCurListIndex);

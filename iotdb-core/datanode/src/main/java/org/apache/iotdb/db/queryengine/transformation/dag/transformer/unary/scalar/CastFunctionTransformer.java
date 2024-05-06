@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.sca
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -42,7 +41,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
 
   @Override
   public TSDataType[] getDataTypes() {
-    return new TSDataType[]{targetDataType};
+    return new TSDataType[] {targetDataType};
   }
 
   @Override
@@ -133,7 +132,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
 
     Column valueColumn = builder.build();
     Column timeColumn = columns[1];
-    return new Column[]{valueColumn, timeColumn};
+    return new Column[] {valueColumn, timeColumn};
   }
 
   private Column[] castLongs(Column[] columns) {
@@ -203,7 +202,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
 
     Column valueColumn = builder.build();
     Column timeColumn = columns[1];
-    return new Column[]{valueColumn, timeColumn};
+    return new Column[] {valueColumn, timeColumn};
   }
 
   private Column[] castFloats(Column[] columns) {
@@ -273,7 +272,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
 
     Column valueColumn = builder.build();
     Column timeColumn = columns[1];
-    return new Column[]{valueColumn, timeColumn};
+    return new Column[] {valueColumn, timeColumn};
   }
 
   private Column[] castDoubles(Column[] columns) {
@@ -343,7 +342,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
 
     Column valueColumn = builder.build();
     Column timeColumn = columns[1];
-    return new Column[]{valueColumn, timeColumn};
+    return new Column[] {valueColumn, timeColumn};
   }
 
   private Column[] castBooleans(Column[] columns) {
@@ -360,7 +359,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         builder = new IntColumnBuilder(null, count);
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
-            builder.writeInt(values[i]? 1 : 0);
+            builder.writeInt(values[i] ? 1 : 0);
           } else {
             builder.appendNull();
           }
@@ -370,7 +369,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         builder = new LongColumnBuilder(null, count);
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
-            builder.writeLong(values[i]? 1L : 0);
+            builder.writeLong(values[i] ? 1L : 0);
           } else {
             builder.appendNull();
           }
@@ -380,7 +379,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         builder = new FloatColumnBuilder(null, count);
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
-            builder.writeDouble(values[i]? 1.0f : 0);
+            builder.writeDouble(values[i] ? 1.0f : 0);
           } else {
             builder.appendNull();
           }
@@ -390,7 +389,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         builder = new DoubleColumnBuilder(null, count);
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
-            builder.writeDouble(values[i]? 1.0 : 0);
+            builder.writeDouble(values[i] ? 1.0 : 0);
           } else {
             builder.appendNull();
           }
@@ -413,7 +412,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
 
     Column valueColumn = builder.build();
     Column timeColumn = columns[1];
-    return new Column[]{valueColumn, timeColumn};
+    return new Column[] {valueColumn, timeColumn};
   }
 
   private Column[] castBinaries(Column[] columns) {
@@ -488,6 +487,6 @@ public class CastFunctionTransformer extends UnaryTransformer {
 
     Column valueColumn = builder.build();
     Column timeColumn = columns[1];
-    return new Column[]{valueColumn, timeColumn};
+    return new Column[] {valueColumn, timeColumn};
   }
 }

@@ -74,6 +74,5 @@ public abstract class Transformer implements LayerReader {
     cachedColumns = null;
   }
 
-
   protected abstract YieldableState yieldValue() throws Exception;
 }

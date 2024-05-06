@@ -19,14 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.TVListForwardIterator;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.checkerframework.checker.units.qual.C;
 
 import java.io.IOException;
 
@@ -63,7 +59,7 @@ public abstract class UniversalUDFQueryTransformer extends UDFQueryTransformer {
 
     Column values = outputLayerIterator.currentValues();
     Column times = outputLayerIterator.currentTimes();
-    cachedColumns = new Column[] { values, times };
+    cachedColumns = new Column[] {values, times};
 
     return true;
   }

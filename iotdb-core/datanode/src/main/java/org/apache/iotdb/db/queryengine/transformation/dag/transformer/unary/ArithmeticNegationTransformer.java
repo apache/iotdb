@@ -34,11 +34,12 @@ public class ArithmeticNegationTransformer extends UnaryTransformer {
 
   @Override
   public TSDataType[] getDataTypes() {
-    return new TSDataType[]{layerReaderDataType};
+    return new TSDataType[] {layerReaderDataType};
   }
 
   @Override
-  protected void transform(Column[] columns, ColumnBuilder builder) throws QueryProcessException, IOException {
+  protected void transform(Column[] columns, ColumnBuilder builder)
+      throws QueryProcessException, IOException {
     switch (layerReaderDataType) {
       case INT32:
         transformInt(columns, builder);
@@ -53,8 +54,7 @@ public class ArithmeticNegationTransformer extends UnaryTransformer {
         transformDouble(columns, builder);
         return;
       default:
-        throw new QueryProcessException(
-            "Unsupported data type: " + layerReaderDataType);
+        throw new QueryProcessException("Unsupported data type: " + layerReaderDataType);
     }
   }
 

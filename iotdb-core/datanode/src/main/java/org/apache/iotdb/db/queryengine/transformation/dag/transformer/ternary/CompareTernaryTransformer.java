@@ -22,7 +22,6 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.ternary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -36,15 +35,20 @@ public abstract class CompareTernaryTransformer extends TernaryTransformer {
   @FunctionalInterface
   public interface Evaluator {
 
-    boolean evaluate(Column firstValues, int firstIndex, Column secondValues, int secondIndex, Column thirdValues, int thirdIndex) throws QueryProcessException, IOException;
+    boolean evaluate(
+        Column firstValues,
+        int firstIndex,
+        Column secondValues,
+        int secondIndex,
+        Column thirdValues,
+        int thirdIndex)
+        throws QueryProcessException, IOException;
   }
 
   protected final Evaluator evaluator;
 
   protected CompareTernaryTransformer(
-      LayerReader firstReader,
-      LayerReader secondReader,
-      LayerReader thirdReader)
+      LayerReader firstReader, LayerReader secondReader, LayerReader thirdReader)
       throws UnSupportedDataTypeException {
     super(firstReader, secondReader, thirdReader);
     evaluator =
@@ -78,12 +82,22 @@ public abstract class CompareTernaryTransformer extends TernaryTransformer {
   }
 
   @Override
-  protected final void transformAndCache(Column firstValues, int firstIndex, Column secondValues, int secondIndex, Column thirdValues, int thirdIndex, ColumnBuilder builder) throws QueryProcessException, IOException {
-    builder.writeBoolean(evaluator.evaluate(firstValues, firstIndex, secondValues, secondIndex, thirdValues, thirdIndex));
+  protected final void transformAndCache(
+      Column firstValues,
+      int firstIndex,
+      Column secondValues,
+      int secondIndex,
+      Column thirdValues,
+      int thirdIndex,
+      ColumnBuilder builder)
+      throws QueryProcessException, IOException {
+    builder.writeBoolean(
+        evaluator.evaluate(
+            firstValues, firstIndex, secondValues, secondIndex, thirdValues, thirdIndex));
   }
 
   @Override
   public TSDataType[] getDataTypes() {
-    return new TSDataType[]{TSDataType.BOOLEAN};
+    return new TSDataType[] {TSDataType.BOOLEAN};
   }
 }

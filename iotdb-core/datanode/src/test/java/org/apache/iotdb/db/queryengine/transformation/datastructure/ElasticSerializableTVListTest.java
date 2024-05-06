@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -51,30 +52,30 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     super.tearDown();
   }
 
-//  @Test
-//  public void testESIntTVList() {
-//    testESTVList(TSDataType.INT32);
-//  }
-//
-//  @Test
-//  public void testESLongTVList() {
-//    testESTVList(TSDataType.INT64);
-//  }
-//
-//  @Test
-//  public void testESFloatTVList() {
-//    testESTVList(TSDataType.FLOAT);
-//  }
-//
-//  @Test
-//  public void testESDoubleTVList() {
-//    testESTVList(TSDataType.DOUBLE);
-//  }
-//
-//  @Test
-//  public void testESTextTVList() {
-//    testESTVList(TSDataType.TEXT);
-//  }
+  //  @Test
+  //  public void testESIntTVList() {
+  //    testESTVList(TSDataType.INT32);
+  //  }
+  //
+  //  @Test
+  //  public void testESLongTVList() {
+  //    testESTVList(TSDataType.INT64);
+  //  }
+  //
+  //  @Test
+  //  public void testESFloatTVList() {
+  //    testESTVList(TSDataType.FLOAT);
+  //  }
+  //
+  //  @Test
+  //  public void testESDoubleTVList() {
+  //    testESTVList(TSDataType.DOUBLE);
+  //  }
+  //
+  //  @Test
+  //  public void testESTextTVList() {
+  //    testESTVList(TSDataType.TEXT);
+  //  }
 
   @Test
   public void testESIntTVListWithBatchInsert() {
@@ -89,7 +90,6 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
 
     TimeColumn timeColumn = new TimeColumn(ITERATION_TIMES, times);
     IntColumn valueColumn = new IntColumn(ITERATION_TIMES, Optional.of(isNulls), values);
-
 
     try {
       tvList.putColumn(timeColumn, valueColumn);
@@ -108,18 +108,18 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     }
   }
 
-//  @Test
-//  public void testESBooleanTVList() {
-//    testESTVList(TSDataType.BOOLEAN);
-//  }
+  //  @Test
+  //  public void testESBooleanTVList() {
+  //    testESTVList(TSDataType.BOOLEAN);
+  //  }
 
-//  private void testESTVList(TSDataType dataType) {
-//    initESTVList(dataType);
-//
-//    testPut(dataType);
-//
-//    testOrderedAccessByIndex(dataType);
-//  }
+  //  private void testESTVList(TSDataType dataType) {
+  //    initESTVList(dataType);
+  //
+  //    testPut(dataType);
+  //
+  //    testOrderedAccessByIndex(dataType);
+  //  }
 
   private void initESTVList(TSDataType dataType) {
     tvList =
@@ -128,69 +128,69 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     assertEquals(0, tvList.getPointCount());
   }
 
-//  private void testPut(TSDataType dataType) {
-//    try {
-//      switch (dataType) {
-//        case INT32:
-//          for (int i = 0; i < ITERATION_TIMES; ++i) {
-//            if (i % 7 == 0) {
-//              tvList.putNull(i);
-//            } else {
-//              tvList.putInt(i, i);
-//            }
-//          }
-//          break;
-//        case INT64:
-//          for (int i = 0; i < ITERATION_TIMES; ++i) {
-//            if (i % 7 == 0) {
-//              tvList.putNull(i);
-//            } else {
-//              tvList.putLong(i, i);
-//            }
-//          }
-//          break;
-//        case FLOAT:
-//          for (int i = 0; i < ITERATION_TIMES; ++i) {
-//            if (i % 7 == 0) {
-//              tvList.putNull(i);
-//            } else {
-//              tvList.putFloat(i, i);
-//            }
-//          }
-//          break;
-//        case DOUBLE:
-//          for (int i = 0; i < ITERATION_TIMES; ++i) {
-//            if (i % 7 == 0) {
-//              tvList.putNull(i);
-//            } else {
-//              tvList.putDouble(i, i);
-//            }
-//          }
-//          break;
-//        case BOOLEAN:
-//          for (int i = 0; i < ITERATION_TIMES; ++i) {
-//            if (i % 7 == 0) {
-//              tvList.putNull(i);
-//            } else {
-//              tvList.putBoolean(i, i % 2 == 0);
-//            }
-//          }
-//          break;
-//        case TEXT:
-//          for (int i = 0; i < ITERATION_TIMES; ++i) {
-//            if (i % 7 == 0) {
-//              tvList.putNull(i);
-//            } else {
-//              tvList.putBinary(i, Binary.valueOf(String.valueOf(i)));
-//            }
-//          }
-//          break;
-//      }
-//    } catch (IOException e) {
-//      fail(e.toString());
-//    }
-//    assertEquals(ITERATION_TIMES, tvList.size());
-//  }
+  //  private void testPut(TSDataType dataType) {
+  //    try {
+  //      switch (dataType) {
+  //        case INT32:
+  //          for (int i = 0; i < ITERATION_TIMES; ++i) {
+  //            if (i % 7 == 0) {
+  //              tvList.putNull(i);
+  //            } else {
+  //              tvList.putInt(i, i);
+  //            }
+  //          }
+  //          break;
+  //        case INT64:
+  //          for (int i = 0; i < ITERATION_TIMES; ++i) {
+  //            if (i % 7 == 0) {
+  //              tvList.putNull(i);
+  //            } else {
+  //              tvList.putLong(i, i);
+  //            }
+  //          }
+  //          break;
+  //        case FLOAT:
+  //          for (int i = 0; i < ITERATION_TIMES; ++i) {
+  //            if (i % 7 == 0) {
+  //              tvList.putNull(i);
+  //            } else {
+  //              tvList.putFloat(i, i);
+  //            }
+  //          }
+  //          break;
+  //        case DOUBLE:
+  //          for (int i = 0; i < ITERATION_TIMES; ++i) {
+  //            if (i % 7 == 0) {
+  //              tvList.putNull(i);
+  //            } else {
+  //              tvList.putDouble(i, i);
+  //            }
+  //          }
+  //          break;
+  //        case BOOLEAN:
+  //          for (int i = 0; i < ITERATION_TIMES; ++i) {
+  //            if (i % 7 == 0) {
+  //              tvList.putNull(i);
+  //            } else {
+  //              tvList.putBoolean(i, i % 2 == 0);
+  //            }
+  //          }
+  //          break;
+  //        case TEXT:
+  //          for (int i = 0; i < ITERATION_TIMES; ++i) {
+  //            if (i % 7 == 0) {
+  //              tvList.putNull(i);
+  //            } else {
+  //              tvList.putBinary(i, Binary.valueOf(String.valueOf(i)));
+  //            }
+  //          }
+  //          break;
+  //      }
+  //    } catch (IOException e) {
+  //      fail(e.toString());
+  //    }
+  //    assertEquals(ITERATION_TIMES, tvList.size());
+  //  }
 
   private void testOrderedAccessByIndex(TSDataType dataType) {
     try {
@@ -267,117 +267,117 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     }
   }
 
-//  @Test
-//  public void testMemoryControl() {
-//    initESTVList(TSDataType.TEXT);
-//
-//    int byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 2;
-//    int byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 8;
-//    Random random = new Random();
-//
-//    try {
-//      for (int i = 0; i < ITERATION_TIMES; ++i) {
-//        if (i % 7 == 0) {
-//          tvList.putNull(i);
-//        } else {
-//          tvList.putBinary(
-//              i,
-//              Binary.valueOf(
-//                  generateRandomString(
-//                      byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
-//        }
-//      }
-//      LayerPointReader reader = tvList.constructPointReaderUsingTrivialEvictionStrategy();
-//      int index = 0;
-//      while (reader.next()) {
-//        if (index % 7 == 0) {
-//          assertTrue(reader.isCurrentNull());
-//        } else {
-//          int length = reader.currentBinary().getLength();
-//          assertTrue(byteLengthMin <= length && length < byteLengthMax);
-//        }
-//        reader.readyForNext();
-//        index++;
-//      }
-//
-//      byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 16;
-//      byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 32;
-//      for (int i = 0; i < ITERATION_TIMES; ++i) {
-//        if (i % 7 == 0) {
-//          tvList.putNull(i);
-//        } else {
-//          tvList.putBinary(
-//              i,
-//              Binary.valueOf(
-//                  generateRandomString(
-//                      byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
-//        }
-//      }
-//      index = 0;
-//      while (reader.next()) {
-//        if (index % 7 == 0) {
-//          assertTrue(reader.isCurrentNull());
-//        } else {
-//          int length = reader.currentBinary().getLength();
-//          assertTrue(byteLengthMin <= length && length < byteLengthMax);
-//        }
-//        reader.readyForNext();
-//        index++;
-//      }
-//
-//      byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 256;
-//      byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 512;
-//      for (int i = 0; i < ITERATION_TIMES; ++i) {
-//        if (i % 7 == 0) {
-//          tvList.putNull(i);
-//        } else {
-//          tvList.putBinary(
-//              i,
-//              Binary.valueOf(
-//                  generateRandomString(
-//                      byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
-//        }
-//      }
-//      index = 0;
-//      while (reader.next()) {
-//        if (index % 7 == 0) {
-//          assertTrue(reader.isCurrentNull());
-//        } else {
-//          int length = reader.currentBinary().getLength();
-//          assertTrue(byteLengthMin <= length && length < byteLengthMax);
-//        }
-//        reader.readyForNext();
-//        index++;
-//      }
-//
-//      index = 0;
-//      for (int i = 0; i < 2 * ITERATION_TIMES; ++i) {
-//        if (i % 7 == 0) {
-//          tvList.putNull(i);
-//        } else {
-//          tvList.putBinary(
-//              i,
-//              Binary.valueOf(
-//                  generateRandomString(
-//                      byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
-//        }
-//        reader.next();
-//        if (index % 7 == 0) {
-//          assertTrue(reader.isCurrentNull());
-//        } else {
-//          int length = reader.currentBinary().getLength();
-//          assertTrue(byteLengthMin <= length && length < byteLengthMax);
-//        }
-//        reader.readyForNext();
-//        index++;
-//      }
-//
-//      assertEquals(ITERATION_TIMES * 5, tvList.size());
-//    } catch (QueryProcessException | IOException e) {
-//      e.printStackTrace();
-//      fail(e.getMessage());
-//    }
-//  }
+  //  @Test
+  //  public void testMemoryControl() {
+  //    initESTVList(TSDataType.TEXT);
+  //
+  //    int byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 2;
+  //    int byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 8;
+  //    Random random = new Random();
+  //
+  //    try {
+  //      for (int i = 0; i < ITERATION_TIMES; ++i) {
+  //        if (i % 7 == 0) {
+  //          tvList.putNull(i);
+  //        } else {
+  //          tvList.putBinary(
+  //              i,
+  //              Binary.valueOf(
+  //                  generateRandomString(
+  //                      byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+  //        }
+  //      }
+  //      LayerPointReader reader = tvList.constructPointReaderUsingTrivialEvictionStrategy();
+  //      int index = 0;
+  //      while (reader.next()) {
+  //        if (index % 7 == 0) {
+  //          assertTrue(reader.isCurrentNull());
+  //        } else {
+  //          int length = reader.currentBinary().getLength();
+  //          assertTrue(byteLengthMin <= length && length < byteLengthMax);
+  //        }
+  //        reader.readyForNext();
+  //        index++;
+  //      }
+  //
+  //      byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 16;
+  //      byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 32;
+  //      for (int i = 0; i < ITERATION_TIMES; ++i) {
+  //        if (i % 7 == 0) {
+  //          tvList.putNull(i);
+  //        } else {
+  //          tvList.putBinary(
+  //              i,
+  //              Binary.valueOf(
+  //                  generateRandomString(
+  //                      byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+  //        }
+  //      }
+  //      index = 0;
+  //      while (reader.next()) {
+  //        if (index % 7 == 0) {
+  //          assertTrue(reader.isCurrentNull());
+  //        } else {
+  //          int length = reader.currentBinary().getLength();
+  //          assertTrue(byteLengthMin <= length && length < byteLengthMax);
+  //        }
+  //        reader.readyForNext();
+  //        index++;
+  //      }
+  //
+  //      byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 256;
+  //      byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 512;
+  //      for (int i = 0; i < ITERATION_TIMES; ++i) {
+  //        if (i % 7 == 0) {
+  //          tvList.putNull(i);
+  //        } else {
+  //          tvList.putBinary(
+  //              i,
+  //              Binary.valueOf(
+  //                  generateRandomString(
+  //                      byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+  //        }
+  //      }
+  //      index = 0;
+  //      while (reader.next()) {
+  //        if (index % 7 == 0) {
+  //          assertTrue(reader.isCurrentNull());
+  //        } else {
+  //          int length = reader.currentBinary().getLength();
+  //          assertTrue(byteLengthMin <= length && length < byteLengthMax);
+  //        }
+  //        reader.readyForNext();
+  //        index++;
+  //      }
+  //
+  //      index = 0;
+  //      for (int i = 0; i < 2 * ITERATION_TIMES; ++i) {
+  //        if (i % 7 == 0) {
+  //          tvList.putNull(i);
+  //        } else {
+  //          tvList.putBinary(
+  //              i,
+  //              Binary.valueOf(
+  //                  generateRandomString(
+  //                      byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+  //        }
+  //        reader.next();
+  //        if (index % 7 == 0) {
+  //          assertTrue(reader.isCurrentNull());
+  //        } else {
+  //          int length = reader.currentBinary().getLength();
+  //          assertTrue(byteLengthMin <= length && length < byteLengthMax);
+  //        }
+  //        reader.readyForNext();
+  //        index++;
+  //      }
+  //
+  //      assertEquals(ITERATION_TIMES * 5, tvList.size());
+  //    } catch (QueryProcessException | IOException e) {
+  //      e.printStackTrace();
+  //      fail(e.getMessage());
+  //    }
+  //  }
 
   private String generateRandomString(int length) {
     StringBuilder stringBuilder = new StringBuilder();

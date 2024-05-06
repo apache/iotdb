@@ -51,6 +51,7 @@ public class ElasticSerializableRowRecordList {
   protected List<SerializableRowRecordList> rowLists;
   /** Mark bitMaps of correct index when one row has at least one null field. */
   protected List<BitMap> bitMaps;
+
   protected List<Integer> blockCount;
 
   protected int size;
@@ -201,7 +202,8 @@ public class ElasticSerializableRowRecordList {
         if (rowLists.size() == 0) {
           return false;
         }
-        return externalIndex + 1 < rowLists.size() || internalIndex + 1 < rowLists.get(externalIndex).getBlockCount();
+        return externalIndex + 1 < rowLists.size()
+            || internalIndex + 1 < rowLists.get(externalIndex).getBlockCount();
       }
 
       @Override
@@ -266,7 +268,8 @@ public class ElasticSerializableRowRecordList {
     int begin = 0, end = 0;
     int total = columns[0].getPositionCount();
     while (total > 0) {
-      int consumed = Math.min(total, internalRowRecordListCapacity) - size % internalRowRecordListCapacity;
+      int consumed =
+          Math.min(total, internalRowRecordListCapacity) - size % internalRowRecordListCapacity;
       end += consumed;
 
       // Construct sub-regions
@@ -294,7 +297,8 @@ public class ElasticSerializableRowRecordList {
     checkExpansion();
 
     while (nullCount > 0) {
-      int consumed = Math.min(nullCount, internalRowRecordListCapacity) - size % internalRowRecordListCapacity;
+      int consumed =
+          Math.min(nullCount, internalRowRecordListCapacity) - size % internalRowRecordListCapacity;
 
       cache.get(size / internalRowRecordListCapacity).putNulls(consumed);
       markBitMapByGivenNullCount(consumed);
@@ -405,7 +409,8 @@ public class ElasticSerializableRowRecordList {
     }
     newElasticSerializableRowRecordList.size =
         internalListEvictionUpperBound * newInternalRowRecordListCapacity;
-    newElasticSerializableRowRecordList.putNulls(evictionUpperBound - newElasticSerializableRowRecordList.size);
+    newElasticSerializableRowRecordList.putNulls(
+        evictionUpperBound - newElasticSerializableRowRecordList.size);
 
     ColumnBuilder[] builders = constructColumnBuilders(dataTypes, size - evictionUpperBound);
     for (int i = evictionUpperBound; i < size; ++i) {

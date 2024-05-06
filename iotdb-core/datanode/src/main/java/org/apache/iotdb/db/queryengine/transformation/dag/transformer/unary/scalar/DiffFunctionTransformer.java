@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -43,7 +42,7 @@ public class DiffFunctionTransformer extends UnaryTransformer {
 
   @Override
   public TSDataType[] getDataTypes() {
-    return new TSDataType[]{TSDataType.DOUBLE};
+    return new TSDataType[] {TSDataType.DOUBLE};
   }
 
   @Override
@@ -62,8 +61,7 @@ public class DiffFunctionTransformer extends UnaryTransformer {
         transformDouble(columns, builder);
         return;
       default:
-        throw new QueryProcessException(
-            "Unsupported data type: " + layerReaderDataType);
+        throw new QueryProcessException("Unsupported data type: " + layerReaderDataType);
     }
   }
 

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -37,8 +36,7 @@ public abstract class ArithmeticBinaryTransformer extends BinaryTransformer {
 
   @Override
   protected void checkType() {
-    if (leftReaderDataType == TSDataType.BOOLEAN
-        || rightReaderDataType == TSDataType.BOOLEAN) {
+    if (leftReaderDataType == TSDataType.BOOLEAN || rightReaderDataType == TSDataType.BOOLEAN) {
       throw new UnSupportedDataTypeException(TSDataType.BOOLEAN.name());
     }
     if (leftReaderDataType == TSDataType.TEXT || rightReaderDataType == TSDataType.TEXT) {
@@ -47,7 +45,9 @@ public abstract class ArithmeticBinaryTransformer extends BinaryTransformer {
   }
 
   @Override
-  protected void transformAndCache(Column leftValues, int leftIndex, Column rightValues, int rightIndex, ColumnBuilder builder) throws QueryProcessException {
+  protected void transformAndCache(
+      Column leftValues, int leftIndex, Column rightValues, int rightIndex, ColumnBuilder builder)
+      throws QueryProcessException {
     double leftValue = castValueToDouble(leftValues, leftReaderDataType, leftIndex);
     double rightValue = castValueToDouble(rightValues, rightReaderDataType, rightIndex);
     builder.writeDouble(evaluate(leftValue, rightValue));
@@ -57,6 +57,6 @@ public abstract class ArithmeticBinaryTransformer extends BinaryTransformer {
 
   @Override
   public TSDataType[] getDataTypes() {
-    return new TSDataType[]{TSDataType.DOUBLE};
+    return new TSDataType[] {TSDataType.DOUBLE};
   }
 }

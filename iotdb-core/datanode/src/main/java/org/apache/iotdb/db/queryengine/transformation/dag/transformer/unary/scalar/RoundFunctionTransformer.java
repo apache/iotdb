@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -34,8 +33,7 @@ public class RoundFunctionTransformer extends UnaryTransformer {
 
   protected int places;
 
-  public RoundFunctionTransformer(
-      LayerReader layerReader, TSDataType targetDataType, int places) {
+  public RoundFunctionTransformer(LayerReader layerReader, TSDataType targetDataType, int places) {
     super(layerReader);
     this.targetDataType = targetDataType;
     this.places = places;
@@ -43,11 +41,12 @@ public class RoundFunctionTransformer extends UnaryTransformer {
 
   @Override
   public TSDataType[] getDataTypes() {
-    return new TSDataType[]{targetDataType};
+    return new TSDataType[] {targetDataType};
   }
 
   @Override
-  protected void transform(Column[] columns, ColumnBuilder builder) throws QueryProcessException, IOException {
+  protected void transform(Column[] columns, ColumnBuilder builder)
+      throws QueryProcessException, IOException {
     switch (layerReaderDataType) {
       case INT32:
         transformInt(columns, builder);
@@ -66,6 +65,7 @@ public class RoundFunctionTransformer extends UnaryTransformer {
             String.format("Unsupported source dataType: %s", layerReaderDataType));
     }
   }
+
   private void transformInt(Column[] columns, ColumnBuilder builder) {
     int count = columns[0].getPositionCount();
 

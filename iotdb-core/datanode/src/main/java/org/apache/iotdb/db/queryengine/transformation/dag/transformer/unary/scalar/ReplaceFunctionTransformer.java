@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar;
 
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -40,14 +39,13 @@ public class ReplaceFunctionTransformer extends UnaryTransformer {
     this.to = to;
 
     if (layerReaderDataType != TSDataType.TEXT) {
-      throw new UnSupportedDataTypeException(
-          "Unsupported data type: " + layerReaderDataType);
+      throw new UnSupportedDataTypeException("Unsupported data type: " + layerReaderDataType);
     }
   }
 
   @Override
   public TSDataType[] getDataTypes() {
-    return new TSDataType[]{TSDataType.TEXT};
+    return new TSDataType[] {TSDataType.TEXT};
   }
 
   @Override

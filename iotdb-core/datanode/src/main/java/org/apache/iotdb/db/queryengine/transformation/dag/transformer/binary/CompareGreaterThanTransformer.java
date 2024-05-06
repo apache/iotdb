@@ -27,8 +27,7 @@ import static org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils.
 
 public class CompareGreaterThanTransformer extends CompareBinaryTransformer {
 
-  public CompareGreaterThanTransformer(
-      LayerReader leftReader, LayerReader rightReader) {
+  public CompareGreaterThanTransformer(LayerReader leftReader, LayerReader rightReader) {
     super(leftReader, rightReader);
   }
 
@@ -36,8 +35,8 @@ public class CompareGreaterThanTransformer extends CompareBinaryTransformer {
   protected Evaluator constructNumberEvaluator() {
     return (Column leftValues, int leftIndex, Column rightValues, int rightIndex) ->
         Double.compare(
-            castValueToDouble(leftValues, leftReaderDataType, leftIndex),
-            castValueToDouble(rightValues, rightReaderDataType, rightIndex))
+                castValueToDouble(leftValues, leftReaderDataType, leftIndex),
+                castValueToDouble(rightValues, rightReaderDataType, rightIndex))
             > 0;
   }
 

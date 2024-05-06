@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterato
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,12 +131,16 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
       @Override
       public Column[] current() {
-        return cacheConsumed == 0?  new Column[] {cachedValues, cachedTimes} : new Column[] { cachedValues.subColumn(cacheConsumed), cachedTimes.subColumn(cacheConsumed) };
+        return cacheConsumed == 0
+            ? new Column[] {cachedValues, cachedTimes}
+            : new Column[] {
+              cachedValues.subColumn(cacheConsumed), cachedTimes.subColumn(cacheConsumed)
+            };
       }
 
       @Override
       public TSDataType[] getDataTypes() {
-        return new TSDataType[]{parentLayerReaderDataType};
+        return new TSDataType[] {parentLayerReaderDataType};
       }
     };
   }

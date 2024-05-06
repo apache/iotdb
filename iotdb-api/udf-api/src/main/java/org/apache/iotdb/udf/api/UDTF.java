@@ -84,7 +84,8 @@ public interface UDTF extends UDF {
   @SuppressWarnings("squid:S112")
   void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception;
 
-  default void transform(Column[] columns, ColumnBuilder timesBuilder, ColumnBuilder valuesBuilder) throws Exception {
+  default void transform(Column[] columns, ColumnBuilder timesBuilder, ColumnBuilder valuesBuilder)
+      throws Exception {
     throw new UnsupportedOperationException();
   }
 

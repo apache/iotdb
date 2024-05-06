@@ -37,9 +37,8 @@ public class IsNullTransformer extends UnaryTransformer {
 
   @Override
   public TSDataType[] getDataTypes() {
-    return new TSDataType[]{TSDataType.BOOLEAN};
+    return new TSDataType[] {TSDataType.BOOLEAN};
   }
-
 
   /*
    * currNull = true, isNot = false -> cachedBoolean = true;
@@ -49,7 +48,8 @@ public class IsNullTransformer extends UnaryTransformer {
    * So we need use '^' here.
    */
   @Override
-  protected void transform(Column[] columns, ColumnBuilder builder) throws QueryProcessException, IOException {
+  protected void transform(Column[] columns, ColumnBuilder builder)
+      throws QueryProcessException, IOException {
     int count = columns[0].getPositionCount();
     boolean[] isNulls = columns[0].isNull();
     for (int i = 0; i < count; i++) {

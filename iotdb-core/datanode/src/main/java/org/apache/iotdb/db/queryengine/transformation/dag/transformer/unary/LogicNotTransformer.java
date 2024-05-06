@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,11 +41,12 @@ public class LogicNotTransformer extends UnaryTransformer {
 
   @Override
   public TSDataType[] getDataTypes() {
-    return new TSDataType[]{TSDataType.BOOLEAN};
+    return new TSDataType[] {TSDataType.BOOLEAN};
   }
 
   @Override
-  protected void transform(Column[] columns, ColumnBuilder builder) throws QueryProcessException, IOException {
+  protected void transform(Column[] columns, ColumnBuilder builder)
+      throws QueryProcessException, IOException {
     int count = columns[0].getPositionCount();
     boolean[] values = columns[0].getBooleans();
     boolean[] isNulls = columns[0].isNull();

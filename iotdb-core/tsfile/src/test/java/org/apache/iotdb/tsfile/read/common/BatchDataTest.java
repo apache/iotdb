@@ -23,8 +23,8 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-
 import org.apache.iotdb.tsfile.utils.Binary;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -189,7 +189,6 @@ public class BatchDataTest {
 
     Assert.assertEquals(total, expected);
   }
-
 
   @Test
   public void batchInsertBooleansSpilledTest2() {
@@ -494,7 +493,6 @@ public class BatchDataTest {
     Assert.assertEquals(total, expected);
   }
 
-
   @Test
   public void batchInsertIntsSpilledTest2() {
     // Test without 'equal to realThreshold' insertion
@@ -505,7 +503,7 @@ public class BatchDataTest {
     // Less than realThreshold
     int step1 = 800;
     int step2 = 400;
-    int total= step1 + step2;
+    int total = step1 + step2;
     long[] times = new long[total];
     int[] values = new int[total];
     for (int i = 0; i < total; i++) {
@@ -797,7 +795,6 @@ public class BatchDataTest {
     Assert.assertEquals(total, expected);
   }
 
-
   @Test
   public void batchInsertLongsSpilledTest2() {
     // Test without 'equal to realThreshold' insertion
@@ -935,7 +932,6 @@ public class BatchDataTest {
       iterator.next();
     }
     Assert.assertEquals(step1, expected);
-
 
     batchData.putLongs(times, values, step1, total);
     while (iterator.hasNext()) {
@@ -1100,7 +1096,6 @@ public class BatchDataTest {
 
     Assert.assertEquals(total, expected);
   }
-
 
   @Test
   public void batchInsertFloatsSpilledTest2() {
@@ -1402,7 +1397,6 @@ public class BatchDataTest {
 
     Assert.assertEquals(total, expected);
   }
-
 
   @Test
   public void batchInsertDoublesSpilledTest2() {
@@ -1708,7 +1702,6 @@ public class BatchDataTest {
 
     Assert.assertEquals(total, expected);
   }
-
 
   @Test
   public void batchInsertBinariesSpilledTest2() {

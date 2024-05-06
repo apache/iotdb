@@ -84,18 +84,18 @@ public class InTransformer extends UnaryTransformer {
         stringSet = values;
         break;
       default:
-        throw new UnsupportedOperationException(
-            "unsupported data type: " + layerReaderDataType);
+        throw new UnsupportedOperationException("unsupported data type: " + layerReaderDataType);
     }
   }
 
   @Override
   public TSDataType[] getDataTypes() {
-    return new TSDataType[]{TSDataType.BOOLEAN};
+    return new TSDataType[] {TSDataType.BOOLEAN};
   }
 
   @Override
-  protected void transform(Column[] columns, ColumnBuilder builder) throws QueryProcessException, IOException {
+  protected void transform(Column[] columns, ColumnBuilder builder)
+      throws QueryProcessException, IOException {
     switch (layerReaderDataType) {
       case INT32:
         transformInt(columns, builder);

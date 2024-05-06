@@ -27,8 +27,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import static org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils.castValueToDouble;
 
 public class CompareNonEqualTransformer extends CompareBinaryTransformer {
-  public CompareNonEqualTransformer(
-      LayerReader leftReader, LayerReader rightReader)
+  public CompareNonEqualTransformer(LayerReader leftReader, LayerReader rightReader)
       throws UnSupportedDataTypeException {
     super(leftReader, rightReader);
   }
@@ -37,8 +36,8 @@ public class CompareNonEqualTransformer extends CompareBinaryTransformer {
   protected Evaluator constructNumberEvaluator() {
     return (Column leftValues, int leftIndex, Column rightValues, int rightIndex) ->
         Double.compare(
-            castValueToDouble(leftValues, leftReaderDataType, leftIndex),
-            castValueToDouble(rightValues, rightReaderDataType, rightIndex))
+                castValueToDouble(leftValues, leftReaderDataType, leftIndex),
+                castValueToDouble(rightValues, rightReaderDataType, rightIndex))
             != 0;
   }
 

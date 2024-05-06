@@ -21,11 +21,13 @@ public class TypeUtils {
       case TEXT:
         return new BinaryColumnBuilder(null, count);
       default:
-        throw new UnSupportedDataTypeException("Do not support create ColumnBuilder with data type" + type);
+        throw new UnSupportedDataTypeException(
+            "Do not support create ColumnBuilder with data type" + type);
     }
   }
 
-  public static double castValueToDouble(Column column, TSDataType type, int index) throws QueryProcessException {
+  public static double castValueToDouble(Column column, TSDataType type, int index)
+      throws QueryProcessException {
     switch (type) {
       case INT32:
         return column.getInt(index);
@@ -36,7 +38,7 @@ public class TypeUtils {
       case DOUBLE:
         return column.getDouble(index);
       case BOOLEAN:
-        return column.getBoolean(index)? 1 : 0;
+        return column.getBoolean(index) ? 1 : 0;
       default:
         throw new QueryProcessException("Unsupported data type: " + type);
     }

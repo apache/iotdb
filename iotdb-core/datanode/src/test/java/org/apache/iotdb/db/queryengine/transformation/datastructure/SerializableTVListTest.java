@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.*;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -43,7 +44,8 @@ public class SerializableTVListTest extends SerializableListTest {
   @Test
   public void serializableBooleanTVListTest() {
     List<Boolean> compared = new ArrayList<>();
-    SerializableTVList target = SerializableTVList.newSerializableTVList(TSDataType.BOOLEAN, QUERY_ID);
+    SerializableTVList target =
+        SerializableTVList.newSerializableTVList(TSDataType.BOOLEAN, QUERY_ID);
 
     serializeAndDeserializeBooleanTVListTest(compared, target);
   }
@@ -51,7 +53,8 @@ public class SerializableTVListTest extends SerializableListTest {
   @Test
   public void serializableIntTVListTest() {
     List<Integer> compared = new ArrayList<>();
-    SerializableTVList target = SerializableTVList.newSerializableTVList(TSDataType.INT32, QUERY_ID);
+    SerializableTVList target =
+        SerializableTVList.newSerializableTVList(TSDataType.INT32, QUERY_ID);
 
     serializeAndDeserializeIntTVListTest(compared, target);
   }
@@ -59,7 +62,8 @@ public class SerializableTVListTest extends SerializableListTest {
   @Test
   public void serializableLongTVListTest() {
     List<Long> compared = new ArrayList<>();
-    SerializableTVList target = SerializableTVList.newSerializableTVList(TSDataType.INT64, QUERY_ID);
+    SerializableTVList target =
+        SerializableTVList.newSerializableTVList(TSDataType.INT64, QUERY_ID);
 
     serializeAndDeserializeLongTVListTest(compared, target);
   }
@@ -67,7 +71,8 @@ public class SerializableTVListTest extends SerializableListTest {
   @Test
   public void serializableFloatTVListTest() {
     List<Float> compared = new ArrayList<>();
-    SerializableTVList target = SerializableTVList.newSerializableTVList(TSDataType.FLOAT, QUERY_ID);
+    SerializableTVList target =
+        SerializableTVList.newSerializableTVList(TSDataType.FLOAT, QUERY_ID);
 
     serializeAndDeserializeFloatTVListTest(compared, target);
   }
@@ -75,7 +80,8 @@ public class SerializableTVListTest extends SerializableListTest {
   @Test
   public void serializableDoubleTVListTest() {
     List<Double> compared = new ArrayList<>();
-    SerializableTVList target = SerializableTVList.newSerializableTVList(TSDataType.DOUBLE, QUERY_ID);
+    SerializableTVList target =
+        SerializableTVList.newSerializableTVList(TSDataType.DOUBLE, QUERY_ID);
 
     serializeAndDeserializeDoubleTVListTest(compared, target);
   }
@@ -88,7 +94,8 @@ public class SerializableTVListTest extends SerializableListTest {
     serializeAndDeserializeBinaryTVListTest(compared, target);
   }
 
-  private void serializeAndDeserializeBooleanTVListTest(List<Boolean> compared, SerializableTVList target) {
+  private void serializeAndDeserializeBooleanTVListTest(
+      List<Boolean> compared, SerializableTVList target) {
     generateBooleanData(compared, target);
 
     serializeAndDeserializeBooleanListOnce(compared, target);
@@ -109,7 +116,8 @@ public class SerializableTVListTest extends SerializableListTest {
     target.putColumns((TimeColumn) times, values);
   }
 
-  protected void serializeAndDeserializeBooleanListOnce(List<Boolean> compared, SerializableTVList target) {
+  protected void serializeAndDeserializeBooleanListOnce(
+      List<Boolean> compared, SerializableTVList target) {
     try {
       target.serialize();
     } catch (IOException e) {
@@ -139,7 +147,8 @@ public class SerializableTVListTest extends SerializableListTest {
     assertEquals(ITERATION_TIMES, count);
   }
 
-  private void serializeAndDeserializeIntTVListTest(List<Integer> compared, SerializableTVList target) {
+  private void serializeAndDeserializeIntTVListTest(
+      List<Integer> compared, SerializableTVList target) {
     generateIntData(compared, target);
 
     serializeAndDeserializeIntListOnce(compared, target);
@@ -160,7 +169,8 @@ public class SerializableTVListTest extends SerializableListTest {
     target.putColumns((TimeColumn) times, values);
   }
 
-  protected void serializeAndDeserializeIntListOnce(List<Integer> compared, SerializableTVList target) {
+  protected void serializeAndDeserializeIntListOnce(
+      List<Integer> compared, SerializableTVList target) {
     try {
       target.serialize();
     } catch (IOException e) {
@@ -182,7 +192,7 @@ public class SerializableTVListTest extends SerializableListTest {
       int value = iterator.currentInt();
 
       assertEquals(count, time);
-      assertEquals((int)compared.get(count), value);
+      assertEquals((int) compared.get(count), value);
 
       iterator.next();
       count++;
@@ -190,7 +200,8 @@ public class SerializableTVListTest extends SerializableListTest {
     assertEquals(ITERATION_TIMES, count);
   }
 
-  private void serializeAndDeserializeLongTVListTest(List<Long> compared, SerializableTVList target) {
+  private void serializeAndDeserializeLongTVListTest(
+      List<Long> compared, SerializableTVList target) {
     generateLongData(compared, target);
 
     serializeAndDeserializeLongListOnce(compared, target);
@@ -211,7 +222,8 @@ public class SerializableTVListTest extends SerializableListTest {
     target.putColumns((TimeColumn) times, values);
   }
 
-  protected void serializeAndDeserializeLongListOnce(List<Long> compared, SerializableTVList target) {
+  protected void serializeAndDeserializeLongListOnce(
+      List<Long> compared, SerializableTVList target) {
     try {
       target.serialize();
     } catch (IOException e) {
@@ -233,7 +245,7 @@ public class SerializableTVListTest extends SerializableListTest {
       long value = iterator.currentLong();
 
       assertEquals(count, time);
-      assertEquals((long)compared.get(count), value);
+      assertEquals((long) compared.get(count), value);
 
       iterator.next();
       count++;
@@ -241,7 +253,8 @@ public class SerializableTVListTest extends SerializableListTest {
     assertEquals(ITERATION_TIMES, count);
   }
 
-  private void serializeAndDeserializeFloatTVListTest(List<Float> compared, SerializableTVList target) {
+  private void serializeAndDeserializeFloatTVListTest(
+      List<Float> compared, SerializableTVList target) {
     generateFloatData(compared, target);
 
     serializeAndDeserializeFloatListOnce(compared, target);
@@ -262,7 +275,8 @@ public class SerializableTVListTest extends SerializableListTest {
     target.putColumns((TimeColumn) times, values);
   }
 
-  protected void serializeAndDeserializeFloatListOnce(List<Float> compared, SerializableTVList target) {
+  protected void serializeAndDeserializeFloatListOnce(
+      List<Float> compared, SerializableTVList target) {
     try {
       target.serialize();
     } catch (IOException e) {
@@ -292,7 +306,8 @@ public class SerializableTVListTest extends SerializableListTest {
     assertEquals(ITERATION_TIMES, count);
   }
 
-  private void serializeAndDeserializeDoubleTVListTest(List<Double> compared, SerializableTVList target) {
+  private void serializeAndDeserializeDoubleTVListTest(
+      List<Double> compared, SerializableTVList target) {
     generateDoubleData(compared, target);
 
     serializeAndDeserializeDoubleListOnce(compared, target);
@@ -313,7 +328,8 @@ public class SerializableTVListTest extends SerializableListTest {
     target.putColumns((TimeColumn) times, values);
   }
 
-  protected void serializeAndDeserializeDoubleListOnce(List<Double> compared, SerializableTVList target) {
+  protected void serializeAndDeserializeDoubleListOnce(
+      List<Double> compared, SerializableTVList target) {
     try {
       target.serialize();
     } catch (IOException e) {
@@ -343,7 +359,8 @@ public class SerializableTVListTest extends SerializableListTest {
     assertEquals(ITERATION_TIMES, count);
   }
 
-  private void serializeAndDeserializeBinaryTVListTest(List<Binary> compared, SerializableTVList target) {
+  private void serializeAndDeserializeBinaryTVListTest(
+      List<Binary> compared, SerializableTVList target) {
     generateBinaryData(compared, target);
 
     serializeAndDeserializeBinaryListOnce(compared, target);
@@ -365,7 +382,8 @@ public class SerializableTVListTest extends SerializableListTest {
     target.putColumns((TimeColumn) times, values);
   }
 
-  protected void serializeAndDeserializeBinaryListOnce(List<Binary> compared, SerializableTVList target) {
+  protected void serializeAndDeserializeBinaryListOnce(
+      List<Binary> compared, SerializableTVList target) {
     try {
       target.serialize();
     } catch (IOException e) {

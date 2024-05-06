@@ -58,9 +58,7 @@ public abstract class TernaryTransformer extends Transformer {
   protected int thirdConsumed;
 
   protected TernaryTransformer(
-      LayerReader firstReader,
-      LayerReader secondReader,
-      LayerReader thirdReader) {
+      LayerReader firstReader, LayerReader secondReader, LayerReader thirdReader) {
     this.firstReader = firstReader;
     this.secondReader = secondReader;
     this.thirdReader = thirdReader;
@@ -196,10 +194,19 @@ public abstract class TernaryTransformer extends Transformer {
       if (firstConsumed < firstEnd && secondConsumed < secondEnd && thirdConsumed < thirdEnd) {
         if (firstTime != Long.MIN_VALUE) {
           timeBuilder.writeLong(firstTime);
-          if (firstColumns[0].isNull(firstConsumed) || secondColumns[0].isNull(secondConsumed) || thirdColumns[0].isNull(thirdConsumed)) {
+          if (firstColumns[0].isNull(firstConsumed)
+              || secondColumns[0].isNull(secondConsumed)
+              || thirdColumns[0].isNull(thirdConsumed)) {
             valueBuilder.appendNull();
           } else {
-            transformAndCache(firstColumns[0], firstConsumed, secondColumns[0], secondConsumed, thirdColumns[0], thirdConsumed, valueBuilder);
+            transformAndCache(
+                firstColumns[0],
+                firstConsumed,
+                secondColumns[0],
+                secondConsumed,
+                thirdColumns[0],
+                thirdConsumed,
+                valueBuilder);
           }
         }
       }
@@ -207,14 +214,22 @@ public abstract class TernaryTransformer extends Transformer {
 
     Column times = timeBuilder.build();
     Column values = valueBuilder.build();
-    return new Column[] { values, times };
+    return new Column[] {values, times};
   }
 
   private long getTime(LayerReader reader, Column[] columns, int index) {
-    return reader.isConstantPointReader()? Long.MIN_VALUE : columns[1].getLong(index);
+    return reader.isConstantPointReader() ? Long.MIN_VALUE : columns[1].getLong(index);
   }
 
-  protected abstract void transformAndCache(Column firstValues, int firstIndex, Column secondValues, int secondIndex, Column thirdValues, int thirdIndex, ColumnBuilder builder) throws QueryProcessException, IOException;
+  protected abstract void transformAndCache(
+      Column firstValues,
+      int firstIndex,
+      Column secondValues,
+      int secondIndex,
+      Column thirdValues,
+      int thirdIndex,
+      ColumnBuilder builder)
+      throws QueryProcessException, IOException;
 
   protected abstract void checkType();
 

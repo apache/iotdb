@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -41,25 +40,26 @@ public class RegularTransformer extends UnaryTransformer {
     this.pattern = pattern;
 
     if (layerReaderDataType != TSDataType.TEXT) {
-      throw new UnSupportedDataTypeException(
-          "Unsupported data type: " + layerReaderDataType);
+      throw new UnSupportedDataTypeException("Unsupported data type: " + layerReaderDataType);
     }
   }
 
   @Override
   public TSDataType[] getDataTypes() {
-    return new TSDataType[]{TSDataType.BOOLEAN};
+    return new TSDataType[] {TSDataType.BOOLEAN};
   }
 
   @Override
-  protected void transform(Column[] columns, ColumnBuilder builder) throws QueryProcessException, IOException {
+  protected void transform(Column[] columns, ColumnBuilder builder)
+      throws QueryProcessException, IOException {
     int count = columns[0].getPositionCount();
     Binary[] binaries = columns[0].getBinaries();
     boolean[] isNulls = columns[0].isNull();
 
     for (int i = 0; i < count; i++) {
       if (!isNulls[i]) {
-        boolean res = pattern.matcher(binaries[i].getStringValue(TSFileConfig.STRING_CHARSET)).find();
+        boolean res =
+            pattern.matcher(binaries[i].getStringValue(TSFileConfig.STRING_CHARSET)).find();
         builder.writeBoolean(res);
       } else {
         builder.appendNull();

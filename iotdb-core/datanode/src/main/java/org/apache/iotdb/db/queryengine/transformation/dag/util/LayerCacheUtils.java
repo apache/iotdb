@@ -29,7 +29,8 @@ public class LayerCacheUtils {
 
   private LayerCacheUtils() {}
 
-  public static YieldableState yieldPoints(LayerReader source, ElasticSerializableTVList target) throws Exception {
+  public static YieldableState yieldPoints(LayerReader source, ElasticSerializableTVList target)
+      throws Exception {
     final YieldableState yieldableState = source.yield();
     if (yieldableState != YieldableState.YIELDABLE) {
       return yieldableState;

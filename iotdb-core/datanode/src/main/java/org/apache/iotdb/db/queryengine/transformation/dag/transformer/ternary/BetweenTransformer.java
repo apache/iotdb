@@ -21,7 +21,6 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.ternary;
 
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -43,7 +42,12 @@ public class BetweenTransformer extends CompareTernaryTransformer {
 
   @Override
   protected Evaluator constructNumberEvaluator() {
-    return (Column firstValues, int firstIndex, Column secondValues, int secondIndex, Column thirdValues, int thirdIndex) ->
+    return (Column firstValues,
+        int firstIndex,
+        Column secondValues,
+        int secondIndex,
+        Column thirdValues,
+        int thirdIndex) ->
         ((Double.compare(
                         castValueToDouble(firstValues, firstReaderDataType, firstIndex),
                         castValueToDouble(secondValues, secondReaderDataType, secondIndex))
@@ -57,7 +61,12 @@ public class BetweenTransformer extends CompareTernaryTransformer {
 
   @Override
   protected Evaluator constructTextEvaluator() {
-    return (Column firstValues, int firstIndex, Column secondValues, int secondIndex, Column thirdValues, int thirdIndex) ->
+    return (Column firstValues,
+        int firstIndex,
+        Column secondValues,
+        int secondIndex,
+        Column thirdValues,
+        int thirdIndex) ->
         ((TransformUtils.compare(
                         firstValues.getBinary(firstIndex), secondValues.getBinary(secondIndex))
                     >= 0)

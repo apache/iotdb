@@ -97,9 +97,9 @@ public class QueryDataSetInputLayer {
       // Cache columns from child operator
       YieldableState yieldableState = queryDataSet.yield();
       if (YieldableState.YIELDABLE.equals(yieldableState)) {
-        iterator.next();
         cachedColumns = queryDataSet.currentBlock();
         rowList.put(cachedColumns);
+        iterator.next();
         // No need to call `.consume()` like method in queryDataSet
       }
       return yieldableState;
@@ -107,7 +107,8 @@ public class QueryDataSetInputLayer {
 
     @Override
     public void consumed(int consumed) {
-      assert cachedColumns != null && cacheConsumed + consumed <= cachedColumns[0].getPositionCount();
+      assert cachedColumns != null
+          && cacheConsumed + consumed <= cachedColumns[0].getPositionCount();
       cacheConsumed += consumed;
 
       safetyPile.moveForward(consumed);
@@ -134,12 +135,16 @@ public class QueryDataSetInputLayer {
     public Column[] current() {
       Column valueColumn = cachedColumns[columnIndex];
       Column timeColumn = cachedColumns[cachedColumns.length - 1];
-      return cacheConsumed == 0? new Column[] { valueColumn, timeColumn } : new Column[]{ valueColumn.subColumn(cacheConsumed), timeColumn.subColumn(cacheConsumed) };
+      return cacheConsumed == 0
+          ? new Column[] {valueColumn, timeColumn}
+          : new Column[] {
+            valueColumn.subColumn(cacheConsumed), timeColumn.subColumn(cacheConsumed)
+          };
     }
 
     @Override
     public TSDataType[] getDataTypes() {
-      return new TSDataType[]{dataTypes[columnIndex]};
+      return new TSDataType[] {dataTypes[columnIndex]};
     }
 
     @Override

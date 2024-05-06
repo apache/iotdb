@@ -109,7 +109,8 @@ public class TransformUtils {
           valueRecorder.recordLong(tvList.getLong(tvList.getPointCount() - 2));
           valueRecorder.setRecorded(true);
         }
-        res = Math.abs(tvList.getLong(tvList.getPointCount() - 1) - valueRecorder.getLong()) > delta;
+        res =
+            Math.abs(tvList.getLong(tvList.getPointCount() - 1) - valueRecorder.getLong()) > delta;
         if (res) {
           valueRecorder.recordLong(tvList.getLong(tvList.getPointCount() - 1));
         }
@@ -119,7 +120,9 @@ public class TransformUtils {
           valueRecorder.recordFloat(tvList.getFloat(tvList.getPointCount() - 2));
           valueRecorder.setRecorded(true);
         }
-        res = Math.abs(tvList.getFloat(tvList.getPointCount() - 1) - valueRecorder.getFloat()) > delta;
+        res =
+            Math.abs(tvList.getFloat(tvList.getPointCount() - 1) - valueRecorder.getFloat())
+                > delta;
         if (res) {
           valueRecorder.recordFloat(tvList.getFloat(tvList.getPointCount() - 1));
         }
@@ -129,7 +132,9 @@ public class TransformUtils {
           valueRecorder.recordDouble(tvList.getDouble(tvList.getPointCount() - 2));
           valueRecorder.setRecorded(true);
         }
-        res = Math.abs(tvList.getDouble(tvList.getPointCount() - 1) - valueRecorder.getDouble()) > delta;
+        res =
+            Math.abs(tvList.getDouble(tvList.getPointCount() - 1) - valueRecorder.getDouble())
+                > delta;
         if (res) {
           valueRecorder.recordDouble(tvList.getDouble(tvList.getPointCount() - 1));
         }

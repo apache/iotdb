@@ -35,8 +35,8 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
-
 import org.apache.iotdb.udf.api.utils.RowImpl;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,21 +120,23 @@ public class UDTFExecutor {
       TimeColumn timeColumn = collector.buildTimeColumn();
       Column valueColumn = collector.buildValueColumn();
 
-      cachedColumns = new Column[] { valueColumn, timeColumn };
+      cachedColumns = new Column[] {valueColumn, timeColumn};
       outputStorage.putColumn(timeColumn, valueColumn);
     } catch (Exception e) {
       onError("transform(Row, PointCollector)", e);
     }
   }
 
-  public void execute(Column[] columns, TimeColumnBuilder timeColumnBuilder, ColumnBuilder valueColumnBuilder) throws Exception {
+  public void execute(
+      Column[] columns, TimeColumnBuilder timeColumnBuilder, ColumnBuilder valueColumnBuilder)
+      throws Exception {
     try {
       udtf.transform(columns, timeColumnBuilder, valueColumnBuilder);
 
       Column timeColumn = timeColumnBuilder.build();
       Column valueColumn = valueColumnBuilder.build();
 
-      cachedColumns = new Column[]{valueColumn, timeColumn};
+      cachedColumns = new Column[] {valueColumn, timeColumn};
       outputStorage.putColumn((TimeColumn) timeColumn, valueColumn);
     } catch (UnsupportedOperationException e) {
       int colCount = columns.length;
@@ -146,7 +148,8 @@ public class UDTFExecutor {
         dataTypes[i] = columns[i].getDataType();
       }
 
-      PointCollectorAdaptor collector = new PointCollectorAdaptor(timeColumnBuilder, valueColumnBuilder);
+      PointCollectorAdaptor collector =
+          new PointCollectorAdaptor(timeColumnBuilder, valueColumnBuilder);
       // iterate each row
       for (int i = 0; i < rowCount; i++) {
         // collect values from columns
@@ -164,7 +167,7 @@ public class UDTFExecutor {
       TimeColumn timeColumn = collector.buildTimeColumn();
       Column valueColumn = collector.buildValueColumn();
 
-      cachedColumns = new Column[] { valueColumn, timeColumn };
+      cachedColumns = new Column[] {valueColumn, timeColumn};
       outputStorage.putColumn(timeColumn, valueColumn);
     } catch (Exception e) {
       onError("Mappable UDTF execution error", e);

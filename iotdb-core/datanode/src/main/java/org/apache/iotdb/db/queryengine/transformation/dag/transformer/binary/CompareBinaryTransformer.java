@@ -33,13 +33,13 @@ public abstract class CompareBinaryTransformer extends BinaryTransformer {
   @FunctionalInterface
   protected interface Evaluator {
 
-    boolean evaluate(Column leftValues, int leftIndex, Column rightValues, int rightIndex) throws QueryProcessException, IOException;
+    boolean evaluate(Column leftValues, int leftIndex, Column rightValues, int rightIndex)
+        throws QueryProcessException, IOException;
   }
 
   protected final Evaluator evaluator;
 
-  protected CompareBinaryTransformer(
-      LayerReader leftReader, LayerReader rightReader)
+  protected CompareBinaryTransformer(LayerReader leftReader, LayerReader rightReader)
       throws UnSupportedDataTypeException {
     super(leftReader, rightReader);
     evaluator =
@@ -62,19 +62,20 @@ public abstract class CompareBinaryTransformer extends BinaryTransformer {
         || rightReaderDataType.equals(TSDataType.BOOLEAN)) {
       throw new UnSupportedDataTypeException(TSDataType.BOOLEAN.toString());
     }
-    if (leftReaderDataType.equals(TSDataType.TEXT)
-        || rightReaderDataType.equals(TSDataType.TEXT)) {
+    if (leftReaderDataType.equals(TSDataType.TEXT) || rightReaderDataType.equals(TSDataType.TEXT)) {
       throw new UnSupportedDataTypeException(TSDataType.TEXT.toString());
     }
   }
 
   @Override
-  protected final void transformAndCache(Column leftValues, int leftIndex, Column rightValues, int rightIndex, ColumnBuilder builder) throws QueryProcessException, IOException {
+  protected final void transformAndCache(
+      Column leftValues, int leftIndex, Column rightValues, int rightIndex, ColumnBuilder builder)
+      throws QueryProcessException, IOException {
     builder.writeBoolean(evaluator.evaluate(leftValues, leftIndex, rightValues, rightIndex));
   }
 
   @Override
   public TSDataType[] getDataTypes() {
-    return new TSDataType[]{TSDataType.BOOLEAN};
+    return new TSDataType[] {TSDataType.BOOLEAN};
   }
 }

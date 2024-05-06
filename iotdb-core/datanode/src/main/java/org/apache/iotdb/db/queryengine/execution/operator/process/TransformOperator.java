@@ -29,7 +29,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.builder.EvaluationDAGBuilder;
@@ -197,7 +196,6 @@ public class TransformOperator implements ProcessOperator {
         TimeColumn outputTimeColumn = outputColumns[index].getTimeColumn();
         long time = outputTimeColumn.getLong(currentIndexes[index]);
         timeHeap.add(time);
-        currentIndexes[index]++;
         return YieldableState.YIELDABLE;
       }
     }
@@ -299,7 +297,8 @@ public class TransformOperator implements ProcessOperator {
     }
   }
 
-  protected YieldableState collectDataPoint(ColumnBuilder writer, long currentTime, int index) throws Exception {
+  protected YieldableState collectDataPoint(ColumnBuilder writer, long currentTime, int index)
+      throws Exception {
     YieldableState state = transformers[index].yield();
     if (state == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
       writer.appendNull();

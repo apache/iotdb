@@ -85,7 +85,7 @@ public class SerializableRowRecordList implements SerializableList {
           throw new UnSupportedDataTypeException(dataType.toString());
       }
     }
-    rowLength += ReadWriteIOUtils.BIT_LEN;  // null field
+    rowLength += ReadWriteIOUtils.BIT_LEN; // null field
 
     int capacity = (int) (memoryLimitInMB * MB / 2 / rowLength);
     if (capacity <= 0) {
@@ -205,7 +205,7 @@ public class SerializableRowRecordList implements SerializableList {
 
     int total = 0;
     long time = -1;
-    for (Column[] block: blocks) {
+    for (Column[] block : blocks) {
       int length = block[0].getPositionCount();
       if (index < total + length) {
         int offset = index - total;
@@ -220,8 +220,7 @@ public class SerializableRowRecordList implements SerializableList {
   }
 
   @Deprecated
-  public void putRow(Object[] rowRecord) {
-  }
+  public void putRow(Object[] rowRecord) {}
 
   public void putNulls(int nullCount) {
     assert isAllNull;
@@ -256,7 +255,8 @@ public class SerializableRowRecordList implements SerializableList {
     // Write subsequent rows
     for (int i = 0; i < skipPrefixNullCount; ++i) {
       Object[] rowRecord = getRowSkipPrefixNulls(i);
-      serializedByteLength += ReadWriteIOUtils.write((long) rowRecord[valueColumnCount], outputStream);
+      serializedByteLength +=
+          ReadWriteIOUtils.write((long) rowRecord[valueColumnCount], outputStream);
       serializedByteLength += writeFields(rowRecord, outputStream);
     }
     serializationRecorder.setSerializedByteLength(serializedByteLength);

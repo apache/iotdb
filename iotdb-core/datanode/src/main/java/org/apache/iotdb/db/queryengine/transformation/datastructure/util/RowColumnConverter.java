@@ -10,7 +10,8 @@ public class RowColumnConverter {
     return new TimeColumnBuilder(null, expectedEntries);
   }
 
-  public static ColumnBuilder constructValueColumnBuilder(TSDataType dataType, int expectedEntries) {
+  public static ColumnBuilder constructValueColumnBuilder(
+      TSDataType dataType, int expectedEntries) {
     switch (dataType) {
       case INT32:
         return new IntColumnBuilder(null, expectedEntries);
@@ -29,7 +30,8 @@ public class RowColumnConverter {
     }
   }
 
-  public static ColumnBuilder[] constructColumnBuilders(TSDataType[] dataTypes, int expectedEntries) {
+  public static ColumnBuilder[] constructColumnBuilders(
+      TSDataType[] dataTypes, int expectedEntries) {
     ColumnBuilder[] builders = new ColumnBuilder[dataTypes.length + 1];
     // Value column builders
     for (int i = 0; i < dataTypes.length; i++) {
@@ -41,7 +43,8 @@ public class RowColumnConverter {
     return builders;
   }
 
-  public static void appendRowInColumnBuilders(TSDataType[] dataTypes, Object[] row, ColumnBuilder[] builders) {
+  public static void appendRowInColumnBuilders(
+      TSDataType[] dataTypes, Object[] row, ColumnBuilder[] builders) {
     // Write value field
     for (int i = 0; i < dataTypes.length; i++) {
       Object field = row[i];
@@ -69,7 +72,7 @@ public class RowColumnConverter {
       }
     }
     // Write time field
-    builders[dataTypes.length].writeLong((long)row[dataTypes.length]);
+    builders[dataTypes.length].writeLong((long) row[dataTypes.length]);
   }
 
   public static Column[] buildColumnsByBuilders(TSDataType[] dataTypes, ColumnBuilder[] builders) {

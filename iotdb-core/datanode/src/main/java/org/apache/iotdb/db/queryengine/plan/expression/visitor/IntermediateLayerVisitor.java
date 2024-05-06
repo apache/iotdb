@@ -73,12 +73,10 @@ public class IntermediateLayerVisitor
     if (!context.expressionIntermediateLayerMap.containsKey(unaryExpression)) {
       float memoryBudgetInMB = context.memoryAssigner.assign();
 
-      IntermediateLayer intermediateLayer =
-          this.process(unaryExpression.getExpression(), context);
+      IntermediateLayer intermediateLayer = this.process(unaryExpression.getExpression(), context);
 
       Transformer transformer =
-          getConcreteUnaryTransformer(
-              unaryExpression, intermediateLayer.constructReader());
+          getConcreteUnaryTransformer(unaryExpression, intermediateLayer.constructReader());
 
       // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
       // yet. And since a ConstantLayerPointReader won't produce too much IO,
@@ -213,8 +211,7 @@ public class IntermediateLayerVisitor
     if (!context.expressionIntermediateLayerMap.containsKey(timestampOperand)) {
       float memoryBudgetInMB = context.memoryAssigner.assign();
 
-      LayerReader parentLayerReader =
-          context.rawTimeSeriesInputLayer.constructTimeReader();
+      LayerReader parentLayerReader = context.rawTimeSeriesInputLayer.constructTimeReader();
 
       context.expressionIntermediateLayerMap.put(
           timestampOperand,
@@ -273,8 +270,7 @@ public class IntermediateLayerVisitor
     throw new UnsupportedOperationException("CASE expression cannot be used with non-mappable UDF");
   }
 
-  private Transformer getConcreteUnaryTransformer(
-      Expression expression, LayerReader parentReader) {
+  private Transformer getConcreteUnaryTransformer(Expression expression, LayerReader parentReader) {
     switch (expression.getExpressionType()) {
       case IN:
         InExpression inExpression = (InExpression) expression;
@@ -304,38 +300,28 @@ public class IntermediateLayerVisitor
       LayerReader rightParentLayerReader) {
     switch (expression.getExpressionType()) {
       case ADDITION:
-        return new ArithmeticAdditionTransformer(
-            leftParentLayerReader, rightParentLayerReader);
+        return new ArithmeticAdditionTransformer(leftParentLayerReader, rightParentLayerReader);
       case SUBTRACTION:
-        return new ArithmeticSubtractionTransformer(
-            leftParentLayerReader, rightParentLayerReader);
+        return new ArithmeticSubtractionTransformer(leftParentLayerReader, rightParentLayerReader);
       case MULTIPLICATION:
         return new ArithmeticMultiplicationTransformer(
             leftParentLayerReader, rightParentLayerReader);
       case DIVISION:
-        return new ArithmeticDivisionTransformer(
-            leftParentLayerReader, rightParentLayerReader);
+        return new ArithmeticDivisionTransformer(leftParentLayerReader, rightParentLayerReader);
       case MODULO:
-        return new ArithmeticModuloTransformer(
-            leftParentLayerReader, rightParentLayerReader);
+        return new ArithmeticModuloTransformer(leftParentLayerReader, rightParentLayerReader);
       case EQUAL_TO:
-        return new CompareEqualToTransformer(
-            leftParentLayerReader, rightParentLayerReader);
+        return new CompareEqualToTransformer(leftParentLayerReader, rightParentLayerReader);
       case NON_EQUAL:
-        return new CompareNonEqualTransformer(
-            leftParentLayerReader, rightParentLayerReader);
+        return new CompareNonEqualTransformer(leftParentLayerReader, rightParentLayerReader);
       case GREATER_THAN:
-        return new CompareGreaterThanTransformer(
-            leftParentLayerReader, rightParentLayerReader);
+        return new CompareGreaterThanTransformer(leftParentLayerReader, rightParentLayerReader);
       case GREATER_EQUAL:
-        return new CompareGreaterEqualTransformer(
-            leftParentLayerReader, rightParentLayerReader);
+        return new CompareGreaterEqualTransformer(leftParentLayerReader, rightParentLayerReader);
       case LESS_THAN:
-        return new CompareLessThanTransformer(
-            leftParentLayerReader, rightParentLayerReader);
+        return new CompareLessThanTransformer(leftParentLayerReader, rightParentLayerReader);
       case LESS_EQUAL:
-        return new CompareLessEqualTransformer(
-            leftParentLayerReader, rightParentLayerReader);
+        return new CompareLessEqualTransformer(leftParentLayerReader, rightParentLayerReader);
       case LOGIC_AND:
         return new LogicAndTransformer(leftParentLayerReader, rightParentLayerReader);
       case LOGIC_OR:
@@ -390,10 +376,10 @@ public class IntermediateLayerVisitor
       case SESSION_TIME_WINDOW:
       case STATE_WINDOW:
         throw new UnsupportedOperationException("In development");
-//        return new UDFQueryRowWindowTransformer(
-//            udfInputIntermediateLayer.constructRowWindowReader(
-//                accessStrategy, context.memoryAssigner.assign()),
-//            executor);
+        //        return new UDFQueryRowWindowTransformer(
+        //            udfInputIntermediateLayer.constructRowWindowReader(
+        //                accessStrategy, context.memoryAssigner.assign()),
+        //            executor);
       default:
         throw new UnsupportedOperationException("Unsupported transformer access strategy");
     }

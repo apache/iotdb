@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils;
@@ -41,15 +40,13 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
   private boolean isLeftDone;
   private boolean isRightDone;
 
-  protected LogicBinaryTransformer(
-      LayerReader leftReader, LayerReader rightReader) {
+  protected LogicBinaryTransformer(LayerReader leftReader, LayerReader rightReader) {
     super(leftReader, rightReader);
   }
 
   @Override
   protected void checkType() {
-    if (leftReaderDataType != TSDataType.BOOLEAN
-        || rightReaderDataType != TSDataType.BOOLEAN) {
+    if (leftReaderDataType != TSDataType.BOOLEAN || rightReaderDataType != TSDataType.BOOLEAN) {
       throw new UnSupportedDataTypeException("Unsupported data type: " + TSDataType.BOOLEAN);
     }
   }
@@ -68,7 +65,7 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
         }
 
         boolean[] allFalse = new boolean[count];
-        leftColumns = new Column[]{new BooleanColumn(count, Optional.empty(), allFalse)};
+        leftColumns = new Column[] {new BooleanColumn(count, Optional.empty(), allFalse)};
       } else {
         return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
       }
@@ -86,7 +83,7 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
         }
 
         boolean[] allFalse = new boolean[count];
-        rightColumns = new Column[]{new BooleanColumn(count, Optional.empty(), allFalse)};
+        rightColumns = new Column[] {new BooleanColumn(count, Optional.empty(), allFalse)};
       } else {
         return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
       }
@@ -132,8 +129,10 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
       int leftOffset = leftConsumed;
       int rightOffset = rightConsumed;
       for (int i = 0; i < count; i++) {
-        boolean leftValue = !leftColumns[0].isNull(leftConsumed) && leftColumns[0].getBoolean(leftConsumed);
-        boolean rightValue = !rightColumns[0].isNull(rightConsumed) && rightColumns[0].getBoolean(rightConsumed);
+        boolean leftValue =
+            !leftColumns[0].isNull(leftConsumed) && leftColumns[0].getBoolean(leftConsumed);
+        boolean rightValue =
+            !rightColumns[0].isNull(rightConsumed) && rightColumns[0].getBoolean(rightConsumed);
         boolean result = evaluate(leftValue, rightValue);
         valueBuilder.writeBoolean(result);
 
@@ -143,7 +142,7 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
 
       Column values = valueBuilder.build();
       if (isCurrentConstant) {
-        return new Column[] { values };
+        return new Column[] {values};
       }
       Column times;
       if (isLeftReaderConstant) {
@@ -151,7 +150,7 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
       } else {
         times = leftColumns[1].getRegion(leftOffset, count);
       }
-      return new Column[] { values, times };
+      return new Column[] {values, times};
     }
 
     Column leftTimes = leftColumns[1], leftValues = leftColumns[0];
@@ -171,8 +170,10 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
           rightConsumed++;
         }
       } else {
-        boolean leftValue = !leftColumns[0].isNull(leftConsumed) && leftColumns[0].getBoolean(leftConsumed);
-        boolean rightValue = !rightColumns[0].isNull(rightConsumed) && rightColumns[0].getBoolean(rightConsumed);
+        boolean leftValue =
+            !leftColumns[0].isNull(leftConsumed) && leftColumns[0].getBoolean(leftConsumed);
+        boolean rightValue =
+            !rightColumns[0].isNull(rightConsumed) && rightColumns[0].getBoolean(rightConsumed);
         boolean result = evaluate(leftValue, rightValue);
         valueBuilder.writeBoolean(result);
 
@@ -183,18 +184,20 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
 
     Column times = timeBuilder.build();
     Column values = valueBuilder.build();
-    return new Column[] { values, times };
+    return new Column[] {values, times};
   }
 
   protected abstract boolean evaluate(boolean leftOperand, boolean rightOperand);
 
   @Override
-  protected void transformAndCache(Column leftValues, int leftIndex, Column rightValues, int rightIndex, ColumnBuilder builder) throws QueryProcessException, IOException {
+  protected void transformAndCache(
+      Column leftValues, int leftIndex, Column rightValues, int rightIndex, ColumnBuilder builder)
+      throws QueryProcessException, IOException {
     throw new UnsupportedOperationException();
   }
 
   @Override
   public TSDataType[] getDataTypes() {
-    return new TSDataType[]{TSDataType.BOOLEAN};
+    return new TSDataType[] {TSDataType.BOOLEAN};
   }
 }

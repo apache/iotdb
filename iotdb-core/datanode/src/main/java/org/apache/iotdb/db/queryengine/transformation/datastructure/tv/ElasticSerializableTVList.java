@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.transformation.datastructure.tv;
 
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.Cache;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.TVListForwardIterator;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -36,9 +34,9 @@ public class ElasticSerializableTVList {
 
   public static ElasticSerializableTVList newElasticSerializableTVList(
       TSDataType dataType, String queryId, float memoryLimitInMB, int cacheSize) {
-//    return dataType.equals(TSDataType.TEXT)
-//        ? new ElasticSerializableBinaryTVList(queryId, memoryLimitInMB, cacheSize)
-//        : new ElasticSerializableTVList(dataType, queryId, memoryLimitInMB, cacheSize);
+    //    return dataType.equals(TSDataType.TEXT)
+    //        ? new ElasticSerializableBinaryTVList(queryId, memoryLimitInMB, cacheSize)
+    //        : new ElasticSerializableTVList(dataType, queryId, memoryLimitInMB, cacheSize);
     return new ElasticSerializableTVList(dataType, queryId, memoryLimitInMB, cacheSize);
   }
 
@@ -123,27 +121,19 @@ public class ElasticSerializableTVList {
   }
 
   public float getFloat(int index) throws IOException {
-    return cache
-        .get(index / internalTVListCapacity)
-        .getFloat(index % internalTVListCapacity);
+    return cache.get(index / internalTVListCapacity).getFloat(index % internalTVListCapacity);
   }
 
   public double getDouble(int index) throws IOException {
-    return cache
-        .get(index / internalTVListCapacity)
-        .getDouble(index % internalTVListCapacity);
+    return cache.get(index / internalTVListCapacity).getDouble(index % internalTVListCapacity);
   }
 
   public boolean getBoolean(int index) throws IOException {
-    return cache
-        .get(index / internalTVListCapacity)
-        .getBoolean(index % internalTVListCapacity);
+    return cache.get(index / internalTVListCapacity).getBoolean(index % internalTVListCapacity);
   }
 
   public org.apache.iotdb.tsfile.utils.Binary getBinary(int index) throws IOException {
-    return cache
-        .get(index / internalTVListCapacity)
-        .getBinary(index % internalTVListCapacity);
+    return cache.get(index / internalTVListCapacity).getBinary(index % internalTVListCapacity);
   }
 
   public String getString(int index) throws IOException {
@@ -163,8 +153,8 @@ public class ElasticSerializableTVList {
 
   public TVListForwardIterator constructIterator() {
     return new TVListForwardIterator() {
-      private int externalIndex;  // Which tvList
-      private int internalIndex = -1;  // Which block in tvList
+      private int externalIndex; // Which tvList
+      private int internalIndex = -1; // Which block in tvList
 
       @Override
       public TimeColumn currentTimes() throws IOException {
@@ -182,7 +172,8 @@ public class ElasticSerializableTVList {
         if (tvLists.size() == 0) {
           return false;
         }
-        return externalIndex + 1 < tvLists.size() || internalIndex + 1 < tvLists.get(externalIndex).getColumnCount();
+        return externalIndex + 1 < tvLists.size()
+            || internalIndex + 1 < tvLists.get(externalIndex).getColumnCount();
       }
 
       @Override

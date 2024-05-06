@@ -24,7 +24,6 @@ import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.*;
 
@@ -73,8 +72,9 @@ public abstract class UnaryTransformer extends Transformer {
     // Build cache
     Column valueColumn = builder.build();
     Column timeColumn = columns[1];
-    return new Column[]{valueColumn, timeColumn};
+    return new Column[] {valueColumn, timeColumn};
   }
 
-  protected void transform(Column[] columns, ColumnBuilder builder) throws QueryProcessException, IOException {}
+  protected void transform(Column[] columns, ColumnBuilder builder)
+      throws QueryProcessException, IOException {}
 }

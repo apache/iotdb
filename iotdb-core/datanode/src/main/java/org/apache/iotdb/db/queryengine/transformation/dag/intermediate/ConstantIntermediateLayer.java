@@ -23,10 +23,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.transformation.api.*;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.ConstantInputReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-
-import java.io.IOException;
 
 /** IntermediateLayer for constants. */
 public class ConstantIntermediateLayer extends IntermediateLayer {
@@ -39,7 +35,6 @@ public class ConstantIntermediateLayer extends IntermediateLayer {
     super(expression, queryId, memoryBudgetInMB);
     constantLayerReader = new ConstantInputReader(expression);
   }
-
 
   @Override
   public LayerReader constructReader() {

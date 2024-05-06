@@ -50,7 +50,7 @@ public class SerializableTVList implements SerializableList {
   }
 
   protected static int calculateCapacity(TSDataType dataType, float memoryLimitInMB) {
-    int rowLength = ReadWriteIOUtils.LONG_LEN;  // timestamp
+    int rowLength = ReadWriteIOUtils.LONG_LEN; // timestamp
     switch (dataType) { // value
       case INT32:
         rowLength += ReadWriteIOUtils.INT_LEN;
@@ -68,14 +68,20 @@ public class SerializableTVList implements SerializableList {
         rowLength += ReadWriteIOUtils.BOOLEAN_LEN;
         break;
       case TEXT:
-        rowLength += MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE + SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
+        rowLength +=
+            MIN_OBJECT_HEADER_SIZE
+                + MIN_ARRAY_HEADER_SIZE
+                + SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
         break;
       default:
         throw new UnSupportedDataTypeException(dataType.toString());
     }
     rowLength += ReadWriteIOUtils.BIT_LEN;
 
-    int capacity = TSFileConfig.ARRAY_CAPACITY_THRESHOLD * (int)(memoryLimitInMB * MB / 2 / (rowLength * TSFileConfig.ARRAY_CAPACITY_THRESHOLD));
+    int capacity =
+        TSFileConfig.ARRAY_CAPACITY_THRESHOLD
+            * (int)
+                (memoryLimitInMB * MB / 2 / (rowLength * TSFileConfig.ARRAY_CAPACITY_THRESHOLD));
     if (capacity <= 0) {
       throw new RuntimeException("Memory is not enough for current query.");
     }
@@ -281,7 +287,8 @@ public class SerializableTVList implements SerializableList {
     serializationRecorder.setSerializedByteLength(totalByteLength);
   }
 
-  private int serializeByDataType(Column times, Column values, PublicBAOS outputStream) throws IOException {
+  private int serializeByDataType(Column times, Column values, PublicBAOS outputStream)
+      throws IOException {
     assert times.getPositionCount() == values.getPositionCount();
 
     int byteLength = 0;
@@ -344,7 +351,8 @@ public class SerializableTVList implements SerializableList {
     valueColumns.add(valueBuilder.build());
   }
 
-  private void deserializeByDataType(ColumnBuilder timeBuilder, ColumnBuilder valueBuilder, ByteBuffer byteBuffer) {
+  private void deserializeByDataType(
+      ColumnBuilder timeBuilder, ColumnBuilder valueBuilder, ByteBuffer byteBuffer) {
     switch (dataType) {
       case BOOLEAN:
         for (int i = 0; i < size; i++) {

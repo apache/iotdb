@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,7 +81,6 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
     return Arrays.asList(dataTypes);
   }
 
-
   @Override
   public YieldableState yield() throws Exception {
     tsBlockBuilder.reset();
@@ -105,11 +105,12 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       currentTime = timeHeap.pollFirst();
 
       timeBuilder.writeLong(currentTime); // Time
-      appendRowInBuilder(currentTime);    // Values
+      appendRowInBuilder(currentTime); // Values
       tsBlockBuilder.declarePosition();
 
       updateTimeHeap();
     }
+    timeHeap.clear();
 
     cachedTsBlock = tsBlockBuilder.build();
     return YieldableState.YIELDABLE;
@@ -135,7 +136,9 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       } // Do nothing for YieldableState.NOT_YIELDABLE_NO_MORE_DATA
     }
 
-    return timeHeap.isEmpty()? YieldableState.NOT_YIELDABLE_NO_MORE_DATA : YieldableState.YIELDABLE;
+    return timeHeap.isEmpty()
+        ? YieldableState.NOT_YIELDABLE_NO_MORE_DATA
+        : YieldableState.YIELDABLE;
   }
 
   private boolean canSkipInputTVColumns(int index) {
