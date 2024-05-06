@@ -66,7 +66,7 @@ public class IoTDBDataBackTool {
   static AtomicInteger fileCount = new AtomicInteger(0);
   static AtomicInteger targetFileCount = new AtomicInteger(0);
   static AtomicInteger processFileCount = new AtomicInteger(0);
-  static final String filename = "data.txt";
+  static final String filename = "backup.log";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractDataTool.class);
 
@@ -185,32 +185,69 @@ public class IoTDBDataBackTool {
         System.exit(0);
       }
 
-      countConfigNodeFile(targetDirString.toString(), copyMap, cnMapProperties);
-      countDataNodeFile(targetDirString.toString(), copyMap, dnDataDirsMap, dnMapProperties);
-      countNodeBack(targetDirString.toString(), copyMap);
+      if (nodeTypeParam.equalsIgnoreCase("confignode")) {
+        countConfigNodeFile(targetDirString.toString(), copyMap, cnMapProperties);
+        countNodeBack(targetDirString.toString(), copyMap);
+        for (Map.Entry<String, String> entry : copyMap.entrySet()) {
+          countFiles(entry.getKey());
+        }
 
-      for (Map.Entry<String, String> entry : copyMap.entrySet()) {
-        countFiles(entry.getKey());
-      }
-      for (Map.Entry<String, String> entry : dnDataDirsMap.entrySet()) {
-        countFiles(entry.getKey());
+        ioTDBDataBack(copyMap, dnDataDirsMap);
+        propertiesFileUpdate(
+            targetDirString.toString()
+                + File.separatorChar
+                + "conf"
+                + File.separatorChar
+                + CONFIG_NODE_CONF_NAME,
+            cnMapProperties);
+      } else if (nodeTypeParam.equalsIgnoreCase("datanode")) {
+        countDataNodeFile(targetDirString.toString(), copyMap, dnDataDirsMap, dnMapProperties);
+        countNodeBack(targetDirString.toString(), copyMap);
+        checkQuickMode(dnDataDirsMap);
+        for (Map.Entry<String, String> entry : copyMap.entrySet()) {
+          countFiles(entry.getKey());
+        }
+        for (Map.Entry<String, String> entry : dnDataDirsMap.entrySet()) {
+          countFiles(entry.getKey());
+        }
+
+        ioTDBDataBack(copyMap, dnDataDirsMap);
+        propertiesFileUpdate(
+            targetDirString.toString()
+                + File.separatorChar
+                + "conf"
+                + File.separatorChar
+                + DATA_NODE_CONF_NAME,
+            dnMapProperties);
+      } else if (nodeTypeParam.equalsIgnoreCase("all") || nodeTypeParam.isEmpty()) {
+        countConfigNodeFile(targetDirString.toString(), copyMap, cnMapProperties);
+        countDataNodeFile(targetDirString.toString(), copyMap, dnDataDirsMap, dnMapProperties);
+        countNodeBack(targetDirString.toString(), copyMap);
+        checkQuickMode(dnDataDirsMap);
+        for (Map.Entry<String, String> entry : copyMap.entrySet()) {
+          countFiles(entry.getKey());
+        }
+        for (Map.Entry<String, String> entry : dnDataDirsMap.entrySet()) {
+          countFiles(entry.getKey());
+        }
+
+        ioTDBDataBack(copyMap, dnDataDirsMap);
+        propertiesFileUpdate(
+            targetDirString.toString()
+                + File.separatorChar
+                + "conf"
+                + File.separatorChar
+                + CONFIG_NODE_CONF_NAME,
+            cnMapProperties);
+        propertiesFileUpdate(
+            targetDirString.toString()
+                + File.separatorChar
+                + "conf"
+                + File.separatorChar
+                + DATA_NODE_CONF_NAME,
+            dnMapProperties);
       }
 
-      ioTDBDataBack(copyMap, dnDataDirsMap);
-      propertiesFileUpdate(
-          targetDirString.toString()
-              + File.separatorChar
-              + "conf"
-              + File.separatorChar
-              + CONFIG_NODE_CONF_NAME,
-          cnMapProperties);
-      propertiesFileUpdate(
-          targetDirString.toString()
-              + File.separatorChar
-              + "conf"
-              + File.separatorChar
-              + DATA_NODE_CONF_NAME,
-          dnMapProperties);
     } else {
       if (targetDirParam != null && targetDirParam.length() > 0) {
         targetDirString.append(targetDirParam);
@@ -238,6 +275,7 @@ public class IoTDBDataBackTool {
       } else if (nodeTypeParam.equalsIgnoreCase("datanode")) {
         countNodeBack(targetDirString.toString(), copyMap);
         countDataNodeFile(targetDirString.toString(), copyMap, dnDataDirsMap, dnMapProperties);
+
         for (Map.Entry<String, String> entry : copyMap.entrySet()) {
           countFiles(entry.getKey());
         }
@@ -287,6 +325,16 @@ public class IoTDBDataBackTool {
     }
     LOGGER.info("all operations are complete");
     delFile(filename);
+  }
+
+  private static void checkQuickMode(Map<String, String> dnDataDirsMap) {
+    for (Map.Entry<String, String> entry : dnDataDirsMap.entrySet()) {
+      File backupDir = new File(entry.getValue());
+      if (backupDir.exists()) {
+        LOGGER.error("The backup folder already exists:{}", entry.getValue());
+        System.exit(0);
+      }
+    }
   }
 
   private static void isDirectoryInsideOrSame(Map<String, String> copyMap) {
@@ -456,7 +504,16 @@ public class IoTDBDataBackTool {
     }
     String targetDnDataDirs = "";
     if (targetDataDirParam.isEmpty()) {
-      targetDnDataDirs = sourceDnDataDirsCoverTargetDnDataDirsHandler(dnDataDirs);
+      targetDataDirParam =
+          targetDirParam
+              + File.separatorChar
+              + "data"
+              + File.separatorChar
+              + "datanode"
+              + File.separatorChar
+              + "data";
+      targetDnDataDirs = getCreateDnDataPathString(dnDataDirs, targetDataDirParam, "data");
+      // targetDnDataDirs = sourceDnDataDirsCoverTargetDnDataDirsHandler(dnDataDirs);
     } else {
       targetDnDataDirs = getCreateDnDataPathString(dnDataDirs, targetDataDirParam, "data");
     }
@@ -558,7 +615,7 @@ public class IoTDBDataBackTool {
       StringBuilder subTargetDataDir = new StringBuilder();
       for (int i = 0; i < sourcePathList.length; i++) {
         String path = sourcePathList[i];
-        path = path + "_back";
+        path = path + "_backup";
         if (i == sourcePathList.length - 1) {
           subTargetDataDir.append(path);
         } else {
@@ -579,7 +636,16 @@ public class IoTDBDataBackTool {
     StringBuilder subTargetDataDir = new StringBuilder();
     for (int i = 0; i < sourcePathList.length; i++) {
       if (i == sourcePathList.length - 1) {
-        subTargetDataDir.append(targetDirs).append(File.separatorChar).append("wal").append(i + 1);
+        if (sourcePathList.length == 1) {
+          subTargetDataDir.append(targetDirs);
+        } else {
+          subTargetDataDir
+              .append(targetDirs)
+              .append(File.separatorChar)
+              .append("wal")
+              .append(i + 1);
+        }
+
       } else {
         subTargetDataDir
             .append(targetDirs)
@@ -611,7 +677,9 @@ public class IoTDBDataBackTool {
         String[] sourcePathArray = sourcePathsList[i].split(",");
         for (int j = 0; j < sourcePathArray.length; j++) {
           String newPath = targetPathsList[0];
-          if (sourcePathsList.length == 1 && targetPathsList.length == 1) {
+          if (sourcePathsList.length == 1
+              && targetPathsList.length == 1
+              && sourcePathArray.length == 1) {
             newPath = newPath + File.separatorChar + dirType;
           } else {
             newPath = newPath + File.separatorChar + dirType + num;
@@ -635,7 +703,9 @@ public class IoTDBDataBackTool {
           if (targetPathArray.length == 1) {
             for (int j = 0; j < sourcePathArray.length; j++) {
               String newPath = "";
-              if (sourcePathsList.length == 1 && targetPathsList.length == 1) {
+              if (sourcePathsList.length == 1
+                  && targetPathsList.length == 1
+                  && sourcePathArray.length == 1) {
                 newPath = targetPathArray[0] + File.separatorChar + dirType;
               } else {
                 newPath = targetPathArray[0] + File.separatorChar + dirType + num;
@@ -682,7 +752,9 @@ public class IoTDBDataBackTool {
         String[] sourcePathArray = sourcePathsList[i].split(",");
         for (int j = 0; j < sourcePathArray.length; j++) {
           String newPath = targetPathsList[0];
-          if (sourcePathsList.length == 1 && targetPathsList.length == 1) {
+          if (sourcePathsList.length == 1
+              && targetPathsList.length == 1
+              && sourcePathArray.length == 1) {
             newPath = newPath + File.separatorChar + dirType;
           } else {
             newPath = newPath + File.separatorChar + dirType + num;
@@ -701,7 +773,9 @@ public class IoTDBDataBackTool {
           if (targetPathArray.length == 1) {
             for (int j = 0; j < sourcePathArray.length; j++) {
               String newPath = "";
-              if (sourcePathsList.length == 1 && targetPathsList.length == 1) {
+              if (sourcePathsList.length == 1
+                  && targetPathsList.length == 1
+                  && sourcePathArray.length == 1) {
                 newPath = targetPathArray[0] + File.separatorChar + dirType;
               } else {
                 newPath = targetPathArray[0] + File.separatorChar + dirType + num;
@@ -823,7 +897,10 @@ public class IoTDBDataBackTool {
               if (processFileCount.get() > targetFileCount.get()) {
                 writeFileData(filename, processFileCount.get());
                 LOGGER.info(
-                    "total file number:" + fileCount + ",backup file number:" + processFileCount);
+                    "total file number:"
+                        + fileCount
+                        + ",verify the number of files:"
+                        + targetFileCount);
               } else {
                 writeFileData(filename, targetFileCount.get());
                 LOGGER.info(
@@ -877,12 +954,12 @@ public class IoTDBDataBackTool {
                   try {
                     Files.createLink(targetFile, file);
                   } catch (UnsupportedOperationException | IOException e) {
-                    LOGGER.error("link file error {}", sourceDirectory, e);
+                    LOGGER.error("link file error {}", e);
                     try {
                       Files.copy(file, targetFile, StandardCopyOption.REPLACE_EXISTING);
                     } catch (IOException ex) {
                       targetFileCount.decrementAndGet();
-                      LOGGER.error("copy file error {}", sourceDirectory, ex);
+                      LOGGER.error("copy file error {}", ex);
                     }
                   }
                 }
@@ -890,8 +967,10 @@ public class IoTDBDataBackTool {
               if (processFileCount.get() > targetFileCount.get()) {
                 writeFileData(filename, processFileCount.get());
                 LOGGER.info(
-                    "total file number:" + fileCount + ",backup file number:" + processFileCount);
-
+                    "total file number:"
+                        + fileCount
+                        + ",verify the number of files:"
+                        + targetFileCount);
               } else {
                 writeFileData(filename, targetFileCount.get());
                 LOGGER.info(
@@ -994,10 +1073,10 @@ public class IoTDBDataBackTool {
   }
 
   public static int readFileData(String filename) {
-    Path filePath = Paths.get(filename);
+    filename = sourcePath + File.separatorChar + "logs" + File.separatorChar + filename;
     createFile(filename);
-
     try {
+      Path filePath = Paths.get(filename);
       List<String> lines = Files.readAllLines(filePath, StandardCharsets.UTF_8);
       if (!lines.isEmpty()) {
         return Integer.parseInt(lines.get(0));
@@ -1009,6 +1088,7 @@ public class IoTDBDataBackTool {
   }
 
   public static void delFile(String filename) {
+    filename = sourcePath + File.separatorChar + "logs" + File.separatorChar + filename;
     File file = new File(filename);
     if (file.exists()) {
       file.delete();
@@ -1016,6 +1096,7 @@ public class IoTDBDataBackTool {
   }
 
   public static void writeFileData(String filename, int data) {
+    filename = sourcePath + File.separatorChar + "logs" + File.separatorChar + filename;
     Path filePath = Paths.get(filename);
     try {
       Files.write(filePath, Integer.toString(data).getBytes(StandardCharsets.UTF_8));
