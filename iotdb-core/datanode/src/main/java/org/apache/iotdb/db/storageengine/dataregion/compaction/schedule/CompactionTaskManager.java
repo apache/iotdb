@@ -122,6 +122,15 @@ public class CompactionTaskManager implements IService {
       candidateCompactionTaskQueue.regsitPollLastHook(
           AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
       candidateCompactionTaskQueue.regsitPollLastHook(AbstractCompactionTask::handleTaskCleanup);
+      candidateCompactionTaskQueue.regsitPollLastHook(
+          task -> {
+            if (task instanceof InnerSpaceCompactionTask
+                && ((InnerSpaceCompactionTask) task).getSumOfCompactionCount() == 0) {
+              CompactionTaskManager.getInstance()
+                  .getZeroLevelInnerCompactionTaskNum()
+                  .decrementAndGet();
+            }
+          });
       init = true;
     }
     logger.info("Compaction task manager started.");
