@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.transformation.api.*;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 
 public abstract class IntermediateLayer {
 

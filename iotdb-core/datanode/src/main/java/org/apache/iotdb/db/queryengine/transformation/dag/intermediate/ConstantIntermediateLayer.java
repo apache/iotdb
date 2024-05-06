@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.queryengine.transformation.api.*;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.ConstantInputReader;
 
 /** IntermediateLayer for constants. */

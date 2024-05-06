@@ -34,7 +34,10 @@ import java.util.Optional;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class ElasticSerializableTVListTest extends SerializableListTest {
 

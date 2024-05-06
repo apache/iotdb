@@ -34,7 +34,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.*;
+import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.appendRowInColumnBuilders;
+import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.buildColumnsByBuilders;
+import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.constructColumnBuilders;
 
 /** An elastic list of records that implements memory control using LRU strategy. */
 public class ElasticSerializableRowRecordList {

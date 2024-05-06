@@ -23,7 +23,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.column.*;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -36,7 +37,9 @@ import java.util.List;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.BinaryUtils.MIN_ARRAY_HEADER_SIZE;
 import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.BinaryUtils.MIN_OBJECT_HEADER_SIZE;
-import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.*;
+import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.appendRowInColumnBuilders;
+import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.buildColumnsByBuilders;
+import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.constructColumnBuilders;
 
 public class SerializableRowRecordList implements SerializableList {
   public static SerializableRowRecordList newSerializableRowRecordList(
