@@ -113,7 +113,7 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
     public PlanNode visitColumnInject(ColumnInjectNode node, Void context) {
       PlanNode child = node.getChild();
 
-      boolean columnInjectPushDown = doPushDown(child);
+      boolean columnInjectPushDown = doPushDown(node, child);
 
       if (columnInjectPushDown) {
         return child;
@@ -121,7 +121,7 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
       return node;
     }
 
-    private boolean doPushDown(PlanNode child) {
+    private boolean doPushDown(PlanNode node, PlanNode child) {
       boolean columnInjectPushDown = true;
       if (child instanceof SeriesAggregationSourceNode) {
         ((SeriesAggregationSourceNode) child).setOutputEndTime(true);
@@ -132,7 +132,12 @@ public class ColumnInjectionPushDown implements PlanOptimizer {
       } else if (child instanceof RawDataAggregationNode) {
         ((RawDataAggregationNode) child).setOutputEndTime(true);
       } else if (child instanceof ProjectNode) {
-        return doPushDown(((ProjectNode) child).getChild());
+        ProjectNode projectNode = (ProjectNode) child;
+        boolean pushDownToChild = doPushDown(child, projectNode.getChild());
+        if (pushDownToChild) {
+          projectNode.setOutputColumnNames(node.getOutputColumnNames());
+        }
+        return pushDownToChild;
       } else {
         columnInjectPushDown = false;
       }

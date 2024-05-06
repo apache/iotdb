@@ -315,17 +315,15 @@ public class ColumnInjectionPushDownTest {
                             aggregationDescriptorList1,
                             groupByTimeParameter,
                             false)
-                        .project("8", Arrays.asList("__endTime", "count(root.sg.d1.s1)"))
                         .columnInject("2", groupByTimeParameter)
                         .getRoot(),
                     new TestPlanBuilder()
                         .alignedAggregationScan(
-                            "9",
+                            "8",
                             schemaMap.get("aligned_root.sg.d2.a.s1"),
                             aggregationDescriptorList2,
                             groupByTimeParameter,
                             false)
-                        .project("10", Arrays.asList("__endTime", "count(root.sg.d2.a.s1)"))
                         .columnInject("5", groupByTimeParameter)
                         .getRoot()))
             .getRoot(),
@@ -343,16 +341,14 @@ public class ColumnInjectionPushDownTest {
                             aggregationDescriptorList1,
                             groupByTimeParameter,
                             true)
-                        .project("8", Arrays.asList("__endTime", "count(root.sg.d1.s1)"))
                         .getRoot(),
                     new TestPlanBuilder()
                         .alignedAggregationScan(
-                            "9",
+                            "8",
                             schemaMap.get("aligned_root.sg.d2.a.s1"),
                             aggregationDescriptorList2,
                             groupByTimeParameter,
                             true)
-                        .project("10", Arrays.asList("__endTime", "count(root.sg.d2.a.s1)"))
                         .getRoot()))
             .getRoot());
   }
@@ -397,19 +393,17 @@ public class ColumnInjectionPushDownTest {
                             aggregationDescriptorList1_1,
                             groupByTimeParameter,
                             false)
-                        .project("10", Arrays.asList("__endTime", "count(root.sg.d1.s1)"))
                         .slidingWindow(
                             "2", aggregationDescriptorList2_1, groupByTimeParameter, false)
                         .columnInject("3", groupByTimeParameter)
                         .getRoot(),
                     new TestPlanBuilder()
                         .alignedAggregationScan(
-                            "11",
+                            "10",
                             schemaMap.get("aligned_root.sg.d2.a.s1"),
                             aggregationDescriptorList1_2,
                             groupByTimeParameter,
                             false)
-                        .project("12", Arrays.asList("__endTime", "count(root.sg.d2.a.s1)"))
                         .slidingWindow(
                             "6", aggregationDescriptorList2_2, groupByTimeParameter, false)
                         .columnInject("7", groupByTimeParameter)
@@ -429,18 +423,16 @@ public class ColumnInjectionPushDownTest {
                             aggregationDescriptorList1_1,
                             groupByTimeParameter,
                             false)
-                        .project("10", Arrays.asList("__endTime", "count(root.sg.d1.s1)"))
                         .slidingWindow(
                             "2", aggregationDescriptorList2_1, groupByTimeParameter, true)
                         .getRoot(),
                     new TestPlanBuilder()
                         .alignedAggregationScan(
-                            "11",
+                            "10",
                             schemaMap.get("aligned_root.sg.d2.a.s1"),
                             aggregationDescriptorList1_2,
                             groupByTimeParameter,
                             false)
-                        .project("12", Arrays.asList("__endTime", "count(root.sg.d2.a.s1)"))
                         .slidingWindow(
                             "6", aggregationDescriptorList2_2, groupByTimeParameter, true)
                         .getRoot()))
@@ -575,9 +567,7 @@ public class ColumnInjectionPushDownTest {
                                 aggregationDescriptorList1_2, aggregationDescriptorList1_1),
                             groupByTimeParameter)
                         .project(
-                            "12",
-                            Arrays.asList(
-                                "__endTime", "count(root.sg.d1.s1)", "count(root.sg.d1.s2)"))
+                            "12", Arrays.asList("count(root.sg.d1.s1)", "count(root.sg.d1.s2)"))
                         .columnInject("4", groupByTimeParameter)
                         .getRoot(),
                     new TestPlanBuilder()
@@ -588,9 +578,7 @@ public class ColumnInjectionPushDownTest {
                             groupByTimeParameter,
                             false)
                         .project(
-                            "14",
-                            Arrays.asList(
-                                "__endTime", "count(root.sg.d2.a.s1)", "count(root.sg.d2.a.s2)"))
+                            "14", Arrays.asList("count(root.sg.d2.a.s1)", "count(root.sg.d2.a.s2)"))
                         .columnInject("7", groupByTimeParameter)
                         .getRoot()))
             .getRoot(),
@@ -610,9 +598,7 @@ public class ColumnInjectionPushDownTest {
                                 aggregationDescriptorList1_2, aggregationDescriptorList1_1),
                             groupByTimeParameter)
                         .project(
-                            "12",
-                            Arrays.asList(
-                                "__endTime", "count(root.sg.d1.s1)", "count(root.sg.d1.s2)"))
+                            "12", Arrays.asList("count(root.sg.d1.s1)", "count(root.sg.d1.s2)"))
                         .columnInject("4", groupByTimeParameter)
                         .getRoot(),
                     new TestPlanBuilder()

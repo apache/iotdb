@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -250,11 +251,12 @@ public class AggregationPushDown implements PlanOptimizer {
         Map<PartialPath, List<AggregationDescriptor>> sourceToCountTimeAggregationsMap =
             new HashMap<>();
 
+        AggregationStep curStep = node.getAggregationDescriptorList().get(0).getStep();
         Set<Expression> aggregationExpressions = context.getAggregationExpressions();
         for (Expression aggregationExpression : aggregationExpressions) {
           createAggregationDescriptor(
               (FunctionExpression) aggregationExpression,
-              node.getAggregationDescriptorList().get(0).getStep(),
+              curStep,
               node.getScanOrder(),
               needCheckAscending,
               sourceToAscendingAggregationsMap,
@@ -278,10 +280,6 @@ public class AggregationPushDown implements PlanOptimizer {
                   ((SeriesAggregationSourceNode) sourceNode)
                       .setPushDownPredicate(pushDownPredicate));
         }
-        sourceNodeList.forEach(
-            sourceNode ->
-                ((SeriesAggregationSourceNode) sourceNode)
-                    .setOutputEndTime(node.isOutputEndTime()));
 
         PlanNode resultNode = convergeWithTimeJoin(sourceNodeList, node.getScanOrder(), context);
         resultNode = planProject(resultNode, node, context);
@@ -434,9 +432,11 @@ public class AggregationPushDown implements PlanOptimizer {
     }
 
     private PlanNode planProject(PlanNode resultNode, PlanNode rawNode, RewriterContext context) {
+      List<String> outputColumnNames = rawNode.getOutputColumnNames();
+      outputColumnNames.remove(ColumnHeaderConstant.ENDTIME);
       if (context.isAlignByDevice()
-          && !rawNode.getOutputColumnNames().equals(resultNode.getOutputColumnNames())) {
-        return new ProjectNode(context.genPlanNodeId(), resultNode, rawNode.getOutputColumnNames());
+          && !outputColumnNames.equals(resultNode.getOutputColumnNames())) {
+        return new ProjectNode(context.genPlanNodeId(), resultNode, outputColumnNames);
       }
       return resultNode;
     }
