@@ -222,9 +222,7 @@ public class RegionMigrateService implements IService {
     private final Logger poolLogger = LoggerFactory.getLogger(RegionMigratePool.class);
 
     private RegionMigratePool() {
-      this.pool =
-          IoTDBThreadPoolFactory.newCachedThreadPool(
-              ThreadName.REGION_MIGRATE.getName(), Runtime.getRuntime().availableProcessors() / 2);
+      this.pool = IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.REGION_MIGRATE.getName());
     }
 
     @Override
@@ -306,6 +304,10 @@ public class RegionMigrateService implements IService {
               regionId,
               i,
               e);
+        } catch (Exception e) {
+          addPeerSucceed = false;
+          throwable = e;
+          taskLogger.warn("Unexpected exception", e);
         }
         if (addPeerSucceed || throwable instanceof InterruptedException) {
           break;
@@ -404,6 +406,10 @@ public class RegionMigrateService implements IService {
               regionId,
               i,
               e);
+        } catch (Exception e) {
+          removePeerSucceed = false;
+          throwable = e;
+          taskLogger.warn("Unexpected exception", e);
         }
         if (removePeerSucceed || throwable instanceof InterruptedException) {
           break;

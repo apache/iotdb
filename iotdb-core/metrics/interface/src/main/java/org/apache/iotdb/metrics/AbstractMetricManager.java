@@ -50,10 +50,13 @@ public abstract class AbstractMetricManager {
   protected static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
   private static final String ALREADY_EXISTS = " is already used for a different type of name";
+
   /** The map from metric name to metric metaInfo. */
   protected Map<String, MetricInfo.MetaInfo> nameToMetaInfo;
+
   /** The map from metricInfo to metric. */
   protected Map<MetricInfo, IMetric> metrics;
+
   /** The bind IoTDBJmxReporter */
   protected JmxReporter bindJmxReporter = null;
 

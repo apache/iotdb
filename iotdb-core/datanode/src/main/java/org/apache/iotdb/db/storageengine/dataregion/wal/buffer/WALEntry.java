@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -64,6 +65,8 @@ public abstract class WALEntry implements SerializedSize {
       this.type = WALEntryType.INSERT_ROW_NODE;
     } else if (value instanceof InsertTabletNode) {
       this.type = WALEntryType.INSERT_TABLET_NODE;
+    } else if (value instanceof InsertRowsNode) {
+      this.type = WALEntryType.INSERT_ROWS_NODE;
     } else if (value instanceof DeleteDataNode) {
       this.type = WALEntryType.DELETE_DATA_NODE;
     } else if (value instanceof Checkpoint) {
@@ -109,6 +112,9 @@ public abstract class WALEntry implements SerializedSize {
         break;
       case INSERT_TABLET_NODE:
         value = (InsertTabletNode) PlanNodeType.deserializeFromWAL(stream);
+        break;
+      case INSERT_ROWS_NODE:
+        value = (InsertRowsNode) PlanNodeType.deserializeFromWAL(stream);
         break;
       case DELETE_DATA_NODE:
         value = (DeleteDataNode) PlanNodeType.deserializeFromWAL(stream);

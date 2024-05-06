@@ -40,14 +40,19 @@ public class IoTDBCachedGauge<T> extends AbstractMetricMBean
     implements AutoGauge, IoTDBCachedGaugeMBean {
   /** The timer of metric system */
   private final Clock clock;
+
   /** The time to reload cache */
   private final AtomicLong reloadAt;
+
   /** The timeout duration */
   private final long timeoutNS;
+
   /** The cache's value */
   private final AtomicReference<Double> value;
+
   /** The reference object of gauge */
   private final WeakReference<T> refObj;
+
   /** The calculate function of gauge */
   private final ToDoubleFunction<T> mapper;
 

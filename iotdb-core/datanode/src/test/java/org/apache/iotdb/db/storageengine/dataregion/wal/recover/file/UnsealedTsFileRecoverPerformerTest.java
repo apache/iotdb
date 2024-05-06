@@ -331,7 +331,10 @@ public class UnsealedTsFileRecoverPerformerTest {
 
   @Test
   public void testRecoverDuplicate()
-      throws IllegalPathException, IOException, WriteProcessException, DataRegionException,
+      throws IllegalPathException,
+          IOException,
+          WriteProcessException,
+          DataRegionException,
           WALRecoverException {
     // generate crashed .tsfile
     File file = new File(FILE_NAME);

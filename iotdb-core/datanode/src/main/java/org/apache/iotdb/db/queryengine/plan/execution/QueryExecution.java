@@ -482,7 +482,9 @@ public class QueryExecution implements IQueryExecution {
     return resultHandle.getSerializedTsBlock();
   }
 
-  /** @return true if there is more tsblocks, otherwise false */
+  /**
+   * @return true if there is more tsblocks, otherwise false
+   */
   @Override
   public boolean hasNextResult() {
     return resultHandle != null && !resultHandle.isFinished();

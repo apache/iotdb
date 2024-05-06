@@ -75,6 +75,7 @@ public class IoTDBConnection implements Connection {
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
   private TTransport transport;
+
   /**
    * Timeout of query can be set by users. Unit: s If not set, default value 0 will be used, which
    * will use server configuration.
