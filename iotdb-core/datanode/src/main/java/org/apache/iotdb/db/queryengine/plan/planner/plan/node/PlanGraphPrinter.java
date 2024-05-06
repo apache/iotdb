@@ -167,6 +167,10 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
           String.format(
               "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
     }
+    Expression predicate = node.getPushDownPredicate();
+    if (predicate != null) {
+      boxValue.add(String.format("Predicate: %s", predicate));
+    }
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -185,6 +189,10 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       boxValue.add(
           String.format(
               "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
+    }
+    Expression predicate = node.getPushDownPredicate();
+    if (predicate != null) {
+      boxValue.add(String.format("Predicate: %s", predicate));
     }
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
