@@ -210,7 +210,9 @@ public class ElasticSerializableTVList {
       end += consumed;
 
       // Fill row record list
-      cache.get(pointCount / internalTVListCapacity).putColumns(insertedTimeColumn, insertedValueColumn);
+      cache
+          .get(pointCount / internalTVListCapacity)
+          .putColumns(insertedTimeColumn, insertedValueColumn);
 
       total -= consumed;
       pointCount += consumed;

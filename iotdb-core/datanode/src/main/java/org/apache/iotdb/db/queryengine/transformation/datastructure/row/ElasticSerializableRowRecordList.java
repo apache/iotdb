@@ -243,7 +243,9 @@ public class ElasticSerializableRowRecordList {
     checkExpansion();
     cache.get(rowCount / internalRowRecordListCapacity).putRow(rowRecord);
     if (hasNullField) {
-      bitMaps.get(rowCount / internalRowRecordListCapacity).mark(rowCount % internalRowRecordListCapacity);
+      bitMaps
+          .get(rowCount / internalRowRecordListCapacity)
+          .mark(rowCount % internalRowRecordListCapacity);
     }
     ++rowCount;
 
@@ -306,7 +308,8 @@ public class ElasticSerializableRowRecordList {
 
     while (nullCount > 0) {
       int consumed =
-          Math.min(nullCount, internalRowRecordListCapacity) - rowCount % internalRowRecordListCapacity;
+          Math.min(nullCount, internalRowRecordListCapacity)
+              - rowCount % internalRowRecordListCapacity;
 
       cache.get(rowCount / internalRowRecordListCapacity).putNulls(consumed);
       markBitMapByGivenNullCount(consumed);
@@ -362,7 +365,8 @@ public class ElasticSerializableRowRecordList {
   }
 
   protected void checkMemoryUsage() throws IOException, QueryProcessException {
-    if (rowCount % MEMORY_CHECK_THRESHOLD != 0 || totalByteArrayLength <= totalByteArrayLengthLimit) {
+    if (rowCount % MEMORY_CHECK_THRESHOLD != 0
+        || totalByteArrayLength <= totalByteArrayLengthLimit) {
       return;
     }
 
