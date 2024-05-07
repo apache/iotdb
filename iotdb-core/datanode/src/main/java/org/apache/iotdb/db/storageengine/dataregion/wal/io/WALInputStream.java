@@ -70,10 +70,11 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     if (channel.read(headerBuffer) != Integer.BYTES + 1) {
       throw new IOException("Unexpected end of file");
     }
+    // compressionType originalSize compressedSize
     headerBuffer.flip();
-    int dataSize = headerBuffer.getInt();
-    boolean isCompressed = headerBuffer.get() == 1;
-    if (isCompressed) {
+    CompressionType compressionType = CompressionType.deserialize(headerBuffer.get());
+    int dataBufferSize = headerBuffer.getInt();
+    if (compressionType != CompressionType.UNCOMPRESSED) {
       compressedHeader.clear();
       if (channel.read(compressedHeader) != Integer.BYTES) {
         throw new IOException("Unexpected end of file");
@@ -84,17 +85,17 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         // enlarge buffer
         dataBuffer = ByteBuffer.allocateDirect(uncompressedSize);
       }
-      ByteBuffer compressedData = ByteBuffer.allocateDirect(dataSize);
-      if (channel.read(compressedData) != dataSize) {
+      ByteBuffer compressedData = ByteBuffer.allocate(dataBufferSize);
+      if (channel.read(compressedData) != dataBufferSize) {
         throw new IOException("Unexpected end of file");
       }
       compressedData.flip();
-      IUnCompressor unCompressor = IUnCompressor.getUnCompressor(CompressionType.LZ4);
+      IUnCompressor unCompressor = IUnCompressor.getUnCompressor(CompressionType.GZIP);
       dataBuffer.clear();
       unCompressor.uncompress(compressedData, dataBuffer);
     } else {
-      dataBuffer = ByteBuffer.allocateDirect(dataSize);
-      if (channel.read(dataBuffer) != dataSize) {
+      dataBuffer = ByteBuffer.allocateDirect(dataBufferSize);
+      if (channel.read(dataBuffer) != dataBufferSize) {
         throw new IOException("Unexpected end of file");
       }
     }

@@ -86,11 +86,11 @@ public abstract class LogWriter implements ILogWriter {
     headerBuffer.clear();
     headerBuffer.put(
         compressed ? compressionType.serialize() : CompressionType.UNCOMPRESSED.serialize());
+    headerBuffer.putInt(bufferSize);
     if (compressed) {
       headerBuffer.putInt(uncompressedSize);
       size += 4;
     }
-    headerBuffer.putInt(bufferSize);
     size += bufferSize;
     size += 5;
     try {
