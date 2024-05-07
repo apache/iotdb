@@ -97,6 +97,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionInfo;
 import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
@@ -292,6 +293,8 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private String insertWriteLockHolder = "";
 
+  private volatile long directBufferMemoryCost = 0;
+
   private final AtomicBoolean isCompactionSelecting = new AtomicBoolean(false);
 
   private static final QueryResourceMetricSet QUERY_RESOURCE_METRIC_SET =
@@ -314,6 +317,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = dataRegionId;
     this.databaseName = databaseName;
     this.fileFlushPolicy = fileFlushPolicy;
+    acquireDirectBufferMemory();
 
     storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
     this.tsFileManager =
@@ -3456,10 +3460,36 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("markDeleted");
     try {
       deleted = true;
+      releaseDirectBufferMemory();
       deletedCondition.signalAll();
     } finally {
       writeUnlock();
     }
+  }
+
+  private void acquireDirectBufferMemory() throws DataRegionException {
+    long acquireDirectBufferMemCost = 0;
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+      acquireDirectBufferMemCost = config.getWalBufferSize();
+    } else if (config
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      acquireDirectBufferMemCost = config.getDataRatisConsensusLogAppenderBufferSizeMax();
+    }
+    if (!SystemInfo.getInstance().addDirectBufferMemoryCost(acquireDirectBufferMemCost)) {
+      throw new DataRegionException(
+          "Total allocated memory for direct buffer will be "
+              + (SystemInfo.getInstance().getDirectBufferMemoryCost() + acquireDirectBufferMemCost)
+              + ", which is greater than limit mem cost: "
+              + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
+    }
+    this.directBufferMemoryCost = acquireDirectBufferMemCost;
+  }
+
+  private void releaseDirectBufferMemory() {
+    SystemInfo.getInstance().decreaseDirectBufferMemoryCost(directBufferMemoryCost);
+    // avoid repeated deletion
+    this.directBufferMemoryCost = 0;
   }
 
   /* Be careful, the thread that calls this method may not hold the write lock!!*/
