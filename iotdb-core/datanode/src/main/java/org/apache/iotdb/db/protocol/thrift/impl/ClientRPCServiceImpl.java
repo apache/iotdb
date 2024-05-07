@@ -277,8 +277,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final String NOMINAL_FUEL_CONSUMPTION_COLUMN_NAME = "nominal_fuel_consumption";
 
-  private static final String FUEL_CAPACITY_COLUMN_NAME = "fuel_capacity";
-
   private static final String FLEET_COLUMN_NAME = "fleet";
 
   private static final String MODEL_COLUMN_NAME = "model";
@@ -531,17 +529,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private volatile Map<String, DeviceAttributes> deviceAttributesHashMap = null;
 
   public static class DeviceAttributes {
-    public final double nominalFuelConsumption;
+    public final Double nominalFuelConsumption;
 
-    public final double loadCapacity;
+    public final Double loadCapacity;
 
-    public final double fuelCapacity;
 
     public DeviceAttributes(
-        double nominalFuelConsumption, double loadCapacity, double fuelCapacity) {
+        Double nominalFuelConsumption, Double loadCapacity) {
       this.nominalFuelConsumption = nominalFuelConsumption;
       this.loadCapacity = loadCapacity;
-      this.fuelCapacity = fuelCapacity;
     }
   }
 
@@ -2558,9 +2554,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                         String key = tmpArray[0].substring(1, tmpArray[0].length() - 1);
                         String value = tmpArray[1].substring(1, tmpArray[1].length() - 1);
                         if (NOMINAL_FUEL_CONSUMPTION_COLUMN_NAME.equals(key)
-                            || LOAD_CAPACITY_COLUMN_NAME.equals(key)
-                            || FUEL_CAPACITY_COLUMN_NAME.equals(key)) {
-                          parsedMap.put(key, Double.parseDouble(value));
+                            || LOAD_CAPACITY_COLUMN_NAME.equals(key)) {
+                          try {
+                            parsedMap.put(key, Double.parseDouble(value));
+                          } catch (NumberFormatException e) {
+                            // ignore
+                          }
                         }
                       }
                     }
@@ -2569,9 +2568,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                     tmp.put(
                         timeSeries.substring(16, timeSeries.length() - 5),
                         new DeviceAttributes(
-                            parsedMap.getOrDefault(NOMINAL_FUEL_CONSUMPTION_COLUMN_NAME, 1.0d),
-                            parsedMap.getOrDefault(LOAD_CAPACITY_COLUMN_NAME, 1.0d),
-                            parsedMap.getOrDefault(FUEL_CAPACITY_COLUMN_NAME, 1.0d)));
+                            parsedMap.get(NOMINAL_FUEL_CONSUMPTION_COLUMN_NAME),
+                            parsedMap.get(LOAD_CAPACITY_COLUMN_NAME)));
                   }
                 }
               }

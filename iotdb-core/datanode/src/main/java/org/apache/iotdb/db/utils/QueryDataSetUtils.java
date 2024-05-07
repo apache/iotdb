@@ -908,9 +908,9 @@ public class QueryDataSetUtils {
           String driver = seriesArray[DRIVER_LEVEL];
           double value =
               Double.parseDouble(valueColumn.getBinary(i).getStringValue(StandardCharsets.UTF_8));
-          double loadCapacity = deviceAttributesMap.get(name).loadCapacity;
+          Double loadCapacity = deviceAttributesMap.get(name).loadCapacity;
 
-          if (value >= 0.9 * loadCapacity) {
+          if (loadCapacity != null && value >= 0.9 * loadCapacity) {
             builder.declarePosition();
             // time column
             timeColumnBuilder.writeLong(tsBlock.getTimeByIndex(i));
@@ -1037,8 +1037,10 @@ public class QueryDataSetUtils {
           String[] seriesArray = deviceId.split("\\.");
           String model = seriesArray[MODEL_LEVEL];
           String name = seriesArray[NAME_LEVEL];
-          double nominalFuelConsumption = deviceAttributesMap.get(name).nominalFuelConsumption;
-
+          Double nominalFuelConsumption = deviceAttributesMap.get(name).nominalFuelConsumption;
+          if (nominalFuelConsumption == null) {
+            continue;
+          }
           AvgIntermediateResult result =
               map.computeIfAbsent(model, k -> new AvgIntermediateResult());
           long count = countFuelColumn.getLong(i);
@@ -1341,12 +1343,14 @@ public class QueryDataSetUtils {
           String model = deviceArray[MODEL_LEVEL];
           String name = deviceArray[NAME_LEVEL];
           double avgLoad = avgLoadColumn.getDouble(i);
-          double loadCapacity = deviceAttributesMap.get(name).loadCapacity;
+          Double loadCapacity = deviceAttributesMap.get(name).loadCapacity;
           AvgLoadKey key = new AvgLoadKey(fleet, model, loadCapacity);
           AvgLoadIntermediateResult intermediateResult =
               map.computeIfAbsent(key, k -> new AvgLoadIntermediateResult());
-          intermediateResult.sum += (avgLoad / loadCapacity);
-          intermediateResult.count++;
+          if (loadCapacity != null) {
+            intermediateResult.sum += (avgLoad / loadCapacity);
+            intermediateResult.count++;
+          }
         }
       }
     }
@@ -1365,8 +1369,13 @@ public class QueryDataSetUtils {
           timeColumnBuilder.writeLong(0L);
           fleetColumnBuilder.writeBinary(new Binary(k.fleet, StandardCharsets.UTF_8));
           modelColumnBuilder.writeBinary(new Binary(k.model, StandardCharsets.UTF_8));
-          loadCapacityColumnBuilder.writeDouble(k.loadCapacity);
-          avgLoadColumnBuilder.writeDouble(v.sum / v.count);
+          if (k.loadCapacity == null) {
+            loadCapacityColumnBuilder.appendNull();
+            avgLoadColumnBuilder.appendNull();
+          } else {
+            loadCapacityColumnBuilder.writeDouble(k.loadCapacity);
+            avgLoadColumnBuilder.writeDouble(v.sum / v.count);
+          }
         });
 
     builder.declarePositions(size);
@@ -1389,9 +1398,9 @@ public class QueryDataSetUtils {
 
     private final String model;
 
-    private final double loadCapacity;
+    private final Double loadCapacity;
 
-    public AvgLoadKey(String fleet, String model, double loadCapacity) {
+    public AvgLoadKey(String fleet, String model, Double loadCapacity) {
       this.fleet = fleet;
       this.model = model;
       this.loadCapacity = loadCapacity;
@@ -1406,9 +1415,8 @@ public class QueryDataSetUtils {
         return false;
       }
       AvgLoadKey that = (AvgLoadKey) o;
-      return Double.compare(loadCapacity, that.loadCapacity) == 0
-          && Objects.equals(fleet, that.fleet)
-          && Objects.equals(model, that.model);
+      return Objects.equals(fleet, that.fleet) && Objects.equals(model, that.model) &&
+          Objects.equals(loadCapacity, that.loadCapacity);
     }
 
     @Override
