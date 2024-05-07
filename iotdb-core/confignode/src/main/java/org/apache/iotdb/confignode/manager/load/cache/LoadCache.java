@@ -259,7 +259,8 @@ public class LoadCache {
    * @param dataNodeId the index of the DataNode where the Region resides
    */
   public void createRegionCache(TConsensusGroupId regionGroupId, int dataNodeId) {
-    regionGroupCacheMap.get(regionGroupId).createRegionCache(dataNodeId);
+    Optional.ofNullable(regionGroupCacheMap.get(regionGroupId))
+        .ifPresent(cache -> cache.createRegionCache(dataNodeId));
   }
 
   /**
@@ -286,7 +287,8 @@ public class LoadCache {
    * @param dataNodeId the specified DataNode
    */
   public void removeRegionCache(TConsensusGroupId regionGroupId, int dataNodeId) {
-    regionGroupCacheMap.get(regionGroupId).removeRegionCache(dataNodeId);
+    Optional.ofNullable(regionGroupCacheMap.get(regionGroupId))
+        .ifPresent(cache -> cache.removeRegionCache(dataNodeId));
   }
 
   /**
