@@ -78,10 +78,10 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
 
   private static final String TABLET_BATCH_SCENARIO = "transfer tablet batch";
 
-  private final List<TEndPoint> peers;
-
   private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient>
       syncRetryAndHandshakeClientManager;
+
+  private final List<TEndPoint> peers;
 
   private PipeConsensusSyncBatchReqBuilder tabletBatchBuilder;
 
@@ -100,6 +100,8 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeConsensusSyncBatchReqBuilder(parameters);
     }
+    // currently, tablet batch is false by default in PipeConsensus;
+    isTabletBatchModeEnabled = false;
   }
 
   @Override

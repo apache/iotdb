@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.plugin.builtin;
 
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.donothing.DoNothingConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.airgap.IoTDBAirGapConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.consensus.PipeConsensusAsyncConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.IoTDBLegacyPipeConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector;
@@ -73,6 +74,9 @@ public enum BuiltinPipePlugin {
   IOTDB_THRIFT_ASYNC_CONNECTOR("iotdb-thrift-async-connector", IoTDBThriftAsyncConnector.class),
   IOTDB_LEGACY_PIPE_CONNECTOR("iotdb-legacy-pipe-connector", IoTDBLegacyPipeConnector.class),
   IOTDB_AIR_GAP_CONNECTOR("iotdb-air-gap-connector", IoTDBAirGapConnector.class),
+  PIPE_CONSENSUS_ASYNC_CONNECTOR(
+      "pipe-consensus-async-connector", PipeConsensusAsyncConnector.class),
+
   WEBSOCKET_CONNECTOR("websocket-connector", WebSocketConnector.class),
   OPC_UA_CONNECTOR("opc-ua-connector", OpcUaConnector.class),
   WRITE_BACK_CONNECTOR("write-back-connector", WriteBackConnector.class),
