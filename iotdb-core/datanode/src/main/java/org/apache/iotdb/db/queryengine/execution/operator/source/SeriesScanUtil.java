@@ -119,8 +119,7 @@ public class SeriesScanUtil implements Accountable {
           + RamUsageEstimator.shallowSizeOfInstance(IDeviceID.class)
           + RamUsageEstimator.shallowSizeOfInstance(TimeOrderUtils.class)
           + RamUsageEstimator.shallowSizeOfInstance(PaginationController.class)
-          + RamUsageEstimator.shallowSizeOfInstance(SeriesScanOptions.class)
-          + RamUsageEstimator.shallowSizeOfInstance(PartialPath.class);
+          + RamUsageEstimator.shallowSizeOfInstance(SeriesScanOptions.class);
 
   public SeriesScanUtil(
       PartialPath seriesPath,
@@ -1542,6 +1541,6 @@ public class SeriesScanUtil implements Accountable {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + deviceID.ramBytesUsed()
-        + MemoryEstimationHelper.getEstimatedSizeOfPartialPathWithoutClassSize(seriesPath);
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(seriesPath);
   }
 }

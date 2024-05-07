@@ -35,9 +35,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(AlignedUpdateLastCacheOperator.class)
-          + RamUsageEstimator.shallowSizeOfInstance(AlignedPath.class)
-          + RamUsageEstimator.shallowSizeOfInstance(PartialPath.class);
+      RamUsageEstimator.shallowSizeOfInstance(AlignedUpdateLastCacheOperator.class);
 
   private final AlignedPath seriesPath;
 
@@ -108,7 +106,7 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
         + RamUsageEstimator.sizeOf(databaseName)
-        + MemoryEstimationHelper.getEstimatedSizeOfPartialPathWithoutClassSize(devicePath)
-        + MemoryEstimationHelper.getEstimatedSizeOfPartialPathWithoutClassSize(seriesPath);
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(devicePath)
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(seriesPath);
   }
 }

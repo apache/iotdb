@@ -51,8 +51,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   private static final long MAX_SIZE = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(SchemaQueryScanOperator.class)
-          + RamUsageEstimator.shallowSizeOfInstance(PartialPath.class);
+      RamUsageEstimator.shallowSizeOfInstance(SchemaQueryScanOperator.class);
 
   protected PlanNodeId sourceId;
 
@@ -248,6 +247,6 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
         + RamUsageEstimator.sizeOf(database)
-        + MemoryEstimationHelper.getEstimatedSizeOfPartialPathWithoutClassSize(partialPath);
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(partialPath);
   }
 }

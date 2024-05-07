@@ -135,8 +135,7 @@ public class IntoOperator extends AbstractIntoOperator {
                 .mapToLong(
                     pair ->
                         RamUsageEstimator.sizeOf(pair.left)
-                            + MemoryEstimationHelper.getEstimatedSizeOfPartialPathWithoutClassSize(
-                                pair.right))
+                            + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(pair.right))
                 .sum());
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution;
 
 import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import org.apache.tsfile.utils.Accountable;
@@ -30,6 +31,16 @@ import javax.annotation.Nullable;
 import java.util.Arrays;
 
 public class MemoryEstimationHelper {
+
+  private static final long PRATIAL_PATH_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(PartialPath.class);
+
+  private static final long ALIGNED_PATH_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AlignedPath.class);
+
+  private static final long MEASUREMENT_PATH_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AlignedPath.class);
+
   private MemoryEstimationHelper() {
     // hide the constructor
   }
@@ -39,8 +50,7 @@ public class MemoryEstimationHelper {
     return accountable == null ? 0 : accountable.ramBytesUsed();
   }
 
-  public static long getEstimatedSizeOfPartialPathWithoutClassSize(
-      @Nullable final PartialPath partialPath) {
+  public static long getEstimatedSizeOfPartialPath(@Nullable final PartialPath partialPath) {
     if (partialPath == null) {
       return 0;
     }
@@ -49,7 +59,12 @@ public class MemoryEstimationHelper {
     if (nodes != null && nodes.length > 0) {
       totalSize += Arrays.stream(nodes).mapToLong(RamUsageEstimator::sizeOf).sum();
     }
+    // String member of Path
+    totalSize += RamUsageEstimator.sizeOf(partialPath.getDevice());
+    totalSize += RamUsageEstimator.sizeOf(partialPath.getFullPath());
+
     if (partialPath instanceof AlignedPath) {
+      totalSize += ALIGNED_PATH_INSTANCE_SIZE;
       AlignedPath alignedPath = (AlignedPath) partialPath;
       totalSize +=
           alignedPath.getMeasurementList().stream().mapToLong(RamUsageEstimator::sizeOf).sum();
@@ -57,12 +72,16 @@ public class MemoryEstimationHelper {
           alignedPath.getSchemaList().stream()
               .mapToLong(schema -> RamUsageEstimator.sizeOf(schema.getMeasurementId()))
               .sum();
+    } else if (partialPath instanceof MeasurementPath) {
+      totalSize += MEASUREMENT_PATH_INSTANCE_SIZE;
+      MeasurementPath measurementPath = (MeasurementPath) partialPath;
+      totalSize += RamUsageEstimator.sizeOf(measurementPath.getMeasurementAlias());
+      totalSize +=
+          RamUsageEstimator.sizeOf(measurementPath.getMeasurementSchema().getMeasurementId());
     } else {
+      totalSize += PRATIAL_PATH_INSTANCE_SIZE;
       totalSize += RamUsageEstimator.sizeOf(partialPath.getMeasurement());
     }
-    // String member of Path
-    totalSize += RamUsageEstimator.sizeOf(partialPath.getDevice());
-    totalSize += RamUsageEstimator.sizeOf(partialPath.getFullPath());
     return totalSize;
   }
 }
