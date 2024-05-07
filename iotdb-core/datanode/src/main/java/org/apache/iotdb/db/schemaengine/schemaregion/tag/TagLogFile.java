@@ -311,7 +311,7 @@ public class TagLogFile implements AutoCloseable {
     return byteBuffer;
   }
 
-  public static int calculateMapSize(Map<String, String> map) throws MetadataException {
+  public static int calculateMapSize(Map<String, String> map) {
     int length = 0;
     if (map != null) {
       length += 4; // mapSize is 4 byte
