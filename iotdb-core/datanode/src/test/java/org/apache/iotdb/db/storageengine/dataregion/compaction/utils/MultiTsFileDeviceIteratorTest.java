@@ -403,7 +403,10 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
    */
   @Test
   public void getDeletedDevicesWithSameNameFromSeqFilesByReadChunkPerformer()
-      throws MetadataException, IOException, WriteProcessException, StorageEngineException,
+      throws MetadataException,
+          IOException,
+          WriteProcessException,
+          StorageEngineException,
           InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
     int oldAlignedDeviceOffset = TsFileGeneratorUtils.alignDeviceOffset;
@@ -550,7 +553,10 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
    */
   @Test
   public void getDeletedDevicesWithSameNameFromSeqFilesByReadChunkPerformer2()
-      throws MetadataException, IOException, WriteProcessException, StorageEngineException,
+      throws MetadataException,
+          IOException,
+          WriteProcessException,
+          StorageEngineException,
           InterruptedException {
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
     int oldAlignedDeviceOffset = TsFileGeneratorUtils.alignDeviceOffset;

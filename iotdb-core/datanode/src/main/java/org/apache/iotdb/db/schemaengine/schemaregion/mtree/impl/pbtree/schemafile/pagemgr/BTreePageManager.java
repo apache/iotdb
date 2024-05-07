@@ -157,7 +157,9 @@ public class BTreePageManager extends PageManager {
         .getRecordByAlias(alias);
   }
 
-  /** @return top page to insert index */
+  /**
+   * @return top page to insert index
+   */
   private ISchemaPage insertAliasIndexEntry(
       ISchemaPage topPage, String alias, String name, SchemaPageContext cxt)
       throws MetadataException, IOException {

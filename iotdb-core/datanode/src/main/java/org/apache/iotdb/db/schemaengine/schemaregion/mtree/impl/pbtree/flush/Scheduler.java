@@ -52,6 +52,7 @@ public class Scheduler {
 
   /** data structure */
   private final Map<Integer, CachedMTreeStore> regionToStore;
+
   // flushingRegionSet is used to avoid flush the same region concurrently, update will be
   // guaranteed by synchronized
   private final Set<Integer> flushingRegionSet;

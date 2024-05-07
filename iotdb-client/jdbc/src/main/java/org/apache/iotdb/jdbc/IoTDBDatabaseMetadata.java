@@ -1483,6 +1483,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public int getMaxBinaryLiteralLength() {
     return Integer.MAX_VALUE;
   }
+
   /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxCatalogNameLength() {
@@ -1493,6 +1494,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public int getMaxCharLiteralLength() {
     return Integer.MAX_VALUE;
   }
+
   /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxColumnNameLength() {
@@ -1549,11 +1551,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public int getMaxProcedureNameLength() {
     return 0;
   }
+
   /** maxrowsize unlimited */
   @Override
   public int getMaxRowSize() {
     return 2147483639;
   }
+
   /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxSchemaNameLength() {
@@ -1574,16 +1578,19 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public int getMaxStatements() {
     return 0;
   }
+
   /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxTableNameLength() {
     return 1024;
   }
+
   /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxTablesInSelect() {
     return 1024;
   }
+
   /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxUserNameLength() {
@@ -3367,7 +3374,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     return false;
   }
 
-  /** @deprecated recommend using getMetadataInJson() instead of toString() */
+  /**
+   * @deprecated recommend using getMetadataInJson() instead of toString()
+   */
   @SuppressWarnings("squid:S1133") // ignore Deprecated code should be removed
   @Deprecated
   @Override

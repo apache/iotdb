@@ -735,7 +735,9 @@ public class TsFileResource {
     return true;
   }
 
-  /** @return whether the given time falls in ttl */
+  /**
+   * @return whether the given time falls in ttl
+   */
   private boolean isAlive(long time, long dataTTL) {
     return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
   }
@@ -800,7 +802,9 @@ public class TsFileResource {
     }
   }
 
-  /** @return resource map size */
+  /**
+   * @return resource map size
+   */
   public long calculateRamSize() {
     if (ramSize == 0) {
       ramSize = INSTANCE_SIZE + timeIndex.calculateRamSize();
@@ -1054,7 +1058,9 @@ public class TsFileResource {
     }
   }
 
-  /** @return is this tsfile resource in a TsFileResourceList */
+  /**
+   * @return is this tsfile resource in a TsFileResourceList
+   */
   public boolean isFileInList() {
     return prev != null || next != null;
   }

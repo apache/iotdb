@@ -603,21 +603,27 @@ public class ProcedureManager {
               "%s, There are no other DataNodes could be selected to perform the add peer process, "
                   + "please check RegionGroup: %s by show regions sql command",
               REGION_MIGRATE_PROCESS, regionGroupId);
-    } else if (configManager.getPartitionManager()
-        .getAllReplicaSets(originalDataNode.getDataNodeId()).stream()
+    } else if (configManager
+        .getPartitionManager()
+        .getAllReplicaSets(originalDataNode.getDataNodeId())
+        .stream()
         .noneMatch(replicaSet -> replicaSet.getRegionId().equals(regionGroupId))) {
       failMessage =
           String.format(
               "Submit RegionMigrateProcedure failed, because the original DataNode %s doesn't contain Region %s",
               migrateRegionReq.getFromId(), migrateRegionReq.getRegionId());
-    } else if (configManager.getPartitionManager().getAllReplicaSets(destDataNode.getDataNodeId())
+    } else if (configManager
+        .getPartitionManager()
+        .getAllReplicaSets(destDataNode.getDataNodeId())
         .stream()
         .anyMatch(replicaSet -> replicaSet.getRegionId().equals(regionGroupId))) {
       failMessage =
           String.format(
               "Submit RegionMigrateProcedure failed, because the target DataNode %s already contains Region %s",
               migrateRegionReq.getToId(), migrateRegionReq.getRegionId());
-    } else if (!configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running)
+    } else if (!configManager
+        .getNodeManager()
+        .filterDataNodeThroughStatus(NodeStatus.Running)
         .stream()
         .map(TDataNodeConfiguration::getLocation)
         .map(TDataNodeLocation::getDataNodeId)

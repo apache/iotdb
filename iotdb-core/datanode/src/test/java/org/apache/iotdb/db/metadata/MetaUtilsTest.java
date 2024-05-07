@@ -44,7 +44,8 @@ import static org.junit.Assert.fail;
 public class MetaUtilsTest {
 
   private final IMNodeFactory<IMemMNode> nodeFactory =
-      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();;
+      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();
+  ;
 
   @Test
   public void testGetMultiFullPaths() {

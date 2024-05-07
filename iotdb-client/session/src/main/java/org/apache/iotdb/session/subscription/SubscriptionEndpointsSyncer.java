@@ -76,13 +76,14 @@ public class SubscriptionEndpointsSyncer implements Runnable {
       final SubscriptionProvider provider = consumer.getProvider(entry.getKey());
       if (Objects.isNull(provider)) {
         // new provider
-        final SubscriptionProvider newProvider = consumer.constructProvider(entry.getValue());
+        final TEndPoint endPoint = entry.getValue();
+        final SubscriptionProvider newProvider;
         try {
-          newProvider.handshake();
+          newProvider = consumer.constructProviderAndHandshake(endPoint);
         } catch (final Exception e) {
           LOGGER.warn(
-              "Failed to create connection with subscription provider {}, exception: {}, will retry later...",
-              newProvider,
+              "Failed to create connection with endpoint {}, exception: {}, will retry later...",
+              endPoint,
               e.getMessage());
           continue; // retry later
         }

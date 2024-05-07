@@ -88,6 +88,7 @@ public abstract class ViewExpressionVisitor<R, C> {
   public R visitTimeStampOperand(TimestampViewOperand timestampOperand, C context) {
     return visitLeafOperand(timestampOperand, context);
   }
+
   // endregion
 
   // region Unary Expressions
@@ -118,6 +119,7 @@ public abstract class ViewExpressionVisitor<R, C> {
   public R visitRegularExpression(RegularViewExpression regularExpression, C context) {
     return visitUnaryExpression(regularExpression, context);
   }
+
   // endregion
 
   // region Binary Expressions
@@ -151,6 +153,7 @@ public abstract class ViewExpressionVisitor<R, C> {
   public R visitSubtractionExpression(SubtractionViewExpression subtractionExpression, C context) {
     return visitArithmeticBinaryExpression(subtractionExpression, context);
   }
+
   // endregion
 
   // region Binary: Compare Binary Expression
@@ -183,6 +186,7 @@ public abstract class ViewExpressionVisitor<R, C> {
   public R visitNonEqualExpression(NonEqualViewExpression nonEqualExpression, C context) {
     return visitCompareBinaryExpression(nonEqualExpression, context);
   }
+
   // endregion
 
   // region Binary : Logic Binary Expression
@@ -197,6 +201,7 @@ public abstract class ViewExpressionVisitor<R, C> {
   public R visitLogicOrExpression(LogicOrViewExpression logicOrExpression, C context) {
     return visitLogicBinaryExpression(logicOrExpression, context);
   }
+
   // endregion
 
   // endregion
@@ -209,6 +214,7 @@ public abstract class ViewExpressionVisitor<R, C> {
   public R visitBetweenExpression(BetweenViewExpression betweenViewExpression, C context) {
     return visitTernaryExpression(betweenViewExpression, context);
   }
+
   // endregion
 
   // region FunctionExpression

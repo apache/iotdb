@@ -94,7 +94,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     this.fullPath = getFullPath();
   }
 
-  /** @param partialNodes nodes of a time series path */
+  /**
+   * @param partialNodes nodes of a time series path
+   */
   public PartialPath(String[] partialNodes) {
     nodes = partialNodes;
   }
@@ -622,24 +624,26 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     boolean[] matchIndex = new boolean[thisLength];
     matchIndex[0] = true; // "root" must match "root"
 
-    // dp[i][j] means if nodes[0:i] matches prefixFullPath[0:j]
+    // dp[i][j] means if prefixFullPath[0:i] matches nodes[0:j]
     // for example: "root.**.d1.**" intersect "root.sg1.d1(.**)"
-    // dp[i][j] = (nodes[i]=="**"&&dp[i][j-1]) || (nodes[i] matches prefixFullPath[j]&&dp[i-1][j-1])
+    // dp[i][j] = (nodes[j]=="**"&&dp[i][j-1]) || (nodes[j] matches prefixFullPath[i]&&dp[i-1][j-1])
     // 1 0 0 0 |→| 1 0 0 0 |→| 1 0 0 0
     // 0 0 0 0 |↓| 0 1 0 0 |→| 0 1 0 0
     // 0 0 0 0 |↓| 0 0 0 0 |↓| 0 1 1 0
     // Since the derivation of the next row depends only on the previous row, the calculation can
     // be performed using a one-dimensional array named "matchIndex"
     for (int i = 1; i < prefixFullPath.length; i++) {
-      for (int j = thisLength - 1; j >= 1; j--) {
+      boolean[] newMatchIndex = new boolean[thisLength];
+      for (int j = 1; j < nodes.length; j++) {
         if (nodes[j].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-          matchIndex[j] = matchIndex[j] || matchIndex[j - 1];
+          newMatchIndex[j] = matchIndex[j] || matchIndex[j - 1];
         } else if (PathPatternUtil.isNodeMatch(nodes[j], prefixFullPath[i])) {
-          matchIndex[j] = matchIndex[j - 1];
+          newMatchIndex[j] = matchIndex[j - 1];
         } else {
-          matchIndex[j] = false;
+          newMatchIndex[j] = false;
         }
       }
+      matchIndex = newMatchIndex;
     }
     // Scan in reverse order to construct the result set.
     // The structure of the result set is prefixFullPath+remaining nodes. 【E.g.root.sg1.d1 + **】

@@ -44,14 +44,19 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class IoTDBJmxReporter implements JmxReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBJmxReporter.class);
+
   /** Domain name of IoTDB Metrics */
   private static final String DOMAIN = "org.apache.iotdb.metrics";
+
   /** The metricManager of IoTDB */
   private final AbstractMetricManager metricManager;
+
   /** The objectNameFactory used to create objectName for metrics */
   private final ObjectNameFactory objectNameFactory;
+
   /** The map that stores all registered metrics */
   private final Map<ObjectName, ObjectName> registered;
+
   /** The JMX MBeanServer */
   private final MBeanServer mBeanServer;
 

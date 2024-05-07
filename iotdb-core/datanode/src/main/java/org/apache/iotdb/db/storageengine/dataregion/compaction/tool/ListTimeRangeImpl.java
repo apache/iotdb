@@ -26,6 +26,7 @@ import java.util.List;
 public class ListTimeRangeImpl implements ITimeRange {
 
   List<Interval> intervalList = new LinkedList<>();
+
   // 0-10， 20-30， 50-70
   // 25-60
   // 0-10. 20-70

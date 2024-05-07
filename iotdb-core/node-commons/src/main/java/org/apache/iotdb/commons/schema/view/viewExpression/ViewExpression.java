@@ -73,7 +73,9 @@ public abstract class ViewExpression {
 
   public abstract ViewExpressionType getExpressionType();
 
-  /** @return if this view expression is a leaf node, return true; else return false. */
+  /**
+   * @return if this view expression is a leaf node, return true; else return false.
+   */
   public final boolean isLeafOperand() {
     return isLeafOperandInternal();
   }

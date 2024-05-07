@@ -31,7 +31,9 @@ public class PipeConfigNodeSubtaskExecutor extends PipeSubtaskExecutor {
     super(THREAD_NUM, ThreadName.PIPE_CONFIGNODE_EXECUTOR_POOL);
   }
 
-  /** @param ignored Used to distinguish this constructor from the default constructor. */
+  /**
+   * @param ignored Used to distinguish this constructor from the default constructor.
+   */
   @TestOnly
   public PipeConfigNodeSubtaskExecutor(Object ignored) {
     super(THREAD_NUM, ThreadName.PIPE_CONFIGNODE_EXECUTOR_POOL);

@@ -80,7 +80,9 @@ public class SubscriptionBrokerAgent {
     consumerGroupIdToSubscriptionBroker.put(consumerGroupId, broker);
   }
 
-  /** @return true -> if drop broker success */
+  /**
+   * @return true -> if drop broker success
+   */
   public synchronized boolean dropBroker(String consumerGroupId) {
     SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {

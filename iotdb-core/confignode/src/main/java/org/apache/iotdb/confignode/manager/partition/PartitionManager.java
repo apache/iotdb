@@ -137,6 +137,7 @@ public class PartitionManager {
   /** Region cleaner. */
   // Monitor for leadership change
   private final Object scheduleMonitor = new Object();
+
   // Try to delete Regions in every 10s
   private static final int REGION_MAINTAINER_WORK_INTERVAL = 10;
   private final ScheduledExecutorService regionMaintainer;

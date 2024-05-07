@@ -273,7 +273,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  /** @return The number of matched Databases by the specified Database pattern */
+  /**
+   * @return The number of matched Databases by the specified Database pattern
+   */
   public CountDatabaseResp countMatchedDatabases(CountDatabasePlan plan) {
     CountDatabaseResp result = new CountDatabaseResp();
     databaseReadWriteLock.readLock().lock();
@@ -292,7 +294,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** @return All DatabaseSchemas that matches to the specified Database pattern */
+  /**
+   * @return All DatabaseSchemas that matches to the specified Database pattern
+   */
   public DatabaseSchemaResp getMatchedDatabaseSchemas(GetDatabasePlan plan) {
     DatabaseSchemaResp result = new DatabaseSchemaResp();
     databaseReadWriteLock.readLock().lock();

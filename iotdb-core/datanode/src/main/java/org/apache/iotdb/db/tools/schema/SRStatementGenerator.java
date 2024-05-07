@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
@@ -49,9 +50,11 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
@@ -62,6 +65,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_T
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
+import static org.apache.iotdb.db.schemaengine.schemaregion.tag.TagLogFile.parseByteBuffer;
 
 public class SRStatementGenerator implements Iterator<Statement>, Iterable<Statement> {
 
@@ -158,11 +162,11 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
           }
           return false;
         }
-        final Statement stmt =
+        final List<Statement> stmts =
             curNode.accept(
                 translater, databaseFullPath.getDevicePath().concatPath(curNode.getPartialPath()));
-        if (stmt != null) {
-          statements.push(stmt);
+        if (stmts != null) {
+          statements.addAll(stmts);
         }
         if (!statements.isEmpty()) {
           return true;
@@ -251,10 +255,10 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     return node;
   }
 
-  private class MNodeTranslater extends MNodeVisitor<Statement, PartialPath> {
+  private class MNodeTranslater extends MNodeVisitor<List<Statement>, PartialPath> {
 
     @Override
-    public Statement visitBasicMNode(IMNode<?> node, PartialPath path) {
+    public List<Statement> visitBasicMNode(IMNode<?> node, PartialPath path) {
       if (node.isDevice()) {
         // Aligned timeseries will be created when node pop.
         return SRStatementGenerator.genActivateTemplateStatement(node, path);
@@ -263,7 +267,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     }
 
     @Override
-    public Statement visitDatabaseMNode(
+    public List<Statement> visitDatabaseMNode(
         AbstractDatabaseMNode<?, ? extends IMNode<?>> node, PartialPath path) {
       if (node.isDevice()) {
         return SRStatementGenerator.genActivateTemplateStatement(node, path);
@@ -272,37 +276,38 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     }
 
     @Override
-    public Statement visitMeasurementMNode(
+    public List<Statement> visitMeasurementMNode(
         AbstractMeasurementMNode<?, ? extends IMNode<?>> node, PartialPath path) {
       if (node.isLogicalView()) {
+        List<Statement> statementList = new ArrayList<>();
         final CreateLogicalViewStatement stmt = new CreateLogicalViewStatement();
         final LogicalViewSchema viewSchema =
             (LogicalViewSchema) node.getAsMeasurementMNode().getSchema();
         if (viewSchema != null) {
           stmt.setTargetFullPaths(Collections.singletonList(path));
           stmt.setViewExpressions(Collections.singletonList(viewSchema.getExpression()));
-          return stmt;
+          statementList.add(stmt);
         }
-        //        if (node.getOffset() >= 0) {
-        //          final AlterTimeSeriesStatement alterTimeSeriesStatement = new
-        // AlterTimeSeriesStatement();
-        //          alterTimeSeriesStatement.setPath(path);
-        //          try {
-        //            Pair<Map<String, String>, Map<String, String>> tagsAndAttribute =
-        //                getTagsAndAttributes(node.getOffset());
-        //            if (tagsAndAttribute != null) {
-        //              alterTimeSeriesStatement.setTagsMap(tagsAndAttribute.left);
-        //              alterTimeSeriesStatement.setAttributesMap(tagsAndAttribute.right);
-        //            }
-        //          } catch (IOException ioException) {
-        //            lastExcept = ioException;
-        //            LOGGER.warn(
-        //                "Error when parse tag and attributes file of node path {}", path,
-        // ioException);
-        //          }
-        //          node.setOffset(0);
-        //        }
-        return stmt;
+        if (node.getOffset() >= 0) {
+          final AlterTimeSeriesStatement alterTimeSeriesStatement =
+              new AlterTimeSeriesStatement(true);
+          alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.UPSERT);
+          alterTimeSeriesStatement.setPath(path);
+          try {
+            Pair<Map<String, String>, Map<String, String>> tagsAndAttribute =
+                getTagsAndAttributes(node.getOffset());
+            if (tagsAndAttribute != null) {
+              alterTimeSeriesStatement.setTagsMap(tagsAndAttribute.left);
+              alterTimeSeriesStatement.setAttributesMap(tagsAndAttribute.right);
+              statementList.add(alterTimeSeriesStatement);
+            }
+          } catch (IOException ioException) {
+            lastExcept = ioException;
+            LOGGER.warn(
+                "Error when parse tag and attributes file of node path {}", path, ioException);
+          }
+        }
+        return statementList;
       } else if (node.getParent().getAsDeviceMNode().isAligned()) {
         return null;
       } else {
@@ -326,14 +331,14 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
           }
           node.setOffset(0);
         }
-        return stmt;
+        return Collections.singletonList(stmt);
       }
     }
   }
 
-  private static Statement genActivateTemplateStatement(IMNode node, PartialPath path) {
+  private static List<Statement> genActivateTemplateStatement(IMNode node, PartialPath path) {
     if (node.getAsDeviceMNode().isUseTemplate()) {
-      return new ActivateTemplateStatement(path);
+      return Collections.singletonList(new ActivateTemplateStatement(path));
     }
     return null;
   }
@@ -385,9 +390,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
   private Pair<Map<String, String>, Map<String, String>> getTagsAndAttributes(long offset)
       throws IOException {
     if (tagFileChannel != null) {
-      ByteBuffer byteBuffer = ByteBuffer.allocate(COMMON_CONFIG.getTagAttributeTotalSize());
-      tagFileChannel.read(byteBuffer, offset);
-      byteBuffer.flip();
+      ByteBuffer byteBuffer = parseByteBuffer(tagFileChannel, offset);
       Pair<Map<String, String>, Map<String, String>> tagsAndAttributes =
           new Pair<>(ReadWriteIOUtils.readMap(byteBuffer), ReadWriteIOUtils.readMap(byteBuffer));
       return tagsAndAttributes;
