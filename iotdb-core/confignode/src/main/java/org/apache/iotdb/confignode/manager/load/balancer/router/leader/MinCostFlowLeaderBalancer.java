@@ -20,8 +20,6 @@
 package org.apache.iotdb.confignode.manager.load.balancer.router.leader;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
@@ -31,7 +29,9 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -82,13 +82,13 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
   @Override
   public Map<TConsensusGroupId, Integer> generateOptimalLeaderDistribution(
       Map<String, List<TConsensusGroupId>> databaseRegionGroupMap,
-      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap,
+      Map<TConsensusGroupId, Set<Integer>> regionLocationMap,
       Map<TConsensusGroupId, Integer> regionLeaderMap,
       Map<Integer, NodeStatistics> dataNodeStatisticsMap,
       Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap) {
     initialize(
         databaseRegionGroupMap,
-        regionReplicaSetMap,
+        regionLocationMap,
         regionLeaderMap,
         dataNodeStatisticsMap,
         regionStatisticsMap);
@@ -126,23 +126,25 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
       String database = databaseEntry.getKey();
       sDNodeMap.put(database, new TreeMap<>());
       sDNodeReflect.put(database, new TreeMap<>());
-      List<TConsensusGroupId> regionGroupIds = databaseEntry.getValue();
-      for (TConsensusGroupId regionGroupId : regionGroupIds) {
-        rNodeMap.put(regionGroupId, maxNode++);
-        for (TDataNodeLocation dataNodeLocation :
-            regionReplicaSetMap.get(regionGroupId).getDataNodeLocations()) {
-          int dataNodeId = dataNodeLocation.getDataNodeId();
-          if (isDataNodeAvailable(dataNodeId)) {
-            if (!sDNodeMap.get(database).containsKey(dataNodeId)) {
-              sDNodeMap.get(database).put(dataNodeId, maxNode);
-              sDNodeReflect.get(database).put(maxNode, dataNodeId);
-              maxNode += 1;
-            }
-            if (!tDNodeMap.containsKey(dataNodeId)) {
-              tDNodeMap.put(dataNodeId, maxNode);
-              maxNode += 1;
-            }
-          }
+      for (TConsensusGroupId regionGroupId : databaseEntry.getValue()) {
+        if (regionGroupIntersection.contains(regionGroupId)) {
+          rNodeMap.put(regionGroupId, maxNode++);
+          regionLocationMap
+              .get(regionGroupId)
+              .forEach(
+                  dataNodeId -> {
+                    if (isDataNodeAvailable(dataNodeId)) {
+                      if (!sDNodeMap.get(database).containsKey(dataNodeId)) {
+                        sDNodeMap.get(database).put(dataNodeId, maxNode);
+                        sDNodeReflect.get(database).put(maxNode, dataNodeId);
+                        maxNode += 1;
+                      }
+                      if (!tDNodeMap.containsKey(dataNodeId)) {
+                        tDNodeMap.put(dataNodeId, maxNode);
+                        maxNode += 1;
+                      }
+                    }
+                  });
         }
       }
     }
@@ -165,17 +167,26 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
         databaseRegionGroupMap.entrySet()) {
       String database = databaseEntry.getKey();
       for (TConsensusGroupId regionGroupId : databaseEntry.getValue()) {
-        int rNode = rNodeMap.get(regionGroupId);
-        for (TDataNodeLocation dataNodeLocation :
-            regionReplicaSetMap.get(regionGroupId).getDataNodeLocations()) {
-          int dataNodeId = dataNodeLocation.getDataNodeId();
-          if (isDataNodeAvailable(dataNodeId) && isRegionAvailable(regionGroupId, dataNodeId)) {
-            int sDNode = sDNodeMap.get(database).get(dataNodeId);
-            // Capacity: 1, Cost: 1 if sDNode is the current leader of the rNode, 0 otherwise.
-            // Therefore, the RegionGroup will keep the leader as constant as possible.
-            int cost = regionLeaderMap.getOrDefault(regionGroupId, -1) == dataNodeId ? 0 : 1;
-            addAdjacentEdges(rNode, sDNode, 1, cost);
-          }
+        if (regionGroupIntersection.contains(regionGroupId)) {
+          int rNode = rNodeMap.get(regionGroupId);
+          regionLocationMap
+              .get(regionGroupId)
+              .forEach(
+                  dataNodeId -> {
+                    if (isDataNodeAvailable(dataNodeId)
+                        && isRegionAvailable(regionGroupId, dataNodeId)) {
+                      int sDNode = sDNodeMap.get(database).get(dataNodeId);
+                      // Capacity: 1, Cost: 1 if sDNode is the current leader of the rNode, 0
+                      // otherwise.
+                      // Therefore, the RegionGroup will keep the leader as constant as possible.
+                      int cost =
+                          Objects.equals(
+                                  regionLeaderMap.getOrDefault(regionGroupId, -1), dataNodeId)
+                              ? 0
+                              : 1;
+                      addAdjacentEdges(rNode, sDNode, 1, cost);
+                    }
+                  });
         }
       }
     }
@@ -187,18 +198,22 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
       // Map<DataNodeId, leader number>
       Map<Integer, Integer> leaderCounter = new TreeMap<>();
       for (TConsensusGroupId regionGroupId : databaseEntry.getValue()) {
-        for (TDataNodeLocation dataNodeLocation :
-            regionReplicaSetMap.get(regionGroupId).getDataNodeLocations()) {
-          int dataNodeId = dataNodeLocation.getDataNodeId();
-          if (isDataNodeAvailable(dataNodeId)) {
-            int sDNode = sDNodeMap.get(database).get(dataNodeId);
-            int tDNode = tDNodeMap.get(dataNodeId);
-            int leaderCount = leaderCounter.merge(dataNodeId, 1, Integer::sum);
-            // Capacity: 1, Cost: x^2 for the x-th edge at the current sDNode.
-            // Thus, the leader distribution will be as balance as possible within each Database
-            // based on the Jensen's-Inequality.
-            addAdjacentEdges(sDNode, tDNode, 1, leaderCount * leaderCount);
-          }
+        if (regionGroupIntersection.contains(regionGroupId)) {
+          regionLocationMap
+              .get(regionGroupId)
+              .forEach(
+                  dataNodeId -> {
+                    if (isDataNodeAvailable(dataNodeId)) {
+                      int sDNode = sDNodeMap.get(database).get(dataNodeId);
+                      int tDNode = tDNodeMap.get(dataNodeId);
+                      int leaderCount = leaderCounter.merge(dataNodeId, 1, Integer::sum);
+                      // Capacity: 1, Cost: x^2 for the x-th edge at the current sDNode.
+                      // Thus, the leader distribution will be as balance as possible within each
+                      // Database
+                      // based on the Jensen's-Inequality.
+                      addAdjacentEdges(sDNode, tDNode, 1, leaderCount * leaderCount);
+                    }
+                  });
         }
       }
     }
@@ -207,19 +222,20 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
     // Map<DataNodeId, possible maximum leader>
     // Count the possible maximum number of leader in each DataNode
     Map<Integer, Integer> maxLeaderCounter = new TreeMap<>();
-    for (TRegionReplicaSet regionReplicaSet : regionReplicaSetMap.values()) {
-      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-        int dataNodeId = dataNodeLocation.getDataNodeId();
-        if (isDataNodeAvailable(dataNodeId)) {
-          int tDNode = tDNodeMap.get(dataNodeId);
-          int leaderCount = maxLeaderCounter.merge(dataNodeId, 1, Integer::sum);
-          // Cost: x^2 for the x-th edge at the current dNode.
-          // Thus, the leader distribution will be as balance as possible within the cluster
-          // Based on the Jensen's-Inequality.
-          addAdjacentEdges(tDNode, T_NODE, 1, leaderCount * leaderCount);
-        }
-      }
-    }
+    regionLocationMap.forEach(
+        (regionGroupId, dataNodeIds) ->
+            dataNodeIds.forEach(
+                dataNodeId -> {
+                  if (isDataNodeAvailable(dataNodeId) && tDNodeMap.containsKey(dataNodeId)) {
+                    int tDNode = tDNodeMap.get(dataNodeId);
+                    int leaderCount = maxLeaderCounter.merge(dataNodeId, 1, Integer::sum);
+                    // Cost: x^2 for the x-th edge at the current dNode.
+                    // Thus, the leader distribution will be as balance as possible within the
+                    // cluster
+                    // Based on the Jensen's-Inequality.
+                    addAdjacentEdges(tDNode, T_NODE, 1, leaderCount * leaderCount);
+                  }
+                }));
   }
 
   private void addAdjacentEdges(int fromNode, int destNode, int capacity, int cost) {
@@ -328,6 +344,11 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
         (database, regionGroupIds) ->
             regionGroupIds.forEach(
                 regionGroupId -> {
+                  int originalLeader = regionLeaderMap.getOrDefault(regionGroupId, -1);
+                  if (!regionGroupIntersection.contains(regionGroupId)) {
+                    result.put(regionGroupId, originalLeader);
+                    return;
+                  }
                   boolean matchLeader = false;
                   for (int currentEdge = nodeHeadEdge[rNodeMap.get(regionGroupId)];
                       currentEdge >= 0;
@@ -339,7 +360,7 @@ public class MinCostFlowLeaderBalancer extends AbstractLeaderBalancer {
                     }
                   }
                   if (!matchLeader) {
-                    result.put(regionGroupId, regionLeaderMap.getOrDefault(regionGroupId, -1));
+                    result.put(regionGroupId, originalLeader);
                   }
                 }));
 
