@@ -41,6 +41,7 @@ public abstract class ArithmeticBinaryViewExpression extends BinaryViewExpressio
   protected ArithmeticBinaryViewExpression(InputStream inputStream) {
     super(inputStream);
   }
+
   // endregion
 
   // region common interfaces that have to be implemented

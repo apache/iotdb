@@ -67,6 +67,7 @@ public class SessionDataSetWrapper implements AutoCloseable {
     }
     return next;
   }
+
   /**
    * If there is an Exception, and you do not want to use the resultset anymore, you have to release
    * the resultset manually by calling closeResultSet

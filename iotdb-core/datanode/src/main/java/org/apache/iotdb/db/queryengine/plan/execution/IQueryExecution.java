@@ -59,7 +59,9 @@ public interface IQueryExecution {
 
   void recordExecutionTime(long executionTime);
 
-  /** @return cost time in ns */
+  /**
+   * @return cost time in ns
+   */
   long getTotalExecutionTime();
 
   Optional<String> getExecuteSQL();

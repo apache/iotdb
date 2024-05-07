@@ -50,12 +50,16 @@ public abstract class BaseNodeCache extends AbstractLoadCache {
     return ((NodeStatistics) currentStatistics.get()).getLoadScore();
   }
 
-  /** @return The current status of the Node. */
+  /**
+   * @return The current status of the Node.
+   */
   public NodeStatus getNodeStatus() {
     return ((NodeStatistics) currentStatistics.get()).getStatus();
   }
 
-  /** @return The reason why lead to current NodeStatus. */
+  /**
+   * @return The reason why lead to current NodeStatus.
+   */
   public String getNodeStatusWithReason() {
     NodeStatistics statistics = (NodeStatistics) this.currentStatistics.get();
     return statistics.getStatusReason() == null

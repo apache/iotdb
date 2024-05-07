@@ -97,6 +97,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionInfo;
 import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
@@ -201,18 +202,24 @@ public class DataRegion implements IDataRegionForQuery {
    * partitionLatestFlushedTimeForEachDevice)
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
+
   /** Condition to safely delete data region. */
   private final Condition deletedCondition = insertLock.writeLock().newCondition();
+
   /** Data region has been deleted or not. */
   private volatile boolean deleted = false;
+
   /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
   private final Object closeStorageGroupCondition = new Object();
+
   /**
    * Avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a read is executed.
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
+
   /** time partition id in the database -> {@link TsFileProcessor} for this time partition. */
   private final TreeMap<Long, TsFileProcessor> workSequenceTsFileProcessors = new TreeMap<>();
+
   /** time partition id in the database -> {@link TsFileProcessor} for this time partition. */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
 
@@ -225,10 +232,13 @@ public class DataRegion implements IDataRegionForQuery {
 
   /** data region id. */
   private final String dataRegionId;
+
   /** database name. */
   private final String databaseName;
+
   /** database system directory. */
   private File storageGroupSysDir;
+
   /** manage seqFileList and unSeqFileList. */
   private final TsFileManager tsFileManager;
 
@@ -242,15 +252,19 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private final HashMap<Long, VersionController> timePartitionIdVersionControllerMap =
       new HashMap<>();
+
   /**
    * When the data in a database is older than dataTTL, it is considered invalid and will be
    * eventually removed.
    */
   private long dataTTL = Long.MAX_VALUE;
+
   /** File system factory (local or hdfs). */
   private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+
   /** File flush policy. */
   private TsFileFlushPolicy fileFlushPolicy;
+
   /**
    * The max file versions in each partition. By recording this, if several IoTDB instances have the
    * same policy of closing file and their ingestion is identical, then files of the same version in
@@ -258,12 +272,16 @@ public class DataRegion implements IDataRegionForQuery {
    * across different instances. partition number -> max version number
    */
   private Map<Long, Long> partitionMaxFileVersions = new ConcurrentHashMap<>();
+
   /** database info for mem control. */
   private final DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
+
   /** whether it's ready from recovery. */
   private boolean isReady = false;
+
   /** close file listeners. */
   private List<CloseFileListener> customCloseFileListeners = Collections.emptyList();
+
   /** flush listeners. */
   private List<FlushListener> customFlushListeners = Collections.emptyList();
 
@@ -274,6 +292,8 @@ public class DataRegion implements IDataRegionForQuery {
    * one holds the insertWriteLock.
    */
   private String insertWriteLockHolder = "";
+
+  private volatile long directBufferMemoryCost = 0;
 
   private final AtomicBoolean isCompactionSelecting = new AtomicBoolean(false);
 
@@ -297,6 +317,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = dataRegionId;
     this.databaseName = databaseName;
     this.fileFlushPolicy = fileFlushPolicy;
+    acquireDirectBufferMemory();
 
     storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
     this.tsFileManager =
@@ -378,6 +399,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     /** number of already recovered files. */
     private long recoveredFilesNum;
+
     /** last recovery log time. */
     private long lastLogTime;
 
@@ -1555,13 +1577,12 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** delete tsfile */
-  public void syncDeleteDataFiles() {
+  public void syncDeleteDataFiles() throws TsFileProcessorException {
     logger.info(
         "{} will close all files for deleting data files", databaseName + "-" + dataRegionId);
     writeLock("syncDeleteDataFiles");
     try {
-
-      syncCloseAllWorkingTsFileProcessors();
+      forceCloseAllWorkingTsFileProcessors();
       // normally, mergingModification is just need to be closed by after a merge task is finished.
       // we close it here just for IT test.
       closeAllResources();
@@ -1581,6 +1602,8 @@ public class DataRegion implements IDataRegionForQuery {
       this.tsFileManager.clear();
       lastFlushTimeMap.clearFlushedTime();
       lastFlushTimeMap.clearGlobalFlushedTime();
+      TimePartitionManager.getInstance()
+          .removeTimePartitionInfo(new DataRegionId(Integer.parseInt(dataRegionId)));
     } finally {
       writeUnlock();
     }
@@ -1742,7 +1765,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** close all working tsfile processors */
-  public List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
+  List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
     writeLock("asyncCloseAllWorkingTsFileProcessors");
     List<Future<?>> futures = new ArrayList<>();
     try {
@@ -1778,6 +1801,7 @@ public class DataRegion implements IDataRegionForQuery {
           new ArrayList<>(workUnsequenceTsFileProcessors.values())) {
         tsFileProcessor.putMemTableBackAndClose();
       }
+      WritingMetrics.getInstance().recordActiveTimePartitionCount(-1);
     } finally {
       writeUnlock();
     }
@@ -3279,7 +3303,9 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /** @return the disk space occupied by this data region, unit is MB */
+  /**
+   * @return the disk space occupied by this data region, unit is MB
+   */
   public long countRegionDiskSize() {
     AtomicLong diskSize = new AtomicLong(0);
     TierManager.getInstance()
@@ -3434,10 +3460,36 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("markDeleted");
     try {
       deleted = true;
+      releaseDirectBufferMemory();
       deletedCondition.signalAll();
     } finally {
       writeUnlock();
     }
+  }
+
+  private void acquireDirectBufferMemory() throws DataRegionException {
+    long acquireDirectBufferMemCost = 0;
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+      acquireDirectBufferMemCost = config.getWalBufferSize();
+    } else if (config
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      acquireDirectBufferMemCost = config.getDataRatisConsensusLogAppenderBufferSizeMax();
+    }
+    if (!SystemInfo.getInstance().addDirectBufferMemoryCost(acquireDirectBufferMemCost)) {
+      throw new DataRegionException(
+          "Total allocated memory for direct buffer will be "
+              + (SystemInfo.getInstance().getDirectBufferMemoryCost() + acquireDirectBufferMemCost)
+              + ", which is greater than limit mem cost: "
+              + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
+    }
+    this.directBufferMemoryCost = acquireDirectBufferMemCost;
+  }
+
+  private void releaseDirectBufferMemory() {
+    SystemInfo.getInstance().decreaseDirectBufferMemoryCost(directBufferMemoryCost);
+    // avoid repeated deletion
+    this.directBufferMemoryCost = 0;
   }
 
   /* Be careful, the thread that calls this method may not hold the write lock!!*/

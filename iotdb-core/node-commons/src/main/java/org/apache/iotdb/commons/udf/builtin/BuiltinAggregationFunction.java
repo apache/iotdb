@@ -68,7 +68,9 @@ public enum BuiltinAggregationFunction {
     return NATIVE_FUNCTION_NAMES;
   }
 
-  /** @return if the Aggregation can use statistics to optimize */
+  /**
+   * @return if the Aggregation can use statistics to optimize
+   */
   public static boolean canUseStatistics(String name) {
     final String functionName = name.toLowerCase();
     switch (functionName) {
@@ -103,7 +105,9 @@ public enum BuiltinAggregationFunction {
 
   // TODO Maybe we can merge this method with canUseStatistics(),
   //  new method returns three level push-down: No push-down, DataRegion, SeriesScan
-  /** @return if the Aggregation can split to multi phases */
+  /**
+   * @return if the Aggregation can split to multi phases
+   */
   public static boolean canSplitToMultiPhases(String name) {
     final String functionName = name.toLowerCase();
     switch (functionName) {

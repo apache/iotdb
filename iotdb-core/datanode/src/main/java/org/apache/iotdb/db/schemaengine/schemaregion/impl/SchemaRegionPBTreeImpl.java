@@ -85,6 +85,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWrite
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -185,6 +186,18 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   public synchronized void init() throws MetadataException {
     if (initialized) {
       return;
+    }
+
+    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
+      if (!SystemInfo.getInstance()
+          .addDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax())) {
+        throw new MetadataException(
+            "Total allocated memory for direct buffer will be "
+                + (SystemInfo.getInstance().getDirectBufferMemoryCost() + memCost)
+                + ", which is greater than limit mem cost: "
+                + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
+      }
     }
 
     initDir();
@@ -462,6 +475,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
     // delete all the schema region files
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
+
+    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      SystemInfo.getInstance()
+          .decreaseDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax());
+    }
   }
 
   @Override
@@ -949,7 +967,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     mtree.rollbackSchemaBlackList(path);
   }
 
-  /** @param path full path from root to leaf node */
+  /**
+   * @param path full path from root to leaf node
+   */
   private void deleteOneTimeseriesUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
     IMeasurementMNode<ICachedMNode> measurementMNode = mtree.deleteTimeseries(path);
@@ -960,6 +980,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       regionStatistics.deleteMeasurement(1L);
     }
   }
+
   // endregion
 
   // region Interfaces for get and auto create device
@@ -986,6 +1007,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       throw new MetadataException(e);
     }
   }
+
   // endregion
 
   // region Interfaces for metadata info Query
@@ -1258,6 +1280,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   private void removeFromTagInvertedIndex(IMeasurementMNode<ICachedMNode> node) throws IOException {
     tagManager.removeFromTagInvertedIndex(node);
   }
+
   // endregion
 
   // region Interfaces and Implementation for Template operations
@@ -1367,6 +1390,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       throws MetadataException {
     return mtree.getNodeReader(showNodesPlan);
   }
+
   // endregion
 
   private static class RecoverOperationResult {

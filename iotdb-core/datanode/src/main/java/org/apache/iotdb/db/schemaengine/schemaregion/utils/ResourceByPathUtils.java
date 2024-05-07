@@ -382,6 +382,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         partialPath.getMeasurementSchema().getProps(),
         deletionList);
   }
+
   /**
    * construct a deletion list from a memtable.
    *
@@ -404,6 +405,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     }
     return TimeRange.sortAndMerge(deletionList);
   }
+
   /** get modifications from a memtable. */
   @Override
   protected List<Modification> getModificationsForMemtable(

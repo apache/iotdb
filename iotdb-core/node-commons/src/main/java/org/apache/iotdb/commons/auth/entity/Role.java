@@ -179,6 +179,7 @@ public class Role {
   public boolean checkSysPriGrantOpt(int privilegeId) {
     return sysPrivilegeSet.contains(privilegeId) && sysPriGrantOpt.contains(privilegeId);
   }
+
   /** ----------- misc --------------------* */
   @Override
   public boolean equals(Object o) {

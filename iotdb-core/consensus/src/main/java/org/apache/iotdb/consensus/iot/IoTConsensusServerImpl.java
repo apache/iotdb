@@ -130,6 +130,7 @@ public class IoTConsensusServerImpl {
   private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
       IoTConsensusRateLimiter.getInstance();
   private volatile long lastPinnedSearchIndexForMigration = -1;
+  private volatile long lastPinnedSafeDeletedIndexForMigration = -1;
 
   public IoTConsensusServerImpl(
       String storageDir,
@@ -771,9 +772,9 @@ public class IoTConsensusServerImpl {
   }
 
   public long getMinFlushedSyncIndex() {
-    return lastPinnedSearchIndexForMigration == -1
+    return lastPinnedSafeDeletedIndexForMigration == -1
         ? logDispatcher.getMinFlushedSyncIndex().orElseGet(searchIndex::get)
-        : lastPinnedSearchIndexForMigration;
+        : lastPinnedSafeDeletedIndexForMigration;
   }
 
   public String getStorageDir() {
@@ -891,6 +892,7 @@ public class IoTConsensusServerImpl {
    */
   public void checkAndLockSafeDeletedSearchIndex() {
     lastPinnedSearchIndexForMigration = searchIndex.get();
+    lastPinnedSafeDeletedIndexForMigration = getMinFlushedSyncIndex();
     consensusReqReader.setSafelyDeletedSearchIndex(getMinFlushedSyncIndex());
   }
 
@@ -899,6 +901,7 @@ public class IoTConsensusServerImpl {
    */
   public void checkAndUnlockSafeDeletedSearchIndex() {
     lastPinnedSearchIndexForMigration = -1;
+    lastPinnedSafeDeletedIndexForMigration = -1;
     checkAndUpdateSafeDeletedSearchIndex();
   }
 
