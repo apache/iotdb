@@ -1101,7 +1101,8 @@ public class IoTDBConfig {
 
   private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
 
-  private int loadWriteThroughputMbPerSecond = 1000; // MB/s
+  private double loadWriteThroughputMbPerSecond = 1000; // MB/s
+
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
   private String[] pipeReceiverFileDirs = new String[0];
@@ -3794,11 +3795,11 @@ public class IoTDBConfig {
     this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
   }
 
-  public int getLoadWriteThroughputMbPerSecond() {
+  public double getLoadWriteThroughputMbPerSecond() {
     return loadWriteThroughputMbPerSecond;
   }
 
-  public void setLoadWriteThroughputMbPerSecond(int loadWriteThroughputMbPerSecond) {
+  public void setLoadWriteThroughputMbPerSecond(double loadWriteThroughputMbPerSecond) {
     this.loadWriteThroughputMbPerSecond = loadWriteThroughputMbPerSecond;
   }
 

@@ -916,7 +916,7 @@ public class IoTDBDescriptor {
                 "load_clean_up_task_execution_delay_time_seconds",
                 String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
     conf.setLoadWriteThroughputMbPerSecond(
-        Integer.parseInt(
+        Double.parseDouble(
             properties.getProperty(
                 "load_write_throughput_mb_per_sec",
                 String.valueOf(conf.getLoadWriteThroughputMbPerSecond()))));
@@ -1712,7 +1712,7 @@ public class IoTDBDescriptor {
                   String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
 
       conf.setLoadWriteThroughputMbPerSecond(
-          Integer.parseInt(
+          Double.parseDouble(
               properties.getProperty(
                   "load_write_throughput_mb_per_sec",
                   String.valueOf(conf.getLoadWriteThroughputMbPerSecond()))));

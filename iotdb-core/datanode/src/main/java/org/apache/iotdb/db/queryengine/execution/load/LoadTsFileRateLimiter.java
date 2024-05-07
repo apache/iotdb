@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.load;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
+import com.google.common.util.concurrent.AtomicDouble;
 import com.google.common.util.concurrent.RateLimiter;
 
 public class LoadTsFileRateLimiter {
@@ -30,26 +31,27 @@ public class LoadTsFileRateLimiter {
 
   private RateLimiter loadWriteRateLimiter;
 
-  private double throughoutMbPerSec = CONFIG.getLoadWriteThroughputMbPerSecond();
+  private AtomicDouble throughputMbPerSec =
+      new AtomicDouble(CONFIG.getLoadWriteThroughputMbPerSecond());
 
   public LoadTsFileRateLimiter() {
-    loadWriteRateLimiter = RateLimiter.create(throughoutMbPerSec);
+    loadWriteRateLimiter = RateLimiter.create(throughputMbPerSec.get());
   }
 
-  private void setWritePointRate(final double throughoutMbPerSec) {
-    double throughout = throughoutMbPerSec * 1024.0 * 1024.0;
-    // if throughout = 0, disable rate limiting
-    if (throughout <= 0) {
-      throughout = Double.MAX_VALUE;
+  private void setWritePointRate(final double throughputMbPerSec) {
+    double throughput = throughputMbPerSec * 1024.0 * 1024.0;
+    // if throughput = 0, disable rate limiting
+    if (throughput <= 0) {
+      throughput = Double.MAX_VALUE;
     }
 
-    loadWriteRateLimiter.setRate(throughout);
+    loadWriteRateLimiter.setRate(throughput);
   }
 
   public void acquireWrittenBytesWithLoadWriteRateLimiter(long writtenDataSizeInBytes) {
-    if (throughoutMbPerSec != CONFIG.getLoadWriteThroughputMbPerSecond()) {
-      throughoutMbPerSec = CONFIG.getLoadWriteThroughputMbPerSecond();
-      setWritePointRate(throughoutMbPerSec);
+    if (throughputMbPerSec.get() != CONFIG.getLoadWriteThroughputMbPerSecond()) {
+      throughputMbPerSec.set(CONFIG.getLoadWriteThroughputMbPerSecond());
+      setWritePointRate(throughputMbPerSec.get());
     }
 
     while (writtenDataSizeInBytes > 0) {
@@ -61,5 +63,14 @@ public class LoadTsFileRateLimiter {
         return;
       }
     }
+  }
+
+  //////////////////////////// Singleton ///////////////////////////////////////
+  private static class LoadTsFileRateLimiterHolder {
+    private static final LoadTsFileRateLimiter INSTANCE = new LoadTsFileRateLimiter();
+  }
+
+  public static LoadTsFileRateLimiter getInstance() {
+    return LoadTsFileRateLimiterHolder.INSTANCE;
   }
 }
