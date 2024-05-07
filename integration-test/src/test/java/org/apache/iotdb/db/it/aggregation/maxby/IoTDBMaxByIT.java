@@ -468,7 +468,9 @@ public class IoTDBMaxByIT {
     }
   }
 
-  /** @return yInput -> expectedHeader */
+  /**
+   * @return yInput -> expectedHeader
+   */
   private Map<String, String[]> generateExpectedHeadersForMaxByTest(
       String device, String[] xInput, String[] yInput) {
     Map<String, String[]> res = new HashMap<>();

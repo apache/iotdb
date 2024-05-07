@@ -136,7 +136,9 @@ public class ConsumerGroupMeta {
     }
   }
 
-  /** @return topics subscribed by no consumers in this group after this removal. */
+  /**
+   * @return topics subscribed by no consumers in this group after this removal.
+   */
   public Set<String> removeSubscription(String consumerId, Set<String> topics) {
     if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
       throw new SubscriptionException(

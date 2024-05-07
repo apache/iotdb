@@ -57,9 +57,11 @@ public class WALRecoverManager {
 
   // true when the recover procedure has started
   private volatile boolean hasStarted = false;
+
   // start recovery after all data regions have submitted unsealed zero-level TsFiles
   @SuppressWarnings("squid:S3077")
   private volatile ExceptionalCountDownLatch allDataRegionScannedLatch;
+
   // threads to recover wal nodes
   private ExecutorService recoverThreadPool;
   // stores all UnsealedTsFileRecoverPerformer submitted by data region processors

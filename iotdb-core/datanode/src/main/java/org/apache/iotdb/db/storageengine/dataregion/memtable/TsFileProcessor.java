@@ -112,6 +112,7 @@ public class TsFileProcessor {
 
   /** Database info for mem control. */
   private final DataRegionInfo dataRegionInfo;
+
   /** Tsfile processor info for mem control. */
   private TsFileProcessorInfo tsFileProcessorInfo;
 
@@ -129,6 +130,7 @@ public class TsFileProcessor {
 
   /** Time range index to indicate this processor belongs to which time range */
   private long timeRangeId;
+
   /**
    * Whether the processor is in the queue of the FlushManager or being flushed by a flush thread.
    */
@@ -136,6 +138,7 @@ public class TsFileProcessor {
 
   /** A lock to mutual exclude read and read */
   private final ReadWriteLock flushQueryLock = new ReentrantReadWriteLock();
+
   /**
    * It is set by the StorageGroupProcessor and checked by flush threads. (If shouldClose == true
    * and its flushingMemTables are all flushed, then the flush thread will close this file.)
@@ -1577,6 +1580,7 @@ public class TsFileProcessor {
   public void putMemTableBackAndClose() throws TsFileProcessorException {
     if (workMemTable != null) {
       workMemTable.release();
+      dataRegionInfo.releaseStorageGroupMemCost(workMemTable.getTVListsRamCost());
       workMemTable = null;
     }
     try {
@@ -1584,6 +1588,8 @@ public class TsFileProcessor {
     } catch (IOException e) {
       throw new TsFileProcessorException(e);
     }
+    tsFileProcessorInfo.clear();
+    dataRegionInfo.closeTsFileProcessorAndReportToSystem(this);
   }
 
   public void setTsFileProcessorInfo(TsFileProcessorInfo tsFileProcessorInfo) {

@@ -100,6 +100,7 @@ public class FunctionViewExpression extends ViewExpression {
       throw new RuntimeException(e);
     }
   }
+
   // endregion
 
   // region common interfaces that have to be implemented
@@ -178,6 +179,7 @@ public class FunctionViewExpression extends ViewExpression {
       ViewExpression.serialize(expression, stream);
     }
   }
+
   // endregion
 
   public String getFunctionName() {

@@ -113,7 +113,9 @@ public class DatabasePartitionTable {
                 new RegionGroup(CommonDateTimeUtils.currentTime(), replicaSet)));
   }
 
-  /** @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup */
+  /**
+   * @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup
+   */
   public Stream<TRegionReplicaSet> getAllReplicaSets() {
     return regionGroupMap.values().stream().map(RegionGroup::getReplicaSet);
   }

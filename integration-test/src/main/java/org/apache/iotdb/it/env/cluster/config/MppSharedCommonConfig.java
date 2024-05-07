@@ -431,4 +431,25 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setWalMode(walMode);
     return this;
   }
+
+  @Override
+  public CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize) {
+    dnConfig.setTagAttributeTotalSize(tagAttributeTotalSize);
+    cnConfig.setTagAttributeTotalSize(tagAttributeTotalSize);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTagAttributeMaxNum(int tagAttributeMaxNum) {
+    dnConfig.setTagAttributeMaxNum(tagAttributeMaxNum);
+    cnConfig.setTagAttributeMaxNum(tagAttributeMaxNum);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTagAttributeEntryMaxSize(int tagAttributeEntryMaxSize) {
+    dnConfig.setTagAttributeEntryMaxSize(tagAttributeEntryMaxSize);
+    cnConfig.setTagAttributeEntryMaxSize(tagAttributeEntryMaxSize);
+    return this;
+  }
 }

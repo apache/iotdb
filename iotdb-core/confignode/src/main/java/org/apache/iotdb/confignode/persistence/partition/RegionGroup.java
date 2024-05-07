@@ -100,7 +100,9 @@ public class RegionGroup {
     replicaSet.getDataNodeLocations().sort(TDataNodeLocation::compareTo);
   }
 
-  /** @param deltaMap Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count> */
+  /**
+   * @param deltaMap Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count>
+   */
   public void updateSlotCountMap(Map<TSeriesPartitionSlot, AtomicLong> deltaMap) {
     deltaMap.forEach(
         ((seriesPartitionSlot, delta) -> {

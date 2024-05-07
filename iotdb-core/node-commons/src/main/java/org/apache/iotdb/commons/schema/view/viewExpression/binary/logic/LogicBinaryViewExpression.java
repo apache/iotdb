@@ -41,6 +41,7 @@ public abstract class LogicBinaryViewExpression extends BinaryViewExpression {
   protected LogicBinaryViewExpression(InputStream inputStream) {
     super(inputStream);
   }
+
   // endregion
 
   // region common interfaces that have to be implemented
