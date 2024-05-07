@@ -49,6 +49,7 @@ public abstract class LogWriter implements ILogWriter {
   protected long size;
   protected boolean isEndFile = false;
   private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES * 2 + 1);
+  private static final CompressionType compressionType = CompressionType.GZIP;
   private final ICompressor compressor = ICompressor.getCompressor(CompressionType.GZIP);
   private final ByteBuffer compressedByteBuffer;
 
@@ -83,15 +84,16 @@ public abstract class LogWriter implements ILogWriter {
     }
     size += bufferSize;
     headerBuffer.clear();
+    headerBuffer.put(
+        compressed ? compressionType.serialize() : CompressionType.UNCOMPRESSED.serialize());
+    if (compressed) {
+      headerBuffer.putInt(uncompressedSize);
+      size += 4;
+    }
     headerBuffer.putInt(bufferSize);
-    headerBuffer.put((byte) (compressed ? 1 : 0));
     size += bufferSize;
     size += 5;
     try {
-      if (compressed) {
-        headerBuffer.putInt(uncompressedSize);
-        size += 4;
-      }
       headerBuffer.flip();
       logChannel.write(headerBuffer);
       logChannel.write(buffer);

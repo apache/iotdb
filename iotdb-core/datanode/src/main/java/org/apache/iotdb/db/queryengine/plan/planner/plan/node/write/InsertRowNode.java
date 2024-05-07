@@ -53,7 +53,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class InsertRowNode extends InsertNode implements WALEntryValue {
 
@@ -69,7 +68,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   private Object[] values;
 
   private boolean isNeedInferType = false;
-  public AtomicInteger insertCount;
 
   public InsertRowNode(PlanNodeId id) {
     super(id);
