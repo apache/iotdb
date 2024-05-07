@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig.PipeConsensusRPCConfig;
+import org.apache.iotdb.consensus.pipe.client.manager.PipeConsensusAsyncClientManager;
 import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCService;
 import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCServiceProcessor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
@@ -107,10 +108,11 @@ public class PipeConsensusReplicateTest {
 
   private static final long timeout = TimeUnit.SECONDS.toMillis(300);
   private final RegisterManager registerManager = new RegisterManager();
+  private PipeConsensusRPCService followerRPCServer;
 
   // ============================= Pipe Components =============================
 
-  private final PipeConsensusAsyncConnector leaderSink = new PipeConsensusAsyncConnector();
+  private PipeConsensusAsyncConnector leaderSink;
 
   // ============================= Data Generate =============================
 
@@ -160,6 +162,7 @@ public class PipeConsensusReplicateTest {
                     String.valueOf(peers.get(1).getEndpoint().getPort()));
               }
             });
+    leaderSink = new PipeConsensusAsyncConnector();
     leaderSink.validate(new PipeParameterValidator(leaderSinkParameters));
     String pipeName = "pipe_consensus_replicate_test";
     leaderSink.customize(
@@ -169,15 +172,11 @@ public class PipeConsensusReplicateTest {
                 pipeName, System.currentTimeMillis(), did.getId())));
 
     // initialize follower's receive component
-    PipeConsensusRPCService followerRPCServer =
+    followerRPCServer =
         new PipeConsensusRPCService(peers.get(1).getEndpoint(), new PipeConsensusRPCConfig());
     followerRPCServer.initAsyncedServiceImpl(
         new PipeConsensusRPCServiceProcessor(PipeAgent.receiver().pipeConsensus()));
     registerManager.register(followerRPCServer);
-
-    // initialize WAL and tsFile mock events
-    prepareWALEvents(walEventSize, initialRebootTimes);
-    prepareTsFileEvents(0, initialRebootTimes, tsFileEventsSize);
 
     // mock static methods
     PowerMockito.mockStatic(PipeConsensusTabletRawReq.class);
@@ -203,18 +202,23 @@ public class PipeConsensusReplicateTest {
               }
               return pipeConsensusRawReq;
             });
+
+    PipeAgent.receiver().pipeConsensus().resetReceiver();
+
+    // initialize WAL and tsFile mock events
+    prepareWALEvents(walEventSize, initialRebootTimes);
+    prepareTsFileEvents(0, initialRebootTimes, tsFileEventsSize);
   }
 
   @After
   public void tearDown() throws Exception {
     leaderSink.close();
     registerManager.deregisterAll();
+    PipeConsensusAsyncClientManager.getInstance().clear(peers.get(1).getEndpoint());
   }
 
   @Test
   public void sequenceReplicateWALTest() throws Exception {
-    PipeAgent.receiver().pipeConsensus().resetReceiver();
-
     for (int i = 0; i < mockWALEvents.size(); i++) {
       leaderSink.transfer((TabletInsertionEvent) mockWALEvents.get(i));
       Assert.assertEquals(1, leaderSink.getTransferBufferSize());
@@ -228,8 +232,6 @@ public class PipeConsensusReplicateTest {
 
   @Test
   public void unsequenceReplicateWALTest() throws Exception {
-    PipeAgent.receiver().pipeConsensus().resetReceiver();
-
     // send 3
     leaderSink.transfer((TabletInsertionEvent) mockWALEvents.get(3));
     Thread.sleep(50);
@@ -269,8 +271,6 @@ public class PipeConsensusReplicateTest {
 
   @Test
   public void sequenceReplicateTsFileTest() throws Exception {
-    PipeAgent.receiver().pipeConsensus().resetReceiver();
-
     for (int i = 0; i < mockTsFileEvents.size(); i++) {
       leaderSink.transfer((TsFileInsertionEvent) mockTsFileEvents.get(i));
       Assert.assertEquals(1, leaderSink.getTransferBufferSize());
@@ -284,8 +284,6 @@ public class PipeConsensusReplicateTest {
 
   @Test
   public void unsequenceReplicateTsFileTest() throws Exception {
-    PipeAgent.receiver().pipeConsensus().resetReceiver();
-
     // send 3
     leaderSink.transfer((TsFileInsertionEvent) mockTsFileEvents.get(3));
     Thread.sleep(50);
@@ -359,7 +357,6 @@ public class PipeConsensusReplicateTest {
 
   @Test
   public void sequenceReplicateHybridTest() throws Exception {
-    PipeAgent.receiver().pipeConsensus().resetReceiver();
     prepareHybridEvents();
 
     for (int i = 0; i < mockHybridEvents.size(); i++) {
@@ -375,7 +372,6 @@ public class PipeConsensusReplicateTest {
 
   @Test
   public void unsequenceReplicateHybridTest() throws Exception {
-    PipeAgent.receiver().pipeConsensus().resetReceiver();
     prepareHybridEvents();
 
     // send 3
@@ -419,7 +415,6 @@ public class PipeConsensusReplicateTest {
 
   @Test
   public void replicateWithReceiverReboot() throws Exception {
-    PipeAgent.receiver().pipeConsensus().resetReceiver();
     prepareHybridEvents();
 
     // connector send 6 events
@@ -484,7 +479,9 @@ public class PipeConsensusReplicateTest {
     for (int i = 0; i < tsFileEventsSize; i++) {
       File tsFile = new File(tsFileDir, String.format("%s-%s-0-0.tsfile", i, i));
       try {
-        boolean ignored1 = tsFile.createNewFile();
+        if (!tsFile.exists()) {
+          boolean ignored1 = tsFile.createNewFile();
+        }
       } catch (IOException e) {
         e.printStackTrace();
         throw new RuntimeException(e);

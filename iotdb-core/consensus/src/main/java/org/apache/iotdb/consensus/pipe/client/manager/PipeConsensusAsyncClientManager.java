@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.pipe.client.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig.PipeConsensusRPCConfig;
 import org.apache.iotdb.consensus.pipe.client.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.consensus.pipe.client.PipeConsensusClientPool.AsyncPipeConsensusServiceClientPoolFactory;
@@ -75,6 +76,11 @@ public class PipeConsensusAsyncClientManager {
               endPoint.getPort()),
           e);
     }
+  }
+
+  @TestOnly
+  public void clear(TEndPoint endPoint) {
+    ASYNC_CLIENT_MANAGER.clear(endPoint);
   }
 
   //////////////////////////// singleton ////////////////////////////
