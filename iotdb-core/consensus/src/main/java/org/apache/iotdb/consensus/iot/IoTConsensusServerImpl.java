@@ -811,7 +811,7 @@ public class IoTConsensusServerImpl {
   }
 
   public boolean needBlockWrite() {
-    return false;
+    return consensusReqReader.getTotalSize() > config.getReplication().getWalThrottleThreshold();
   }
 
   public boolean unblockWrite() {

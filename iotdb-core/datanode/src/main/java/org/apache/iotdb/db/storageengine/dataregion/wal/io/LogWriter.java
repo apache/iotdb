@@ -22,9 +22,9 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
-import org.apache.iotdb.tsfile.compress.ICompressor;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
+import org.apache.tsfile.compress.ICompressor;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +57,6 @@ public abstract class LogWriter implements ILogWriter {
     this.logStream = new FileOutputStream(logFile, true);
     this.logChannel = this.logStream.getChannel();
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWALCompression()) {
-      logger.info("Enable WAL compression with gzip");
       compressedByteBuffer =
           ByteBuffer.allocate(
               compressor.getMaxBytesForCompression(
