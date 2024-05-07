@@ -520,7 +520,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   public synchronized boolean hasConsumedAll() {
-    return Objects.isNull(pendingQueue) || pendingQueue.isEmpty();
+    return Objects.nonNull(pendingQueue) && pendingQueue.isEmpty();
   }
 
   @Override

@@ -40,7 +40,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningFilter;
-import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.builder.PipeDataNodeBuilder;
@@ -315,7 +315,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   private void restartAllStuckPipesInternal() {
     final Map<String, IoTDBDataRegionExtractor> taskId2ExtractorMap =
-        PipeExtractorMetrics.getInstance().getExtractorMap();
+        PipeDataRegionExtractorMetrics.getInstance().getExtractorMap();
 
     final Set<PipeMeta> stuckPipes = new HashSet<>();
     for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {

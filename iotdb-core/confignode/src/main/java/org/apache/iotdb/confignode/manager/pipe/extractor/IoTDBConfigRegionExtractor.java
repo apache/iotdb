@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
+import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigRegionExtractorMetrics;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -59,6 +60,8 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
     super.customize(parameters, configuration);
     listenedTypeSet = ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters);
+
+    PipeConfigRegionExtractorMetrics.getInstance().register(this);
   }
 
   @Override

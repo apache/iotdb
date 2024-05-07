@@ -28,7 +28,9 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.db.pipe.metric.PipeDataRegionConnectorMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeSchemaRegionConnectorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -63,17 +65,21 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   private long lastHeartbeatEventInjectTime = System.currentTimeMillis();
 
   public PipeConnectorSubtask(
-      String taskID,
-      long creationTime,
-      String attributeSortedString,
-      int connectorIndex,
-      BoundedBlockingPendingQueue<Event> inputPendingQueue,
-      PipeConnector outputPipeConnector) {
+      final String taskID,
+      final long creationTime,
+      final String attributeSortedString,
+      final int connectorIndex,
+      final BoundedBlockingPendingQueue<Event> inputPendingQueue,
+      final PipeConnector outputPipeConnector) {
     super(taskID, creationTime, outputPipeConnector);
     this.attributeSortedString = attributeSortedString;
     this.connectorIndex = connectorIndex;
     this.inputPendingQueue = inputPendingQueue;
-    PipeConnectorMetrics.getInstance().register(this);
+    if (!attributeSortedString.startsWith("schema_")) {
+      PipeDataRegionConnectorMetrics.getInstance().register(this);
+    } else {
+      PipeSchemaRegionConnectorMetrics.getInstance().register(this);
+    }
   }
 
   @Override
@@ -100,12 +106,15 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
-        PipeConnectorMetrics.getInstance().markTabletEvent(taskID);
+        PipeDataRegionConnectorMetrics.getInstance().markTabletEvent(taskID);
       } else if (event instanceof TsFileInsertionEvent) {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
-        PipeConnectorMetrics.getInstance().markTsFileEvent(taskID);
+        PipeDataRegionConnectorMetrics.getInstance().markTsFileEvent(taskID);
       } else if (event instanceof PipeHeartbeatEvent) {
         transferHeartbeatEvent((PipeHeartbeatEvent) event);
+      } else if (event instanceof PipeSchemaRegionWritePlanEvent) {
+        PipeSchemaRegionConnectorMetrics.getInstance().markSchemaEvent(taskID);
+        outputPipeConnector.transfer(event);
       } else {
         outputPipeConnector.transfer(
             event instanceof UserDefinedEnrichedEvent
@@ -124,7 +133,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
             e);
         clearReferenceCountAndReleaseLastEvent();
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       if (!isClosed.get()) {
         throw new PipeException(
             String.format(
@@ -144,11 +153,11 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     return true;
   }
 
-  private void transferHeartbeatEvent(PipeHeartbeatEvent event) {
+  private void transferHeartbeatEvent(final PipeHeartbeatEvent event) {
     try {
       outputPipeConnector.heartbeat();
       outputPipeConnector.transfer(event);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new PipeConnectionException(
           "PipeConnector: "
               + outputPipeConnector.getClass().getName()
@@ -160,16 +169,16 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     lastHeartbeatEventInjectTime = System.currentTimeMillis();
 
     event.onTransferred();
-    PipeConnectorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
+    PipeDataRegionConnectorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
   }
 
   @Override
   public void close() {
-    PipeConnectorMetrics.getInstance().deregister(taskID);
+    PipeDataRegionConnectorMetrics.getInstance().deregister(taskID);
     isClosed.set(true);
     try {
       outputPipeConnector.close();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.info(
           "Exception occurred when closing pipe connector subtask {}, root cause: {}",
           taskID,
@@ -193,7 +202,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
    * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
    * its queued events in the output pipe connector.
    */
-  public void discardEventsOfPipe(String pipeNameToDrop) {
+  public void discardEventsOfPipe(final String pipeNameToDrop) {
     if (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector) {
       ((IoTDBDataRegionAsyncConnector) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop);
     }
@@ -230,12 +239,12 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   //////////////////////////// Error report ////////////////////////////
 
   @Override
-  protected String getRootCause(Throwable throwable) {
+  protected String getRootCause(final Throwable throwable) {
     return ErrorHandlingUtils.getRootCause(throwable).getMessage();
   }
 
   @Override
-  protected void report(EnrichedEvent event, PipeRuntimeException exception) {
+  protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
     PipeAgent.runtime().report(event, exception);
   }
 }
