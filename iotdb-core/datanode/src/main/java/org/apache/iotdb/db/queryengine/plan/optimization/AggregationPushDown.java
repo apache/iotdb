@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
@@ -66,7 +65,6 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -192,8 +190,8 @@ public class AggregationPushDown implements PlanOptimizer {
     public PlanNode visitGroupByLevel(GroupByLevelNode node, RewriterContext context) {
       checkState(
           node.getChildren().size() == 1
-                  && node.getChildren().get(0) instanceof RawDataAggregationNode
-              || node.getChildren().get(0) instanceof SlidingWindowAggregationNode);
+              && (node.getChildren().get(0) instanceof RawDataAggregationNode
+                  || node.getChildren().get(0) instanceof SlidingWindowAggregationNode));
 
       PlanNode child = node.getChildren().get(0);
       PlanNode rewrittenChild = child.accept(this, context);
@@ -210,8 +208,8 @@ public class AggregationPushDown implements PlanOptimizer {
     public PlanNode visitGroupByTag(GroupByTagNode node, RewriterContext context) {
       checkState(
           node.getChildren().size() == 1
-                  && node.getChildren().get(0) instanceof RawDataAggregationNode
-              || node.getChildren().get(0) instanceof SlidingWindowAggregationNode);
+              && (node.getChildren().get(0) instanceof RawDataAggregationNode
+                  || node.getChildren().get(0) instanceof SlidingWindowAggregationNode));
 
       PlanNode child = node.getChildren().get(0);
       PlanNode rewrittenChild = child.accept(this, context);
@@ -229,11 +227,6 @@ public class AggregationPushDown implements PlanOptimizer {
       PlanNode child = node.getChild();
       if (child instanceof FullOuterTimeJoinNode || child instanceof SeriesScanSourceNode) {
         boolean isSingleSource = child instanceof SeriesScanSourceNode;
-        if (isSingleSource
-            && context.timePartitionOverlap(((SeriesScanSourceNode) child).getPartitionPath())) {
-          return node;
-        }
-
         boolean needCheckAscending = node.getGroupByTimeParameter() == null;
         if (isSingleSource && ((SeriesScanSourceNode) child).getPushDownPredicate() != null) {
           needCheckAscending = false;
@@ -473,20 +466,6 @@ public class AggregationPushDown implements PlanOptimizer {
         return analysis.getDeviceToAggregationExpressions().get(curDevice);
       }
       return analysis.getAggregationExpressions();
-    }
-
-    public boolean timePartitionOverlap(PartialPath partitionPath) {
-      List<List<TTimePartitionSlot>> timePartitionInfo =
-          analysis.getTimePartitionRange(partitionPath, context.getGlobalTimeFilter());
-      Set<TTimePartitionSlot> set = new HashSet<>();
-      for (List<TTimePartitionSlot> timePartitionsOfOneRegion : timePartitionInfo) {
-        for (TTimePartitionSlot timePartitionSlot : timePartitionsOfOneRegion) {
-          if (!set.add(timePartitionSlot)) {
-            return true;
-          }
-        }
-      }
-      return false;
     }
   }
 }
