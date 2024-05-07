@@ -411,7 +411,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", null);
-      extractorAttributes.put("extractor.inclusion", "data");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -483,7 +483,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", "root.db1");
-      extractorAttributes.put("extractor.inclusion", "data");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -581,7 +581,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      extractorAttributes.put("extractor.inclusion", "data");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.pattern", "root.db.d2");
       extractorAttributes.put("extractor.history.enable", "false");
       extractorAttributes.put("extractor.realtime.enable", "true");
@@ -667,7 +667,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", "root.db.d1");
-      extractorAttributes.put("extractor.inclusion", "data");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.history.enable", "true");
       // 1970-01-01T08:00:02+08:00
       extractorAttributes.put("extractor.history.start-time", "2000");
@@ -817,7 +817,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("source.pattern", "root.db.d1");
-      extractorAttributes.put("source.inclusion", "data");
+      extractorAttributes.put("source.inclusion", "data.insert");
       extractorAttributes.put("source.start-time", "1970-01-01T08:00:02+08:00");
       // 1970-01-01T08:00:04+08:00
       extractorAttributes.put("source.end-time", "4000");
