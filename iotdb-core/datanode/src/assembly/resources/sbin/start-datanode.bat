@@ -211,6 +211,7 @@ set JAVA_OPTS=-ea^
  -DTSFILE_HOME="%IOTDB_HOME%"^
  -DTSFILE_CONF="%IOTDB_CONF%"^
  -DIOTDB_CONF="%IOTDB_CONF%"^
+ -DOFF_HEAP_MEMORY="%OFF_HEAP_MEMORY%"^
  -Dsun.jnu.encoding=UTF-8^
  -Dfile.encoding=UTF-8
 
