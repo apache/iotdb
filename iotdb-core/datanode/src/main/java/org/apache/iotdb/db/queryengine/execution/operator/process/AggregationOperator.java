@@ -189,6 +189,7 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
             .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
             .sum()
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + RamUsageEstimator.sizeOf(canCallNext);
+        + RamUsageEstimator.sizeOf(canCallNext)
+        + resultTsBlockBuilder.getRetainedSizeInBytes();
   }
 }

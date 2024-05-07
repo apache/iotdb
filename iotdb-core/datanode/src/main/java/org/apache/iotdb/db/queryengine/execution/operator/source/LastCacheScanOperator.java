@@ -92,6 +92,7 @@ public class LastCacheScanOperator implements SourceOperator {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId);
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
+        + (tsBlock == null ? 0 : tsBlock.getRetainedSizeInBytes());
   }
 }

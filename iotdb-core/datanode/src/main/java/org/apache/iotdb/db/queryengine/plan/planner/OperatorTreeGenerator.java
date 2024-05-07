@@ -2950,9 +2950,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         Operator childOperation = localChild.accept(this, context);
         parentPipelineChildren.add(childOperation);
         // if we don't create extra pipeline, the root of the child pipeline should be current root
-        // for example, we have IdentitySinkNode -> DeviceViewNode -> [ScanNode, ScanNode, ScanNode]
-        // the parent of the pipeline of ScanNode should be IdentitySinkNode in the map, otherwise
-        // we will lose the information of these pipelines
         List<PipelineMemoryEstimator> childPipelineMemoryEstimators =
             context.getParentPlanNodeIdToMemoryEstimator().get(localChild.getPlanNodeId());
         if (childPipelineMemoryEstimators != null) {

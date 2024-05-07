@@ -102,6 +102,7 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
         + RamUsageEstimator.sizeOf(databaseName)
         + RamUsageEstimator.sizeOf(dataType)
-        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(fullPath);
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(fullPath)
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 }

@@ -93,6 +93,7 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId);
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
+        + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes());
   }
 }

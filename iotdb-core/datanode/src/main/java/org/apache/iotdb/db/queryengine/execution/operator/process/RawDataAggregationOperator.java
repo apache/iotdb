@@ -233,7 +233,8 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes());
   }
 
   private boolean skipPreviousWindowAndInitCurWindow() {

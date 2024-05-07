@@ -371,6 +371,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + filterTsBlockBuilder.getRetainedSizeInBytes();
   }
 }

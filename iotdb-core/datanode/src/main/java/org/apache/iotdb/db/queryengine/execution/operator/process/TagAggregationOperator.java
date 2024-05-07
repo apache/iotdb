@@ -203,6 +203,7 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
         + RamUsageEstimator.sizeOf(consumedIndices)
         + groups.stream()
             .mapToLong(group -> group.stream().mapToLong(RamUsageEstimator::sizeOf).sum())
-            .sum();
+            .sum()
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 }

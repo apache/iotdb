@@ -129,6 +129,7 @@ public class LastQueryTransformOperator implements ProcessOperator {
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
         + RamUsageEstimator.sizeOf(viewPath)
-        + RamUsageEstimator.sizeOf(dataType);
+        + RamUsageEstimator.sizeOf(dataType)
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 }

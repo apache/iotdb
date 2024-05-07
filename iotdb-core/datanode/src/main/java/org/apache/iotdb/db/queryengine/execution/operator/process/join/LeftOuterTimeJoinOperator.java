@@ -350,6 +350,7 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(left)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(right);
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(right)
+        + resultBuilder.getRetainedSizeInBytes();
   }
 }

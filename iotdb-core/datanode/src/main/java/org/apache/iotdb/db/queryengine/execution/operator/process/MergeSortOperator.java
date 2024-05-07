@@ -227,7 +227,8 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
             .sum()
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + RamUsageEstimator.sizeOf(canCallNext)
-        + RamUsageEstimator.sizeOf(noMoreTsBlocks);
+        + RamUsageEstimator.sizeOf(noMoreTsBlocks)
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 
   // region helper function used in prepareInput

@@ -187,6 +187,7 @@ public class LastQueryOperator implements ProcessOperator {
             ? 0
             : children.stream()
                 .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
-                .sum());
+                .sum())
+        + (tsBlockBuilder == null ? 0 : tsBlockBuilder.getRetainedSizeInBytes());
   }
 }

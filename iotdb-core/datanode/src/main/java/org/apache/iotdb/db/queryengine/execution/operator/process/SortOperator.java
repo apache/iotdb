@@ -374,6 +374,7 @@ public class SortOperator implements ProcessOperator {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + RamUsageEstimator.sizeOf(noMoreData);
+        + RamUsageEstimator.sizeOf(noMoreData)
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 }

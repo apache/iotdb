@@ -264,7 +264,8 @@ public class TopKOperator implements ProcessOperator {
             .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
             .sum()
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + RamUsageEstimator.sizeOf(canCallNext);
+        + RamUsageEstimator.sizeOf(canCallNext)
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 
   private void initResultTsBlock() {

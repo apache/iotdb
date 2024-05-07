@@ -349,6 +349,7 @@ public class FullOuterTimeJoinOperator extends AbstractConsumeAllOperator {
         + RamUsageEstimator.sizeOf(canCallNext)
         + RamUsageEstimator.sizeOf(noMoreTsBlocks)
         + RamUsageEstimator.sizeOf(inputIndex)
-        + RamUsageEstimator.sizeOf(shadowInputIndex);
+        + RamUsageEstimator.sizeOf(shadowInputIndex)
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 }

@@ -318,7 +318,8 @@ public class LastQueryMergeOperator implements ProcessOperator {
             ? 0
             : children.stream()
                 .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
-                .sum());
+                .sum())
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 
   /**

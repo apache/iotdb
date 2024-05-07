@@ -411,7 +411,8 @@ public class InnerTimeJoinOperator implements ProcessOperator {
             .sum()
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + RamUsageEstimator.sizeOf(canCallNext)
-        + RamUsageEstimator.sizeOf(inputIndex);
+        + RamUsageEstimator.sizeOf(inputIndex)
+        + resultBuilder.getRetainedSizeInBytes();
   }
 
   /**

@@ -253,7 +253,8 @@ public class LastQuerySortOperator implements ProcessOperator {
             ? 0
             : children.stream()
                 .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
-                .sum());
+                .sum())
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 
   private int getEndIndex() {

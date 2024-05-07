@@ -184,6 +184,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + resultTsBlockBuilder.getRetainedSizeInBytes();
   }
 }

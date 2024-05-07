@@ -293,7 +293,8 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
             .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
             .sum()
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + RamUsageEstimator.sizeOf(canCallNext);
+        + RamUsageEstimator.sizeOf(canCallNext)
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 
   private boolean isInputNotEmpty(int index) {

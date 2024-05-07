@@ -188,6 +188,7 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
             .sum()
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + RamUsageEstimator.sizeOf(inputIndex)
-        + RamUsageEstimator.sizeOf(canCallNext);
+        + RamUsageEstimator.sizeOf(canCallNext)
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 }
