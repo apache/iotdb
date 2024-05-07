@@ -127,12 +127,10 @@ public class WALWriteUtils {
       return write(NO_BYTE_TO_READ, buffer);
     }
     int len = 0;
-    len += write(s.length(), buffer);
-    for (int i = 0; i < s.length(); i++) {
-      char c = s.charAt(i);
-      buffer.put((byte) c); // ascii only
-    }
-    len += s.length();
+    byte[] bytes = s.getBytes();
+    len += write(bytes.length, buffer);
+    buffer.put(bytes);
+    len += bytes.length;
     return len;
   }
 
