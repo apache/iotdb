@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.receiver.protocol.pipeconsensus;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.pipe.PipeConsensusServerImpl;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
@@ -91,5 +92,29 @@ public class PipeConsensusReceiverAgent extends PipeConsensusServerImpl {
           String.format("Unsupported pipeConsensus request version %d", reqVersion));
     }
     return receiverReference.get();
+  }
+
+  @TestOnly
+  public void resetReceiver() {
+    // reset receiver
+    internalSetAndGetReceiver(PipeConsensusRequestVersion.VERSION_1.getVersion());
+  }
+
+  @TestOnly
+  public long getSyncCommitIndex() {
+    if (receiverReference.get() == null) {
+      return internalSetAndGetReceiver(PipeConsensusRequestVersion.VERSION_1.getVersion())
+          .getOnSyncedCommitIndex();
+    }
+    return receiverReference.get().getOnSyncedCommitIndex();
+  }
+
+  @TestOnly
+  public int getRebootTimes() {
+    if (receiverReference.get() == null) {
+      return internalSetAndGetReceiver(PipeConsensusRequestVersion.VERSION_1.getVersion())
+          .getConnectorRebootTimes();
+    }
+    return receiverReference.get().getConnectorRebootTimes();
   }
 }

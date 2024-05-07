@@ -114,15 +114,23 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     // `nodeUrls` here actually is a singletonList that contains one peer's TEndPoint. But here we
     // retain the implementation of list to cope with possible future expansion
     retryConnector = new PipeConsensusSyncConnector(nodeUrls);
+    retryConnector.customize(parameters, configuration);
     asyncTransferClientManager = PipeConsensusAsyncClientManager.getInstance();
+
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeConsensusAsyncBatchReqBuilder(parameters);
     }
+
+    // currently, tablet batch is false by default in PipeConsensus;
+    isTabletBatchModeEnabled = false;
   }
 
   /** Add an event to transferBuffer, whose events will be asynchronizedly transfer to receiver. */
   private boolean addEvent2Buffer(Event event) {
     try {
+      LOGGER.info(
+          "Debug only: no.{} event added to connector buffer",
+          ((EnrichedEvent) event).getCommitId());
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             "PipeConsensus connector: one event enqueue, queue size = {}, limit size = {}",
@@ -512,4 +520,11 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
 
   //////////////////////////// TODO: APIs provided for metric framework ////////////////////////////
 
+  public int getTransferBufferSize() {
+    return transferBuffer.size();
+  }
+
+  public int getRetryBufferSize() {
+    return retryEventQueue.size();
+  }
 }

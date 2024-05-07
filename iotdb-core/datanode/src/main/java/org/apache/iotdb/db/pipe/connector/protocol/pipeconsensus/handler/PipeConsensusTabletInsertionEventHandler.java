@@ -83,6 +83,9 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
       }
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info(
+            "Debug only: no.{} event successfully processed!",
+            ((EnrichedEvent) event).getCommitId());
         connector.removeEventFromBuffer(event);
       }
     } catch (Exception e) {

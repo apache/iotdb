@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
@@ -82,12 +83,13 @@ public class PipeConsensusReceiver {
 
   private TPipeConsensusTransferResp loadEvent(final TPipeConsensusTransferReq req) {
     // synchronized load event
-    TPipeTransferReq originalPipeTransferReq = toTPipeTransferReq(req);
 
     // TODO: use DataRegionStateMachine to impl it. here will invoke @sc's impl interface
     // TODO: check memory when logging wal
     // TODO: check disk(read-only etc.) when writing tsFile
-    return null;
+    // for test: we return success by default
+    return new TPipeConsensusTransferResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
   // WIP
@@ -135,40 +137,52 @@ public class PipeConsensusReceiver {
     }
 
     private void onSuccess(long nextSyncedCommitIndex) {
+      LOGGER.info("Debug only: process no.{} event successfully!", nextSyncedCommitIndex);
       reqBuffer.pollFirst();
       onSyncedCommitIndex = nextSyncedCommitIndex;
     }
 
     private TPipeConsensusTransferResp onRequest(
         final TPipeConsensusTransferReq req, final boolean isTransferTsFilePiece) {
+      LOGGER.info(
+          "Debug only: no.{} event try to acquire lock", req.getCommitId().getCommitIndex());
       lock.lock();
-      WrappedRequest wrappedReq = new WrappedRequest(req);
-      // if a req is deprecated, we will discard it
-      // This case may happen in this scenario: leader has transferred {1,2} and is intending to
-      // transfer {3, 4, 5, 6}. And in one moment, follower has received {4, 5, 6}, {3} is still
-      // transferring due to some network latency.
-      // At this time, leader restarts, and it will resend {3, 4, 5, 6} with incremental
-      // rebootTimes. If the {3} sent before the leader restart arrives after the follower receives
-      // the request with incremental rebootTimes, the {3} sent before the leader restart needs to
-      // be discarded.
-      if (wrappedReq.getRebootTime() < connectorRebootTimes) {
-        final TSStatus status =
-            new TSStatus(
-                RpcUtils.getStatus(
-                    TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST,
-                    "PipeConsensus receiver received a deprecated request, which may be sent before the connector restart. Consider to discard it"));
-        return new TPipeConsensusTransferResp(status);
-      }
       try {
-        reqBuffer.add(wrappedReq);
+        WrappedRequest wrappedReq = new WrappedRequest(req);
+        LOGGER.info("Debug only: start process no.{} event", wrappedReq.getCommitIndex());
+        // if a req is deprecated, we will discard it
+        // This case may happen in this scenario: leader has transferred {1,2} and is intending to
+        // transfer {3, 4, 5, 6}. And in one moment, follower has received {4, 5, 6}, {3} is still
+        // transferring due to some network latency.
+        // At this time, leader restarts, and it will resend {3, 4, 5, 6} with incremental
+        // rebootTimes. If the {3} sent before the leader restart arrives after the follower
+        // receives
+        // the request with incremental rebootTimes, the {3} sent before the leader restart needs to
+        // be discarded.
+        if (wrappedReq.getRebootTime() < connectorRebootTimes) {
+          final TSStatus status =
+              new TSStatus(
+                  RpcUtils.getStatus(
+                      TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST,
+                      "PipeConsensus receiver received a deprecated request, which may be sent before the connector restart. Consider to discard it"));
+          return new TPipeConsensusTransferResp(status);
+        }
         // Judge whether connector has rebooted or not, if the rebootTimes increases compared to
         // connectorRebootTimes, need to reset receiver because connector has been restarted.
         if (wrappedReq.getRebootTime() > connectorRebootTimes) {
-          reset(connectorRebootTimes);
+          resetWithNewestRebootTime(wrappedReq.getRebootTime());
           // TODO: 如：1,1 1,2 1,3 1,4 1,5 / 1,6 1,7 1,8（follower 得想办法知道 leader
           // 是否发满了/前置请求是否发完了）：发送端等待事件超时后尝试握手
-          // TODO: RPC 60s 超时问题；如果存储引擎等非共识层写入超时，会导致已接收的副本重发，从而导致堆积：存储端做去重
           // TODO: 处理 tablet 攒批
+        }
+        reqBuffer.add(wrappedReq);
+
+        if (reqBuffer.size() >= COMMON_CONFIG.getPipeConsensusEventBufferSize()
+            && !reqBuffer.first().equals(wrappedReq)) {
+          // If reqBuffer is full and current thread do not hold the reqBuffer's peek, this req
+          // is not supposed to be processed. So current thread should notify the corresponding
+          // threads to process the peek.
+          condition.signalAll();
         }
 
         // Polling to process
@@ -191,28 +205,27 @@ public class PipeConsensusReceiver {
             return resp;
           }
 
-          if (reqBuffer.size() >= COMMON_CONFIG.getPipeConsensusEventBufferSize()) {
+          if (reqBuffer.size() >= COMMON_CONFIG.getPipeConsensusEventBufferSize()
+              && reqBuffer.first().equals(wrappedReq)) {
             // If the reqBuffer is full and its peek is hold by current thread, load this event.
-            if (reqBuffer.first().equals(wrappedReq)) {
-              TPipeConsensusTransferResp resp = loadEvent(req);
+            TPipeConsensusTransferResp resp = loadEvent(req);
 
-              if (resp != null
-                  && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                  && !isTransferTsFilePiece) {
-                onSuccess(wrappedReq.getCommitIndex());
-              }
-              return resp;
-            } else {
-              // If reqBuffer is full and current thread do not hold the reqBuffer's peek, this req
-              // is not supposed to be processed. So current thread should notify the corresponding
-              // threads to process the peek.
+            if (resp != null
+                && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                && !isTransferTsFilePiece) {
+              onSuccess(wrappedReq.getCommitIndex());
+              // signal all other reqs that may wait for this event
               condition.signalAll();
             }
+            return resp;
           } else {
             // if the req is not supposed to be processed and reqBuffer is not full, current thread
             // should wait until reqBuffer is full, which indicates the receiver has received all
             // the requests from the connector without duplication or leakage.
             try {
+              LOGGER.info(
+                  "Debug only: no.{} event waiting on the lock...",
+                  req.getCommitId().getCommitIndex());
               condition.await(
                   COMMON_CONFIG.getPipeConsensusReceiverMaxWaitingTimeForEventsInMs(),
                   TimeUnit.MILLISECONDS);
@@ -234,12 +247,32 @@ public class PipeConsensusReceiver {
      * Reset all data to initial status and set connectorRebootTimes properly. This method is called
      * when receiver identifies connector has rebooted.
      */
-    private void reset(int connectorRebootTimes) {
+    private void resetWithNewestRebootTime(int connectorRebootTimes) {
       this.reqBuffer.clear();
       this.onSyncedCommitIndex = -1;
       // sync the follower's connectorRebootTimes with connector's actual rebootTimes
       this.connectorRebootTimes = connectorRebootTimes;
     }
+
+    @TestOnly
+    public int getConnectorRebootTimes() {
+      return connectorRebootTimes;
+    }
+
+    @TestOnly
+    public long getOnSyncedCommitIndex() {
+      return onSyncedCommitIndex;
+    }
+  }
+
+  @TestOnly
+  public int getConnectorRebootTimes() {
+    return requestExecutor.getConnectorRebootTimes();
+  }
+
+  @TestOnly
+  public long getOnSyncedCommitIndex() {
+    return requestExecutor.getOnSyncedCommitIndex();
   }
 
   /**
