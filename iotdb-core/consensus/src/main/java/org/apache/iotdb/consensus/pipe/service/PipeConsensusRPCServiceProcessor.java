@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.pipe.service;
 
+import org.apache.iotdb.consensus.pipe.PipeConsensusServerImpl;
 import org.apache.iotdb.consensus.pipe.thrift.PipeConsensusIService;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
@@ -34,22 +35,32 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConsensusRPCServiceProcessor.class);
 
-  /** TODO：添加发送端重启后，释放资源逻辑 */
-  public void handleClientExit() {}
+  private final PipeConsensusServerImpl impl;
 
-  //  @Override
-  //  public TPipeConsensusTransferResp pipeConsensusTransfer(TPipeConsensusTransferReq req) {
-  //    return PipeAgent.receiver().pipeConsensus().receive(req);
-  //  }
+  public PipeConsensusRPCServiceProcessor(PipeConsensusServerImpl pipeConsensusServerImpl) {
+    this.impl = pipeConsensusServerImpl;
+  }
 
   @Override
   public void pipeConsensusTransfer(
       TPipeConsensusTransferReq req,
-      AsyncMethodCallback<TPipeConsensusTransferResp> resultHandler) {}
+      AsyncMethodCallback<TPipeConsensusTransferResp> resultHandler) {
+    try {
+      TPipeConsensusTransferResp resp = impl.receive(req);
+      // we need to call onComplete by hand
+      resultHandler.onComplete(resp);
+    } catch (Exception e) {
+      resultHandler.onError(e);
+    }
+  }
 
+  // TODO: consider batch transfer
   @Override
   public void pipeConsensusBatchTransfer(
       TPipeConsensusBatchTransferReq req,
       AsyncMethodCallback<TPipeConsensusBatchTransferResp> resultHandler)
       throws TException {}
+
+  // TODO：添加发送端重启后，释放资源逻辑
+  public void handleClientExit() {}
 }

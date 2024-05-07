@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
-import org.apache.iotdb.consensus.pipe.client.PipeConsensusClientPool.PipeConsensusRPCConfig;
+import org.apache.iotdb.consensus.config.PipeConsensusConfig.PipeConsensusRPCConfig;
 import org.apache.iotdb.consensus.pipe.thrift.PipeConsensusIService;
 import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
