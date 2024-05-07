@@ -125,7 +125,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void createUser(String username, String password) throws AuthException {
-    if (!userManager.createUser(username, password, true)) {
+    if (!userManager.createUser(username, password, true, true)) {
       throw new AuthException(
           TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
     }
@@ -133,7 +133,15 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void createUserWithoutCheck(String username, String password) throws AuthException {
-    if (!userManager.createUser(username, password, false)) {
+    if (!userManager.createUser(username, password, false, true)) {
+      throw new AuthException(
+          TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
+    }
+  }
+
+  @Override
+  public void createUserWithRawPassword(String username, String password) throws AuthException {
+    if (!userManager.createUser(username, password, true, false)) {
       throw new AuthException(
           TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
     }

@@ -58,6 +58,7 @@ public class FileReaderManager {
    * corresponding reader.
    */
   private Map<String, TsFileSequenceReader> closedFileReaderMap;
+
   /**
    * the key of unclosedFileReaderMap is the file path and the value of unclosedFileReaderMap is the
    * corresponding reader.
@@ -69,6 +70,7 @@ public class FileReaderManager {
    * file's reference count.
    */
   private Map<String, AtomicInteger> closedReferenceMap;
+
   /**
    * the key of unclosedFileReaderMap is the file path and the value of unclosedFileReaderMap is the
    * file's reference count.

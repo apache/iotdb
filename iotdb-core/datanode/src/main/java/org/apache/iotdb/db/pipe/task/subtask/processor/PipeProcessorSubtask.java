@@ -65,13 +65,13 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   private final long subtaskCreationTime;
 
   public PipeProcessorSubtask(
-      String taskID,
-      long creationTime,
-      String pipeName,
-      int dataRegionId,
-      EventSupplier inputEventSupplier,
-      PipeProcessor pipeProcessor,
-      PipeEventCollector outputEventCollector) {
+      final String taskID,
+      final long creationTime,
+      final String pipeName,
+      final int dataRegionId,
+      final EventSupplier inputEventSupplier,
+      final PipeProcessor pipeProcessor,
+      final PipeEventCollector outputEventCollector) {
     super(taskID, creationTime);
     this.subtaskCreationTime = System.currentTimeMillis();
     this.pipeName = pipeName;
@@ -84,9 +84,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   @Override
   public void bindExecutors(
-      ListeningExecutorService subtaskWorkerThreadPoolExecutor,
-      ExecutorService ignored,
-      PipeSubtaskScheduler subtaskScheduler) {
+      final ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      final ExecutorService ignored,
+      final PipeSubtaskScheduler subtaskScheduler) {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
     this.subtaskScheduler = subtaskScheduler;
 
@@ -150,17 +150,21 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       }
       decreaseReferenceCountAndReleaseLastEvent(
           !isClosed.get() && outputEventCollector.hasNoCollectInvocationAfterReset());
-    } catch (PipeRuntimeOutOfMemoryCriticalException e) {
+    } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.info(
           "Temporarily out of memory in pipe event processing, will wait for the memory to release.",
           e);
       return false;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       if (!isClosed.get()) {
         throw new PipeException(
             String.format(
                 "Exception in pipe process, subtask: %s, last event: %s, root cause: %s",
-                taskID, lastEvent, ErrorHandlingUtils.getRootCause(e).getMessage()),
+                taskID,
+                lastEvent instanceof EnrichedEvent
+                    ? ((EnrichedEvent) lastEvent).coreReportMessage()
+                    : lastEvent,
+                ErrorHandlingUtils.getRootCause(e).getMessage()),
             e);
       } else {
         LOGGER.info("Exception in pipe event processing, ignored because pipe is dropped.", e);
@@ -191,7 +195,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       // pipeProcessor closes first, then no more events will be added into outputEventCollector.
       // only after that, outputEventCollector can be closed.
       pipeProcessor.close();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.info(
           "Exception occurred when closing pipe processor subtask {}, root cause: {}",
           taskID,
@@ -210,7 +214,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
@@ -252,12 +256,12 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   //////////////////////////// Error report ////////////////////////////
 
   @Override
-  protected String getRootCause(Throwable throwable) {
+  protected String getRootCause(final Throwable throwable) {
     return ErrorHandlingUtils.getRootCause(throwable).getMessage();
   }
 
   @Override
-  protected void report(EnrichedEvent event, PipeRuntimeException exception) {
+  protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
     PipeAgent.runtime().report(event, exception);
   }
 }

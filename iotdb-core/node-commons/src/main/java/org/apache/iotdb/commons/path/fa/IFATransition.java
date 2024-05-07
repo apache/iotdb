@@ -22,7 +22,9 @@ package org.apache.iotdb.commons.path.fa;
 /** This interface defines the behaviour of a FA(Finite Automation)'s transition. */
 public interface IFATransition {
 
-  /** @return the value of this transition, which is used to match the events */
+  /**
+   * @return the value of this transition, which is used to match the events
+   */
   String getAcceptEvent();
 
   /**

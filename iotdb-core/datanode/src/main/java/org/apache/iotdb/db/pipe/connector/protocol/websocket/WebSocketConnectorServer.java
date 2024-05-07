@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.connector.protocol.websocket;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -368,9 +367,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
       try {
         ByteBuffer tabletBuffer;
-        if (event instanceof PipeInsertNodeTabletInsertionEvent) {
-          tabletBuffer = ((PipeInsertNodeTabletInsertionEvent) event).convertToTablet().serialize();
-        } else if (event instanceof PipeRawTabletInsertionEvent) {
+        if (event instanceof PipeRawTabletInsertionEvent) {
           tabletBuffer = ((PipeRawTabletInsertionEvent) event).convertToTablet().serialize();
         } else {
           throw new NotImplementedException(

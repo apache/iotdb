@@ -60,6 +60,7 @@ public class LocalSourceHandle implements ISourceHandle {
   private static final TsBlockSerde serde = new TsBlockSerde();
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();
+
   // For pipeline
 
   public LocalSourceHandle(

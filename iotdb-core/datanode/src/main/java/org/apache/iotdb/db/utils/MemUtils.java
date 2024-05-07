@@ -201,4 +201,24 @@ public class MemUtils {
     cnt = cnt % IoTDBConstant.KB;
     return gbs + " GB " + mbs + " MB " + kbs + " KB " + cnt + " B";
   }
+
+  public static long strToBytesCnt(String str) {
+    if (str == null) {
+      return 0;
+    }
+    str = str.toLowerCase();
+    if (!str.endsWith("b")) {
+      str += "b";
+    }
+    long unit = 1;
+    if (str.endsWith("kb")) {
+      unit = IoTDBConstant.KB;
+    } else if (str.endsWith("mb")) {
+      unit = IoTDBConstant.MB;
+    } else if (str.endsWith("gb")) {
+      unit = IoTDBConstant.GB;
+    }
+    str = str.replaceAll("\\D", "");
+    return Long.parseLong(str) * unit;
+  }
 }

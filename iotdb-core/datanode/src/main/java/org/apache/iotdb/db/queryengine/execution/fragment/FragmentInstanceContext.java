@@ -66,10 +66,13 @@ public class FragmentInstanceContext extends QueryContext {
   private List<PartialPath> sourcePaths;
   // Shared by all scan operators in this fragment instance to avoid memory problem
   private QueryDataSource sharedQueryDataSource;
+
   /** closed tsfile used in this fragment instance. */
   private Set<TsFileResource> closedFilePaths;
+
   /** unClosed tsfile used in this fragment instance. */
   private Set<TsFileResource> unClosedFilePaths;
+
   /** check if there is tmp file to be deleted. */
   private boolean mayHaveTmpFile = false;
 

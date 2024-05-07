@@ -122,6 +122,7 @@ public enum ConfigPhysicalPlanType {
   ListUserRoles((short) 636),
   @Deprecated
   ListRoleUsers((short) 637),
+  CreateUserWithRawPassword((short) 638),
 
   /** Function. */
   CreateFunction((short) 700),

@@ -38,6 +38,8 @@ public enum WALEntryType {
   DELETE_DATA_NODE((byte) 6),
   /** {@link org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint} */
   MEMORY_TABLE_CHECKPOINT((byte) 7),
+  /** {@link org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode} */
+  INSERT_ROWS_NODE((byte) 8),
   // endregion
   // region signal entry type
   // signal wal buffer has been closed
@@ -60,7 +62,10 @@ public enum WALEntryType {
 
   /** Returns true when this type should be searched. */
   public boolean needSearch() {
-    return this == INSERT_TABLET_NODE || this == INSERT_ROW_NODE || this == DELETE_DATA_NODE;
+    return this == INSERT_TABLET_NODE
+        || this == INSERT_ROW_NODE
+        || this == INSERT_ROWS_NODE
+        || this == DELETE_DATA_NODE;
   }
 
   public static WALEntryType valueOf(byte code) {

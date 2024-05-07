@@ -222,6 +222,7 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
       measurements[i] = measurementSchemas[i].getMeasurementId();
     }
   }
+
   // endregion
 
   public TRegionReplicaSet getRegionReplicaSet() {
@@ -268,6 +269,7 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
     }
     return true;
   }
+
   // endregion
 
   // region progress index
