@@ -43,6 +43,11 @@
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/iotdb-client/cli/src/assembly/resources/conf</directory>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
             <outputDirectory>tools</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/iotdb-client/cli/src/assembly/resources/tools</directory>
             <fileMode>0755</fileMode>
