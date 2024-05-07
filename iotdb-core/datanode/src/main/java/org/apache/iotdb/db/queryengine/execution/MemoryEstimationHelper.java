@@ -32,7 +32,7 @@ import java.util.Arrays;
 
 public class MemoryEstimationHelper {
 
-  private static final long PRATIAL_PATH_INSTANCE_SIZE =
+  private static final long PARTIAL_PATH_INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(PartialPath.class);
 
   private static final long ALIGNED_PATH_INSTANCE_SIZE =
@@ -79,7 +79,7 @@ public class MemoryEstimationHelper {
       totalSize +=
           RamUsageEstimator.sizeOf(measurementPath.getMeasurementSchema().getMeasurementId());
     } else {
-      totalSize += PRATIAL_PATH_INSTANCE_SIZE;
+      totalSize += PARTIAL_PATH_INSTANCE_SIZE;
       totalSize += RamUsageEstimator.sizeOf(partialPath.getMeasurement());
     }
     return totalSize;
