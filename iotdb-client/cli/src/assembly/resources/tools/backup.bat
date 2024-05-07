@@ -98,12 +98,10 @@ set logsDir="%IOTDB_HOME%\logs"
 if not exist "%logsDir%" (
     mkdir "%logsDir%"
 )
-for /F "tokens=2 delims==" %%G in ('wmic OS Get localdatetime /value') do set "logDate=%%G"
-set "logDate=%logDate:~0,8%"
 
-set "logFilename=log-iotdb-data-back-%logDate%.log"
-
-start /B "" cmd /C "("%JAVA_HOME%\bin\java" -DIOTDB_HOME=!IOTDB_HOME! !JAVA_OPTS! -cp !CLASSPATH! !MAIN_CLASS! %*) > "%logsDir%\%logFilename%" 2>&1"
+set IOTDB_CLI_CONF=%IOTDB_HOME%\conf
+set "iotdb_cli_params=-Dlogback.configurationFile=!IOTDB_CLI_CONF!\logback-cli.xml"
+start /B "" cmd /C "("%JAVA_HOME%\bin\java" -DIOTDB_HOME=!IOTDB_HOME! !iotdb_cli_params! !JAVA_OPTS! -cp !CLASSPATH! !MAIN_CLASS! %*) > nul 2>&1"
 exit /b
 
 :checkIfIOTDBProcess

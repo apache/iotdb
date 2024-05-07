@@ -159,6 +159,7 @@ public class IoTDBDataBackTool {
   }
 
   public static void main(String[] args) {
+    System.setProperty("IOTDB_HOME", System.getenv("IOTDB_HOME"));
     argsParse(args);
     File sourceDir = new File(sourcePath);
     Properties dataProperties = getProperties(IoTDBConfig.CONFIG_NAME);
@@ -178,14 +179,15 @@ public class IoTDBDataBackTool {
           .append(File.separatorChar)
           .append("iotdb_backup");
       File targetDir = new File(targetDirString.toString());
-      if (!targetDir.exists()) {
-        targetDir.mkdirs();
-      } else {
+      if (targetDir.exists()) {
         LOGGER.error("The backup folder already exists:{}", targetDirString);
         System.exit(0);
       }
 
       if (nodeTypeParam.equalsIgnoreCase("confignode")) {
+        if (!targetDir.exists()) {
+          targetDir.mkdirs();
+        }
         countConfigNodeFile(targetDirString.toString(), copyMap, cnMapProperties);
         countNodeBack(targetDirString.toString(), copyMap);
         for (Map.Entry<String, String> entry : copyMap.entrySet()) {
@@ -204,6 +206,9 @@ public class IoTDBDataBackTool {
         countDataNodeFile(targetDirString.toString(), copyMap, dnDataDirsMap, dnMapProperties);
         countNodeBack(targetDirString.toString(), copyMap);
         checkQuickMode(dnDataDirsMap);
+        if (!targetDir.exists()) {
+          targetDir.mkdirs();
+        }
         for (Map.Entry<String, String> entry : copyMap.entrySet()) {
           countFiles(entry.getKey());
         }
@@ -224,6 +229,9 @@ public class IoTDBDataBackTool {
         countDataNodeFile(targetDirString.toString(), copyMap, dnDataDirsMap, dnMapProperties);
         countNodeBack(targetDirString.toString(), copyMap);
         checkQuickMode(dnDataDirsMap);
+        if (!targetDir.exists()) {
+          targetDir.mkdirs();
+        }
         for (Map.Entry<String, String> entry : copyMap.entrySet()) {
           countFiles(entry.getKey());
         }
