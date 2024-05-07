@@ -270,8 +270,10 @@ public class TTLTest {
 
   @Test
   public void testTTLRemoval()
-      throws StorageEngineException, WriteProcessException, QueryProcessException,
-          IllegalPathException, InterruptedException {
+      throws StorageEngineException,
+          WriteProcessException,
+          IllegalPathException,
+          InterruptedException {
     boolean isEnableCrossCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);

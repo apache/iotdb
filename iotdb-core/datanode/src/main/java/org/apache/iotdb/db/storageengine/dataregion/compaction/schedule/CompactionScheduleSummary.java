@@ -34,6 +34,7 @@ public class CompactionScheduleSummary {
   private int fullyDirtyFileNum = 0;
 
   private int partiallyDirtyFileNum = 0;
+
   // end region
 
   public void incrementSubmitTaskNum(CompactionTaskType taskType, int num) {

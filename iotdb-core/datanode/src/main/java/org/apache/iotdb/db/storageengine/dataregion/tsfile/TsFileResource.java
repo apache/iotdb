@@ -699,7 +699,9 @@ public class TsFileResource {
     return timeIndex.checkDeviceIdExist(deviceId);
   }
 
-  /** @return true if the device is contained in the TsFile */
+  /**
+   * @return true if the device is contained in the TsFile
+   */
   public boolean isSatisfied(IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
     if (deviceId != null && definitelyNotContains(deviceId)) {
       if (debug) {
