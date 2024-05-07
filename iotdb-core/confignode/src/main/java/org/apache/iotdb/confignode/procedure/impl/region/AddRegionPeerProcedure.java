@@ -91,7 +91,8 @@ public class AddRegionPeerProcedure
               getProcId(),
               consensusGroupId.getId(),
               destDataNode.getDataNodeId());
-          handler.addRegionLocation(consensusGroupId, destDataNode, RegionStatus.Adding);
+          handler.addRegionLocation(consensusGroupId, destDataNode);
+          handler.forceUpdateRegionCache(consensusGroupId, destDataNode, RegionStatus.Adding);
           TSStatus status = handler.createNewRegionPeer(consensusGroupId, destDataNode);
           setKillPoint(state);
           if (status.getCode() != SUCCESS_STATUS.getStatusCode()) {
@@ -100,7 +101,7 @@ public class AddRegionPeerProcedure
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
-          handler.updateRegionCache(consensusGroupId, destDataNode, RegionStatus.Adding);
+          handler.forceUpdateRegionCache(consensusGroupId, destDataNode, RegionStatus.Adding);
           // We don't want to re-submit AddRegionPeerTask when leader change or ConfigNode reboot
           if (!this.isStateDeserialized()) {
             TSStatus tsStatus =
@@ -131,7 +132,7 @@ public class AddRegionPeerProcedure
                   env, handler, String.format("status %s is unsupported", result.getTaskStatus()));
           }
         case UPDATE_REGION_LOCATION_CACHE:
-          handler.updateRegionCache(consensusGroupId, destDataNode, RegionStatus.Running);
+          handler.forceUpdateRegionCache(consensusGroupId, destDataNode, RegionStatus.Running);
           setKillPoint(state);
           LOGGER.info("[pid{}][AddRegion] state {} complete", getProcId(), state);
           LOGGER.info(
