@@ -184,9 +184,9 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(sourceId);
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId);
   }
 }

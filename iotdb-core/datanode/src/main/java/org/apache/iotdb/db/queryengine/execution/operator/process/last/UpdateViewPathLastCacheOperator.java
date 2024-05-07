@@ -59,7 +59,7 @@ public class UpdateViewPathLastCacheOperator extends UpdateLastCacheOperator {
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
-    return super.getEstimatedMemoryUsageInBytes() + RamUsageEstimator.sizeOf(outputViewPath);
+  public long ramBytesUsed() {
+    return super.ramBytesUsed() + RamUsageEstimator.sizeOf(outputViewPath);
   }
 }

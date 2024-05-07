@@ -243,10 +243,10 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(sourceId)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
         + RamUsageEstimator.sizeOf(database)
         + MemoryEstimationHelper.getEstimatedSizeOfPartialPathWithoutClassSize(partialPath);
   }

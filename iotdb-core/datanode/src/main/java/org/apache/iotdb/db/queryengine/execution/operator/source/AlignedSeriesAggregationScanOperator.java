@@ -89,10 +89,10 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(seriesScanUtil)
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(sourceId);
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId);
   }
 }

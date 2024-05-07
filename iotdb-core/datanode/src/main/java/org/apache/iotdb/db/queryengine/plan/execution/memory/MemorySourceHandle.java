@@ -122,7 +122,7 @@ public class MemorySourceHandle implements ISourceHandle {
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE;
   }
 }

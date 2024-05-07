@@ -120,7 +120,7 @@ public class PipelineBuilderTest {
       PipelineMemoryEstimator pipelineMemoryEstimator =
           context.constructPipelineMemoryEstimator(root, null, fullOuterTimeJoinNode, -1);
       assertEquals(
-          root.calculateMaxPeekMemoryWithCounter() + root.getEstimatedMemoryUsageInBytes(),
+          root.calculateMaxPeekMemoryWithCounter() + root.ramBytesUsed(),
           pipelineMemoryEstimator.getEstimatedMemoryUsageInBytes());
     } catch (Exception e) {
       e.printStackTrace();

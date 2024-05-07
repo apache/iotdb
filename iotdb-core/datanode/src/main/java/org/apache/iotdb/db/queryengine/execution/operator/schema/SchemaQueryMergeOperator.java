@@ -112,11 +112,11 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
         + children.stream()
-            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
             .sum()
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext);
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
   }
 }

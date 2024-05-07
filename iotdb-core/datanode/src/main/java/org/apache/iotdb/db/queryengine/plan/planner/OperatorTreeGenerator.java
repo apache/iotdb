@@ -3151,7 +3151,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         finalExchangeNum = Math.max(finalExchangeNum, context.getExchangeSumNum());
         context.setExchangeSumNum(originExchangeNum);
         parentPipelineChildren.add(childOperation);
-        // if we don't create extra pipeline, the root of the child pipeline should be current root
+        // if node.getChildren().size() == 1 and we don't create extra pipeline, the root of the
+        // child pipeline should be current root
         // for example, we have IdentitySinkNode -> DeviceViewNode -> [ScanNode, ScanNode, ScanNode]
         // the parent of the pipeline of ScanNode should be IdentitySinkNode in the map, otherwise
         // we will lose the information of these pipelines

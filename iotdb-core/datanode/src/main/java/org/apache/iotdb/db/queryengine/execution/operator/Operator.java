@@ -19,14 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryMeasurable;
-
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Accountable;
 
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 
-public interface Operator extends AutoCloseable, MemoryMeasurable {
+public interface Operator extends AutoCloseable, Accountable {
 
   ListenableFuture<?> NOT_BLOCKED = immediateVoidFuture();
 

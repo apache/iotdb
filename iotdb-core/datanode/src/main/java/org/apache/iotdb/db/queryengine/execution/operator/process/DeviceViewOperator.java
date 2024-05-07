@@ -196,12 +196,12 @@ public class DeviceViewOperator implements ProcessOperator {
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + devices.stream().mapToLong(RamUsageEstimator::sizeOf).sum()
         + deviceOperators.stream()
-            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
             .sum();
   }
 }

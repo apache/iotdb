@@ -246,13 +246,13 @@ public class LastQuerySortOperator implements ProcessOperator {
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + (children == null
             ? 0
             : children.stream()
-                .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+                .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
                 .sum());
   }
 

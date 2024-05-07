@@ -378,10 +378,10 @@ public class TransformOperator implements ProcessOperator {
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(inputOperator)
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + RamUsageEstimator.sizeOf(shouldIterateReadersToNextValid)
         + RamUsageEstimator.sizeOf(udtfQueryId);
   }

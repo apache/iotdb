@@ -286,13 +286,13 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
         + RamUsageEstimator.sizeOf(noMoreTsBlocks)
         + children.stream()
-            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
             .sum()
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + RamUsageEstimator.sizeOf(canCallNext);
   }
 

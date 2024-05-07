@@ -261,12 +261,9 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + downStreamChannelList.stream()
-            .map(ISink::getEstimatedMemoryUsageInBytes)
-            .reduce(Long::sum)
-            .orElse(0L)
+        + downStreamChannelList.stream().map(ISink::ramBytesUsed).reduce(Long::sum).orElse(0L)
         + RamUsageEstimator.sizeOf(channelOpened)
         + RamUsageEstimator.sizeOf(hasSetNoMoreTsBlocks);
   }

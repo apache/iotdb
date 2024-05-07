@@ -346,10 +346,10 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(left)
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(right);
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(left)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(right);
   }
 }

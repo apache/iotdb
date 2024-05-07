@@ -245,7 +245,7 @@ public class LocalSinkChannel implements ISinkChannel {
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE;
   }
 

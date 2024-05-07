@@ -324,7 +324,7 @@ public class SinkChannel implements ISinkChannel {
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
         + RamUsageEstimator.sizeOf(threadName)
         + RamUsageEstimator.sizeOf(localPlanNodeId)

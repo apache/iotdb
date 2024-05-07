@@ -20,15 +20,15 @@
 package org.apache.iotdb.db.queryengine.execution.exchange.source;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.queryengine.execution.MemoryMeasurable;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Accountable;
 
 import java.nio.ByteBuffer;
 
-public interface ISourceHandle extends MemoryMeasurable {
+public interface ISourceHandle extends Accountable {
 
   /** Get the local fragment instance ID that this source handle belongs to. */
   TFragmentInstanceId getLocalFragmentInstanceId();

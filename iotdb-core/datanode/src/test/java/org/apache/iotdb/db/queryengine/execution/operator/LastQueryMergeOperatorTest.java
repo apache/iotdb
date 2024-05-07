@@ -149,7 +149,7 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public long getEstimatedMemoryUsageInBytes() {
+          public long ramBytesUsed() {
             return 0;
           }
         };
@@ -223,7 +223,7 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public long getEstimatedMemoryUsageInBytes() {
+          public long ramBytesUsed() {
             return 0;
           }
         };
@@ -374,7 +374,7 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public long getEstimatedMemoryUsageInBytes() {
+          public long ramBytesUsed() {
             return 0;
           }
         };
@@ -449,7 +449,7 @@ public class LastQueryMergeOperatorTest {
           }
 
           @Override
-          public long getEstimatedMemoryUsageInBytes() {
+          public long ramBytesUsed() {
             return 0;
           }
         };

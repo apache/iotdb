@@ -143,9 +143,9 @@ public class SingleDeviceViewOperator implements ProcessOperator {
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(deviceOperator)
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext);
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(deviceOperator)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
   }
 }

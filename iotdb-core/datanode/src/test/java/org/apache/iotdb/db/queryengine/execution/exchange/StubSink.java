@@ -111,7 +111,7 @@ public class StubSink implements ISink {
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE;
   }
 }

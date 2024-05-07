@@ -96,10 +96,10 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(child)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
         + RamUsageEstimator.sizeOf(databaseName)
         + RamUsageEstimator.sizeOf(dataType)
         + MemoryEstimationHelper.getEstimatedSizeOfPartialPathWithoutClassSize(fullPath);

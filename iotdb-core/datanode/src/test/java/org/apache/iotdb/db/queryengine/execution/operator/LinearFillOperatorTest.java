@@ -185,7 +185,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public long getEstimatedMemoryUsageInBytes() {
+                public long ramBytesUsed() {
                   return 0;
                 }
               });
@@ -408,7 +408,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public long getEstimatedMemoryUsageInBytes() {
+                public long ramBytesUsed() {
                   return 0;
                 }
               });
@@ -631,7 +631,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public long getEstimatedMemoryUsageInBytes() {
+                public long ramBytesUsed() {
                   return 0;
                 }
               });
@@ -854,7 +854,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public long getEstimatedMemoryUsageInBytes() {
+                public long ramBytesUsed() {
                   return 0;
                 }
               });
@@ -1025,7 +1025,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public long getEstimatedMemoryUsageInBytes() {
+                public long ramBytesUsed() {
                   return 0;
                 }
               });
@@ -1155,7 +1155,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public long getEstimatedMemoryUsageInBytes() {
+                public long ramBytesUsed() {
                   return 0;
                 }
               });
@@ -1285,7 +1285,7 @@ public class LinearFillOperatorTest {
                 }
 
                 @Override
-                public long getEstimatedMemoryUsageInBytes() {
+                public long ramBytesUsed() {
                   return 0;
                 }
               });

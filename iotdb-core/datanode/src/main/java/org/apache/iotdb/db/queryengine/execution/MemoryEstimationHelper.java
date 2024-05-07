@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
@@ -34,9 +35,8 @@ public class MemoryEstimationHelper {
   }
 
   /* Responsible for null check. */
-  public static long getEstimatedSizeOfMemoryMeasurableObject(
-      @Nullable final MemoryMeasurable memoryMeasurable) {
-    return memoryMeasurable == null ? 0 : memoryMeasurable.getEstimatedMemoryUsageInBytes();
+  public static long getEstimatedSizeOfAccountableObject(@Nullable final Accountable accountable) {
+    return accountable == null ? 0 : accountable.ramBytesUsed();
   }
 
   public static long getEstimatedSizeOfPartialPathWithoutClassSize(

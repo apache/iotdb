@@ -193,12 +193,12 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
         + children.stream()
-            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfMemoryMeasurableObject)
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
             .sum()
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + RamUsageEstimator.sizeOf(canCallNext)
         + RamUsageEstimator.sizeOf(consumedIndices)
         + groups.stream()

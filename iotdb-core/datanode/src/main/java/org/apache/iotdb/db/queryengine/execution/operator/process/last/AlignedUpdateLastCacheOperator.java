@@ -103,10 +103,10 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext)
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(child)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
         + RamUsageEstimator.sizeOf(databaseName)
         + MemoryEstimationHelper.getEstimatedSizeOfPartialPathWithoutClassSize(devicePath)
         + MemoryEstimationHelper.getEstimatedSizeOfPartialPathWithoutClassSize(seriesPath);

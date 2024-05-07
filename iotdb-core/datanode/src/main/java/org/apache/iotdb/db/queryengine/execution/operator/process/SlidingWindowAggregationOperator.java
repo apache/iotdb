@@ -169,9 +169,9 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
   }
 
   @Override
-  public long getEstimatedMemoryUsageInBytes() {
+  public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(child)
-        + MemoryEstimationHelper.getEstimatedSizeOfMemoryMeasurableObject(operatorContext);
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
   }
 }
