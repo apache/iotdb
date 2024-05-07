@@ -219,7 +219,7 @@ public class LoadCache {
    * @param dataNodeId the specified DataNode
    */
   public void removeRegionCache(TConsensusGroupId regionGroupId, int dataNodeId) {
-    Optional.of(regionGroupCacheMap.get(regionGroupId))
+    Optional.ofNullable(regionGroupCacheMap.get(regionGroupId))
         .ifPresent(cache -> cache.removeRegionCache(dataNodeId));
   }
 
