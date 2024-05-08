@@ -758,6 +758,19 @@ public class PipeTaskInfo implements SnapshotProcessor {
             });
   }
 
+  public void removePipeMeta(final String pipeName) {
+    acquireWriteLock();
+    try {
+      removePipeMetaInternal(pipeName);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void removePipeMetaInternal(final String pipeName) {
+    pipeMetaKeeper.removePipeMeta(pipeName);
+  }
+
   /////////////////////////////// Snapshot ///////////////////////////////
 
   @Override

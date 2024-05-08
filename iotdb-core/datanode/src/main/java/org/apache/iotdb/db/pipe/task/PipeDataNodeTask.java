@@ -31,17 +31,18 @@ public class PipeDataNodeTask implements PipeTask {
 
   private final String pipeName;
   private final int regionId;
+  private volatile boolean isCompleted = false;
 
   private final PipeTaskStage extractorStage;
   private final PipeTaskStage processorStage;
   private final PipeTaskStage connectorStage;
 
   public PipeDataNodeTask(
-      String pipeName,
-      int regionId,
-      PipeTaskStage extractorStage,
-      PipeTaskStage processorStage,
-      PipeTaskStage connectorStage) {
+      final String pipeName,
+      final int regionId,
+      final PipeTaskStage extractorStage,
+      final PipeTaskStage processorStage,
+      final PipeTaskStage connectorStage) {
     this.pipeName = pipeName;
     this.regionId = regionId;
 
@@ -96,6 +97,14 @@ public class PipeDataNodeTask implements PipeTask {
         "Stop pipe DN task {} successfully within {} ms",
         this,
         System.currentTimeMillis() - startTime);
+  }
+
+  public boolean isCompleted() {
+    return isCompleted;
+  }
+
+  public void markCompleted() {
+    this.isCompleted = true;
   }
 
   public int getRegionId() {

@@ -294,6 +294,7 @@ struct TDataNodeHeartbeatResp {
   11: optional string activateStatus
   12: optional set<common.TEndPoint> confirmedConfigNodeEndPoints
   13: optional map<common.TConsensusGroupId, i64> consensusLogicalTimeMap
+  14: optional list<bool> pipeCompletedList
 }
 
 struct TPipeHeartbeatReq {
@@ -302,6 +303,7 @@ struct TPipeHeartbeatReq {
 
 struct TPipeHeartbeatResp {
   1: required list<binary> pipeMetaList
+  2: optional list<bool> pipeCompletedList
 }
 
 enum TSchemaLimitLevel{

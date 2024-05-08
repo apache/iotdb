@@ -88,7 +88,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected Map<Integer, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromConfigNode)
+  protected Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromConfigNode)
       throws IllegalPathException {
     return new PipeDataNodeBuilder(pipeMetaFromConfigNode).build();
   }
@@ -97,7 +97,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   @Override
   protected void createPipeTask(
-      int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta)
+      final int consensusGroupId,
+      final PipeStaticMeta pipeStaticMeta,
+      final PipeTaskMeta pipeTaskMeta)
       throws IllegalPathException {
     if (pipeTaskMeta.getLeaderNodeId() == CONFIG.getDataNodeId()) {
       final PipeParameters extractorParameters = pipeStaticMeta.getExtractorParameters();
@@ -131,7 +133,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   @Override
   public List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
-      List<PipeMeta> pipeMetaListFromCoordinator) {
+      final List<PipeMeta> pipeMetaListFromCoordinator) {
     // Do nothing if the node is removing or removed
     if (isShutdown()) {
       return Collections.emptyList();
@@ -144,7 +146,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final Set<Integer> validSchemaRegionIds =
           clearSchemaRegionListeningQueueIfNecessary(pipeMetaListFromCoordinator);
       closeSchemaRegionListeningQueueIfNecessary(validSchemaRegionIds, exceptionMessages);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new PipeException("Failed to clear/close schema region listening queue.", e);
     }
 
@@ -152,7 +154,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   private Set<Integer> clearSchemaRegionListeningQueueIfNecessary(
-      List<PipeMeta> pipeMetaListFromCoordinator) throws IllegalPathException {
+      final List<PipeMeta> pipeMetaListFromCoordinator) throws IllegalPathException {
     final Map<Integer, Long> schemaRegionId2ListeningQueueNewFirstIndex = new HashMap<>();
 
     // Check each pipe
@@ -198,8 +200,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   private void closeSchemaRegionListeningQueueIfNecessary(
-      Set<Integer> validSchemaRegionIds,
-      List<TPushPipeMetaRespExceptionMessage> exceptionMessages) {
+      final Set<Integer> validSchemaRegionIds,
+      final List<TPushPipeMetaRespExceptionMessage> exceptionMessages) {
     if (!exceptionMessages.isEmpty()) {
       return;
     }
@@ -215,7 +217,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                       .write(
                           schemaRegionId,
                           new PipeOperateSchemaQueueNode(new PlanNodeId(""), false));
-                } catch (ConsensusException e) {
+                } catch (final ConsensusException e) {
                   throw new PipeException(
                       "Failed to close listening queue for SchemaRegion " + schemaRegionId, e);
                 }
@@ -230,7 +232,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   ///////////////////////// Heartbeat /////////////////////////
 
-  public void collectPipeMetaList(TDataNodeHeartbeatResp resp) throws TException {
+  public void collectPipeMetaList(final TDataNodeHeartbeatResp resp) throws TException {
     // Try the lock instead of directly acquire it to prevent the block of the cluster heartbeat
     // 10s is the half of the HEARTBEAT_TIMEOUT_TIME defined in class BaseNodeCache in ConfigNode
     if (!tryReadLockWithTimeOut(10)) {
@@ -243,13 +245,19 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
   }
 
-  private void collectPipeMetaListInternal(TDataNodeHeartbeatResp resp) throws TException {
+  private void collectPipeMetaListInternal(final TDataNodeHeartbeatResp resp) throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown()) {
       return;
     }
 
+    final Set<Integer> dataRegionIds =
+        StorageEngine.getInstance().getAllDataRegionIds().stream()
+            .map(DataRegionId::getId)
+            .collect(Collectors.toSet());
+
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    final List<Boolean> pipeCompletedList = new ArrayList<>();
     try {
       final Optional<Logger> logger =
           PipeResourceManager.log()
@@ -260,25 +268,40 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                   pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
+        final Map<Integer, PipeTask> pipeTaskMap =
+            pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
+        pipeCompletedList.add(
+            pipeTaskMap == null
+                || pipeTaskMap.entrySet().stream()
+                    .filter(entry -> dataRegionIds.contains(entry.getKey()))
+                    .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted()));
+
         logger.ifPresent(l -> l.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage()));
       }
       LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new TException(e);
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
+    resp.setPipeCompletedList(pipeCompletedList);
   }
 
   @Override
-  protected void collectPipeMetaListInternal(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
-      throws TException {
+  protected void collectPipeMetaListInternal(
+      final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp) throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown()) {
       return;
     }
     LOGGER.info("Received pipe heartbeat request {} from config node.", req.heartbeatId);
 
+    final Set<Integer> dataRegionIds =
+        StorageEngine.getInstance().getAllDataRegionIds().stream()
+            .map(DataRegionId::getId)
+            .collect(Collectors.toSet());
+
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    final List<Boolean> pipeCompletedList = new ArrayList<>();
     try {
       final Optional<Logger> logger =
           PipeResourceManager.log()
@@ -289,14 +312,22 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                   pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
+        final Map<Integer, PipeTask> pipeTaskMap =
+            pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
+        pipeCompletedList.add(
+            pipeTaskMap == null
+                || pipeTaskMap.entrySet().stream()
+                    .filter(entry -> dataRegionIds.contains(entry.getKey()))
+                    .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted()));
+
         logger.ifPresent(l -> l.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage()));
       }
       LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new TException(e);
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
-
+    resp.setPipeCompletedList(pipeCompletedList);
     PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 
@@ -351,7 +382,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         > 2 * IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
   }
 
-  private void restartStuckPipe(PipeMeta pipeMeta) {
+  private void restartStuckPipe(final PipeMeta pipeMeta) {
     LOGGER.warn("Pipe {} will be restarted because of stuck.", pipeMeta.getStaticMeta());
     final long startTime = System.currentTimeMillis();
     changePipeStatusBeforeRestart(pipeMeta.getStaticMeta().getPipeName());
@@ -362,7 +393,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         System.currentTimeMillis() - startTime);
   }
 
-  private void changePipeStatusBeforeRestart(String pipeName) {
+  private void changePipeStatusBeforeRestart(final String pipeName) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     final Map<Integer, PipeTask> pipeTasks = pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
     final Set<Integer> taskRegionIds = new HashSet<>(pipeTasks.keySet());
@@ -408,9 +439,25 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
   }
 
+  ///////////////////////// Terminate Logic /////////////////////////
+
+  public void markCompleted(final String pipeName, final int regionId) {
+    acquireWriteLock();
+    try {
+      if (pipeMetaKeeper.containsPipeMeta(pipeName)) {
+        ((PipeDataNodeTask)
+                pipeTaskManager.getPipeTask(
+                    pipeMetaKeeper.getPipeMeta(pipeName).getStaticMeta(), regionId))
+            .markCompleted();
+      }
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
   ///////////////////////// Utils /////////////////////////
 
-  public Set<Integer> getPipeTaskRegionIdSet(String pipeName, long creationTime) {
+  public Set<Integer> getPipeTaskRegionIdSet(final String pipeName, final long creationTime) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     return pipeMeta == null || pipeMeta.getStaticMeta().getCreationTime() != creationTime
         ? Collections.emptySet()
