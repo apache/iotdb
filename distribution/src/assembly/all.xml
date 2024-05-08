@@ -88,11 +88,6 @@
             <directory>${maven.multiModuleProjectDirectory}/iotdb-client/cli/src/assembly/resources/tools</directory>
             <fileMode>0755</fileMode>
         </fileSet>
-        <fileSet>
-            <outputDirectory>conf</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-client/cli/src/assembly/resources/conf</directory>
-            <fileMode>0755</fileMode>
-        </fileSet>
         <!--        <fileSet>-->
         <!--            <outputDirectory>datanode</outputDirectory>-->
         <!--            <directory>${maven.multiModuleProjectDirectory}/distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/datanode</directory>-->
@@ -102,6 +97,13 @@
         <!--            <directory>${maven.multiModuleProjectDirectory}/distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/confignode</directory>-->
         <!--        </fileSet>-->
     </fileSets>
+    <files>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/iotdb-client/cli/src/assembly/resources/conf/logback-backup.xml</source>
+            <outputDirectory>conf</outputDirectory>
+            <fileMode>0755</fileMode>
+        </file>
+    </files>
     <!--    <files>-->
     <!--        <file>-->
     <!--            <source>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf/datanode-env.sh</source>-->
