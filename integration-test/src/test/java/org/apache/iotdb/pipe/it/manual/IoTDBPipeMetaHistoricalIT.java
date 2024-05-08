@@ -234,7 +234,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
               + ","
               + ColumnHeaderConstant.PRIVILEGES
               + ","
-              + ColumnHeaderConstant.GRANT_OPTION,
+              + ColumnHeaderConstant.GRANT_OPTION
+              + ",",
           new HashSet<>(
               Arrays.asList("admin,root.**,READ_DATA,false,", "admin,root.**,READ_SCHEMA,false,")));
 
