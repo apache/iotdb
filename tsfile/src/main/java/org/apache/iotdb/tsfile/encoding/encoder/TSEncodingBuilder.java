@@ -409,7 +409,12 @@ public abstract class TSEncodingBuilder {
 
     @Override
     public Encoder getEncoder(TSDataType type) {
-      return new PlainEncoder(type, maxStringLength);
+      switch (type) {
+        case INT32:
+          return new PlainEncoder(type, maxStringLength);
+        default:
+          throw new UnSupportedDataTypeException("PERIOD doesn't support data type: " + type);
+      }
     }
 
     @Override
