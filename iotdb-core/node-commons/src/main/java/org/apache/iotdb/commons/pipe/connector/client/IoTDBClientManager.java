@@ -42,8 +42,7 @@ public abstract class IoTDBClientManager {
   protected boolean supportModsIfIsDataNodeReceiver = true;
 
   private static final int MAX_CONNECTION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 1 day
-  protected int connectionTimeout =
-      Math.toIntExact(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
+  protected int connectionTimeout = PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs();
 
   protected IoTDBClientManager(List<TEndPoint> endPointList, boolean useLeaderCache) {
     this.endPointList = endPointList;
