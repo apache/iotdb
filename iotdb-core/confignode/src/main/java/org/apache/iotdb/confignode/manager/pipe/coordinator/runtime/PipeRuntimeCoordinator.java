@@ -45,7 +45,7 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   private final PipeMetaSyncer pipeMetaSyncer;
   private final PipeHeartbeatScheduler pipeHeartbeatScheduler;
 
-  public PipeRuntimeCoordinator(ConfigManager configManager) {
+  public PipeRuntimeCoordinator(final ConfigManager configManager) {
     if (procedureSubmitterHolder.get() == null) {
       synchronized (PipeRuntimeCoordinator.class) {
         if (procedureSubmitterHolder.get() == null) {
@@ -71,18 +71,18 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   }
 
   @Override
-  public void onNodeStatisticsChanged(NodeStatisticsChangeEvent event) {
+  public void onNodeStatisticsChanged(final NodeStatisticsChangeEvent event) {
     // Do nothing
   }
 
   @Override
-  public void onRegionGroupStatisticsChanged(RegionGroupStatisticsChangeEvent event) {
+  public void onRegionGroupStatisticsChanged(final RegionGroupStatisticsChangeEvent event) {
     // Do nothing
   }
 
   @Override
   public synchronized void onConsensusGroupStatisticsChanged(
-      ConsensusGroupStatisticsChangeEvent event) {
+      final ConsensusGroupStatisticsChangeEvent event) {
     pipeLeaderChangeHandler.onConsensusGroupStatisticsChanged(event);
   }
 
@@ -103,9 +103,9 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   }
 
   public void parseHeartbeat(
-      int dataNodeId,
-      @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode, /* @Nullable */
-      final List<Boolean> pipeCompletedListFromAgent) {
+      final int dataNodeId,
+      @NotNull final List<ByteBuffer> pipeMetaByteBufferListFromDataNode,
+      /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent) {
     pipeHeartbeatScheduler.parseHeartbeat(
         dataNodeId, pipeMetaByteBufferListFromDataNode, pipeCompletedListFromAgent);
   }

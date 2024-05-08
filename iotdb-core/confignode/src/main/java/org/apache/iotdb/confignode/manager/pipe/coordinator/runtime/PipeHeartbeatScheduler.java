@@ -61,7 +61,7 @@ public class PipeHeartbeatScheduler {
 
   private Future<?> heartbeatFuture;
 
-  PipeHeartbeatScheduler(ConfigManager configManager) {
+  PipeHeartbeatScheduler(final ConfigManager configManager) {
     this.configManager = configManager;
     this.pipeHeartbeatParser = new PipeHeartbeatParser(configManager);
   }
@@ -120,7 +120,7 @@ public class PipeHeartbeatScheduler {
           ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
           configNodeResp.getPipeMetaList(),
           null);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn("Failed to collect pipe meta list from config node task agent", e);
     }
   }
