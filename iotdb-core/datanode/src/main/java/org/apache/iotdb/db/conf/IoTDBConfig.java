@@ -1101,7 +1101,7 @@ public class IoTDBConfig {
 
   private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
 
-  private double loadWriteThroughputMbPerSecond = 1000; // MB/s
+  private double loadWriteThroughputMbPerSecond = 5000; // MB/s
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */

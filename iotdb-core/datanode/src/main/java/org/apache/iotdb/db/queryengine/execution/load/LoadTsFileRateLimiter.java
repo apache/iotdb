@@ -35,7 +35,7 @@ public class LoadTsFileRateLimiter {
       new AtomicDouble(CONFIG.getLoadWriteThroughputMbPerSecond());
 
   public LoadTsFileRateLimiter() {
-    loadWriteRateLimiter = RateLimiter.create(throughputMbPerSec.get());
+    loadWriteRateLimiter = RateLimiter.create(throughputMbPerSec.get() * 1024.0 * 1024.0);
   }
 
   private void setWritePointRate(final double throughputMbPerSec) {
