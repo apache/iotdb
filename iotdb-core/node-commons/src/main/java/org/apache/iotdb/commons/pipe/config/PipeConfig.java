@@ -95,11 +95,11 @@ public class PipeConfig {
 
   /////////////////////////////// Connector ///////////////////////////////
 
-  public long getPipeConnectorHandshakeTimeoutMs() {
+  public int getPipeConnectorHandshakeTimeoutMs() {
     return COMMON_CONFIG.getPipeConnectorHandshakeTimeoutMs();
   }
 
-  public long getPipeConnectorTransferTimeoutMs() {
+  public int getPipeConnectorTransferTimeoutMs() {
     return COMMON_CONFIG.getPipeConnectorTransferTimeoutMs();
   }
 
