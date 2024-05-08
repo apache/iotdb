@@ -27,7 +27,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.protocol.rest.StringUtil;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
@@ -610,13 +609,6 @@ public class AbstractCompactionTest {
       }
     }
     generateModsFile(seriesPaths, resources, startTime, endTime);
-  }
-
-  protected void generateTTL(int deviceNum, long ttl) {
-    for (int dIndex = 0; dIndex < deviceNum; dIndex++) {
-      DataNodeTTLCache.getInstance()
-          .setTTL(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + dIndex, ttl);
-    }
   }
 
   protected void generateModsFile(

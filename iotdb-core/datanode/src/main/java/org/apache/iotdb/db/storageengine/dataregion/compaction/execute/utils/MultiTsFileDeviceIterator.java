@@ -640,7 +640,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                           list.add(
                               new Deletion(
                                   CompactionPathUtils.getPath(device)
-                                      .getDevicePath()
                                       .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
                                   Long.MAX_VALUE,
                                   Long.MIN_VALUE,
