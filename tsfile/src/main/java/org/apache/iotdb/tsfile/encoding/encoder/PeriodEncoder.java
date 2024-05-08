@@ -26,6 +26,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
+import org.apache.commons.math3.complex.Complex;
+import org.apache.commons.math3.transform.DftNormalization;
+import org.apache.commons.math3.transform.FastFourierTransformer;
+import org.apache.commons.math3.transform.TransformType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +43,45 @@ public class PeriodEncoder extends Encoder {
   private static final Logger logger = LoggerFactory.getLogger(PeriodEncoder.class);
   private TSDataType dataType;
   private int maxStringLength;
+
+  private static final FastFourierTransformer transformer =
+      new FastFourierTransformer(DftNormalization.STANDARD);
+
+  private static Complex[] rfft(double[] input) {
+    Complex[] transformed = transformer.transform(input, TransformType.FORWARD);
+
+    // 只保留一半的结果（正频率部分）
+    int n = input.length;
+    Complex[] rfftResult = new Complex[n / 2 + 1];
+    for (int i = 0; i < n / 2 + 1; i++) {
+      rfftResult[i] = transformed[i];
+    }
+
+    return rfftResult;
+  }
+
+  private static double[] irfft(Complex[] input, int n) {
+    Complex[] conjugates = new Complex[n];
+
+    // 构造逆FFT所需的复数数组
+    for (int i = 0; i < input.length; i++) {
+      if (i == 0 || (i == input.length - 1 && n % 2 == 0)) {
+        conjugates[i] = input[i];
+      } else {
+        conjugates[i] = input[i];
+        conjugates[n - i] = input[i].conjugate();
+      }
+    }
+
+    // 进行逆FFT，并除以长度进行归一化
+    Complex[] inverse = transformer.transform(conjugates, TransformType.INVERSE);
+    double[] result = new double[n];
+    for (int i = 0; i < n; i++) {
+      result[i] = inverse[i].getReal() / n;
+    }
+
+    return result;
+  }
 
   static class ByteOutToys {
     private final ByteArrayOutputStream outputStream;
@@ -146,7 +189,7 @@ public class PeriodEncoder extends Encoder {
         D = current_D;
       }
     }
-    return new int[] { result, D };
+    return new int[] {result, D};
   }
 
   private static void separateStorage(ByteOutToys stream, int[] data) throws IOException {
