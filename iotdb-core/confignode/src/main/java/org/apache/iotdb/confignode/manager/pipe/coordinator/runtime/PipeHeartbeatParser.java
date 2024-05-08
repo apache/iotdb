@@ -58,7 +58,7 @@ public class PipeHeartbeatParser {
   private final AtomicBoolean needWriteConsensusOnConfigNodes;
   private final AtomicBoolean needPushPipeMetaToDataNodes;
 
-  PipeHeartbeatParser(ConfigManager configManager) {
+  PipeHeartbeatParser(final ConfigManager configManager) {
     this.configManager = configManager;
 
     heartbeatCounter = 0;
@@ -69,9 +69,9 @@ public class PipeHeartbeatParser {
   }
 
   public synchronized void parseHeartbeat(
-      int nodeId,
-      @NotNull List<ByteBuffer> pipeMetaByteBufferListFromAgent,
-      final List<Boolean> pipeCompletedListFromAgent) {
+      final int nodeId,
+      @NotNull final List<ByteBuffer> pipeMetaByteBufferListFromAgent,
+      /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent) {
     final long heartbeatCount = ++heartbeatCounter;
 
     final AtomicBoolean canSubmitHandleMetaChangeProcedure = new AtomicBoolean(false);
@@ -143,7 +143,7 @@ public class PipeHeartbeatParser {
       final AtomicReference<PipeTaskInfo> pipeTaskInfo,
       final int nodeId,
       @NotNull final List<ByteBuffer> pipeMetaByteBufferListFromAgent,
-      final List<Boolean> pipeCompletedListFromAgent) {
+      /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent) {
     final Map<PipeStaticMeta, PipeMeta> pipeMetaMapFromAgent = new HashMap<>();
     final Map<PipeStaticMeta, Boolean> pipeCompletedMapFromAgent = new HashMap<>();
     for (int i = 0; i < pipeMetaByteBufferListFromAgent.size(); ++i) {
@@ -158,13 +158,13 @@ public class PipeHeartbeatParser {
       // Remove completed pipes
       final Boolean pipeCompletedFromAgent =
           pipeCompletedMapFromAgent.get(pipeMetaFromCoordinator.getStaticMeta());
-      if (Objects.nonNull(pipeCompletedFromAgent)) {
+      if (Objects.nonNull(pipeCompletedFromAgent) && Boolean.TRUE.equals(pipeCompletedFromAgent)) {
         final PipeTemporaryMeta temporaryMeta = pipeMetaFromCoordinator.getTemporaryMeta();
-        temporaryMeta.putDataNodeCompletion(nodeId, pipeCompletedFromAgent);
+        temporaryMeta.putDataNodeCompletion(nodeId);
 
         final Set<Integer> dataNodeIds =
             configManager.getNodeManager().getRegisteredDataNodeLocations().keySet();
-        dataNodeIds.retainAll(temporaryMeta.getDataNodeId2CompletedMap().keySet());
+        dataNodeIds.retainAll(temporaryMeta.getCompletedDataNode());
         if (dataNodeIds.isEmpty()) {
           pipeTaskInfo.get().removePipeMeta(pipeMetaFromCoordinator.getStaticMeta().getPipeName());
           continue;

@@ -109,7 +109,8 @@ public class PipeHeartbeatScheduler {
         .getResponseMap()
         .forEach(
             (dataNodeId, resp) ->
-                pipeHeartbeatParser.parseHeartbeat(dataNodeId, resp.getPipeMetaList()));
+                pipeHeartbeatParser.parseHeartbeat(
+                    dataNodeId, resp.getPipeMetaList(), resp.getPipeCompletedList()));
 
     // config node heartbeat
     try {
@@ -117,7 +118,8 @@ public class PipeHeartbeatScheduler {
       PipeConfigNodeAgent.task().collectPipeMetaList(request, configNodeResp);
       pipeHeartbeatParser.parseHeartbeat(
           ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-          configNodeResp.getPipeMetaList());
+          configNodeResp.getPipeMetaList(),
+          null);
     } catch (Exception e) {
       LOGGER.warn("Failed to collect pipe meta list from config node task agent", e);
     }
@@ -131,7 +133,11 @@ public class PipeHeartbeatScheduler {
     }
   }
 
-  public void parseHeartbeat(int dataNodeId, List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
-    pipeHeartbeatParser.parseHeartbeat(dataNodeId, pipeMetaByteBufferListFromDataNode);
+  public void parseHeartbeat(
+      final int dataNodeId,
+      final List<ByteBuffer> pipeMetaByteBufferListFromDataNode,
+      final List<Boolean> pipeCompletedListFromAgent) {
+    pipeHeartbeatParser.parseHeartbeat(
+        dataNodeId, pipeMetaByteBufferListFromDataNode, pipeCompletedListFromAgent);
   }
 }

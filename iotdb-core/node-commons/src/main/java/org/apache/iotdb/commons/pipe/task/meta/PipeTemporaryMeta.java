@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.commons.pipe.task.meta;
 
-import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public class PipeTemporaryMeta {
-  private final ConcurrentMap<Integer, Boolean> dataNodeId2CompletedMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, Integer> completedDataNode = new ConcurrentHashMap<>();
 
-  public void putDataNodeCompletion(final int dataNodeId, final boolean completion) {
-    dataNodeId2CompletedMap.put(dataNodeId, completion);
+  public void putDataNodeCompletion(final int dataNodeId) {
+    completedDataNode.put(dataNodeId, dataNodeId);
   }
 
-  public Map<Integer, Boolean> getDataNodeId2CompletedMap() {
-    return dataNodeId2CompletedMap;
+  public Set<Integer> getCompletedDataNode() {
+    return completedDataNode.keySet();
   }
 }
