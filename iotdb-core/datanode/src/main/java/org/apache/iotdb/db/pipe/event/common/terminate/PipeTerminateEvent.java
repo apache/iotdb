@@ -84,4 +84,11 @@ public class PipeTerminateEvent extends EnrichedEvent {
   public void reportProgress() {
     PipeAgent.task().markCompleted(pipeName, dataRegionId);
   }
+
+  @Override
+  public String toString() {
+    return String.format("PipeTerminateEvent{dataRegionId=%s}", dataRegionId)
+        + " - "
+        + super.toString();
+  }
 }

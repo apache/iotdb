@@ -164,9 +164,11 @@ public class PipeHeartbeatParser {
 
         final Set<Integer> dataNodeIds =
             configManager.getNodeManager().getRegisteredDataNodeLocations().keySet();
-        dataNodeIds.retainAll(temporaryMeta.getCompletedDataNode());
+        dataNodeIds.removeAll(temporaryMeta.getCompletedDataNode());
         if (dataNodeIds.isEmpty()) {
           pipeTaskInfo.get().removePipeMeta(pipeMetaFromCoordinator.getStaticMeta().getPipeName());
+          needWriteConsensusOnConfigNodes.set(true);
+          needPushPipeMetaToDataNodes.set(true);
           continue;
         }
       }

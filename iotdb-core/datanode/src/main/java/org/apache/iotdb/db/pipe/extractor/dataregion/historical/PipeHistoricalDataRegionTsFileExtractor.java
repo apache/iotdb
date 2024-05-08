@@ -66,6 +66,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
@@ -199,7 +200,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       shouldTerminatePipeOnAllConsumed =
           parameters.getBooleanOrDefault(
               Arrays.asList(
-                  SOURCE_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY, EXTRACTOR_HISTORY_ENABLE_KEY),
+                  SOURCE_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY,
+                  EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY),
               EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_DEFAULT_VALUE);
     } catch (final Exception e) {
       // Compatible with the current validation framework
@@ -495,7 +497,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     final TsFileResource resource = pendingQueue.poll();
     if (resource == null) {
       isTerminateSignalSent = true;
-      return new PipeTerminateEvent(pipeName, pipeTaskMeta, dataRegionId);
+      final PipeTerminateEvent terminateEvent =
+          new PipeTerminateEvent(pipeName, pipeTaskMeta, dataRegionId);
+      terminateEvent.increaseReferenceCount(
+          PipeHistoricalDataRegionTsFileExtractor.class.getName());
+      return terminateEvent;
     }
 
     final PipeTsFileInsertionEvent event =

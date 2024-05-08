@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.task.meta;
 
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -32,5 +33,27 @@ public class PipeTemporaryMeta {
 
   public Set<Integer> getCompletedDataNode() {
     return completedDataNode.keySet();
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final PipeTemporaryMeta pipeTemporaryMeta = (PipeTemporaryMeta) o;
+    return Objects.equals(completedDataNode, pipeTemporaryMeta.completedDataNode);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(completedDataNode);
+  }
+
+  @Override
+  public String toString() {
+    return "PipeMeta{" + "completedDataNode=" + completedDataNode + '}';
   }
 }
