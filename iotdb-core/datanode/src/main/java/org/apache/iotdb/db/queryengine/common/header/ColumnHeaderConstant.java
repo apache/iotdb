@@ -500,5 +500,5 @@ public class ColumnHeaderConstant {
           new ColumnHeader(ROLE, TSDataType.TEXT),
           new ColumnHeader(PATH, TSDataType.TEXT),
           new ColumnHeader(PRIVILEGES, TSDataType.TEXT),
-          new ColumnHeader(GRANT_OPTION, TSDataType.TEXT));
+          new ColumnHeader(GRANT_OPTION, TSDataType.BOOLEAN));
 }
