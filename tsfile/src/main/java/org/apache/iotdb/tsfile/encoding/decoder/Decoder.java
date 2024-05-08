@@ -126,8 +126,8 @@ public abstract class Decoder {
       case PERIOD:
         switch (dataType) {
           case INT32:
-            // Spade TODO: replace plain with period
-            return new PlainDecoder();
+            // Spade TODO: replace plain with period parameter
+            return new PeriodDecoder();
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }

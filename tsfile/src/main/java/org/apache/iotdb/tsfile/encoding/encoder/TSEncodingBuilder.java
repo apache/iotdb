@@ -404,14 +404,14 @@ public abstract class TSEncodingBuilder {
 
   /** for all TSDataType. */
   public static class Period extends TSEncodingBuilder {
-    // Spade TODO: replace plain with period method
     private int maxStringLength = TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
 
     @Override
     public Encoder getEncoder(TSDataType type) {
       switch (type) {
         case INT32:
-          return new PlainEncoder(type, maxStringLength);
+          // Spade TODO: replace plain with period parameter
+          return new PeriodEncoder(type, maxStringLength);
         default:
           throw new UnSupportedDataTypeException("PERIOD doesn't support data type: " + type);
       }

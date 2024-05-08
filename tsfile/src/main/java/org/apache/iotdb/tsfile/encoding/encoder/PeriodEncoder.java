@@ -33,15 +33,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 
-public class PlainEncoder extends Encoder {
+public class PeriodEncoder extends Encoder {
 
-  // Spade TODO: replace plain with period method
-  private static final Logger logger = LoggerFactory.getLogger(PlainEncoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(PeriodEncoder.class);
   private TSDataType dataType;
   private int maxStringLength;
 
-  public PlainEncoder(TSDataType dataType, int maxStringLength) {
-    super(TSEncoding.PLAIN);
+  public PeriodEncoder(TSDataType dataType, int maxStringLength) {
+    super(TSEncoding.PERIOD);
     this.dataType = dataType;
     this.maxStringLength = maxStringLength;
   }
