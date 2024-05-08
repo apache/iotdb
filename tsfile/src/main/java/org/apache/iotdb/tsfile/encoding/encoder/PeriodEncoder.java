@@ -32,12 +32,144 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.Arrays;
 
 public class PeriodEncoder extends Encoder {
 
   private static final Logger logger = LoggerFactory.getLogger(PeriodEncoder.class);
   private TSDataType dataType;
   private int maxStringLength;
+
+  static class ByteOutToys {
+    private final ByteArrayOutputStream outputStream;
+
+    public ByteOutToys(ByteArrayOutputStream outputStream) {
+      this.outputStream = outputStream;
+    }
+
+    public void encode(int value, int bits) throws IOException {
+      for (int i = bits - 1; i >= 0; i--) {
+        outputStream.write((value >> i) & 1);
+      }
+    }
+  }
+
+  private static final int MAX_SIZE = 0x7FFFFFFF;
+  private static final int MAX_VALUE = 0x7FFFFFFF;
+  private static final int GROUP_SIZE = 8;
+
+  private static int bitLength(int value) {
+    return Integer.toBinaryString(value).length();
+  }
+
+  private static int[] getCnt(int[] data) {
+    int[] cnt = new int[bitLength(MAX_VALUE) + 1];
+    for (int i = 0; i < data.length; i++) {
+      if (data[i] != 0) {
+        cnt[bitLength(Math.abs(data[i]))]++;
+      }
+    }
+    return cnt;
+  }
+
+  private static int[] bitLengthOrder(int[] data) {
+    int[] cnt = getCnt(data);
+    cnt[0] = 0;
+    for (int i = cnt.length - 2; i >= 0; i--) {
+      cnt[i] += cnt[i + 1];
+    }
+    int n = cnt[0];
+    int[] result = new int[n];
+    for (int i = data.length - 1; i >= 0; i--) {
+      if (data[i] != 0) {
+        result[cnt[bitLength(Math.abs(data[i]))] - 1] = i;
+        cnt[bitLength(Math.abs(data[i]))]--;
+      }
+    }
+    return result;
+  }
+
+  private static void descendingBitPacking(ByteOutToys stream, int[] data, boolean sgn)
+      throws IOException {
+    stream.encode(sgn ? 1 : 0, 1);
+    int[] index = bitLengthOrder(data);
+    stream.encode(data.length, bitLength(MAX_SIZE));
+    stream.encode(index.length, bitLength(MAX_SIZE));
+    if (index.length == 0) {
+      return;
+    }
+    for (int i = 0; i < index.length; i += GROUP_SIZE) {
+      int maxLen = 0;
+      for (int j = i; j < Math.min(i + GROUP_SIZE, index.length); j++) {
+        maxLen = Math.max(maxLen, bitLength(index[j]));
+      }
+      stream.encode(maxLen, bitLength(bitLength(MAX_SIZE)));
+      for (int j = i; j < Math.min(i + GROUP_SIZE, index.length); j++) {
+        stream.encode(index[j], maxLen);
+      }
+    }
+    int firstLen = bitLength(Math.abs(data[index[0]]));
+    int currentLen = firstLen;
+    stream.encode(firstLen, bitLength(bitLength(MAX_VALUE)));
+    for (int i : index) {
+      if (sgn) {
+        stream.encode(data[i] < 0 ? 1 : 0, 1);
+      }
+      stream.encode(Math.abs(data[i]), currentLen);
+      currentLen = bitLength(Math.abs(data[i]));
+    }
+  }
+
+  private static int descendingBitPackingEstimate(int[] cnt, int n, boolean sgn) {
+    int sum1 = 0;
+    int sum2 = 0;
+    for (int i = 1; i < cnt.length; i++) {
+      sum1 += cnt[i];
+      sum2 += cnt[i] * (i + (sgn ? 1 : 0));
+    }
+    return bitLength(n) * sum1 + sum2;
+  }
+
+  private static int calcSeparateStorageLength(int[] cnt, int n, int D) {
+    return n * (D + 1)
+        + descendingBitPackingEstimate(Arrays.copyOfRange(cnt, D, cnt.length), n, false);
+  }
+
+  private static int[] separateStorageEstimate(int[] data) {
+    int[] cnt = getCnt(data);
+    int result = calcSeparateStorageLength(cnt, data.length, 0);
+    int D = 0;
+    for (int current_D = 1; current_D <= bitLength(MAX_VALUE); current_D++) {
+      int tmp = calcSeparateStorageLength(cnt, data.length, current_D);
+      if (tmp < result) {
+        result = tmp;
+        D = current_D;
+      }
+    }
+    return new int[] { result, D };
+  }
+
+  private static void separateStorage(ByteOutToys stream, int[] data) throws IOException {
+    int[] result = separateStorageEstimate(data);
+    int n = data.length;
+    int D = result[1];
+
+    stream.encode(n, bitLength(MAX_SIZE));
+    stream.encode(D, bitLength(MAX_VALUE));
+
+    // low-bit part
+    for (int i : data) {
+      stream.encode(i < 0 ? 1 : 0, 1); // sgn bit
+      stream.encode(Math.abs(i) & ((1 << D) - 1), D); // low bits
+    }
+
+    // high-bit part
+    int[] highBits = new int[n];
+    for (int i = 0; i < n; i++) {
+      highBits[i] = Math.abs(data[i]) >> D;
+    }
+    descendingBitPacking(stream, highBits, false);
+  }
 
   public PeriodEncoder(TSDataType dataType, int maxStringLength) {
     super(TSEncoding.PERIOD);
