@@ -142,7 +142,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       clientAndStatus.setLeft(
           new IoTDBSyncClient(
               new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
+                  .setConnectionTimeoutMs(PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
                   .setRpcThriftCompressionEnabled(
                       PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
                   .build(),
@@ -193,7 +193,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
             resp.getStatus());
       } else {
         clientAndStatus.setRight(true);
-        client.setTimeout((int) PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
+        client.setTimeout(connectionTimeout);
         LOGGER.info(
             "Handshake success. Target server ip: {}, port: {}",
             client.getIpAddress(),
