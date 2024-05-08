@@ -141,7 +141,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
           "list user",
           ColumnHeaderConstant.USER + ",",
           Collections.singleton("root,"));
-      TestUtils.assertDataAlwaysOnEnv(receiverEnv, "list role", "role,", Collections.emptySet());
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv, "list role", ColumnHeaderConstant.ROLE + ",", Collections.emptySet());
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -220,11 +221,20 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "list user of role `admin`", "user,", Collections.singleton("thulab,"));
+          receiverEnv,
+          "list user of role `admin`",
+          ColumnHeaderConstant.USER + ",",
+          Collections.singleton("thulab,"));
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "list privileges of role `admin`",
-          "ROLE,PATH,PRIVILEGES,GRANT OPTION,",
+          ColumnHeaderConstant.ROLE
+              + ","
+              + ColumnHeaderConstant.PATH
+              + ","
+              + ColumnHeaderConstant.PRIVILEGES
+              + ","
+              + ColumnHeaderConstant.GRANT_OPTION,
           new HashSet<>(
               Arrays.asList("admin,root.**,READ_DATA,false,", "admin,root.**,READ_SCHEMA,false,")));
 
@@ -241,7 +251,10 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
       }
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "list role", "role,", new HashSet<>(Arrays.asList("admin,", "test,")));
+          receiverEnv,
+          "list role",
+          ColumnHeaderConstant.ROLE + ",",
+          new HashSet<>(Arrays.asList("admin,", "test,")));
     }
   }
 }
