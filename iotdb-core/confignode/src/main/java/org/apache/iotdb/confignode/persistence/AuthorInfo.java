@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -337,7 +338,7 @@ public class AuthorInfo implements SnapshotProcessor {
         }
       }
     }
-    result.setTag(IoTDBConstant.COLUMN_USER);
+    result.setTag(ColumnHeaderConstant.USER);
     result.setMemberInfo(userList);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return result;
@@ -359,7 +360,7 @@ public class AuthorInfo implements SnapshotProcessor {
       }
       roleList.addAll(user.getRoleList());
     }
-    result.setTag(IoTDBConstant.COLUMN_ROLE);
+    result.setTag(ColumnHeaderConstant.ROLE);
     result.setMemberInfo(roleList);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return result;
@@ -393,7 +394,7 @@ public class AuthorInfo implements SnapshotProcessor {
     roleInfo.put(role.getName(), roleResp);
     resp.setRoleInfo(roleInfo);
     resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-    result.setTag(IoTDBConstant.COLUMN_PRIVILEGE);
+    result.setTag(ColumnHeaderConstant.PRIVILEGES);
     result.setPermissionInfoResp(resp);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setMemberInfo(permissionInfo);
@@ -410,7 +411,7 @@ public class AuthorInfo implements SnapshotProcessor {
     }
     TPermissionInfoResp resp = getUserPermissionInfo(plan.getUserName());
     resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-    result.setTag(IoTDBConstant.COLUMN_PRIVILEGE);
+    result.setTag(ColumnHeaderConstant.PRIVILEGES);
     result.setPermissionInfoResp(resp);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return result;

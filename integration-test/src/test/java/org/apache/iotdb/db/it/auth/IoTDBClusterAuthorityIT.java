@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -366,7 +367,7 @@ public class IoTDBClusterAuthorityIT {
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      assertEquals(IoTDBConstant.COLUMN_PRIVILEGE, authorizerResp.getTag());
+      assertEquals(ColumnHeaderConstant.PRIVILEGES, authorizerResp.getTag());
       assertEquals("tempuser0", authorizerResp.getPermissionInfo().getUserInfo().getUsername());
       assertEquals(
           new ArrayList<>(), authorizerResp.getPermissionInfo().getUserInfo().getPrivilegeList());
