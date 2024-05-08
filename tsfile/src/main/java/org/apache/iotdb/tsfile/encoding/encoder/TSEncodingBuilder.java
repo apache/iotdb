@@ -73,6 +73,8 @@ public abstract class TSEncodingBuilder {
         return new Freq();
       case ZIGZAG:
         return new Zigzag();
+      case PERIOD:
+        return new Period();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -397,6 +399,33 @@ public abstract class TSEncodingBuilder {
     @Override
     public void initFromProps(Map<String, String> props) {
       // do nothing
+    }
+  }
+
+  /** for all TSDataType. */
+  public static class Period extends TSEncodingBuilder {
+    // Spade TODO: replace plain with period method
+    private int maxStringLength = TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      return new PlainEncoder(type, maxStringLength);
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // set max error from initialized map or default value if not set
+      if (props == null || !props.containsKey(Encoder.MAX_STRING_LENGTH)) {
+        maxStringLength = TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
+      } else {
+        maxStringLength = Integer.valueOf(props.get(Encoder.MAX_STRING_LENGTH));
+        if (maxStringLength < 0) {
+          maxStringLength = TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
+          logger.warn(
+              "cannot set max string length to negative value, replaced with default value:{}",
+              maxStringLength);
+        }
+      }
     }
   }
 }

@@ -44,17 +44,17 @@
 
 using namespace std;
 
+using ::apache::thrift::TException;
 using ::apache::thrift::protocol::TBinaryProtocol;
 using ::apache::thrift::protocol::TCompactProtocol;
+using ::apache::thrift::transport::TBufferedTransport;
+using ::apache::thrift::transport::TFramedTransport;
 using ::apache::thrift::transport::TSocket;
 using ::apache::thrift::transport::TTransport;
 using ::apache::thrift::transport::TTransportException;
-using ::apache::thrift::transport::TBufferedTransport;
-using ::apache::thrift::transport::TFramedTransport;
-using ::apache::thrift::TException;
 
-
-enum LogLevelType {
+enum LogLevelType
+{
     LEVEL_DEBUG = 0,
     LEVEL_INFO,
     LEVEL_WARN,
@@ -62,13 +62,45 @@ enum LogLevelType {
 };
 extern LogLevelType LOG_LEVEL;
 
-#define log_debug(fmt,...) do {if(LOG_LEVEL <= LEVEL_DEBUG) {string s=string("[DEBUG] %s:%d (%s) - ") + fmt + "\n"; printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);}} while(0)
-#define log_info(fmt,...)  do {if(LOG_LEVEL <= LEVEL_INFO)  {string s=string("[INFO]  %s:%d (%s) - ") + fmt + "\n"; printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);}} while(0)
-#define log_warn(fmt,...)  do {if(LOG_LEVEL <= LEVEL_WARN)  {string s=string("[WARN]  %s:%d (%s) - ") + fmt + "\n"; printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);}} while(0)
-#define log_error(fmt,...) do {if(LOG_LEVEL <= LEVEL_ERROR) {string s=string("[ERROR] %s:%d (%s) - ") + fmt + "\n"; printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);}} while(0)
+#define log_debug(fmt, ...)                                                     \
+    do                                                                          \
+    {                                                                           \
+        if (LOG_LEVEL <= LEVEL_DEBUG)                                           \
+        {                                                                       \
+            string s = string("[DEBUG] %s:%d (%s) - ") + fmt + "\n";            \
+            printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); \
+        }                                                                       \
+    } while (0)
+#define log_info(fmt, ...)                                                      \
+    do                                                                          \
+    {                                                                           \
+        if (LOG_LEVEL <= LEVEL_INFO)                                            \
+        {                                                                       \
+            string s = string("[INFO]  %s:%d (%s) - ") + fmt + "\n";            \
+            printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); \
+        }                                                                       \
+    } while (0)
+#define log_warn(fmt, ...)                                                      \
+    do                                                                          \
+    {                                                                           \
+        if (LOG_LEVEL <= LEVEL_WARN)                                            \
+        {                                                                       \
+            string s = string("[WARN]  %s:%d (%s) - ") + fmt + "\n";            \
+            printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); \
+        }                                                                       \
+    } while (0)
+#define log_error(fmt, ...)                                                     \
+    do                                                                          \
+    {                                                                           \
+        if (LOG_LEVEL <= LEVEL_ERROR)                                           \
+        {                                                                       \
+            string s = string("[ERROR] %s:%d (%s) - ") + fmt + "\n";            \
+            printf(s.c_str(), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); \
+        }                                                                       \
+    } while (0)
 
-
-class IoTDBException : public std::exception {
+class IoTDBException : public std::exception
+{
 public:
     IoTDBException() {}
 
@@ -76,14 +108,17 @@ public:
 
     explicit IoTDBException(const char *m) : message(m) {}
 
-    virtual const char *what() const noexcept override {
+    virtual const char *what() const noexcept override
+    {
         return message.c_str();
     }
+
 private:
     std::string message;
 };
 
-class IoTDBConnectionException : public IoTDBException {
+class IoTDBConnectionException : public IoTDBException
+{
 public:
     IoTDBConnectionException() {}
 
@@ -92,7 +127,8 @@ public:
     explicit IoTDBConnectionException(const std::string &m) : IoTDBException(m) {}
 };
 
-class ExecutionException : public IoTDBException {
+class ExecutionException : public IoTDBException
+{
 public:
     ExecutionException() {}
 
@@ -101,7 +137,8 @@ public:
     explicit ExecutionException(const std::string &m) : IoTDBException(m) {}
 };
 
-class BatchExecutionException : public IoTDBException {
+class BatchExecutionException : public IoTDBException
+{
 public:
     BatchExecutionException() {}
 
@@ -109,14 +146,15 @@ public:
 
     explicit BatchExecutionException(const std::string &m) : IoTDBException(m) {}
 
-    explicit BatchExecutionException(const std::vector <TSStatus> &statusList) : statusList(statusList) {}
+    explicit BatchExecutionException(const std::vector<TSStatus> &statusList) : statusList(statusList) {}
 
-    BatchExecutionException(const std::string &m, const std::vector <TSStatus> &statusList) : IoTDBException(m), statusList(statusList) {}
+    BatchExecutionException(const std::string &m, const std::vector<TSStatus> &statusList) : IoTDBException(m), statusList(statusList) {}
 
     std::vector<TSStatus> statusList;
 };
 
-class UnSupportedDataTypeException : public IoTDBException {
+class UnSupportedDataTypeException : public IoTDBException
+{
 public:
     UnSupportedDataTypeException() {}
 
@@ -125,56 +163,68 @@ public:
     explicit UnSupportedDataTypeException(const std::string &m) : IoTDBException("UnSupported dataType: " + m) {}
 };
 
-namespace Version {
-    enum Version {
-        V_0_12, V_0_13
+namespace Version
+{
+    enum Version
+    {
+        V_0_12,
+        V_0_13
     };
 }
 
-namespace CompressionType {
-    enum CompressionType {
-        UNCOMPRESSED = (char) 0,
-        SNAPPY = (char) 1,
-        GZIP = (char) 2,
-        LZO = (char) 3,
-        SDT = (char) 4,
-        PAA = (char) 5,
-        PLA = (char) 6,
-        LZ4 = (char) 7
+namespace CompressionType
+{
+    enum CompressionType
+    {
+        UNCOMPRESSED = (char)0,
+        SNAPPY = (char)1,
+        GZIP = (char)2,
+        LZO = (char)3,
+        SDT = (char)4,
+        PAA = (char)5,
+        PLA = (char)6,
+        LZ4 = (char)7
     };
 }
 
-namespace TSDataType {
-    enum TSDataType {
-        BOOLEAN = (char) 0,
-        INT32 = (char) 1,
-        INT64 = (char) 2,
-        FLOAT = (char) 3,
-        DOUBLE = (char) 4,
-        TEXT = (char) 5,
-        VECTOR = (char) 6,
-        NULLTYPE = (char) 7
+namespace TSDataType
+{
+    enum TSDataType
+    {
+        BOOLEAN = (char)0,
+        INT32 = (char)1,
+        INT64 = (char)2,
+        FLOAT = (char)3,
+        DOUBLE = (char)4,
+        TEXT = (char)5,
+        VECTOR = (char)6,
+        NULLTYPE = (char)7
     };
 }
 
-namespace TSEncoding {
-    enum TSEncoding {
-        PLAIN = (char) 0,
-        DICTIONARY = (char) 1,
-        RLE = (char) 2,
-        DIFF = (char) 3,
-        TS_2DIFF = (char) 4,
-        BITMAP = (char) 5,
-        GORILLA_V1 = (char) 6,
-        REGULAR = (char) 7,
-        GORILLA = (char) 8,
-        ZIGZAG = (char) 9,
-        FREQ = (char) 10
+namespace TSEncoding
+{
+    enum TSEncoding
+    {
+        PLAIN = (char)0,
+        DICTIONARY = (char)1,
+        RLE = (char)2,
+        DIFF = (char)3,
+        TS_2DIFF = (char)4,
+        BITMAP = (char)5,
+        GORILLA_V1 = (char)6,
+        REGULAR = (char)7,
+        GORILLA = (char)8,
+        ZIGZAG = (char)9,
+        FREQ = (char)10,
+        PERIOD = (char)14
     };
 }
 
-namespace TSStatusCode {
-    enum TSStatusCode {
+namespace TSStatusCode
+{
+    enum TSStatusCode
+    {
         SUCCESS_STATUS = 200,
         STILL_EXECUTING_STATUS = 201,
         INVALID_HANDLE_STATUS = 202,
@@ -233,11 +283,13 @@ namespace TSStatusCode {
     };
 }
 
-class RpcUtils {
+class RpcUtils
+{
 public:
     std::shared_ptr<TSStatus> SUCCESS_STATUS;
 
-    RpcUtils() {
+    RpcUtils()
+    {
         SUCCESS_STATUS = std::make_shared<TSStatus>();
         SUCCESS_STATUS->__set_code(TSStatusCode::SUCCESS_STATUS);
     }
@@ -266,91 +318,112 @@ public:
 };
 
 // Simulate the ByteBuffer class in Java
-class MyStringBuffer {
+class MyStringBuffer
+{
 public:
-    MyStringBuffer() : pos(0) {
+    MyStringBuffer() : pos(0)
+    {
         checkBigEndian();
     }
 
-    explicit MyStringBuffer(const std::string& str) : str(str), pos(0) {
+    explicit MyStringBuffer(const std::string &str) : str(str), pos(0)
+    {
         checkBigEndian();
     }
 
-    void reserve(size_t n) {
+    void reserve(size_t n)
+    {
         str.reserve(n);
     }
 
-    void clear() {
+    void clear()
+    {
         str.clear();
         pos = 0;
     }
 
-    bool hasRemaining() {
+    bool hasRemaining()
+    {
         return pos < str.size();
     }
 
-    int getInt() {
-        return *(int *) getOrderedByte(4);
+    int getInt()
+    {
+        return *(int *)getOrderedByte(4);
     }
 
-    int64_t getInt64() {
-        return *(int64_t *) getOrderedByte(8);
+    int64_t getInt64()
+    {
+        return *(int64_t *)getOrderedByte(8);
     }
 
-    float getFloat() {
-        return *(float *) getOrderedByte(4);
+    float getFloat()
+    {
+        return *(float *)getOrderedByte(4);
     }
 
-    double getDouble() {
-        return *(double *) getOrderedByte(8);
+    double getDouble()
+    {
+        return *(double *)getOrderedByte(8);
     }
 
-    char getChar() {
+    char getChar()
+    {
         return str[pos++];
     }
 
-    bool getBool() {
+    bool getBool()
+    {
         return getChar() == 1;
     }
 
-    std::string getString() {
+    std::string getString()
+    {
         size_t len = getInt();
         size_t tmpPos = pos;
         pos += len;
         return str.substr(tmpPos, len);
     }
 
-    void putInt(int ins) {
-        putOrderedByte((char *) &ins, 4);
+    void putInt(int ins)
+    {
+        putOrderedByte((char *)&ins, 4);
     }
 
-    void putInt64(int64_t ins) {
-        putOrderedByte((char *) &ins, 8);
+    void putInt64(int64_t ins)
+    {
+        putOrderedByte((char *)&ins, 8);
     }
 
-    void putFloat(float ins) {
-        putOrderedByte((char *) &ins, 4);
+    void putFloat(float ins)
+    {
+        putOrderedByte((char *)&ins, 4);
     }
 
-    void putDouble(double ins) {
-        putOrderedByte((char *) &ins, 8);
+    void putDouble(double ins)
+    {
+        putOrderedByte((char *)&ins, 8);
     }
 
-    void putChar(char ins) {
+    void putChar(char ins)
+    {
         str += ins;
     }
 
-    void putBool(bool ins) {
+    void putBool(bool ins)
+    {
         char tmp = ins ? 1 : 0;
         str += tmp;
     }
 
-    void putString(const std::string &ins) {
+    void putString(const std::string &ins)
+    {
         putInt((int)(ins.size()));
         str += ins;
     }
 
-    void concat(const std::string &ins) {
+    void concat(const std::string &ins)
+    {
         str.append(ins);
     }
 
@@ -359,18 +432,24 @@ public:
     size_t pos;
 
 private:
-    void checkBigEndian() {
-        static int chk = 0x0201;  //used to distinguish CPU's type (BigEndian or LittleEndian)
-        isBigEndian = (0x01 != *(char *) (&chk));
+    void checkBigEndian()
+    {
+        static int chk = 0x0201; // used to distinguish CPU's type (BigEndian or LittleEndian)
+        isBigEndian = (0x01 != *(char *)(&chk));
     }
 
-    const char *getOrderedByte(size_t len) {
+    const char *getOrderedByte(size_t len)
+    {
         const char *p = nullptr;
-        if (isBigEndian) {
+        if (isBigEndian)
+        {
             p = str.c_str() + pos;
-        } else {
+        }
+        else
+        {
             const char *tmp = str.c_str();
-            for (size_t i = pos; i < pos + len; i++) {
+            for (size_t i = pos; i < pos + len; i++)
+            {
                 numericBuf[pos + len - 1 - i] = tmp[i];
             }
             p = numericBuf;
@@ -379,11 +458,16 @@ private:
         return p;
     }
 
-    void putOrderedByte(char *buf, int len) {
-        if (isBigEndian) {
+    void putOrderedByte(char *buf, int len)
+    {
+        if (isBigEndian)
+        {
             str.assign(buf, len);
-        } else {
-            for (int i = len - 1; i > -1; i--) {
+        }
+        else
+        {
+            for (int i = len - 1; i > -1; i--)
+            {
                 str += buf[i];
             }
         }
@@ -391,69 +475,82 @@ private:
 
 private:
     bool isBigEndian{};
-    char numericBuf[8]{};  //only be used by int, long, float, double etc.
+    char numericBuf[8]{}; // only be used by int, long, float, double etc.
 };
 
-class BitMap {
+class BitMap
+{
 public:
     /** Initialize a BitMap with given size. */
-    explicit BitMap(size_t size = 0) {
+    explicit BitMap(size_t size = 0)
+    {
         resize(size);
     }
 
     /** change the size  */
-    void resize(size_t size) {
+    void resize(size_t size)
+    {
         this->size = size;
         this->bits.resize((size >> 3) + 1); // equal to "size/8 + 1"
         reset();
     }
 
     /** mark as 1 at the given bit position. */
-    bool mark(size_t position) {
+    bool mark(size_t position)
+    {
         if (position >= size)
             return false;
 
-        bits[position >> 3] |= (char) 1 << (position % 8);
+        bits[position >> 3] |= (char)1 << (position % 8);
         return true;
     }
 
     /** mark as 0 at the given bit position. */
-    bool unmark(size_t position) {
+    bool unmark(size_t position)
+    {
         if (position >= size)
             return false;
 
-        bits[position >> 3] &= ~((char) 1 << (position % 8));
+        bits[position >> 3] &= ~((char)1 << (position % 8));
         return true;
     }
 
     /** mark as 1 at all positions. */
-    void markAll() {
-        std::fill(bits.begin(), bits.end(), (char) 0XFF);
+    void markAll()
+    {
+        std::fill(bits.begin(), bits.end(), (char)0XFF);
     }
 
     /** mark as 0 at all positions. */
-    void reset() {
-        std::fill(bits.begin(), bits.end(), (char) 0);
+    void reset()
+    {
+        std::fill(bits.begin(), bits.end(), (char)0);
     }
 
     /** returns the value of the bit with the specified index. */
-    bool isMarked(size_t position) const {
+    bool isMarked(size_t position) const
+    {
         if (position >= size)
             return false;
 
-        return (bits[position >> 3] & ((char) 1 << (position % 8))) != 0;
+        return (bits[position >> 3] & ((char)1 << (position % 8))) != 0;
     }
 
     /** whether all bits are zero, i.e., no Null value */
-    bool isAllUnmarked() const {
+    bool isAllUnmarked() const
+    {
         size_t j;
-        for (j = 0; j < size >> 3; j++) {
-            if (bits[j] != (char) 0) {
+        for (j = 0; j < size >> 3; j++)
+        {
+            if (bits[j] != (char)0)
+            {
                 return false;
             }
         }
-        for (j = 0; j < size % 8; j++) {
-            if ((bits[size >> 3] & ((char) 1 << j)) != 0) {
+        for (j = 0; j < size % 8; j++)
+        {
+            if ((bits[size >> 3] & ((char)1 << j)) != 0)
+            {
                 return false;
             }
         }
@@ -461,26 +558,33 @@ public:
     }
 
     /** whether all bits are one, i.e., all are Null */
-    bool isAllMarked() const {
+    bool isAllMarked() const
+    {
         size_t j;
-        for (j = 0; j < size >> 3; j++) {
-            if (bits[j] != (char) 0XFF) {
+        for (j = 0; j < size >> 3; j++)
+        {
+            if (bits[j] != (char)0XFF)
+            {
                 return false;
             }
         }
-        for (j = 0; j < size % 8; j++) {
-            if ((bits[size >> 3] & ((char) 1 << j)) == 0) {
+        for (j = 0; j < size % 8; j++)
+        {
+            if ((bits[size >> 3] & ((char)1 << j)) == 0)
+            {
                 return false;
             }
         }
         return true;
     }
 
-    const std::vector<char>& getByteArray() const {
+    const std::vector<char> &getByteArray() const
+    {
         return this->bits;
     }
 
-    size_t getSize() const {
+    size_t getSize() const
+    {
         return this->size;
     }
 
@@ -489,7 +593,8 @@ private:
     std::vector<char> bits;
 };
 
-class Field {
+class Field
+{
 public:
     TSDataType::TSDataType dataType;
     bool boolV;
@@ -499,7 +604,8 @@ public:
     double doubleV;
     std::string stringV;
 
-    explicit Field(TSDataType::TSDataType a) {
+    explicit Field(TSDataType::TSDataType a)
+    {
         dataType = a;
     }
 
@@ -520,7 +626,8 @@ public:
  * Notice: The tablet should not have empty cell
  *
  */
-class Tablet {
+class Tablet
+{
 private:
     static const int DEFAULT_ROW_SIZE = 1024;
 
@@ -528,26 +635,27 @@ private:
     void deleteColumns();
 
 public:
-    std::string deviceId; // deviceId of this tablet
+    std::string deviceId;                                                // deviceId of this tablet
     std::vector<std::pair<std::string, TSDataType::TSDataType>> schemas; // the list of measurement schemas for creating the tablet
-    std::vector<int64_t> timestamps;   // timestamps in this tablet
-    std::vector<void*> values; // each object is a primitive type array, which represents values of one measurement
-    std::vector<BitMap> bitMaps; // each bitmap represents the existence of each value in the current column
-    size_t rowSize;    //the number of rows to include in this tablet
-    size_t maxRowNumber;   // the maximum number of rows for this tablet
-    bool isAligned;   // whether this tablet store data of aligned timeseries or not
+    std::vector<int64_t> timestamps;                                     // timestamps in this tablet
+    std::vector<void *> values;                                          // each object is a primitive type array, which represents values of one measurement
+    std::vector<BitMap> bitMaps;                                         // each bitmap represents the existence of each value in the current column
+    size_t rowSize;                                                      // the number of rows to include in this tablet
+    size_t maxRowNumber;                                                 // the maximum number of rows for this tablet
+    bool isAligned;                                                      // whether this tablet store data of aligned timeseries or not
 
     Tablet() = default;
 
     /**
-    * Return a tablet with default specified row number. This is the standard
-    * constructor (all Tablet should be the same size).
-    *
-    * @param deviceId   the name of the device specified to be written in
-    * @param timeseries the list of measurement schemas for creating the tablet
-    */
+     * Return a tablet with default specified row number. This is the standard
+     * constructor (all Tablet should be the same size).
+     *
+     * @param deviceId   the name of the device specified to be written in
+     * @param timeseries the list of measurement schemas for creating the tablet
+     */
     Tablet(const std::string &deviceId,
-           const std::vector<std::pair<std::string, TSDataType::TSDataType>> &timeseries) {
+           const std::vector<std::pair<std::string, TSDataType::TSDataType>> &timeseries)
+    {
         Tablet(deviceId, timeseries, DEFAULT_ROW_SIZE);
     }
 
@@ -563,7 +671,8 @@ public:
      */
     Tablet(const std::string &deviceId, const std::vector<std::pair<std::string, TSDataType::TSDataType>> &schemas,
            size_t maxRowNumber, bool _isAligned = false) : deviceId(deviceId), schemas(schemas),
-                                                        maxRowNumber(maxRowNumber), isAligned(_isAligned) {
+                                                           maxRowNumber(maxRowNumber), isAligned(_isAligned)
+    {
         // create timestamp column
         timestamps.resize(maxRowNumber);
         // create value columns
@@ -571,16 +680,21 @@ public:
         createColumns();
         // create bitMaps
         bitMaps.resize(schemas.size());
-        for (size_t i = 0; i < schemas.size(); i++) {
+        for (size_t i = 0; i < schemas.size(); i++)
+        {
             bitMaps[i].resize(maxRowNumber);
         }
         this->rowSize = 0;
     }
 
-    ~Tablet() {
-        try {
+    ~Tablet()
+    {
+        try
+        {
             deleteColumns();
-        } catch (exception &e) {
+        }
+        catch (exception &e)
+        {
             log_debug(string("Tablet::~Tablet(), ") + e.what());
         }
     }
@@ -596,73 +710,85 @@ public:
     void setAligned(bool isAligned);
 };
 
-class SessionUtils {
+class SessionUtils
+{
 public:
     static std::string getTime(const Tablet &tablet);
 
     static std::string getValue(const Tablet &tablet);
 };
 
-class RowRecord {
+class RowRecord
+{
 public:
     int64_t timestamp;
     std::vector<Field> fields;
 
-    explicit RowRecord(int64_t timestamp) {
+    explicit RowRecord(int64_t timestamp)
+    {
         this->timestamp = timestamp;
     }
 
     RowRecord(int64_t timestamp, const std::vector<Field> &fields)
-            : timestamp(timestamp), fields(fields) {
+        : timestamp(timestamp), fields(fields)
+    {
     }
 
     explicit RowRecord(const std::vector<Field> &fields)
-            : timestamp(-1), fields(fields) {
+        : timestamp(-1), fields(fields)
+    {
     }
 
-    RowRecord() {
+    RowRecord()
+    {
         this->timestamp = -1;
     }
 
-    void addField(const Field &f) {
+    void addField(const Field &f)
+    {
         this->fields.push_back(f);
     }
 
-    std::string toString() {
+    std::string toString()
+    {
         std::string ret;
-        if (this->timestamp != -1) {
+        if (this->timestamp != -1)
+        {
             ret.append(std::to_string(timestamp));
             ret.append("\t");
         }
-        for (size_t i = 0; i < fields.size(); i++) {
-            if (i != 0) {
+        for (size_t i = 0; i < fields.size(); i++)
+        {
+            if (i != 0)
+            {
                 ret.append("\t");
             }
             TSDataType::TSDataType dataType = fields[i].dataType;
-            switch (dataType) {
-                case TSDataType::BOOLEAN:
-                    ret.append(fields[i].boolV ? "true" : "false");
-                    break;
-                case TSDataType::INT32:
-                    ret.append(std::to_string(fields[i].intV));
-                    break;
-                case TSDataType::INT64:
-                    ret.append(std::to_string(fields[i].longV));
-                    break;
-                case TSDataType::FLOAT:
-                    ret.append(std::to_string(fields[i].floatV));
-                    break;
-                case TSDataType::DOUBLE:
-                    ret.append(std::to_string(fields[i].doubleV));
-                    break;
-                case TSDataType::TEXT:
-                    ret.append(fields[i].stringV);
-                    break;
-                case TSDataType::NULLTYPE:
-                    ret.append("NULL");
-                    break;
-                default:
-                    break;
+            switch (dataType)
+            {
+            case TSDataType::BOOLEAN:
+                ret.append(fields[i].boolV ? "true" : "false");
+                break;
+            case TSDataType::INT32:
+                ret.append(std::to_string(fields[i].intV));
+                break;
+            case TSDataType::INT64:
+                ret.append(std::to_string(fields[i].longV));
+                break;
+            case TSDataType::FLOAT:
+                ret.append(std::to_string(fields[i].floatV));
+                break;
+            case TSDataType::DOUBLE:
+                ret.append(std::to_string(fields[i].doubleV));
+                break;
+            case TSDataType::TEXT:
+                ret.append(fields[i].stringV);
+                break;
+            case TSDataType::NULLTYPE:
+                ret.append("NULL");
+                break;
+            default:
+                break;
             }
         }
         ret.append("\n");
@@ -670,7 +796,8 @@ public:
     }
 };
 
-class SessionDataSet {
+class SessionDataSet
+{
 private:
     bool hasCachedRecord = false;
     std::string sql;
@@ -696,7 +823,7 @@ private:
     std::vector<std::unique_ptr<MyStringBuffer>> bitmapBuffers;
     RowRecord rowRecord;
     char *currentBitmap = nullptr; // used to cache the current bitmap for every column
-    static const int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
+    static const int flag = 0x80;  // used to do `or` operation with bitmap to judge whether the value is null
 
     bool operationIsOpen = false;
 
@@ -708,7 +835,8 @@ public:
                    bool isIgnoreTimeStamp,
                    int64_t queryId, int64_t statementId,
                    std::shared_ptr<IClientRPCServiceIf> client, int64_t sessionId,
-                   const std::shared_ptr<TSQueryDataSet> &queryDataSet) : tsQueryDataSetTimeBuffer(queryDataSet->time) {
+                   const std::shared_ptr<TSQueryDataSet> &queryDataSet) : tsQueryDataSetTimeBuffer(queryDataSet->time)
+    {
         this->sessionId = sessionId;
         this->sql = sql;
         this->queryId = queryId;
@@ -720,26 +848,33 @@ public:
         this->isIgnoreTimeStamp = isIgnoreTimeStamp;
 
         // column name -> column location
-        for (int i = 0; i < (int) columnNameList.size(); i++) {
+        for (int i = 0; i < (int)columnNameList.size(); i++)
+        {
             std::string name = columnNameList[i];
-            if (this->columnMap.find(name) != this->columnMap.end()) {
+            if (this->columnMap.find(name) != this->columnMap.end())
+            {
                 duplicateLocation[i] = columnMap[name];
-            } else {
+            }
+            else
+            {
                 this->columnMap[name] = i;
                 this->columnTypeDeduplicatedList.push_back(columnTypeList[i]);
             }
-            if (!columnNameIndexMap.empty()) {
+            if (!columnNameIndexMap.empty())
+            {
                 this->valueBuffers.push_back(
-                        std::unique_ptr<MyStringBuffer>(
-                                new MyStringBuffer(queryDataSet->valueList[columnNameIndexMap[name]])));
+                    std::unique_ptr<MyStringBuffer>(
+                        new MyStringBuffer(queryDataSet->valueList[columnNameIndexMap[name]])));
                 this->bitmapBuffers.push_back(
-                        std::unique_ptr<MyStringBuffer>(
-                                new MyStringBuffer(queryDataSet->bitmapList[columnNameIndexMap[name]])));
-            } else {
+                    std::unique_ptr<MyStringBuffer>(
+                        new MyStringBuffer(queryDataSet->bitmapList[columnNameIndexMap[name]])));
+            }
+            else
+            {
                 this->valueBuffers.push_back(
-                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[columnMap[name]])));
+                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[columnMap[name]])));
                 this->bitmapBuffers.push_back(
-                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[columnMap[name]])));
+                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[columnMap[name]])));
             }
         }
         this->tsQueryDataSet = queryDataSet;
@@ -747,14 +882,19 @@ public:
         operationIsOpen = true;
     }
 
-    ~SessionDataSet() {
-        try {
+    ~SessionDataSet()
+    {
+        try
+        {
             closeOperationHandle();
-        } catch (exception &e) {
+        }
+        catch (exception &e)
+        {
             log_debug(string("SessionDataSet::~SessionDataSet(), ") + e.what());
         }
 
-        if (currentBitmap != nullptr) {
+        if (currentBitmap != nullptr)
+        {
             delete[] currentBitmap;
             currentBitmap = nullptr;
         }
@@ -777,25 +917,30 @@ public:
     void closeOperationHandle(bool forceClose = false);
 };
 
-class TemplateNode {
+class TemplateNode
+{
 public:
     explicit TemplateNode(const std::string &name) : name_(name) {}
 
-    const std::string &getName() const {
+    const std::string &getName() const
+    {
         return name_;
     }
 
-    virtual const std::unordered_map<std::string, std::shared_ptr<TemplateNode>> &getChildren() const {
+    virtual const std::unordered_map<std::string, std::shared_ptr<TemplateNode>> &getChildren() const
+    {
         throw BatchExecutionException("Should call exact sub class!");
     }
 
     virtual bool isMeasurement() = 0;
 
-    virtual bool isAligned() {
+    virtual bool isAligned()
+    {
         throw BatchExecutionException("Should call exact sub class!");
     }
 
-    virtual std::string serialize() const {
+    virtual std::string serialize() const
+    {
         throw BatchExecutionException("Should call exact sub class!");
     }
 
@@ -803,29 +948,34 @@ private:
     std::string name_;
 };
 
-class MeasurementNode : public TemplateNode {
+class MeasurementNode : public TemplateNode
+{
 public:
-
     MeasurementNode(const std::string &name_, TSDataType::TSDataType data_type_, TSEncoding::TSEncoding encoding_,
-                    CompressionType::CompressionType compression_type_) : TemplateNode(name_) {
+                    CompressionType::CompressionType compression_type_) : TemplateNode(name_)
+    {
         this->data_type_ = data_type_;
         this->encoding_ = encoding_;
         this->compression_type_ = compression_type_;
     }
 
-    TSDataType::TSDataType getDataType() const {
+    TSDataType::TSDataType getDataType() const
+    {
         return data_type_;
     }
 
-    TSEncoding::TSEncoding getEncoding() const {
+    TSEncoding::TSEncoding getEncoding() const
+    {
         return encoding_;
     }
 
-    CompressionType::CompressionType getCompressionType() const {
+    CompressionType::CompressionType getCompressionType() const
+    {
         return compression_type_;
     }
 
-    bool isMeasurement() override {
+    bool isMeasurement() override
+    {
         return true;
     }
 
@@ -837,38 +987,46 @@ private:
     CompressionType::CompressionType compression_type_;
 };
 
-class InternalNode : public TemplateNode {
+class InternalNode : public TemplateNode
+{
 public:
-
     InternalNode(const std::string &name, bool is_aligned) : TemplateNode(name), is_aligned_(is_aligned) {}
 
-    void addChild(const InternalNode &node) {
-        if (this->children_.count(node.getName())) {
+    void addChild(const InternalNode &node)
+    {
+        if (this->children_.count(node.getName()))
+        {
             throw BatchExecutionException("Duplicated child of node in template.");
         }
         this->children_[node.getName()] = std::make_shared<InternalNode>(node);
     }
 
-    void addChild(const MeasurementNode &node) {
-        if (this->children_.count(node.getName())) {
+    void addChild(const MeasurementNode &node)
+    {
+        if (this->children_.count(node.getName()))
+        {
             throw BatchExecutionException("Duplicated child of node in template.");
         }
         this->children_[node.getName()] = std::make_shared<MeasurementNode>(node);
     }
 
-    void deleteChild(const TemplateNode &node) {
+    void deleteChild(const TemplateNode &node)
+    {
         this->children_.erase(node.getName());
     }
 
-    const std::unordered_map<std::string, std::shared_ptr<TemplateNode>> &getChildren() const override {
+    const std::unordered_map<std::string, std::shared_ptr<TemplateNode>> &getChildren() const override
+    {
         return children_;
     }
 
-    bool isMeasurement() override {
+    bool isMeasurement() override
+    {
         return false;
     }
 
-    bool isAligned() override {
+    bool isAligned() override
+    {
         return is_aligned_;
     }
 
@@ -877,34 +1035,45 @@ private:
     bool is_aligned_;
 };
 
-namespace TemplateQueryType {
-    enum TemplateQueryType {
-        COUNT_MEASUREMENTS, IS_MEASUREMENT, PATH_EXIST, SHOW_MEASUREMENTS
+namespace TemplateQueryType
+{
+    enum TemplateQueryType
+    {
+        COUNT_MEASUREMENTS,
+        IS_MEASUREMENT,
+        PATH_EXIST,
+        SHOW_MEASUREMENTS
     };
 }
 
-class Template {
+class Template
+{
 public:
-
     Template(const std::string &name, bool is_aligned) : name_(name), is_aligned_(is_aligned) {}
 
-    const std::string &getName() const {
+    const std::string &getName() const
+    {
         return name_;
     }
 
-    bool isAligned() const {
+    bool isAligned() const
+    {
         return is_aligned_;
     }
 
-    void addToTemplate(const InternalNode &child) {
-        if (this->children_.count(child.getName())) {
+    void addToTemplate(const InternalNode &child)
+    {
+        if (this->children_.count(child.getName()))
+        {
             throw BatchExecutionException("Duplicated child of node in template.");
         }
         this->children_[child.getName()] = std::make_shared<InternalNode>(child);
     }
 
-    void addToTemplate(const MeasurementNode &child) {
-        if (this->children_.count(child.getName())) {
+    void addToTemplate(const MeasurementNode &child)
+    {
+        if (this->children_.count(child.getName()))
+        {
             throw BatchExecutionException("Duplicated child of node in template.");
         }
         this->children_[child.getName()] = std::make_shared<MeasurementNode>(child);
@@ -918,7 +1087,8 @@ private:
     bool is_aligned_;
 };
 
-class Session {
+class Session
+{
 private:
     std::string host;
     int rpcPort;
@@ -956,10 +1126,11 @@ private:
 
     int8_t getDataTypeNumber(TSDataType::TSDataType type);
 
-    struct TsCompare {
+    struct TsCompare
+    {
         std::vector<int64_t> &timestamps;
 
-        explicit TsCompare(std::vector<int64_t> &inTimestamps) : timestamps(inTimestamps) {};
+        explicit TsCompare(std::vector<int64_t> &inTimestamps) : timestamps(inTimestamps){};
 
         bool operator()(int i, int j) { return (timestamps[i] < timestamps[j]); };
     };
@@ -967,13 +1138,15 @@ private:
     std::string getVersionString(Version::Version version);
 
 public:
-    Session(const std::string &host, int rpcPort) : username("user"), password("password"), version(Version::V_0_13) {
+    Session(const std::string &host, int rpcPort) : username("user"), password("password"), version(Version::V_0_13)
+    {
         this->host = host;
         this->rpcPort = rpcPort;
     }
 
     Session(const std::string &host, int rpcPort, const std::string &username, const std::string &password)
-            : fetchSize(10000) {
+        : fetchSize(10000)
+    {
         this->host = host;
         this->rpcPort = rpcPort;
         this->username = username;
@@ -983,7 +1156,8 @@ public:
     }
 
     Session(const std::string &host, int rpcPort, const std::string &username, const std::string &password,
-            int fetchSize) {
+            int fetchSize)
+    {
         this->host = host;
         this->rpcPort = rpcPort;
         this->username = username;
@@ -994,7 +1168,8 @@ public:
     }
 
     Session(const std::string &host, const std::string &rpcPort, const std::string &username = "user",
-            const std::string &password = "password", int fetchSize = 10000) {
+            const std::string &password = "password", int fetchSize = 10000)
+    {
         this->host = host;
         this->rpcPort = stoi(rpcPort);
         this->username = username;

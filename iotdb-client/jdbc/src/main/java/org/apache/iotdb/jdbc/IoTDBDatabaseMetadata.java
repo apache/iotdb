@@ -238,6 +238,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       "ON",
       "OFF",
       "OF",
+      "PERIOD",
       "PROCESSLIST",
       "PREVIOUS",
       "PREVIOUSUNTILLAST",

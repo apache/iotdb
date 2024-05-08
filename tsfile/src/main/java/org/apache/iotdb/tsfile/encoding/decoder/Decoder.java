@@ -123,6 +123,15 @@ public abstract class Decoder {
         }
       case FREQ:
         return new FreqDecoder();
+      case PERIOD:
+        switch (dataType) {
+          case INT32:
+            // Spade TODO: replace plain with period
+            return new PlainDecoder();
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
+
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }

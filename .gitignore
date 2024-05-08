@@ -53,6 +53,7 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 grafana/target/
 !grafana/.mvn/wrapper/maven-wrapper.jar
 grafana/.mvn/
+/.mvn/.gradle-enterprise/
 
 grafana/logs/
 *.log
