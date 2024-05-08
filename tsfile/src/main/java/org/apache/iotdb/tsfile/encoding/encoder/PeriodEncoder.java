@@ -44,6 +44,35 @@ public class PeriodEncoder extends Encoder {
   private TSDataType dataType;
   private int maxStringLength;
 
+  private static Object[] compRound(Complex[] dataf, int beta) {
+    Complex[] newDataf = new Complex[dataf.length];
+    int[] ret = new int[dataf.length * 2];
+
+    for (int i = 0; i < dataf.length; i++) {
+      int a = (int) Math.round(dataf[i].getReal() / Math.pow(2, beta));
+      int b = (int) Math.round(dataf[i].getImaginary() / Math.pow(2, beta));
+      ret[2 * i] = a;
+      ret[2 * i + 1] = b;
+
+      double newA = a * Math.pow(2, beta);
+      double newB = b * Math.pow(2, beta);
+      newDataf[i] = new Complex(newA, newB);
+    }
+    return new Object[] {newDataf, ret};
+  }
+
+  private static Complex[] compRoundInverse(int[] ret, int beta) {
+    Complex[] result = new Complex[ret.length / 2];
+
+    for (int i = 0; i < ret.length; i += 2) {
+      double real = ret[i] * Math.pow(2, beta);
+      double imag = ret[i + 1] * Math.pow(2, beta);
+      result[i / 2] = new Complex(real, imag);
+    }
+
+    return result;
+  }
+
   private static final FastFourierTransformer transformer =
       new FastFourierTransformer(DftNormalization.STANDARD);
 
@@ -212,6 +241,103 @@ public class PeriodEncoder extends Encoder {
       highBits[i] = Math.abs(data[i]) >> D;
     }
     descendingBitPacking(stream, highBits, false);
+  }
+
+  public static int[] getRes(int[] data, Complex[] dataf, int p, int k) {
+
+    double[] irfftResult = irfft(dataf, p);
+
+    // 进行四舍五入并缩放到整数
+    int[] rounded = new int[irfftResult.length];
+    for (int i = 0; i < irfftResult.length; i++) {
+      rounded[i] = (int) Math.round(irfftResult[i] / k);
+    }
+
+    // 复制 k 次并截取到与原始数据相同的长度
+    int[] repeated = new int[data.length];
+    for (int i = 0; i < data.length; i++) {
+      repeated[i] = rounded[i % rounded.length];
+    }
+
+    // 计算残差
+    int[] res = new int[data.length];
+    for (int i = 0; i < data.length; i++) {
+      res[i] = repeated[i] - data[i];
+    }
+
+    return res;
+  }
+
+  private static Object[] getDatafAndRes(int[] data, Complex[] dataf, int p, int k, int beta) {
+    Object[] roundResult = compRound(dataf, beta);
+    Complex[] roundedDataf = (Complex[]) roundResult[0];
+    int[] ret = (int[]) roundResult[1];
+
+    int[] res = getRes(data, roundedDataf, p, k);
+
+    return new Object[] {roundedDataf, ret, res};
+  }
+
+  private static void encodeWithBeta(
+      ByteOutToys stream, int[] data, Complex[] dataf, int p, int k, int beta) throws IOException {
+    Object[] result = getDatafAndRes(data, dataf, p, k, beta);
+    Complex[] roundedDataf = (Complex[]) result[0];
+    int[] ret = (int[]) result[1];
+    int[] res = (int[]) result[2];
+
+    descendingBitPacking(stream, ret, true);
+
+    int[] diffRes = new int[res.length];
+    diffRes[0] = res[0];
+    for (int i = 1; i < res.length; i++) {
+      diffRes[i] = res[i] - res[i - 1];
+    }
+
+    separateStorage(stream, diffRes);
+  }
+
+  private static int encodeWithBetaEstimate(int[] data, Complex[] dataf, int p, int k, int beta) {
+    Object[] roundResult = compRound(dataf, beta);
+    Complex[] roundedDataf = (Complex[]) roundResult[0];
+    int[] ret = (int[]) roundResult[1];
+
+    int maxLen = 0;
+    for (int x : ret) {
+      maxLen = Math.max(maxLen, bitLength(x));
+    }
+    if (maxLen > bitLength(MAX_VALUE)) {
+      return -1;
+    }
+
+    int result = descendingBitPackingEstimate(getCnt(ret), ret.length, true);
+
+    int[] res = getRes(data, roundedDataf, p, k);
+    int[] diffRes = new int[res.length];
+    diffRes[0] = res[0];
+    for (int i = 1; i < res.length; i++) {
+      diffRes[i] = res[i] - res[i - 1];
+    }
+    int[] separateResult = separateStorageEstimate(diffRes);
+    result += (int) separateResult[0];
+
+    return result;
+  }
+
+  private static int getBeta(int[] data, Complex[] dataf, int p, int k) {
+    int result = encodeWithBetaEstimate(data, dataf, p, k, 0);
+    int beta = 0;
+    for (int currentBeta = -bitLength(MAX_VALUE) / 2;
+        currentBeta <= bitLength(MAX_VALUE);
+        currentBeta++) {
+      if (currentBeta != 0) {
+        int tmp = encodeWithBetaEstimate(data, dataf, p, k, currentBeta);
+        if (result == -1 || (tmp != -1 && tmp < result)) {
+          result = tmp;
+          beta = currentBeta;
+        }
+      }
+    }
+    return beta;
   }
 
   public PeriodEncoder(TSDataType dataType, int maxStringLength) {
