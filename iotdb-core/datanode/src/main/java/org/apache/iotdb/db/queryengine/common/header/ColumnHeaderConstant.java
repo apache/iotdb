@@ -204,7 +204,6 @@ public class ColumnHeaderConstant {
 
   public static final String GRANT_OPTION = "GrantOption";
 
-
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),

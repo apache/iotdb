@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -226,8 +225,10 @@ public class AuthorityChecker {
       }
     } else {
       headerList = LIST_USER_PRIVILEGES_Column_HEADERS;
-      types = LIST_USER_PRIVILEGES_Column_HEADERS.stream().map(ColumnHeader::getColumnType)
-          .collect(Collectors.toList());
+      types =
+          LIST_USER_PRIVILEGES_Column_HEADERS.stream()
+              .map(ColumnHeader::getColumnType)
+              .collect(Collectors.toList());
       builder = new TsBlockBuilder(types);
       TUserResp user = authResp.getPermissionInfo().getUserInfo();
       if (user != null) {
