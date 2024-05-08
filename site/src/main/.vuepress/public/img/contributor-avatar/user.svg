@@ -1,0 +1,51 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+-->
+
+<svg width="107.56" height="107.56459" xmlns="http://www.w3.org/2000/svg">
+ <metadata id="metadata1217">image/svg+xml</metadata>
+
+ <style type="text/css">.st0{fill-rule:evenodd;clip-rule:evenodd;fill:#F19D12;}
+	.st1{fill:#F19D12;}</style>
+ <g>
+  <title>background</title>
+  <rect fill="none" id="canvas_background" height="109.56459" width="109.56" y="-1" x="-1"/>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <g id="g1184">
+   <path clip-rule="evenodd" fill="#f19d12" fill-rule="evenodd" class="st0" d="m97.087656,24.612067c2.6,-1 5.6,0.4 6.3,3c0.7,2.6 -1.1,5.8 -3.7,6.5c-3.2,0.6 -6.3,-1.4 -9.4,0.2c-3.1,1.7 -4,5.3 -4.7,8.4c-1.4,5.1 -8.6,7.4 -12.2,4.2c-3.3,-2.4 -3.4,-7.9 -0.2,-11.1c2.2,-2.5 6,-3.3 8.9,-2c2.7,1.2 6.1,1.7 8.7,-0.4c3,-2.4 2.2,-7.5 6.3,-8.8z" id="path1170"/>
+   <path clip-rule="evenodd" fill="#f19d12" fill-rule="evenodd" class="st0" d="m36.187656,15.412067c4.2,-2.2 9.6,1.5 8.3,6.2c-1.4,5.5 -0.7,11.6 2.9,15.7c3.4,4 9.9,4.8 14.8,1.9c3.7,-2.1 6.1,-5.9 7.5,-9.7c1,-3.1 0.6,-6.3 1.1,-9.4c1,-3.8 5.9,-6.1 9.2,-4.2c3.2,1.4 4,6 1.7,8.9c-1.4,2.2 -4.2,2.7 -6.4,3.8c-3.6,1.9 -6.6,5 -8.5,8.7c-1.2,2.1 -1.1,4.5 -1.7,6.8c-0.9,1.9 -3,2.7 -4.9,2.9c-4.8,0.6 -9.6,3 -13.1,6.8c-1.7,1.7 -3.1,4.2 -5.7,4.2c-2.7,-0.2 -4.7,-2.6 -7.5,-2.7c-5,-0.7 -10.3,0.7 -14.5,4c-3.7,3.1 -9.5,0.8 -9.7,-3.7c-0.9,-5.2 6.3,-9.6 10.2,-6.3c4.3,4 10.9,5.7 17.1,3.7c5.7,-1.9 9.8,-8.4 8.7,-14.1c-0.9,-5 -4.2,-9.4 -8.7,-11.5c-1.7,-0.8 -3.6,-1.6 -4.2,-3.5c-1.6,-2.9 0.2,-7 3.4,-8.5z" id="path1172"/>
+   <path clip-rule="evenodd" fill="#f19d12" fill-rule="evenodd" class="st0" d="m33.487656,6.512067c2.2,-0.8 4.2,1.3 3.3,3.4c-0.6,2.1 -3.7,2.7 -4.9,1.1c-1.3,-1.4 -0.3,-4 1.6,-4.5z" id="path1174"/>
+   <path clip-rule="evenodd" fill="#f19d12" fill-rule="evenodd" class="st0" d="m2.187656,49.912067c2.2,-0.8 4.2,1.2 3.3,3.4c-0.6,2.1 -3.7,2.7 -4.9,1c-1.3,-1.3 -0.3,-3.9 1.6,-4.4z" id="path1176"/>
+   <path clip-rule="evenodd" fill="#f19d12" fill-rule="evenodd" class="st0" d="m84.387656,6.812067c2.2,-0.7 4.2,1.3 3.3,3.5c-0.6,2 -3.7,2.7 -4.9,1c-1.2,-1.4 -0.3,-3.9 1.6,-4.5z" id="path1178"/>
+   <path clip-rule="evenodd" fill="#f19d12" fill-rule="evenodd" class="st0" d="m8.987656,28.612067c0.4,-3.7 5.6,-6 8.2,-3.6c1.9,1.1 1.6,3.6 2.2,5.5c0.4,2.4 2.7,4.3 5.3,4.3c3.2,0.3 6.5,-2.3 9.6,-1.2c4.8,1.2 6.6,7.6 3.2,11.6c-2.9,4.1 -9.4,4.5 -12.1,0.7c-2.4,-2.8 -0.5,-7.2 -2.7,-10.2c-1.7,-2.9 -5.5,-2.7 -8.4,-1.9c-3.1,0.9 -5.9,-2.2 -5.3,-5.2z" id="path1180"/>
+   <path clip-rule="evenodd" fill="#f19d12" fill-rule="evenodd" class="st0" d="m56.687656,0.612067c3.3,-1.9 7.6,0.9 6.8,4.6c0,2.3 -2.2,3.6 -3.5,5.3c-1.9,1.9 -2.3,5 -1.2,7.1c1.3,2.9 5,4 5.6,7.3c1.2,4.8 -3.3,10.2 -8.3,9.9c-4.8,0.1 -8.4,-5.1 -6.4,-9.6c1.2,-3.8 5.9,-5 7.3,-8.6c1.7,-3.2 -0.4,-6.2 -2.4,-8.2c-2,-2.2 -0.8,-6.4 2.1,-7.8z" id="path1182"/>
+  </g>
+  <g id="g1200">
+   <path clip-rule="evenodd" fill="#f19d12" fill-rule="evenodd" class="st0" d="m11.387656,82.912067c-2.6,1 -5.6,-0.4 -6.3,-3c-0.7,-2.6 1.1,-5.8 3.7,-6.5c3.2,-0.6 6.3,1.4 9.4,-0.2c3.1,-1.6 4,-5.2 4.7,-8.3c1.4,-5.1 8.6,-7.4 12.2,-4.2c3.3,2.4 3.4,7.9 0.2,11c-2.2,2.5 -6,3.3 -8.9,2c-2.7,-1.2 -6.1,-1.7 -8.7,0.4c-3.1,2.3 -2.3,7.5 -6.3,8.8z" id="path1186"/>
+   <path clip-rule="evenodd" fill="#f19d12" fill-rule="evenodd" class="st0" d="m72.187656,92.012067c-4.2,2.2 -9.6,-1.5 -8.3,-6.1c1.4,-5.5 0.7,-11.7 -2.9,-15.8c-3.4,-4 -9.9,-4.7 -14.8,-1.9c-3.7,2 -6.1,5.8 -7.5,9.6c-1,3.1 -0.6,6.3 -1.1,9.4c-1,3.8 -5.9,6.1 -9.2,4.3c-3.2,-1.4 -4,-6 -1.7,-9c1.4,-2.2 4.2,-2.7 6.4,-3.8c3.6,-1.9 6.6,-5 8.5,-8.7c1.2,-2 1.1,-4.5 1.7,-6.7c0.9,-1.9 3,-2.7 4.9,-2.9c4.8,-0.6 9.6,-3 13.1,-6.8c1.7,-1.6 3.1,-4.2 5.7,-4.1c2.7,0.1 4.7,2.5 7.5,2.7c5,0.6 10.3,-0.8 14.5,-4c3.7,-3.2 9.5,-0.9 9.7,3.6c0.9,5.2 -6.3,9.6 -10.2,6.3c-4.3,-4 -10.9,-5.7 -17.1,-3.7c-5.7,1.9 -9.8,8.4 -8.7,14.1c0.9,4.9 4.2,9.4 8.7,11.4c1.7,0.8 3.6,1.6 4.2,3.5c1.7,3 -0.1,7.2 -3.4,8.6z" id="path1188"/>
+   <path clip-rule="evenodd" fill="#f19d12" fill-rule="evenodd" class="st0" d="m74.987656,101.012067c-2.2,0.8 -4.2,-1.3 -3.3,-3.4c0.6,-2.1 3.7,-2.7 4.9,-1.1c1.2,1.4 0.2,3.9 -1.6,4.5z" id="path1190"/>
+   <path clip-rule="evenodd" fill="#f19d12" fill-rule="evenodd" class="st0" d="m106.287656,57.712067c-2.2,0.7 -4.2,-1.3 -3.3,-3.5c0.6,-2.1 3.7,-2.7 4.9,-1c1.3,1.4 0.3,3.9 -1.6,4.5z" id="path1192"/>
+   <path clip-rule="evenodd" fill="#f19d12" fill-rule="evenodd" class="st0" d="m24.087656,100.612067c-2.2,0.7 -4.2,-1.3 -3.3,-3.5c0.6,-2 3.7,-2.7 4.9,-1c1.2,1.4 0.2,4 -1.6,4.5z" id="path1194"/>
+   <path clip-rule="evenodd" fill="#f19d12" fill-rule="evenodd" class="st0" d="m99.387656,78.812067c-0.4,3.7 -5.6,6 -8.2,3.6c-1.9,-1.1 -1.6,-3.6 -2.2,-5.5c-0.4,-2.4 -2.7,-4.3 -5.3,-4.3c-3.2,-0.3 -6.5,2.3 -9.6,1.2c-4.8,-1.2 -6.6,-7.6 -3.2,-11.6c2.9,-4.1 9.4,-4.5 12.1,-0.7c2.4,2.8 0.5,7.1 2.7,10.1c1.7,2.9 5.5,2.7 8.4,1.9c3.2,-0.8 6,2.3 5.3,5.3z" id="path1196"/>
+   <path clip-rule="evenodd" fill="#f19d12" fill-rule="evenodd" class="st0" d="m51.687656,106.912067c-3.3,2 -7.6,-0.9 -6.8,-4.6c0,-2.3 2.2,-3.6 3.5,-5.3c1.9,-1.9 2.3,-5 1.2,-7.1c-1.3,-2.9 -5,-4 -5.6,-7.3c-1.2,-4.8 3.3,-10.2 8.3,-9.9c4.8,-0.1 8.4,5.1 6.4,9.7c-1.2,3.7 -5.9,4.9 -7.3,8.5c-1.7,3.2 0.4,6.2 2.4,8.3c2.1,2 0.9,6.3 -2.1,7.7z" id="path1198"/>
+  </g>
+ </g>
+</svg>

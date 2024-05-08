@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.it.query;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -67,13 +67,13 @@ public class IoTDBResultSetIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initBeforeClass();
     prepareData(SQLs);
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   @Test
@@ -177,8 +177,6 @@ public class IoTDBResultSetIT {
             + ColumnHeaderConstant.DEADBAND
             + ","
             + ColumnHeaderConstant.DEADBAND_PARAMETERS
-            + ","
-            + ColumnHeaderConstant.VIEW_TYPE
             + ",";
     resultSetEqualTest("show timeseries root.sg1.**", expectedHeader, emptyResultSet);
   }
@@ -186,12 +184,7 @@ public class IoTDBResultSetIT {
   @Test
   public void emptyShowDeviceTest() {
     String expectedHeader =
-        ColumnHeaderConstant.DEVICE
-            + ","
-            + ColumnHeaderConstant.IS_ALIGNED
-            + ","
-            + ColumnHeaderConstant.TEMPLATE
-            + ",";
+        ColumnHeaderConstant.DEVICE + "," + ColumnHeaderConstant.IS_ALIGNED + ",";
     resultSetEqualTest("show devices root.sg1.**", expectedHeader, emptyResultSet);
   }
 

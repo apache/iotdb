@@ -58,7 +58,7 @@ public class IoTDBSelectSchemaIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initBeforeClass();
     createTimeSeries();
     generateData();
   }
@@ -74,7 +74,7 @@ public class IoTDBSelectSchemaIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   @Test

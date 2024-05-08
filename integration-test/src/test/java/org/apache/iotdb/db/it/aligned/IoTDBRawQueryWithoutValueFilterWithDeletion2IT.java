@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
+import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -40,16 +41,20 @@ import static org.junit.Assert.fail;
 public class IoTDBRawQueryWithoutValueFilterWithDeletion2IT
     extends IoTDBRawQueryWithoutValueFilterWithDeletionIT {
 
+  private static int numOfPointsPerPage;
+
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setEnableSeqSpaceCompaction(false)
-        .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false)
-        .setMaxNumberOfPointsInPage(3);
-    EnvFactory.getEnv().initClusterEnvironment();
+    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
+    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
+    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
+    numOfPointsPerPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
+
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
+    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(3);
+    EnvFactory.getEnv().initBeforeClass();
     AlignedWriteUtil.insertData();
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -66,6 +71,10 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletion2IT
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
   }
 }

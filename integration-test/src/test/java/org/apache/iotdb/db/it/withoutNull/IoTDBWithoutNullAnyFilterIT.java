@@ -121,13 +121,13 @@ public class IoTDBWithoutNullAnyFilterIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initBeforeTest();
     prepareData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterTest();
   }
 
   @Test

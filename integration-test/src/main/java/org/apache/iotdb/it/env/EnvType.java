@@ -16,15 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.it.env;
 
 public enum EnvType {
   Remote,
   Simple,
-  Cluster1,
-  MultiCluster,
-  ;
+  Cluster1;
 
   public static EnvType getSystemEnvType() {
     String envValue = System.getProperty("TestEnv", Simple.name());

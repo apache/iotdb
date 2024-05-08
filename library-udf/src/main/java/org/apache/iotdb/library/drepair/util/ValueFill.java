@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.library.drepair.util;
 
 import org.apache.iotdb.library.util.Util;
@@ -32,15 +31,15 @@ public abstract class ValueFill {
   protected double[] original;
   protected double[] repaired;
   protected double mean = 0;
-  protected double variance = 0;
-  protected int notNanNumber = 0;
+  protected double var = 0;
+  protected int not_nan_number = 0;
 
-  protected ValueFill(RowIterator dataIterator) throws Exception {
+  public ValueFill(RowIterator dataIterator) throws Exception {
     ArrayList<Long> timeList = new ArrayList<>();
     ArrayList<Double> originList = new ArrayList<>();
     while (dataIterator.hasNextRow()) {
       Row row = dataIterator.next();
-      double v = Util.getValueAsDouble(row);
+      Double v = Util.getValueAsDouble(row);
       timeList.add(row.getTime());
       if (!Double.isFinite(v)) {
         originList.add(Double.NaN);
@@ -62,24 +61,24 @@ public abstract class ValueFill {
 
   public double[] getFilled() {
     return repaired;
-  }
+  };
 
   public void calMeanAndVar() throws UDFException {
     for (double v : original) {
       if (!Double.isNaN(v)) {
         mean += v;
-        notNanNumber += 1;
+        not_nan_number += 1;
       }
     }
-    if (notNanNumber == 0) {
+    if (not_nan_number == 0) {
       throw new UDFException("All values are NaN");
     }
-    mean /= notNanNumber;
+    mean /= not_nan_number;
     for (double v : original) {
       if (!Double.isNaN(v)) {
-        variance += (v - mean) * (v - mean);
+        var += (v - mean) * (v - mean);
       }
     }
-    variance /= notNanNumber;
+    var /= not_nan_number;
   }
 }

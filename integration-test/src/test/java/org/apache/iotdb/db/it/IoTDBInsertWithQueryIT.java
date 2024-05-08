@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -37,7 +37,6 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
@@ -52,12 +51,12 @@ public class IoTDBInsertWithQueryIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initBeforeClass();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   @Test
@@ -145,23 +144,6 @@ public class IoTDBInsertWithQueryIT {
 
     // select
     selectAndCount(2000);
-  }
-
-  @Test
-  public void insertNegativeTimestampWithQueryTest() {
-    // insert
-    insertData(-1000, 1);
-
-    // select
-    selectAndCount(1001);
-
-    // insert
-    insertData(-2000, -1000);
-
-    // select
-    selectAndCount(2001);
-
-    negativeTimestampAggregationTest();
   }
 
   @Test
@@ -411,13 +393,11 @@ public class IoTDBInsertWithQueryIT {
       for (int time = start; time < end; time++) {
         String sql =
             String.format("insert into root.fans.d0(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.addBatch(sql);
+        statement.execute(sql);
         sql =
             String.format("insert into root.fans.d0(timestamp,s1) values(%s,%s)", time, time % 40);
-        statement.addBatch(sql);
+        statement.execute(sql);
       }
-      statement.executeBatch();
-      statement.clearBatch();
     } catch (SQLException e) {
       e.printStackTrace();
     }
@@ -442,7 +422,7 @@ public class IoTDBInsertWithQueryIT {
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         int cnt = 0;
-        long before = -10000;
+        long before = -1;
         while (resultSet.next()) {
           long cur = Long.parseLong(resultSet.getString(TestConstant.TIMESTAMP_STR));
           if (cur <= before) {
@@ -482,25 +462,5 @@ public class IoTDBInsertWithQueryIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
-  }
-
-  private void negativeTimestampAggregationTest() {
-    String[] expectedHeader = new String[] {"count(root.fans.d0.s0)"};
-    String[] retArray = new String[] {"2001,"};
-    resultSetEqualTest("SELECT count(s0) FROM root.fans.d0;", expectedHeader, retArray);
-
-    expectedHeader = new String[] {"count(root.fans.d0.s0)"};
-    retArray = new String[] {"1999,"};
-    resultSetEqualTest(
-        "SELECT count(s0) FROM root.fans.d0 WHERE time<-1;", expectedHeader, retArray);
-
-    expectedHeader = new String[] {"min_time(root.fans.d0.s0)"};
-    retArray = new String[] {"-2000,"};
-    resultSetEqualTest("SELECT min_time(s0) FROM root.fans.d0;", expectedHeader, retArray);
-
-    expectedHeader = new String[] {"max_time(root.fans.d0.s0)"};
-    retArray = new String[] {"-2,"};
-    resultSetEqualTest(
-        "SELECT max_time(s0) FROM root.fans.d0 WHERE time<-1;", expectedHeader, retArray);
   }
 }

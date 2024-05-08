@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.query;
 
+import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -51,16 +52,20 @@ public class IoTDBNullOperandIT {
         "flush",
       };
 
+  private static long prevPartitionInterval;
+
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setPartitionInterval(1000);
-    EnvFactory.getEnv().initClusterEnvironment();
+    prevPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
+    ConfigFactory.getConfig().setPartitionInterval(1000);
+    EnvFactory.getEnv().initBeforeClass();
     prepareData(SQLs);
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
+    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
   /**
@@ -176,8 +181,7 @@ public class IoTDBNullOperandIT {
     String[] retArray = new String[] {};
     resultSetEqualTest("select s1, s3, s4 from root.** where s2>0", expectedHeader, retArray);
 
-    resultSetEqualTest(
-        "select s1, s3, s4 from root.** where s2 is not null", expectedHeader, retArray);
+    resultSetEqualTest("select s1, s3, s4 from root.** where s2", expectedHeader, retArray);
 
     retArray =
         new String[] {
@@ -233,49 +237,6 @@ public class IoTDBNullOperandIT {
         };
     resultSetEqualTest(
         "select count(s1), count(s2) from root.** group by ([1,4),1ms) having count(s2)>=0 align by device",
-        expectedHeader,
-        retArray);
-  }
-
-  @Test
-  public void testSeriesNotExist() {
-    // series in select not exist
-    String[] expectedHeader =
-        new String[] {
-          TIMESTAMP_STR, "root.test.sg1.s1", "root.test.sg1.s3", "root.test.sg1.s4",
-        };
-    String[] retArray =
-        new String[] {
-          "1,1,true,false,", "2,2,true,null,", "3,3,null,false,",
-        };
-    resultSetEqualTest("select s1, s3, s4, notExist from root.**", expectedHeader, retArray);
-
-    // series in where not exist
-
-    retArray = new String[] {};
-    resultSetEqualTest("select s1, s3, s4 from root.** where notExist>0", expectedHeader, retArray);
-    resultSetEqualTest("select s1, s3, s4 from root.** where notExist=0", expectedHeader, retArray);
-    resultSetEqualTest(
-        "select s1, s3, s4 from root.** where notExist!=0", expectedHeader, retArray);
-
-    resultSetEqualTest(
-        "select s1, s3, s4 from root.** where diff(notExist)>0", expectedHeader, retArray);
-
-    retArray =
-        new String[] {
-          "1,1,true,false,", "2,2,true,null,", "3,3,null,false,",
-        };
-    resultSetEqualTest(
-        "select s1, s3, s4 from root.** where diff(notExist) is null", expectedHeader, retArray);
-
-    // series in having not exist
-    expectedHeader =
-        new String[] {
-          TIMESTAMP_STR, "count(root.test.sg1.s1)", "count(root.test.sg1.s2)",
-        };
-    retArray = new String[] {};
-    resultSetEqualTest(
-        "select count(s1), count(s2) from root.** group by ([1,4),1ms) having count(notExist)>0",
         expectedHeader,
         retArray);
   }

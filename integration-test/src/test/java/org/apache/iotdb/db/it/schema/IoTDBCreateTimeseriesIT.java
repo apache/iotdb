@@ -19,17 +19,18 @@
 
 package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.util.AbstractSchemaIT;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runners.Parameterized;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -44,28 +45,18 @@ import static org.junit.Assert.fail;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
+@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
+public class IoTDBCreateTimeseriesIT {
 
-  public IoTDBCreateTimeseriesIT(SchemaTestMode schemaTestMode) {
-    super(schemaTestMode);
+  @BeforeClass
+  public static void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeClass();
   }
 
-  @Parameterized.BeforeParam
-  public static void before() throws Exception {
-    setUpEnvironment();
-    EnvFactory.getEnv().initClusterEnvironment();
-  }
-
-  @Parameterized.AfterParam
-  public static void after() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    tearDownEnvironment();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    clearSchema();
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   /** Test if creating a time series will cause the database with same name to disappear */
@@ -141,10 +132,10 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
     }
 
     String[] timeSeriesArray = {
-      "root.sg.d.`a.b`", "root.sg.d.`a“（Φ）”b`", "root.sg.d.`a>b`", "root.sg.d.`0e38`"
+      "root.sg.d.`a.b`", "root.sg.d.`a“（Φ）”b`", "root.sg.d.`a>b`",
     };
     String[] timeSeriesResArray = {
-      "root.sg.d.`a.b`", "root.sg.d.`a“（Φ）”b`", "root.sg.d.`a>b`", "root.sg.d.`0e38`",
+      "root.sg.d.`a.b`", "root.sg.d.`a“（Φ）”b`", "root.sg.d.`a>b`",
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();

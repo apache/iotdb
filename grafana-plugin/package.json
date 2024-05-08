@@ -1,0 +1,31 @@
+{
+  "name": "iotdb",
+  "version": "1.0.0",
+  "description": "Apache IoTDB",
+  "scripts": {
+    "build": "grafana-toolkit plugin:build",
+    "test": "grafana-toolkit plugin:test",
+    "dev": "grafana-toolkit plugin:dev",
+    "watch": "grafana-toolkit plugin:dev --watch",
+    "sign": "grafana-toolkit plugin:sign",
+    "start": "yarn watch"
+  },
+  "author": "the Apache Software Foundation (ASF)",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@grafana/data": "latest",
+    "@grafana/toolkit": "latest",
+    "@grafana/ui": "latest",
+    "@grafana/runtime": "latest",
+    "@types/lodash": "latest"
+  },
+  "resolutions": {
+  "rxjs": "7.3.0"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "dependencies": {
+    "node-sass": "^7.0.1"
+  }
+}

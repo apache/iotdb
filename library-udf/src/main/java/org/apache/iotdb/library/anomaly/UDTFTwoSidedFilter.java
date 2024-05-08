@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.library.anomaly;
 
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.anomaly.util.WindowDetect;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -27,7 +29,6 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
-import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
 /**
@@ -53,6 +54,7 @@ public class UDTFTwoSidedFilter implements UDTF {
         .setOutputDataType(parameters.getDataType(0));
     this.len = parameters.getDoubleOrDefault("len", 5);
     this.threshold = parameters.getDoubleOrDefault("threshold", 0.4);
+    TSDataType dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
   }
 
   @Override
@@ -82,12 +84,10 @@ public class UDTFTwoSidedFilter implements UDTF {
         }
         break;
       default:
-        throw new UDFException("No such kind of data type.");
+        throw new Exception("No such kind of data type.");
     }
   }
 
   @Override
-  public void terminate(PointCollector collector)
-      throws Exception { // default implementation ignored
-  }
+  public void terminate(PointCollector collector) throws Exception {}
 }

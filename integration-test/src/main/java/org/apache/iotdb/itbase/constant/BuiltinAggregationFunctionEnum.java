@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.itbase.constant;
 
 import java.util.Arrays;
@@ -31,18 +30,11 @@ public enum BuiltinAggregationFunctionEnum {
   MIN_VALUE("min_value"),
   EXTREME("extreme"),
   FIRST_VALUE("first_value"),
-  STDDEV("stddev"),
-  STDDEV_POP("stddev_pop"),
-  STDDEV_SAMP("stddev_samp"),
-  VARIANCE("variance"),
-  VAR_POP("var_pop"),
-  VAR_SAMP("var_samp"),
   LAST_VALUE("last_value"),
   COUNT("count"),
   AVG("avg"),
   SUM("sum"),
-  MAX_BY("max_by"),
-  MIN_BY("min_by");
+  ;
 
   private final String functionName;
 

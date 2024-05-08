@@ -28,7 +28,6 @@ concurrency:
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
-  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
 jobs:
   unix:
@@ -38,12 +37,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
         with:
           token: ${{secrets.GITHUB_TOKEN}}
           submodules: recursive
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -53,4 +52,4 @@ jobs:
       - name: Integration test
         shell: bash
         run: |
-          cd iotdb-client/client-go/ && make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
+          cd client-go && make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo

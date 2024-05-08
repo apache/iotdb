@@ -16,11 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -31,8 +27,6 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 
 public class PrepareStatementDemo {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PrepareStatementDemo.class);
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
@@ -73,13 +67,11 @@ public class PrepareStatementDemo {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          String result = builder.toString();
-          LOGGER.info(result);
+          System.out.println(builder);
         }
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          String data =
-              resultSetMetaData.getColumnType(i) + "-" + resultSetMetaData.getColumnName(i);
-          LOGGER.info(data);
+          System.out.println(
+              resultSetMetaData.getColumnType(i) + "-" + resultSetMetaData.getColumnName(i));
         }
       }
     }

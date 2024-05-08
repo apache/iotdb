@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it.aligned;
 
+import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -39,20 +40,23 @@ import static org.junit.Assert.assertEquals;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBInsertAlignedValues3IT {
+  private int numOfPointsPerPage;
+  private boolean autoCreateSchemaEnabled;
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
-        .setMaxNumberOfPointsInPage(4);
-    EnvFactory.getEnv().initClusterEnvironment();
+    numOfPointsPerPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
+    autoCreateSchemaEnabled = ConfigFactory.getConfig().isAutoCreateSchemaEnabled();
+    ConfigFactory.getConfig().setAutoCreateSchemaEnabled(true);
+    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(4);
+    EnvFactory.getEnv().initBeforeTest();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterTest();
+    ConfigFactory.getConfig().setAutoCreateSchemaEnabled(autoCreateSchemaEnabled);
+    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
   }
 
   @Test

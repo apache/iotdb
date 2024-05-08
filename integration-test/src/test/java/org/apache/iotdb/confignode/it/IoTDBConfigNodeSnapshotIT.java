@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.confignode.it;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -36,14 +35,16 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -78,17 +79,27 @@ import static org.junit.Assert.assertEquals;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBConfigNodeSnapshotIT {
+
+  protected static String originalConfigNodeConsensusProtocolClass;
+
+  protected static int originalRatisSnapshotTriggerThreshold;
   private static final int testRatisSnapshotTriggerThreshold = 100;
+
+  protected static long originalTimePartitionInterval;
   private static final long testTimePartitionInterval = 86400;
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setConfigNodeRatisSnapshotTriggerThreshold(testRatisSnapshotTriggerThreshold)
-        .setTimePartitionInterval(testTimePartitionInterval);
+    originalConfigNodeConsensusProtocolClass =
+        ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
+    ConfigFactory.getConfig().setConfigNodeConsesusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+
+    originalRatisSnapshotTriggerThreshold =
+        ConfigFactory.getConfig().getRatisSnapshotTriggerThreshold();
+    ConfigFactory.getConfig().setRatisSnapshotTriggerThreshold(testRatisSnapshotTriggerThreshold);
+
+    originalTimePartitionInterval = ConfigFactory.getConfig().getTimePartitionInterval();
+    ConfigFactory.getConfig().setTimePartitionInterval(testTimePartitionInterval);
 
     // Init 2C2D cluster environment
     EnvFactory.getEnv().initClusterEnvironment(2, 2);
@@ -96,11 +107,18 @@ public class IoTDBConfigNodeSnapshotIT {
 
   @After
   public void tearDown() {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
+
+    ConfigFactory.getConfig()
+        .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
+    ConfigFactory.getConfig()
+        .setRatisSnapshotTriggerThreshold(originalRatisSnapshotTriggerThreshold);
+    ConfigFactory.getConfig().setTimePartitionInterval(originalTimePartitionInterval);
   }
 
   @Test
-  public void testPartitionInfoSnapshot() throws Exception {
+  public void testPartitionInfoSnapshot()
+      throws IOException, IllegalPathException, TException, InterruptedException {
     final String sg = "root.sg";
     final int storageGroupNum = 10;
     final int seriesPartitionSlotsNum = 10;
@@ -116,8 +134,9 @@ public class IoTDBConfigNodeSnapshotIT {
 
       for (int i = 0; i < storageGroupNum; i++) {
         String storageGroup = sg + i;
-        TDatabaseSchema storageGroupSchema = new TDatabaseSchema(storageGroup);
-        TSStatus status = client.setDatabase(storageGroupSchema);
+        TSetStorageGroupReq setStorageGroupReq =
+            new TSetStorageGroupReq(new TStorageGroupSchema(storageGroup));
+        TSStatus status = client.setStorageGroup(setStorageGroupReq);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
         for (int j = 0; j < seriesPartitionSlotsNum; j++) {
@@ -332,7 +351,7 @@ public class IoTDBConfigNodeSnapshotIT {
             (byte) 0,
             "select s1 into root.backup.d1(s1) from root.sg.d1",
             sql1,
-            "UTC",
+            "Asia",
             "root");
     TCreateCQReq req2 =
         new TCreateCQReq(
@@ -344,11 +363,11 @@ public class IoTDBConfigNodeSnapshotIT {
             (byte) 1,
             "select s1 into root.backup.d2(s1) from root.sg.d2",
             sql2,
-            "UTC",
+            "Asia",
             "root");
 
-    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.createCQ(req1).getCode());
-    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.createCQ(req2).getCode());
+    assertEquals(client.createCQ(req1).getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    assertEquals(client.createCQ(req2).getCode(), TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
     Set<TCQEntry> result = new HashSet<>();
     result.add(new TCQEntry("testCq1", sql1, CQState.ACTIVE.getType()));

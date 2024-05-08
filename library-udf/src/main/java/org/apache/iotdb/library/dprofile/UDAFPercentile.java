@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.dprofile.util.ExactOrderStatistics;
 import org.apache.iotdb.library.dprofile.util.GKArray;
 import org.apache.iotdb.library.util.Util;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -32,19 +34,18 @@ import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.HashMap;
-import java.util.Map;
 
-/** calculate the approximate percentile. */
+/** calculate the approximate percentile */
 public class UDAFPercentile implements UDTF {
-  protected static Map<Integer, Long> intDic;
-  protected static Map<Long, Long> longDic;
-  protected static Map<Float, Long> floatDic;
-  protected static Map<Double, Long> doubleDic;
+  public static HashMap<Integer, Long> intDic;
+  public static HashMap<Long, Long> longDic;
+  public static HashMap<Float, Long> floatDic;
+  public static HashMap<Double, Long> doubleDic;
   private ExactOrderStatistics statistics;
   private GKArray sketch;
   private boolean exact;
   private double rank;
-  private Type dataType;
+  private TSDataType dataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -67,12 +68,14 @@ public class UDAFPercentile implements UDTF {
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(parameters.getDataType(0));
-    dataType = parameters.getDataType(0);
+    dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
     double error = parameters.getDoubleOrDefault("error", 0);
     rank = parameters.getDoubleOrDefault("rank", 0.5);
     exact = (error == 0);
     if (exact) {
-      statistics = new ExactOrderStatistics(parameters.getDataType(0));
+      statistics =
+          new ExactOrderStatistics(
+              UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0)));
     } else {
       sketch = new GKArray(error);
     }
@@ -162,9 +165,6 @@ public class UDAFPercentile implements UDTF {
           break;
         case DOUBLE:
           collector.putDouble(0, res);
-          break;
-        default:
-          break;
       }
     }
   }

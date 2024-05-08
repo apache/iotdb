@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
+import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -47,16 +48,22 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAlignedSeriesQueryWithDeletionIT {
 
+  protected static boolean enableSeqSpaceCompaction;
+  protected static boolean enableUnseqSpaceCompaction;
+  protected static boolean enableCrossSpaceCompaction;
+  protected static int maxTsBlockLineNumber;
+
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setEnableSeqSpaceCompaction(false)
-        .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false)
-        .setMaxTsBlockLineNumber(3);
-    EnvFactory.getEnv().initClusterEnvironment();
+    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
+    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
+    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
+    maxTsBlockLineNumber = ConfigFactory.getConfig().getMaxTsBlockLineNumber();
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(3);
+    EnvFactory.getEnv().initBeforeClass();
     AlignedWriteUtil.insertData();
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -70,7 +77,11 @@ public class IoTDBAlignedSeriesQueryWithDeletionIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
   }
 
   @Test
@@ -123,34 +134,6 @@ public class IoTDBAlignedSeriesQueryWithDeletionIT {
 
     } catch (SQLException e) {
       e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void selectPartialDeletedColumns() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute(
-          "insert into root.sg1.factory0.d1.group1(time, s_lat, s_son)"
-              + " aligned values (10,3.3,4.4),(20,13.3,14.4),(30,23.3,24.4),(40,43.3,44.4);");
-      statement.execute(
-          "insert into root.sg1.factory0.d1.group1(time, s_lat, s_son, s_boolean)"
-              + " aligned values (10,3.3,4.4, true),(20,13.3,14.4, false),(30,23.3,24.4, true),(40,43.3,44.4, true);");
-      ResultSet resultSet = statement.executeQuery("select * from root.sg1.factory0.d1.group1;");
-      int cnt = 0;
-      while (resultSet.next()) {
-        cnt++;
-      }
-      assertEquals(4, cnt);
-      statement.execute("delete from root.sg1.factory0.d1.group1.* where time < 30;");
-      resultSet = statement.executeQuery("select * from root.sg1.factory0.d1.group1;");
-      cnt = 0;
-      while (resultSet.next()) {
-        cnt++;
-      }
-      assertEquals(2, cnt);
-    } catch (SQLException e) {
       fail(e.getMessage());
     }
   }

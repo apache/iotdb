@@ -23,25 +23,24 @@ SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Add Thrift include directory
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/thrift/include)
-# Add cpp-client include directory
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/client/include)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../target/client/include)
 
 FIND_PACKAGE(Boost REQUIRED)
 IF (DEFINED BOOST_INCLUDEDIR)
     INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
 ENDIF()
 
-# Add the libs for the cpp-client
-LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/client/lib)
+IF(MSVC)
+    LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../target/client/lib/Release)
+ENDIF()
+LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../target/client/lib)
 
 ADD_EXECUTABLE(SessionExample SessionExample.cpp)
 ADD_EXECUTABLE(AlignedTimeseriesSessionExample AlignedTimeseriesSessionExample.cpp)
 
 IF(MSVC)
-    TARGET_LINK_LIBRARIES(SessionExample iotdb_session "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib")
-    TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample iotdb_session "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib")
+    TARGET_LINK_LIBRARIES(SessionExample iotdb_session thriftmd)
+    TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample iotdb_session thriftmd)
 ELSE()
     TARGET_LINK_LIBRARIES(SessionExample iotdb_session pthread)
     TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample iotdb_session pthread)

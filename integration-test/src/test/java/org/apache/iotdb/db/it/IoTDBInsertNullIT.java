@@ -54,7 +54,7 @@ public class IoTDBInsertNullIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initBeforeClass();
     initCreateSQLStatement();
     insertData();
   }
@@ -62,7 +62,7 @@ public class IoTDBInsertNullIT {
   @AfterClass
   public static void tearDown() throws Exception {
     close();
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   private static void close() {

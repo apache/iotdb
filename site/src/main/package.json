@@ -1,0 +1,45 @@
+{
+  "name": "IoTDB",
+  "version": "1.0.0",
+  "description": "Apache IoTDB Website",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node --max_old_space_size=4000 ./node_modules/vuepress/cli.js dev src",
+    "build": "node --max_old_space_size=4000 ./node_modules/vuepress/cli.js build src",
+    "deploy": "node --max_old_space_size=4000 deploy.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "keywords": [
+    "IoTDB",
+    "Time Series Data",
+    "Database",
+    "NoSQL",
+    "TSDB",
+    "Time Series Database"
+  ],
+  "author": "Apache IoTDB",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/apache/iotdb"
+  },
+  "homepage": "https://iotdb.apache.org",
+  "directories": {},
+  "dependencies": {
+    "element-ui": "^2.13.0"
+  },
+  "devDependencies": {
+    "@dovyp/vuepress-plugin-clipboard-copy": "^1.0.0-alpha.7",
+    "remark": "^11.0.2",
+    "remark-validate-links": "^9.2.0",
+    "unified-engine": "^7.0.0",
+    "vfile-reporter": "^6.0.1",
+    "vue-tabs-component": "^1.5.0",
+    "vuepress": "^1.7.1",
+    "vuepress-plugin-tabs": "^0.3.0",
+    "vue-router": "3.4.5",
+    "@vuepress/plugin-html-redirect": "0.1.4"
+  }
+}

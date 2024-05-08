@@ -22,7 +22,6 @@ package org.apache.iotdb.library.dquality.util;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
-import org.apache.iotdb.udf.api.exception.UDFException;
 
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 
@@ -30,7 +29,7 @@ import java.util.ArrayList;
 
 /** Class for computing data quality index. */
 public class TimeSeriesQuality {
-  public static final int WINDOW_SIZE = 10;
+  public static final int windowSize = 10;
   private boolean downtime = true; // count for shutdown period
   private int cnt = 0; // total number of points
   private int missCnt = 0; // number of missing points
@@ -51,7 +50,7 @@ public class TimeSeriesQuality {
       Row row = dataIterator.next();
       cnt++;
       double v = Util.getValueAsDouble(row);
-      double t = row.getTime();
+      double t = (double) row.getTime();
       if (Double.isFinite(v)) {
         timeList.add(t);
         originList.add(v);
@@ -66,8 +65,8 @@ public class TimeSeriesQuality {
     processNaN();
   }
 
-  /** linear interpolation of NaN. */
-  private void processNaN() throws UDFException {
+  /** linear interpolation of NaN */
+  private void processNaN() throws Exception {
     int n = origin.length;
     int index1 = 0;
     int index2;
@@ -79,7 +78,7 @@ public class TimeSeriesQuality {
       index2++;
     }
     if (index2 >= n) {
-      throw new UDFException("At least two non-NaN values are needed");
+      throw new Exception("At least two non-NaN values are needed");
     }
     // interpolation at the beginning of the series
     for (int i = 0; i < index2; i++) {
@@ -113,7 +112,7 @@ public class TimeSeriesQuality {
     }
   }
 
-  /** Detect timestamp errors. */
+  /** Detect timestamp errors */
   public void timeDetect() {
     // compute interval properties
     double[] interval = Util.variation(time);
@@ -122,7 +121,7 @@ public class TimeSeriesQuality {
     // find timestamp anomalies
     ArrayList<Double> window = new ArrayList<>();
     int i;
-    for (i = 0; i < Math.min(time.length, WINDOW_SIZE); i++) { // fill initial data
+    for (i = 0; i < Math.min(time.length, windowSize); i++) { // fill initial data
       window.add(time[i]);
     }
     while (window.size() > 1) {
@@ -151,7 +150,7 @@ public class TimeSeriesQuality {
         missCnt += (Math.round(times - 1) - temp);
       }
       window.remove(0); // remove processed points
-      while (window.size() < WINDOW_SIZE && i < time.length) {
+      while (window.size() < windowSize && i < time.length) {
         // fill into the window
         window.add(time[i]);
         i++;
@@ -159,7 +158,7 @@ public class TimeSeriesQuality {
     }
   }
 
-  /** preparation for validity. */
+  /** preparation for validity */
   public void valueDetect() {
     int k = 3;
     valueCnt = findOutliers(origin, k);
@@ -174,7 +173,7 @@ public class TimeSeriesQuality {
     speedchangeCnt = findOutliers(speedchange, k);
   }
 
-  /** return number of points lie out of median +- k * MAD. */
+  /** return number of points lie out of median +- k * MAD */
   private int findOutliers(double[] value, double k) {
     Median median = new Median();
     double mid = median.evaluate(value);
@@ -204,16 +203,12 @@ public class TimeSeriesQuality {
     return 1 - (valueCnt + variationCnt + speedCnt + speedchangeCnt) * 0.25 / cnt;
   }
 
-  /**
-   * @return the downtime
-   */
+  /** @return the downtime */
   public boolean isDowntime() {
     return downtime;
   }
 
-  /**
-   * @param downtime the downtime to set
-   */
+  /** @param downtime the downtime to set */
   public void setDowntime(boolean downtime) {
     this.downtime = downtime;
   }

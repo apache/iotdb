@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.util.NoNumberException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -29,23 +31,17 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
-import java.io.IOException;
-
 /**
  * This function is used to calculate the spread of time series, that is, the maximum value minus
  * the minimum value.
  */
 public class UDAFSpread implements UDTF {
 
-  int intMin = Integer.MAX_VALUE;
-  int intMax = Integer.MIN_VALUE;
-  long longMin = Long.MAX_VALUE;
-  long longMax = Long.MIN_VALUE;
-  float floatMin = Float.MAX_VALUE;
-  float floatMax = -Float.MAX_VALUE;
-  double doubleMin = Double.MAX_VALUE;
-  double doubleMax = -Double.MAX_VALUE;
-  Type dataType;
+  int intMin = Integer.MAX_VALUE, intMax = Integer.MIN_VALUE;
+  long longMin = Long.MAX_VALUE, longMax = Long.MIN_VALUE;
+  float floatMin = Float.MAX_VALUE, floatMax = -Float.MAX_VALUE;
+  double doubleMin = Double.MAX_VALUE, doubleMax = -Double.MAX_VALUE;
+  TSDataType dataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -57,26 +53,26 @@ public class UDAFSpread implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
-    dataType = parameters.getDataType(0);
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(dataType);
+    dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
+    configurations
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));
   }
 
   @Override
   public void transform(Row row, PointCollector pc) throws Exception {
     switch (dataType) {
       case INT32:
-        transformInt(row);
+        transformInt(row, pc);
         break;
       case INT64:
-        transformLong(row);
+        transformLong(row, pc);
         break;
       case FLOAT:
-        transformFloat(row);
+        transformFloat(row, pc);
         break;
       case DOUBLE:
-        transformDouble(row);
-        break;
-      default:
+        transformDouble(row, pc);
         break;
     }
   }
@@ -101,19 +97,19 @@ public class UDAFSpread implements UDTF {
     }
   }
 
-  private void transformInt(Row row) throws IOException {
+  private void transformInt(Row row, PointCollector pc) throws Exception {
     int v = row.getInt(0);
     intMin = Math.min(intMin, v);
     intMax = Math.max(intMax, v);
   }
 
-  private void transformLong(Row row) throws IOException {
+  private void transformLong(Row row, PointCollector pc) throws Exception {
     long v = row.getLong(0);
     longMin = Math.min(longMin, v);
     longMax = Math.max(longMax, v);
   }
 
-  private void transformFloat(Row row) throws IOException {
+  private void transformFloat(Row row, PointCollector pc) throws Exception {
     float v = row.getFloat(0);
     if (Float.isFinite(v)) {
       floatMin = Math.min(floatMin, v);
@@ -121,11 +117,11 @@ public class UDAFSpread implements UDTF {
     }
   }
 
-  private void transformDouble(Row row) throws IOException {
+  private void transformDouble(Row row, PointCollector pc) throws Exception {
     double v = row.getDouble(0);
     if (Double.isFinite(v)) {
-      doubleMin = Math.min(doubleMin, v);
-      doubleMax = Math.max(doubleMax, v);
+      doubleMin = doubleMin < v ? doubleMin : v;
+      doubleMax = doubleMax > v ? doubleMax : v;
     }
   }
 }

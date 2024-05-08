@@ -24,7 +24,6 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.apache.tsfile.enums.TSDataType;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -33,13 +32,8 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
@@ -51,69 +45,44 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSelectIntoIT {
 
-  public static final List<String> SELECT_INTO_SQL_LIST =
-      new ArrayList<>(
-          Arrays.asList(
-              "CREATE DATABASE root.sg",
-              "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
-              "CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-              "CREATE TIMESERIES root.sg.d2.s1 WITH DATATYPE=INT32, ENCODING=RLE",
-              "CREATE TIMESERIES root.sg.d2.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-              "INSERT INTO root.sg.d1(time, s1) VALUES (1, 1)",
-              "INSERT INTO root.sg.d1(time, s1, s2) VALUES (2, 2, 2)",
-              "INSERT INTO root.sg.d1(time, s1, s2) VALUES (3, 3, 3)",
-              "INSERT INTO root.sg.d1(time, s2) VALUES (4, 4)",
-              "INSERT INTO root.sg.d1(time, s1) VALUES (5, 5)",
-              "INSERT INTO root.sg.d1(time, s1, s2) VALUES (6, 6, 6)",
-              "INSERT INTO root.sg.d1(time, s1, s2) VALUES (7, 7, 7)",
-              "INSERT INTO root.sg.d1(time, s1, s2) VALUES (8, 8, 8)",
-              "INSERT INTO root.sg.d1(time, s2) VALUES (9, 9)",
-              "INSERT INTO root.sg.d1(time, s1) VALUES (10, 10)",
-              "INSERT INTO root.sg.d1(time, s1, s2) VALUES (11, 11, 11)",
-              "INSERT INTO root.sg.d1(time, s1, s2) VALUES (12, 12, 12)",
-              "INSERT INTO root.sg.d2(time, s1, s2) VALUES (1, 1, 1)",
-              "INSERT INTO root.sg.d2(time, s2) VALUES (2, 2)",
-              "INSERT INTO root.sg.d2(time, s1) VALUES (3, 3)",
-              "INSERT INTO root.sg.d2(time, s1, s2) VALUES (4, 4, 4)",
-              "INSERT INTO root.sg.d2(time, s2) VALUES (5, 5)",
-              "INSERT INTO root.sg.d2(time, s2) VALUES (6, 6)",
-              "INSERT INTO root.sg.d2(time, s1) VALUES (7, 7)",
-              "INSERT INTO root.sg.d2(time, s1, s2) VALUES (8, 8, 8)",
-              "INSERT INTO root.sg.d2(time, s1, s2) VALUES (10, 10, 10)",
-              "INSERT INTO root.sg.d2(time, s2) VALUES (11, 11)",
-              "INSERT INTO root.sg.d2(time, s1) VALUES (12, 12)",
-              "flush",
-              "CREATE DATABASE root.sg1",
-              "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
-              "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE"));
+  protected static int selectIntoInsertTabletPlanRowLimit;
+  protected static int numOfPointsPerPage;
 
-  static {
-    SELECT_INTO_SQL_LIST.add("CREATE DATABASE root.sg_type");
-    for (int deviceId = 0; deviceId < 6; deviceId++) {
-      for (TSDataType dataType : TSDataType.values()) {
-        if (!dataType.equals(TSDataType.VECTOR)) {
-          SELECT_INTO_SQL_LIST.add(
-              String.format(
-                  "CREATE TIMESERIES root.sg_type.d_%d.s_%s %s",
-                  deviceId, dataType.name().toLowerCase(), dataType));
-        }
-      }
-    }
-    for (int time = 0; time < 12; time++) {
-      SELECT_INTO_SQL_LIST.add(
-          String.format(
-              Locale.ENGLISH,
-              "INSERT INTO root.sg_type.d_0(time, s_int32, s_int64, s_float, s_double, s_boolean, s_text) "
-                  + "VALUES (%d, %d, %d, %f, %f, %s, 'text%d')",
-              time,
-              time,
-              time,
-              (float) time,
-              (double) time,
-              time % 2 == 0,
-              time));
-    }
-  }
+  protected static final String[] SQLs =
+      new String[] {
+        "CREATE DATABASE root.sg",
+        "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg.d2.s1 WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg.d2.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "INSERT INTO root.sg.d1(time, s1) VALUES (1, 1)",
+        "INSERT INTO root.sg.d1(time, s1, s2) VALUES (2, 2, 2)",
+        "INSERT INTO root.sg.d1(time, s1, s2) VALUES (3, 3, 3)",
+        "INSERT INTO root.sg.d1(time, s2) VALUES (4, 4)",
+        "INSERT INTO root.sg.d1(time, s1) VALUES (5, 5)",
+        "INSERT INTO root.sg.d1(time, s1, s2) VALUES (6, 6, 6)",
+        "INSERT INTO root.sg.d1(time, s1, s2) VALUES (7, 7, 7)",
+        "INSERT INTO root.sg.d1(time, s1, s2) VALUES (8, 8, 8)",
+        "INSERT INTO root.sg.d1(time, s2) VALUES (9, 9)",
+        "INSERT INTO root.sg.d1(time, s1) VALUES (10, 10)",
+        "INSERT INTO root.sg.d1(time, s1, s2) VALUES (11, 11, 11)",
+        "INSERT INTO root.sg.d1(time, s1, s2) VALUES (12, 12, 12)",
+        "INSERT INTO root.sg.d2(time, s1, s2) VALUES (1, 1, 1)",
+        "INSERT INTO root.sg.d2(time, s2) VALUES (2, 2)",
+        "INSERT INTO root.sg.d2(time, s1) VALUES (3, 3)",
+        "INSERT INTO root.sg.d2(time, s1, s2) VALUES (4, 4, 4)",
+        "INSERT INTO root.sg.d2(time, s2) VALUES (5, 5)",
+        "INSERT INTO root.sg.d2(time, s2) VALUES (6, 6)",
+        "INSERT INTO root.sg.d2(time, s1) VALUES (7, 7)",
+        "INSERT INTO root.sg.d2(time, s1, s2) VALUES (8, 8, 8)",
+        "INSERT INTO root.sg.d2(time, s1, s2) VALUES (10, 10, 10)",
+        "INSERT INTO root.sg.d2(time, s2) VALUES (11, 11)",
+        "INSERT INTO root.sg.d2(time, s1) VALUES (12, 12)",
+        "flush",
+        "CREATE DATABASE root.sg1",
+        "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE"
+      };
 
   protected static final String selectIntoHeader = "SourceColumn,TargetTimeseries,Written,";
   protected static final String selectIntoAlignByDeviceHeader =
@@ -137,14 +106,13 @@ public class IoTDBSelectIntoIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setQueryThreadCount(1);
-    EnvFactory.getEnv().initClusterEnvironment();
-    prepareData(SELECT_INTO_SQL_LIST);
+    EnvFactory.getEnv().initBeforeClass();
+    prepareData(SQLs);
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   // -------------------------------------- ALIGN BY TIME ---------------------------------------
@@ -316,36 +284,6 @@ public class IoTDBSelectIntoIT {
         };
     resultSetEqualTest(
         "select k1, k2, k3 from root.sg_expr.d;", expectedQueryHeader, queryRetArray);
-  }
-
-  @Test
-  public void testUsingUnMatchedAlignment() {
-    String[] intoRetArray =
-        new String[] {
-          "root.sg.d1.s1,root.sg_bk1.new_aligned_d.t1,10,",
-          "root.sg.d2.s1,root.sg_bk1.new_aligned_d.t2,7,",
-          "root.sg.d1.s2,root.sg_bk1.new_aligned_d.t3,9,",
-          "root.sg.d2.s2,root.sg_bk1.new_aligned_d.t4,8,",
-        };
-    executeNonQuery(
-        "CREATE ALIGNED TIMESERIES root.sg_bk1.new_aligned_d(t1 INT32, t2 INT32, t3 FLOAT, t4 FLOAT);");
-    // use matched interface (aligned == aligned)
-    resultSetEqualTest(
-        "select s1, s2 into aligned root.sg_bk1.new_aligned_d(t1, t2, t3, t4) from root.sg.*;",
-        selectIntoHeader,
-        intoRetArray);
-    String expectedQueryHeader =
-        "Time,root.sg_bk1.new_aligned_d.t1,root.sg_bk1.new_aligned_d.t3,root.sg_bk1.new_aligned_d.t2,root.sg_bk1.new_aligned_d.t4,";
-    resultSetEqualTest(
-        "select t1, t3, t2, t4 from root.sg_bk1.new_aligned_d;", expectedQueryHeader, rawDataSet);
-
-    // use unmatched interface (non-aligned != aligned)
-    resultSetEqualTest(
-        "select s1, s2 into root.sg_bk1.new_aligned_d(t1, t2, t3, t4) from root.sg.*;",
-        selectIntoHeader,
-        intoRetArray);
-    resultSetEqualTest(
-        "select t1, t3, t2, t4 from root.sg_bk1.new_aligned_d;", expectedQueryHeader, rawDataSet);
   }
 
   // -------------------------------------- ALIGN BY DEVICE -------------------------------------
@@ -523,57 +461,42 @@ public class IoTDBSelectIntoIT {
         "select k1, k2, k3 from root.sg_abd_expr.*;", expectedQueryHeader, queryRetArray);
   }
 
-  @Test
-  public void testExpressionAlignByDevice2() {
-    String[] intoRetArray =
-        new String[] {
-          "root.sg.d1,avg(s1),root.agg_expr.d1.avg_s1,1,",
-          "root.sg.d1,sum(s1) + sum(s1),root.agg_expr.d1.sum_s1_add_s1,1,",
-          "root.sg.d1,count(s2),root.agg_expr.d1.count_s2,1,",
-          "root.sg.d2,avg(s1),root.agg_expr.d2.avg_s1,1,",
-          "root.sg.d2,sum(s1) + sum(s1),root.agg_expr.d2.sum_s1_add_s1,1,",
-          "root.sg.d2,count(s2),root.agg_expr.d2.count_s2,1,",
-        };
-    resultSetEqualTest(
-        "select avg(s1), sum(s1) + sum(s1), count(s2)"
-            + " into root.agg_expr.${2}(avg_s1, sum_s1_add_s1, count_s2)"
-            + " from root.sg.d1, root.sg.d2 align by device;",
-        selectIntoAlignByDeviceHeader, intoRetArray);
+  // -------------------------------------- CHECK EXCEPTION -------------------------------------
 
-    String expectedQueryHeader =
-        "Time,root.agg_expr.d1.avg_s1,root.agg_expr.d2.avg_s1,root.agg_expr.d1.sum_s1_add_s1,"
-            + "root.agg_expr.d2.sum_s1_add_s1,root.agg_expr.d1.count_s2,root.agg_expr.d2.count_s2,";
-    String[] queryRetArray =
-        new String[] {
-          "0,6.5,6.428571428571429,130.0,90.0,9,8,",
-        };
-    resultSetEqualTest(
-        "select avg_s1, sum_s1_add_s1, count_s2 from root.agg_expr.*;",
-        expectedQueryHeader,
-        queryRetArray);
+  @Test
+  public void testDataTypeInconsistent() {
+    executeNonQuery("CREATE TIMESERIES root.sg_error_bk1.new_d.t1 TEXT;");
+    assertTestFail(
+        "select s1, s2 into root.sg_error_bk1.new_d(t1, t2, t3, t4) from root.sg.*;",
+        "Fail to insert measurements [t1] caused by [data type of root.sg_error_bk1.new_d.t1 is not consistent, registered type TEXT, inserting type INT32, timestamp 1, value 1]");
   }
 
-  // -------------------------------------- CHECK EXCEPTION -------------------------------------
+  @Test
+  public void testAlignmentInconsistent() {
+    executeNonQuery("CREATE ALIGNED TIMESERIES root.sg_error_bk2.new_d(t1 INT32, t2 INT32);");
+    assertTestFail(
+        "select s1, s2 into root.sg_error_bk2.new_d(t1, t2, t3, t4) from root.sg.*;",
+        "timeseries under this entity is aligned, please use createAlignedTimeseries or change entity. (Path: root.sg_error_bk2.new_d)");
+  }
 
   @Test
   public void testPermission1() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser1 'temppw1'");
-      adminStmt.execute("GRANT WRITE_DATA on root.sg_bk.** TO USER tempuser1;");
-      ResultSet resultSet;
+      adminStmt.execute("GRANT USER tempuser1 PRIVILEGES INSERT_TIMESERIES on root.sg_bk.**;");
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser1", "temppw1");
           Statement userStmt = userCon.createStatement()) {
         userStmt.executeQuery(
             "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;");
-        resultSet = userStmt.executeQuery("select * from root.sg_bk.new_d");
-        Assert.assertEquals(resultSet.next(), false);
+        fail("No exception!");
       } catch (SQLException e) {
         Assert.assertTrue(
             e.getMessage(),
             e.getMessage()
-                .contains("No permissions for this operation, please add privilege READ_DATA"));
+                .contains(
+                    "No permissions for this operation, please add privilege READ_TIMESERIES"));
       }
     }
   }
@@ -583,7 +506,7 @@ public class IoTDBSelectIntoIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser2 'temppw2'");
-      adminStmt.execute("GRANT WRITE_DATA on root.sg.** TO USER tempuser2;");
+      adminStmt.execute("GRANT USER tempuser2 PRIVILEGES READ_TIMESERIES on root.sg.**;");
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser2", "temppw2");
           Statement userStmt = userCon.createStatement()) {
@@ -594,141 +517,9 @@ public class IoTDBSelectIntoIT {
         Assert.assertTrue(
             e.getMessage(),
             e.getMessage()
-                .contains("No permissions for this operation, please add privilege WRITE_DATA"));
+                .contains(
+                    "No permissions for this operation, please add privilege INSERT_TIMESERIES"));
       }
     }
-  }
-
-  // -------------------------------------- DATATYPE CAST TEST -------------------------------------
-
-  @Test
-  public void testDataTypeIncompatible() {
-    // test INT32
-    assertTestFail(
-        "select s_int32 into root.sg_type.d_1(s_boolean) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.sg_type.d_0.s_int32[INT32]).");
-    assertTestFail(
-        "select s_int32 into root.sg_type.d_1(s_text) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.sg_type.d_0.s_int32[INT32]).");
-
-    // test INT64
-    assertTestFail(
-        "select s_int64 into root.sg_type.d_1(s_int32) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.sg_type.d_0.s_int64[INT64]).");
-    assertTestFail(
-        "select s_int64 into root.sg_type.d_1(s_float) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.sg_type.d_0.s_int64[INT64]).");
-    assertTestFail(
-        "select s_int64 into root.sg_type.d_1(s_boolean) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.sg_type.d_0.s_int64[INT64]).");
-    assertTestFail(
-        "select s_int64 into root.sg_type.d_1(s_text) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.sg_type.d_0.s_int64[INT64]).");
-
-    // test FLOAT
-    assertTestFail(
-        "select s_float into root.sg_type.d_1(s_int32) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.sg_type.d_0.s_float[FLOAT]).");
-    assertTestFail(
-        "select s_float into root.sg_type.d_1(s_int64) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.sg_type.d_0.s_float[FLOAT]).");
-    assertTestFail(
-        "select s_float into root.sg_type.d_1(s_boolean) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.sg_type.d_0.s_float[FLOAT]).");
-    assertTestFail(
-        "select s_float into root.sg_type.d_1(s_text) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.sg_type.d_0.s_float[FLOAT]).");
-
-    // test DOUBLE
-    assertTestFail(
-        "select s_double into root.sg_type.d_1(s_int32) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.sg_type.d_0.s_double[DOUBLE]).");
-    assertTestFail(
-        "select s_double into root.sg_type.d_1(s_int64) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.sg_type.d_0.s_double[DOUBLE]).");
-    assertTestFail(
-        "select s_double into root.sg_type.d_1(s_float) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.sg_type.d_0.s_double[DOUBLE]).");
-    assertTestFail(
-        "select s_double into root.sg_type.d_1(s_boolean) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.sg_type.d_0.s_double[DOUBLE]).");
-    assertTestFail(
-        "select s_double into root.sg_type.d_1(s_text) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.sg_type.d_0.s_double[DOUBLE]).");
-
-    // test BOOLEAN
-    assertTestFail(
-        "select s_boolean into root.sg_type.d_1(s_int32) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.sg_type.d_0.s_boolean[BOOLEAN]).");
-    assertTestFail(
-        "select s_boolean into root.sg_type.d_1(s_int64) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.sg_type.d_0.s_boolean[BOOLEAN]).");
-    assertTestFail(
-        "select s_boolean into root.sg_type.d_1(s_float) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.sg_type.d_0.s_boolean[BOOLEAN]).");
-    assertTestFail(
-        "select s_boolean into root.sg_type.d_1(s_double) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_double[DOUBLE]) is not compatible with the data type of source column (root.sg_type.d_0.s_boolean[BOOLEAN]).");
-    assertTestFail(
-        "select s_boolean into root.sg_type.d_1(s_text) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.sg_type.d_0.s_boolean[BOOLEAN]).");
-
-    // test TEXT
-    assertTestFail(
-        "select s_text into root.sg_type.d_1(s_int32) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.sg_type.d_0.s_text[TEXT]).");
-    assertTestFail(
-        "select s_text into root.sg_type.d_1(s_int64) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.sg_type.d_0.s_text[TEXT]).");
-    assertTestFail(
-        "select s_text into root.sg_type.d_1(s_float) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.sg_type.d_0.s_text[TEXT]).");
-    assertTestFail(
-        "select s_text into root.sg_type.d_1(s_double) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_double[DOUBLE]) is not compatible with the data type of source column (root.sg_type.d_0.s_text[TEXT]).");
-    assertTestFail(
-        "select s_text into root.sg_type.d_1(s_boolean) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.sg_type.d_0.s_text[TEXT]).");
-  }
-
-  @Test
-  public void testDataTypeAutoCast() {
-    String[] intoRetArray =
-        new String[] {
-          "root.sg_type.d_0.s_int32,root.sg_type.d_1.s_int64,12,",
-          "root.sg_type.d_0.s_int32,root.sg_type.d_1.s_float,12,",
-          "root.sg_type.d_0.s_int32,root.sg_type.d_1.s_double,12,",
-          "root.sg_type.d_0.s_int64,root.sg_type.d_2.s_double,12,",
-          "root.sg_type.d_0.s_float,root.sg_type.d_3.s_double,12,",
-        };
-    resultSetEqualTest(
-        "select s_int32, s_int32, s_int32, s_int64, s_float "
-            + " into root.sg_type.d_1(s_int64, s_float, s_double), root.sg_type.d_2(s_double), root.sg_type.d_3(s_double) "
-            + " from root.sg_type.d_0;",
-        selectIntoHeader,
-        intoRetArray);
-
-    String expectedQueryHeader =
-        "Time,root.sg_type.d_1.s_int64,root.sg_type.d_1.s_float,root.sg_type.d_1.s_double,"
-            + "root.sg_type.d_2.s_double,root.sg_type.d_3.s_double,";
-    String[] queryRetArray =
-        new String[] {
-          "0,0,0.0,0.0,0.0,0.0,",
-          "1,1,1.0,1.0,1.0,1.0,",
-          "2,2,2.0,2.0,2.0,2.0,",
-          "3,3,3.0,3.0,3.0,3.0,",
-          "4,4,4.0,4.0,4.0,4.0,",
-          "5,5,5.0,5.0,5.0,5.0,",
-          "6,6,6.0,6.0,6.0,6.0,",
-          "7,7,7.0,7.0,7.0,7.0,",
-          "8,8,8.0,8.0,8.0,8.0,",
-          "9,9,9.0,9.0,9.0,9.0,",
-          "10,10,10.0,10.0,10.0,10.0,",
-          "11,11,11.0,11.0,11.0,11.0,"
-        };
-    resultSetEqualTest(
-        "select d_1.s_int64, d_1.s_float, d_1.s_double, d_2.s_double, d_3.s_double from root.sg_type;",
-        expectedQueryHeader,
-        queryRetArray);
   }
 }

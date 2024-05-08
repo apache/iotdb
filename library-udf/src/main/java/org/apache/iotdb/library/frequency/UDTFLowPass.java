@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.library.frequency;
 
 import org.apache.iotdb.library.util.Util;
@@ -36,7 +35,6 @@ import org.jtransforms.fft.DoubleFFT_1D;
 /** This function filters high frequency components. */
 public class UDTFLowPass implements UDTF {
 
-  private static final String WPASS_PARAM = "wpass";
   private double wpass;
   private final DoubleArrayList valueList = new DoubleArrayList();
   private final LongArrayList timeList = new LongArrayList();
@@ -46,18 +44,18 @@ public class UDTFLowPass implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
-        .validateRequiredAttribute(WPASS_PARAM)
+        .validateRequiredAttribute("wpass")
         .validate(
             x -> (double) x > 0 && (double) x < 1,
             "Wpass should be within (0,1).",
-            validator.getParameters().getDouble(WPASS_PARAM));
+            validator.getParameters().getDouble("wpass"));
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
-    this.wpass = parameters.getDouble(WPASS_PARAM);
+    this.wpass = parameters.getDouble("wpass");
   }
 
   @Override

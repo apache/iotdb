@@ -16,19 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb;
 
-import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,9 +34,6 @@ import java.util.List;
  * includes Aligned Timeseries and Normal Timeseries
  */
 public class HybridTimeseriesSessionExample {
-
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(HybridTimeseriesSessionExample.class);
 
   private static Session session;
   private static final String ROOT_SG1_ALIGNEDDEVICE = "root.sg_1.aligned_device";
@@ -66,14 +59,13 @@ public class HybridTimeseriesSessionExample {
 
   private static void selectTest() throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet dataSet = session.executeQueryStatement("select ** from root.sg_1");
-    LOGGER.info("columnNames = {}", dataSet.getColumnNames());
+    System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
-      LOGGER.info("data = {}", dataSet.next());
+      System.out.println(dataSet.next());
     }
 
     dataSet.closeOperationHandle();
   }
-
   /** Method 1 for insert tablet with aligned timeseries */
   private static void insertTabletWithAlignedTimeseriesMethod(int minTime, int maxTime)
       throws IoTDBConnectionException, StatementExecutionException {

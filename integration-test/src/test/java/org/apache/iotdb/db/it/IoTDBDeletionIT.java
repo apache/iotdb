@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -60,24 +61,26 @@ public class IoTDBDeletionIT {
   private String insertTemplate =
       "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4" + ") VALUES(%d,%d,%d,%f,%s,%b)";
   private String deleteAllTemplate = "DELETE FROM root.vehicle.d0.* WHERE time <= 10000";
+  private long prevPartitionInterval;
+  private long size;
 
   @Before
   public void setUp() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
-
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setPartitionInterval(1000)
-        .setMemtableSizeThreshold(10000);
+    prevPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
+    ConfigFactory.getConfig().setPartitionInterval(1000);
+    size = ConfigFactory.getConfig().getMemtableSizeThreshold();
     // Adjust memstable threshold size to make it flush automatically
-    EnvFactory.getEnv().initClusterEnvironment();
+    ConfigFactory.getConfig().setMemtableSizeThreshold(10000);
+    EnvFactory.getEnv().initBeforeTest();
     prepareSeries();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterTest();
+    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
+    ConfigFactory.getConfig().setMemtableSizeThreshold(size);
   }
 
   /**
@@ -182,6 +185,36 @@ public class IoTDBDeletionIT {
       }
     }
     cleanData();
+  }
+
+  @Test
+  public void testMerge() throws SQLException {
+    prepareMerge();
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("merge");
+      statement.execute("DELETE FROM root.vehicle.d0.** WHERE time <= 15000");
+
+      // before merge completes
+      try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(5000, cnt);
+      }
+
+      // after merge completes
+      try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(5000, cnt);
+      }
+      cleanData();
+    }
   }
 
   @Test
@@ -456,13 +489,13 @@ public class IoTDBDeletionIT {
         statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.addBatch("flush");
+      statement.addBatch("merge");
       // prepare Unseq-File
       for (int i = 1; i <= 100; i++) {
         statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.addBatch("flush");
+      statement.addBatch("merge");
       // prepare BufferWrite cache
       for (int i = 301; i <= 400; i++) {
         statement.addBatch(
@@ -481,6 +514,23 @@ public class IoTDBDeletionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(deleteAllTemplate);
+    }
+  }
+
+  public void prepareMerge() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      // prepare BufferWrite data
+      for (int i = 10001; i <= 20000; i++) {
+        statement.execute(
+            String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+      }
+      // prepare Overflow data
+      for (int i = 1; i <= 10000; i++) {
+        statement.execute(
+            String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+      }
     }
   }
 }

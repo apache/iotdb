@@ -16,13 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb;
 
 import org.apache.iotdb.jdbc.IoTDBSQLException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -32,25 +28,28 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class JDBCExample {
-  private static final Logger LOGGER = LoggerFactory.getLogger(JDBCExample.class);
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
     try (Connection connection =
             DriverManager.getConnection(
-                "jdbc:iotdb://127.0.0.1:6667?version=V_1_0", "root", "root");
+                "jdbc:iotdb://127.0.0.1:6667?version=V_0_13", "root", "root");
         Statement statement = connection.createStatement()) {
 
       // set JDBC fetchSize
       statement.setFetchSize(10000);
 
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-      statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-      statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      try {
+        statement.execute("CREATE DATABASE root.sg1");
+        statement.execute(
+            "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+        statement.execute(
+            "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+        statement.execute(
+            "CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      } catch (IoTDBSQLException e) {
+        System.out.println(e.getMessage());
+      }
 
       for (int i = 0; i <= 100; i++) {
         statement.addBatch(prepareInsertStatment(i));
@@ -67,11 +66,10 @@ public class JDBCExample {
               "select count(**) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
       outputResult(resultSet);
     } catch (IoTDBSQLException e) {
-      LOGGER.error("IoTDB Jdbc example error", e);
+      System.out.println(e.getMessage());
     }
   }
 
-  @SuppressWarnings({"squid:S106"})
   private static void outputResult(ResultSet resultSet) throws SQLException {
     if (resultSet != null) {
       System.out.println("--------------------------");

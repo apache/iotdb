@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
+import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -32,7 +33,6 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.Statement;
-import java.util.Locale;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
@@ -41,16 +41,23 @@ import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupByLevelQueryIT {
 
+  protected static boolean enableSeqSpaceCompaction;
+  protected static boolean enableUnseqSpaceCompaction;
+  protected static boolean enableCrossSpaceCompaction;
+  protected static int maxTsBlockLineNumber;
+
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setEnableSeqSpaceCompaction(false)
-        .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false)
-        .setMaxTsBlockLineNumber(3);
-    EnvFactory.getEnv().initClusterEnvironment();
+    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
+    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
+    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
+    maxTsBlockLineNumber = ConfigFactory.getConfig().getMaxTsBlockLineNumber();
+
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(3);
+    EnvFactory.getEnv().initBeforeClass();
 
     AlignedWriteUtil.insertData();
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -61,10 +68,7 @@ public class IoTDBGroupByLevelQueryIT {
       for (int i = 1; i <= 10; i++) {
         statement.execute(
             String.format(
-                Locale.ENGLISH,
-                "insert into root.sg2.d1(time, s1) aligned values(%d,%f)",
-                i,
-                (double) i));
+                "insert into root.sg2.d1(time, s1) aligned values(%d,%f)", i, (double) i));
       }
       for (int i = 11; i <= 20; i++) {
         statement.execute(
@@ -77,12 +81,8 @@ public class IoTDBGroupByLevelQueryIT {
       for (int i = 31; i <= 40; i++) {
         statement.execute(
             String.format(
-                Locale.ENGLISH,
                 "insert into root.sg2.d1(time, s1, s2, s3) aligned values(%d,%f,%d,%d)",
-                i,
-                (double) i,
-                i,
-                i));
+                i, (double) i, i, i));
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -91,7 +91,11 @@ public class IoTDBGroupByLevelQueryIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
   }
 
   @Test

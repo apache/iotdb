@@ -21,8 +21,8 @@ package org.apache.iotdb.db.trigger.example;
 
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.TriggerAttributes;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
-import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,8 +40,6 @@ public class TriggerFireTimesCounter implements Trigger {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerFireTimesCounter.class);
   private String TXT_PATH;
-
-  private final int LOCK_FILE_RETRY_TIME = 10;
 
   @Override
   public void onCreate(TriggerAttributes attributes) throws Exception {
@@ -72,20 +70,9 @@ public class TriggerFireTimesCounter implements Trigger {
 
   @Override
   public boolean fire(Tablet tablet) throws Exception {
-    FileLock fileLock = null;
-    FileChannel fileChannel = null;
-    int retryNum = 0;
-    try {
-      fileChannel = FileChannel.open(Paths.get(TXT_PATH), StandardOpenOption.APPEND);
-      while (fileLock == null) {
-        fileLock = fileChannel.tryLock();
-        if (fileLock == null) {
-          if (retryNum++ >= LOCK_FILE_RETRY_TIME) {
-            break;
-          }
-          Thread.sleep(100);
-        }
-      }
+    try (FileChannel fileChannel =
+            FileChannel.open(Paths.get(TXT_PATH), StandardOpenOption.APPEND);
+        FileLock fileLock = fileChannel.tryLock()) {
       int rows = tablet.rowSize;
       if (fileLock != null && fileLock.isValid()) {
         String records = System.lineSeparator() + rows;
@@ -99,13 +86,6 @@ public class TriggerFireTimesCounter implements Trigger {
     } catch (Throwable t) {
       LOGGER.warn("TriggerFireTimesCounter error", t);
       return false;
-    } finally {
-      if (fileLock != null) {
-        fileLock.close();
-      }
-      if (fileChannel != null) {
-        fileChannel.close();
-      }
     }
     return true;
   }

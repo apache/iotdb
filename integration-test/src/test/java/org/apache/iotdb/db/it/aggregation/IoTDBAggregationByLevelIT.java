@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it.aggregation;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -52,7 +52,7 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAggregationByLevelIT {
 
-  protected static final String[] dataSet =
+  private static final String[] dataSet =
       new String[] {
         "CREATE DATABASE root.sg1",
         "CREATE DATABASE root.sg2",
@@ -79,13 +79,13 @@ public class IoTDBAggregationByLevelIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initBeforeClass();
     prepareData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   @Test
@@ -695,7 +695,7 @@ public class IoTDBAggregationByLevelIT {
     }
   }
 
-  protected static void prepareData() {
+  private static void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 

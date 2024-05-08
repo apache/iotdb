@@ -70,13 +70,13 @@ public class IoTDBTimeZoneIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initBeforeClass();
     createTimeseries();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   /**
@@ -122,7 +122,7 @@ public class IoTDBTimeZoneIT {
       // Asia/Almaty +06:00
       connection.setClientInfo("time_zone", "Asia/Almaty");
       statement.execute(String.format(insertSQLTemplate, "1514782807000", "10"));
-      statement.execute(String.format(insertSQLTemplate, "1514782808000", "11"));
+      statement.execute(String.format(insertSQLTemplate, "2018-1-1T11:00:08", "11"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T13:00:09+08:00", "12"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T12:00:10+07:00", "13"));
 

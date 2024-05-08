@@ -37,20 +37,15 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
-import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
-import static org.apache.iotdb.db.utils.constant.TestConstant.avg;
-import static org.apache.iotdb.db.utils.constant.TestConstant.count;
-import static org.apache.iotdb.db.utils.constant.TestConstant.firstValue;
-import static org.apache.iotdb.db.utils.constant.TestConstant.lastValue;
-import static org.apache.iotdb.db.utils.constant.TestConstant.maxBy;
-import static org.apache.iotdb.db.utils.constant.TestConstant.maxTime;
-import static org.apache.iotdb.db.utils.constant.TestConstant.maxValue;
-import static org.apache.iotdb.db.utils.constant.TestConstant.minBy;
-import static org.apache.iotdb.db.utils.constant.TestConstant.minTime;
-import static org.apache.iotdb.db.utils.constant.TestConstant.minValue;
-import static org.apache.iotdb.db.utils.constant.TestConstant.sum;
-import static org.apache.iotdb.itbase.constant.TestConstant.DEVICE;
+import static org.apache.iotdb.db.constant.TestConstant.avg;
+import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.firstValue;
+import static org.apache.iotdb.db.constant.TestConstant.lastValue;
+import static org.apache.iotdb.db.constant.TestConstant.maxTime;
+import static org.apache.iotdb.db.constant.TestConstant.maxValue;
+import static org.apache.iotdb.db.constant.TestConstant.minTime;
+import static org.apache.iotdb.db.constant.TestConstant.minValue;
+import static org.apache.iotdb.db.constant.TestConstant.sum;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
@@ -70,8 +65,7 @@ public class IoTDBAggregationIT {
         "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test.noDataRegion.s1 WITH DATATYPE=INT32"
+        "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN"
       };
   private static final String[] dataSet2 =
       new String[] {
@@ -110,16 +104,17 @@ public class IoTDBAggregationIT {
   private final String d0s3 = "root.vehicle.d0.s3";
   private static final String insertTemplate =
       "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)" + " VALUES(%d,%d,%d,%f,%s,%s)";
+  private static long prevPartitionInterval;
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initBeforeClass();
     prepareData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   // add test for part of points in page don't satisfy filter
@@ -717,7 +712,7 @@ public class IoTDBAggregationIT {
             e.getMessage(),
             e.getMessage()
                 .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
       try {
         try (ResultSet resultSet =
@@ -730,7 +725,7 @@ public class IoTDBAggregationIT {
         Assert.assertTrue(
             e.getMessage()
                 .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
       try {
         try (ResultSet resultSet =
@@ -743,7 +738,7 @@ public class IoTDBAggregationIT {
         Assert.assertTrue(
             e.getMessage()
                 .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
       try {
         try (ResultSet resultSet =
@@ -757,7 +752,7 @@ public class IoTDBAggregationIT {
             e.getMessage(),
             e.getMessage()
                 .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
       try {
         try (ResultSet resultSet =
@@ -770,7 +765,7 @@ public class IoTDBAggregationIT {
             e.getMessage(),
             e.getMessage()
                 .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -961,124 +956,6 @@ public class IoTDBAggregationIT {
 
       for (String sql : dataSet2) {
         statement.execute(sql);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void noDataRegionTest() {
-    String[] expectedHeader =
-        new String[] {count("root.test.noDataRegion.s1"), sum("root.test.noDataRegion.s1")};
-    String[] retArray = new String[] {"0,null,"};
-    resultSetEqualWithDescOrderTest(
-        "select count(s1), sum(s1) from root.test.noDataRegion", expectedHeader, retArray);
-
-    expectedHeader = new String[] {DEVICE, count("s1"), sum("s1")};
-    retArray = new String[] {"root.test.noDataRegion,0,null,"};
-    resultSetEqualTest(
-        "select count(s1), sum(s1) from root.test.noDataRegion align by device",
-        expectedHeader,
-        retArray);
-  }
-
-  @Test
-  public void maxByTest() {
-    String[] retArray = new String[] {"0,8499", "0,2499", "0,8499"};
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      int cnt;
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "SELECT max_by(time, s0) "
-                  + "FROM root.vehicle.d0 WHERE time >= 100 AND time < 9000")) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(maxBy("Time", d0s0));
-          Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(1, cnt);
-      }
-
-      try (ResultSet resultSet =
-          statement.executeQuery("SELECT max_by(time,s0) FROM root.vehicle.d0 WHERE time < 2500")) {
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(maxBy("Time", d0s0));
-          Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(2, cnt);
-      }
-
-      // keep the correctness of `order by time desc`
-      cnt = 0;
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "SELECT max_by(time,s0) FROM root.vehicle.d0 WHERE time >= 100 AND time < 9000 order by time desc")) {
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(maxBy("Time", d0s0));
-          Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(1, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void minByTest() {
-    String[] retArray = new String[] {"0,500", "0,500", "0,500"};
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      int cnt;
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "SELECT min_by(time, s0) "
-                  + "FROM root.vehicle.d0 WHERE time >= 100 AND time < 9000")) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(minBy("Time", d0s0));
-          Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(1, cnt);
-      }
-
-      try (ResultSet resultSet =
-          statement.executeQuery("SELECT min_by(time,s0) FROM root.vehicle.d0 WHERE time < 2500")) {
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(minBy("Time", d0s0));
-          Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(2, cnt);
-      }
-
-      // keep the correctness of `order by time desc`
-      cnt = 0;
-      try (ResultSet resultSet =
-          statement.executeQuery(
-              "SELECT min_by(time,s0) FROM root.vehicle.d0 WHERE time >= 100 AND time < 9000 order by time desc")) {
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(minBy("Time", d0s0));
-          Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();

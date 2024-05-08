@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it.last;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -45,7 +45,7 @@ public class IoTDBLastWithTTLIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initBeforeClass();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("insert into root.sg.d1(time, s1, s2) values(1, 1, 1)");
@@ -58,17 +58,17 @@ public class IoTDBLastWithTTLIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   @Test
   public void withTTL() {
     String[] retArray =
         new String[] {
-          "1,root.sg.d1.s1,1.0,DOUBLE",
-          "1,root.sg.d1.s2,1.0,DOUBLE",
-          "2,root.sg.d2.s1,1.0,DOUBLE",
-          "2,root.sg.d2.s2,1.0,DOUBLE"
+          "1,root.sg.d1.s1,1.0,FLOAT",
+          "1,root.sg.d1.s2,1.0,FLOAT",
+          "2,root.sg.d2.s1,1.0,FLOAT",
+          "2,root.sg.d2.s2,1.0,FLOAT"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();

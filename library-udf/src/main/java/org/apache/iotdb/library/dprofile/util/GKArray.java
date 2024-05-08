@@ -16,19 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.library.dprofile.util;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.list.MutableList;
 
-/** Util for UDAFPercentile. */
+import java.io.Serializable;
+import java.util.Comparator;
+
+/** Util for UDAFPercentile */
 public class GKArray {
 
   private final double rankAccuracy;
-  private ArrayList<Tuple> entries;
+  private MutableList<Tuple> entries;
   private final double[] incoming;
   private int incomingIndex;
   private long compressedCount;
@@ -36,7 +36,7 @@ public class GKArray {
 
   public GKArray(double rankAccuracy) {
     this.rankAccuracy = rankAccuracy;
-    this.entries = new ArrayList<>();
+    this.entries = Lists.mutable.empty();
     this.incoming = new double[(int) (1 / rankAccuracy) + 1];
     this.incomingIndex = 0;
     this.minValue = Double.MAX_VALUE;
@@ -87,10 +87,10 @@ public class GKArray {
   }
 
   private void compress() {
-    compress(new ArrayList<>());
+    compress(Lists.mutable.empty());
   }
 
-  private void compress(List<Tuple> additionalEntries) {
+  private void compress(MutableList<Tuple> additionalEntries) {
 
     for (int i = 0; i < incomingIndex; i++) {
       additionalEntries.add(new Tuple(incoming[i], 1, 0));
@@ -103,13 +103,24 @@ public class GKArray {
     }
 
     final long removalThreshold = 2 * (long) (rankAccuracy * (compressedCount - 1));
-    final ArrayList<Tuple> mergedEntries =
-        new ArrayList<>(entries.size() + additionalEntries.size() / 3);
+    final MutableList<Tuple> mergedEntries =
+        Lists.mutable.ofInitialCapacity(entries.size() + additionalEntries.size() / 3);
 
-    int i = 0;
-    int j = 0;
+    int i = 0, j = 0;
     while (i < additionalEntries.size() || j < entries.size()) {
-      if (j == entries.size()) {
+      if (i == additionalEntries.size()) {
+        if (j + 1 < entries.size()
+            && entries.get(j).g + entries.get(j + 1).g + entries.get(j + 1).delta
+                <= removalThreshold) {
+          // Removable from sketch.
+          entries.get(j + 1).g += entries.get(j).g;
+        } else {
+          mergedEntries.add(entries.get(j));
+        }
+
+        j++;
+
+      } else if (j == entries.size()) {
         // Done with sketch; now only considering incoming.
         if (i + 1 < additionalEntries.size()
             && additionalEntries.get(i).g
@@ -136,7 +147,7 @@ public class GKArray {
 
         i++;
 
-      } else { // the same as i == additionalEntries.size()
+      } else {
         if (j + 1 < entries.size()
             && entries.get(j).g + entries.get(j + 1).g + entries.get(j + 1).delta
                 <= removalThreshold) {

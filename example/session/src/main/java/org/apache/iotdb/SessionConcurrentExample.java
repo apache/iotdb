@@ -19,19 +19,16 @@
 
 package org.apache.iotdb;
 
-import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.template.MeasurementNode;
-
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
-import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.session.template.Template;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -42,27 +39,23 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class SessionConcurrentExample {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SessionConcurrentExample.class);
 
-  private static final int SG_NUM = 20;
-  private static final int DEVICE_NUM = 100;
-  private static final int PARALLEL_DEGREE_FOR_ONE_SG = 3;
-  private static Random random = new Random();
+  private static final int sgNum = 20;
+  private static final int deviceNum = 100;
+  private static final int parallelDegreeForOneSG = 3;
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, IOException {
 
-    try (Session session = new Session("127.0.0.1", 6667, "root", "root")) {
-      session.open(false);
-      createTemplate(session);
-    } catch (Exception e) {
-      LOGGER.error("create template with Session error", e);
-    }
+    Session session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open(false);
+    createTemplate(session);
+    session.close();
 
-    CountDownLatch latch = new CountDownLatch(SG_NUM * PARALLEL_DEGREE_FOR_ONE_SG);
-    ExecutorService es = Executors.newFixedThreadPool(SG_NUM * PARALLEL_DEGREE_FOR_ONE_SG);
+    CountDownLatch latch = new CountDownLatch(sgNum * parallelDegreeForOneSG);
+    ExecutorService es = Executors.newFixedThreadPool(sgNum * parallelDegreeForOneSG);
 
-    for (int i = 0; i < SG_NUM * PARALLEL_DEGREE_FOR_ONE_SG; i++) {
+    for (int i = 0; i < sgNum * parallelDegreeForOneSG; i++) {
       int currentIndex = i;
       es.execute(() -> concurrentOperation(latch, currentIndex));
     }
@@ -72,8 +65,7 @@ public class SessionConcurrentExample {
     try {
       latch.await();
     } catch (InterruptedException e) {
-      LOGGER.warn("CountDownLatch interrupted", e);
-      Thread.currentThread().interrupt();
+      e.printStackTrace();
     }
   }
 
@@ -83,23 +75,22 @@ public class SessionConcurrentExample {
     try {
       session.open(false);
     } catch (IoTDBConnectionException e) {
-      LOGGER.error("Open Session error", e);
+      e.printStackTrace();
     }
 
-    for (int j = 0; j < DEVICE_NUM; j++) {
+    for (int j = 0; j < deviceNum; j++) {
       try {
         insertTablet(
-            session,
-            String.format("root.sg_%d.d_%d", currentIndex / PARALLEL_DEGREE_FOR_ONE_SG, j));
+            session, String.format("root.sg_%d.d_%d", currentIndex / parallelDegreeForOneSG, j));
       } catch (IoTDBConnectionException | StatementExecutionException e) {
-        LOGGER.error("Insert tablet error", e);
+        e.printStackTrace();
       }
     }
 
     try {
       session.close();
     } catch (IoTDBConnectionException e) {
-      LOGGER.error("Close session error", e);
+      e.printStackTrace();
     }
 
     latch.countDown();
@@ -121,7 +112,7 @@ public class SessionConcurrentExample {
     template.addToTemplate(mNodeS3);
 
     session.createSchemaTemplate(template);
-    for (int i = 0; i < SG_NUM; i++) {
+    for (int i = 0; i < sgNum; i++) {
       session.setSchemaTemplate("template1", "root.sg_" + i);
     }
   }
@@ -152,11 +143,12 @@ public class SessionConcurrentExample {
 
     // Method 1 to add tablet data
     long timestamp = System.currentTimeMillis();
+
     for (long row = 0; row < 100; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       for (int s = 0; s < 3; s++) {
-        long value = random.nextLong();
+        long value = new Random().nextLong();
         tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {

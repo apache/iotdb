@@ -1,0 +1,48 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+version: "3.7"
+
+services:
+  grafana:
+    image: grafana/grafana:8.2.5
+    ports:
+      - 3000:3000
+    environment:
+      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=iotdb
+      - GF_INSTALL_PLUGINS=https://mirrors.tuna.tsinghua.edu.cn/apache/iotdb/0.14.0/apache-iotdb-0.14.0-grafana-plugin-bin.zip;apache-iotdb-0.14.0-grafana-plugin-bin
+  iotdb:
+    image: apache/iotdb0.14
+    build:
+      context: ./
+      dockerfile: Dockerfile-0.14.0-iotdb
+    volumes:
+      - ./iotdb/conf/iotdb-rest.properties:/iotdb/conf/iotdb-rest.properties
+      - ./iotdb/data/:/iotdb/data
+      - ./iotdb/logs:/iotdb/logs
+    ports:
+      - 6667:6667
+      - 18080:18080
+      - 5555:5555
+      - 31999:31999
+      - 8181:8181
+  alertmanager:
+    image: prom/alertmanager:v0.21.0
+    ports:
+      - 9093:9093

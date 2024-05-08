@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.it.udf;
 
+import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -59,8 +60,11 @@ public class IoTDBUDTFNonAlignQueryIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setUdfMemoryBudgetInMB(5);
-    EnvFactory.getEnv().initClusterEnvironment();
+    ConfigFactory.getConfig()
+        .setUdfCollectorMemoryBudgetInMB(5)
+        .setUdfTransformerMemoryBudgetInMB(5)
+        .setUdfReaderMemoryBudgetInMB(5);
+    EnvFactory.getEnv().initBeforeClass();
     createTimeSeries();
     generateData();
     registerUDF();
@@ -68,7 +72,11 @@ public class IoTDBUDTFNonAlignQueryIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanAfterClass();
+    ConfigFactory.getConfig()
+        .setUdfCollectorMemoryBudgetInMB(100)
+        .setUdfTransformerMemoryBudgetInMB(100)
+        .setUdfReaderMemoryBudgetInMB(100);
   }
 
   private static void createTimeSeries() {

@@ -119,7 +119,7 @@ void showTimeseries() {
     }
     cout << endl;
 
-    dataSet->setFetchSize(1024);
+    dataSet->setBatchSize(1024);
     while (dataSet->hasNext()) {
         cout << dataSet->next()->toString();
     }
@@ -316,12 +316,13 @@ void nonQuery() {
 
 void query() {
     unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select s1, s2, s3 from root.**");
+    cout << "timestamp" << "  ";
     for (const string &name: dataSet->getColumnNames()) {
         cout << name << "  ";
     }
     cout << endl;
 
-    dataSet->setFetchSize(1024);
+    dataSet->setBatchSize(1024);
     while (dataSet->hasNext()) {
         cout << dataSet->next()->toString();
     }
@@ -388,7 +389,7 @@ int main() {
         if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
             cout << errorMessage << endl;
         }
-        //throw e;
+        throw e;
     }
 
     cout << "setStorageGroup: root.sg2\n" << endl;
@@ -400,7 +401,7 @@ int main() {
         if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
             cout << errorMessage << endl;
         }
-        //throw e;
+        throw e;
     }
 
     cout << "createTimeseries\n" << endl;
