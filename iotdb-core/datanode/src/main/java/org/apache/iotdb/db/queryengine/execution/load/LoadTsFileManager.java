@@ -318,6 +318,9 @@ public class LoadTsFileManager {
 
         DataRegion dataRegion = entry.getKey().getDataRegion();
         TsFileResource tsFileResource = generateResource(writer, progressIndex);
+
+        LoadTsFileRateLimiter.getInstance()
+            .acquireWrittenBytesWithLoadWriteRateLimiter(tsFileResource.getTsFileSize());
         dataRegion.loadNewTsFile(tsFileResource, true, isGeneratedByPipe);
 
         dataRegion
@@ -325,10 +328,6 @@ public class LoadTsFileManager {
             .ifPresent(
                 databaseName -> {
                   long writePointCount = getTsFileWritePointCount(writer);
-
-                  LoadTsFileRateLimiter.getInstance()
-                      .acquireWrittenBytesWithLoadWriteRateLimiter(tsFileResource.getTsFileSize());
-
                   // Report load tsFile points to IoTDB flush metrics
                   MemTableFlushTask.recordFlushPointsMetricInternal(
                       writePointCount, databaseName, dataRegion.getDataRegionId());

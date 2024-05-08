@@ -31,27 +31,26 @@ public class LoadTsFileRateLimiter {
 
   private RateLimiter loadWriteRateLimiter;
 
-  private AtomicDouble throughputMbPerSec =
-      new AtomicDouble(CONFIG.getLoadWriteThroughputMbPerSecond());
+  private AtomicDouble throughputBytesPerSec =
+      new AtomicDouble(CONFIG.getLoadWriteThroughputBytesPerSecond());
 
   public LoadTsFileRateLimiter() {
-    loadWriteRateLimiter = RateLimiter.create(throughputMbPerSec.get() * 1024.0 * 1024.0);
+    loadWriteRateLimiter =
+        throughputBytesPerSec.get() <= 0
+            ? RateLimiter.create(Double.MAX_VALUE) // if throughput <= 0, disable rate limiting
+            : RateLimiter.create(throughputBytesPerSec.get());
   }
 
-  private void setWritePointRate(final double throughputMbPerSec) {
-    double throughput = throughputMbPerSec * 1024.0 * 1024.0;
-    // if throughput = 0, disable rate limiting
-    if (throughput <= 0) {
-      throughput = Double.MAX_VALUE;
-    }
-
-    loadWriteRateLimiter.setRate(throughput);
+  private void setWritePointRate(final double throughputBytesPerSec) {
+    // if throughput <= 0, disable rate limiting
+    loadWriteRateLimiter.setRate(
+        throughputBytesPerSec <= 0 ? Double.MAX_VALUE : throughputBytesPerSec);
   }
 
   public void acquireWrittenBytesWithLoadWriteRateLimiter(long writtenDataSizeInBytes) {
-    if (throughputMbPerSec.get() != CONFIG.getLoadWriteThroughputMbPerSecond()) {
-      throughputMbPerSec.set(CONFIG.getLoadWriteThroughputMbPerSecond());
-      setWritePointRate(throughputMbPerSec.get());
+    if (throughputBytesPerSec.get() != CONFIG.getLoadWriteThroughputBytesPerSecond()) {
+      throughputBytesPerSec.set(CONFIG.getLoadWriteThroughputBytesPerSecond());
+      setWritePointRate(throughputBytesPerSec.get());
     }
 
     while (writtenDataSizeInBytes > 0) {
