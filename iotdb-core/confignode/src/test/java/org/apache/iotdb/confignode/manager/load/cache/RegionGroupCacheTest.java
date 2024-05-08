@@ -26,12 +26,18 @@ import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 public class RegionGroupCacheTest {
+
+  private static final String DATABASE = "root.db";
 
   @Test
   public void getRegionStatusTest() {
     long currentTime = System.nanoTime();
-    RegionGroupCache regionGroupCache = new RegionGroupCache();
+    RegionGroupCache regionGroupCache =
+        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2, 3).collect(Collectors.toSet()));
     regionGroupCache.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     regionGroupCache.cacheHeartbeatSample(
@@ -55,7 +61,8 @@ public class RegionGroupCacheTest {
   @Test
   public void getRegionGroupStatusTest() {
     long currentTime = System.nanoTime();
-    RegionGroupCache runningRegionGroup = new RegionGroupCache();
+    RegionGroupCache runningRegionGroup =
+        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()));
     runningRegionGroup.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     runningRegionGroup.cacheHeartbeatSample(
@@ -67,7 +74,8 @@ public class RegionGroupCacheTest {
         RegionGroupStatus.Running,
         runningRegionGroup.getCurrentStatistics().getRegionGroupStatus());
 
-    RegionGroupCache availableRegionGroup = new RegionGroupCache();
+    RegionGroupCache availableRegionGroup =
+        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()));
     availableRegionGroup.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     availableRegionGroup.cacheHeartbeatSample(
@@ -79,7 +87,8 @@ public class RegionGroupCacheTest {
         RegionGroupStatus.Available,
         availableRegionGroup.getCurrentStatistics().getRegionGroupStatus());
 
-    RegionGroupCache disabledRegionGroup0 = new RegionGroupCache();
+    RegionGroupCache disabledRegionGroup0 =
+        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()));
     disabledRegionGroup0.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     disabledRegionGroup0.cacheHeartbeatSample(
@@ -91,7 +100,8 @@ public class RegionGroupCacheTest {
         RegionGroupStatus.Discouraged,
         disabledRegionGroup0.getCurrentStatistics().getRegionGroupStatus());
 
-    RegionGroupCache disabledRegionGroup1 = new RegionGroupCache();
+    RegionGroupCache disabledRegionGroup1 =
+        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()));
     disabledRegionGroup1.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     disabledRegionGroup1.cacheHeartbeatSample(
@@ -103,7 +113,8 @@ public class RegionGroupCacheTest {
         RegionGroupStatus.Disabled,
         disabledRegionGroup1.getCurrentStatistics().getRegionGroupStatus());
 
-    RegionGroupCache disabledRegionGroup2 = new RegionGroupCache();
+    RegionGroupCache disabledRegionGroup2 =
+        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()));
     disabledRegionGroup2.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     disabledRegionGroup2.cacheHeartbeatSample(

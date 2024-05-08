@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
 
 import org.apache.thrift.TException;
 
@@ -34,8 +35,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 final class SubscriptionProvider extends SubscriptionSession {
 
-  private final String consumerId;
-  private final String consumerGroupId;
+  private String consumerId;
+  private String consumerGroupId;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
   private final AtomicBoolean isAvailable = new AtomicBoolean(false);
@@ -56,10 +57,10 @@ final class SubscriptionProvider extends SubscriptionSession {
     this.consumerGroupId = consumerGroupId;
   }
 
-  synchronized int handshake()
+  synchronized void handshake()
       throws IoTDBConnectionException, TException, IOException, StatementExecutionException {
     if (!isClosed.get()) {
-      return -1;
+      return;
     }
 
     super.open();
@@ -67,11 +68,15 @@ final class SubscriptionProvider extends SubscriptionSession {
     final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
-    dataNodeId = getSessionConnection().handshake(new ConsumerConfig(consumerAttributes));
+
+    final PipeSubscribeHandshakeResp resp =
+        getSessionConnection().handshake(new ConsumerConfig(consumerAttributes));
+    dataNodeId = resp.getDataNodeId();
+    consumerId = resp.getConsumerId();
+    consumerGroupId = resp.getConsumerGroupId();
 
     isClosed.set(false);
     setAvailable();
-    return dataNodeId;
   }
 
   @Override
@@ -110,6 +115,14 @@ final class SubscriptionProvider extends SubscriptionSession {
 
   int getDataNodeId() {
     return dataNodeId;
+  }
+
+  String getConsumerId() {
+    return consumerId;
+  }
+
+  String getConsumerGroupId() {
+    return consumerGroupId;
   }
 
   TEndPoint getEndPoint() {
