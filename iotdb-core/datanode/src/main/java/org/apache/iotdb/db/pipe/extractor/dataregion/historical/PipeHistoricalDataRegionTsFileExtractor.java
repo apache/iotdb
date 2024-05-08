@@ -538,9 +538,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   public synchronized boolean hasConsumedAll() {
-    return Objects.nonNull(pendingQueue)
-        && pendingQueue.isEmpty()
-        && (!shouldTerminatePipeOnAllConsumed || isTerminateSignalSent);
+    // If the pendingQueue is null when the function is called, it
+    // implies that the extractor only extracts deletion thus the
+    // Historical event has nothing to consume
+    return Objects.isNull(pendingQueue)
+        || pendingQueue.isEmpty() && (!shouldTerminatePipeOnAllConsumed || isTerminateSignalSent);
   }
 
   @Override
