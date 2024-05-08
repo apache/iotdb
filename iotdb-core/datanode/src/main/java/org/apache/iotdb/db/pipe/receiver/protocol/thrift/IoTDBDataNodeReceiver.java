@@ -245,10 +245,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             Stream.of(
                     statementPair.getLeft().isEmpty()
                         ? RpcUtils.SUCCESS_STATUS
-                        : executeStatementAndClassifyExceptions(statementPair.getLeft()),
+                        : executeStatementAndAddRedirectInfo(statementPair.getLeft()),
                     statementPair.getRight().isEmpty()
                         ? RpcUtils.SUCCESS_STATUS
-                        : executeStatementAndClassifyExceptions(statementPair.getRight()))
+                        : executeStatementAndAddRedirectInfo(statementPair.getRight()))
                 .collect(Collectors.toList())));
   }
 
@@ -353,10 +353,39 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return configReceiverId.get();
   }
 
+  private TSStatus executeStatementAndAddRedirectInfo(final InsertBaseStatement statement) {
+    TSStatus result = executeStatementAndClassifyExceptions(statement);
+    if (result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+        && result.getSubStatusSize() > 0) {
+      List<PartialPath> devicePaths = new ArrayList<>();
+      if (statement instanceof InsertRowsStatement) {
+        devicePaths = ((InsertRowsStatement) statement).getDevicePaths();
+      } else if (statement instanceof InsertMultiTabletsStatement) {
+        devicePaths = ((InsertMultiTabletsStatement) statement).getDevicePaths();
+      }
+
+      if (devicePaths.size() == result.getSubStatusSize()) {
+        for (int i = 0; i < devicePaths.size(); ++i) {
+          if (result.getSubStatus().get(i).isSetRedirectNode()) {
+            result.getSubStatus().get(i).setMessage(devicePaths.get(i).getFullPath());
+          }
+        }
+      } else {
+        LOGGER.warn(
+            "Receiver id = {}: The number of device paths is not equal to sub-status in statement {}: {}.",
+            receiverId.get(),
+            statement,
+            result);
+      }
+    }
+    return result;
+  }
+
   private TSStatus executeStatementAndClassifyExceptions(final Statement statement) {
     try {
       final TSStatus result = executeStatement(statement);
-      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return result;
       } else {
         LOGGER.warn(

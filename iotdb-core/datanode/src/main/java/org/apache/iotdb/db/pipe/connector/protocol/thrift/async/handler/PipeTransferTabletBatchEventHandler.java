@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeEventBatch;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -51,13 +51,12 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
   private final IoTDBDataRegionAsyncConnector connector;
 
   public PipeTransferTabletBatchEventHandler(
-      final IoTDBThriftAsyncPipeTransferBatchReqBuilder batchBuilder,
-      final IoTDBDataRegionAsyncConnector connector)
+      final PipeEventBatch batch, final IoTDBDataRegionAsyncConnector connector)
       throws IOException {
     // Deep copy to keep Ids' and events' reference
-    requestCommitIds = batchBuilder.deepCopyRequestCommitIds();
-    events = batchBuilder.deepCopyEvents();
-    req = batchBuilder.toTPipeTransferReq();
+    requestCommitIds = batch.deepCopyRequestCommitIds();
+    events = batch.deepCopyEvents();
+    req = batch.toTPipeTransferReq();
 
     this.connector = connector;
   }
