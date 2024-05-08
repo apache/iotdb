@@ -209,8 +209,7 @@ public enum PlanNodeType {
 
   EXPLAIN_ANALYZE((short) 90),
 
-  PIPE_OPERATE_SCHEMA_QUEUE_REFERENCE((short) 91),
-  ;
+  PIPE_OPERATE_SCHEMA_QUEUE_REFERENCE((short) 91);
 
   public static final int BYTES = Short.BYTES;
 
