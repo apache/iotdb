@@ -445,10 +445,13 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     acquireWriteLock();
     try {
       if (pipeMetaKeeper.containsPipeMeta(pipeName)) {
-        ((PipeDataNodeTask)
+        final PipeDataNodeTask pipeDataNodeTask =
+            ((PipeDataNodeTask)
                 pipeTaskManager.getPipeTask(
-                    pipeMetaKeeper.getPipeMeta(pipeName).getStaticMeta(), regionId))
-            .markCompleted();
+                    pipeMetaKeeper.getPipeMeta(pipeName).getStaticMeta(), regionId));
+        if (Objects.nonNull(pipeDataNodeTask)) {
+          pipeDataNodeTask.markCompleted();
+        }
       }
     } finally {
       releaseWriteLock();
