@@ -298,7 +298,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
         pipeCompletedList.add(isAllDataRegionCompleted && includeDataAndNeedDrop);
 
-        logger.ifPresent(l -> l.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage()));
+        logger.ifPresent(
+            l ->
+                l.info(
+                    "Reporting pipe meta: {}, isCompleted: {}",
+                    pipeMeta.coreReportMessage(),
+                    includeDataAndNeedDrop));
       }
       LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
     } catch (final IOException | IllegalPathException e) {
@@ -359,7 +364,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
         pipeCompletedList.add(isAllDataRegionCompleted && includeDataAndNeedDrop);
 
-        logger.ifPresent(l -> l.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage()));
+        logger.ifPresent(
+            l ->
+                l.info(
+                    "Reporting pipe meta: {}, isCompleted: {}",
+                    pipeMeta.coreReportMessage(),
+                    includeDataAndNeedDrop));
       }
       LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
     } catch (final IOException | IllegalPathException e) {
