@@ -64,6 +64,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -73,6 +74,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY;
 
 public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
@@ -268,18 +273,35 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                   pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
+
         final Map<Integer, PipeTask> pipeTaskMap =
             pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
-        pipeCompletedList.add(
+        final boolean isAllDataRegionCompleted =
             pipeTaskMap == null
                 || pipeTaskMap.entrySet().stream()
                     .filter(entry -> dataRegionIds.contains(entry.getKey()))
-                    .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted()));
+                    .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted());
+        // If the "source.history.terminate-pipe-on-all-consumed" is false or the pipe does
+        // not include data transfer, we should not terminate the pipe.
+        final boolean includeDataAndNeedDrop =
+            DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
+                        pipeMeta.getStaticMeta().getExtractorParameters())
+                    .getLeft()
+                && pipeMeta
+                    .getStaticMeta()
+                    .getExtractorParameters()
+                    .getBooleanOrDefault(
+                        Arrays.asList(
+                            SOURCE_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY,
+                            EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY),
+                        EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_DEFAULT_VALUE);
+
+        pipeCompletedList.add(isAllDataRegionCompleted && includeDataAndNeedDrop);
 
         logger.ifPresent(l -> l.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage()));
       }
       LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
-    } catch (final IOException e) {
+    } catch (final IOException | IllegalPathException e) {
       throw new TException(e);
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
@@ -312,18 +334,35 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                   pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
+
         final Map<Integer, PipeTask> pipeTaskMap =
             pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
-        pipeCompletedList.add(
+        final boolean isAllDataRegionCompleted =
             pipeTaskMap == null
                 || pipeTaskMap.entrySet().stream()
                     .filter(entry -> dataRegionIds.contains(entry.getKey()))
-                    .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted()));
+                    .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted());
+        // If the "source.history.terminate-pipe-on-all-consumed" is false or the pipe does
+        // not include data transfer, we should not terminate the pipe.
+        final boolean includeDataAndNeedDrop =
+            DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
+                        pipeMeta.getStaticMeta().getExtractorParameters())
+                    .getLeft()
+                && pipeMeta
+                    .getStaticMeta()
+                    .getExtractorParameters()
+                    .getBooleanOrDefault(
+                        Arrays.asList(
+                            SOURCE_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY,
+                            EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY),
+                        EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_DEFAULT_VALUE);
+
+        pipeCompletedList.add(isAllDataRegionCompleted && includeDataAndNeedDrop);
 
         logger.ifPresent(l -> l.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage()));
       }
       LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
-    } catch (final IOException e) {
+    } catch (final IOException | IllegalPathException e) {
       throw new TException(e);
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
