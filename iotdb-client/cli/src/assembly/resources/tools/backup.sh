@@ -130,5 +130,5 @@ if [ ! -d "$logs_dir" ]; then
 fi
 
 IOTDB_CLI_CONF=${IOTDB_HOME}/conf
-iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-cli.xml"
+iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-backup.xml"
 exec nohup "$JAVA" -DIOTDB_HOME=${IOTDB_HOME} $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" "$@" 2>&1 > /dev/null  <&- &
