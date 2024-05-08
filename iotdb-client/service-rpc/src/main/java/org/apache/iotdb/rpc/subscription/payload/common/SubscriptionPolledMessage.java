@@ -125,21 +125,27 @@ public class SubscriptionPolledMessage {
   public boolean trySerialize() {
     if (Objects.isNull(byteBuffer)) {
       try {
-        try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-            final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-          serialize(outputStream);
-          byteBuffer =
-              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-        }
+        serialize();
         return true;
       } catch (final IOException e) {
         LOGGER.warn(
-            "Subscription: something unexpected happened when serializing SubscriptionRawMessage",
+            "Subscription: something unexpected happened when serializing SubscriptionPolledMessage",
             e);
       }
       return false;
     }
     return true;
+  }
+
+  public void serialize() throws IOException {
+    if (Objects.isNull(byteBuffer)) {
+      try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+          final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+        serialize(outputStream);
+        byteBuffer =
+            ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      }
+    }
   }
 
   public void resetByteBuffer() {

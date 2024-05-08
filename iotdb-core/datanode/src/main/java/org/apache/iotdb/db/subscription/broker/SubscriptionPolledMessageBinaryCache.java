@@ -19,43 +19,43 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
 
 import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
-import org.apache.tsfile.utils.Pair;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
-// TODO
-public class EnrichedTabletsBinaryCache {
+public class SubscriptionPolledMessageBinaryCache {
 
   private final PipeMemoryBlock allocatedMemoryBlock;
 
-  private final LoadingCache<Long, Pair<ByteBuffer, EnrichedEvent>> cache;
+  private final LoadingCache<SubscriptionPolledMessage, ByteBuffer> cache;
 
-  public EnrichedTabletsBinaryCache() {
-    // TODO: config
+  public SubscriptionPolledMessageBinaryCache() {
     this.allocatedMemoryBlock =
         PipeResourceManager.memory().tryAllocate(Runtime.getRuntime().maxMemory() / 50);
     this.cache =
         Caffeine.newBuilder()
             .maximumWeight(this.allocatedMemoryBlock.getMemoryUsageInBytes())
             .weigher(
-                (Weigher<Long, Pair<ByteBuffer, EnrichedEvent>>)
-                    (id, enrichedTablets) -> enrichedTablets.left.limit())
+                (Weigher<SubscriptionPolledMessage, ByteBuffer>)
+                    (message, buffer) -> buffer.limit())
             .build(
-                new CacheLoader<Long, Pair<ByteBuffer, EnrichedEvent>>() {
+                new CacheLoader<SubscriptionPolledMessage, ByteBuffer>() {
                   @Override
-                  public @Nullable Pair<ByteBuffer, EnrichedEvent> load(@NonNull Long aLong)
-                      throws Exception {
-                    return null;
+                  public @Nullable ByteBuffer load(
+                      @NonNull final SubscriptionPolledMessage subscriptionPolledMessage)
+                      throws IOException {
+                    subscriptionPolledMessage.serialize();
+                    return subscriptionPolledMessage.getByteBuffer();
                   }
                 });
   }

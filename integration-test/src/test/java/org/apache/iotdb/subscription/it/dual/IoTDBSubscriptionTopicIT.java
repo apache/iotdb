@@ -517,7 +517,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       final Properties properties = new Properties();
       properties.put(TopicConstant.START_TIME_KEY, "2001.01.01T08:00:00");
       properties.put(TopicConstant.END_TIME_KEY, "2000.01.01T08:00:00");
-      session.createTopic("topic1", properties);
+      session.createTopic("topic2", properties);
       fail();
     } catch (final Exception ignored) {
     }
@@ -549,7 +549,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     for (final Properties config : configs) {
       try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
         session.open();
-        session.createTopic("foo", config);
+        session.createTopic("topic3", config);
         fail();
       } catch (final Exception ignored) {
       }
