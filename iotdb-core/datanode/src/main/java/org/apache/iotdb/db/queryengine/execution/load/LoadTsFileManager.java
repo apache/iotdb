@@ -201,8 +201,10 @@ public class LoadTsFileManager {
   }
 
   private void forceCloseWriterManager(String uuid) {
-    uuid2WriterManager.get(uuid).close();
-    uuid2WriterManager.remove(uuid);
+    final TsFileWriterManager writerManager = uuid2WriterManager.remove(uuid);
+    if (Objects.nonNull(writerManager)) {
+      writerManager.close();
+    }
 
     final Path loadDirPath = loadDir.toPath();
     if (!Files.exists(loadDirPath)) {

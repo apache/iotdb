@@ -54,11 +54,6 @@ public class TagLogFile implements AutoCloseable {
   private static final int MAX_LENGTH =
       CommonDescriptor.getInstance().getConfig().getTagAttributeTotalSize();
 
-  private static final int MAX_ENTRY_NUM =
-      CommonDescriptor.getInstance().getConfig().getTagAttributeMaxNum();
-  private static final int MAX_ENTRY_Size =
-      CommonDescriptor.getInstance().getConfig().getTagAttributeEntryMaxSize();
-
   private static final int RECORD_FLUSH_INTERVAL =
       IoTDBDescriptor.getInstance().getConfig().getTagAttributeFlushInterval();
   private int unFlushedRecordNum = 0;
@@ -316,12 +311,9 @@ public class TagLogFile implements AutoCloseable {
     return byteBuffer;
   }
 
-  public static int calculateMapSize(Map<String, String> map) throws MetadataException {
+  public static int calculateMapSize(Map<String, String> map) {
     int length = 0;
     if (map != null) {
-      if (map.size() > MAX_ENTRY_NUM) {
-        throw new MetadataException("the emtry num of the map is over the tagAttributeMaxNum");
-      }
       length += 4; // mapSize is 4 byte
       // while mapSize is 0, this for loop will not be executed
       for (Map.Entry<String, String> entry : map.entrySet()) {
@@ -343,10 +335,6 @@ public class TagLogFile implements AutoCloseable {
               value.getBytes()
                   .length; // only value is not null then add value length, while value is null,
           // only store the valueSize marker which is -1 (4 bytes)
-        }
-        if (entryLength > MAX_ENTRY_Size) {
-          throw new MetadataException(
-              "An emtry of the map has a size which is over the tagAttributeMaxSize");
         }
         length += entryLength;
       }

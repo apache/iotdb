@@ -308,14 +308,4 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize) {
     return this;
   }
-
-  @Override
-  public CommonConfig setTagAttributeMaxNum(int tagAttributeMaxNum) {
-    return this;
-  }
-
-  @Override
-  public CommonConfig setTagAttributeEntryMaxSize(int tagAttributeEntryMaxSize) {
-    return this;
-  }
 }

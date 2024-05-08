@@ -438,18 +438,4 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setTagAttributeTotalSize(tagAttributeTotalSize);
     return this;
   }
-
-  @Override
-  public CommonConfig setTagAttributeMaxNum(int tagAttributeMaxNum) {
-    dnConfig.setTagAttributeMaxNum(tagAttributeMaxNum);
-    cnConfig.setTagAttributeMaxNum(tagAttributeMaxNum);
-    return this;
-  }
-
-  @Override
-  public CommonConfig setTagAttributeEntryMaxSize(int tagAttributeEntryMaxSize) {
-    dnConfig.setTagAttributeEntryMaxSize(tagAttributeEntryMaxSize);
-    cnConfig.setTagAttributeEntryMaxSize(tagAttributeEntryMaxSize);
-    return this;
-  }
 }

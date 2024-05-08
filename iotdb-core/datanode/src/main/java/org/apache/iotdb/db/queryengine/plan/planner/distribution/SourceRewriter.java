@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.Horizontal
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -435,6 +436,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       descriptorList = ((AggregationNode) planNode).getAggregationDescriptorList();
     } else if (planNode instanceof SlidingWindowAggregationNode) {
       descriptorList = ((SlidingWindowAggregationNode) planNode).getAggregationDescriptorList();
+    } else if (planNode instanceof RawDataAggregationNode) {
+      descriptorList = ((RawDataAggregationNode) planNode).getAggregationDescriptorList();
     }
     return descriptorList;
   }
@@ -1362,7 +1365,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   // Currently, the method to judge whether the query should use naive query plan is whether
   // AggregationNode is contained in the PlanNode tree of logical plan.
   private boolean shouldUseNaiveAggregation(PlanNode root) {
-    if (root instanceof AggregationNode) {
+    if (root instanceof RawDataAggregationNode) {
       return true;
     }
     for (PlanNode child : root.getChildren()) {
