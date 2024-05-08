@@ -87,10 +87,10 @@ public class PipeEventBatch implements AutoCloseable {
   }
 
   /**
-   * Try offer {@link Event} into cache if the given {@link Event} is not duplicated.
+   * Try offer {@link Event} into batch if the given {@link Event} is not duplicated.
    *
    * @param event the given {@link Event}
-   * @return {@link true} if the batch can be transferred
+   * @return {@code true} if the batch can be transferred
    */
   public synchronized boolean onEvent(final TabletInsertionEvent event)
       throws IOException, WALPipeException {

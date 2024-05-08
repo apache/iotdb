@@ -173,7 +173,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
         transfer(endPointAndBatch.getLeft(), pipeTransferTabletBatchEventHandler);
 
-        tabletBatchBuilder.onSuccess();
+        endPointAndBatch.getRight().onSuccess();
       }
     } else {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {

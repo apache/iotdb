@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeCacheLeaderClientManager;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
@@ -57,7 +56,12 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferBatchReqBuilder.class);
 
   private final boolean useLeaderCache;
+
+  // If the leader cache is enabled, the batch will be divided by the leader endpoint, each endpoint
+  // has a batch.
   private final Map<TEndPoint, PipeEventBatch> endPointToBatch = new HashMap<>();
+  // If the leader cache is disabled (or unable to find the endpoint of event in the leader cache),
+  // the event will be stored in the default batch.
   private final PipeEventBatch defaultBatch;
 
   // limit in delayed time
@@ -86,19 +90,22 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   }
 
   /**
-   * Try offer {@link Event} into cache if the given {@link Event} is not duplicated.
+   * Try offer {@link Event} into the corresponding batch if the given {@link Event} is not
+   * duplicated.
    *
    * @param event the given {@link Event}
-   * @return {@link true} if the batch can be transferred
+   * @return {@link Pair}<{@link TEndPoint}, {@link PipeEventBatch}> not null means this {@link
+   *     PipeEventBatch} can be transferred. the first element is the leader endpoint to transfer to
+   *     (might be null), the second element is the batch to be transferred.
    */
   public synchronized Pair<TEndPoint, PipeEventBatch> onEvent(final TabletInsertionEvent event)
       throws IOException, WALPipeException {
-    if (!useLeaderCache) {
-      return defaultBatch.onEvent(event) ? new Pair<>(null, defaultBatch) : null;
-    }
-
     if (!(event instanceof EnrichedEvent)) {
       return null;
+    }
+
+    if (!useLeaderCache) {
+      return defaultBatch.onEvent(event) ? new Pair<>(null, defaultBatch) : null;
     }
 
     String deviceId = null;
@@ -128,6 +135,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
     return batch.onEvent(event) ? new Pair<>(endPoint, batch) : null;
   }
 
+  /** Get all batches that have at least 1 event. */
   public List<Pair<TEndPoint, PipeEventBatch>> getAllNonEmptyBatches() {
     List<Pair<TEndPoint, PipeEventBatch>> nonEmptyBatches = new ArrayList<>();
     if (!defaultBatch.isEmpty()) {
@@ -142,77 +150,14 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
     return nonEmptyBatches;
   }
 
-  public synchronized void onSuccess() {
-    for (PipeEventBatch batch : endPointToBatch.values()) {
-      batch.onSuccess();
-    }
-    defaultBatch.onSuccess();
-  }
-
-  public synchronized void onSuccess(TEndPoint endPoint) {
-    if (endPoint == null) {
-      defaultBatch.onSuccess();
-    }
-
-    PipeEventBatch batch = endPointToBatch.get(endPoint);
-    if (batch != null) {
-      batch.onSuccess();
-    }
-  }
-
-  public PipeTransferTabletBatchReq toTPipeTransferReq(TEndPoint endPoint) throws IOException {
-    if (endPoint == null) {
-      return defaultBatch.toTPipeTransferReq();
-    }
-
-    PipeEventBatch batch = endPointToBatch.get(endPoint);
-    if (batch == null) {
-      return null;
-    }
-    return batch.toTPipeTransferReq();
-  }
-
   public boolean isEmpty() {
     return defaultBatch.isEmpty()
         && endPointToBatch.values().stream().allMatch(PipeEventBatch::isEmpty);
-  }
-
-  public List<Event> deepCopyEvents(TEndPoint endPoint) {
-    if (endPoint == null) {
-      return defaultBatch.deepCopyEvents();
-    }
-
-    PipeEventBatch batch = endPointToBatch.get(endPoint);
-    if (batch == null) {
-      return new ArrayList<>();
-    }
-    return batch.deepCopyEvents();
-  }
-
-  public List<Long> deepCopyRequestCommitIds(TEndPoint endPoint) {
-    if (endPoint == null) {
-      return defaultBatch.deepCopyRequestCommitIds();
-    }
-
-    PipeEventBatch batch = endPointToBatch.get(endPoint);
-    if (batch == null) {
-      return new ArrayList<>();
-    }
-    return batch.deepCopyRequestCommitIds();
   }
 
   @Override
   public synchronized void close() {
     endPointToBatch.values().forEach(PipeEventBatch::close);
     defaultBatch.close();
-  }
-
-  public void decreaseEventsReferenceCount(final String holderMessage, final boolean shouldReport) {
-    /*
-    for (final Event event : events) {
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).decreaseReferenceCount(holderMessage, shouldReport);
-      }
-    }*/
   }
 }

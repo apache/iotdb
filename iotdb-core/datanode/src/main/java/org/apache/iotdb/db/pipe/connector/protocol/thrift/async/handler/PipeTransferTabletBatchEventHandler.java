@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeEventBatch;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
@@ -65,6 +67,36 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
     client.pipeTransfer(req, this);
   }
 
+  private void updateLeaderCache(TSStatus status) {
+    // If there is no exception, there should be 2 sub-statuses, one for InsertRowsStatement and one
+    // for InsertMultiTabletsStatement (see IoTDBDataNodeReceiver#handleTransferTabletBatch).
+    if (status.getSubStatusSize() != 2) {
+      return;
+    }
+
+    for (TSStatus subStatus : status.getSubStatus()) {
+      if (subStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        continue;
+      }
+
+      for (TSStatus innerSubStatus : subStatus.getSubStatus()) {
+        if (innerSubStatus.isSetRedirectNode()) {
+          try {
+            new PartialPath(innerSubStatus.getMessage());
+            // The message field should be a device path.
+            connector.updateLeaderCache(
+                innerSubStatus.getMessage(), innerSubStatus.getRedirectNode());
+          } catch (IllegalPathException e) {
+            LOGGER.warn(
+                "Illegal device path when updating leader cache: {}",
+                innerSubStatus.getMessage(),
+                e);
+          }
+        }
+      }
+    }
+  }
+
   @Override
   public void onComplete(final TPipeTransferResp response) {
     // Just in case
@@ -88,6 +120,8 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
               .decreaseReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
         }
       }
+
+      updateLeaderCache(status);
     } catch (final Exception e) {
       onError(e);
     }

@@ -353,6 +353,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return configReceiverId.get();
   }
 
+  /**
+   * For {@link InsertRowsStatement}, the returned {@link TSStatus} will use sub-status to record
+   * the endpoint for redirection. Each sub-status records the redirection endpoint for one device
+   * path, and the order is the same as the order of the device paths in the statement. However,
+   * this order is not guaranteed to be the same as in the request. So for each sub-status which
+   * needs to redirect, we record the device path using the message field.
+   */
   private TSStatus executeStatementAndAddRedirectInfo(final InsertBaseStatement statement) {
     TSStatus result = executeStatementAndClassifyExceptions(statement);
     if (result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
