@@ -322,7 +322,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final String pipeName = pipeMeta.getStaticMeta().getPipeName();
       final List<IoTDBDataRegionExtractor> extractors =
           taskId2ExtractorMap.values().stream()
-              .filter(e -> e.getPipeName().equals(pipeName))
+              .filter(e -> e.getPipeName().equals(pipeName) && e.shouldExtractInsertion())
               .collect(Collectors.toList());
       if (extractors.isEmpty()
           || !extractors.get(0).isStreamMode()
