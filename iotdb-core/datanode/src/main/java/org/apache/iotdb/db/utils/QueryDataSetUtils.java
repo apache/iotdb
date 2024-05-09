@@ -1415,8 +1415,9 @@ public class QueryDataSetUtils {
         return false;
       }
       AvgLoadKey that = (AvgLoadKey) o;
-      return Objects.equals(fleet, that.fleet) && Objects.equals(model, that.model) &&
-          Objects.equals(loadCapacity, that.loadCapacity);
+      return Objects.equals(fleet, that.fleet)
+          && Objects.equals(model, that.model)
+          && Objects.equals(loadCapacity, that.loadCapacity);
     }
 
     @Override

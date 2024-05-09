@@ -533,9 +533,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     public final Double loadCapacity;
 
-
-    public DeviceAttributes(
-        Double nominalFuelConsumption, Double loadCapacity) {
+    public DeviceAttributes(Double nominalFuelConsumption, Double loadCapacity) {
       this.nominalFuelConsumption = nominalFuelConsumption;
       this.loadCapacity = loadCapacity;
     }
