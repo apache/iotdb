@@ -61,6 +61,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
@@ -306,7 +307,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   private static void adjustTimeoutIfNecessary(Throwable e) {
     do {
-      if (e instanceof SocketTimeoutException) {
+      if (e instanceof SocketTimeoutException || e instanceof TimeoutException) {
         int newConnectionTimeout;
         try {
           newConnectionTimeout =

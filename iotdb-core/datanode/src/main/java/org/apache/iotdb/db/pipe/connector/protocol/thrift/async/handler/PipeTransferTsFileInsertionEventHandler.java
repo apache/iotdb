@@ -228,7 +228,9 @@ public class PipeTransferTsFileInsertionEventHandler
         exception);
 
     try {
-      clientManager.adjustTimeoutIfNecessary(exception);
+      if (Objects.nonNull(clientManager)) {
+        clientManager.adjustTimeoutIfNecessary(exception);
+      }
     } catch (Exception e) {
       LOGGER.warn("Failed to adjust timeout when failed to transfer file.", e);
     }

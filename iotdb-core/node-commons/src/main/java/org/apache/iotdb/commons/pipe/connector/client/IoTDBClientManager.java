@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.SocketTimeoutException;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class IoTDBClientManager {
@@ -57,7 +58,7 @@ public abstract class IoTDBClientManager {
 
   public void adjustTimeoutIfNecessary(Throwable e) {
     do {
-      if (e instanceof SocketTimeoutException) {
+      if (e instanceof SocketTimeoutException || e instanceof TimeoutException) {
         int newConnectionTimeout;
         try {
           newConnectionTimeout =
