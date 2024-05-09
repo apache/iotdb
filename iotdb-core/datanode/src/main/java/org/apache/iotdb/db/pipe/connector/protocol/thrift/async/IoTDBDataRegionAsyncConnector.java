@@ -161,6 +161,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       return;
     }
 
+    transferWithoutCheck(tabletInsertionEvent);
+  }
+
+  private void transferWithoutCheck(final TabletInsertionEvent tabletInsertionEvent)
+      throws Exception {
     if (isTabletBatchModeEnabled) {
       if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
         final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler =
@@ -265,6 +270,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       return;
     }
 
+    transferWithoutCheck(tsFileInsertionEvent);
+  }
+
+  private void transferWithoutCheck(final TsFileInsertionEvent tsFileInsertionEvent)
+      throws Exception {
     final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     // We increase the reference count for this event to determine if the event may be released.
@@ -275,15 +285,23 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    // Just in case. To avoid the case that exception occurred when constructing the handler.
-    if (!pipeTsFileInsertionEvent.getTsFile().exists()) {
-      throw new FileNotFoundException(pipeTsFileInsertionEvent.getTsFile().getAbsolutePath());
+    // We assume that no exceptions will be thrown after reference count is increased.
+    try {
+      // Just in case. To avoid the case that exception occurred when constructing the handler.
+      if (!pipeTsFileInsertionEvent.getTsFile().exists()) {
+        throw new FileNotFoundException(pipeTsFileInsertionEvent.getTsFile().getAbsolutePath());
+      }
+
+      final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
+          new PipeTransferTsFileInsertionEventHandler(pipeTsFileInsertionEvent, this);
+
+      transfer(pipeTransferTsFileInsertionEventHandler);
+    } catch (Exception e) {
+      // Just in case. To avoid the case that exception occurred when constructing the handler.
+      pipeTsFileInsertionEvent.decreaseReferenceCount(
+          IoTDBDataRegionAsyncConnector.class.getName(), false);
+      throw e;
     }
-
-    final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
-        new PipeTransferTsFileInsertionEventHandler(pipeTsFileInsertionEvent, this);
-
-    transfer(pipeTransferTsFileInsertionEventHandler);
   }
 
   private void transfer(
@@ -350,7 +368,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       } else if (peekedEvent instanceof PipeRawTabletInsertionEvent) {
         retryConnector.transfer((PipeRawTabletInsertionEvent) peekedEvent);
       } else if (peekedEvent instanceof PipeTsFileInsertionEvent) {
-        retryConnector.transfer((PipeTsFileInsertionEvent) peekedEvent);
+        // Using the async connector to transfer the event for performance.
+        transferWithoutCheck((PipeTsFileInsertionEvent) peekedEvent);
       } else {
         LOGGER.warn(
             "IoTDBThriftAsyncConnector does not support transfer generic event: {}.", peekedEvent);

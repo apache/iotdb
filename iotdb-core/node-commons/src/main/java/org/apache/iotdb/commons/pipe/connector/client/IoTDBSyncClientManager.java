@@ -193,7 +193,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
             resp.getStatus());
       } else {
         clientAndStatus.setRight(true);
-        client.setTimeout(connectionTimeout);
+        client.setTimeout(CONNECTION_TIMEOUT_MS.get());
         LOGGER.info(
             "Handshake success. Target server ip: {}, port: {}",
             client.getIpAddress(),
