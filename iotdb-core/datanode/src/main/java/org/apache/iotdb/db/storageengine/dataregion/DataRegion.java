@@ -1565,6 +1565,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("syncDeleteDataFiles");
     try {
       forceCloseAllWorkingTsFileProcessors();
+      waitClosingTsFileProcessorFinished();
       // normally, mergingModification is just need to be closed by after a merge task is finished.
       // we close it here just for IT test.
       closeAllResources();
@@ -1586,6 +1587,12 @@ public class DataRegion implements IDataRegionForQuery {
       lastFlushTimeMap.clearGlobalFlushedTime();
       TimePartitionManager.getInstance()
           .removeTimePartitionInfo(new DataRegionId(Integer.parseInt(dataRegionId)));
+    } catch (InterruptedException e) {
+      logger.error(
+          "CloseFileNodeCondition error occurs while waiting for closing the storage " + "group {}",
+          databaseName + "-" + dataRegionId,
+          e);
+      Thread.currentThread().interrupt();
     } finally {
       writeUnlock();
     }
@@ -1715,23 +1722,7 @@ public class DataRegion implements IDataRegionForQuery {
   public void syncCloseAllWorkingTsFileProcessors() {
     try {
       List<Future<?>> tsFileProcessorsClosingFutures = asyncCloseAllWorkingTsFileProcessors();
-      long startTime = System.currentTimeMillis();
-      while (!closingSequenceTsFileProcessor.isEmpty()
-          || !closingUnSequenceTsFileProcessor.isEmpty()) {
-        synchronized (closeStorageGroupCondition) {
-          // double check to avoid unnecessary waiting
-          if (!closingSequenceTsFileProcessor.isEmpty()
-              || !closingUnSequenceTsFileProcessor.isEmpty()) {
-            closeStorageGroupCondition.wait(60_000);
-          }
-        }
-        if (System.currentTimeMillis() - startTime > 60_000) {
-          logger.warn(
-              "{} has spent {}s to wait for closing all TsFiles.",
-              databaseName + "-" + this.dataRegionId,
-              (System.currentTimeMillis() - startTime) / 1000);
-        }
-      }
+      waitClosingTsFileProcessorFinished();
       for (Future<?> f : tsFileProcessorsClosingFutures) {
         if (f != null) {
           f.get();
@@ -1743,6 +1734,26 @@ public class DataRegion implements IDataRegionForQuery {
           databaseName + "-" + dataRegionId,
           e);
       Thread.currentThread().interrupt();
+    }
+  }
+
+  private void waitClosingTsFileProcessorFinished() throws InterruptedException {
+    long startTime = System.currentTimeMillis();
+    while (!closingSequenceTsFileProcessor.isEmpty()
+        || !closingUnSequenceTsFileProcessor.isEmpty()) {
+      synchronized (closeStorageGroupCondition) {
+        // double check to avoid unnecessary waiting
+        if (!closingSequenceTsFileProcessor.isEmpty()
+            || !closingUnSequenceTsFileProcessor.isEmpty()) {
+          closeStorageGroupCondition.wait(60_000);
+        }
+      }
+      if (System.currentTimeMillis() - startTime > 60_000) {
+        logger.warn(
+            "{} has spent {}s to wait for closing all TsFiles.",
+            databaseName + "-" + this.dataRegionId,
+            (System.currentTimeMillis() - startTime) / 1000);
+      }
     }
   }
 
