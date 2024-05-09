@@ -27,6 +27,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
+import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
@@ -38,6 +39,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
@@ -229,11 +231,11 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean isHistoricalTsFileEventCountExceededLimit() {
-    return PipeExtractorMetrics.getInstance()
-            .getExtractorMap()
-            .get(getTaskID())
-            .getHistoricalTsFileInsertionEventCount()
-        >= PipeConfig.getInstance().getPipeMaxAllowedHistoricalTsFilePerDataRegion();
+    final IoTDBDataRegionExtractor extractor =
+        PipeExtractorMetrics.getInstance().getExtractorMap().get(getTaskID());
+    return Objects.nonNull(extractor)
+        && extractor.getHistoricalTsFileInsertionEventCount()
+            >= PipeConfig.getInstance().getPipeMaxAllowedHistoricalTsFilePerDataRegion();
   }
 
   private boolean isRealtimeTsFileEventCountExceededLimit() {
