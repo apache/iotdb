@@ -404,14 +404,14 @@ public abstract class TSEncodingBuilder {
 
   /** for all TSDataType. */
   public static class Period extends TSEncodingBuilder {
-    private int maxStringLength = TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
+    // private int maxStringLength =
+    // TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
 
     @Override
     public Encoder getEncoder(TSDataType type) {
       switch (type) {
         case INT32:
-          // Spade TODO: replace plain with period parameter
-          return new PeriodEncoder(type, maxStringLength);
+          return new PeriodEncoder();
         default:
           throw new UnSupportedDataTypeException("PERIOD doesn't support data type: " + type);
       }
@@ -420,17 +420,20 @@ public abstract class TSEncodingBuilder {
     @Override
     public void initFromProps(Map<String, String> props) {
       // set max error from initialized map or default value if not set
-      if (props == null || !props.containsKey(Encoder.MAX_STRING_LENGTH)) {
-        maxStringLength = TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
-      } else {
-        maxStringLength = Integer.valueOf(props.get(Encoder.MAX_STRING_LENGTH));
-        if (maxStringLength < 0) {
-          maxStringLength = TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
-          logger.warn(
-              "cannot set max string length to negative value, replaced with default value:{}",
-              maxStringLength);
-        }
-      }
+      // if (props == null || !props.containsKey(Encoder.MAX_STRING_LENGTH)) {
+      // maxStringLength =
+      // TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
+      // } else {
+      // maxStringLength = Integer.valueOf(props.get(Encoder.MAX_STRING_LENGTH));
+      // if (maxStringLength < 0) {
+      // maxStringLength =
+      // TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
+      // logger.warn(
+      // "cannot set max string length to negative value, replaced with default
+      // value:{}",
+      // maxStringLength);
+      // }
+      // }
     }
   }
 }

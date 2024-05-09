@@ -19,12 +19,8 @@
 
 package org.apache.iotdb.tsfile.encoding.encoder;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 import org.apache.commons.math3.complex.Complex;
 import org.apache.commons.math3.transform.DftNormalization;
@@ -35,8 +31,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class PeriodEncoder extends Encoder {
 
@@ -76,6 +73,23 @@ public class PeriodEncoder extends Encoder {
   private static final FastFourierTransformer transformer =
       new FastFourierTransformer(DftNormalization.STANDARD);
 
+  private static Complex[] fft(double[] input) {
+    Complex[] transformed = transformer.transform(input, TransformType.FORWARD);
+    return transformed;
+  }
+
+  private static double[] ifft(Complex[] input) {
+
+    // 进行逆FFT，并除以长度进行归一化
+    Complex[] inverse = transformer.transform(input, TransformType.INVERSE);
+    double[] result = new double[input.length];
+    for (int i = 0; i < input.length; i++) {
+      result[i] = inverse[i].getReal() / input.length;
+    }
+
+    return result;
+  }
+
   private static Complex[] rfft(double[] input) {
     Complex[] transformed = transformer.transform(input, TransformType.FORWARD);
 
@@ -112,6 +126,108 @@ public class PeriodEncoder extends Encoder {
     return result;
   }
 
+  // 计算多项式乘法
+  private static double[] polyMul(double[] p1, double[] p2) {
+    int n = (int) Math.pow(2, Math.ceil(Math.log(p1.length + p2.length - 1) / Math.log(2)));
+    p1 = padArray(p1, n);
+    p2 = padArray(p2, n);
+    Complex[] p1Transformed = fft(p1);
+    Complex[] p2Transformed = fft(p2);
+    Complex[] resultTransformed = new Complex[n];
+    for (int i = 0; i < n; i++) {
+      resultTransformed[i] = p1Transformed[i].multiply(p2Transformed[i]);
+    }
+    return ifft(resultTransformed);
+  }
+
+  // 数组填充
+  private static double[] padArray(double[] array, int length) {
+    double[] padded = new double[length];
+    System.arraycopy(array, 0, padded, 0, array.length);
+    return padded;
+  }
+
+  // 归一化
+  private static double[] normalize(double[] x) {
+    double mean = mean(x);
+    double std = std(x);
+    double[] normalized = new double[x.length];
+    for (int i = 0; i < x.length; i++) {
+      normalized[i] = (x[i] - mean) / std;
+    }
+    return normalized;
+  }
+
+  // 计算均值
+  private static double mean(double[] x) {
+    double sum = 0;
+    for (double v : x) {
+      sum += v;
+    }
+    return sum / x.length;
+  }
+
+  // 计算标准差
+  private static double std(double[] x) {
+    double mean = mean(x);
+    double sum = 0;
+    for (double v : x) {
+      sum += Math.pow(v - mean, 2);
+    }
+    return Math.sqrt(sum / x.length);
+  }
+
+  // 用fft加速计算自相关函数
+  private static double[] selfCorrFast(double[] x) {
+    x = normalize(x);
+    int N = x.length;
+    double[] xSelf = polyMul(x, reverseArray(x));
+    double[] result = new double[(int) (N * (2.0 / 3.0))];
+    for (int i = 0; i < result.length; i++) {
+      result[i] = xSelf[N - 1 - i] / (N - i);
+    }
+    return result;
+  }
+
+  // 数组反转
+  private static double[] reverseArray(double[] x) {
+    double[] reversed = new double[x.length];
+    for (int i = 0; i < x.length; i++) {
+      reversed[i] = x[x.length - 1 - i];
+    }
+    return reversed;
+  }
+
+  // 给出数组中是邻近k个内最大的数的下标数组
+  private static int[] pinkLocalMax(double[] data) {
+    final int k = 8; // 直接引入常数
+    int[] result = new int[data.length];
+    int count = 0;
+    for (int i = k; i < data.length - k; i++) {
+      double maxVal = data[i];
+      for (int j = Math.max(0, i - k); j < Math.min(data.length, i + k); j++) {
+        maxVal = Math.max(maxVal, data[j]);
+      }
+      if (maxVal == data[i]) {
+        result[count++] = i;
+      }
+    }
+    return Arrays.copyOf(result, count);
+  }
+
+  // 借助fft求出周期长度
+  private static int getPeriod(double[] data) {
+    final double p = 0.5; // 直接引入常数
+    double[] dataCorr = selfCorrFast(data);
+    int[] points = pinkLocalMax(dataCorr);
+    for (int point : points) {
+      if (point > 0 && dataCorr[point] > p) {
+        return point;
+      }
+    }
+    return 0;
+  }
+
   static class ByteOutToys {
     private final ByteArrayOutputStream outputStream;
 
@@ -131,7 +247,7 @@ public class PeriodEncoder extends Encoder {
   private static final int GROUP_SIZE = 8;
 
   private static int bitLength(int value) {
-    return Integer.toBinaryString(value).length();
+    return Integer.SIZE - Integer.numberOfLeadingZeros(value);
   }
 
   private static int[] getCnt(int[] data) {
@@ -340,87 +456,125 @@ public class PeriodEncoder extends Encoder {
     return beta;
   }
 
-  public PeriodEncoder(TSDataType dataType, int maxStringLength) {
-    super(TSEncoding.PERIOD);
-    this.dataType = dataType;
-    this.maxStringLength = maxStringLength;
-  }
-
-  @Override
-  public void encode(boolean value, ByteArrayOutputStream out) {
-    if (value) {
-      out.write(1);
+  private static void periodEncode(int[] data, ByteArrayOutputStream out) throws IOException {
+    ByteOutToys stream = new ByteOutToys(out);
+    double[] dataDouble = new double[data.length];
+    for (int i = 0; i < data.length; i++) dataDouble[i] = (double) data[i];
+    int p = getPeriod(dataDouble);
+    if (p == 0) {
+      stream.encode(p, bitLength(MAX_SIZE));
+      separateStorage(stream, data);
     } else {
-      out.write(0);
+      int k = (data.length + p - 1) / p;
+      int[] dataFull;
+      if (data.length % p == 0) {
+        dataFull = data;
+      } else {
+        dataFull = new int[p * k];
+        for (int i = 0; i < data.length; i++) dataFull[i] = data[i];
+        for (int i = data.length; i < p * k; i++) dataFull[i] = data[i - p];
+      }
+      double[] dataFullDouble = new double[dataFull.length];
+      for (int i = 0; i < dataFull.length; i++) dataFullDouble[i] = (double) dataFull[i];
+      Complex[] datafPre = rfft(dataFullDouble);
+      Complex[] dataf = new Complex[(datafPre.length + k - 1) / k];
+      for (int i = 0; i < dataf.length; i++) dataf[i] = datafPre[i * k];
+      int result = encodeWithBetaEstimate(data, dataf, p, k, 0);
+      int beta = getBeta(data, dataf, p, k);
+      stream.encode(p, bitLength(MAX_SIZE));
+      stream.encode(beta >= 0 ? 0 : 1, 1);
+      stream.encode(Math.abs(beta), bitLength(bitLength(MAX_VALUE)));
+      encodeWithBeta(stream, data, dataf, p, k, beta);
     }
+    return;
   }
 
-  @Override
-  public void encode(short value, ByteArrayOutputStream out) {
-    out.write((value >> 8) & 0xFF);
-    out.write(value & 0xFF);
+  List<Integer> data;
+
+  public PeriodEncoder() {
+    super(TSEncoding.PERIOD);
+    data = new ArrayList<>();
+    // this.dataType = dataType;
+    // this.maxStringLength = maxStringLength;
   }
+
+  // @Override
+  // public void encode(boolean value, ByteArrayOutputStream out) {
+  // if (value) {
+  // out.write(1);
+  // } else {
+  // out.write(0);
+  // }
+  // }
+
+  // @Override
+  // public void encode(short value, ByteArrayOutputStream out) {
+  // out.write((value >> 8) & 0xFF);
+  // out.write(value & 0xFF);
+  // }
 
   @Override
   public void encode(int value, ByteArrayOutputStream out) {
-    ReadWriteForEncodingUtils.writeVarInt(value, out);
+    data.add(value);
+    // ReadWriteForEncodingUtils.writeVarInt(value, out);
   }
 
-  @Override
-  public void encode(long value, ByteArrayOutputStream out) {
-    for (int i = 7; i >= 0; i--) {
-      out.write((byte) (((value) >> (i * 8)) & 0xFF));
-    }
-  }
+  // @Override
+  // public void encode(long value, ByteArrayOutputStream out) {
+  // for (int i = 7; i >= 0; i--) {
+  // out.write((byte) (((value) >> (i * 8)) & 0xFF));
+  // }
+  // }
+
+  // @Override
+  // public void encode(float value, ByteArrayOutputStream out) {
+  // int floatInt = Float.floatToIntBits(value);
+  // out.write((floatInt >> 24) & 0xFF);
+  // out.write((floatInt >> 16) & 0xFF);
+  // out.write((floatInt >> 8) & 0xFF);
+  // out.write(floatInt & 0xFF);
+  // }
+
+  // @Override
+  // public void encode(double value, ByteArrayOutputStream out) {
+  // encode(Double.doubleToLongBits(value), out);
+  // }
+
+  // @Override
+  // public void encode(Binary value, ByteArrayOutputStream out) {
+  // try {
+  // // write the length of the bytes
+  // encode(value.getLength(), out);
+  // // write value
+  // out.write(value.getValues());
+  // } catch (IOException e) {
+  // logger.error(
+  // "tsfile-encoding PlainEncoder: error occurs when encode Binary value {}",
+  // value, e);
+  // }
+  // }
 
   @Override
-  public void encode(float value, ByteArrayOutputStream out) {
-    int floatInt = Float.floatToIntBits(value);
-    out.write((floatInt >> 24) & 0xFF);
-    out.write((floatInt >> 16) & 0xFF);
-    out.write((floatInt >> 8) & 0xFF);
-    out.write(floatInt & 0xFF);
-  }
-
-  @Override
-  public void encode(double value, ByteArrayOutputStream out) {
-    encode(Double.doubleToLongBits(value), out);
-  }
-
-  @Override
-  public void encode(Binary value, ByteArrayOutputStream out) {
-    try {
-      // write the length of the bytes
-      encode(value.getLength(), out);
-      // write value
-      out.write(value.getValues());
-    } catch (IOException e) {
-      logger.error(
-          "tsfile-encoding PlainEncoder: error occurs when encode Binary value {}", value, e);
-    }
-  }
-
-  @Override
-  public void flush(ByteArrayOutputStream out) {
-    // This is an empty function.
+  public void flush(ByteArrayOutputStream out) throws IOException {
+    periodEncode(data.stream().mapToInt(i -> i).toArray(), out);
   }
 
   @Override
   public int getOneItemMaxSize() {
     switch (dataType) {
-      case BOOLEAN:
-        return 1;
+        // case BOOLEAN:
+        // return 1;
       case INT32:
         return 4;
-      case INT64:
-        return 8;
-      case FLOAT:
-        return 4;
-      case DOUBLE:
-        return 8;
-      case TEXT:
-        // refer to encode(Binary,ByteArrayOutputStream)
-        return 4 + TSFileConfig.BYTE_SIZE_PER_CHAR * maxStringLength;
+        // case INT64:
+        // return 8;
+        // case FLOAT:
+        // return 4;
+        // case DOUBLE:
+        // return 8;
+        // case TEXT:
+        // // refer to encode(Binary,ByteArrayOutputStream)
+        // return 4 + TSFileConfig.BYTE_SIZE_PER_CHAR * maxStringLength;
       default:
         throw new UnsupportedOperationException(dataType.toString());
     }
@@ -431,9 +585,10 @@ public class PeriodEncoder extends Encoder {
     return 0;
   }
 
-  @Override
-  public void encode(BigDecimal value, ByteArrayOutputStream out) {
-    throw new TsFileEncodingException(
-        "tsfile-encoding PlainEncoder: current version does not support BigDecimal value encoding");
-  }
+  // @Override
+  // public void encode(BigDecimal value, ByteArrayOutputStream out) {
+  // throw new TsFileEncodingException(
+  // "tsfile-encoding PlainEncoder: current version does not support BigDecimal
+  // value encoding");
+  // }
 }
