@@ -103,7 +103,7 @@ public class PipeTransferTsFileInsertionEventHandler
     this.client = client;
 
     client.setShouldReturnSelf(false);
-    client.setTimeout(clientManager.getConnectionTimeout());
+    client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
     final int readLength = reader.read(readBuffer);
 
