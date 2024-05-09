@@ -26,36 +26,28 @@ import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
-import org.apache.tsfile.read.common.TimeRange;
-import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.List;
 
 /**
  * It will receive a list of offset and execute sequential scan of TsFile for chunkData.
  */
 public class DiskChunkHandleImpl implements IChunkHandle {
 
-    private ChunkHeader currentChunkHeader;
-    private PageHeader currentPageHeader;
-    private ByteBuffer currentChunkDataBuffer;
-    private final List<TimeRange> deletionList;
+    protected ChunkHeader currentChunkHeader;
+    protected PageHeader currentPageHeader;
+    protected ByteBuffer currentChunkDataBuffer;
 
     // Page will reuse chunkStatistics if there is only one page in chunk
-    private final Statistics<? extends Serializable> chunkStatistic;
-    protected final Filter queryFilter;
+    protected final Statistics<? extends Serializable> chunkStatistic;
 
     public DiskChunkHandleImpl(String filePath, long offset,
-                               Statistics<? extends Serializable> chunkStatistics,
-                               List<TimeRange> deletionList, Filter filter) throws IOException {
-      this.deletionList = deletionList;
+                               Statistics<? extends Serializable> chunkStatistics) throws IOException {
       this.chunkStatistic = chunkStatistics;
-      this.queryFilter = filter;
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
       Chunk chunk = reader.readMemChunk(offset);
       this.currentChunkDataBuffer = chunk.getData();
@@ -66,36 +58,21 @@ public class DiskChunkHandleImpl implements IChunkHandle {
     // If so, deserialize the page header
     @Override
     public boolean hasNextPage() throws IOException {
-        while(currentChunkDataBuffer.hasRemaining()){
-            // If there is only one page, page statistics is not stored in the chunk header, which is the same as chunkStatistics
-            if ((byte)(this.currentChunkHeader.getChunkType() & 63) == 5) {
-                currentPageHeader = PageHeader.deserializeFrom(this.currentChunkDataBuffer, chunkStatistic);
-            } else {
-                currentPageHeader = PageHeader.deserializeFrom(this.currentChunkDataBuffer, this.currentChunkHeader.getDataType());
-            }
-
-            if(!isPageSatisfy()){
-                skipCurrentPage();
-            }else {
-                return true;
-            }
+        if(!currentChunkDataBuffer.hasRemaining()){
+            return false;
+        }
+        // If there is only one page, page statistics is not stored in the chunk header, which is the same as chunkStatistics
+        if ((byte)(this.currentChunkHeader.getChunkType() & 63) == 5) {
+            currentPageHeader = PageHeader.deserializeFrom(this.currentChunkDataBuffer, this.chunkStatistic);
+        } else {
+            currentPageHeader = PageHeader.deserializeFrom(this.currentChunkDataBuffer, this.currentChunkHeader.getDataType());
         }
         return false;
     }
 
-    private void skipCurrentPage(){
+    @Override
+    public void skipCurrentPage(){
         currentChunkDataBuffer.position(currentChunkDataBuffer.position() + currentPageHeader.getCompressedSize());
-    }
-
-    private boolean isPageSatisfy(){
-        long startTime = currentPageHeader.getStartTime();
-        long endTime = currentPageHeader.getEndTime();
-        for(TimeRange range:deletionList){
-            if(range.contains(startTime, endTime)){
-                return false;
-            }
-        }
-        return queryFilter.satisfyStartEndTime(startTime, endTime);
     }
 
     @Override

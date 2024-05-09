@@ -33,6 +33,11 @@ public interface IChunkHandle {
     boolean hasNextPage() throws IOException;
 
     /**
+     * Skip the current page
+     */
+    void skipCurrentPage();
+
+    /**
      * Get the statistics time of page in Chunk.
      * @return start time and end time of page.
      */

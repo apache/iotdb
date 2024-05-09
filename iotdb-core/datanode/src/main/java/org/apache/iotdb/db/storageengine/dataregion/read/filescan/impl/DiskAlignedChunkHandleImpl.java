@@ -19,15 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
-import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
-import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
-import org.apache.tsfile.file.header.ChunkHeader;
-import org.apache.tsfile.file.header.PageHeader;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.SharedTimeDataBuffer;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
-import org.apache.tsfile.read.TsFileSequenceReader;
-import org.apache.tsfile.read.common.Chunk;
-import org.apache.tsfile.read.common.TimeRange;
-import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -35,68 +28,17 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.List;
 
-public class DiskAlignedChunkHandleImpl implements IChunkHandle {
+public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
     private static final int MASK = 0x80;
-    private ChunkHeader currentChunkHeader;
-    private PageHeader currentPageHeader;
-    private ByteBuffer currentChunkDataBuffer;
-    private final List<TimeRange> deletionList;
 
-    // Page will reuse chunkStatistics if there is only one page in chunk
-    private final Statistics<? extends Serializable> chunkStatistic;
-    protected final Filter queryFilter;
-    private final long[] timeData;
+    private final SharedTimeDataBuffer sharedTimeDataBuffer;
+    private int pageIndex = 0;
 
     public DiskAlignedChunkHandleImpl(String filePath, long offset,Statistics<? extends Serializable> chunkStatistic,
-                                      List<TimeRange> deletionList, Filter queryFilter, long[] time) throws IOException {
-        this.deletionList = deletionList;
-        this.chunkStatistic = chunkStatistic;
-        this.queryFilter = queryFilter;
-        TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
-        Chunk chunk = reader.readMemChunk(offset);
-        this.currentChunkDataBuffer = chunk.getData();
-        this.currentChunkHeader = chunk.getHeader();
-        this.timeData = time;
-    }
-
-    @Override
-    public boolean hasNextPage() throws IOException {
-        while(currentChunkDataBuffer.hasRemaining()){
-            // If there is only one page, page statistics is not stored in the chunk header, which is the same as chunkStatistics
-            if ((byte)(this.currentChunkHeader.getChunkType() & 63) == 5) {
-                currentPageHeader = PageHeader.deserializeFrom(this.currentChunkDataBuffer, chunkStatistic);
-            } else {
-                currentPageHeader = PageHeader.deserializeFrom(this.currentChunkDataBuffer, this.currentChunkHeader.getDataType());
-            }
-            if(!isPageSatisfy()){
-                skipCurrentPage();
-            }else {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void skipCurrentPage(){
-        currentChunkDataBuffer.position(currentChunkDataBuffer.position() + currentPageHeader.getCompressedSize());
-    }
-
-    private boolean isPageSatisfy(){
-        long startTime = currentPageHeader.getStartTime();
-        long endTime = currentPageHeader.getEndTime();
-        for(TimeRange range:deletionList){
-            if(range.contains(startTime, endTime)){
-                return false;
-            }
-        }
-        return queryFilter.satisfyStartEndTime(startTime, endTime);
-    }
-
-    @Override
-    public long[] getPageStatisticsTime() {
-        return new long[]{currentPageHeader.getStartTime(), currentPageHeader.getEndTime()};
+                                      SharedTimeDataBuffer sharedTimeDataBuffer) throws IOException {
+        super(filePath, offset, chunkStatistic);
+        this.sharedTimeDataBuffer = sharedTimeDataBuffer;
     }
 
     @Override
@@ -106,28 +48,21 @@ public class DiskAlignedChunkHandleImpl implements IChunkHandle {
         byte[] bitmap = new byte[(size+7)/8];
         currentPageDataBuffer.get(bitmap);
 
+        Long[] timeData = sharedTimeDataBuffer.getPageData(pageIndex);
+        if(timeData.length != size){
+            throw new UnsupportedOperationException("Time data size not match");
+        }
+
         ArrayList<Long> validTimeList = new ArrayList<>();
-        for(int i = 0; i<timeData.length; i++){
+        for(int i = 0; i<size; i++){
             if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
                 continue;
             }
             long timestamp = timeData[i];
-            if(!isDeleted(timestamp)){
-                validTimeList.add(timestamp);
-            }
+            validTimeList.add(timestamp);
         }
 
-        long[] res = new long[validTimeList.size()];
-        for(int i = 0; i<validTimeList.size(); i++){
-            res[i] = validTimeList.get(i);
-        }
-        return res;
-    }
-
-    private boolean isDeleted(long timestamp){
-        for(TimeRange timeRange : deletionList){
-            if(timeRange.contains(timestamp)) return true;
-        }
-        return false;
+        pageIndex++;
+        return validTimeList.stream().mapToLong(Long::longValue).toArray();
     }
 }
