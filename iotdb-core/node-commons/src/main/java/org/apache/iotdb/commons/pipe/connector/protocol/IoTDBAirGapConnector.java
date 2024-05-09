@@ -188,7 +188,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     } else {
       supportModsIfIsDataNodeReceiver = true;
     }
-    socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
+    socket.setSoTimeout(PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
     LOGGER.info("Handshake success. Socket: {}", socket);
   }
 
