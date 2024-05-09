@@ -71,7 +71,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileDispatcherImpl.class);
 
   private static final int MAX_CONNECTION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 1 day
-  private static final AtomicInteger CONNECTION_TIMEOUT_IN_MS =
+  private static final int FIRST_ADJUSTMENT_TIMEOUT_MS = 6 * 60 * 60 * 1000; // 6 hours
+  private static final AtomicInteger CONNECTION_TIMEOUT_MS =
       new AtomicInteger(IoTDBDescriptor.getInstance().getConfig().getConnectionTimeoutInMS());
 
   private String uuid;
@@ -195,7 +196,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       throws FragmentInstanceDispatchException {
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {
-      client.setTimeout(CONNECTION_TIMEOUT_IN_MS.get());
+      client.setTimeout(CONNECTION_TIMEOUT_MS.get());
 
       final TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
       if (!loadResp.isAccepted()) {
@@ -279,7 +280,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       throws FragmentInstanceDispatchException {
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {
-      client.setTimeout(CONNECTION_TIMEOUT_IN_MS.get());
+      client.setTimeout(CONNECTION_TIMEOUT_MS.get());
 
       final TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
       if (!loadResp.isAccepted()) {
@@ -312,13 +313,16 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         try {
           newConnectionTimeout =
               Math.min(
-                  Math.toIntExact(CONNECTION_TIMEOUT_IN_MS.get() * 2L), MAX_CONNECTION_TIMEOUT_MS);
+                  Math.max(
+                      FIRST_ADJUSTMENT_TIMEOUT_MS,
+                      Math.toIntExact(CONNECTION_TIMEOUT_MS.get() * 2L)),
+                  MAX_CONNECTION_TIMEOUT_MS);
         } catch (ArithmeticException arithmeticException) {
           newConnectionTimeout = MAX_CONNECTION_TIMEOUT_MS;
         }
 
-        if (newConnectionTimeout != CONNECTION_TIMEOUT_IN_MS.get()) {
-          CONNECTION_TIMEOUT_IN_MS.set(newConnectionTimeout);
+        if (newConnectionTimeout != CONNECTION_TIMEOUT_MS.get()) {
+          CONNECTION_TIMEOUT_MS.set(newConnectionTimeout);
           LOGGER.info(
               "Load remote procedure call connection timeout is adjusted to {} ms ({} mins)",
               newConnectionTimeout,

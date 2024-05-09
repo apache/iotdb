@@ -44,6 +44,7 @@ public abstract class IoTDBClientManager {
   protected boolean supportModsIfIsDataNodeReceiver = true;
 
   private static final int MAX_CONNECTION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 1 day
+  private static final int FIRST_ADJUSTMENT_TIMEOUT_MS = 6 * 60 * 60 * 1000; // 6 hours
   protected static final AtomicInteger CONNECTION_TIMEOUT_MS =
       new AtomicInteger(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
 
@@ -63,7 +64,10 @@ public abstract class IoTDBClientManager {
         try {
           newConnectionTimeout =
               Math.min(
-                  Math.toIntExact(CONNECTION_TIMEOUT_MS.get() * 2L), MAX_CONNECTION_TIMEOUT_MS);
+                  Math.max(
+                      FIRST_ADJUSTMENT_TIMEOUT_MS,
+                      Math.toIntExact(CONNECTION_TIMEOUT_MS.get() * 2L)),
+                  MAX_CONNECTION_TIMEOUT_MS);
         } catch (ArithmeticException arithmeticException) {
           newConnectionTimeout = MAX_CONNECTION_TIMEOUT_MS;
         }
