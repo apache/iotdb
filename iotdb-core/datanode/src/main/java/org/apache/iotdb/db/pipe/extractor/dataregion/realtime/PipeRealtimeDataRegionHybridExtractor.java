@@ -209,8 +209,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     //  the write operation will be throttled, so we should not extract any more tablet events.
     //  2. The number of pinned memtables has reached the dangerous threshold.
     //  3. The number of historical tsFile events to transfer has exceeded the limit.
-    //  3. The number of realtime tsfile events to transfer has exceeded the limit.
-    //  4. The number of linked tsfiles has reached the dangerous threshold.
+    //  4. The number of realtime tsfile events to transfer has exceeded the limit.
+    //  5. The number of linked tsfiles has reached the dangerous threshold.
     return mayWalSizeReachThrottleThreshold()
         || mayMemTablePinnedCountReachDangerousThreshold()
         || isHistoricalTsFileEventCountExceededLimit()
