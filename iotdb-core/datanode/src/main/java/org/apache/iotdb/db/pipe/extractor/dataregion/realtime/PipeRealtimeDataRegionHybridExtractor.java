@@ -203,7 +203,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean canNotUseTabletAnyMore() {
-    // In the following 4 cases, we should not extract any more tablet events. all the data
+    // In the following 5 cases, we should not extract any more tablet events. all the data
     // represented by the tablet events should be carried by the following tsfile event:
     //  1. If Wal size > maximum size of wal buffer,
     //  the write operation will be throttled, so we should not extract any more tablet events.
