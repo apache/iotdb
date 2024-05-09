@@ -103,7 +103,7 @@ public class PipeTransferTsFileInsertionEventHandler
     this.client = client;
 
     client.setShouldReturnSelf(false);
-    client.setTimeout(clientManager.getConnectionTimeout());
+    client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
     final int readLength = reader.read(readBuffer);
 
@@ -228,7 +228,9 @@ public class PipeTransferTsFileInsertionEventHandler
         exception);
 
     try {
-      clientManager.adjustTimeoutIfNecessary(exception);
+      if (Objects.nonNull(clientManager)) {
+        clientManager.adjustTimeoutIfNecessary(exception);
+      }
     } catch (Exception e) {
       LOGGER.warn("Failed to adjust timeout when failed to transfer file.", e);
     }

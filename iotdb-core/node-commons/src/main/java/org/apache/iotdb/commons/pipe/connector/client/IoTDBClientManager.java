@@ -27,6 +27,8 @@ import org.slf4j.LoggerFactory;
 
 import java.net.SocketTimeoutException;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class IoTDBClientManager {
 
@@ -42,7 +44,9 @@ public abstract class IoTDBClientManager {
   protected boolean supportModsIfIsDataNodeReceiver = true;
 
   private static final int MAX_CONNECTION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 1 day
-  protected int connectionTimeout = PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs();
+  private static final int FIRST_ADJUSTMENT_TIMEOUT_MS = 6 * 60 * 60 * 1000; // 6 hours
+  protected static final AtomicInteger CONNECTION_TIMEOUT_MS =
+      new AtomicInteger(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
 
   protected IoTDBClientManager(List<TEndPoint> endPointList, boolean useLeaderCache) {
     this.endPointList = endPointList;
@@ -55,21 +59,25 @@ public abstract class IoTDBClientManager {
 
   public void adjustTimeoutIfNecessary(Throwable e) {
     do {
-      if (e instanceof SocketTimeoutException) {
+      if (e instanceof SocketTimeoutException || e instanceof TimeoutException) {
         int newConnectionTimeout;
         try {
           newConnectionTimeout =
-              Math.min(Math.toIntExact(connectionTimeout * 2L), MAX_CONNECTION_TIMEOUT_MS);
+              Math.min(
+                  Math.max(
+                      FIRST_ADJUSTMENT_TIMEOUT_MS,
+                      Math.toIntExact(CONNECTION_TIMEOUT_MS.get() * 2L)),
+                  MAX_CONNECTION_TIMEOUT_MS);
         } catch (ArithmeticException arithmeticException) {
           newConnectionTimeout = MAX_CONNECTION_TIMEOUT_MS;
         }
 
-        if (newConnectionTimeout != connectionTimeout) {
-          connectionTimeout = newConnectionTimeout;
+        if (newConnectionTimeout != CONNECTION_TIMEOUT_MS.get()) {
+          CONNECTION_TIMEOUT_MS.set(newConnectionTimeout);
           LOGGER.info(
               "Pipe connection timeout is adjusted to {} ms ({} mins)",
-              connectionTimeout,
-              connectionTimeout / 60000.0);
+              newConnectionTimeout,
+              newConnectionTimeout / 60000.0);
         }
         return;
       }
@@ -77,6 +85,6 @@ public abstract class IoTDBClientManager {
   }
 
   public int getConnectionTimeout() {
-    return connectionTimeout;
+    return CONNECTION_TIMEOUT_MS.get();
   }
 }
