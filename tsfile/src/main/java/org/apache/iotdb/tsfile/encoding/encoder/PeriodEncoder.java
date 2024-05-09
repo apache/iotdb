@@ -58,18 +58,6 @@ public class PeriodEncoder extends Encoder {
     return new Object[] {newDataf, ret};
   }
 
-  private static Complex[] compRoundInverse(int[] ret, int beta) {
-    Complex[] result = new Complex[ret.length / 2];
-
-    for (int i = 0; i < ret.length; i += 2) {
-      double real = ret[i] * Math.pow(2, beta);
-      double imag = ret[i + 1] * Math.pow(2, beta);
-      result[i / 2] = new Complex(real, imag);
-    }
-
-    return result;
-  }
-
   private static final FastFourierTransformer transformer =
       new FastFourierTransformer(DftNormalization.STANDARD);
 
