@@ -29,44 +29,48 @@ public class LoadTsFileRateLimiter {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private RateLimiter loadWriteRateLimiter;
-
-  private AtomicDouble throughputBytesPerSec =
+  private final AtomicDouble throughputBytesPerSecond =
       new AtomicDouble(CONFIG.getLoadWriteThroughputBytesPerSecond());
+  private final RateLimiter loadWriteRateLimiter;
 
-  public LoadTsFileRateLimiter() {
+  private LoadTsFileRateLimiter() {
+    final double throughputBytesPerSecondLimit = throughputBytesPerSecond.get();
     loadWriteRateLimiter =
-        throughputBytesPerSec.get() <= 0
-            ? RateLimiter.create(Double.MAX_VALUE) // if throughput <= 0, disable rate limiting
-            : RateLimiter.create(throughputBytesPerSec.get());
+        // if throughput <= 0, disable rate limiting
+        throughputBytesPerSecondLimit <= 0
+            ? RateLimiter.create(Double.MAX_VALUE)
+            : RateLimiter.create(throughputBytesPerSecondLimit);
   }
 
-  private void setWritePointRate(final double throughputBytesPerSec) {
-    // if throughput <= 0, disable rate limiting
-    loadWriteRateLimiter.setRate(
-        throughputBytesPerSec <= 0 ? Double.MAX_VALUE : throughputBytesPerSec);
-  }
-
-  public void acquireWrittenBytesWithLoadWriteRateLimiter(long writtenDataSizeInBytes) {
-    if (throughputBytesPerSec.get() != CONFIG.getLoadWriteThroughputBytesPerSecond()) {
-      throughputBytesPerSec.set(CONFIG.getLoadWriteThroughputBytesPerSecond());
-      setWritePointRate(throughputBytesPerSec.get());
+  public void acquire(long bytes) {
+    if (throughputBytesPerSecond.get() != CONFIG.getLoadWriteThroughputBytesPerSecond()) {
+      final double newThroughputBytesPerSecond = CONFIG.getLoadWriteThroughputBytesPerSecond();
+      throughputBytesPerSecond.set(newThroughputBytesPerSecond);
+      loadWriteRateLimiter.setRate(
+          // if throughput <= 0, disable rate limiting
+          newThroughputBytesPerSecond <= 0 ? Double.MAX_VALUE : newThroughputBytesPerSecond);
     }
 
-    while (writtenDataSizeInBytes > 0) {
-      if (writtenDataSizeInBytes > Integer.MAX_VALUE) {
+    while (bytes > 0) {
+      if (bytes > Integer.MAX_VALUE) {
         loadWriteRateLimiter.acquire(Integer.MAX_VALUE);
-        writtenDataSizeInBytes -= Integer.MAX_VALUE;
+        bytes -= Integer.MAX_VALUE;
       } else {
-        loadWriteRateLimiter.acquire((int) writtenDataSizeInBytes);
+        loadWriteRateLimiter.acquire((int) bytes);
         return;
       }
     }
   }
 
-  //////////////////////////// Singleton ///////////////////////////////////////
+  //////////////////////////// Singleton ////////////////////////////
+
   private static class LoadTsFileRateLimiterHolder {
+
     private static final LoadTsFileRateLimiter INSTANCE = new LoadTsFileRateLimiter();
+
+    private LoadTsFileRateLimiterHolder() {
+      // Prevent instantiation
+    }
   }
 
   public static LoadTsFileRateLimiter getInstance() {

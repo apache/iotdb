@@ -319,8 +319,6 @@ public class LoadTsFileManager {
         DataRegion dataRegion = entry.getKey().getDataRegion();
         TsFileResource tsFileResource = generateResource(writer, progressIndex);
 
-        LoadTsFileRateLimiter.getInstance()
-            .acquireWrittenBytesWithLoadWriteRateLimiter(tsFileResource.getTsFileSize());
         dataRegion.loadNewTsFile(tsFileResource, true, isGeneratedByPipe);
 
         dataRegion
