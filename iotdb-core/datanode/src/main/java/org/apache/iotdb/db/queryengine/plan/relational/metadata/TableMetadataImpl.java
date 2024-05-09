@@ -148,9 +148,9 @@ public class TableMetadataImpl implements Metadata {
       return DOUBLE;
     } else if (BuiltinScalarFunction.REPLACE.getFunctionName().equalsIgnoreCase(functionName)) {
 
-      if (!isTwoTextType(argumentTypes) && isThreeTextType(argumentTypes)) {
+      if (!isTwoTextType(argumentTypes) && !isThreeTextType(argumentTypes)) {
         throw new SemanticException(
-            "Scalar function"
+            "Scalar function: "
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only supports text data type.");
       }
