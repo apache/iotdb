@@ -1651,8 +1651,8 @@ public class LogicalPlanBuilder {
   public LogicalPlanBuilder planTableDeviceSource(
       String database,
       String tableName,
-      List<SchemaFilter> idDeterminedFilterList,
-      List<SchemaFilter> idFuzzyFilterList,
+      List<List<SchemaFilter>> idDeterminedFilterList,
+      SchemaFilter idFuzzyFilter,
       List<ColumnHeader> columnHeaderList) {
     this.root =
         new TableDeviceScanNode(
@@ -1660,7 +1660,7 @@ public class LogicalPlanBuilder {
             database,
             tableName,
             idDeterminedFilterList,
-            idFuzzyFilterList,
+            idFuzzyFilter,
             columnHeaderList,
             null);
     return this;

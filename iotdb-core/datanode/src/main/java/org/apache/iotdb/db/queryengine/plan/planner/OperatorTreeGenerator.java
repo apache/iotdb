@@ -3286,7 +3286,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getDatabase(),
             node.getTableName(),
             node.getIdDeterminedFilterList(),
-            node.getIdFuzzyFilterList(),
+            node.getIdFuzzyFilter(),
             node.getColumnHeaderList()));
   }
 

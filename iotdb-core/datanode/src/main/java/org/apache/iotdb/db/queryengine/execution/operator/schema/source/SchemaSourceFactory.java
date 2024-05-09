@@ -103,11 +103,11 @@ public class SchemaSourceFactory {
   public static ISchemaSource<IDeviceSchemaInfo> getTableDeviceSchemaSource(
       String database,
       String tableName,
-      List<SchemaFilter> idDeterminedFilterList,
-      List<SchemaFilter> idFuzzyFilterList,
+      List<List<SchemaFilter>> idDeterminedFilterList,
+      SchemaFilter idFuzzyFilter,
       List<ColumnHeader> columnHeaderList) {
     return new TableDeviceSchemaSource(
-        database, tableName, idDeterminedFilterList, idFuzzyFilterList, columnHeaderList);
+        database, tableName, idDeterminedFilterList, idFuzzyFilter, columnHeaderList);
   }
 
   public static ISchemaSource<IDeviceSchemaInfo> getTableDeviceFetchSource(

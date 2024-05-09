@@ -1048,7 +1048,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 statement.getDatabase(),
                 statement.getTableName(),
                 statement.getIdDeterminedFilterList(),
-                statement.getIdFuzzyFilterList(),
+                statement.getIdFuzzyFilter(),
                 columnHeaderList)
             .planSchemaQueryMerge(false);
 

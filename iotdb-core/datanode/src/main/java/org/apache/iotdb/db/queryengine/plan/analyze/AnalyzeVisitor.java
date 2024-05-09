@@ -3717,7 +3717,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     List<PartialPath> devicePatternList =
         DeviceFilterToPathUtil.convertToDevicePattern(
             database,
-            tableName,
             DataNodeTableCache.getInstance().getTable(database, tableName),
             statement.getIdDeterminedFilterList());
     PathPatternTree patternTree = new PathPatternTree();

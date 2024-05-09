@@ -30,6 +30,9 @@ import java.nio.ByteBuffer;
 
 public class DeviceIdFilter extends SchemaFilter {
 
+  // id column index
+  // when used in partialPath, the index of node in path shall be [this.index + 3]
+  // since a partialPath start with {root, db, table}
   private final int index;
 
   private final String value;

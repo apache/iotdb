@@ -21,6 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterToPathUtil;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -52,10 +55,12 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
@@ -325,16 +330,141 @@ public class TableModelSchemaFetcher {
       List<String> attributeColumns) {
     List<DeviceEntry> deviceEntryList = new ArrayList<>();
 
-    long queryId = SessionManager.getInstance().requestQueryId();
-    Throwable t = null;
-
     TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
     Pair<List<SchemaFilter>, List<SchemaFilter>> filters =
         transformExpression(expressionList, tableInstance);
     List<SchemaFilter> idFilters = filters.getLeft();
     List<SchemaFilter> attributeFilters = filters.getRight();
+    DeviceInCacheFilterVisitor filterVisitor = new DeviceInCacheFilterVisitor(attributeColumns);
+    SchemaFilter attributeFilter = getAttributeFilter(attributeFilters);
+
+    List<List<SchemaFilter>> idPatternList =
+        DeviceFilterToPathUtil.convertSchemaFilterToOrConcatList(idFilters);
+    List<List<SchemaFilter>> idFilterListForFetch = new ArrayList<>();
+    boolean cacheFetchedDevice = true;
+    for (int i = 0; i < idPatternList.size(); i++) {
+      SchemaFilterCheckResult checkResult =
+          tryGetInCache(
+              deviceEntryList,
+              database,
+              tableInstance,
+              idPatternList.get(i),
+              o -> attributeFilter == null || filterVisitor.process(attributeFilter, o),
+              attributeColumns);
+      if (checkResult.needFetch) {
+        idFilterListForFetch.add(idPatternList.get(i));
+        if (!checkResult.isIdDetermined) {
+          cacheFetchedDevice = false;
+        }
+      }
+    }
+
+    if (!idFilterListForFetch.isEmpty()) {
+      fetchMissingDeviceSchemaForQuery(
+          database,
+          tableInstance,
+          attributeColumns,
+          idFilterListForFetch,
+          attributeFilter,
+          deviceEntryList,
+          cacheFetchedDevice);
+    }
+
+    return deviceEntryList;
+  }
+
+  private Pair<List<SchemaFilter>, List<SchemaFilter>> transformExpression(
+      List<Expression> expressionList, TsTable table) {
+    List<SchemaFilter> idDeterminedFilters = new ArrayList<>();
+    List<SchemaFilter> idFuzzyFilters = new ArrayList<>();
+    ConvertSchemaPredicateToFilterVisitor visitor = new ConvertSchemaPredicateToFilterVisitor();
+    ConvertSchemaPredicateToFilterVisitor.Context context =
+        new ConvertSchemaPredicateToFilterVisitor.Context(table);
+    for (Expression expression : expressionList) {
+      if (expression == null) {
+        continue;
+      }
+      context.reset();
+      SchemaFilter schemaFilter = expression.accept(visitor, context);
+      if (context.hasAttribute()) {
+        idFuzzyFilters.add(schemaFilter);
+      } else {
+        idDeterminedFilters.add(schemaFilter);
+      }
+    }
+    return new Pair<>(idDeterminedFilters, idFuzzyFilters);
+  }
+
+  // return whether this condition shall be used for remote fetch
+  private SchemaFilterCheckResult tryGetInCache(
+      List<DeviceEntry> deviceEntryList,
+      String database,
+      TsTable tableInstance,
+      List<SchemaFilter> idFilters,
+      Predicate<DeviceEntry> check,
+      List<String> attributeColumns) {
+    String[] idValues = new String[tableInstance.getIdNums()];
+    for (SchemaFilter schemaFilter : idFilters) {
+      DeviceIdFilter idFilter = (DeviceIdFilter) schemaFilter;
+      if (idValues[idFilter.getIndex()] == null) {
+        idValues[idFilter.getIndex()] = idFilter.getValue();
+      } else {
+        // conflict filter
+        return new SchemaFilterCheckResult(false, false);
+      }
+    }
+    if (idFilters.size() < idValues.length) {
+      return new SchemaFilterCheckResult(true, false);
+    }
+    Map<String, String> attributeMap =
+        cache.getDeviceAttribute(database, tableInstance.getTableName(), idValues);
+    if (attributeMap == null) {
+      return new SchemaFilterCheckResult(true, true);
+    }
+    List<String> attributeValues = new ArrayList<>(attributeColumns.size());
+    for (String attributeKey : attributeColumns) {
+      String value = attributeMap.get(attributeKey);
+      if (value == null) {
+        return new SchemaFilterCheckResult(true, true);
+      } else {
+        attributeValues.add(value);
+      }
+    }
+    String[] deviceIdNodes = new String[idValues.length + 1];
+    deviceIdNodes[0] = database + PATH_SEPARATOR + tableInstance.getTableName();
+    System.arraycopy(idValues, 0, deviceIdNodes, 1, idValues.length);
+    DeviceEntry deviceEntry =
+        new DeviceEntry(new StringArrayDeviceID(deviceIdNodes), attributeValues);
+    if (check.test(deviceEntry)) {
+      deviceEntryList.add(deviceEntry);
+    }
+    return new SchemaFilterCheckResult(false, true);
+  }
+
+  private static class SchemaFilterCheckResult {
+    boolean needFetch;
+    boolean isIdDetermined;
+
+    SchemaFilterCheckResult(boolean needFetch, boolean isIdDetermined) {
+      this.needFetch = needFetch;
+      this.isIdDetermined = isIdDetermined;
+    }
+  }
+
+  private void fetchMissingDeviceSchemaForQuery(
+      String database,
+      TsTable tableInstance,
+      List<String> attributeColumns,
+      List<List<SchemaFilter>> idPatternList,
+      SchemaFilter attributeFilter,
+      List<DeviceEntry> deviceEntryList,
+      boolean cacheFetchedDevice) {
+
+    String table = tableInstance.getTableName();
+
+    long queryId = SessionManager.getInstance().requestQueryId();
     ShowTableDevicesStatement statement =
-        new ShowTableDevicesStatement(database, table, idFilters, attributeFilters);
+        new ShowTableDevicesStatement(database, table, idPatternList, attributeFilter);
     ExecutionResult executionResult =
         Coordinator.getInstance()
             .executeForTreeModel(
@@ -357,6 +487,7 @@ public class TableModelSchemaFetcher {
     int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
     Map<String, String> attributeMap;
 
+    Throwable t = null;
     try {
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
         Optional<TsBlock> tsBlock;
@@ -390,6 +521,9 @@ public class TableModelSchemaFetcher {
               new DeviceEntry(
                   deviceID,
                   attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList())));
+          if (cacheFetchedDevice) {
+            cache.put(database, table, Arrays.copyOfRange(nodes, 1, nodes.length), attributeMap);
+          }
         }
       }
     } catch (Throwable throwable) {
@@ -398,28 +532,18 @@ public class TableModelSchemaFetcher {
     } finally {
       coordinator.cleanupQueryExecution(queryId, null, t);
     }
-    return deviceEntryList;
   }
 
-  private Pair<List<SchemaFilter>, List<SchemaFilter>> transformExpression(
-      List<Expression> expressionList, TsTable table) {
-    List<SchemaFilter> idDeterminedFilters = new ArrayList<>();
-    List<SchemaFilter> idFuzzyFilters = new ArrayList<>();
-    ConvertSchemaPredicateToFilterVisitor visitor = new ConvertSchemaPredicateToFilterVisitor();
-    ConvertSchemaPredicateToFilterVisitor.Context context =
-        new ConvertSchemaPredicateToFilterVisitor.Context(table);
-    for (Expression expression : expressionList) {
-      if (expression == null) {
-        continue;
-      }
-      context.reset();
-      SchemaFilter schemaFilter = expression.accept(visitor, context);
-      if (context.hasAttribute()) {
-        idFuzzyFilters.add(schemaFilter);
-      } else {
-        idDeterminedFilters.add(schemaFilter);
-      }
+  private SchemaFilter getAttributeFilter(List<SchemaFilter> filterList) {
+    if (filterList.isEmpty()) {
+      return null;
     }
-    return new Pair<>(idDeterminedFilters, idFuzzyFilters);
+    AndFilter andFilter;
+    SchemaFilter latestFilter = filterList.get(0);
+    for (int i = 1; i < filterList.size(); i++) {
+      andFilter = new AndFilter(latestFilter, filterList.get(i));
+      latestFilter = andFilter;
+    }
+    return latestFilter;
   }
 }

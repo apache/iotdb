@@ -47,22 +47,22 @@ public class TableDeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo>
 
   private String tableName;
 
-  private List<SchemaFilter> idDeterminedFilterList;
+  private List<List<SchemaFilter>> idDeterminedFilterList;
 
-  private List<SchemaFilter> idFuzzyFilterList;
+  private SchemaFilter idFuzzyFilter;
 
   private List<ColumnHeader> columnHeaderList;
 
   public TableDeviceSchemaSource(
       String database,
       String tableName,
-      List<SchemaFilter> idDeterminedFilterList,
-      List<SchemaFilter> idFuzzyFilterList,
+      List<List<SchemaFilter>> idDeterminedFilterList,
+      SchemaFilter idFuzzyFilter,
       List<ColumnHeader> columnHeaderList) {
     this.database = database;
     this.tableName = tableName;
     this.idDeterminedFilterList = idDeterminedFilterList;
-    this.idFuzzyFilterList = idFuzzyFilterList;
+    this.idFuzzyFilter = idFuzzyFilter;
     this.columnHeaderList = columnHeaderList;
   }
 
@@ -116,7 +116,7 @@ public class TableDeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo>
           while (index < devicePatternList.size()) {
             deviceReader =
                 schemaRegion.getTableDeviceReader(
-                    new ShowTableDevicesPlan(devicePatternList.get(index), idFuzzyFilterList));
+                    new ShowTableDevicesPlan(devicePatternList.get(index), idFuzzyFilter));
             index++;
             if (deviceReader.hasNext()) {
               return true;
@@ -150,7 +150,6 @@ public class TableDeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo>
   private List<PartialPath> getDevicePatternList() {
     return DeviceFilterToPathUtil.convertToDevicePattern(
         database,
-        tableName,
         DataNodeTableCache.getInstance().getTable(database, tableName),
         idDeterminedFilterList);
   }

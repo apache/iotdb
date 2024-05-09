@@ -12,9 +12,9 @@ public class ShowTableDevicesPlan {
 
   private SchemaFilter attributeFilter;
 
-  public ShowTableDevicesPlan(PartialPath devicePattern, List<SchemaFilter> attributeFilterList) {
+  public ShowTableDevicesPlan(PartialPath devicePattern, SchemaFilter attributeFilter) {
     this.devicePattern = devicePattern;
-    this.attributeFilter = getAttributeFilter(attributeFilterList);
+    this.attributeFilter = attributeFilter;
   }
 
   private SchemaFilter getAttributeFilter(List<SchemaFilter> filterList) {

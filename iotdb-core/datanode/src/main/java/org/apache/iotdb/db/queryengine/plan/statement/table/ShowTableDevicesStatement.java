@@ -31,20 +31,20 @@ public class ShowTableDevicesStatement extends ShowStatement {
 
   private final String tableName;
 
-  private final List<SchemaFilter> idDeterminedFilterList;
+  private final List<List<SchemaFilter>> idDeterminedFilterList;
 
-  private final List<SchemaFilter> idFuzzyFilterList;
+  private final SchemaFilter idFuzzyFilter;
 
   public ShowTableDevicesStatement(
       String database,
       String tableName,
-      List<SchemaFilter> idDeterminedFilterList,
-      List<SchemaFilter> idFuzzyFilterList) {
+      List<List<SchemaFilter>> idDeterminedFilterList,
+      SchemaFilter idFuzzyFilter) {
     super();
     this.database = database;
     this.tableName = tableName;
     this.idDeterminedFilterList = idDeterminedFilterList;
-    this.idFuzzyFilterList = idFuzzyFilterList;
+    this.idFuzzyFilter = idFuzzyFilter;
   }
 
   public String getDatabase() {
@@ -55,12 +55,12 @@ public class ShowTableDevicesStatement extends ShowStatement {
     return tableName;
   }
 
-  public List<SchemaFilter> getIdDeterminedFilterList() {
-    return idDeterminedFilterList;
+  public SchemaFilter getIdFuzzyFilter() {
+    return idFuzzyFilter;
   }
 
-  public List<SchemaFilter> getIdFuzzyFilterList() {
-    return idFuzzyFilterList;
+  public List<List<SchemaFilter>> getIdDeterminedFilterList() {
+    return idDeterminedFilterList;
   }
 
   @Override

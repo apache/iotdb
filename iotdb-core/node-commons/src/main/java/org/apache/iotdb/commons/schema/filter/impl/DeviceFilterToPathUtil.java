@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
@@ -84,6 +85,32 @@ public class DeviceFilterToPathUtil {
     return pathList;
   }
 
+  // if the element in idDeterminedFilterList isEmpty, the corresponding pattern is
+  // root.db.table.*.*..
+  public static List<PartialPath> convertToDevicePattern(
+      String database, TsTable table, List<List<SchemaFilter>> idDeterminedFilterList) {
+    List<PartialPath> pathList = new ArrayList<>();
+    int length = table.getIdNums() + 3;
+    for (List<SchemaFilter> idFilterList : idDeterminedFilterList) {
+      String[] nodes = new String[length];
+      Arrays.fill(nodes, ONE_LEVEL_PATH_WILDCARD);
+      nodes[0] = PATH_ROOT;
+      nodes[1] = database;
+      nodes[2] = table.getTableName();
+      for (SchemaFilter schemaFilter : idFilterList) {
+        if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.DEVICE_ID)) {
+          DeviceIdFilter deviceIdFilter = (DeviceIdFilter) schemaFilter;
+          nodes[deviceIdFilter.getIndex() + 3] = deviceIdFilter.getValue();
+        } else {
+          throw new IllegalStateException("Input single filter must be DeviceIdFilter");
+        }
+      }
+      pathList.add(new PartialPath(nodes));
+    }
+
+    return pathList;
+  }
+
   public static List<PartialPath> convertToDevicePath(
       String database, String tableName, List<String[]> deviceIdList) {
     List<PartialPath> devicePathList = new ArrayList<>(deviceIdList.size());
@@ -97,5 +124,52 @@ public class DeviceFilterToPathUtil {
       devicePathList.add(new PartialPath(nodes));
     }
     return devicePathList;
+  }
+
+  // input and-concat filter list
+  // return or concat filter list, inner which all filter is and concat
+  public static List<List<SchemaFilter>> convertSchemaFilterToOrConcatList(
+      List<SchemaFilter> schemaFilterList) {
+    List<List<SchemaFilter>> orConcatList =
+        schemaFilterList.stream()
+            .map(DeviceFilterToPathUtil::convertOneSchemaFilterToOrConcat)
+            .collect(Collectors.toList());
+    int orSize = orConcatList.size();
+    int finalResultSize = 1;
+    for (List<SchemaFilter> filterList : orConcatList) {
+      finalResultSize *= filterList.size();
+    }
+    List<List<SchemaFilter>> result = new ArrayList<>(finalResultSize);
+    int[] indexes = new int[orSize];
+    while (finalResultSize > 0) {
+      List<SchemaFilter> oneCase = new ArrayList<>(orConcatList.size());
+      for (int j = 0; j < orSize; j++) {
+        oneCase.add(orConcatList.get(j).get(indexes[j]));
+      }
+      result.add(oneCase);
+      for (int k = orSize - 1; k >= 0; k--) {
+        indexes[k]++;
+        if (indexes[k] < orConcatList.get(k).size()) {
+          break;
+        }
+        indexes[k] = 0;
+      }
+      finalResultSize--;
+    }
+    return result;
+  }
+
+  private static List<SchemaFilter> convertOneSchemaFilterToOrConcat(SchemaFilter schemaFilter) {
+    List<SchemaFilter> result = new ArrayList<>();
+    if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.OR)) {
+      OrFilter orFilter = (OrFilter) schemaFilter;
+      result.addAll(convertOneSchemaFilterToOrConcat(orFilter.getLeft()));
+      result.addAll(convertOneSchemaFilterToOrConcat(orFilter.getRight()));
+    } else if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.AND)) {
+      throw new IllegalStateException("Input filter shall not be AND operation");
+    } else {
+      result.add(schemaFilter);
+    }
+    return result;
   }
 }

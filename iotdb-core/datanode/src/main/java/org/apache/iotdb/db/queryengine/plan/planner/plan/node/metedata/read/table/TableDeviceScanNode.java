@@ -44,9 +44,9 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
 
   private String tableName;
 
-  private List<SchemaFilter> idDeterminedFilterList;
+  private List<List<SchemaFilter>> idDeterminedFilterList;
 
-  private List<SchemaFilter> idFuzzyFilterList;
+  private SchemaFilter idFuzzyFilter;
 
   private List<ColumnHeader> columnHeaderList;
 
@@ -60,15 +60,15 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
       PlanNodeId id,
       String database,
       String tableName,
-      List<SchemaFilter> idDeterminedFilterList,
-      List<SchemaFilter> idFuzzyFilterList,
+      List<List<SchemaFilter>> idDeterminedFilterList,
+      SchemaFilter idFuzzyFilter,
       List<ColumnHeader> columnHeaderList,
       TRegionReplicaSet regionReplicaSet) {
     super(id);
     this.database = database;
     this.tableName = tableName;
     this.idDeterminedFilterList = idDeterminedFilterList;
-    this.idFuzzyFilterList = idFuzzyFilterList;
+    this.idFuzzyFilter = idFuzzyFilter;
     this.columnHeaderList = columnHeaderList;
     this.schemaRegionReplicaSet = regionReplicaSet;
   }
@@ -81,12 +81,12 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
     return tableName;
   }
 
-  public List<SchemaFilter> getIdDeterminedFilterList() {
+  public List<List<SchemaFilter>> getIdDeterminedFilterList() {
     return idDeterminedFilterList;
   }
 
-  public List<SchemaFilter> getIdFuzzyFilterList() {
-    return idFuzzyFilterList;
+  public SchemaFilter getIdFuzzyFilter() {
+    return idFuzzyFilter;
   }
 
   public List<ColumnHeader> getColumnHeaderList() {
@@ -116,7 +116,7 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
         database,
         tableName,
         idDeterminedFilterList,
-        idFuzzyFilterList,
+        idFuzzyFilter,
         columnHeaderList,
         schemaRegionReplicaSet);
   }
@@ -133,14 +133,14 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(tableName, byteBuffer);
 
     ReadWriteIOUtils.write(idDeterminedFilterList.size(), byteBuffer);
-    for (SchemaFilter schemaFilter : idDeterminedFilterList) {
-      SchemaFilter.serialize(schemaFilter, byteBuffer);
+    for (List<SchemaFilter> filterList : idDeterminedFilterList) {
+      ReadWriteIOUtils.write(filterList.size(), byteBuffer);
+      for (SchemaFilter schemaFilter : filterList) {
+        SchemaFilter.serialize(schemaFilter, byteBuffer);
+      }
     }
 
-    ReadWriteIOUtils.write(idFuzzyFilterList.size(), byteBuffer);
-    for (SchemaFilter schemaFilter : idFuzzyFilterList) {
-      SchemaFilter.serialize(schemaFilter, byteBuffer);
-    }
+    SchemaFilter.serialize(idFuzzyFilter, byteBuffer);
 
     ReadWriteIOUtils.write(columnHeaderList.size(), byteBuffer);
     for (ColumnHeader columnHeader : columnHeaderList) {
@@ -155,14 +155,14 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(tableName, stream);
 
     ReadWriteIOUtils.write(idDeterminedFilterList.size(), stream);
-    for (SchemaFilter schemaFilter : idDeterminedFilterList) {
-      SchemaFilter.serialize(schemaFilter, stream);
+    for (List<SchemaFilter> filterList : idDeterminedFilterList) {
+      ReadWriteIOUtils.write(filterList.size(), stream);
+      for (SchemaFilter schemaFilter : filterList) {
+        SchemaFilter.serialize(schemaFilter, stream);
+      }
     }
 
-    ReadWriteIOUtils.write(idFuzzyFilterList.size(), stream);
-    for (SchemaFilter schemaFilter : idFuzzyFilterList) {
-      SchemaFilter.serialize(schemaFilter, stream);
-    }
+    SchemaFilter.serialize(idFuzzyFilter, stream);
 
     ReadWriteIOUtils.write(columnHeaderList.size(), stream);
     for (ColumnHeader columnHeader : columnHeaderList) {
@@ -175,16 +175,16 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
     String tableName = ReadWriteIOUtils.readString(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
-    List<SchemaFilter> idDeterminedFilterList = new ArrayList<>(size);
+    List<List<SchemaFilter>> idDeterminedFilterList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
-      idDeterminedFilterList.add(SchemaFilter.deserialize(buffer));
+      int singleSize = ReadWriteIOUtils.readInt(buffer);
+      idDeterminedFilterList.add(new ArrayList<>(singleSize));
+      for (int k = 0; k < singleSize; k++) {
+        idDeterminedFilterList.get(i).add(SchemaFilter.deserialize(buffer));
+      }
     }
 
-    size = ReadWriteIOUtils.readInt(buffer);
-    List<SchemaFilter> idFuzzyFilterList = new ArrayList<>(size);
-    for (int i = 0; i < size; i++) {
-      idFuzzyFilterList.add(SchemaFilter.deserialize(buffer));
-    }
+    SchemaFilter idFuzzyFilter = SchemaFilter.deserialize(buffer);
 
     size = ReadWriteIOUtils.readInt(buffer);
     List<ColumnHeader> columnHeaderList = new ArrayList<>(size);
@@ -198,7 +198,7 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
         database,
         tableName,
         idDeterminedFilterList,
-        idFuzzyFilterList,
+        idFuzzyFilter,
         columnHeaderList,
         null);
   }
@@ -217,7 +217,7 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(idDeterminedFilterList, that.idDeterminedFilterList)
-        && Objects.equals(idFuzzyFilterList, that.idFuzzyFilterList)
+        && Objects.equals(idFuzzyFilter, that.idFuzzyFilter)
         && Objects.equals(columnHeaderList, that.columnHeaderList)
         && Objects.equals(schemaRegionReplicaSet, that.schemaRegionReplicaSet);
   }
@@ -229,7 +229,7 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
         database,
         tableName,
         idDeterminedFilterList,
-        idFuzzyFilterList,
+        idFuzzyFilter,
         columnHeaderList,
         schemaRegionReplicaSet);
   }
