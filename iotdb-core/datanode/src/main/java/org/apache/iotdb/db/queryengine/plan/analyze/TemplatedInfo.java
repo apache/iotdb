@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 
@@ -76,6 +77,10 @@ public class TemplatedInfo {
 
   // variables related to predicate push down
   private Expression pushDownPredicate;
+
+  private Set<Expression> aggSelectExpressions;
+
+  private Expression havingExpression;
 
   public TemplatedInfo(
       List<String> measurementList,

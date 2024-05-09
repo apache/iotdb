@@ -71,6 +71,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTim
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpressionForTemplatedQuery;
+import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAggregationAnalyze.analyzeAggregation;
 
 /**
  * This class provides accelerated implementation for multiple devices align by device query. This
@@ -96,9 +97,8 @@ public class TemplatedAnalyze {
       IPartitionFetcher partitionFetcher,
       ISchemaTree schemaTree,
       MPPQueryContext context) {
-    if (queryStatement.isAggregationQuery()
-        || queryStatement.isGroupBy()
-        || queryStatement.isGroupByTime()
+    if (queryStatement.isGroupBy()
+        || (queryStatement.isGroupByTime() && !queryStatement.isAggregationQuery())
         || queryStatement.isSelectInto()
         || queryStatement.hasFill()
         || schemaTree.hasNormalTimeSeries()) {
@@ -106,58 +106,61 @@ public class TemplatedAnalyze {
     }
 
     List<Template> templates = schemaTree.getUsingTemplates();
-    if (templates.size() != 1) {
+    if (templates.size() != 1 || templates.get(0) == null) {
       return false;
     }
 
     Template template = templates.get(0);
 
+    if (queryStatement.isAggregationQuery()) {
+      return analyzeAggregation(
+          analysis, queryStatement, partitionFetcher, schemaTree, context, template);
+    }
+
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset());
-    if (template != null) {
-      for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
-        Expression expression = resultColumn.getExpression();
-        if ("*".equals(expression.getOutputSymbol())) {
-          for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
-            if (paginationController.hasCurOffset()) {
-              paginationController.consumeOffset();
-            } else if (paginationController.hasCurLimit()) {
-              String measurementName = entry.getKey();
-              IMeasurementSchema measurementSchema = entry.getValue();
-              TimeSeriesOperand measurementPath =
-                  new TimeSeriesOperand(
-                      new MeasurementPath(new String[] {measurementName}, measurementSchema));
-              outputExpressions.add(new Pair<>(measurementPath, null));
-              paginationController.consumeLimit();
-            } else {
-              break;
-            }
+    for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+      Expression expression = resultColumn.getExpression();
+      if ("*".equals(expression.getOutputSymbol())) {
+        for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
+          if (paginationController.hasCurOffset()) {
+            paginationController.consumeOffset();
+          } else if (paginationController.hasCurLimit()) {
+            String measurementName = entry.getKey();
+            IMeasurementSchema measurementSchema = entry.getValue();
+            TimeSeriesOperand measurementPath =
+                new TimeSeriesOperand(
+                    new MeasurementPath(new String[] {measurementName}, measurementSchema));
+            outputExpressions.add(new Pair<>(measurementPath, null));
+            paginationController.consumeLimit();
+          } else {
+            break;
           }
-          if (queryStatement.getSelectComponent().getResultColumns().size() == 1
-              && queryStatement.getSeriesOffset() == 0
-              && queryStatement.getSeriesLimit() == 0) {
-            analysis.setTemplateWildCardQuery();
-          }
-        } else if (expression instanceof TimeSeriesOperand) {
-          String measurementName = ((TimeSeriesOperand) expression).getPath().getMeasurement();
-          if (template.getSchemaMap().containsKey(measurementName)) {
-            if (paginationController.hasCurOffset()) {
-              paginationController.consumeOffset();
-            } else if (paginationController.hasCurLimit()) {
-              IMeasurementSchema measurementSchema = template.getSchemaMap().get(measurementName);
-              TimeSeriesOperand measurementPath =
-                  new TimeSeriesOperand(
-                      new MeasurementPath(new String[] {measurementName}, measurementSchema));
-              outputExpressions.add(new Pair<>(measurementPath, resultColumn.getAlias()));
-            } else {
-              break;
-            }
-          }
-        } else {
-          return false;
         }
+        if (queryStatement.getSelectComponent().getResultColumns().size() == 1
+            && queryStatement.getSeriesOffset() == 0
+            && queryStatement.getSeriesLimit() == 0) {
+          analysis.setTemplateWildCardQuery();
+        }
+      } else if (expression instanceof TimeSeriesOperand) {
+        String measurementName = ((TimeSeriesOperand) expression).getPath().getMeasurement();
+        if (template.getSchemaMap().containsKey(measurementName)) {
+          if (paginationController.hasCurOffset()) {
+            paginationController.consumeOffset();
+          } else if (paginationController.hasCurLimit()) {
+            IMeasurementSchema measurementSchema = template.getSchemaMap().get(measurementName);
+            TimeSeriesOperand measurementPath =
+                new TimeSeriesOperand(
+                    new MeasurementPath(new String[] {measurementName}, measurementSchema));
+            outputExpressions.add(new Pair<>(measurementPath, resultColumn.getAlias()));
+          } else {
+            break;
+          }
+        }
+      } else {
+        return false;
       }
     }
 
@@ -228,8 +231,7 @@ public class TemplatedAnalyze {
     analysis.setMeasurementSchemaList(measurementSchemaList);
   }
 
-  private static List<PartialPath> analyzeFrom(
-      QueryStatement queryStatement, ISchemaTree schemaTree) {
+  static List<PartialPath> analyzeFrom(QueryStatement queryStatement, ISchemaTree schemaTree) {
     // device path patterns in FROM clause
     List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
 
@@ -246,7 +248,7 @@ public class TemplatedAnalyze {
         : deviceSet.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
   }
 
-  private static void analyzeDeviceToWhere(Analysis analysis, QueryStatement queryStatement) {
+  static void analyzeDeviceToWhere(Analysis analysis, QueryStatement queryStatement) {
     if (!queryStatement.hasWhere()) {
       return;
     }
@@ -325,7 +327,7 @@ public class TemplatedAnalyze {
     analysis.setDeviceToSourceTransformExpressions(analysis.getDeviceToSelectExpressions());
   }
 
-  private static void analyzeDeviceViewOutput(Analysis analysis, QueryStatement queryStatement) {
+  static void analyzeDeviceViewOutput(Analysis analysis, QueryStatement queryStatement) {
     Set<Expression> selectExpressions = analysis.getSelectExpressions();
     // TODO if no order by, just set deviceViewOutputExpressions as selectExpressions
     Set<Expression> deviceViewOutputExpressions = new LinkedHashSet<>(selectExpressions);
@@ -337,7 +339,7 @@ public class TemplatedAnalyze {
         analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement, analysis));
   }
 
-  private static void analyzeDeviceViewInput(Analysis analysis) {
+  static void analyzeDeviceViewInput(Analysis analysis) {
     List<Integer> indexes = new ArrayList<>();
 
     // index-0 is `Device`
@@ -356,7 +358,7 @@ public class TemplatedAnalyze {
     analysis.setDeviceToOutputExpressions(analysis.getDeviceToSelectExpressions());
   }
 
-  private static void analyzeDataPartition(
+  static void analyzeDataPartition(
       Analysis analysis,
       ISchemaTree schemaTree,
       IPartitionFetcher partitionFetcher,

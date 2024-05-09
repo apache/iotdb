@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
@@ -86,10 +87,67 @@ public class TemplatedLogicalPlan {
     this.whereExpression = analysis.getWhereExpression();
 
     // for align by device query with template, most used variables are same
-    initCommonVariables();
+    if (queryStatement.isAggregationQuery()) {
+      initAggQueryCommonVariables();
+    } else {
+      initNonAggQueryCommonVariables();
+    }
   }
 
-  private void initCommonVariables() {
+  private void initAggQueryCommonVariables() {
+    if (whereExpression != null) {
+      newMeasurementList = new ArrayList<>(measurementList);
+      newSchemaList = new ArrayList<>(schemaList);
+      Set<String> selectMeasurements = new HashSet<>(measurementList);
+      List<Expression> whereSourceExpressions = searchSourceExpressions(whereExpression);
+      for (Expression expression : whereSourceExpressions) {
+        if (expression instanceof TimeSeriesOperand) {
+          String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
+          if (!analysis.getDeviceTemplate().getSchemaMap().containsKey(measurement)) {
+            continue;
+          }
+          if (!selectMeasurements.contains(measurement)) {
+            newMeasurementList.add(measurement);
+            newSchemaList.add(analysis.getDeviceTemplate().getSchema(measurement));
+          }
+        }
+      }
+
+      // TODO fix aggregation filterLayoutMap
+      filterLayoutMap = makeLayout(newMeasurementList);
+
+      analysis
+          .getExpressionTypes()
+          .forEach(
+              (key, value) ->
+                  context.getTypeProvider().setType(key.getNode().getOutputSymbol(), value));
+    }
+
+    context
+        .getTypeProvider()
+        .setTemplatedInfo(
+            new TemplatedInfo(
+                newMeasurementList,
+                newSchemaList,
+                newSchemaList.stream()
+                    .map(IMeasurementSchema::getType)
+                    .collect(Collectors.toList()),
+                queryStatement.getResultTimeOrder(),
+                analysis.isLastLevelUseWildcard(),
+                analysis.getDeviceViewOutputExpressions().stream()
+                    .map(Expression::getExpressionString)
+                    .collect(Collectors.toList()),
+                analysis.getDeviceViewInputIndexesMap().values().iterator().next(),
+                OFFSET_VALUE,
+                limitValue,
+                whereExpression,
+                queryStatement.isGroupByTime(),
+                analysis.getDeviceTemplate().getSchemaMap(),
+                filterLayoutMap,
+                null));
+  }
+
+  private void initNonAggQueryCommonVariables() {
     if (whereExpression != null) {
       if (!analysis.isTemplateWildCardQuery()) {
         newMeasurementList = new ArrayList<>(measurementList);
@@ -145,6 +203,10 @@ public class TemplatedLogicalPlan {
   }
 
   public PlanNode visitQuery() {
+    if (queryStatement.isAggregationQuery()) {
+      return visitAggregation();
+    }
+
     LogicalPlanBuilder planBuilder =
         new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList);
 
@@ -193,6 +255,56 @@ public class TemplatedLogicalPlan {
     return planBuilder.getRoot();
   }
 
+  private PlanNode visitAggregation() {
+    LogicalPlanBuilder planBuilder =
+        new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList);
+
+    Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
+    for (PartialPath devicePath : analysis.getDeviceList()) {
+      String deviceName = devicePath.getFullPath();
+      PlanNode rootNode = visitDeviceAggregationBody(devicePath);
+
+      LogicalPlanBuilder subPlanBuilder =
+          new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList)
+              .withNewRoot(rootNode);
+
+      deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
+    }
+
+    // convert to ALIGN BY DEVICE view
+    planBuilder =
+        planBuilder.planDeviceView(
+            deviceToSubPlanMap,
+            analysis.getDeviceViewOutputExpressions(),
+            analysis.getDeviceViewInputIndexesMap(),
+            analysis.getSelectExpressions(),
+            queryStatement,
+            analysis);
+
+    planBuilder =
+        planBuilder.planHavingAndTransform(
+            analysis.getHavingExpression(),
+            analysis.getSelectExpressions(),
+            analysis.getOrderByExpressions(),
+            queryStatement.isGroupByTime(),
+            queryStatement.getResultTimeOrder());
+
+    if (!queryStatement.needPushDownSort()) {
+      planBuilder = planBuilder.planOrderBy(queryStatement, analysis);
+    }
+
+    planBuilder =
+        planBuilder
+            .planFill(analysis.getFillDescriptor(), queryStatement.getResultTimeOrder())
+            .planOffset(queryStatement.getRowOffset());
+
+    if (!analysis.isUseTopKNode() || queryStatement.hasOffset()) {
+      planBuilder = planBuilder.planLimit(queryStatement.getRowLimit());
+    }
+
+    return planBuilder.getRoot();
+  }
+
   public PlanNode visitQueryBody(PartialPath devicePath) {
 
     TemplatedLogicalPlanBuilder planBuilder =
@@ -211,6 +323,55 @@ public class TemplatedLogicalPlan {
                 queryStatement.isGroupByTime(),
                 queryStatement.getResultTimeOrder());
 
+    return planBuilder.getRoot();
+  }
+
+  private PlanNode visitDeviceAggregationBody(PartialPath devicePath) {
+    TemplatedLogicalPlanBuilder planBuilder =
+        new TemplatedLogicalPlanBuilder(analysis, context, newMeasurementList, newSchemaList);
+
+    planBuilder =
+        planBuilder
+            .planRawDataSource(
+                devicePath,
+                queryStatement.getResultTimeOrder(),
+                OFFSET_VALUE,
+                limitValue,
+                analysis.isLastLevelUseWildcard())
+            .planFilter(
+                whereExpression,
+                queryStatement.isGroupByTime(),
+                queryStatement.getResultTimeOrder());
+
+    boolean outputPartial =
+        queryStatement.isGroupByLevel()
+            || queryStatement.isGroupByTag()
+            || (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap());
+    AggregationStep curStep = outputPartial ? AggregationStep.PARTIAL : AggregationStep.SINGLE;
+    planBuilder =
+        planBuilder.planRawDataAggregation(
+            analysis.getSelectExpressions(),
+            null,
+            analysis.getGroupByTimeParameter(),
+            analysis.getGroupByParameter(),
+            queryStatement.isOutputEndTime(),
+            curStep,
+            queryStatement.getResultTimeOrder());
+
+    if (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap()) {
+      curStep =
+          (queryStatement.isGroupByLevel() || queryStatement.isGroupByTag())
+              ? AggregationStep.INTERMEDIATE
+              : AggregationStep.FINAL;
+      planBuilder =
+          planBuilder.planSlidingWindowAggregation(
+              analysis.getSelectExpressions(),
+              analysis.getGroupByTimeParameter(),
+              curStep,
+              queryStatement.getResultTimeOrder());
+    }
+
+    // no group by level and group by tag
     return planBuilder.getRoot();
   }
 }

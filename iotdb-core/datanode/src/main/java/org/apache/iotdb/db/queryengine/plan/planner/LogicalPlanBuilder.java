@@ -743,7 +743,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  private PlanNode createSlidingWindowAggregationNode(
+  protected PlanNode createSlidingWindowAggregationNode(
       PlanNode child,
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
@@ -848,7 +848,7 @@ public class LogicalPlanBuilder {
             .collect(Collectors.toList()));
   }
 
-  private List<AggregationDescriptor> constructAggregationDescriptorList(
+  protected List<AggregationDescriptor> constructAggregationDescriptorList(
       Set<Expression> aggregationExpressions, AggregationStep curStep) {
     return aggregationExpressions.stream()
         .map(

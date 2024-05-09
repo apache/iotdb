@@ -61,11 +61,38 @@ public class SessionExample {
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
   private static final String ROOT_SG1 = "root.sg1";
   private static final String LOCAL_HOST = "127.0.0.1";
-  public static final String SELECT_D1 = "select * from root.sg1.d1";
+  public static final String SELECT_D1 =
+      "select value from root.cmadaas_nafp_surf.nafp.NAFP_GRAPES_MESO_FOR_3KM.data.RHU.`100`.`100000`.tile limit 10";
 
   private static Random random = new Random();
 
   public static void main(String[] args)
+      throws IoTDBConnectionException, StatementExecutionException {
+    session =
+        new Session.Builder()
+            .host("172.20.31.60")
+            .port(6667)
+            .username("root")
+            .password("root")
+            .version(Version.V_1_0)
+            .build();
+    session.open(false);
+
+    // set session fetchSize
+    session.setFetchSize(10000);
+
+    long time1 = System.currentTimeMillis();
+    try (SessionDataSet dataSet = session.executeQueryStatement(SELECT_D1)) {
+      // System.out.println(dataSet.getColumnNames());
+      //      dataSet.setFetchSize(1024); // default is 10000
+      //      while (dataSet.hasNext()) {
+      //        System.out.println(dataSet.next());
+      //      }
+    }
+    System.out.println("Time: " + (System.currentTimeMillis() - time1));
+  }
+
+  public static void main1(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
     session =
         new Session.Builder()
