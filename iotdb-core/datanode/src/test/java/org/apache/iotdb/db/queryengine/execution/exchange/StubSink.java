@@ -24,6 +24,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +32,8 @@ import java.util.List;
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 
 public class StubSink implements ISink {
+
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(StubSink.class);
 
   private final ListenableFuture<Void> NOT_BLOCKED = immediateVoidFuture();
 
@@ -105,5 +108,10 @@ public class StubSink implements ISink {
 
   public List<TsBlock> getTsBlocks() {
     return tsBlocks;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE;
   }
 }

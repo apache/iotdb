@@ -432,18 +432,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     return this;
   }
 
-  @Override
-  public CommonConfig setTagAttributeMaxNum(int tagAttributeMaxNum) {
-    setProperty("tag_attribute_max_num", String.valueOf(tagAttributeMaxNum));
-    return this;
-  }
-
-  @Override
-  public CommonConfig setTagAttributeEntryMaxSize(int tagAttributeEntryMaxSize) {
-    setProperty("tag_attribute_entry_max_size", String.valueOf(tagAttributeEntryMaxSize));
-    return this;
-  }
-
   // For part of the log directory
   public String getClusterConfigStr() {
     return fromConsensusFullNameToAbbr(properties.getProperty(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS))

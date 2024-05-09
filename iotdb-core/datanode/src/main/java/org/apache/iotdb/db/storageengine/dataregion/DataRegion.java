@@ -97,6 +97,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionInfo;
 import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
@@ -292,6 +293,8 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private String insertWriteLockHolder = "";
 
+  private volatile long directBufferMemoryCost = 0;
+
   private final AtomicBoolean isCompactionSelecting = new AtomicBoolean(false);
 
   private static final QueryResourceMetricSet QUERY_RESOURCE_METRIC_SET =
@@ -314,6 +317,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = dataRegionId;
     this.databaseName = databaseName;
     this.fileFlushPolicy = fileFlushPolicy;
+    acquireDirectBufferMemory();
 
     storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
     this.tsFileManager =
@@ -1579,6 +1583,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("syncDeleteDataFiles");
     try {
       forceCloseAllWorkingTsFileProcessors();
+      waitClosingTsFileProcessorFinished();
       // normally, mergingModification is just need to be closed by after a merge task is finished.
       // we close it here just for IT test.
       closeAllResources();
@@ -1600,6 +1605,12 @@ public class DataRegion implements IDataRegionForQuery {
       lastFlushTimeMap.clearGlobalFlushedTime();
       TimePartitionManager.getInstance()
           .removeTimePartitionInfo(new DataRegionId(Integer.parseInt(dataRegionId)));
+    } catch (InterruptedException e) {
+      logger.error(
+          "CloseFileNodeCondition error occurs while waiting for closing the storage " + "group {}",
+          databaseName + "-" + dataRegionId,
+          e);
+      Thread.currentThread().interrupt();
     } finally {
       writeUnlock();
     }
@@ -1729,23 +1740,7 @@ public class DataRegion implements IDataRegionForQuery {
   public void syncCloseAllWorkingTsFileProcessors() {
     try {
       List<Future<?>> tsFileProcessorsClosingFutures = asyncCloseAllWorkingTsFileProcessors();
-      long startTime = System.currentTimeMillis();
-      while (!closingSequenceTsFileProcessor.isEmpty()
-          || !closingUnSequenceTsFileProcessor.isEmpty()) {
-        synchronized (closeStorageGroupCondition) {
-          // double check to avoid unnecessary waiting
-          if (!closingSequenceTsFileProcessor.isEmpty()
-              || !closingUnSequenceTsFileProcessor.isEmpty()) {
-            closeStorageGroupCondition.wait(60_000);
-          }
-        }
-        if (System.currentTimeMillis() - startTime > 60_000) {
-          logger.warn(
-              "{} has spent {}s to wait for closing all TsFiles.",
-              databaseName + "-" + this.dataRegionId,
-              (System.currentTimeMillis() - startTime) / 1000);
-        }
-      }
+      waitClosingTsFileProcessorFinished();
       for (Future<?> f : tsFileProcessorsClosingFutures) {
         if (f != null) {
           f.get();
@@ -1757,6 +1752,26 @@ public class DataRegion implements IDataRegionForQuery {
           databaseName + "-" + dataRegionId,
           e);
       Thread.currentThread().interrupt();
+    }
+  }
+
+  private void waitClosingTsFileProcessorFinished() throws InterruptedException {
+    long startTime = System.currentTimeMillis();
+    while (!closingSequenceTsFileProcessor.isEmpty()
+        || !closingUnSequenceTsFileProcessor.isEmpty()) {
+      synchronized (closeStorageGroupCondition) {
+        // double check to avoid unnecessary waiting
+        if (!closingSequenceTsFileProcessor.isEmpty()
+            || !closingUnSequenceTsFileProcessor.isEmpty()) {
+          closeStorageGroupCondition.wait(60_000);
+        }
+      }
+      if (System.currentTimeMillis() - startTime > 60_000) {
+        logger.warn(
+            "{} has spent {}s to wait for closing all TsFiles.",
+            databaseName + "-" + this.dataRegionId,
+            (System.currentTimeMillis() - startTime) / 1000);
+      }
     }
   }
 
@@ -3456,10 +3471,36 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("markDeleted");
     try {
       deleted = true;
+      releaseDirectBufferMemory();
       deletedCondition.signalAll();
     } finally {
       writeUnlock();
     }
+  }
+
+  private void acquireDirectBufferMemory() throws DataRegionException {
+    long acquireDirectBufferMemCost = 0;
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+      acquireDirectBufferMemCost = config.getWalBufferSize();
+    } else if (config
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      acquireDirectBufferMemCost = config.getDataRatisConsensusLogAppenderBufferSizeMax();
+    }
+    if (!SystemInfo.getInstance().addDirectBufferMemoryCost(acquireDirectBufferMemCost)) {
+      throw new DataRegionException(
+          "Total allocated memory for direct buffer will be "
+              + (SystemInfo.getInstance().getDirectBufferMemoryCost() + acquireDirectBufferMemCost)
+              + ", which is greater than limit mem cost: "
+              + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
+    }
+    this.directBufferMemoryCost = acquireDirectBufferMemCost;
+  }
+
+  private void releaseDirectBufferMemory() {
+    SystemInfo.getInstance().decreaseDirectBufferMemoryCost(directBufferMemoryCost);
+    // avoid repeated deletion
+    this.directBufferMemoryCost = 0;
   }
 
   /* Be careful, the thread that calls this method may not hold the write lock!!*/

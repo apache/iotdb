@@ -185,8 +185,8 @@ public class CommonConfig {
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
   private int pipeExtractorMatcherCacheSize = 1024;
 
-  private long pipeConnectorHandshakeTimeoutMs = 10 * 1000L; // 10 seconds
-  private long pipeConnectorTransferTimeoutMs = 15 * 60 * 1000L; // 15 minutes
+  private int pipeConnectorHandshakeTimeoutMs = 10 * 1000; // 10 seconds
+  private int pipeConnectorTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
   // recommend to set this value to 3 * pipeSubtaskExecutorMaxThreadNum *
@@ -252,8 +252,6 @@ public class CommonConfig {
 
   // Max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
-  private int tagAttributeMaxNum = 20;
-  private int tagAttributeEntryMaxSize = 100;
 
   // maximum number of Cluster Databases allowed
   private int databaseLimitThreshold = -1;
@@ -637,20 +635,32 @@ public class CommonConfig {
     this.pipeExtractorMatcherCacheSize = pipeExtractorMatcherCacheSize;
   }
 
-  public long getPipeConnectorHandshakeTimeoutMs() {
+  public int getPipeConnectorHandshakeTimeoutMs() {
     return pipeConnectorHandshakeTimeoutMs;
   }
 
   public void setPipeConnectorHandshakeTimeoutMs(long pipeConnectorHandshakeTimeoutMs) {
-    this.pipeConnectorHandshakeTimeoutMs = pipeConnectorHandshakeTimeoutMs;
+    try {
+      this.pipeConnectorHandshakeTimeoutMs = Math.toIntExact(pipeConnectorHandshakeTimeoutMs);
+    } catch (ArithmeticException e) {
+      this.pipeConnectorHandshakeTimeoutMs = Integer.MAX_VALUE;
+      logger.warn(
+          "Given pipe connector handshake timeout is too large, set to {} ms.", Integer.MAX_VALUE);
+    }
   }
 
-  public long getPipeConnectorTransferTimeoutMs() {
+  public int getPipeConnectorTransferTimeoutMs() {
     return pipeConnectorTransferTimeoutMs;
   }
 
   public void setPipeConnectorTransferTimeoutMs(long pipeConnectorTransferTimeoutMs) {
-    this.pipeConnectorTransferTimeoutMs = pipeConnectorTransferTimeoutMs;
+    try {
+      this.pipeConnectorTransferTimeoutMs = Math.toIntExact(pipeConnectorTransferTimeoutMs);
+    } catch (ArithmeticException e) {
+      this.pipeConnectorTransferTimeoutMs = Integer.MAX_VALUE;
+      logger.warn(
+          "Given pipe connector transfer timeout is too large, set to {} ms.", Integer.MAX_VALUE);
+    }
   }
 
   public int getPipeConnectorReadFileBufferSize() {
@@ -1106,22 +1116,6 @@ public class CommonConfig {
 
   public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
     this.tagAttributeTotalSize = tagAttributeTotalSize;
-  }
-
-  public int getTagAttributeMaxNum() {
-    return tagAttributeMaxNum;
-  }
-
-  public void setTagAttributeMaxNum(int tagAttributeMaxNum) {
-    this.tagAttributeMaxNum = tagAttributeMaxNum;
-  }
-
-  public int getTagAttributeEntryMaxSize() {
-    return tagAttributeEntryMaxSize;
-  }
-
-  public void setTagAttributeEntryMaxSize(int tagAttributeEntryMaxSize) {
-    this.tagAttributeEntryMaxSize = tagAttributeEntryMaxSize;
   }
 
   public int getDatabaseLimitThreshold() {

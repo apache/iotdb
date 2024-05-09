@@ -189,6 +189,9 @@ public class IoTDBConfig {
   /** When inserting rejected exceeds this, throw an exception. Unit: millisecond */
   private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
 
+  /** off heap memory bytes from env */
+  private long maxOffHeapMemoryBytes = 0;
+
   // region Write Ahead Log Configuration
   /** Write mode of wal */
   private volatile WALMode walMode = WALMode.ASYNC;
@@ -210,6 +213,9 @@ public class IoTDBConfig {
 
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 32 * 1024 * 1024;
+
+  /** max total direct buffer off heap memory size proportion */
+  private double maxDirectBufferOffHeapMemorySizeProportion = 0.8;
 
   /** Blocking queue capacity of each wal buffer */
   private int walBufferQueueCapacity = 500;
@@ -1819,6 +1825,15 @@ public class IoTDBConfig {
     this.walBufferSize = walBufferSize;
   }
 
+  public double getMaxDirectBufferOffHeapMemorySizeProportion() {
+    return maxDirectBufferOffHeapMemorySizeProportion;
+  }
+
+  public void setMaxDirectBufferOffHeapMemorySizeProportion(
+      double maxDirectBufferOffHeapMemorySizeProportion) {
+    this.maxDirectBufferOffHeapMemorySizeProportion = maxDirectBufferOffHeapMemorySizeProportion;
+  }
+
   public int getWalBufferQueueCapacity() {
     return walBufferQueueCapacity;
   }
@@ -2595,6 +2610,14 @@ public class IoTDBConfig {
 
   public void setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
     this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
+  }
+
+  public void setMaxOffHeapMemoryBytes(long maxOffHeapMemoryBytes) {
+    this.maxOffHeapMemoryBytes = maxOffHeapMemoryBytes;
+  }
+
+  public long getMaxOffHeapMemoryBytes() {
+    return maxOffHeapMemoryBytes;
   }
 
   public long getSlowQueryThreshold() {

@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -51,22 +50,28 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.concurrent.SetThreadName;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 
 public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileDispatcherImpl.class);
+
+  private static final int MAX_CONNECTION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 1 day
+  private static final AtomicInteger CONNECTION_TIMEOUT_IN_MS =
+      new AtomicInteger(IoTDBDescriptor.getInstance().getConfig().getConnectionTimeoutInMS());
 
   private String uuid;
   private final String localhostIpAddr;
@@ -75,8 +80,6 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       internalServiceClientManager;
   private final ExecutorService executor;
   private final boolean isGeneratedByPipe;
-
-  private static final String NODE_CONNECTION_ERROR = "can't connect to node {}";
 
   public LoadTsFileDispatcherImpl(
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
@@ -137,78 +140,6 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     }
   }
 
-  private boolean isDispatchedToLocal(TEndPoint endPoint) {
-    return this.localhostIpAddr.equals(endPoint.getIp()) && localhostInternalPort == endPoint.port;
-  }
-
-  private void dispatchRemote(TTsFilePieceReq loadTsFileReq, TEndPoint endPoint)
-      throws FragmentInstanceDispatchException {
-    try (SyncDataNodeInternalServiceClient client =
-        internalServiceClientManager.borrowClient(endPoint)) {
-      TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
-      if (!loadResp.isAccepted()) {
-        LOGGER.warn(loadResp.message);
-        throw new FragmentInstanceDispatchException(loadResp.status);
-      }
-    } catch (ClientManagerException | TException e) {
-      String warning = NODE_CONNECTION_ERROR;
-      LOGGER.warn(warning, endPoint, e);
-      TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-      status.setMessage(warning + endPoint);
-      throw new FragmentInstanceDispatchException(status);
-    }
-  }
-
-  private void dispatchRemote(TLoadCommandReq loadCommandReq, TEndPoint endPoint)
-      throws FragmentInstanceDispatchException {
-    try (SyncDataNodeInternalServiceClient client =
-        internalServiceClientManager.borrowClient(endPoint)) {
-      TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
-      if (!loadResp.isAccepted()) {
-        LOGGER.warn(loadResp.message);
-        throw new FragmentInstanceDispatchException(loadResp.status);
-      }
-    } catch (ClientManagerException | TException e) {
-      LOGGER.warn(NODE_CONNECTION_ERROR, endPoint, e);
-      TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-      status.setMessage(
-          "can't connect to node "
-              + endPoint
-              + ", please reset longer dn_connection_timeout_ms "
-              + "in iotdb-datanode.properties and restart iotdb.");
-      throw new FragmentInstanceDispatchException(status);
-    }
-  }
-
-  private void dispatchLocally(TLoadCommandReq loadCommandReq)
-      throws FragmentInstanceDispatchException {
-    final ProgressIndex progressIndex;
-    if (loadCommandReq.isSetProgressIndex()) {
-      progressIndex =
-          ProgressIndexType.deserializeFrom(ByteBuffer.wrap(loadCommandReq.getProgressIndex()));
-    } else {
-      // fallback to use local generated progress index for compatibility
-      progressIndex = PipeAgent.runtime().getNextProgressIndexForTsFileLoad();
-      LOGGER.info(
-          "Use local generated load progress index {} for uuid {}.",
-          progressIndex,
-          loadCommandReq.uuid);
-    }
-
-    final TSStatus resultStatus =
-        StorageEngine.getInstance()
-            .executeLoadCommand(
-                LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType],
-                loadCommandReq.uuid,
-                loadCommandReq.isSetIsGeneratedByPipe() && loadCommandReq.isGeneratedByPipe,
-                progressIndex);
-    if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
-      throw new FragmentInstanceDispatchException(resultStatus);
-    }
-  }
-
   public void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
     LOGGER.info("Receive load node from uuid {}.", uuid);
 
@@ -259,6 +190,32 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     }
   }
 
+  private void dispatchRemote(TTsFilePieceReq loadTsFileReq, TEndPoint endPoint)
+      throws FragmentInstanceDispatchException {
+    try (SyncDataNodeInternalServiceClient client =
+        internalServiceClientManager.borrowClient(endPoint)) {
+      client.setTimeout(CONNECTION_TIMEOUT_IN_MS.get());
+
+      final TLoadResp loadResp = client.sendTsFilePieceNode(loadTsFileReq);
+      if (!loadResp.isAccepted()) {
+        LOGGER.warn(loadResp.message);
+        throw new FragmentInstanceDispatchException(loadResp.status);
+      }
+    } catch (Exception e) {
+      adjustTimeoutIfNecessary(e);
+
+      final String exceptionMessage =
+          String.format(
+              "failed to dispatch load command %s to node %s because of exception: %s",
+              loadTsFileReq, endPoint, e);
+      LOGGER.warn(exceptionMessage, e);
+      throw new FragmentInstanceDispatchException(
+          new TSStatus()
+              .setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode())
+              .setMessage(exceptionMessage));
+    }
+  }
+
   public Future<FragInstanceDispatchResult> dispatchCommand(
       TLoadCommandReq loadCommandReq, Set<TRegionReplicaSet> replicaSets) {
     Set<TEndPoint> allEndPoint = new HashSet<>();
@@ -288,6 +245,87 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       }
     }
     return immediateFuture(new FragInstanceDispatchResult(true));
+  }
+
+  private void dispatchLocally(TLoadCommandReq loadCommandReq)
+      throws FragmentInstanceDispatchException {
+    final ProgressIndex progressIndex;
+    if (loadCommandReq.isSetProgressIndex()) {
+      progressIndex =
+          ProgressIndexType.deserializeFrom(ByteBuffer.wrap(loadCommandReq.getProgressIndex()));
+    } else {
+      // fallback to use local generated progress index for compatibility
+      progressIndex = PipeAgent.runtime().getNextProgressIndexForTsFileLoad();
+      LOGGER.info(
+          "Use local generated load progress index {} for uuid {}.",
+          progressIndex,
+          loadCommandReq.uuid);
+    }
+
+    final TSStatus resultStatus =
+        StorageEngine.getInstance()
+            .executeLoadCommand(
+                LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType],
+                loadCommandReq.uuid,
+                loadCommandReq.isSetIsGeneratedByPipe() && loadCommandReq.isGeneratedByPipe,
+                progressIndex);
+    if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
+      throw new FragmentInstanceDispatchException(resultStatus);
+    }
+  }
+
+  private void dispatchRemote(TLoadCommandReq loadCommandReq, TEndPoint endPoint)
+      throws FragmentInstanceDispatchException {
+    try (SyncDataNodeInternalServiceClient client =
+        internalServiceClientManager.borrowClient(endPoint)) {
+      client.setTimeout(CONNECTION_TIMEOUT_IN_MS.get());
+
+      final TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
+      if (!loadResp.isAccepted()) {
+        LOGGER.warn(loadResp.message);
+        throw new FragmentInstanceDispatchException(loadResp.status);
+      }
+    } catch (Exception e) {
+      adjustTimeoutIfNecessary(e);
+
+      final String exceptionMessage =
+          String.format(
+              "failed to dispatch load command %s to node %s because of exception: %s",
+              loadCommandReq, endPoint, e);
+      LOGGER.warn(exceptionMessage, e);
+      throw new FragmentInstanceDispatchException(
+          new TSStatus()
+              .setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode())
+              .setMessage(exceptionMessage));
+    }
+  }
+
+  private boolean isDispatchedToLocal(TEndPoint endPoint) {
+    return this.localhostIpAddr.equals(endPoint.getIp()) && localhostInternalPort == endPoint.port;
+  }
+
+  private static void adjustTimeoutIfNecessary(Throwable e) {
+    do {
+      if (e instanceof SocketTimeoutException) {
+        int newConnectionTimeout;
+        try {
+          newConnectionTimeout =
+              Math.min(
+                  Math.toIntExact(CONNECTION_TIMEOUT_IN_MS.get() * 2L), MAX_CONNECTION_TIMEOUT_MS);
+        } catch (ArithmeticException arithmeticException) {
+          newConnectionTimeout = MAX_CONNECTION_TIMEOUT_MS;
+        }
+
+        if (newConnectionTimeout != CONNECTION_TIMEOUT_IN_MS.get()) {
+          CONNECTION_TIMEOUT_IN_MS.set(newConnectionTimeout);
+          LOGGER.info(
+              "Load remote procedure call connection timeout is adjusted to {} ms ({} mins)",
+              newConnectionTimeout,
+              newConnectionTimeout / 60000.0);
+        }
+        return;
+      }
+    } while ((e = e.getCause()) != null);
   }
 
   @Override

@@ -224,17 +224,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "tag_attribute_total_size", String.valueOf(config.getTagAttributeTotalSize()))));
 
-    config.setTagAttributeMaxNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "tag_attribute_max_num", String.valueOf(config.getTagAttributeMaxNum()))));
-
-    config.setTagAttributeEntryMaxSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "tag_attribute_entry_max_size",
-                String.valueOf(config.getTagAttributeEntryMaxSize()))));
-
     config.setTimePartitionInterval(
         Long.parseLong(
             properties.getProperty(
