@@ -285,6 +285,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       return;
     }
 
+    // We assume that no exceptions will be thrown after reference count is increased.
+
     // Just in case. To avoid the case that exception occurred when constructing the handler.
     if (!pipeTsFileInsertionEvent.getTsFile().exists()) {
       throw new FileNotFoundException(pipeTsFileInsertionEvent.getTsFile().getAbsolutePath());
@@ -356,11 +358,21 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       final Event peekedEvent = retryEventQueue.peek();
 
       if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        transferWithoutCheck((PipeInsertNodeTabletInsertionEvent) peekedEvent);
+        retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
       } else if (peekedEvent instanceof PipeRawTabletInsertionEvent) {
-        transferWithoutCheck((PipeRawTabletInsertionEvent) peekedEvent);
+        retryConnector.transfer((PipeRawTabletInsertionEvent) peekedEvent);
       } else if (peekedEvent instanceof PipeTsFileInsertionEvent) {
-        transferWithoutCheck((PipeTsFileInsertionEvent) peekedEvent);
+        final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
+            (PipeTsFileInsertionEvent) peekedEvent;
+        try {
+          // Using the async connector to transfer the event for performance.
+          transferWithoutCheck(pipeTsFileInsertionEvent);
+        } catch (Exception e) {
+          // Just in case. To avoid the case that exception occurred when constructing the handler.
+          pipeTsFileInsertionEvent.decreaseReferenceCount(
+              IoTDBDataRegionAsyncConnector.class.getName(), false);
+          throw e;
+        }
       } else {
         LOGGER.warn(
             "IoTDBThriftAsyncConnector does not support transfer generic event: {}.", peekedEvent);
