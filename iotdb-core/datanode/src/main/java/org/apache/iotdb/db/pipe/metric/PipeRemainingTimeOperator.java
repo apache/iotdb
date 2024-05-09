@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.metric;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
@@ -27,14 +28,11 @@ import org.apache.iotdb.metrics.core.uitls.IoTDBMovingAverage;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.Meter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 class PipeRemainingTimeOperator {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeRemainingTimeOperator.class);
   private String pipeName;
   private long creationTime = 0;
 
@@ -75,6 +73,9 @@ class PipeRemainingTimeOperator {
    * @return The estimated remaining time
    */
   double getRemainingTime() {
+    final double[] pipeRemainingTimeRateWeightRatio =
+        PipeConfig.getInstance().getPipeRemainingTimeRateWeightRatio();
+
     final int totalDataRegionWriteEventCount =
         dataRegionExtractors.keySet().stream()
                 .map(IoTDBDataRegionExtractor::getEventCount)
@@ -89,10 +90,10 @@ class PipeRemainingTimeOperator {
                 .reduce(Integer::sum)
                 .orElse(0);
     final double dataRegionRate =
-        0.8 * dataRegionCommitMeter.getOneMinuteRate()
-            + 0.1 * dataRegionCommitMeter.getFiveMinuteRate()
-            + 0.08 * dataRegionCommitMeter.getFifteenMinuteRate()
-            + 0.02 * dataRegionCommitMeter.getMeanRate();
+        pipeRemainingTimeRateWeightRatio[0] * dataRegionCommitMeter.getOneMinuteRate()
+            + pipeRemainingTimeRateWeightRatio[1] * dataRegionCommitMeter.getFiveMinuteRate()
+            + pipeRemainingTimeRateWeightRatio[2] * dataRegionCommitMeter.getFifteenMinuteRate()
+            + pipeRemainingTimeRateWeightRatio[3] * dataRegionCommitMeter.getMeanRate();
     final double dataRegionRemainingTime;
     if (totalDataRegionWriteEventCount == 0) {
       dataRegionRemainingTime = 0;
@@ -107,10 +108,10 @@ class PipeRemainingTimeOperator {
             .reduce(Long::sum)
             .orElse(0L);
     final double schemaRegionRate =
-        0.8 * schemaRegionCommitMeter.getOneMinuteRate()
-            + 0.1 * schemaRegionCommitMeter.getFiveMinuteRate()
-            + 0.08 * schemaRegionCommitMeter.getFifteenMinuteRate()
-            + 0.02 * schemaRegionCommitMeter.getMeanRate();
+        pipeRemainingTimeRateWeightRatio[0] * schemaRegionCommitMeter.getOneMinuteRate()
+            + pipeRemainingTimeRateWeightRatio[1] * schemaRegionCommitMeter.getFiveMinuteRate()
+            + pipeRemainingTimeRateWeightRatio[2] * schemaRegionCommitMeter.getFifteenMinuteRate()
+            + pipeRemainingTimeRateWeightRatio[3] * schemaRegionCommitMeter.getMeanRate();
     final double schemaRegionRemainingTime;
     if (totalSchemaRegionWriteEventCount == 0) {
       schemaRegionRemainingTime = 0;
