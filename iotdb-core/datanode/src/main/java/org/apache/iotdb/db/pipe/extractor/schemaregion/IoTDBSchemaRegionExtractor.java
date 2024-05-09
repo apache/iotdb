@@ -31,8 +31,10 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -119,8 +121,12 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   @Override
   protected boolean isTypeListened(final Event event) {
+    final PlanNode planNode = ((PipeSchemaRegionWritePlanEvent) event).getPlanNode();
     return listenedTypeSet.contains(
-        ((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType());
+        (planNode.getType() == PlanNodeType.ALTER_TIME_SERIES
+                && ((AlterTimeSeriesNode) planNode).isAlterView())
+            ? PlanNodeType.ALTER_LOGICAL_VIEW
+            : planNode.getType());
   }
 
   @Override

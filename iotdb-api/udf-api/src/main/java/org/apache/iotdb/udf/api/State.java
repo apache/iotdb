@@ -36,5 +36,6 @@ public interface State {
   void deserialize(byte[] bytes);
 
   /** Destroy state. You may release previously binding resource in this method. */
-  default void destroyState() {};
+  default void destroyState() {}
+  ;
 }

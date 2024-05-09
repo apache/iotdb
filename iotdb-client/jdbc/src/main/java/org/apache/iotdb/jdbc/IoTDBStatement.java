@@ -61,6 +61,7 @@ public class IoTDBStatement implements Statement {
   private List<String> batchSQLList;
   private static final String NOT_SUPPORT_EXECUTE = "Not support execute";
   private static final String NOT_SUPPORT_EXECUTE_UPDATE = "Not support executeUpdate";
+
   /** Keep state so we can fail certain calls made after close(). */
   private boolean isClosed = false;
 

@@ -224,6 +224,7 @@ public class CommonDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "time_partition_interval", String.valueOf(config.getTimePartitionInterval()))));
+
     config.setDatabaseLimitThreshold(
         Integer.parseInt(
             properties.getProperty(

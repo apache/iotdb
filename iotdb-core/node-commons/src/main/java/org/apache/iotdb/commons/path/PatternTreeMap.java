@@ -36,6 +36,7 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
   private final BiConsumer<V, Set<V>> appendFunction;
   private final BiConsumer<V, Set<V>> deleteFunction;
   private final VSerializer serializer;
+
   /**
    * Create PatternTreeMap.
    *

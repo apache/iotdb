@@ -78,6 +78,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RegionMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
@@ -214,9 +215,12 @@ public enum PlanNodeType {
 
   PIPE_OPERATE_SCHEMA_QUEUE_REFERENCE((short) 91),
 
-  DEVICE_REGION_SCAN((short) 92),
-  TIMESERIES_REGION_SCAN((short) 93),
-  REGION_MERGE((short) 94);
+  RAW_DATA_AGGREGATION((short) 92),
+
+  DEVICE_REGION_SCAN((short) 93),
+  TIMESERIES_REGION_SCAN((short) 94),
+  REGION_MERGE((short) 95)
+  ;
 
   public static final int BYTES = Short.BYTES;
 
@@ -245,6 +249,8 @@ public enum PlanNodeType {
         return InsertTabletNode.deserializeFromWAL(stream);
       case 14:
         return InsertRowNode.deserializeFromWAL(stream);
+      case 15:
+        return InsertRowsNode.deserializeFromWAL(stream);
       case 44:
         return DeleteDataNode.deserializeFromWAL(stream);
       default:
@@ -259,6 +265,8 @@ public enum PlanNodeType {
         return InsertTabletNode.deserializeFromWAL(buffer);
       case 14:
         return InsertRowNode.deserializeFromWAL(buffer);
+      case 15:
+        return InsertRowsNode.deserializeFromWAL(buffer);
       case 44:
         return DeleteDataNode.deserializeFromWAL(buffer);
       default:
@@ -448,10 +456,12 @@ public enum PlanNodeType {
       case 91:
         return PipeOperateSchemaQueueNode.deserialize(buffer);
       case 92:
-        return DeviceRegionScanNode.deserialize(buffer);
+        return RawDataAggregationNode.deserialize(buffer);
       case 93:
-        return TimeseriesRegionScanNode.deserialize(buffer);
+        return DeviceRegionScanNode.deserialize(buffer);
       case 94:
+        return TimeseriesRegionScanNode.deserialize(buffer);
+      case 95:
         return RegionMergeNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);

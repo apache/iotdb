@@ -35,6 +35,7 @@ public class Config {
   public static final String IOTDB_ERROR_PREFIX = "Error";
 
   static final String IOTDB_DEFAULT_HOST = "localhost";
+
   /** If host is provided, without a port. */
   static final int IOTDB_DEFAULT_PORT = 6667;
 

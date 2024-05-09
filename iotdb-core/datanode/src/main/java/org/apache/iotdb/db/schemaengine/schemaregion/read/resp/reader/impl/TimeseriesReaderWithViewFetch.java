@@ -61,6 +61,7 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
   private ITimeSeriesSchemaInfo next = null;
   private boolean consumeView = false;
   private final SchemaFilter schemaFilter;
+
   /**
    * There is no need to pull the original sequence information from the view if needFetch is false.
    * The default is false if not filtered by DataType.

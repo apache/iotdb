@@ -163,6 +163,7 @@ launch_service()
 	iotdb_parms="$iotdb_parms -DTSFILE_CONF=${IOTDB_CONF}"
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
 	iotdb_parms="$iotdb_parms -DIOTDB_LOG_DIR=${IOTDB_LOG_DIR}"
+	iotdb_parms="$iotdb_parms -DOFF_HEAP_MEMORY=${OFF_HEAP_MEMORY}"
 
 	  if [ "x$pidfile" != "x" ]; then
        iotdb_parms="$iotdb_parms -Diotdb-pidfile=$pidfile"

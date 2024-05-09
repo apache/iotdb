@@ -70,6 +70,7 @@ public class ClusterSchemaTree implements ISchemaTree {
 
   /** a flag recording whether there is logical view in this schema tree. */
   private boolean hasLogicalMeasurementPath = false;
+
   /** used to judge schema tree type */
   private boolean hasNormalTimeSeries = false;
 

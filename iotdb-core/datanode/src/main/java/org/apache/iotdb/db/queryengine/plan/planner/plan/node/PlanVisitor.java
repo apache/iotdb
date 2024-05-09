@@ -77,6 +77,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChild
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RegionMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
@@ -235,6 +236,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitExplainAnalyze(ExplainAnalyzeNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitRawDataAggregation(RawDataAggregationNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 

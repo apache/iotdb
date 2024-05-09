@@ -397,8 +397,7 @@ public class LogDispatcher {
       // safely.
       //
       // Use minFlushedSyncIndex here to reserve the WAL which are not flushed and support kill -9.
-      long currentSafelyDeletedSearchIndex = impl.getMinFlushedSyncIndex();
-      reader.setSafelyDeletedSearchIndex(currentSafelyDeletedSearchIndex);
+      reader.setSafelyDeletedSearchIndex(impl.getMinFlushedSyncIndex());
       // notify
       if (impl.unblockWrite()) {
         impl.signal();

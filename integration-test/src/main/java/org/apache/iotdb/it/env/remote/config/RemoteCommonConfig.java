@@ -303,4 +303,9 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setWalMode(String walMode) {
     return this;
   }
+
+  @Override
+  public CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize) {
+    return this;
+  }
 }

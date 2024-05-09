@@ -322,6 +322,7 @@ public class SerializeUtilsTest {
     batchDataSerializableTest(1000);
     batchDataSerializableTest(1500);
   }
+
   // In DescReadWriteBatchData, read has the same order with descending write
   private void descReadWriteBatchDataSerializableTest(int dataSize) {
     double E = 0.00001;
@@ -569,6 +570,7 @@ public class SerializeUtilsTest {
     }
     Assert.assertFalse(fullMsg, data2.hasCurrent());
   }
+
   // In DescReadBatchData, read has a reverse order with ascending write
   private void descReadBatchDataSerializableTest(int dataSize) {
     double E = 0.00001;
@@ -815,6 +817,7 @@ public class SerializeUtilsTest {
     }
     Assert.assertFalse(fullMsg, data2.hasCurrent());
   }
+
   // In BatchData, read has a reverse order with ascending write
   private void batchDataSerializableTest(int dataSize) {
     double E = 0.00001;

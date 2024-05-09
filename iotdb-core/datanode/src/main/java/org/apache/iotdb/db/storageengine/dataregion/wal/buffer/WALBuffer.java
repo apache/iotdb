@@ -90,20 +90,24 @@ public class WALBuffer extends AbstractWALBuffer {
   private final Condition idleBufferReadyCondition = buffersLock.newCondition();
   // last writer position when fsync is called, help record each entry's position
   private long lastFsyncPosition;
+
   // region these variables should be protected by buffersLock
   /** two buffers switch between three statuses (there is always 1 buffer working). */
   // buffer in working status, only updated by serializeThread
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   private volatile ByteBuffer workingBuffer;
+
   // buffer in idle status
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   private volatile ByteBuffer idleBuffer;
+
   // buffer in syncing status, serializeThread makes sure no more writes to syncingBuffer
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   private volatile ByteBuffer syncingBuffer;
+
   // endregion
   // file status of working buffer, updating file writer's status when syncing
   protected volatile WALFileStatus currentFileStatus;
@@ -475,6 +479,7 @@ public class WALBuffer extends AbstractWALBuffer {
       buffersLock.unlock();
     }
   }
+
   // endregion
 
   // region Task of syncBufferThread
@@ -640,6 +645,7 @@ public class WALBuffer extends AbstractWALBuffer {
       buffersLock.unlock();
     }
   }
+
   // endregion
 
   @Override
