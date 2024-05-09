@@ -157,6 +157,7 @@ public enum Metric {
   PIPE_SCHEMA_LINKED_QUEUE_SIZE("pipe_schema_linked_queue_size"),
   UNTRANSFERRED_SCHEMA_COUNT("untransferred_schema_count"),
   PIPE_CONNECTOR_SCHEMA_TRANSFER("pipe_connector_schema_transfer"),
+  PIPE_DATANODE_REMAINING_TIME("pipe_datanode_remaining_time"),
   PIPE_CONFIG_LINKED_QUEUE_SIZE("pipe_config_linked_queue_size"),
   UNTRANSFERRED_CONFIG_COUNT("untransferred_config_count"),
   PIPE_CONNECTOR_CONFIG_TRANSFER("pipe_connector_config_transfer"),

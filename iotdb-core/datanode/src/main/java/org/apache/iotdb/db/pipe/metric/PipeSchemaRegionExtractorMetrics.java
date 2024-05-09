@@ -99,7 +99,7 @@ public class PipeSchemaRegionExtractorMetrics implements IMetricSet {
         String.valueOf(extractor.getCreationTime()));
   }
 
-  //////////////////////////// pipe integration ////////////////////////////
+  //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
   public void register(@NonNull final IoTDBSchemaRegionExtractor extractor) {
     final String taskID = extractor.getTaskID();

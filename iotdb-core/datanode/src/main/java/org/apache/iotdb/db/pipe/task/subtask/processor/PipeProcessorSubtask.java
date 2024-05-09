@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeRemainingTimeMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeProcessor;
@@ -80,6 +81,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
     PipeProcessorMetrics.getInstance().register(this);
+    PipeRemainingTimeMetrics.getInstance().register(this);
   }
 
   @Override
@@ -251,6 +253,10 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   public int getPipeHeartbeatEventCount() {
     return outputEventCollector.getPipeHeartbeatEventCount();
+  }
+
+  public int getEventCount() {
+    return outputEventCollector.getEventCount();
   }
 
   //////////////////////////// Error report ////////////////////////////

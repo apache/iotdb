@@ -39,6 +39,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   private List<PipeSnapshotEvent> historicalEvents = new LinkedList<>();
+  // A fixed size initialized only when the historicalEvents are first
+  // filled. Used only for metric framework.
+  private int historicalEventsCount = 0;
 
   private ConcurrentIterableLinkedQueue<Event>.DynamicIterator iterator;
 
@@ -96,6 +99,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
             ? queueTailIndex2Snapshots.getLeft()
             : Long.MIN_VALUE;
     historicalEvents = new LinkedList<>(queueTailIndex2Snapshots.getRight());
+    historicalEventsCount = historicalEvents.size();
     return nextIndex;
   }
 
@@ -157,9 +161,9 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   protected abstract long getMaxBlockingTimeMs();
 
-  protected abstract boolean isTypeListened(Event event);
+  protected abstract boolean isTypeListened(final Event event);
 
-  protected abstract void confineHistoricalEventTransferTypes(PipeSnapshotEvent event);
+  protected abstract void confineHistoricalEventTransferTypes(final PipeSnapshotEvent event);
 
   @Override
   public void close() throws Exception {
@@ -183,6 +187,6 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
         ? getListeningQueue().getTailIndex()
             - ((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex()
             - 1
-        : getListeningQueue().getSize();
+        : getListeningQueue().getSize() + historicalEventsCount;
   }
 }

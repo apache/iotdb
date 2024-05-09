@@ -123,7 +123,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       }
 
       decreaseReferenceCountAndReleaseLastEvent(true);
-    } catch (PipeException e) {
+    } catch (final PipeException e) {
       if (!isClosed.get()) {
         throw e;
       } else {
@@ -234,6 +234,10 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     return outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
         ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getRetryEventQueueSize()
         : 0;
+  }
+
+  public int getEventCount() {
+    return inputPendingQueue.size() + getAsyncConnectorRetryEventQueueSize();
   }
 
   //////////////////////////// Error report ////////////////////////////

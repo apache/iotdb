@@ -100,7 +100,7 @@ public class PipeSchemaRegionConnectorMetrics implements IMetricSet {
     schemaRateMap.remove(taskID);
   }
 
-  //////////////////////////// register & deregister (pipe integration) ////////////////////////////
+  //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
 
   public void register(@NonNull final PipeConnectorSubtask pipeConnectorSubtask) {
     final String taskID = pipeConnectorSubtask.getTaskID();

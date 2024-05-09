@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.execution.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
+import org.apache.iotdb.db.pipe.metric.PipeRemainingTimeMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -144,6 +145,11 @@ public class PipeConnectorSubtaskManager {
     for (final PipeConnectorSubtaskLifeCycle lifeCycle :
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
       lifeCycle.register();
+      if (isDataRegionConnector) {
+        PipeRemainingTimeMetrics.getInstance()
+            .register(
+                lifeCycle.getSubtask(), environment.getPipeName(), environment.getCreationTime());
+      }
     }
 
     return attributeSortedString;
