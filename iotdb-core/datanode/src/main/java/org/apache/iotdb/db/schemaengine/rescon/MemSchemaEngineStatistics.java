@@ -44,6 +44,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   protected final AtomicLong memoryUsage = new AtomicLong(0);
   private final AtomicLong totalMeasurementNumber = new AtomicLong(0);
   private final AtomicLong totalViewNumber = new AtomicLong(0);
+  private final AtomicLong totalDeviceNumber = new AtomicLong(0);
   private final Map<Integer, Integer> templateUsage = new ConcurrentHashMap<>();
   private volatile boolean allowToCreateNewSeries = true;
 
@@ -117,6 +118,11 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   }
 
   @Override
+  public long getTotalDevicesNumber() {
+    return totalDeviceNumber.get();
+  }
+
+  @Override
   public int getSchemaRegionNumber() {
     return SchemaEngine.getInstance().getSchemaRegionNumber();
   }
@@ -163,6 +169,14 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   public void deleteView(long deletedNum) {
     totalViewNumber.addAndGet(-deletedNum);
+  }
+
+  public void addDevice() {
+    totalDeviceNumber.incrementAndGet();
+  }
+
+  public void deleteDevice() {
+    totalDeviceNumber.decrementAndGet();
   }
 
   @Override

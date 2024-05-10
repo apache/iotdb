@@ -96,10 +96,12 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
 
   public void addDevice() {
     devicesNumber.incrementAndGet();
+    schemaEngineStatistics.addDevice();
   }
 
   public void deleteDevice() {
     devicesNumber.decrementAndGet();
+    schemaEngineStatistics.deleteDevice();
   }
 
   @Override
