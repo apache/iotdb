@@ -188,6 +188,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
 
   @Override
   public void close() {
+    PipeConfigRegionConnectorMetrics.getInstance().deregister(taskID);
     isClosed.set(true);
 
     try {

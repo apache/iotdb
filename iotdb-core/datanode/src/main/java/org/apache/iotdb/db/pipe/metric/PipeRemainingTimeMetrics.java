@@ -163,6 +163,9 @@ public class PipeRemainingTimeMetrics implements IMetricSet {
   }
 
   public void markRegionCommit(final String committerKey) {
+    if (Objects.isNull(committerKey)) {
+      return;
+    }
     final String[] params = committerKey.split("_");
     if (params.length != 3) {
       return;

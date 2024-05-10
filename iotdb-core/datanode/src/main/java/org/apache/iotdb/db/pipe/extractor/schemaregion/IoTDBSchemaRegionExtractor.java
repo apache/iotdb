@@ -44,6 +44,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
@@ -155,6 +156,9 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
       // The queue is not closed here, and is closed iff the PipeMetaKeeper
       // has no schema pipe after one successful sync
       PipeAgent.runtime().decreaseAndGetSchemaListenerReferenceCount(schemaRegionId);
+    }
+    if (Objects.nonNull(taskID)) {
+      PipeSchemaRegionExtractorMetrics.getInstance().deregister(taskID);
     }
   }
 }

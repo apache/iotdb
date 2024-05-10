@@ -167,15 +167,6 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   @Override
   public void close() throws Exception {
-    if (hasBeenClosed.get()) {
-      return;
-    }
-    hasBeenClosed.set(true);
-
-    if (!hasBeenStarted.get()) {
-      return;
-    }
-
     getListeningQueue().returnIterator(iterator);
     historicalEvents.clear();
   }

@@ -174,7 +174,11 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
   @Override
   public void close() {
-    PipeDataRegionConnectorMetrics.getInstance().deregister(taskID);
+    if (!attributeSortedString.startsWith("schema_")) {
+      PipeDataRegionConnectorMetrics.getInstance().deregister(taskID);
+    } else {
+      PipeSchemaRegionConnectorMetrics.getInstance().deregister(taskID);
+    }
     isClosed.set(true);
     try {
       outputPipeConnector.close();
