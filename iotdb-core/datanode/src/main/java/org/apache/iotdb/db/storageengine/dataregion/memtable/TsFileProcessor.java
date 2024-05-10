@@ -555,7 +555,7 @@ public class TsFileProcessor {
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
     // device -> measurement -> adding TVList size
-    Map<IDeviceID, Map<String, Integer>> increasingMemTableMemInfo = new HashMap<>();
+    Map<IDeviceID, Map<String, Integer>> increasingMemTableInfo = new HashMap<>();
     for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
       IDeviceID deviceId = insertRowNode.getDeviceID();
       TSDataType[] dataTypes = insertRowNode.getDataTypes();
@@ -567,26 +567,26 @@ public class TsFileProcessor {
           continue;
         }
         if (workMemTable.checkIfChunkDoesNotExist(deviceId, measurements[i])
-            && (!increasingMemTableMemInfo.containsKey(deviceId)
-                || !increasingMemTableMemInfo.get(deviceId).containsKey(measurements[i]))) {
+            && (!increasingMemTableInfo.containsKey(deviceId)
+                || !increasingMemTableInfo.get(deviceId).containsKey(measurements[i]))) {
           // ChunkMetadataIncrement
           chunkMetadataIncrement += ChunkMetadata.calculateRamSize(measurements[i], dataTypes[i]);
           memTableIncrement += TVList.tvListArrayMemCost(dataTypes[i]);
-          increasingMemTableMemInfo
+          increasingMemTableInfo
               .computeIfAbsent(deviceId, k -> new HashMap<>())
               .putIfAbsent(measurements[i], 1);
         } else {
           // here currentChunkPointNum >= 1
           long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurements[i]);
           int addingPointNum =
-              increasingMemTableMemInfo
+              increasingMemTableInfo
                   .computeIfAbsent(deviceId, k -> new HashMap<>())
                   .computeIfAbsent(measurements[i], k -> 0);
           memTableIncrement +=
               ((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0
                   ? TVList.tvListArrayMemCost(dataTypes[i])
                   : 0;
-          increasingMemTableMemInfo
+          increasingMemTableInfo
               .get(deviceId)
               .computeIfPresent(measurements[i], (k, v) -> v + 1);
         }
@@ -668,7 +668,7 @@ public class TsFileProcessor {
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
     // device -> (measurements -> datatype, adding aligned TVList size)
-    Map<IDeviceID, Pair<Map<String, TSDataType>, Integer>> increasingMemTableMemInfo =
+    Map<IDeviceID, Pair<Map<String, TSDataType>, Integer>> increasingMemTableInfo =
         new HashMap<>();
     for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
       IDeviceID deviceId = insertRowNode.getDeviceID();
@@ -676,7 +676,7 @@ public class TsFileProcessor {
       Object[] values = insertRowNode.getValues();
       String[] measurements = insertRowNode.getMeasurements();
       if (workMemTable.checkIfChunkDoesNotExist(deviceId, AlignedPath.VECTOR_PLACEHOLDER)
-          && !increasingMemTableMemInfo.containsKey(deviceId)) {
+          && !increasingMemTableInfo.containsKey(deviceId)) {
         // For new device of this mem table
         // ChunkMetadataIncrement
         chunkMetadataIncrement +=
@@ -688,7 +688,7 @@ public class TsFileProcessor {
           if (dataTypes[i] == null || measurements[i] == null) {
             continue;
           }
-          increasingMemTableMemInfo
+          increasingMemTableInfo
               .computeIfAbsent(deviceId, k -> new Pair<>(new HashMap<>(), 1))
               .left
               .put(measurements[i], dataTypes[i]);
@@ -713,33 +713,33 @@ public class TsFileProcessor {
           }
 
           Pair<Map<String, TSDataType>, Integer> addingPointNumInfo =
-              increasingMemTableMemInfo.computeIfAbsent(
+              increasingMemTableInfo.computeIfAbsent(
                   deviceId, k -> new Pair<>(new HashMap<>(), 0));
           int addingPointNum = addingPointNumInfo.getRight();
           // Extending the column of aligned mem chunk
           if ((alignedMemChunk != null && !alignedMemChunk.containsMeasurement(measurements[i]))
-              && !increasingMemTableMemInfo.get(deviceId).left.containsKey(measurements[i])) {
+              && !increasingMemTableInfo.get(deviceId).left.containsKey(measurements[i])) {
             memTableIncrement +=
                 ((currentChunkPointNum + addingPointNum) / PrimitiveArrayManager.ARRAY_SIZE + 1)
                     * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
-            increasingMemTableMemInfo.get(deviceId).left.put(measurements[i], dataTypes[i]);
+            increasingMemTableInfo.get(deviceId).left.put(measurements[i], dataTypes[i]);
           }
           // TEXT data mem size
           if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
             textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
           }
         }
-        int addingPointNum = increasingMemTableMemInfo.get(deviceId).getRight();
+        int addingPointNum = increasingMemTableInfo.get(deviceId).getRight();
         // Here currentChunkPointNum >= 1
         if (((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
           if (alignedMemChunk != null) {
             dataTypesInTVList.addAll(
                 ((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
           }
-          dataTypesInTVList.addAll(increasingMemTableMemInfo.get(deviceId).getLeft().values());
+          dataTypesInTVList.addAll(increasingMemTableInfo.get(deviceId).getLeft().values());
           memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
         }
-        increasingMemTableMemInfo.get(deviceId).setRight(addingPointNum + 1);
+        increasingMemTableInfo.get(deviceId).setRight(addingPointNum + 1);
       }
     }
     updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
