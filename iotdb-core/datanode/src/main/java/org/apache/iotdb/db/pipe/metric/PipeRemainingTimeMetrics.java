@@ -168,9 +168,9 @@ public class PipeRemainingTimeMetrics implements IMetricSet {
       return;
     }
     final String pipeName = params[0];
-    final int creationTime = Integer.parseInt(params[1]);
-    final int regionId = Integer.parseInt(params[2]);
-    final String taskID = params[0] + "_" + params[1];
+    final int regionId = Integer.parseInt(params[1]);
+    final int creationTime = Integer.parseInt(params[2]);
+    final String taskID = params[0] + "_" + params[2];
 
     if (Objects.isNull(metricService)) {
       return;
