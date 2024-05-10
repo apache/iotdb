@@ -109,7 +109,7 @@ public class RegionScanPlanningTest {
   }
 
   @Test
-  public void testShowTimeseriesWithTimeCondition() {
+  public void testShowTimeseriesWithTimeCondition() throws IllegalPathException {
     QueryId queryId = new QueryId("test");
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());

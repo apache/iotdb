@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
@@ -31,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -38,6 +41,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -94,8 +98,15 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
 
   @Override
   public PlanNode clone() {
-    return new TimeseriesRegionScanNode(
-        getPlanNodeId(), getTimeseriesToSchemaInfo(), isOutputCount(), getRegionReplicaSet());
+    Map<PartialPath, List<TimeseriesSchemaInfo>> timeseriesToSchemaInfo =
+        getTimeseriesToSchemaInfo();
+    TimeseriesRegionScanNode timeseriesRegionScanNode =
+        new TimeseriesRegionScanNode(
+            getPlanNodeId(), timeseriesToSchemaInfo, isOutputCount(), getRegionReplicaSet());
+    if (timeseriesToSchemaInfo == null) {
+      timeseriesRegionScanNode.setDeviceToTimeseriesSchemaInfo(deviceToTimeseriesSchemaInfo);
+    }
+    return timeseriesRegionScanNode;
   }
 
   @Override
@@ -136,7 +147,24 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
   }
 
   @TestOnly
-  public List<PartialPath> getMeasurementPath() {
+  public List<PartialPath> getMeasurementPath() throws IllegalPathException {
+    if (deviceToTimeseriesSchemaInfo != null) {
+      List<PartialPath> partialPaths = new ArrayList<>();
+      for (PartialPath path :
+          deviceToTimeseriesSchemaInfo.values().stream()
+              .map(Map::keySet)
+              .flatMap(Set::stream)
+              .collect(Collectors.toList())) {
+        if (path instanceof AlignedPath) {
+          for (String measurementName : ((AlignedPath) path).getMeasurementList()) {
+            partialPaths.add(new PartialPath(new PlainDeviceID(path.getDevice()), measurementName));
+          }
+        } else {
+          partialPaths.add(path);
+        }
+      }
+      return partialPaths;
+    }
     return new ArrayList<>(timeseriesToSchemaInfo.keySet());
   }
 
@@ -187,6 +215,9 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
 
   @Override
   public Set<PartialPath> getDevicePaths() {
+    if (deviceToTimeseriesSchemaInfo != null) {
+      return new HashSet<>(deviceToTimeseriesSchemaInfo.keySet());
+    }
     return timeseriesToSchemaInfo.keySet().stream()
         .map(PartialPath::getDevicePath)
         .collect(Collectors.toSet());
@@ -217,7 +248,6 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
       return timeseriesToSchemaInfo.equals(that.timeseriesToSchemaInfo)
           && outputCount == that.isOutputCount();
     } else {
-      boolean res = deviceToTimeseriesSchemaInfo.equals(that.deviceToTimeseriesSchemaInfo);
       return deviceToTimeseriesSchemaInfo.equals(that.deviceToTimeseriesSchemaInfo)
           && outputCount == that.isOutputCount();
     }
