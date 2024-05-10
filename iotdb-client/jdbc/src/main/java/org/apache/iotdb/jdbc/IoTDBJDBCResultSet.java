@@ -25,6 +25,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
+import org.apache.iotdb.tsfile.utils.DateUtils;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -324,12 +325,20 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public byte[] getBytes(int columnIndex) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    try {
+      return ioTDBRpcDataSet.getBinary(columnIndex).getValues();
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
   public byte[] getBytes(String columnName) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    try {
+      return ioTDBRpcDataSet.getBinary(columnName).getValues();
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
@@ -364,7 +373,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public Date getDate(int columnIndex) throws SQLException {
-    return new Date(getLong(columnIndex));
+    return DateUtils.parseIntToDate(getInt(columnIndex));
   }
 
   @Override
@@ -644,6 +653,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public Time getTime(String columnName) throws SQLException {
+    // TODO: timestamp
     return getTime(findColumn(columnName));
   }
 
@@ -664,7 +674,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public Timestamp getTimestamp(String columnName) throws SQLException {
-    return getTimestamp(findColumn(columnName));
+    return new Timestamp(getLong(columnName));
   }
 
   @Override

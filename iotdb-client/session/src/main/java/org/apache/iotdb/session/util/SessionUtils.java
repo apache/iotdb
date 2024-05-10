@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -151,7 +152,7 @@ public class SessionUtils {
           break;
         case DATE:
           ReadWriteIOUtils.write(
-              DateUtils.parseDateExpressionToInt((String) values.get(i)), buffer);
+              DateUtils.parseDateExpressionToInt((LocalDate) values.get(i)), buffer);
           break;
         case INT64:
         case TIMESTAMP:
@@ -257,10 +258,18 @@ public class SessionUtils {
         }
         break;
       case TEXT:
+      case STRING:
+      case BLOB:
         Binary[] binaryValues = (Binary[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
           valueBuffer.putInt(binaryValues[index].getLength());
           valueBuffer.put(binaryValues[index].getValues());
+        }
+        break;
+      case DATE:
+        LocalDate[] dateValues = (LocalDate[]) tablet.values[i];
+        for (int index = 0; index < tablet.rowSize; index++) {
+          valueBuffer.putInt(DateUtils.parseDateExpressionToInt(dateValues[index]));
         }
         break;
       default:

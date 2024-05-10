@@ -25,7 +25,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.DateUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -33,6 +32,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -221,11 +221,8 @@ public class Tablet {
         }
       case DATE:
         {
-          int[] sensor = (int[]) values[indexOfSchema];
-          sensor[rowIndex] =
-              value != null
-                  ? DateUtils.parseDateExpressionToInt((String) value)
-                  : Integer.MIN_VALUE;
+          LocalDate[] sensor = (LocalDate[]) values[indexOfSchema];
+          sensor[rowIndex] = (LocalDate) value;
           break;
         }
       case INT64:
@@ -295,7 +292,6 @@ public class Tablet {
     Object valueColumn;
     switch (dataType) {
       case INT32:
-      case DATE:
         valueColumn = new int[maxRowNumber];
         break;
       case INT64:
@@ -315,6 +311,9 @@ public class Tablet {
       case BLOB:
       case STRING:
         valueColumn = new Binary[maxRowNumber];
+        break;
+      case DATE:
+        valueColumn = new LocalDate[maxRowNumber];
         break;
       default:
         throw new UnSupportedDataTypeException(String.format(NOT_SUPPORT_DATATYPE, dataType));

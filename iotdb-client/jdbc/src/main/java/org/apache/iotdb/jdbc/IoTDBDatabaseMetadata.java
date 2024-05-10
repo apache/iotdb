@@ -796,6 +796,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         TSDataType columnType = tsDataTypeList.get(j);
         switch (columnType) {
           case TEXT:
+          case STRING:
+          case BLOB:
             tsBlockBuilder
                 .getColumnBuilder(j)
                 .writeBinary(
@@ -805,9 +807,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             tsBlockBuilder.getColumnBuilder(j).writeFloat((float) valuesInRow.get(j));
             break;
           case INT32:
+          case DATE:
             tsBlockBuilder.getColumnBuilder(j).writeInt((int) valuesInRow.get(j));
             break;
           case INT64:
+          case TIMESTAMP:
             tsBlockBuilder.getColumnBuilder(j).writeLong((long) valuesInRow.get(j));
             break;
           case DOUBLE:

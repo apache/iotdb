@@ -953,21 +953,10 @@ public class ImportData extends AbstractDataTool {
    * @return
    */
   private static TSDataType getType(String typeStr) {
-    switch (typeStr) {
-      case "TEXT":
-        return TEXT;
-      case "BOOLEAN":
-        return BOOLEAN;
-      case "INT32":
-        return INT32;
-      case "INT64":
-        return INT64;
-      case "FLOAT":
-        return FLOAT;
-      case "DOUBLE":
-        return DOUBLE;
-      default:
-        return null;
+    try {
+      return TSDataType.valueOf(typeStr);
+    } catch (Exception e) {
+      return null;
     }
   }
 

@@ -745,11 +745,11 @@ public class PartialPathTest {
     checkIntersect(
         new PartialPath("root.*.d.s1"),
         new PartialPath("root.db.d.**"),
-            new HashSet<PartialPath>() {
-              {
-                add(new PartialPath("root.db.d.s1"));
-              }
-            });
+        new HashSet<PartialPath>() {
+          {
+            add(new PartialPath("root.db.d.s1"));
+          }
+        });
   }
 
   private void checkIntersect(PartialPath pattern, PartialPath prefix, Set<PartialPath> expected) {

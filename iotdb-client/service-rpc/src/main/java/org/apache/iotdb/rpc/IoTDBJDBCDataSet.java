@@ -27,7 +27,9 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.DateUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
@@ -35,6 +37,7 @@ import org.apache.thrift.TException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -162,9 +165,11 @@ public class IoTDBJDBCDataSet {
           values[i] = new byte[1];
           break;
         case INT32:
+        case DATE:
           values[i] = new byte[Integer.BYTES];
           break;
         case INT64:
+        case TIMESTAMP:
           values[i] = new byte[Long.BYTES];
           break;
         case FLOAT:
@@ -174,6 +179,8 @@ public class IoTDBJDBCDataSet {
           values[i] = new byte[Double.BYTES];
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           values[i] = null;
           break;
         default:
@@ -279,9 +286,11 @@ public class IoTDBJDBCDataSet {
           values[i] = new byte[1];
           break;
         case INT32:
+        case DATE:
           values[i] = new byte[Integer.BYTES];
           break;
         case INT64:
+        case TIMESTAMP:
           values[i] = new byte[Long.BYTES];
           break;
         case FLOAT:
@@ -291,6 +300,8 @@ public class IoTDBJDBCDataSet {
           values[i] = new byte[Double.BYTES];
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           values[i] = null;
           break;
         default:
@@ -395,9 +406,13 @@ public class IoTDBJDBCDataSet {
           case INT64:
           case FLOAT:
           case DOUBLE:
+          case DATE:
+          case TIMESTAMP:
             valueBuffer.get(values[i]);
             break;
           case TEXT:
+          case BLOB:
+          case STRING:
             int length = valueBuffer.getInt();
             values[i] = ReadWriteIOUtils.readBytes(valueBuffer, length);
             break;
@@ -573,7 +588,18 @@ public class IoTDBJDBCDataSet {
       case DOUBLE:
         return String.valueOf(BytesUtils.bytesToDouble(values[index]));
       case TEXT:
+      case STRING:
         return new String(values[index], StandardCharsets.UTF_8);
+      case BLOB:
+        return BytesUtils.parseBlobByteArrayToString(values[index]);
+      case TIMESTAMP:
+        return RpcUtils.formatDatetime(
+            RpcUtils.DEFAULT_TIME_FORMAT,
+            "ms",
+            BytesUtils.bytesToLong(values[index]),
+            ZoneId.systemDefault());
+      case DATE:
+        return DateUtils.formatDate(BytesUtils.bytesToInt(values[index]));
       default:
         return null;
     }
@@ -606,7 +632,14 @@ public class IoTDBJDBCDataSet {
       case DOUBLE:
         return BytesUtils.bytesToDouble(values[index]);
       case TEXT:
+      case STRING:
         return new String(values[index], StandardCharsets.UTF_8);
+      case BLOB:
+        return new Binary(values[index]);
+      case TIMESTAMP:
+        return new Timestamp(BytesUtils.bytesToLong(values[index]));
+      case DATE:
+        return DateUtils.parseIntToDate(BytesUtils.bytesToInt(values[index]));
       default:
         return null;
     }

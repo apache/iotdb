@@ -212,10 +212,10 @@ public enum TSDataType {
       case BOOLEAN:
       case TIMESTAMP:
       case DATE:
-      case BLOB:
       case STRING:
         return true;
       case VECTOR:
+      case BLOB:
         return false;
       default:
         throw new UnSupportedDataTypeException(this.toString());

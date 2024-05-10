@@ -1048,10 +1048,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     TsPrimitiveType value;
     switch (dataTypes[measurementIndex]) {
       case INT32:
+      case DATE:
         int[] intValues = (int[]) columns[measurementIndex];
         value = new TsPrimitiveType.TsInt(intValues[lastIdx]);
         break;
       case INT64:
+      case TIMESTAMP:
         long[] longValues = (long[]) columns[measurementIndex];
         value = new TsPrimitiveType.TsLong(longValues[lastIdx]);
         break;
@@ -1068,6 +1070,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         value = new TsPrimitiveType.TsBoolean(boolValues[lastIdx]);
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) columns[measurementIndex];
         value = new TsPrimitiveType.TsBinary(binaryValues[lastIdx]);
         break;

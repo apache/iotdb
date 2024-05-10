@@ -27,6 +27,8 @@ import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.DateUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.time.LocalDate;
+
 /**
  * Field is component of one {@code RowRecord} which stores a value in specific data type. The value
  * type of Field is primitive(int long, float, double, binary, boolean).
@@ -149,6 +151,13 @@ public class Field {
     this.binaryV = binaryV;
   }
 
+  public LocalDate getDateV() {
+    if (dataType == null) {
+      throw new NullFieldException();
+    }
+    return DateUtils.parseIntToLocalDate(intV);
+  }
+
   /**
    * get field value and convert to string.
    *
@@ -246,6 +255,16 @@ public class Field {
         throw new UnSupportedDataTypeException(dataType.toString());
     }
     return field;
+  }
+
+  public static void main(String[] args) {
+    try {
+      TSDataType dataType = TSDataType.valueOf("1");
+
+      System.out.println(dataType);
+    } catch (Exception e) {
+      System.out.println("null");
+    }
   }
 
   public static void setTsPrimitiveValue(TsPrimitiveType value, Field field) {

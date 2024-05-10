@@ -54,7 +54,7 @@ public class TypeInferenceUtils {
 
   private TypeInferenceUtils() {}
 
-  private static boolean isBytea(String s) {
+  private static boolean isBlob(String s) {
     return s.length() >= 3 && s.startsWith("X'") && s.endsWith("'");
   }
 
@@ -120,7 +120,7 @@ public class TypeInferenceUtils {
         // "NaN" is returned if the NaN Literal is given in Parser
       } else if ("NaN".equals(strValue)) {
         return nanStringInferType;
-      } else if (isBytea(strValue)) {
+      } else if (isBlob(strValue)) {
         return TSDataType.BLOB;
       } else {
         // TODO: use string as default data type
