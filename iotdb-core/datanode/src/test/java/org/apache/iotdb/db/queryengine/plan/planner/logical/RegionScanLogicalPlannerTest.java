@@ -125,18 +125,15 @@ public class RegionScanLogicalPlannerTest {
     timeseriesSchemaInfoMap.put(
         new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
         Collections.singletonList(
-            new TimeseriesSchemaInfo(
-                false, "INT32", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", "")));
+            new TimeseriesSchemaInfo("INT32", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", "")));
     timeseriesSchemaInfoMap.put(
         new MeasurementPath("root.sg.d1.s2", TSDataType.DOUBLE),
         Collections.singletonList(
-            new TimeseriesSchemaInfo(
-                false, "DOUBLE", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", "")));
+            new TimeseriesSchemaInfo("DOUBLE", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", "")));
     timeseriesSchemaInfoMap.put(
         new MeasurementPath("root.sg.d1.s3", TSDataType.BOOLEAN),
         Collections.singletonList(
-            new TimeseriesSchemaInfo(
-                false, "BOOLEAN", "PLAIN", "LZ4", "{\"key1\":\"value2\"}", "", "")));
+            new TimeseriesSchemaInfo("BOOLEAN", "PLAIN", "LZ4", "{\"key1\":\"value2\"}", "", "")));
     deviceToTimeseriesSchemaInfoMap.put(
         new PartialPath(new PlainDeviceID("root.sg.d1")), timeseriesSchemaInfoMap);
 
@@ -144,18 +141,15 @@ public class RegionScanLogicalPlannerTest {
     timeseriesSchemaInfoMap2.put(
         new MeasurementPath("root.sg.d2.s1", TSDataType.INT32),
         Collections.singletonList(
-            new TimeseriesSchemaInfo(
-                false, "INT32", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", "")));
+            new TimeseriesSchemaInfo("INT32", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", "")));
     timeseriesSchemaInfoMap2.put(
         new MeasurementPath("root.sg.d2.s2", TSDataType.DOUBLE),
         Collections.singletonList(
-            new TimeseriesSchemaInfo(
-                false, "DOUBLE", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", "")));
+            new TimeseriesSchemaInfo("DOUBLE", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", "")));
     timeseriesSchemaInfoMap2.put(
         new MeasurementPath("root.sg.d2.s4", TSDataType.TEXT),
         Collections.singletonList(
-            new TimeseriesSchemaInfo(
-                false, "TEXT", "PLAIN", "LZ4", "{\"key2\":\"value1\"}", "", "")));
+            new TimeseriesSchemaInfo("TEXT", "PLAIN", "LZ4", "{\"key2\":\"value1\"}", "", "")));
     deviceToTimeseriesSchemaInfoMap.put(
         new PartialPath(new PlainDeviceID("root.sg.d2")), timeseriesSchemaInfoMap2);
 
@@ -165,9 +159,9 @@ public class RegionScanLogicalPlannerTest {
     List<TimeseriesSchemaInfo> timeseriesSchemaInfoList = new ArrayList<>();
     Map<PartialPath, List<TimeseriesSchemaInfo>> timeseriesSchemaInfoMap3 = new HashMap<>();
     timeseriesSchemaInfoList.add(
-        new TimeseriesSchemaInfo(true, "INT32", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", ""));
+        new TimeseriesSchemaInfo("INT32", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", ""));
     timeseriesSchemaInfoList.add(
-        new TimeseriesSchemaInfo(true, "DOUBLE", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", ""));
+        new TimeseriesSchemaInfo("DOUBLE", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", ""));
     timeseriesSchemaInfoMap3.put(
         new AlignedPath("root.sg.d2.a", schemas, Collections.emptyList()),
         timeseriesSchemaInfoList);

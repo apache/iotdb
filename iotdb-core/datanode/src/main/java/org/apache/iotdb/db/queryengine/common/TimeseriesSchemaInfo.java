@@ -33,7 +33,6 @@ import java.util.Objects;
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TimeSeriesSchemaSource.mapToString;
 
 public class TimeseriesSchemaInfo {
-  private final boolean isAligned;
   private final String dataType;
   private final String encoding;
   private final String compression;
@@ -41,11 +40,11 @@ public class TimeseriesSchemaInfo {
 
   // TODO: Currently we can't get attributes from fetchSchema in query
   // private final String attributes;
+
   private final String deadband;
   private final String deadbandParameters;
 
-  public TimeseriesSchemaInfo(boolean isAligned, IMeasurementSchemaInfo schemaInfo) {
-    this.isAligned = isAligned;
+  public TimeseriesSchemaInfo(IMeasurementSchemaInfo schemaInfo) {
     this.dataType = schemaInfo.getSchema().getType().toString();
     this.encoding = schemaInfo.getSchema().getEncodingType().toString();
     this.compression = schemaInfo.getSchema().getCompressor().toString();
@@ -57,14 +56,12 @@ public class TimeseriesSchemaInfo {
   }
 
   public TimeseriesSchemaInfo(
-      boolean isAligned,
       String dataType,
       String encoding,
       String compression,
       String tags,
       String deadband,
       String deadbandParameters) {
-    this.isAligned = isAligned;
     this.dataType = dataType;
     this.encoding = encoding;
     this.compression = compression;
@@ -74,7 +71,6 @@ public class TimeseriesSchemaInfo {
   }
 
   public void serializeAttributes(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(isAligned, byteBuffer);
     ReadWriteIOUtils.write(dataType, byteBuffer);
     ReadWriteIOUtils.write(encoding, byteBuffer);
     ReadWriteIOUtils.write(compression, byteBuffer);
@@ -84,7 +80,6 @@ public class TimeseriesSchemaInfo {
   }
 
   public void serializeAttributes(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(isAligned, stream);
     ReadWriteIOUtils.write(dataType, stream);
     ReadWriteIOUtils.write(encoding, stream);
     ReadWriteIOUtils.write(compression, stream);
@@ -94,7 +89,6 @@ public class TimeseriesSchemaInfo {
   }
 
   public static TimeseriesSchemaInfo deserialize(ByteBuffer buffer) {
-    boolean isAligned = ReadWriteIOUtils.readBool(buffer);
     String dataType = ReadWriteIOUtils.readString(buffer);
     String encoding = ReadWriteIOUtils.readString(buffer);
     String compression = ReadWriteIOUtils.readString(buffer);
@@ -102,7 +96,7 @@ public class TimeseriesSchemaInfo {
     String deadband = ReadWriteIOUtils.readString(buffer);
     String deadbandParameters = ReadWriteIOUtils.readString(buffer);
     return new TimeseriesSchemaInfo(
-        isAligned, dataType, encoding, compression, tags, deadband, deadbandParameters);
+        dataType, encoding, compression, tags, deadband, deadbandParameters);
   }
 
   @Override
@@ -114,8 +108,7 @@ public class TimeseriesSchemaInfo {
       return false;
     }
     TimeseriesSchemaInfo that = (TimeseriesSchemaInfo) obj;
-    return isAligned == that.isAligned
-        && dataType.equals(that.dataType)
+    return dataType.equals(that.dataType)
         && encoding.equals(that.encoding)
         && compression.equals(that.compression)
         && tags.equals(that.tags)
@@ -125,7 +118,6 @@ public class TimeseriesSchemaInfo {
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        isAligned, dataType, encoding, compression, tags, deadband, deadbandParameters);
+    return Objects.hash(dataType, encoding, compression, tags, deadband, deadbandParameters);
   }
 }

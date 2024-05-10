@@ -2823,7 +2823,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             deviceSchemaInfo.getMeasurementSchemaInfoList()) {
           measurementList.add(measurementSchemaInfo.getName());
           measurementSchemas.add(measurementSchemaInfo.getSchema());
-          timeseriesSchemaInfoList.add(new TimeseriesSchemaInfo(isAligned, measurementSchemaInfo));
+          timeseriesSchemaInfoList.add(new TimeseriesSchemaInfo(measurementSchemaInfo));
         }
         AlignedPath alignedPath =
             new AlignedPath(devicePath.getFullPath(), measurementList, measurementSchemas);
@@ -2841,8 +2841,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               .computeIfAbsent(devicePath, k -> new HashMap<>())
               .put(
                   measurementPath,
-                  Collections.singletonList(
-                      new TimeseriesSchemaInfo(isAligned, measurementSchemaInfo)));
+                  Collections.singletonList(new TimeseriesSchemaInfo(measurementSchemaInfo)));
         }
       }
     }
