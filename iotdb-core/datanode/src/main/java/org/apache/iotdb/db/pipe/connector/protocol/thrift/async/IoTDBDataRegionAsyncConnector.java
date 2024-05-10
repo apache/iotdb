@@ -430,7 +430,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    *
    * @param event event to retry
    */
-  public synchronized void addFailureEventToRetryQueue(final Event event) {
+  public void addFailureEventToRetryQueue(final Event event) {
     if (isClosed.get()) {
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
@@ -442,6 +442,12 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Added event {} to retry queue.", event);
     }
+
+    if (isClosed.get()) {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
+      }
+    }
   }
 
   /**
@@ -449,7 +455,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    *
    * @param events events to retry
    */
-  public synchronized void addFailureEventsToRetryQueue(final Iterable<Event> events) {
+  public void addFailureEventsToRetryQueue(final Iterable<Event> events) {
     for (final Event event : events) {
       addFailureEventToRetryQueue(event);
     }
