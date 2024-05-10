@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterToPathUtil;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -339,12 +339,12 @@ public class TableModelSchemaFetcher {
     SchemaFilter attributeFilter = getAttributeFilter(attributeFilters);
 
     List<List<SchemaFilter>> idPatternList =
-        DeviceFilterToPathUtil.convertSchemaFilterToOrConcatList(idFilters);
+        DeviceFilterUtil.convertSchemaFilterToOrConcatList(idFilters);
     List<List<SchemaFilter>> idFilterListForFetch = new ArrayList<>();
     boolean cacheFetchedDevice = true;
     for (int i = 0; i < idPatternList.size(); i++) {
       SchemaFilterCheckResult checkResult =
-          tryGetInCache(
+          checkIdFilterAndTryGetDeviceInCache(
               deviceEntryList,
               database,
               tableInstance,
@@ -396,7 +396,7 @@ public class TableModelSchemaFetcher {
   }
 
   // return whether this condition shall be used for remote fetch
-  private SchemaFilterCheckResult tryGetInCache(
+  private SchemaFilterCheckResult checkIdFilterAndTryGetDeviceInCache(
       List<DeviceEntry> deviceEntryList,
       String database,
       TsTable tableInstance,

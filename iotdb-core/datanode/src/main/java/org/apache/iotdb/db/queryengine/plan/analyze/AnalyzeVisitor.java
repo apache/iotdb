@@ -33,7 +33,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterToPathUtil;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -3715,7 +3715,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     String tableName = statement.getTableName();
 
     List<PartialPath> devicePatternList =
-        DeviceFilterToPathUtil.convertToDevicePattern(
+        DeviceFilterUtil.convertToDevicePattern(
             database,
             DataNodeTableCache.getInstance().getTable(database, tableName),
             statement.getIdDeterminedFilterList());
@@ -3744,8 +3744,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     String tableName = statement.getTableName();
 
     List<PartialPath> devicePatternList =
-        DeviceFilterToPathUtil.convertToDevicePath(
-            database, tableName, statement.getDeviceIdList());
+        DeviceFilterUtil.convertToDevicePath(database, tableName, statement.getDeviceIdList());
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath devicePattern : devicePatternList) {
       patternTree.appendFullPath(devicePattern, ONE_LEVEL_PATH_WILDCARD);

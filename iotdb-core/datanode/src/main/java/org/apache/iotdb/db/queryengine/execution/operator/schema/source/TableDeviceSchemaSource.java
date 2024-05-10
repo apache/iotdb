@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterToPathUtil;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -148,7 +148,7 @@ public class TableDeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo>
   }
 
   private List<PartialPath> getDevicePatternList() {
-    return DeviceFilterToPathUtil.convertToDevicePattern(
+    return DeviceFilterUtil.convertToDevicePattern(
         database,
         DataNodeTableCache.getInstance().getTable(database, tableName),
         idDeterminedFilterList);

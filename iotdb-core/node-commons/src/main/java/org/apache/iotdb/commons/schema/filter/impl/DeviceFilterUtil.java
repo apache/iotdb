@@ -26,67 +26,21 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 
-public class DeviceFilterToPathUtil {
+public class DeviceFilterUtil {
 
-  private DeviceFilterToPathUtil() {
+  private DeviceFilterUtil() {
     // do nothing
-  }
-
-  public static List<PartialPath> convertToDevicePattern(
-      String database, String tableName, TsTable table, List<SchemaFilter> idDeterminedFilterList) {
-    int length = table.getIdNums() + 3;
-    String[] nodes = new String[length];
-    Arrays.fill(nodes, ONE_LEVEL_PATH_WILDCARD);
-    nodes[0] = PATH_ROOT;
-    nodes[1] = database;
-    nodes[2] = tableName;
-    Map<Integer, List<String>> orValueMap = new HashMap<>();
-    for (SchemaFilter schemaFilter : idDeterminedFilterList) {
-      if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.DEVICE_ID)) {
-        DeviceIdFilter deviceIdFilter = (DeviceIdFilter) schemaFilter;
-        nodes[deviceIdFilter.getIndex() + 3] = deviceIdFilter.getValue();
-      } else if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.OR)) {
-        OrFilter orFilter = (OrFilter) schemaFilter;
-        if (orFilter.getLeft().getSchemaFilterType().equals(SchemaFilterType.DEVICE_ID)
-            && orFilter.getRight().getSchemaFilterType().equals(SchemaFilterType.DEVICE_ID)) {
-          // todo nested orFilter
-          DeviceIdFilter deviceIdFilter = (DeviceIdFilter) orFilter.getLeft();
-          nodes[deviceIdFilter.getIndex() + 3] = deviceIdFilter.getValue();
-          deviceIdFilter = (DeviceIdFilter) orFilter.getLeft();
-          orValueMap
-              .computeIfAbsent(deviceIdFilter.getIndex(), k -> new ArrayList<>())
-              .add(deviceIdFilter.getValue());
-        }
-      }
-    }
-
-    PartialPath path = new PartialPath(nodes);
-    List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(path);
-    for (Map.Entry<Integer, List<String>> entry : orValueMap.entrySet()) {
-      for (int i = 0, size = pathList.size(); i < size; i++) {
-        for (String value : entry.getValue()) {
-          nodes = Arrays.copyOf(pathList.get(i).getNodes(), length);
-          nodes[entry.getKey() + 3] = value;
-          path = new PartialPath(nodes);
-          pathList.add(path);
-        }
-      }
-    }
-
-    return pathList;
   }
 
   // if the element in idDeterminedFilterList isEmpty, the corresponding pattern is
   // root.db.table.*.*..
+  // e.g. input (db, table[c1, c2], [[]]), return [root.db.table.*.*]
   public static List<PartialPath> convertToDevicePattern(
       String database, TsTable table, List<List<SchemaFilter>> idDeterminedFilterList) {
     List<PartialPath> pathList = new ArrayList<>();
@@ -128,11 +82,13 @@ public class DeviceFilterToPathUtil {
 
   // input and-concat filter list
   // return or concat filter list, inner which all filter is and concat
+  // e.g. (a OR b) AND (c OR d) -> (a AND c) OR (a AND d) OR (b AND c) OR (b AND d)
+  // if input is empty, then return [[]]
   public static List<List<SchemaFilter>> convertSchemaFilterToOrConcatList(
       List<SchemaFilter> schemaFilterList) {
     List<List<SchemaFilter>> orConcatList =
         schemaFilterList.stream()
-            .map(DeviceFilterToPathUtil::convertOneSchemaFilterToOrConcat)
+            .map(DeviceFilterUtil::convertOneSchemaFilterToOrConcat)
             .collect(Collectors.toList());
     int orSize = orConcatList.size();
     int finalResultSize = 1;
