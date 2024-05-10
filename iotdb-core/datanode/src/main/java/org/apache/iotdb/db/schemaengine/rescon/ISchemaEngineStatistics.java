@@ -30,6 +30,7 @@ public interface ISchemaEngineStatistics {
   long getMemoryUsage();
 
   long getTotalSeriesNumber();
+
   long getTotalDevicesNumber();
 
   int getSchemaRegionNumber();

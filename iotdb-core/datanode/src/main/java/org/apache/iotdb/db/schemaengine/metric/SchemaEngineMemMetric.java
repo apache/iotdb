@@ -55,7 +55,7 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         engineStatistics,
         ISchemaEngineStatistics::getTotalDevicesNumber,
         Tag.NAME.toString(),
-            DEVICE_NUMBER);
+        DEVICE_NUMBER);
     metricService.createAutoGauge(
         Metric.MEM.toString(),
         MetricLevel.IMPORTANT,
@@ -102,10 +102,7 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.MEM.toString(),
-        Tag.NAME.toString(),
-        DEVICE_NUMBER);
+        MetricType.AUTO_GAUGE, Metric.MEM.toString(), Tag.NAME.toString(), DEVICE_NUMBER);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.MEM.toString(),

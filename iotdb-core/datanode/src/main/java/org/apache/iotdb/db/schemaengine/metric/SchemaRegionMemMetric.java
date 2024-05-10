@@ -131,7 +131,8 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         Tag.REGION.toString(),
         regionTagValue,
         Tag.DATABASE.toString(),
-        database);    metricService.remove(
+        database);
+    metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_REGION.toString(),
         Tag.NAME.toString(),
