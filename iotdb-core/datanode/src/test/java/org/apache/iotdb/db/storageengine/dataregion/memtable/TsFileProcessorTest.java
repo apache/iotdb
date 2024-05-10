@@ -539,7 +539,9 @@ public class TsFileProcessorTest {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      insertRowsNode.addOneInsertRowNode(buildInsertRowNodeByTSRecord(record), i - 1);
+      InsertRowNode node = buildInsertRowNodeByTSRecord(record);
+      node.setAligned(true);
+      insertRowsNode.addOneInsertRowNode(node, i - 1);
     }
     processor2.insert(insertRowsNode, new long[4]);
     IMemTable memTable2 = processor2.getWorkMemTable();
