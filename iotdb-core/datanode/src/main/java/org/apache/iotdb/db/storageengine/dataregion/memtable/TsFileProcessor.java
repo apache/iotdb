@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
-import java.util.HashSet;
-import java.util.Objects;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -85,9 +83,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -569,8 +569,8 @@ public class TsFileProcessor {
           continue;
         }
         if (workMemTable.checkIfChunkDoesNotExist(deviceId, measurements[i])
-            || !increasingMemTableMemInfo.containsKey(deviceId)
-            || !increasingMemTableMemInfo.get(deviceId).containsKey(measurements[i])) {
+            && (!increasingMemTableMemInfo.containsKey(deviceId)
+                || !increasingMemTableMemInfo.get(deviceId).containsKey(measurements[i]))) {
           // ChunkMetadataIncrement
           chunkMetadataIncrement += ChunkMetadata.calculateRamSize(measurements[i], dataTypes[i]);
           memTableIncrement += TVList.tvListArrayMemCost(dataTypes[i]);
@@ -677,7 +677,7 @@ public class TsFileProcessor {
       Object[] values = insertRowNode.getValues();
       String[] measurements = insertRowNode.getMeasurements();
       if (workMemTable.checkIfChunkDoesNotExist(deviceId, AlignedPath.VECTOR_PLACEHOLDER)
-          || !increasingMemTableMemInfo.containsKey(deviceId)) {
+          && !increasingMemTableMemInfo.containsKey(deviceId)) {
         // For new device of this mem table
         // ChunkMetadataIncrement
         chunkMetadataIncrement +=
@@ -690,7 +690,9 @@ public class TsFileProcessor {
             continue;
           }
           Objects.requireNonNull(
-              increasingMemTableMemInfo.putIfAbsent(deviceId, new Pair<>(new HashSet<>(), 1))).left.add(measurements[i]);
+                  increasingMemTableMemInfo.putIfAbsent(deviceId, new Pair<>(new HashSet<>(), 1)))
+              .left
+              .add(measurements[i]);
           // TEXT data mem size
           if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
             textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
@@ -723,9 +725,9 @@ public class TsFileProcessor {
           }
         }
         // Here currentChunkPointNum >= 1
-        if (((alignedMemChunk.alignedListSize()
-            + increasingMemTableMemInfo.get(deviceId).right)
-            % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
+        if (((alignedMemChunk.alignedListSize() + increasingMemTableMemInfo.get(deviceId).right)
+                % PrimitiveArrayManager.ARRAY_SIZE)
+            == 0) {
           dataTypesInTVList.addAll(((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
           memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
         }
