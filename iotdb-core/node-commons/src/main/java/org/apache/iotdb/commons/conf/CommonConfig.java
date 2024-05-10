@@ -207,6 +207,7 @@ public class CommonConfig {
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
 
+  private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
   private int pipeMaxAllowedPinnedMemTableCount = 50;
   private long pipeMaxAllowedLinkedTsFileCount = 100;
@@ -828,6 +829,16 @@ public class CommonConfig {
 
   public int getPipeAirGapReceiverPort() {
     return pipeAirGapReceiverPort;
+  }
+
+  public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
+    return pipeMaxAllowedHistoricalTsFilePerDataRegion;
+  }
+
+  public void setPipeMaxAllowedHistoricalTsFilePerDataRegion(
+      int pipeMaxAllowedPendingTsFileEpochPerDataRegion) {
+    this.pipeMaxAllowedHistoricalTsFilePerDataRegion =
+        pipeMaxAllowedPendingTsFileEpochPerDataRegion;
   }
 
   public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
