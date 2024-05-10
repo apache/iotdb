@@ -308,9 +308,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
     }
     final Rate rate = pipeHeartbeatRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.warn(
-          "Failed to mark pipe data region connector heartbeat event, PipeConnectorSubtask({}) does not exist",
-          taskID);
+      // Do not warn for the schema region events
       return;
     }
     rate.mark();

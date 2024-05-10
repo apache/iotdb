@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.processor;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeRemainingTimeMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -69,18 +71,21 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       final String taskID,
       final long creationTime,
       final String pipeName,
-      final int dataRegionId,
+      final int regionId,
       final EventSupplier inputEventSupplier,
       final PipeProcessor pipeProcessor,
       final PipeEventCollector outputEventCollector) {
     super(taskID, creationTime);
     this.subtaskCreationTime = System.currentTimeMillis();
     this.pipeName = pipeName;
-    this.dataRegionId = dataRegionId;
+    this.dataRegionId = regionId;
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
-    PipeProcessorMetrics.getInstance().register(this);
+    // Only register dataRegions
+    if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
+      PipeProcessorMetrics.getInstance().register(this);
+    }
     PipeRemainingTimeMetrics.getInstance().register(this);
   }
 

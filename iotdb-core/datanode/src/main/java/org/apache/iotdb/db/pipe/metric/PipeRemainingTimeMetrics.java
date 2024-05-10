@@ -169,7 +169,7 @@ public class PipeRemainingTimeMetrics implements IMetricSet {
     }
     final String pipeName = params[0];
     final int regionId = Integer.parseInt(params[1]);
-    final int creationTime = Integer.parseInt(params[2]);
+    final long creationTime = Long.parseLong(params[2]);
     final String taskID = params[0] + "_" + params[2];
 
     if (Objects.isNull(metricService)) {
