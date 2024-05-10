@@ -106,4 +106,18 @@ public abstract class SubscriptionPrefetchingQueue {
   public String toString() {
     return "SubscriptionPrefetchingQueue{brokerId=" + brokerId + ", topicName=" + topicName + "}";
   }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public String getPrefetchingQueueId() {
+    return brokerId + "_" + topicName;
+  }
+
+  public long getUncommittedEventCount() {
+    return uncommittedEvents.size();
+  }
+
+  public long getCurrentCommitId() {
+    return subscriptionCommitIdGenerator.get();
+  }
 }

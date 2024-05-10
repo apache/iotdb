@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.broker;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.db.subscription.metric.SubscriptionPrefetchingQueueMetrics;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -66,6 +67,12 @@ public class SubscriptionBroker {
       if (topicNames.contains(topicName)) {
         final SubscriptionEvent event = prefetchingQueue.poll(consumerId);
         if (Objects.nonNull(event)) {
+          if (event.getMessage().trySerialize()) {
+            SubscriptionPrefetchingQueueMetrics.getInstance()
+                .mark(
+                    prefetchingQueue.getPrefetchingQueueId(),
+                    event.getMessage().getByteBuffer().limit());
+          }
           events.add(event);
         }
       }
@@ -94,9 +101,15 @@ public class SubscriptionBroker {
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
-    return Collections.singletonList(
+    final SubscriptionEvent event =
         ((SubscriptionPrefetchingTsFileQueue) prefetchingQueue)
-            .pollTsFile(consumerId, fileName, writingOffset));
+            .pollTsFile(consumerId, fileName, writingOffset);
+    if (event.getMessage().trySerialize()) {
+      SubscriptionPrefetchingQueueMetrics.getInstance()
+          .mark(
+              prefetchingQueue.getPrefetchingQueueId(), event.getMessage().getByteBuffer().limit());
+    }
+    return Collections.singletonList(event);
   }
 
   /**
@@ -134,13 +147,15 @@ public class SubscriptionBroker {
     }
     final String topicFormat = SubscriptionAgent.topic().getTopicFormat(topicName);
     if (TopicConstant.FORMAT_TS_FILE_READER_VALUE.equals(topicFormat)) {
-      topicNameToPrefetchingQueue.put(
-          topicName,
-          new SubscriptionPrefetchingTsFileQueue(brokerId, topicName, inputPendingQueue));
+      final SubscriptionPrefetchingQueue queue =
+          new SubscriptionPrefetchingTsFileQueue(brokerId, topicName, inputPendingQueue);
+      SubscriptionPrefetchingQueueMetrics.getInstance().register(queue);
+      topicNameToPrefetchingQueue.put(topicName, queue);
     } else {
-      topicNameToPrefetchingQueue.put(
-          topicName,
-          new SubscriptionPrefetchingTabletsQueue(brokerId, topicName, inputPendingQueue));
+      final SubscriptionPrefetchingQueue queue =
+          new SubscriptionPrefetchingTabletsQueue(brokerId, topicName, inputPendingQueue);
+      SubscriptionPrefetchingQueueMetrics.getInstance().register(queue);
+      topicNameToPrefetchingQueue.put(topicName, queue);
     }
   }
 
@@ -153,6 +168,8 @@ public class SubscriptionBroker {
     }
     // TODO: do something for events on-the-fly
     topicNameToPrefetchingQueue.remove(topicName);
+    SubscriptionPrefetchingQueueMetrics.getInstance()
+        .deregister(prefetchingQueue.getPrefetchingQueueId());
   }
 
   public void executePrefetch(final String topicName) {

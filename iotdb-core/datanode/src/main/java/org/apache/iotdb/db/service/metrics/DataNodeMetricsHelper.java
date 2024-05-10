@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
+import org.apache.iotdb.db.subscription.metric.SubscriptionMetrics;
 import org.apache.iotdb.metrics.metricsets.UpTimeMetrics;
 import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
@@ -89,6 +90,9 @@ public class DataNodeMetricsHelper {
 
     // bind load tsfile memory related metrics
     MetricService.getInstance().addMetricSet(LoadTsFileMemMetricSet.getInstance());
+
+    // bind subscription related metrics
+    MetricService.getInstance().addMetricSet(SubscriptionMetrics.getInstance());
   }
 
   private static void initSystemMetrics() {

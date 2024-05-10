@@ -61,7 +61,9 @@ public class SubscriptionSession extends Session {
             // disable auto fetch
             .enableAutoFetch(false)
             // disable redirection
-            .enableRedirection(false));
+            .enableRedirection(false)
+            // TODO: config
+            .thriftMaxFrameSize(2147483647));
   }
 
   @Override

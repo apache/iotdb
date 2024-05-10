@@ -154,6 +154,10 @@ public enum Metric {
   PIPE_EVENT_COMMIT_QUEUE_SIZE("pipe_event_commit_queue_size"),
   PIPE_PROCEDURE("pipe_procedure"),
   PIPE_TASK_STATUS("pipe_task_status"),
+  // subscription related
+  SUBSCRIPTION_UNCOMMITTED_EVENT_COUNT("subscription_uncommitted_event_count"),
+  SUBSCRIPTION_CURRENT_COMMIT_ID("subscription_current_commit_id"),
+  SUBSCRIPTION_EVENT_TRANSFER("subscription_event_transfer"),
   // load related
   LOAD_MEM("load_mem");
 
