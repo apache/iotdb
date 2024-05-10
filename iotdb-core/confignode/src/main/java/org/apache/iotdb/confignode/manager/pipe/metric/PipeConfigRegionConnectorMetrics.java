@@ -29,7 +29,6 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.google.common.collect.ImmutableSet;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,7 +100,7 @@ public class PipeConfigRegionConnectorMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(@NonNull final PipeConfigNodeSubtask pipeConfigNodeSubtask) {
+  public void register(final PipeConfigNodeSubtask pipeConfigNodeSubtask) {
     final String taskID = pipeConfigNodeSubtask.getTaskID();
     subtaskMap.putIfAbsent(taskID, pipeConfigNodeSubtask);
     if (Objects.nonNull(metricService)) {
@@ -112,7 +111,7 @@ public class PipeConfigRegionConnectorMetrics implements IMetricSet {
   public void deregister(final String taskID) {
     if (!subtaskMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe config region connector metrics, PipeConnectorSubtask({}) does not exist",
+          "Failed to deregister pipe config region connector metrics, PipeConfigNodeSubtask({}) does not exist",
           taskID);
       return;
     }
@@ -129,7 +128,7 @@ public class PipeConfigRegionConnectorMetrics implements IMetricSet {
     final Rate rate = configRateMap.get(taskID);
     if (rate == null) {
       LOGGER.warn(
-          "Failed to mark pipe data region connector tablet event, PipeConnectorSubtask({}) does not exist",
+          "Failed to mark pipe config region write plan event, PipeConfigNodeSubtask({}) does not exist",
           taskID);
       return;
     }

@@ -93,7 +93,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
             new PipeTaskExtractorRuntimeEnvironment(
-                taskID, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
+                pipeName, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
     extractor.customize(extractorParameters, runtimeConfiguration);
   }
 
@@ -102,7 +102,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
 
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
-            new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
+            new PipeTaskRuntimeEnvironment(pipeName, creationTime, CONFIG_REGION_ID.getId()));
 
     processor =
         PipeConfigNodeAgent.plugin()
@@ -126,7 +126,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     // 3. Customize connector
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
-            new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
+            new PipeTaskRuntimeEnvironment(pipeName, creationTime, CONFIG_REGION_ID.getId()));
     outputPipeConnector.customize(connectorParameters, runtimeConfiguration);
 
     // 4. Handshake

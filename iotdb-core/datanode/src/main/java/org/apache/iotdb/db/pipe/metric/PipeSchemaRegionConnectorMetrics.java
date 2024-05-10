@@ -113,7 +113,7 @@ public class PipeSchemaRegionConnectorMetrics implements IMetricSet {
   public void deregister(final String taskID) {
     if (!connectorMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe data region connector metrics, PipeConnectorSubtask({}) does not exist",
+          "Failed to deregister pipe schema region connector metrics, PipeConnectorSubtask({}) does not exist",
           taskID);
       return;
     }

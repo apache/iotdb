@@ -28,7 +28,6 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.google.common.collect.ImmutableSet;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,7 +84,7 @@ public class PipeConfigRegionExtractorMetrics implements IMetricSet {
 
   private void removeAutoGauge(final String taskID) {
     final IoTDBConfigRegionExtractor extractor = extractorMap.get(taskID);
-    // pending event count
+    // Pending event count
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.UNTRANSFERRED_CONFIG_COUNT.toString(),
@@ -97,7 +96,7 @@ public class PipeConfigRegionExtractorMetrics implements IMetricSet {
 
   //////////////////////////// pipe integration ////////////////////////////
 
-  public void register(@NonNull final IoTDBConfigRegionExtractor extractor) {
+  public void register(final IoTDBConfigRegionExtractor extractor) {
     final String taskID = extractor.getTaskID();
     extractorMap.putIfAbsent(taskID, extractor);
     if (Objects.nonNull(metricService)) {
@@ -108,7 +107,7 @@ public class PipeConfigRegionExtractorMetrics implements IMetricSet {
   public void deregister(final String taskID) {
     if (!extractorMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe schema region extractor metrics, IoTDBConfigRegionExtractor({}) does not exist",
+          "Failed to deregister pipe config region extractor metrics, IoTDBConfigRegionExtractor({}) does not exist",
           taskID);
       return;
     }
