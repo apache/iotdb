@@ -175,8 +175,8 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
     totalDeviceNumber.incrementAndGet();
   }
 
-  public void deleteDevice() {
-    totalDeviceNumber.decrementAndGet();
+  public void deleteDevice(long cnt) {
+    totalDeviceNumber.addAndGet(-cnt);
   }
 
   @Override

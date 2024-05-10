@@ -101,7 +101,7 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
 
   public void deleteDevice() {
     devicesNumber.decrementAndGet();
-    schemaEngineStatistics.deleteDevice();
+    schemaEngineStatistics.deleteDevice(1L);
   }
 
   @Override
@@ -164,6 +164,7 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     schemaEngineStatistics.releaseMemory(memoryUsage.get());
     schemaEngineStatistics.deleteMeasurement(measurementNumber.get());
     schemaEngineStatistics.deleteView(viewNumber.get());
+    schemaEngineStatistics.deleteDevice(devicesNumber.get());
     memoryUsage.getAndSet(0);
     measurementNumber.getAndSet(0);
     devicesNumber.getAndSet(0);
