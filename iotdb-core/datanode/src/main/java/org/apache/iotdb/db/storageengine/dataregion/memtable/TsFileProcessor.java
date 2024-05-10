@@ -710,7 +710,8 @@ public class TsFileProcessor {
           }
 
           // Extending the column of aligned mem chunk
-          if (!alignedMemChunk.containsMeasurement(measurements[i])) {
+          if (!alignedMemChunk.containsMeasurement(measurements[i])
+              || !increasingMemTableMemInfo.get(deviceId).left.contains(measurements[i])) {
             memTableIncrement +=
                 (alignedMemChunk.alignedListSize() / PrimitiveArrayManager.ARRAY_SIZE + 1)
                     * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
@@ -722,7 +723,9 @@ public class TsFileProcessor {
           }
         }
         // Here currentChunkPointNum >= 1
-        if ((alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
+        if (((alignedMemChunk.alignedListSize()
+            + increasingMemTableMemInfo.get(deviceId).right)
+            % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
           dataTypesInTVList.addAll(((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
           memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
         }
