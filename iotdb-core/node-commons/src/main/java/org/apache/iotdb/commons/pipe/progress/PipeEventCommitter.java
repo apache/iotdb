@@ -67,7 +67,7 @@ public class PipeEventCommitter {
         "COMMIT QUEUE OFFER: pipe name {}, creation time {}, region id {}, event commit id {}, last commit id {}, commit queue size {}",
         pipeName,
         creationTime,
-        dataRegionId,
+        regionId,
         event.getCommitId(),
         lastCommitId.get(),
         commitQueue.size());
@@ -98,7 +98,7 @@ public class PipeEventCommitter {
           "COMMIT QUEUE POLL: pipe name {}, creation time {}, region id {}, last commit id {}, commit queue size after commit {}",
           pipeName,
           creationTime,
-          dataRegionId,
+          regionId,
           lastCommitId.get(),
           commitQueue.size());
     }
