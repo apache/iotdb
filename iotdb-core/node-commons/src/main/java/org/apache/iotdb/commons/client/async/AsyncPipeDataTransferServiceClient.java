@@ -31,6 +31,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
+import org.apache.thrift.transport.TNonblockingSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,6 +116,15 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
 
   public void setShouldReturnSelf(boolean shouldReturnSelf) {
     this.shouldReturnSelf.set(shouldReturnSelf);
+  }
+
+  public void setTimeoutDynamically(int timeout) {
+    try {
+      ((TNonblockingSocket) ___transport).setTimeout(timeout);
+    } catch (Exception e) {
+      setTimeout(timeout);
+      LOGGER.error("Failed to set timeout dynamically, set it statically", e);
+    }
   }
 
   private void close() {

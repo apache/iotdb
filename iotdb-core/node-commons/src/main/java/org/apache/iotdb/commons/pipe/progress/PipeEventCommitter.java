@@ -63,6 +63,15 @@ public class PipeEventCommitter {
   public synchronized void commit(final EnrichedEvent event) {
     commitQueue.offer(event);
 
+    LOGGER.info(
+        "COMMIT QUEUE OFFER: pipe name {}, creation time {}, region id {}, event commit id {}, last commit id {}, commit queue size {}",
+        pipeName,
+        creationTime,
+        dataRegionId,
+        event.getCommitId(),
+        lastCommitId.get(),
+        commitQueue.size());
+
     while (!commitQueue.isEmpty()) {
       final EnrichedEvent e = commitQueue.peek();
 
@@ -84,6 +93,14 @@ public class PipeEventCommitter {
       e.onCommitted();
       lastCommitId.incrementAndGet();
       commitQueue.poll();
+
+      LOGGER.info(
+          "COMMIT QUEUE POLL: pipe name {}, creation time {}, region id {}, last commit id {}, commit queue size after commit {}",
+          pipeName,
+          creationTime,
+          dataRegionId,
+          lastCommitId.get(),
+          commitQueue.size());
     }
   }
 
