@@ -719,14 +719,14 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       return planNodeList;
     }
 
-    boolean needMergeInAdvance = !(node.isOutputCount() && !context.isOneSeriesInMultiRegion());
+    boolean outputCountInScanNode = node.isOutputCount() && !context.isOneSeriesInMultiRegion();
     RegionMergeNode regionMergeNode =
         new RegionMergeNode(
             context.queryContext.getQueryId().genPlanNodeId(),
             node.isOutputCount(),
-            needMergeInAdvance);
+            !outputCountInScanNode);
     for (PlanNode planNode : planNodeList) {
-      ((RegionScanNode) planNode).setOutputCount(!context.isOneSeriesInMultiRegion());
+      ((RegionScanNode) planNode).setOutputCount(outputCountInScanNode);
       regionMergeNode.addChild(planNode);
     }
     return Collections.singletonList(regionMergeNode);
