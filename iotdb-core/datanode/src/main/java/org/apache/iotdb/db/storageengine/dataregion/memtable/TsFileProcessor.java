@@ -586,9 +586,7 @@ public class TsFileProcessor {
               ((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0
                   ? TVList.tvListArrayMemCost(dataTypes[i])
                   : 0;
-          increasingMemTableInfo
-              .get(deviceId)
-              .computeIfPresent(measurements[i], (k, v) -> v + 1);
+          increasingMemTableInfo.get(deviceId).computeIfPresent(measurements[i], (k, v) -> v + 1);
         }
         // TEXT data mem size
         if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
@@ -668,8 +666,7 @@ public class TsFileProcessor {
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
     // device -> (measurements -> datatype, adding aligned TVList size)
-    Map<IDeviceID, Pair<Map<String, TSDataType>, Integer>> increasingMemTableInfo =
-        new HashMap<>();
+    Map<IDeviceID, Pair<Map<String, TSDataType>, Integer>> increasingMemTableInfo = new HashMap<>();
     for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
       IDeviceID deviceId = insertRowNode.getDeviceID();
       TSDataType[] dataTypes = insertRowNode.getDataTypes();
@@ -713,8 +710,7 @@ public class TsFileProcessor {
           }
 
           Pair<Map<String, TSDataType>, Integer> addingPointNumInfo =
-              increasingMemTableInfo.computeIfAbsent(
-                  deviceId, k -> new Pair<>(new HashMap<>(), 0));
+              increasingMemTableInfo.computeIfAbsent(deviceId, k -> new Pair<>(new HashMap<>(), 0));
           int addingPointNum = addingPointNumInfo.getRight();
           // Extending the column of aligned mem chunk
           if ((alignedMemChunk != null && !alignedMemChunk.containsMeasurement(measurements[i]))
