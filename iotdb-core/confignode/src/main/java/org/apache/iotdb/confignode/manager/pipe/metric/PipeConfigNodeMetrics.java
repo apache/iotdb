@@ -38,6 +38,7 @@ public class PipeConfigNodeMetrics implements IMetricSet {
     PipeProcedureMetrics.getInstance().bindTo(metricService);
     pipeTaskInfoMetrics.bindTo(metricService);
     PipeConfigNodeListenerMetrics.getInstance().bindTo(metricService);
+    PipeConfigRegionExtractorMetrics.getInstance().bindTo(metricService);
     PipeConfigRegionConnectorMetrics.getInstance().bindTo(metricService);
   }
 
@@ -46,6 +47,7 @@ public class PipeConfigNodeMetrics implements IMetricSet {
     PipeProcedureMetrics.getInstance().unbindFrom(metricService);
     pipeTaskInfoMetrics.unbindFrom(metricService);
     PipeConfigNodeListenerMetrics.getInstance().unbindFrom(metricService);
+    PipeConfigRegionExtractorMetrics.getInstance().unbindFrom(metricService);
     PipeConfigRegionConnectorMetrics.getInstance().unbindFrom(metricService);
   }
 }

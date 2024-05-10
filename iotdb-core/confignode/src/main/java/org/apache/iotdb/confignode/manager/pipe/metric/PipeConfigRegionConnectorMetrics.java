@@ -78,7 +78,7 @@ public class PipeConfigRegionConnectorMetrics implements IMetricSet {
     ImmutableSet.copyOf(subtaskMap.keySet()).forEach(this::deregister);
     if (!subtaskMap.isEmpty()) {
       LOGGER.warn(
-          "Failed to unbind from pipe schema region connector metrics, connector map not empty");
+          "Failed to unbind from pipe config region connector metrics, connector map not empty");
     }
   }
 
@@ -91,7 +91,7 @@ public class PipeConfigRegionConnectorMetrics implements IMetricSet {
     // Transfer event rate
     metricService.remove(
         MetricType.RATE,
-        Metric.PIPE_CONNECTOR_SCHEMA_TRANSFER.toString(),
+        Metric.PIPE_CONNECTOR_CONFIG_TRANSFER.toString(),
         Tag.NAME.toString(),
         subtask.getPipeName(),
         Tag.CREATION_TIME.toString(),
@@ -112,7 +112,7 @@ public class PipeConfigRegionConnectorMetrics implements IMetricSet {
   public void deregister(final String taskID) {
     if (!subtaskMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe data region connector metrics, PipeConnectorSubtask({}) does not exist",
+          "Failed to deregister pipe config region connector metrics, PipeConnectorSubtask({}) does not exist",
           taskID);
       return;
     }
