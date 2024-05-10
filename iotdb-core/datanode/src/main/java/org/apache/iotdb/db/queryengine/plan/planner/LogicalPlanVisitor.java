@@ -518,9 +518,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     if (showTimeSeriesStatement.hasTimeCondition()) {
       planBuilder =
           planBuilder
-              .planTimeseriesRegionScan(
-                  showTimeSeriesStatement.getTimeseriesToSchemas(),
-                  showTimeSeriesStatement.isOutputCount())
+              .planTimeseriesRegionScan(analysis.getDeviceToTimeseriesSchemas(), false)
               .planLimit(limit)
               .planOffset(offset);
       return planBuilder.getRoot();
@@ -580,9 +578,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     if (showDevicesStatement.hasTimeCondition()) {
       planBuilder =
           planBuilder
-              .planDeviceRegionScan(
-                  showDevicesStatement.getDevicePathToAlignedStatus(),
-                  showDevicesStatement.isOutputCount())
+              .planDeviceRegionScan(analysis.getDevicePathToAlignedStatus(), false)
               .planLimit(showDevicesStatement.getLimit())
               .planOffset(showDevicesStatement.getOffset());
       return planBuilder.getRoot();
@@ -626,6 +622,12 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitCountDevices(
       CountDevicesStatement countDevicesStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+
+    if (countDevicesStatement.hasTimeCondition()) {
+      planBuilder = planBuilder.planDeviceRegionScan(analysis.getDevicePathToAlignedStatus(), true);
+      return planBuilder.getRoot();
+    }
+
     return planBuilder
         .planDevicesCountSource(
             countDevicesStatement.getPathPattern(),
@@ -639,6 +641,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitCountTimeSeries(
       CountTimeSeriesStatement countTimeSeriesStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+
+    if (countTimeSeriesStatement.hasTimeCondition()) {
+      planBuilder =
+          planBuilder.planTimeseriesRegionScan(analysis.getDeviceToTimeseriesSchemas(), true);
+      return planBuilder.getRoot();
+    }
+
     return planBuilder
         .planTimeSeriesCountSource(
             countTimeSeriesStatement.getPathPattern(),

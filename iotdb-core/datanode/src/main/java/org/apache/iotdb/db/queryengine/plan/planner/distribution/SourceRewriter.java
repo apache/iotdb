@@ -713,19 +713,22 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     return processRawSeriesScan(node, context, mergeNode);
   }
 
-  List<PlanNode> processRegionScan(RegionScanNode node, DistributionPlanContext context) {
+  private List<PlanNode> processRegionScan(RegionScanNode node, DistributionPlanContext context) {
     List<PlanNode> planNodeList = splitRegionScanNodeByRegion(node, context);
     if (planNodeList.size() == 1) {
       return planNodeList;
     }
 
-    boolean needMergeInAdvance = !(node.isOutputCount() && context.isAllDeviceOnlyInOneRegion());
+    boolean needMergeInAdvance = !(node.isOutputCount() && !context.isOneSeriesInMultiRegion());
     RegionMergeNode regionMergeNode =
         new RegionMergeNode(
             context.queryContext.getQueryId().genPlanNodeId(),
             node.isOutputCount(),
             needMergeInAdvance);
-    planNodeList.forEach(regionMergeNode::addChild);
+    for (PlanNode planNode : planNodeList) {
+      ((RegionScanNode) planNode).setOutputCount(!context.isOneSeriesInMultiRegion());
+      regionMergeNode.addChild(planNode);
+    }
     return Collections.singletonList(regionMergeNode);
   }
 
@@ -753,9 +756,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
 
   private List<PlanNode> splitRegionScanNodeByRegion(
       RegionScanNode node, DistributionPlanContext context) {
-    List<PlanNode> planNodesForRegions = new ArrayList<>();
-    Map<TRegionReplicaSet, Set<PartialPath>> devicesInRegion = new HashMap<>();
-    List<PartialPath> devicesList = node.getDevicePaths();
+    Map<TRegionReplicaSet, RegionScanNode> regionScanNodeMap = new HashMap<>();
+    Set<PartialPath> devicesList = node.getDevicePaths();
     boolean isAllDeviceOnlyInOneRegion = true;
 
     for (PartialPath device : devicesList) {
@@ -763,29 +765,23 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           analysis.getPartitionInfoByDevice(device, context.getPartitionTimeFilter());
       isAllDeviceOnlyInOneRegion = isAllDeviceOnlyInOneRegion && dataDistribution.size() == 1;
       for (TRegionReplicaSet dataRegion : dataDistribution) {
-        devicesInRegion.computeIfAbsent(dataRegion, k -> new HashSet<>()).add(device);
+        regionScanNodeMap
+            .computeIfAbsent(
+                dataRegion,
+                k -> {
+                  RegionScanNode regionScanNode = (RegionScanNode) node.clone();
+                  regionScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+                  regionScanNode.setRegionReplicaSet(dataRegion);
+                  regionScanNode.clearPath();
+                  return regionScanNode;
+                })
+            .addDevicePath(device, node);
       }
     }
 
-    context.setAllDeviceOnlyInOneRegion(isAllDeviceOnlyInOneRegion);
-
+    context.setOneSeriesInMultiRegion(!isAllDeviceOnlyInOneRegion);
     // If there is only one region, return directly
-    if (devicesInRegion.size() == 1) {
-      node.setRegionReplicaSet(devicesInRegion.keySet().iterator().next());
-      planNodesForRegions.add(node);
-      return planNodesForRegions;
-    }
-
-    for (Map.Entry<TRegionReplicaSet, Set<PartialPath>> entry : devicesInRegion.entrySet()) {
-      RegionScanNode split = (RegionScanNode) node.clone();
-      split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
-      split.setRegionReplicaSet(entry.getKey());
-      split.setDevicePaths(entry.getValue());
-      split.setOutputCount(isAllDeviceOnlyInOneRegion);
-      planNodesForRegions.add(split);
-    }
-
-    return planNodesForRegions;
+    return new ArrayList<>(regionScanNodeMap.values());
   }
 
   private List<PlanNode> splitSeriesSourceNodeByPartition(

@@ -763,14 +763,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       path = new PartialPath(SqlConstant.getSingleRootArray());
     }
+    CountDevicesStatement statement = new CountDevicesStatement(path);
     if (ctx.timeConditionClause() != null) {
       WhereCondition timeCondition = parseWhereClause(ctx.timeConditionClause().whereClause());
-      ShowDevicesStatement statement = new ShowDevicesStatement(path);
       statement.setTimeCondition(timeCondition);
-      statement.setOutputCount(true);
-      return statement;
     }
-    return new CountDevicesStatement(path);
+    return statement;
   }
 
   // Count TimeSeries ========================================================================
@@ -785,10 +783,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (ctx.timeConditionClause() != null) {
       WhereCondition timeCondition = parseWhereClause(ctx.timeConditionClause().whereClause());
-      ShowTimeSeriesStatement timeseriesStatement = new ShowTimeSeriesStatement(path, false);
-      timeseriesStatement.setTimeCondition(timeCondition);
-      timeseriesStatement.setOutputCount(true);
-      return timeseriesStatement;
+      statement = new CountTimeSeriesStatement(path);
+      ((CountTimeSeriesStatement) statement).setTimeCondition(timeCondition);
+      return statement;
     }
     if (ctx.INTEGER_LITERAL() != null) {
       int level = Integer.parseInt(ctx.INTEGER_LITERAL().getText());

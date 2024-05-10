@@ -38,8 +38,6 @@ public class DistributionPlanContext {
   // DataRegions
   protected boolean queryMultiRegion;
 
-  private boolean isAllDeviceOnlyInOneRegion;
-
   // used by group by level
   private Map<String, List<Expression>> columnNameToExpression;
 
@@ -89,11 +87,7 @@ public class DistributionPlanContext {
     return queryContext.getGlobalTimeFilter();
   }
 
-  public void setAllDeviceOnlyInOneRegion(boolean allDeviceOnlyInOneRegion) {
-    isAllDeviceOnlyInOneRegion = allDeviceOnlyInOneRegion;
-  }
-
-  public boolean isAllDeviceOnlyInOneRegion() {
-    return isAllDeviceOnlyInOneRegion;
+  public boolean isOneSeriesInMultiRegion() {
+    return oneSeriesInMultiRegion;
   }
 }

@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -55,9 +54,11 @@ public abstract class RegionScanNode extends SourceNode {
     this.outputCount = outputCount;
   }
 
-  public abstract List<PartialPath> getDevicePaths();
+  public abstract Set<PartialPath> getDevicePaths();
 
-  public abstract void setDevicePaths(Set<PartialPath> devicePaths);
+  public abstract void addDevicePath(PartialPath devicePath, RegionScanNode node);
+
+  public abstract void clearPath();
 
   @Override
   public void open() throws Exception {}

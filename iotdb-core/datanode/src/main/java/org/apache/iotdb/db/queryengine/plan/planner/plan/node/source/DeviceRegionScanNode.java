@@ -35,8 +35,8 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -143,17 +143,19 @@ public class DeviceRegionScanNode extends RegionScanNode {
   }
 
   @Override
-  public List<PartialPath> getDevicePaths() {
-    return new ArrayList<>(devicePathsToAligned.keySet());
+  public Set<PartialPath> getDevicePaths() {
+    return new HashSet<>(devicePathsToAligned.keySet());
   }
 
   @Override
-  public void setDevicePaths(Set<PartialPath> devicePaths) {
-    Map<PartialPath, Boolean> curDevicePathToStatus = new HashMap<>();
-    for (PartialPath path : devicePaths) {
-      curDevicePathToStatus.put(path, devicePathsToAligned.get(path));
-    }
-    this.devicePathsToAligned = curDevicePathToStatus;
+  public void addDevicePath(PartialPath devicePath, RegionScanNode node) {
+    this.devicePathsToAligned.put(
+        devicePath, ((DeviceRegionScanNode) node).devicePathsToAligned.get(devicePath));
+  }
+
+  @Override
+  public void clearPath() {
+    this.devicePathsToAligned = new HashMap<>();
   }
 
   @Override

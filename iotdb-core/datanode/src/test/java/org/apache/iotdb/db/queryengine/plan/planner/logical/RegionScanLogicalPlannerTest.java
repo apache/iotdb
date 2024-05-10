@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.logical;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -35,7 +36,10 @@ import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.logical.LogicalPlannerTestUtil.parseSQLToPlanNode;
@@ -115,38 +119,64 @@ public class RegionScanLogicalPlannerTest {
     // fake initResultNodeContext()
     queryId.genPlanNodeId();
 
-    Map<PartialPath, TimeseriesSchemaInfo> timeseriesSchemaInfoMap = new HashMap<>();
-
+    Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemaInfoMap =
+        new HashMap<>();
+    Map<PartialPath, List<TimeseriesSchemaInfo>> timeseriesSchemaInfoMap = new HashMap<>();
     timeseriesSchemaInfoMap.put(
         new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
-        new TimeseriesSchemaInfo(false, "INT32", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", ""));
+        Collections.singletonList(
+            new TimeseriesSchemaInfo(
+                false, "INT32", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", "")));
     timeseriesSchemaInfoMap.put(
         new MeasurementPath("root.sg.d1.s2", TSDataType.DOUBLE),
-        new TimeseriesSchemaInfo(false, "DOUBLE", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", ""));
+        Collections.singletonList(
+            new TimeseriesSchemaInfo(
+                false, "DOUBLE", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", "")));
     timeseriesSchemaInfoMap.put(
         new MeasurementPath("root.sg.d1.s3", TSDataType.BOOLEAN),
-        new TimeseriesSchemaInfo(
-            false, "BOOLEAN", "PLAIN", "LZ4", "{\"key1\":\"value2\"}", "", ""));
+        Collections.singletonList(
+            new TimeseriesSchemaInfo(
+                false, "BOOLEAN", "PLAIN", "LZ4", "{\"key1\":\"value2\"}", "", "")));
+    deviceToTimeseriesSchemaInfoMap.put(
+        new PartialPath(new PlainDeviceID("root.sg.d1")), timeseriesSchemaInfoMap);
 
-    timeseriesSchemaInfoMap.put(
+    Map<PartialPath, List<TimeseriesSchemaInfo>> timeseriesSchemaInfoMap2 = new HashMap<>();
+    timeseriesSchemaInfoMap2.put(
         new MeasurementPath("root.sg.d2.s1", TSDataType.INT32),
-        new TimeseriesSchemaInfo(false, "INT32", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", ""));
-    timeseriesSchemaInfoMap.put(
+        Collections.singletonList(
+            new TimeseriesSchemaInfo(
+                false, "INT32", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", "")));
+    timeseriesSchemaInfoMap2.put(
         new MeasurementPath("root.sg.d2.s2", TSDataType.DOUBLE),
-        new TimeseriesSchemaInfo(false, "DOUBLE", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", ""));
-    timeseriesSchemaInfoMap.put(
+        Collections.singletonList(
+            new TimeseriesSchemaInfo(
+                false, "DOUBLE", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", "")));
+    timeseriesSchemaInfoMap2.put(
         new MeasurementPath("root.sg.d2.s4", TSDataType.TEXT),
-        new TimeseriesSchemaInfo(false, "TEXT", "PLAIN", "LZ4", "{\"key2\":\"value1\"}", "", ""));
+        Collections.singletonList(
+            new TimeseriesSchemaInfo(
+                false, "TEXT", "PLAIN", "LZ4", "{\"key2\":\"value1\"}", "", "")));
+    deviceToTimeseriesSchemaInfoMap.put(
+        new PartialPath(new PlainDeviceID("root.sg.d2")), timeseriesSchemaInfoMap2);
 
-    timeseriesSchemaInfoMap.put(
-        new MeasurementPath("root.sg.d2.a.s1", TSDataType.INT32),
+    List<String> schemas = new ArrayList<>();
+    schemas.add("s1");
+    schemas.add("s2");
+    List<TimeseriesSchemaInfo> timeseriesSchemaInfoList = new ArrayList<>();
+    Map<PartialPath, List<TimeseriesSchemaInfo>> timeseriesSchemaInfoMap3 = new HashMap<>();
+    timeseriesSchemaInfoList.add(
         new TimeseriesSchemaInfo(true, "INT32", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", ""));
-    timeseriesSchemaInfoMap.put(
-        new MeasurementPath("root.sg.d2.a.s2", TSDataType.DOUBLE),
+    timeseriesSchemaInfoList.add(
         new TimeseriesSchemaInfo(true, "DOUBLE", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", "", ""));
+    timeseriesSchemaInfoMap3.put(
+        new AlignedPath("root.sg.d2.a", schemas, Collections.emptyList()),
+        timeseriesSchemaInfoList);
+    deviceToTimeseriesSchemaInfoMap.put(
+        new PartialPath(new PlainDeviceID("root.sg.d2.a")), timeseriesSchemaInfoMap3);
 
     TimeseriesRegionScanNode regionScanNode =
-        new TimeseriesRegionScanNode(queryId.genPlanNodeId(), timeseriesSchemaInfoMap, true, null);
+        new TimeseriesRegionScanNode(queryId.genPlanNodeId(), null, true, null);
+    regionScanNode.setDeviceToTimeseriesSchemaInfo(deviceToTimeseriesSchemaInfoMap);
 
     PlanNode actualPlan = parseSQLToPlanNode(sql);
     Assert.assertEquals(actualPlan, regionScanNode);

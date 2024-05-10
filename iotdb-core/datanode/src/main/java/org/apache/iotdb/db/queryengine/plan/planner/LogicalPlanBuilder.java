@@ -1348,10 +1348,12 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planTimeseriesRegionScan(
-      Map<PartialPath, TimeseriesSchemaInfo> timeseriesToSchemaInfo, boolean outputCount) {
-    this.root =
-        new TimeseriesRegionScanNode(
-            context.getQueryId().genPlanNodeId(), timeseriesToSchemaInfo, outputCount, null);
+      Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemaInfo,
+      boolean outputCount) {
+    TimeseriesRegionScanNode timeseriesRegionScanNode =
+        new TimeseriesRegionScanNode(context.getQueryId().genPlanNodeId(), outputCount, null);
+    timeseriesRegionScanNode.setDeviceToTimeseriesSchemaInfo(deviceToTimeseriesSchemaInfo);
+    this.root = timeseriesRegionScanNode;
     return this;
   }
 }

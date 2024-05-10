@@ -33,16 +33,16 @@ import java.util.Objects;
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TimeSeriesSchemaSource.mapToString;
 
 public class TimeseriesSchemaInfo {
-  boolean isAligned;
-  String dataType;
-  String encoding;
-  String compression;
-  String tags;
+  private final boolean isAligned;
+  private final String dataType;
+  private final String encoding;
+  private final String compression;
+  private final String tags;
 
   // TODO: Currently we can't get attributes from fetchSchema in query
-  // String attributes;
-  String deadband;
-  String deadbandParameters;
+  // private final String attributes;
+  private final String deadband;
+  private final String deadbandParameters;
 
   public TimeseriesSchemaInfo(boolean isAligned, IMeasurementSchemaInfo schemaInfo) {
     this.isAligned = isAligned;

@@ -21,13 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 /**
  * SHOW TIMESERIES statement.
@@ -44,8 +42,6 @@ public class ShowTimeSeriesStatement extends ShowStatement {
   // if is true, the result will be sorted according to the inserting frequency of the time series
   private final boolean orderByHeat;
   private WhereCondition timeCondition;
-  private Map<PartialPath, TimeseriesSchemaInfo> timeseriesToSchemas;
-  boolean outputCount = false;
 
   public ShowTimeSeriesStatement(PartialPath pathPattern, boolean orderByHeat) {
     super();
@@ -79,22 +75,6 @@ public class ShowTimeSeriesStatement extends ShowStatement {
 
   public boolean hasTimeCondition() {
     return timeCondition != null;
-  }
-
-  public void setTimeseriesToSchemas(Map<PartialPath, TimeseriesSchemaInfo> timeseriesToSchemas) {
-    this.timeseriesToSchemas = timeseriesToSchemas;
-  }
-
-  public Map<PartialPath, TimeseriesSchemaInfo> getTimeseriesToSchemas() {
-    return timeseriesToSchemas;
-  }
-
-  public void setOutputCount(boolean outputCount) {
-    this.outputCount = outputCount;
-  }
-
-  public boolean isOutputCount() {
-    return outputCount;
   }
 
   @Override
