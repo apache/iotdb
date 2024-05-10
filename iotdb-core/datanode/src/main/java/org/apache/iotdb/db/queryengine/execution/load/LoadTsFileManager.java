@@ -317,9 +317,7 @@ public class LoadTsFileManager {
         writer.endFile();
 
         DataRegion dataRegion = entry.getKey().getDataRegion();
-        TsFileResource tsFileResource = generateResource(writer, progressIndex);
-
-        dataRegion.loadNewTsFile(tsFileResource, true, isGeneratedByPipe);
+        dataRegion.loadNewTsFile(generateResource(writer, progressIndex), true, isGeneratedByPipe);
 
         dataRegion
             .getNonSystemDatabaseName()
