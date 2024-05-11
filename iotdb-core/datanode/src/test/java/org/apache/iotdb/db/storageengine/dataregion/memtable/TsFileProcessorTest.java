@@ -494,6 +494,19 @@ public class TsFileProcessorTest {
     Assert.assertEquals(memTable1.getTVListsRamCost(), memTable2.getTVListsRamCost());
     Assert.assertEquals(memTable1.getTotalPointsNum(), memTable2.getTotalPointsNum());
     Assert.assertEquals(memTable1.memSize(), memTable2.memSize());
+
+    // Insert rows with all column null
+    insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
+    insertRowNode1.setDataTypes(new TSDataType[1]);
+    insertRowNode1.setMeasurements(new String[1]);
+    insertRowNode1.setValues(new String[1]);
+    insertRowsNode.addOneInsertRowNode(insertRowNode1, 0);
+    processor2.insert(insertRowsNode, new long[4]);
+
+    processor1.insert(insertRowNode1, new long[4]);
+    Assert.assertEquals(memTable1.getTVListsRamCost(), memTable2.getTVListsRamCost());
+    Assert.assertEquals(memTable1.getTotalPointsNum(), memTable2.getTotalPointsNum());
+    Assert.assertEquals(memTable1.memSize(), memTable2.memSize());
   }
 
   @Test
@@ -581,6 +594,20 @@ public class TsFileProcessorTest {
     insertRowsNode.setAligned(true);
     processor2.insert(insertRowsNode, new long[4]);
 
+    Assert.assertEquals(memTable1.getTVListsRamCost(), memTable2.getTVListsRamCost());
+    Assert.assertEquals(memTable1.getTotalPointsNum(), memTable2.getTotalPointsNum());
+    Assert.assertEquals(memTable1.memSize(), memTable2.memSize());
+
+    // Insert rows with all column null
+    insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
+    insertRowNode1.setDataTypes(new TSDataType[1]);
+    insertRowNode1.setMeasurements(new String[1]);
+    insertRowNode1.setValues(new String[1]);
+    insertRowsNode.addOneInsertRowNode(insertRowNode1, 0);
+    insertRowsNode.setAligned(true);
+    processor2.insert(insertRowsNode, new long[4]);
+
+    processor1.insert(insertRowNode1, new long[4]);
     Assert.assertEquals(memTable1.getTVListsRamCost(), memTable2.getTVListsRamCost());
     Assert.assertEquals(memTable1.getTotalPointsNum(), memTable2.getTotalPointsNum());
     Assert.assertEquals(memTable1.memSize(), memTable2.memSize());

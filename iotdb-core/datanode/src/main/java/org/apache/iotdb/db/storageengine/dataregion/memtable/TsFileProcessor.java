@@ -703,14 +703,14 @@ public class TsFileProcessor {
             memChunkGroup == null ? null : memChunkGroup.getAlignedMemChunk();
         long currentChunkPointNum = alignedMemChunk == null ? 0 : alignedMemChunk.alignedListSize();
         List<TSDataType> dataTypesInTVList = new ArrayList<>();
+        Pair<Map<String, TSDataType>, Integer> addingPointNumInfo =
+            increasingMemTableInfo.computeIfAbsent(deviceId, k -> new Pair<>(new HashMap<>(), 0));
         for (int i = 0; i < dataTypes.length; i++) {
           // Skip failed Measurements
           if (dataTypes[i] == null || measurements[i] == null) {
             continue;
           }
 
-          Pair<Map<String, TSDataType>, Integer> addingPointNumInfo =
-              increasingMemTableInfo.computeIfAbsent(deviceId, k -> new Pair<>(new HashMap<>(), 0));
           int addingPointNum = addingPointNumInfo.getRight();
           // Extending the column of aligned mem chunk
           if ((alignedMemChunk != null && !alignedMemChunk.containsMeasurement(measurements[i]))
@@ -726,7 +726,7 @@ public class TsFileProcessor {
           }
         }
         int addingPointNum = increasingMemTableInfo.get(deviceId).getRight();
-        // Here currentChunkPointNum >= 1
+        // Here currentChunkPointNum + addingPointNum >= 1
         if (((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
           if (alignedMemChunk != null) {
             dataTypesInTVList.addAll(
