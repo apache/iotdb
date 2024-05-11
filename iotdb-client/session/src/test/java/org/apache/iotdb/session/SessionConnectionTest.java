@@ -69,10 +69,6 @@ import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-
 public class SessionConnectionTest {
 
   @Mock private SessionConnection sessionConnection;
@@ -100,7 +96,8 @@ public class SessionConnectionTest {
     TSStatus tsStatusSuccess = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     tsStatus.setSubStatus(
         Arrays.asList(new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())));
-    Mockito.when(client.setStorageGroup(anyLong(), anyString())).thenReturn(tsStatus);
+    Mockito.when(client.setStorageGroup(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString()))
+        .thenReturn(tsStatus);
     TSExecuteStatementResp execResp = new TSExecuteStatementResp(tsStatus);
     execResp.setColumns(Arrays.asList());
     execResp.setDataTypeList(Arrays.asList());
@@ -108,47 +105,53 @@ public class SessionConnectionTest {
     execResp.setQueryResult(Arrays.asList());
     execResp.setIgnoreTimeStamp(false);
     execResp.setMoreData(false);
-    Mockito.when(client.executeQueryStatementV2(any())).thenReturn(execResp);
-    Mockito.when(client.executeFastLastDataQueryForOneDeviceV2(any())).thenReturn(execResp);
-    Mockito.when(client.executeLastDataQueryV2(any())).thenReturn(execResp);
-    Mockito.when(client.deleteStorageGroups(anyLong(), any())).thenReturn(tsStatus);
-    Mockito.when(client.createTimeseries(any())).thenReturn(tsStatus);
-    Mockito.when(client.createAlignedTimeseries(any())).thenReturn(tsStatus);
-    Mockito.when(client.createMultiTimeseries(any())).thenReturn(tsStatus);
-    Mockito.when(client.executeUpdateStatementV2(any())).thenReturn(execResp);
-    Mockito.when(client.closeOperation(any())).thenReturn(tsStatus);
-    Mockito.when(client.executeAggregationQueryV2(any())).thenReturn(execResp);
-    Mockito.when(client.executeRawDataQueryV2(any())).thenReturn(execResp);
-    Mockito.when(client.insertRecord(any())).thenReturn(tsStatus);
-    Mockito.when(client.testInsertRecord(any())).thenReturn(tsStatus);
-    Mockito.when(client.insertRecords(any())).thenReturn(tsStatusSuccess);
-    Mockito.when(client.testInsertRecords(any())).thenReturn(tsStatusSuccess);
-    Mockito.when(client.insertStringRecord(any())).thenReturn(tsStatus);
-    Mockito.when(client.testInsertStringRecord(any())).thenReturn(tsStatus);
-    Mockito.when(client.insertStringRecords(any())).thenReturn(tsStatusSuccess);
-    Mockito.when(client.testInsertStringRecords(any())).thenReturn(tsStatusSuccess);
-    Mockito.when(client.insertRecordsOfOneDevice(any())).thenReturn(tsStatus);
-    Mockito.when(client.insertStringRecordsOfOneDevice(any())).thenReturn(tsStatus);
-    Mockito.when(client.deleteTimeseries(anyLong(), any())).thenReturn(tsStatus);
-    Mockito.when(client.insertTablet(any())).thenReturn(tsStatus);
-    Mockito.when(client.testInsertTablet(any())).thenReturn(tsStatus);
-    Mockito.when(client.insertTablets(any())).thenReturn(tsStatusSuccess);
-    Mockito.when(client.testInsertTablets(any())).thenReturn(tsStatusSuccess);
-    Mockito.when(client.deleteData(any())).thenReturn(tsStatusSuccess);
-    Mockito.when(client.createSchemaTemplate(any())).thenReturn(tsStatusSuccess);
-    Mockito.when(client.appendSchemaTemplate(any())).thenReturn(tsStatusSuccess);
-    Mockito.when(client.pruneSchemaTemplate(any())).thenReturn(tsStatusSuccess);
-    Mockito.when(client.querySchemaTemplate(any()))
+    Mockito.when(client.executeQueryStatementV2(ArgumentMatchers.any())).thenReturn(execResp);
+    Mockito.when(client.executeFastLastDataQueryForOneDeviceV2(ArgumentMatchers.any()))
+        .thenReturn(execResp);
+    Mockito.when(client.executeLastDataQueryV2(ArgumentMatchers.any())).thenReturn(execResp);
+    Mockito.when(client.deleteStorageGroups(ArgumentMatchers.anyLong(), ArgumentMatchers.any()))
+        .thenReturn(tsStatus);
+    Mockito.when(client.createTimeseries(ArgumentMatchers.any())).thenReturn(tsStatus);
+    Mockito.when(client.createAlignedTimeseries(ArgumentMatchers.any())).thenReturn(tsStatus);
+    Mockito.when(client.createMultiTimeseries(ArgumentMatchers.any())).thenReturn(tsStatus);
+    Mockito.when(client.executeUpdateStatementV2(ArgumentMatchers.any())).thenReturn(execResp);
+    Mockito.when(client.closeOperation(ArgumentMatchers.any())).thenReturn(tsStatus);
+    Mockito.when(client.executeAggregationQueryV2(ArgumentMatchers.any())).thenReturn(execResp);
+    Mockito.when(client.executeRawDataQueryV2(ArgumentMatchers.any())).thenReturn(execResp);
+    Mockito.when(client.insertRecord(ArgumentMatchers.any())).thenReturn(tsStatus);
+    Mockito.when(client.testInsertRecord(ArgumentMatchers.any())).thenReturn(tsStatus);
+    Mockito.when(client.insertRecords(ArgumentMatchers.any())).thenReturn(tsStatusSuccess);
+    Mockito.when(client.testInsertRecords(ArgumentMatchers.any())).thenReturn(tsStatusSuccess);
+    Mockito.when(client.insertStringRecord(ArgumentMatchers.any())).thenReturn(tsStatus);
+    Mockito.when(client.testInsertStringRecord(ArgumentMatchers.any())).thenReturn(tsStatus);
+    Mockito.when(client.insertStringRecords(ArgumentMatchers.any())).thenReturn(tsStatusSuccess);
+    Mockito.when(client.testInsertStringRecords(ArgumentMatchers.any()))
+        .thenReturn(tsStatusSuccess);
+    Mockito.when(client.insertRecordsOfOneDevice(ArgumentMatchers.any())).thenReturn(tsStatus);
+    Mockito.when(client.insertStringRecordsOfOneDevice(ArgumentMatchers.any()))
+        .thenReturn(tsStatus);
+    Mockito.when(client.deleteTimeseries(ArgumentMatchers.anyLong(), ArgumentMatchers.any()))
+        .thenReturn(tsStatus);
+    Mockito.when(client.insertTablet(ArgumentMatchers.any())).thenReturn(tsStatus);
+    Mockito.when(client.testInsertTablet(ArgumentMatchers.any())).thenReturn(tsStatus);
+    Mockito.when(client.insertTablets(ArgumentMatchers.any())).thenReturn(tsStatusSuccess);
+    Mockito.when(client.testInsertTablets(ArgumentMatchers.any())).thenReturn(tsStatusSuccess);
+    Mockito.when(client.deleteData(ArgumentMatchers.any())).thenReturn(tsStatusSuccess);
+    Mockito.when(client.createSchemaTemplate(ArgumentMatchers.any())).thenReturn(tsStatusSuccess);
+    Mockito.when(client.appendSchemaTemplate(ArgumentMatchers.any())).thenReturn(tsStatusSuccess);
+    Mockito.when(client.pruneSchemaTemplate(ArgumentMatchers.any())).thenReturn(tsStatusSuccess);
+    Mockito.when(client.querySchemaTemplate(ArgumentMatchers.any()))
         .thenReturn(new TSQueryTemplateResp(tsStatusSuccess, 1));
-    Mockito.when(client.setSchemaTemplate(any())).thenReturn(tsStatusSuccess);
-    Mockito.when(client.unsetSchemaTemplate(any())).thenReturn(tsStatusSuccess);
-    Mockito.when(client.dropSchemaTemplate(any())).thenReturn(tsStatusSuccess);
-    Mockito.when(client.createTimeseriesUsingSchemaTemplate(any())).thenReturn(tsStatusSuccess);
+    Mockito.when(client.setSchemaTemplate(ArgumentMatchers.any())).thenReturn(tsStatusSuccess);
+    Mockito.when(client.unsetSchemaTemplate(ArgumentMatchers.any())).thenReturn(tsStatusSuccess);
+    Mockito.when(client.dropSchemaTemplate(ArgumentMatchers.any())).thenReturn(tsStatusSuccess);
+    Mockito.when(client.createTimeseriesUsingSchemaTemplate(ArgumentMatchers.any()))
+        .thenReturn(tsStatusSuccess);
     Mockito.when(client.getBackupConfiguration())
         .thenReturn(new TSBackupConfigurationResp(tsStatusSuccess));
     Mockito.when(client.fetchAllConnectionsInfo()).thenReturn(new TSConnectionInfoResp());
-    Mockito.when(client.setTimeZone(any())).thenReturn(tsStatusSuccess);
-    Mockito.when(client.closeSession(any())).thenReturn(tsStatusSuccess);
+    Mockito.when(client.setTimeZone(ArgumentMatchers.any())).thenReturn(tsStatusSuccess);
+    Mockito.when(client.closeSession(ArgumentMatchers.any())).thenReturn(tsStatusSuccess);
   }
 
   @After
@@ -217,7 +220,7 @@ public class SessionConnectionTest {
       throws IoTDBConnectionException, StatementExecutionException, TException {
     TSStatus tsStatus = new TSStatus(TSStatusCode.MULTIPLE_ERROR.getStatusCode());
     tsStatus.setSubStatus(Arrays.asList(new TSStatus()));
-    Mockito.when(client.createTimeseries(any())).thenReturn(tsStatus);
+    Mockito.when(client.createTimeseries(ArgumentMatchers.any())).thenReturn(tsStatus);
     sessionConnection.createTimeseries(new TSCreateTimeseriesReq());
   }
 
@@ -226,7 +229,7 @@ public class SessionConnectionTest {
       throws IoTDBConnectionException, StatementExecutionException, TException {
     TSStatus tsStatus = new TSStatus(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
     tsStatus.setSubStatus(Arrays.asList(new TSStatus()));
-    Mockito.when(client.createTimeseries(any())).thenReturn(tsStatus);
+    Mockito.when(client.createTimeseries(ArgumentMatchers.any())).thenReturn(tsStatus);
     sessionConnection.createTimeseries(new TSCreateTimeseriesReq());
   }
 

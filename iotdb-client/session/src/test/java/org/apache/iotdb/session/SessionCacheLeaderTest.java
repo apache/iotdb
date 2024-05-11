@@ -45,10 +45,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
-
 public class SessionCacheLeaderTest {
 
   private static final List<TEndPoint> endpoints =
@@ -83,8 +79,8 @@ public class SessionCacheLeaderTest {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
 
     String deviceId = "root.sg2.d1";
     List<String> measurements = new ArrayList<>();
@@ -103,15 +99,15 @@ public class SessionCacheLeaderTest {
       session.insertRecord(deviceId, time, measurements, types, values);
     }
 
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
     session.close();
 
     // with leader cache
     session = new MockSession("127.0.0.1", 55560, true);
     session.open();
-    assertEquals(0, session.deviceIdToEndpoint.size());
-    assertEquals(1, session.endPointToSessionConnection.size());
+    Assert.assertEquals(0, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(1, session.endPointToSessionConnection.size());
 
     for (long time = 0; time < 100; time++) {
       List<Object> values = new ArrayList<>();
@@ -121,9 +117,10 @@ public class SessionCacheLeaderTest {
       session.insertRecord(deviceId, time, measurements, types, values);
     }
 
-    assertEquals(1, session.deviceIdToEndpoint.size());
-    assertEquals(getDeviceIdBelongedEndpoint(deviceId), session.deviceIdToEndpoint.get(deviceId));
-    assertEquals(2, session.endPointToSessionConnection.size());
+    Assert.assertEquals(1, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(
+        getDeviceIdBelongedEndpoint(deviceId), session.deviceIdToEndpoint.get(deviceId));
+    Assert.assertEquals(2, session.endPointToSessionConnection.size());
     session.close();
   }
 
@@ -133,8 +130,8 @@ public class SessionCacheLeaderTest {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
 
     String deviceId = "root.sg2.d1";
     List<String> measurements = new ArrayList<>();
@@ -149,15 +146,15 @@ public class SessionCacheLeaderTest {
       session.insertRecord(deviceId, time, measurements, values);
     }
 
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
     session.close();
 
     // with leader cache
     session = new MockSession("127.0.0.1", 55560, true);
     session.open();
-    assertEquals(0, session.deviceIdToEndpoint.size());
-    assertEquals(1, session.endPointToSessionConnection.size());
+    Assert.assertEquals(0, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(1, session.endPointToSessionConnection.size());
 
     for (long time = 0; time < 10; time++) {
       List<String> values = new ArrayList<>();
@@ -167,9 +164,10 @@ public class SessionCacheLeaderTest {
       session.insertRecord(deviceId, time, measurements, values);
     }
 
-    assertEquals(1, session.deviceIdToEndpoint.size());
-    assertEquals(getDeviceIdBelongedEndpoint(deviceId), session.deviceIdToEndpoint.get(deviceId));
-    assertEquals(2, session.endPointToSessionConnection.size());
+    Assert.assertEquals(1, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(
+        getDeviceIdBelongedEndpoint(deviceId), session.deviceIdToEndpoint.get(deviceId));
+    Assert.assertEquals(2, session.endPointToSessionConnection.size());
     session.close();
   }
 
@@ -178,8 +176,8 @@ public class SessionCacheLeaderTest {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
 
     List<String> allDeviceIds =
         new ArrayList<String>() {
@@ -231,15 +229,15 @@ public class SessionCacheLeaderTest {
     valuesList.clear();
     timestamps.clear();
 
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
     session.close();
 
     // with leader cache
     session = new MockSession("127.0.0.1", 55560, true);
     session.open();
-    assertEquals(0, session.deviceIdToEndpoint.size());
-    assertEquals(1, session.endPointToSessionConnection.size());
+    Assert.assertEquals(0, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(1, session.endPointToSessionConnection.size());
 
     for (long time = 0; time < 500; time++) {
       List<Object> values = new ArrayList<>();
@@ -265,11 +263,12 @@ public class SessionCacheLeaderTest {
     }
     session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
 
-    assertEquals(4, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(4, session.deviceIdToEndpoint.size());
     for (String deviceId : allDeviceIds) {
-      assertEquals(getDeviceIdBelongedEndpoint(deviceId), session.deviceIdToEndpoint.get(deviceId));
+      Assert.assertEquals(
+          getDeviceIdBelongedEndpoint(deviceId), session.deviceIdToEndpoint.get(deviceId));
     }
-    assertEquals(4, session.endPointToSessionConnection.size());
+    Assert.assertEquals(4, session.endPointToSessionConnection.size());
     session.close();
   }
 
@@ -279,8 +278,8 @@ public class SessionCacheLeaderTest {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
 
     List<String> allDeviceIds =
         new ArrayList<String>() {
@@ -322,15 +321,15 @@ public class SessionCacheLeaderTest {
     valuesList.clear();
     timestamps.clear();
 
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
     session.close();
 
     // with leader cache
     session = new MockSession("127.0.0.1", 55560, true);
     session.open();
-    assertEquals(0, session.deviceIdToEndpoint.size());
-    assertEquals(1, session.endPointToSessionConnection.size());
+    Assert.assertEquals(0, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(1, session.endPointToSessionConnection.size());
 
     for (long time = 0; time < 500; time++) {
       List<String> values = new ArrayList<>();
@@ -351,11 +350,12 @@ public class SessionCacheLeaderTest {
     }
     session.insertRecords(deviceIds, timestamps, measurementsList, valuesList);
 
-    assertEquals(4, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(4, session.deviceIdToEndpoint.size());
     for (String deviceId : allDeviceIds) {
-      assertEquals(getDeviceIdBelongedEndpoint(deviceId), session.deviceIdToEndpoint.get(deviceId));
+      Assert.assertEquals(
+          getDeviceIdBelongedEndpoint(deviceId), session.deviceIdToEndpoint.get(deviceId));
     }
-    assertEquals(4, session.endPointToSessionConnection.size());
+    Assert.assertEquals(4, session.endPointToSessionConnection.size());
     session.close();
   }
 
@@ -365,8 +365,8 @@ public class SessionCacheLeaderTest {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
 
     String deviceId = "root.sg2.d2";
     List<Long> times = new ArrayList<>();
@@ -411,20 +411,20 @@ public class SessionCacheLeaderTest {
         Boolean.TRUE);
     session.insertRecordsOfOneDevice(deviceId, times, measurements, datatypes, values);
 
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
     session.close();
 
     // with leader cache
     session = new MockSession("127.0.0.1", 55560, true);
     session.open();
-    assertEquals(0, session.deviceIdToEndpoint.size());
-    assertEquals(1, session.endPointToSessionConnection.size());
+    Assert.assertEquals(0, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(1, session.endPointToSessionConnection.size());
 
     session.insertRecordsOfOneDevice(deviceId, times, measurements, datatypes, values);
 
-    assertEquals(1, session.deviceIdToEndpoint.size());
-    assertEquals(2, session.endPointToSessionConnection.size());
+    Assert.assertEquals(1, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(2, session.endPointToSessionConnection.size());
     session.close();
   }
 
@@ -433,8 +433,8 @@ public class SessionCacheLeaderTest {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
 
     String deviceId = "root.sg2.d2";
     List<MeasurementSchema> schemaList = new ArrayList<>();
@@ -463,15 +463,15 @@ public class SessionCacheLeaderTest {
       tablet.reset();
     }
 
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
     session.close();
 
     // with leader cache
     session = new MockSession("127.0.0.1", 55560, true);
     session.open();
-    assertEquals(0, session.deviceIdToEndpoint.size());
-    assertEquals(1, session.endPointToSessionConnection.size());
+    Assert.assertEquals(0, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(1, session.endPointToSessionConnection.size());
 
     for (long row = 0; row < 100; row++) {
       int rowIndex = tablet.rowSize++;
@@ -493,8 +493,8 @@ public class SessionCacheLeaderTest {
       tablet.reset();
     }
 
-    assertEquals(1, session.deviceIdToEndpoint.size());
-    assertEquals(2, session.endPointToSessionConnection.size());
+    Assert.assertEquals(1, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(2, session.endPointToSessionConnection.size());
     session.close();
   }
 
@@ -503,8 +503,8 @@ public class SessionCacheLeaderTest {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
 
     List<String> allDeviceIds =
         new ArrayList<String>() {
@@ -559,15 +559,15 @@ public class SessionCacheLeaderTest {
       tablet3.reset();
     }
 
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
     session.close();
 
     // with leader cache
     session = new MockSession("127.0.0.1", 55560, true);
     session.open();
-    assertEquals(0, session.deviceIdToEndpoint.size());
-    assertEquals(1, session.endPointToSessionConnection.size());
+    Assert.assertEquals(0, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(1, session.endPointToSessionConnection.size());
 
     for (long row = 0; row < 100; row++) {
       int row1 = tablet1.rowSize++;
@@ -598,11 +598,12 @@ public class SessionCacheLeaderTest {
       tablet3.reset();
     }
 
-    assertEquals(3, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(3, session.deviceIdToEndpoint.size());
     for (String deviceId : allDeviceIds.subList(1, allDeviceIds.size())) {
-      assertEquals(getDeviceIdBelongedEndpoint(deviceId), session.deviceIdToEndpoint.get(deviceId));
+      Assert.assertEquals(
+          getDeviceIdBelongedEndpoint(deviceId), session.deviceIdToEndpoint.get(deviceId));
     }
-    assertEquals(4, session.endPointToSessionConnection.size());
+    Assert.assertEquals(4, session.endPointToSessionConnection.size());
     session.close();
   }
 
@@ -613,10 +614,10 @@ public class SessionCacheLeaderTest {
     try {
       session.open();
     } catch (IoTDBConnectionException e) {
-      fail(e.getMessage());
+      Assert.fail(e.getMessage());
     }
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
     ((MockSession) session).getLastConstructedSessionConnection().setConnectionBroken(true);
 
     List<String> allDeviceIds =
@@ -680,8 +681,8 @@ public class SessionCacheLeaderTest {
     valuesList.clear();
     timestamps.clear();
 
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
     try {
       session.close();
     } catch (IoTDBConnectionException e) {
@@ -697,8 +698,8 @@ public class SessionCacheLeaderTest {
     } catch (IoTDBConnectionException e) {
       Assert.fail(e.getMessage());
     }
-    assertEquals(0, session.deviceIdToEndpoint.size());
-    assertEquals(1, session.endPointToSessionConnection.size());
+    Assert.assertEquals(0, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(1, session.endPointToSessionConnection.size());
     for (long time = 0; time < 500; time++) {
       List<Object> values = new ArrayList<>();
       List<TSDataType> types = new ArrayList<>();
@@ -739,11 +740,12 @@ public class SessionCacheLeaderTest {
       Assert.assertEquals(
           "the session connection = TEndPoint(ip:127.0.0.1, port:55561) is broken", e.getMessage());
     }
-    assertEquals(3, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(3, session.deviceIdToEndpoint.size());
     for (Map.Entry<String, TEndPoint> endPointMap : session.deviceIdToEndpoint.entrySet()) {
-      assertEquals(getDeviceIdBelongedEndpoint(endPointMap.getKey()), endPointMap.getValue());
+      Assert.assertEquals(
+          getDeviceIdBelongedEndpoint(endPointMap.getKey()), endPointMap.getValue());
     }
-    assertEquals(3, session.endPointToSessionConnection.size());
+    Assert.assertEquals(3, session.endPointToSessionConnection.size());
     try {
       session.close();
     } catch (IoTDBConnectionException e) {
@@ -760,8 +762,8 @@ public class SessionCacheLeaderTest {
     } catch (IoTDBConnectionException e) {
       Assert.fail(e.getMessage());
     }
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
 
     // set the session connection as broken
     ((MockSession) session).getLastConstructedSessionConnection().setConnectionBroken(true);
@@ -806,7 +808,7 @@ public class SessionCacheLeaderTest {
         try {
           session.insertTablets(tabletMap, true);
         } catch (IoTDBConnectionException e) {
-          assertEquals(
+          Assert.assertEquals(
               "the session connection = TEndPoint(ip:127.0.0.1, port:55560) is broken",
               e.getMessage());
         }
@@ -829,8 +831,8 @@ public class SessionCacheLeaderTest {
       tablet3.reset();
     }
 
-    assertNull(session.deviceIdToEndpoint);
-    assertNull(session.endPointToSessionConnection);
+    Assert.assertNull(session.deviceIdToEndpoint);
+    Assert.assertNull(session.endPointToSessionConnection);
     try {
       session.close();
     } catch (IoTDBConnectionException e) {
@@ -845,8 +847,8 @@ public class SessionCacheLeaderTest {
     } catch (IoTDBConnectionException e) {
       Assert.fail(e.getMessage());
     }
-    assertEquals(0, session.deviceIdToEndpoint.size());
-    assertEquals(1, session.endPointToSessionConnection.size());
+    Assert.assertEquals(0, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(1, session.endPointToSessionConnection.size());
 
     for (long row = 0; row < 100; row++) {
       int row1 = tablet1.rowSize++;
@@ -918,11 +920,12 @@ public class SessionCacheLeaderTest {
     tablet2.reset();
     tablet3.reset();
 
-    assertEquals(2, session.deviceIdToEndpoint.size());
+    Assert.assertEquals(2, session.deviceIdToEndpoint.size());
     for (Map.Entry<String, TEndPoint> endPointEntry : session.deviceIdToEndpoint.entrySet()) {
-      assertEquals(getDeviceIdBelongedEndpoint(endPointEntry.getKey()), endPointEntry.getValue());
+      Assert.assertEquals(
+          getDeviceIdBelongedEndpoint(endPointEntry.getKey()), endPointEntry.getValue());
     }
-    assertEquals(3, session.endPointToSessionConnection.size());
+    Assert.assertEquals(3, session.endPointToSessionConnection.size());
     try {
       session.close();
     } catch (IoTDBConnectionException e) {

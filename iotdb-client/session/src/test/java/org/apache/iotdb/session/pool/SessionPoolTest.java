@@ -74,12 +74,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class SessionPoolTest {
 
@@ -116,18 +110,18 @@ public class SessionPoolTest {
             .version(Version.V_1_0)
             .build();
 
-    assertEquals("localhost", pool.getHost());
-    assertEquals(1234, pool.getPort());
-    assertEquals("abc", pool.getUser());
-    assertEquals("123", pool.getPassword());
-    assertEquals(10, pool.getMaxSize());
-    assertEquals(1, pool.getFetchSize());
-    assertEquals(2, pool.getWaitToGetSessionTimeoutInMs());
-    assertTrue(pool.isEnableRedirection());
-    assertTrue(pool.isEnableCompression());
-    assertEquals(3, pool.getConnectionTimeoutInMs());
-    assertEquals(ZoneOffset.UTC, pool.getZoneId());
-    assertEquals(Version.V_1_0, pool.getVersion());
+    Assert.assertEquals("localhost", pool.getHost());
+    Assert.assertEquals(1234, pool.getPort());
+    Assert.assertEquals("abc", pool.getUser());
+    Assert.assertEquals("123", pool.getPassword());
+    Assert.assertEquals(10, pool.getMaxSize());
+    Assert.assertEquals(1, pool.getFetchSize());
+    Assert.assertEquals(2, pool.getWaitToGetSessionTimeoutInMs());
+    Assert.assertTrue(pool.isEnableRedirection());
+    Assert.assertTrue(pool.isEnableCompression());
+    Assert.assertEquals(3, pool.getConnectionTimeoutInMs());
+    Assert.assertEquals(ZoneOffset.UTC, pool.getZoneId());
+    Assert.assertEquals(Version.V_1_0, pool.getVersion());
   }
 
   @Test
@@ -150,20 +144,20 @@ public class SessionPoolTest {
             .thriftMaxFrameSize(67108864)
             .build();
 
-    assertEquals("abc", pool.getUser());
-    assertEquals("123", pool.getPassword());
-    assertEquals(10, pool.getMaxSize());
-    assertEquals(1, pool.getFetchSize());
-    assertEquals(2, pool.getWaitToGetSessionTimeoutInMs());
-    assertTrue(pool.isEnableRedirection());
-    assertTrue(pool.isEnableCompression());
-    assertEquals(3, pool.getConnectionTimeoutInMs());
-    assertEquals(ZoneOffset.UTC, pool.getZoneId());
-    assertEquals(Version.V_1_0, pool.getVersion());
+    Assert.assertEquals("abc", pool.getUser());
+    Assert.assertEquals("123", pool.getPassword());
+    Assert.assertEquals(10, pool.getMaxSize());
+    Assert.assertEquals(1, pool.getFetchSize());
+    Assert.assertEquals(2, pool.getWaitToGetSessionTimeoutInMs());
+    Assert.assertTrue(pool.isEnableRedirection());
+    Assert.assertTrue(pool.isEnableCompression());
+    Assert.assertEquals(3, pool.getConnectionTimeoutInMs());
+    Assert.assertEquals(ZoneOffset.UTC, pool.getZoneId());
+    Assert.assertEquals(Version.V_1_0, pool.getVersion());
     pool.setQueryTimeout(12345);
-    assertEquals(12345, pool.getQueryTimeout());
+    Assert.assertEquals(12345, pool.getQueryTimeout());
     pool.setVersion(Version.V_0_13);
-    assertEquals(Version.V_0_13, pool.getVersion());
+    Assert.assertEquals(Version.V_0_13, pool.getVersion());
   }
 
   @Before
@@ -172,18 +166,22 @@ public class SessionPoolTest {
     MockitoAnnotations.initMocks(this);
     execResp.queryResult = FakedFirstFetchTsBlockResult();
 
-    Mockito.when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execResp);
+    Mockito.when(client.executeStatementV2(ArgumentMatchers.any(TSExecuteStatementReq.class)))
+        .thenReturn(execResp);
     Mockito.when(execResp.getQueryId()).thenReturn(queryId);
     Mockito.when(execResp.getStatus()).thenReturn(successStatus);
 
-    Mockito.when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
+    Mockito.when(client.fetchMetadata(ArgumentMatchers.any(TSFetchMetadataReq.class)))
+        .thenReturn(fetchMetadataResp);
     Mockito.when(fetchMetadataResp.getStatus()).thenReturn(successStatus);
 
-    Mockito.when(client.fetchResultsV2(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
+    Mockito.when(client.fetchResultsV2(ArgumentMatchers.any(TSFetchResultsReq.class)))
+        .thenReturn(fetchResultsResp);
     Mockito.when(fetchResultsResp.getStatus()).thenReturn(successStatus);
 
     TSStatus closeResp = successStatus;
-    Mockito.when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(closeResp);
+    Mockito.when(client.closeOperation(ArgumentMatchers.any(TSCloseOperationReq.class)))
+        .thenReturn(closeResp);
 
     sessionPool =
         new SessionPool.Builder()
@@ -224,7 +222,7 @@ public class SessionPoolTest {
     BitMap[] partBitMap = new BitMap[2];
     Tablet tablet = new Tablet("device1", schemas, timestamp, values, partBitMap, 2);
     sessionPool.insertTablet(tablet);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -268,7 +266,7 @@ public class SessionPoolTest {
     BitMap[] partBitMap = new BitMap[2];
     Tablet tablet = new Tablet("device1", schemas, timestamp, values, partBitMap, 2);
     sessionPool.testInsertTablet(tablet);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -287,7 +285,7 @@ public class SessionPoolTest {
     BitMap[] partBitMap = new BitMap[2];
     Tablet tablet = new Tablet("device1", schemas, timestamp, values, partBitMap, 2);
     sessionPool.testInsertTablet(tablet, true);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -308,7 +306,7 @@ public class SessionPoolTest {
     Map<String, Tablet> map = new HashMap<>();
     map.put("one", tablet);
     sessionPool.testInsertTablets(map);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -330,7 +328,7 @@ public class SessionPoolTest {
     Map<String, Tablet> map = new HashMap<>();
     map.put("one", tablet);
     sessionPool.testInsertTablets(map, true);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -345,7 +343,7 @@ public class SessionPoolTest {
     List<List<String>> valuesList =
         Arrays.asList(Arrays.asList("11", "12"), Arrays.asList("10", "11"));
     sessionPool.testInsertRecords(deviceIds, timeList, measurementsList, valuesList);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -365,7 +363,7 @@ public class SessionPoolTest {
     List<List<Object>> valuesList =
         Arrays.asList(Arrays.asList(11.20, "ssq1"), Arrays.asList(11.21, "ssq2"));
     sessionPool.testInsertRecords(deviceIds, timeList, measurementsList, typesList, valuesList);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -374,7 +372,7 @@ public class SessionPoolTest {
   public void testTestInsertRecord() throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.testInsertRecord(
         "device1", 1L, Arrays.asList("temperature", "humidity"), Arrays.asList("11", "12"));
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -387,7 +385,7 @@ public class SessionPoolTest {
         Arrays.asList("temperature", "humidity"),
         Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT),
         Arrays.asList("11", "12"));
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -407,7 +405,7 @@ public class SessionPoolTest {
     BitMap[] partBitMap = new BitMap[2];
     Tablet tablet = new Tablet("alignedDevice1", schemas, timestamp, values, partBitMap, 2);
     sessionPool.insertAlignedTablet(tablet);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -428,7 +426,7 @@ public class SessionPoolTest {
     Map<String, Tablet> map = new HashMap<>();
     map.put("one", tablet);
     sessionPool.insertTablets(map);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -450,7 +448,7 @@ public class SessionPoolTest {
     Map<String, Tablet> map = new HashMap<>();
     map.put("one", tablet);
     sessionPool.insertAlignedTablets(map);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -470,7 +468,7 @@ public class SessionPoolTest {
     List<List<Object>> valuesList =
         Arrays.asList(Arrays.asList(25.0f, 50.0f), Arrays.asList(220.0, 1.5));
     sessionPool.insertAlignedRecords(deviceIds, timeList, measurementsList, typesList, valuesList);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -490,7 +488,7 @@ public class SessionPoolTest {
         Arrays.asList(Arrays.asList(25.0f, 50.0f), Arrays.asList(220.0, 1.5));
     sessionPool.insertRecordsOfOneDevice(
         "device1", timeList, measurementsList, typesList, valuesList);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -510,7 +508,7 @@ public class SessionPoolTest {
         Arrays.asList(Arrays.asList(25.0f, 50.0f), Arrays.asList(220.0, 1.5));
     sessionPool.insertRecordsOfOneDevice(
         "device1", timeList, measurementsList, typesList, valuesList, true);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -530,7 +528,7 @@ public class SessionPoolTest {
         Arrays.asList(Arrays.asList(25.0f, 50.0f), Arrays.asList(220.0, 1.5));
     sessionPool.insertOneDeviceRecords(
         "device1", timeList, measurementsList, typesList, valuesList);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -550,7 +548,7 @@ public class SessionPoolTest {
         Arrays.asList(Arrays.asList(25.0f, 50.0f), Arrays.asList(220.0, 1.5));
     sessionPool.insertOneDeviceRecords(
         "device1", timeList, measurementsList, typesList, valuesList, true);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -570,7 +568,7 @@ public class SessionPoolTest {
         Arrays.asList(Arrays.asList(25.0f, 50.0f), Arrays.asList(220.0, 1.5));
     sessionPool.insertAlignedRecordsOfOneDevice(
         "device1", timeList, measurementsList, typesList, valuesList);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -590,7 +588,7 @@ public class SessionPoolTest {
         Arrays.asList(Arrays.asList(25.0f, 50.0f), Arrays.asList(220.0, 1.5));
     sessionPool.insertAlignedRecordsOfOneDevice(
         "device1", timeList, measurementsList, typesList, valuesList, true);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -605,7 +603,7 @@ public class SessionPoolTest {
     List<List<String>> valuesList =
         Arrays.asList(Arrays.asList("25.0f", "50.0f"), Arrays.asList("220.0", "1.5"));
     sessionPool.insertStringRecordsOfOneDevice("device1", timeList, measurementsList, valuesList);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -621,7 +619,7 @@ public class SessionPoolTest {
         Arrays.asList(Arrays.asList("25.0f", "50.0f"), Arrays.asList("220.0", "1.5"));
     sessionPool.insertStringRecordsOfOneDevice(
         "device1", timeList, measurementsList, valuesList, true);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -637,7 +635,7 @@ public class SessionPoolTest {
         Arrays.asList(Arrays.asList("25.0f", "50.0f"), Arrays.asList("220.0", "1.5"));
     sessionPool.insertAlignedStringRecordsOfOneDevice(
         "device1", timeList, measurementsList, valuesList);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -653,7 +651,7 @@ public class SessionPoolTest {
         Arrays.asList(Arrays.asList("25.0f", "50.0f"), Arrays.asList("220.0", "1.5"));
     sessionPool.insertAlignedStringRecordsOfOneDevice(
         "device1", timeList, measurementsList, valuesList, true);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -668,7 +666,7 @@ public class SessionPoolTest {
     List<List<String>> valuesList =
         Arrays.asList(Arrays.asList("25.0f", " 50.0f"), Arrays.asList("220.0", "1.5"));
     sessionPool.insertRecords(deviceIds, timeList, measurementsList, valuesList);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -685,7 +683,7 @@ public class SessionPoolTest {
         Arrays.asList(Arrays.asList("25.0f", " 50.0f"), Arrays.asList("220.0", "1.5"));
 
     sessionPool.insertAlignedRecords(deviceIds, timeList, measurementsList, valuesList);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -695,7 +693,7 @@ public class SessionPoolTest {
     List<String> measurementsList = Arrays.asList("temperature", "humidity");
     List<TSDataType> typesList = Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE);
     sessionPool.insertRecord("device1", 3L, measurementsList, typesList, "25.0", "50.0");
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -706,7 +704,7 @@ public class SessionPoolTest {
     List<TSDataType> typesList = Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT);
     List<Object> valuesList = Arrays.asList("25.0f", " 50.0f");
     sessionPool.insertRecord("device1", 4L, measurementsList, typesList, valuesList);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -716,7 +714,7 @@ public class SessionPoolTest {
     List<String> measurementsList = Arrays.asList("temperature", "humidity");
     List<String> valuesList = Arrays.asList("25.0f", " 50.0f");
     sessionPool.insertRecord("device1", 4L, measurementsList, valuesList);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -725,7 +723,7 @@ public class SessionPoolTest {
   public void testGetTimestampPrecision()
       throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.getTimestampPrecision();
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -739,7 +737,7 @@ public class SessionPoolTest {
     List<TSDataType> types = Arrays.asList(TSDataType.BOOLEAN, TSDataType.INT32);
     List<Object> values = Arrays.asList(true, 11);
     sessionPool.insertAlignedRecord(multiSeriesId, time, multiMeasurementComponents, types, values);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -752,7 +750,7 @@ public class SessionPoolTest {
     List<String> multiMeasurementComponents = Arrays.asList("temperature", "humidity");
     List<String> values = Arrays.asList("12ws", "11ws");
     sessionPool.insertAlignedRecord(multiSeriesId, time, multiMeasurementComponents, values);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -761,7 +759,7 @@ public class SessionPoolTest {
   public void testDeleteTimeseries() throws IoTDBConnectionException, StatementExecutionException {
     String path = "root.device1.temperature";
     sessionPool.deleteTimeseries(path);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -771,7 +769,7 @@ public class SessionPoolTest {
       throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = Arrays.asList("root.device1.temperature", "root.device1.humidity");
     sessionPool.deleteTimeseries(paths);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -781,7 +779,7 @@ public class SessionPoolTest {
     String path = "root.device1.temperature";
     long time = 2L;
     sessionPool.deleteData(path, time);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -791,7 +789,7 @@ public class SessionPoolTest {
     List<String> paths = Arrays.asList("root.device1.temperature", "root.device1.humidity");
     long time = 3L;
     sessionPool.deleteData(paths, time);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -801,7 +799,7 @@ public class SessionPoolTest {
     List<String> paths = Arrays.asList("root.device1.temperature", "root.device1.humidity");
     sessionPool.deleteData(
         paths, System.currentTimeMillis() - 1000 * 60, System.currentTimeMillis());
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -809,7 +807,7 @@ public class SessionPoolTest {
   @Test
   public void testSetStorageGroup() throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.setStorageGroup("root.device1");
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -818,7 +816,7 @@ public class SessionPoolTest {
   public void testDeleteStorageGroup()
       throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.deleteStorageGroup("root.device1");
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -828,7 +826,7 @@ public class SessionPoolTest {
       throws IoTDBConnectionException, StatementExecutionException {
     List<String> sgs = Arrays.asList("root.device2", "root.device3");
     sessionPool.deleteStorageGroups(sgs);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -837,7 +835,7 @@ public class SessionPoolTest {
   public void testCreateDatabase() throws IoTDBConnectionException, StatementExecutionException {
     String database = "root.device1.temperature";
     sessionPool.createDatabase(database);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -846,7 +844,7 @@ public class SessionPoolTest {
   public void testDeleteDatabase() throws IoTDBConnectionException, StatementExecutionException {
     String path = "root.device2.humidity";
     sessionPool.deleteDatabase(path);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -855,7 +853,7 @@ public class SessionPoolTest {
   public void testDeleteDatabase2() throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = Arrays.asList("root.device2.temperature", "root.device2.humidity");
     sessionPool.deleteDatabases(paths);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -867,7 +865,7 @@ public class SessionPoolTest {
     TSEncoding encoding = TSEncoding.RLE;
     CompressionType compressor = CompressionType.SNAPPY;
     sessionPool.createTimeseries(path, dataType, encoding, compressor);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -886,7 +884,7 @@ public class SessionPoolTest {
     String measurementAlias = " atmosphere";
     sessionPool.createTimeseries(
         path, dataType, encoding, compressor, props, tags, attributes, measurementAlias);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -903,7 +901,7 @@ public class SessionPoolTest {
     List<String> measurementAlias = Arrays.asList("centigrade degree", "atmosphere");
     sessionPool.createAlignedTimeseries(
         deviceId, measurements, dataTypes, encodings, compressors, measurementAlias);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -930,7 +928,7 @@ public class SessionPoolTest {
     List<Map<String, String>> attrs = Arrays.asList(attrMap, attrMap2);
     sessionPool.createAlignedTimeseries(
         deviceId, measurements, dataTypes, encodings, compressors, measurementAlias, tags, attrs);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -956,7 +954,7 @@ public class SessionPoolTest {
         tagsList,
         attributesList,
         measurementAliasList);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -966,7 +964,7 @@ public class SessionPoolTest {
       throws IoTDBConnectionException, StatementExecutionException {
     String path = "root.device5.temperature";
     sessionPool.checkTimeseriesExists(path);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1003,10 +1001,10 @@ public class SessionPoolTest {
     iNodeVector.addChild(mNodeS2);
     template.addToTemplate(iNodeVector);
     sessionPool.createSchemaTemplate(template);
-    assertEquals(2, iNodeVector.getChildren().size());
-    assertEquals(false, iNodeVector.getChildren().get("s1").isShareTime());
+    Assert.assertEquals(2, iNodeVector.getChildren().size());
+    Assert.assertEquals(false, iNodeVector.getChildren().get("s1").isShareTime());
     iNodeVector.deleteChild(iNodeVector);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1024,7 +1022,7 @@ public class SessionPoolTest {
         "template3", measurements, dataTypes, encodings, compressionTypes, false);
     sessionPool.createSchemaTemplate(
         "template4", measurements1, dataTypes, encodings, compressionTypes, true);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1043,7 +1041,7 @@ public class SessionPoolTest {
         Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY);
     sessionPool.createSchemaTemplate(
         "template3", schemaNames, measurements, dataTypes, encodings, compressionTypes);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1058,7 +1056,7 @@ public class SessionPoolTest {
         Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY);
     sessionPool.addAlignedMeasurementsInTemplate(
         "template3", measurements, dataTypes, encodings, compressionTypes);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1072,7 +1070,7 @@ public class SessionPoolTest {
         TSDataType.FLOAT,
         TSEncoding.PLAIN,
         CompressionType.SNAPPY);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1087,7 +1085,7 @@ public class SessionPoolTest {
         Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY);
     sessionPool.addUnalignedMeasurementsInTemplate(
         "template5", measurements, dataTypes, encodings, compressionTypes);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1101,7 +1099,7 @@ public class SessionPoolTest {
         TSDataType.TEXT,
         TSEncoding.PLAIN,
         CompressionType.SNAPPY);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1110,7 +1108,7 @@ public class SessionPoolTest {
   public void testDeleteNodeInTemplate()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     sessionPool.deleteNodeInTemplate("template1", "root.ut0.sensor1");
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1119,7 +1117,7 @@ public class SessionPoolTest {
   public void testCountMeasurementsInTemplate()
       throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.countMeasurementsInTemplate("template2");
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1128,7 +1126,7 @@ public class SessionPoolTest {
   public void testIsMeasurementInTemplate()
       throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.isMeasurementInTemplate("template2", "root.ut0.sensor2");
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1137,7 +1135,7 @@ public class SessionPoolTest {
   public void testIsPathExistInTemplate()
       throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.isPathExistInTemplate("template2", "root.ut0.sensor2");
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1146,7 +1144,7 @@ public class SessionPoolTest {
   public void testShowMeasurementsInTemplate()
       throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.showMeasurementsInTemplate("template2");
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1155,7 +1153,7 @@ public class SessionPoolTest {
   public void testShowMeasurementsInTemplate2()
       throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.showMeasurementsInTemplate("template2", "root.ut0.**");
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1163,7 +1161,7 @@ public class SessionPoolTest {
   @Test
   public void testShowAllTemplates() throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.showAllTemplates();
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1172,7 +1170,7 @@ public class SessionPoolTest {
   public void testShowPathsTemplateSetOn()
       throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.showPathsTemplateSetOn("template2");
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1181,7 +1179,7 @@ public class SessionPoolTest {
   public void testShowPathsTemplateUsingOn()
       throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.showPathsTemplateUsingOn("template2");
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1200,7 +1198,7 @@ public class SessionPoolTest {
     BitMap[] partBitMap = new BitMap[2];
     Tablet tablet = new Tablet("device", schemas, timestamp, values, partBitMap, 2);
     sessionPool.sortTablet(tablet);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1208,7 +1206,7 @@ public class SessionPoolTest {
   @Test
   public void testSetSchemaTemplate() throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.setSchemaTemplate("template2", "root.ut0.sensor2");
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1217,7 +1215,7 @@ public class SessionPoolTest {
   public void testUnSetSchemaTemplate()
       throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.unsetSchemaTemplate("root.ut0.sensor2", "template2");
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1226,7 +1224,7 @@ public class SessionPoolTest {
   public void testDropSchemaTemplate()
       throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.dropSchemaTemplate("template2");
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1236,7 +1234,7 @@ public class SessionPoolTest {
       throws IoTDBConnectionException, StatementExecutionException {
     List<String> devicePaths = Arrays.asList("root.ut3", "root.ut4");
     sessionPool.createTimeseriesUsingSchemaTemplate(devicePaths);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1261,12 +1259,14 @@ public class SessionPoolTest {
             10,
             true,
             10);
-    Mockito.when(session.executeQueryStatement(any(String.class), eq(50)))
+    Mockito.when(
+            session.executeQueryStatement(
+                ArgumentMatchers.any(String.class), ArgumentMatchers.eq(50)))
         .thenReturn(sessionDataSet);
     sessionDataSetWrapper = sessionPool.executeQueryStatement(sql, 50);
     sessionDataSetWrapper.setSessionDataSet(sessionDataSet);
     sessionPool.closeResultSet(sessionDataSetWrapper);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1275,7 +1275,7 @@ public class SessionPoolTest {
   public void testExecuteQueryStatement3()
       throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.executeQueryStatement("show version");
-    assertEquals(
+    Assert.assertEquals(
         0,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1285,7 +1285,7 @@ public class SessionPoolTest {
       throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.executeNonQueryStatement(
         "create timeseries root.test.g_0.d_7815.s_7818 WITH datatype=boolean, encoding=PLAIN");
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1296,7 +1296,7 @@ public class SessionPoolTest {
     List<String> paths = Arrays.asList("root.test.g_0.d_7815.s_7818");
     sessionPool.executeRawDataQuery(
         paths, System.currentTimeMillis() - 1000 * 60 * 24l, System.currentTimeMillis(), 50);
-    assertEquals(
+    Assert.assertEquals(
         0,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1306,7 +1306,7 @@ public class SessionPoolTest {
       throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = Arrays.asList("root.test.g_0.d_7815.s_7818");
     sessionPool.executeLastDataQuery(paths, System.currentTimeMillis() - 1000 * 60 * 24l);
-    assertEquals(
+    Assert.assertEquals(
         0,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1316,7 +1316,7 @@ public class SessionPoolTest {
       throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = Arrays.asList("root.test.g_0.d_7815.s_7818");
     sessionPool.executeLastDataQuery(paths);
-    assertEquals(
+    Assert.assertEquals(
         0,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1326,7 +1326,7 @@ public class SessionPoolTest {
       throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = Arrays.asList("root.test.g_0.d_7815.s_7818");
     sessionPool.executeLastDataQuery(paths, System.currentTimeMillis() - 1000 * 60 * 24l, 50);
-    assertEquals(
+    Assert.assertEquals(
         0,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1337,7 +1337,7 @@ public class SessionPoolTest {
     List<String> paths = Arrays.asList("s_7817", "s_7818");
     sessionPool.executeLastDataQueryForOneDevice(
         "root.test.g_0", "root.test.g_0.d_7818", paths, true);
-    assertEquals(
+    Assert.assertEquals(
         0,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1349,7 +1349,7 @@ public class SessionPoolTest {
     List<TAggregationType> aggregations =
         Arrays.asList(TAggregationType.MAX_VALUE, TAggregationType.LAST_VALUE);
     sessionPool.executeAggregationQuery(paths, aggregations);
-    assertEquals(
+    Assert.assertEquals(
         0,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1366,7 +1366,7 @@ public class SessionPoolTest {
         System.currentTimeMillis() - 1000 * 60 * 24l,
         System.currentTimeMillis(),
         500);
-    assertEquals(
+    Assert.assertEquals(
         0,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1382,7 +1382,7 @@ public class SessionPoolTest {
         aggregations,
         System.currentTimeMillis() - 1000 * 60 * 24l,
         System.currentTimeMillis());
-    assertEquals(
+    Assert.assertEquals(
         0,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1400,7 +1400,7 @@ public class SessionPoolTest {
         System.currentTimeMillis(),
         500,
         500 * 1000);
-    assertEquals(
+    Assert.assertEquals(
         0,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1408,7 +1408,7 @@ public class SessionPoolTest {
   @Test
   public void testFetchAllConnections() throws IoTDBConnectionException {
     sessionPool.fetchAllConnections();
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1417,7 +1417,7 @@ public class SessionPoolTest {
   public void testGetBackupConfiguration()
       throws IoTDBConnectionException, StatementExecutionException {
     sessionPool.getBackupConfiguration();
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1428,7 +1428,7 @@ public class SessionPoolTest {
     ISessionPool sessionPool = Mockito.mock(ISessionPool.class);
     Map<String, Tablet> tablets = new HashMap<>();
     boolean sorted = true;
-    doThrow(new StatementExecutionException(""))
+    Mockito.doThrow(new StatementExecutionException(""))
         .when(sessionPool)
         .insertAlignedTablets(tablets, sorted);
     sessionPool.insertAlignedTablets(tablets, sorted);
@@ -1449,7 +1449,7 @@ public class SessionPoolTest {
     List<List<Object>> valuesList =
         Arrays.asList(Arrays.asList(25.0f, 50.0f), Arrays.asList(220.0, 1.5));
     sessionPool.insertRecords(deviceIds, timeList, measurementsList, typesList, valuesList);
-    assertEquals(
+    Assert.assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -1496,7 +1496,8 @@ public class SessionPoolTest {
             true,
             10);
 
-    Mockito.when(session.executeQueryStatement(any(String.class))).thenReturn(sessionDataSet);
+    Mockito.when(session.executeQueryStatement(ArgumentMatchers.any(String.class)))
+        .thenReturn(sessionDataSet);
 
     SessionDataSetWrapper sessionDataSetWrapper = sessionPool.executeQueryStatement(testSql);
     List<String> columnNames = sessionDataSetWrapper.getColumnNames();

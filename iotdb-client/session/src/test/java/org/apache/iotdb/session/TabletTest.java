@@ -28,8 +28,6 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertArrayEquals;
-
 public class TabletTest {
   @Test
   public void testSortTablet() {
@@ -75,7 +73,7 @@ public class TabletTest {
     long[] resValues = (long[]) tablet.values[0];
     long[] expectedTimestamps = new long[] {0, 1, 2};
     long[] expectedValues = new long[] {1, 2, 0};
-    assertArrayEquals(expectedTimestamps, resTimestamps);
-    assertArrayEquals(expectedValues, resValues);
+    Assert.assertArrayEquals(expectedTimestamps, resTimestamps);
+    Assert.assertArrayEquals(expectedValues, resValues);
   }
 }
