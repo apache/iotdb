@@ -173,7 +173,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
-  public long getUnTransferredRealTimeEventCount() {
+  public long getUnTransferredEventCount() {
     return !(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)
         ? getListeningQueue().getTailIndex()
             - ((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex()

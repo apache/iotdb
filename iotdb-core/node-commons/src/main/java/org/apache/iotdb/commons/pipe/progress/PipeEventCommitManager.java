@@ -34,7 +34,7 @@ public class PipeEventCommitManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitManager.class);
 
-  // key: pipeName_dataRegionId
+  // key: pipeName_regionId
   private final Map<String, PipeEventCommitter> eventCommitterMap = new ConcurrentHashMap<>();
 
   private Consumer<String> commitRateMarker;
@@ -51,21 +51,21 @@ public class PipeEventCommitManager {
     final String committerKey = generateCommitterKey(pipeName, creationTime, regionId);
     if (eventCommitterMap.containsKey(committerKey)) {
       LOGGER.warn(
-          "Pipe with same name is already registered on this data region, overwriting: {}",
+          "Pipe with same name is already registered on this region, overwriting: {}",
           committerKey);
     }
     final PipeEventCommitter eventCommitter =
         new PipeEventCommitter(pipeName, creationTime, regionId);
     eventCommitterMap.put(committerKey, eventCommitter);
     PipeEventCommitMetrics.getInstance().register(eventCommitter, committerKey);
-    LOGGER.info("Pipe committer registered for pipe on data region: {}", committerKey);
+    LOGGER.info("Pipe committer registered for pipe on region: {}", committerKey);
   }
 
   public void deregister(final String pipeName, final long creationTime, final int regionId) {
     final String committerKey = generateCommitterKey(pipeName, creationTime, regionId);
     eventCommitterMap.remove(committerKey);
     PipeEventCommitMetrics.getInstance().deregister(committerKey);
-    LOGGER.info("Pipe committer deregistered for pipe on data region: {}", committerKey);
+    LOGGER.info("Pipe committer deregistered for pipe on region: {}", committerKey);
   }
 
   /**

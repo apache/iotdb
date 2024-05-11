@@ -62,7 +62,7 @@ public class PipeConfigRegionExtractorMetrics implements IMetricSet {
         Metric.UNTRANSFERRED_CONFIG_COUNT.toString(),
         MetricLevel.IMPORTANT,
         extractorMap.get(taskID),
-        IoTDBConfigRegionExtractor::getUnTransferredRealTimeEventCount,
+        IoTDBConfigRegionExtractor::getUnTransferredEventCount,
         Tag.NAME.toString(),
         extractor.getPipeName(),
         Tag.CREATION_TIME.toString(),

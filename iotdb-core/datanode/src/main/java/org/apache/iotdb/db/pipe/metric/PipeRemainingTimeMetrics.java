@@ -82,7 +82,7 @@ public class PipeRemainingTimeMetrics implements IMetricSet {
     ImmutableSet.copyOf(remainingTimeOperatorMap.keySet()).forEach(this::deregister);
     if (!remainingTimeOperatorMap.isEmpty()) {
       LOGGER.warn(
-          "Failed to unbind from pipe schema region extractor metrics, extractor map not empty");
+          "Failed to unbind from pipe remain time metrics, remainingTimeOperator map not empty");
     }
   }
 
@@ -163,6 +163,7 @@ public class PipeRemainingTimeMetrics implements IMetricSet {
   }
 
   public void markRegionCommit(final String committerKey) {
+    // Filter commit attempt from assigner
     if (Objects.isNull(committerKey)) {
       return;
     }
@@ -181,8 +182,7 @@ public class PipeRemainingTimeMetrics implements IMetricSet {
     final PipeRemainingTimeOperator operator = remainingTimeOperatorMap.get(taskID);
     if (Objects.isNull(operator)) {
       LOGGER.warn(
-          "Failed to mark pipe processor tablet event, PipeProcessorSubtask({}) does not exist",
-          taskID);
+          "Failed to mark pipe region commit, RemainTimeOperator({}) does not exist", taskID);
       return;
     }
     // Prevent not set pipeName / creation times & potential differences between pipeNames and

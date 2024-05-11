@@ -104,7 +104,7 @@ class PipeRemainingTimeOperator {
 
     final long totalSchemaRegionWriteEventCount =
         schemaRegionExtractors.keySet().stream()
-            .map(IoTDBSchemaRegionExtractor::getUnTransferredRealTimeEventCount)
+            .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
             .reduce(Long::sum)
             .orElse(0L);
     final double schemaRegionRate =
