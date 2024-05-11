@@ -1200,4 +1200,10 @@ public class SessionTest {
       assertEquals("nodeUrls shouldn't be empty.", e.getMessage());
     }
   }
+
+  @Test
+  public void testTimeoutUsingBuilder() {
+    ISession session1 = new Session.Builder().timeOut(1).build();
+    assertEquals(1L, session1.getQueryTimeout());
+  }
 }
