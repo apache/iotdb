@@ -89,6 +89,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -905,13 +906,16 @@ public class Session implements ISession {
   }
 
   private SessionConnection getQuerySessionConnection() {
-    TEndPoint endPoint = availableNodes.getQueryEndPoint();
+    Optional<TEndPoint> endPoint = availableNodes.getQueryEndPoint();
+    if (!endPoint.isPresent()) {
+      return defaultSessionConnection;
+    }
     SessionConnection connection =
         endPointToSessionConnection.computeIfAbsent(
-            endPoint,
+            endPoint.get(),
             k -> {
               try {
-                return constructSessionConnection(this, endPoint, zoneId);
+                return constructSessionConnection(this, endPoint.get(), zoneId);
               } catch (IoTDBConnectionException ex) {
                 return null;
               }
