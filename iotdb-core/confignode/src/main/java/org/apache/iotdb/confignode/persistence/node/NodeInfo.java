@@ -87,14 +87,13 @@ public class NodeInfo implements SnapshotProcessor {
   private final Map<Integer, TConfigNodeLocation> registeredConfigNodes;
 
   // Registered DataNodes
-  private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
-
-  private final ReentrantReadWriteLock versionInfoReadWriteLock;
-
   private final AtomicInteger nextNodeId = new AtomicInteger(-1);
   private final Map<Integer, TDataNodeConfiguration> registeredDataNodes;
+  private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
 
   private final Map<Integer, TNodeVersionInfo> nodeVersionInfo;
+  private final ReentrantReadWriteLock versionInfoReadWriteLock;
+
   private static final String SNAPSHOT_FILENAME = "node_info.bin";
 
   public NodeInfo() {
