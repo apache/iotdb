@@ -887,7 +887,7 @@ public class Session implements ISession {
   private SessionDataSet executeStatementMayRedirect(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      return defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
+      return getQuerySessionConnection().executeQueryStatement(sql, timeoutInMs);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
@@ -902,6 +902,21 @@ public class Session implements ISession {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
       }
     }
+  }
+
+  private SessionConnection getQuerySessionConnection() {
+    TEndPoint endPoint = availableNodes.getQueryEndPoint();
+    SessionConnection connection =
+        endPointToSessionConnection.computeIfAbsent(
+            endPoint,
+            k -> {
+              try {
+                return constructSessionConnection(this, endPoint, zoneId);
+              } catch (IoTDBConnectionException ex) {
+                return null;
+              }
+            });
+    return connection == null ? defaultSessionConnection : connection;
   }
 
   /**

@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ScheduledExecutorService;
@@ -76,6 +77,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
   private final int connectionTimeoutInMs;
 
   private final String version;
+
+  private final QueryEndPointPolicy policy = new RoundRobinPolicy();
 
   private ThriftConnection client;
 
@@ -211,6 +214,15 @@ public class NodesSupplier implements INodeSupplier, Runnable {
   public void close() {
     closed = true;
     destroyCurrentClient();
+  }
+
+  @Override
+  public Optional<TEndPoint> getQueryEndPoint() {
+    if (availableNodes == null || availableNodes.isEmpty()) {
+      return Optional.empty();
+    } else {
+      return Optional.of(policy.chooseOne(get()));
+    }
   }
 
   private boolean updateDataNodeList() {
