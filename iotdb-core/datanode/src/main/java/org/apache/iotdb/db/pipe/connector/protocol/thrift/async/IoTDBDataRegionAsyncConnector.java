@@ -54,10 +54,10 @@ import org.slf4j.LoggerFactory;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Objects;
-import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
@@ -83,14 +83,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private IoTDBDataNodeAsyncClientManager clientManager;
 
   private final IoTDBDataRegionSyncConnector retryConnector = new IoTDBDataRegionSyncConnector();
-  private final PriorityBlockingQueue<Event> retryEventQueue =
-      new PriorityBlockingQueue<>(
-          11,
-          Comparator.comparing(
-              e ->
-                  // Non-enriched events will be put at the front of the queue,
-                  // because they are more likely to be lost and need to be retried first.
-                  e instanceof EnrichedEvent ? ((EnrichedEvent) e).getCommitId() : 0));
+  private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
 
   private IoTDBThriftAsyncPipeTransferBatchReqBuilder tabletBatchBuilder;
 
@@ -161,6 +154,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       return;
     }
 
+    transferWithoutCheck(tabletInsertionEvent);
+  }
+
+  private void transferWithoutCheck(final TabletInsertionEvent tabletInsertionEvent)
+      throws Exception {
     if (isTabletBatchModeEnabled) {
       if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
         final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler =
@@ -265,6 +263,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       return;
     }
 
+    transferWithoutCheck(tsFileInsertionEvent);
+  }
+
+  private void transferWithoutCheck(final TsFileInsertionEvent tsFileInsertionEvent)
+      throws Exception {
     final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     // We increase the reference count for this event to determine if the event may be released.
@@ -275,15 +278,23 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    // Just in case. To avoid the case that exception occurred when constructing the handler.
-    if (!pipeTsFileInsertionEvent.getTsFile().exists()) {
-      throw new FileNotFoundException(pipeTsFileInsertionEvent.getTsFile().getAbsolutePath());
+    // We assume that no exceptions will be thrown after reference count is increased.
+    try {
+      // Just in case. To avoid the case that exception occurred when constructing the handler.
+      if (!pipeTsFileInsertionEvent.getTsFile().exists()) {
+        throw new FileNotFoundException(pipeTsFileInsertionEvent.getTsFile().getAbsolutePath());
+      }
+
+      final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
+          new PipeTransferTsFileInsertionEventHandler(pipeTsFileInsertionEvent, this);
+
+      transfer(pipeTransferTsFileInsertionEventHandler);
+    } catch (Exception e) {
+      // Just in case. To avoid the case that exception occurred when constructing the handler.
+      pipeTsFileInsertionEvent.decreaseReferenceCount(
+          IoTDBDataRegionAsyncConnector.class.getName(), false);
+      throw e;
     }
-
-    final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
-        new PipeTransferTsFileInsertionEventHandler(pipeTsFileInsertionEvent, this);
-
-    transfer(pipeTransferTsFileInsertionEventHandler);
   }
 
   private void transfer(
@@ -341,36 +352,43 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    * @see PipeConnector#transfer(TabletInsertionEvent) for more details.
    * @see PipeConnector#transfer(TsFileInsertionEvent) for more details.
    */
-  private synchronized void transferQueuedEventsIfNecessary() throws Exception {
+  private void transferQueuedEventsIfNecessary() throws Exception {
     while (!retryEventQueue.isEmpty()) {
-      final Event peekedEvent = retryEventQueue.peek();
+      synchronized (this) {
+        if (isClosed.get() || retryEventQueue.isEmpty()) {
+          return;
+        }
 
-      if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
-      } else if (peekedEvent instanceof PipeRawTabletInsertionEvent) {
-        retryConnector.transfer((PipeRawTabletInsertionEvent) peekedEvent);
-      } else if (peekedEvent instanceof PipeTsFileInsertionEvent) {
-        retryConnector.transfer((PipeTsFileInsertionEvent) peekedEvent);
-      } else {
-        LOGGER.warn(
-            "IoTDBThriftAsyncConnector does not support transfer generic event: {}.", peekedEvent);
-      }
+        final Event peekedEvent = retryEventQueue.peek();
 
-      if (peekedEvent instanceof EnrichedEvent) {
-        ((EnrichedEvent) peekedEvent)
-            .decreaseReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), true);
-      }
+        if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+          retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
+        } else if (peekedEvent instanceof PipeRawTabletInsertionEvent) {
+          retryConnector.transfer((PipeRawTabletInsertionEvent) peekedEvent);
+        } else if (peekedEvent instanceof PipeTsFileInsertionEvent) {
+          retryConnector.transfer((PipeTsFileInsertionEvent) peekedEvent);
+        } else {
+          LOGGER.warn(
+              "IoTDBThriftAsyncConnector does not support transfer generic event: {}.",
+              peekedEvent);
+        }
 
-      final Event polledEvent = retryEventQueue.poll();
-      if (polledEvent != peekedEvent) {
-        LOGGER.error(
-            "The event polled from the queue is not the same as the event peeked from the queue. "
-                + "Peeked event: {}, polled event: {}.",
-            peekedEvent,
-            polledEvent);
-      }
-      if (polledEvent != null && LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Polled event {} from retry queue.", polledEvent);
+        if (peekedEvent instanceof EnrichedEvent) {
+          ((EnrichedEvent) peekedEvent)
+              .decreaseReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), true);
+        }
+
+        final Event polledEvent = retryEventQueue.poll();
+        if (polledEvent != peekedEvent) {
+          LOGGER.error(
+              "The event polled from the queue is not the same as the event peeked from the queue. "
+                  + "Peeked event: {}, polled event: {}.",
+              peekedEvent,
+              polledEvent);
+        }
+        if (polledEvent != null && LOGGER.isDebugEnabled()) {
+          LOGGER.debug("Polled event {} from retry queue.", polledEvent);
+        }
       }
     }
   }
@@ -391,7 +409,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    *
    * @param event event to retry
    */
-  public synchronized void addFailureEventToRetryQueue(final Event event) {
+  public void addFailureEventToRetryQueue(final Event event) {
     if (isClosed.get()) {
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
@@ -403,6 +421,12 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Added event {} to retry queue.", event);
     }
+
+    if (isClosed.get()) {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
+      }
+    }
   }
 
   /**
@@ -410,7 +434,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    *
    * @param events events to retry
    */
-  public synchronized void addFailureEventsToRetryQueue(final Iterable<Event> events) {
+  public void addFailureEventsToRetryQueue(final Iterable<Event> events) {
     for (final Event event : events) {
       addFailureEventToRetryQueue(event);
     }

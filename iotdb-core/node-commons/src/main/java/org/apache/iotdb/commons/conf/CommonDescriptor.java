@@ -425,6 +425,11 @@ public class CommonDescriptor {
                 "pipe_air_gap_receiver_port",
                 Integer.toString(config.getPipeAirGapReceiverPort()))));
 
+    config.setPipeMaxAllowedHistoricalTsFilePerDataRegion(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_historical_tsfile_per_data_region",
+                String.valueOf(config.getPipeMaxAllowedHistoricalTsFilePerDataRegion()))));
     config.setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
         Integer.parseInt(
             properties.getProperty(
