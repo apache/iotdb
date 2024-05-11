@@ -168,7 +168,8 @@ public abstract class AbstractCompactionTask {
       }
     } else if (e instanceof InterruptedException
         || Thread.interrupted()
-        || e instanceof StopReadTsFileByInterruptException) {
+        || e instanceof StopReadTsFileByInterruptException
+        || !tsFileManager.isAllowCompaction()) {
       logger.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
       Thread.currentThread().interrupt();
     } else {
@@ -315,6 +316,11 @@ public abstract class AbstractCompactionTask {
   }
 
   protected void handleRecoverException(Exception e) {
+    // all files in this data region may be deleted directly without acquire lock or transfer
+    // TsFileResourceStatus
+    if (!tsFileManager.isAllowCompaction()) {
+      return;
+    }
     LOGGER.error(
         "{} [Compaction][Recover] Failed to recover compaction. TaskInfo: {}, Exception: {}",
         dataRegionId,

@@ -165,6 +165,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   @SuppressWarnings({"squid:S6541", "squid:S3776", "squid:S2142"})
   protected boolean doCompaction() {
+    if (!tsFileManager.isAllowCompaction()) {
+      return true;
+    }
     long startTime = System.currentTimeMillis();
     // get resource of target file
     recoverMemoryStatus = true;
