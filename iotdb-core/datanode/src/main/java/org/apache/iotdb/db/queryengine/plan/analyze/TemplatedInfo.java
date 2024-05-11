@@ -104,6 +104,7 @@ public class TemplatedInfo {
       Map<String, IMeasurementSchema> schemaMap,
       Map<String, List<InputLocation>> layoutMap,
       Expression pushDownPredicate,
+      List<AggregationDescriptor> aggregationDescriptorList,
       GroupByTimeParameter groupByTimeParameter,
       boolean outputEndTime) {
     this.measurementList = measurementList;
@@ -123,6 +124,7 @@ public class TemplatedInfo {
     }
     this.pushDownPredicate = pushDownPredicate;
 
+    this.aggregationDescriptorList = aggregationDescriptorList;
     this.groupByTimeParameter = groupByTimeParameter;
     this.outputEndTime = outputEndTime;
   }
@@ -259,6 +261,13 @@ public class TemplatedInfo {
     } else {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     }
+
+    if (aggregationDescriptorList != null) {
+      ReadWriteIOUtils.write(aggregationDescriptorList.size(), byteBuffer);
+      aggregationDescriptorList.forEach(d -> d.serialize(byteBuffer));
+    } else {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    }
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
@@ -299,6 +308,15 @@ public class TemplatedInfo {
     if (pushDownPredicate != null) {
       ReadWriteIOUtils.write((byte) 1, stream);
       Expression.serialize(pushDownPredicate, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
+
+    if (aggregationDescriptorList != null) {
+      ReadWriteIOUtils.write(aggregationDescriptorList.size(), stream);
+      for (AggregationDescriptor descriptor : aggregationDescriptorList) {
+        descriptor.serialize(stream);
+      }
     } else {
       ReadWriteIOUtils.write((byte) 0, stream);
     }
@@ -367,6 +385,15 @@ public class TemplatedInfo {
       pushDownPredicate = Expression.deserialize(byteBuffer);
     }
 
+    List<AggregationDescriptor> aggregationDescriptorList = null;
+    listSize = ReadWriteIOUtils.readInt(byteBuffer);
+    if (listSize > 0) {
+      aggregationDescriptorList = new ArrayList<>(listSize);
+      while (listSize-- > 0) {
+        aggregationDescriptorList.add(AggregationDescriptor.deserialize(byteBuffer));
+      }
+    }
+
     // TODO add groupByTimeParameter, outputEndTime serialization and deserialization
 
     return new TemplatedInfo(
@@ -384,6 +411,7 @@ public class TemplatedInfo {
         currentSchemaMap,
         layoutMap,
         pushDownPredicate,
+        aggregationDescriptorList,
         null,
         false);
   }

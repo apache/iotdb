@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -252,6 +253,41 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
         outputEndTime,
         pushDownPredicate,
         groupByTimeParameter,
+        null);
+  }
+
+  @Override
+  public void serializeUseTemplate(DataOutputStream stream, TypeProvider typeProvider)
+      throws IOException {
+    PlanNodeType.ALIGNED_SERIES_AGGREGATE_SCAN.serialize(stream);
+    id.serialize(stream);
+    ReadWriteIOUtils.write(alignedPath.getNodes().length, stream);
+    for (String node : alignedPath.getNodes()) {
+      ReadWriteIOUtils.write(node, stream);
+    }
+  }
+
+  public static AlignedSeriesAggregationScanNode deserializeUseTemplate(
+      ByteBuffer byteBuffer, TypeProvider typeProvider) {
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+
+    int nodeSize = ReadWriteIOUtils.readInt(byteBuffer);
+    String[] nodes = new String[nodeSize];
+    for (int i = 0; i < nodeSize; i++) {
+      nodes[i] = ReadWriteIOUtils.readString(byteBuffer);
+    }
+    AlignedPath alignedPath = new AlignedPath(new PartialPath(nodes));
+    alignedPath.setMeasurementList(typeProvider.getTemplatedInfo().getMeasurementList());
+    alignedPath.addSchemas(typeProvider.getTemplatedInfo().getSchemaList());
+
+    return new AlignedSeriesAggregationScanNode(
+        planNodeId,
+        alignedPath,
+        typeProvider.getTemplatedInfo().aggregationDescriptorList,
+        typeProvider.getTemplatedInfo().getScanOrder(),
+        typeProvider.getTemplatedInfo().outputEndTime,
+        typeProvider.getTemplatedInfo().getPushDownPredicate(),
+        typeProvider.getTemplatedInfo().groupByTimeParameter,
         null);
   }
 

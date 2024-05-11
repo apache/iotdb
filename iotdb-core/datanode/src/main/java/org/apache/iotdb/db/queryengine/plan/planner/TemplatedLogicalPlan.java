@@ -155,6 +155,7 @@ public class TemplatedLogicalPlan {
                 analysis.getDeviceTemplate().getSchemaMap(),
                 filterLayoutMap,
                 null,
+                null,
                 analysis.getGroupByTimeParameter(),
                 queryStatement.isOutputEndTime()));
   }
@@ -211,6 +212,7 @@ public class TemplatedLogicalPlan {
                 queryStatement.isGroupByTime(),
                 analysis.getDeviceTemplate().getSchemaMap(),
                 filterLayoutMap,
+                null,
                 null,
                 analysis.getGroupByTimeParameter(),
                 queryStatement.isOutputEndTime()));
