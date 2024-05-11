@@ -190,9 +190,17 @@ public abstract class PipePluginAgent {
     try {
       processor.validate(new PipeParameterValidator(replacedParameters));
       processor.customize(replacedParameters, runtimeConfigurations);
+      return processor;
     } catch (Exception e) {
+      try {
+        processor.close();
+      } catch (Exception closeException) {
+        LOGGER.warn(
+            "Failed to close processor after failed to initialize processor. "
+                + "Ignore this exception.",
+            closeException);
+      }
       throw new PipeException(e.getMessage(), e);
     }
-    return processor;
   }
 }
