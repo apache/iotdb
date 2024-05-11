@@ -49,6 +49,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class SessionPoolExceptionTest {
 
@@ -85,12 +94,7 @@ public class SessionPoolExceptionTest {
   public void testInsertRecords() throws Exception {
     Mockito.doThrow(new IoTDBConnectionException(""))
         .when(session)
-        .insertRecords(
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList());
+        .insertRecords(anyList(), anyList(), anyList(), anyList(), anyList());
     List<String> deviceIds = Arrays.asList("device1", "device2");
     List<Long> timeList = Arrays.asList(1L, 2L);
     List<List<String>> measurementsList =
@@ -103,7 +107,7 @@ public class SessionPoolExceptionTest {
     List<List<Object>> valuesList =
         Arrays.asList(Arrays.asList(25.0f, 50.0f), Arrays.asList(220.0, 1.5));
     sessionPool.insertRecords(deviceIds, timeList, measurementsList, typesList, valuesList);
-    Assert.assertEquals(
+    assertEquals(
         1,
         ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
@@ -112,7 +116,7 @@ public class SessionPoolExceptionTest {
   public void testInsertTablet() throws IoTDBConnectionException, StatementExecutionException {
     Mockito.doThrow(new IoTDBConnectionException(""))
         .when(session)
-        .insertTablet(ArgumentMatchers.any(Tablet.class), ArgumentMatchers.anyBoolean());
+        .insertTablet(any(Tablet.class), anyBoolean());
     List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
@@ -131,7 +135,7 @@ public class SessionPoolExceptionTest {
   public void testInsertTablets() throws IoTDBConnectionException, StatementExecutionException {
     Mockito.doThrow(new IoTDBConnectionException(""))
         .when(session)
-        .insertTablets(ArgumentMatchers.anyMap(), ArgumentMatchers.anyBoolean());
+        .insertTablets(anyMap(), anyBoolean());
     List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
@@ -153,12 +157,7 @@ public class SessionPoolExceptionTest {
       throws IoTDBConnectionException, StatementExecutionException {
     Mockito.doThrow(new IoTDBConnectionException(""))
         .when(session)
-        .insertAlignedRecords(
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList());
+        .insertAlignedRecords(anyList(), anyList(), anyList(), anyList(), anyList());
     List<String> deviceIds = Arrays.asList("alignedDevice3", "alignedDevice4");
     List<Long> timeList = Arrays.asList(1L, 2L);
     List<List<String>> measurementsList =
@@ -178,7 +177,7 @@ public class SessionPoolExceptionTest {
       throws IoTDBConnectionException, StatementExecutionException {
     Mockito.doThrow(new IoTDBConnectionException(""))
         .when(session)
-        .insertAlignedTablets(ArgumentMatchers.anyMap(), ArgumentMatchers.anyBoolean());
+        .insertAlignedTablets(anyMap(), anyBoolean());
     List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
@@ -201,12 +200,7 @@ public class SessionPoolExceptionTest {
     Mockito.doThrow(new IoTDBConnectionException(""))
         .when(session)
         .insertRecordsOfOneDevice(
-            ArgumentMatchers.anyString(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyBoolean());
+            anyString(), anyList(), anyList(), anyList(), anyList(), anyBoolean());
     List<Long> timeList = Arrays.asList(1L, 2L);
     List<List<String>> measurementsList =
         Arrays.asList(
@@ -226,12 +220,7 @@ public class SessionPoolExceptionTest {
       throws IoTDBConnectionException, StatementExecutionException {
     Mockito.doThrow(new IoTDBConnectionException(""))
         .when(session)
-        .insertStringRecordsOfOneDevice(
-            ArgumentMatchers.anyString(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyBoolean());
+        .insertStringRecordsOfOneDevice(anyString(), anyList(), anyList(), anyList(), anyBoolean());
     List<Long> timeList = Arrays.asList(1L, 2L);
     List<List<String>> measurementsList =
         Arrays.asList(
@@ -246,12 +235,7 @@ public class SessionPoolExceptionTest {
       throws IoTDBConnectionException, StatementExecutionException {
     Mockito.doThrow(new IoTDBConnectionException(""))
         .when(session)
-        .insertRecordsOfOneDevice(
-            ArgumentMatchers.anyString(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList(),
-            ArgumentMatchers.anyList());
+        .insertRecordsOfOneDevice(anyString(), anyList(), anyList(), anyList(), anyList());
     List<Long> timeList = Arrays.asList(1L, 2L);
     List<List<String>> measurementsList =
         Arrays.asList(
@@ -285,7 +269,7 @@ public class SessionPoolExceptionTest {
     try {
       sessionPool.insertRecords(deviceIds, timeList, measurementsList, typesList, valuesList);
     } catch (IoTDBConnectionException e) {
-      Assert.assertTrue(e instanceof IoTDBConnectionException);
+      assertTrue(e instanceof IoTDBConnectionException);
     }
   }
 
@@ -293,9 +277,9 @@ public class SessionPoolExceptionTest {
   public void testEmptyNodeUrls() {
     try {
       ISessionPool failedSession = new SessionPool(Collections.emptyList(), "root", "root", 1);
-      Assert.fail();
+      fail();
     } catch (IllegalArgumentException e) {
-      Assert.assertEquals("nodeUrls shouldn't be empty.", e.getMessage());
+      assertEquals("nodeUrls shouldn't be empty.", e.getMessage());
     }
   }
 }

@@ -54,6 +54,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+
 public class SessionTest {
 
   @Mock private ISession session;
@@ -74,7 +78,7 @@ public class SessionTest {
     Whitebox.setInternalState(session, "defaultSessionConnection", sessionConnection);
     TSQueryTemplateResp resp = new TSQueryTemplateResp();
     resp.setMeasurements(Arrays.asList("root.sg1.d1.s1"));
-    Mockito.when(sessionConnection.querySchemaTemplate(ArgumentMatchers.any())).thenReturn(resp);
+    Mockito.when(sessionConnection.querySchemaTemplate(any())).thenReturn(resp);
     HashMap<String, TEndPoint> deviceIdToEndpoint = new HashMap<>();
     deviceIdToEndpoint.put("device1", new TEndPoint());
     deviceIdToEndpoint.put("device2", new TEndPoint());
@@ -123,7 +127,7 @@ public class SessionTest {
     timeZone = "UTC";
     session.setTimeZone(timeZone);
     session.setTimeZoneOfSession(timeZone);
-    Assert.assertEquals(timeZone, ((Session) session).zoneId.toString());
+    assertEquals(timeZone, ((Session) session).zoneId.toString());
   }
 
   @Test
@@ -1191,9 +1195,15 @@ public class SessionTest {
   public void testEmptyNodeUrls() {
     try {
       ISession failedSession = new Session(Collections.emptyList(), "root", "root");
-      Assert.fail();
+      fail();
     } catch (IllegalArgumentException e) {
-      Assert.assertEquals("nodeUrls shouldn't be empty.", e.getMessage());
+      assertEquals("nodeUrls shouldn't be empty.", e.getMessage());
     }
+  }
+
+  @Test
+  public void testTimeoutUsingBuilder() {
+    ISession session1 = new Session.Builder().timeOut(1).build();
+    assertEquals(1L, session1.getQueryTimeout());
   }
 }
