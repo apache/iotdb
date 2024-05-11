@@ -119,7 +119,7 @@ class PipeRemainingTimeOperator {
       schemaRegionRemainingTime =
           schemaRegionRate <= 0
               ? Double.MAX_VALUE
-              : totalDataRegionWriteEventCount / schemaRegionRate;
+              : totalSchemaRegionWriteEventCount / schemaRegionRate;
     }
 
     final double result = Math.max(dataRegionRemainingTime, schemaRegionRemainingTime);
