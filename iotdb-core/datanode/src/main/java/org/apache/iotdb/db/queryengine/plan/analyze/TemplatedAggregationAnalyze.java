@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -10,13 +28,17 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.DEVICE_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.END_TIME_EXPRESSION;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeExpressionType;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeOutput;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDataPartition;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDeviceToWhere;
@@ -26,9 +48,8 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.anal
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetInGroupByTimeForDevice;
 
+/** Methods in this class are used for aggregation, templated with align by device situation. */
 public class TemplatedAggregationAnalyze {
-
-  // ----------- Methods below are used for aggregation, templated with align by device --------
 
   static boolean analyzeAggregation(
       Analysis analysis,
@@ -45,6 +66,9 @@ public class TemplatedAggregationAnalyze {
       deviceList = pushDownLimitOffsetInGroupByTimeForDevice(deviceList, queryStatement);
     }
 
+    List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
+    analyzeSelect(queryStatement, analysis, outputExpressions, template);
+
     analyzeDeviceToWhere(analysis, queryStatement);
     if (deviceList.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
@@ -52,15 +76,8 @@ public class TemplatedAggregationAnalyze {
     }
     analysis.setDeviceList(deviceList);
 
-    List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
-    ColumnPaginationController paginationController =
-        new ColumnPaginationController(
-            queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset());
-    for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {}
-
-    analyzeSelect(queryStatement, analysis, outputExpressions, template);
     if (analysis.getWhereExpression() != null
-        && analysis.getWhereExpression().equals(ConstantOperand.FALSE)) {
+        && ConstantOperand.FALSE.equals(analysis.getWhereExpression())) {
       analyzeOutput(analysis, queryStatement, outputExpressions);
       analysis.setFinishQueryAfterAnalyze(true);
       return true;
@@ -87,21 +104,61 @@ public class TemplatedAggregationAnalyze {
       Analysis analysis,
       List<Pair<Expression, String>> outputExpressions,
       Template template) {
+
     LinkedHashSet<Expression> selectExpressions = new LinkedHashSet<>();
     selectExpressions.add(DEVICE_EXPRESSION);
     if (queryStatement.isOutputEndTime()) {
       selectExpressions.add(END_TIME_EXPRESSION);
     }
-    for (Pair<Expression, String> pair : outputExpressions) {
-      Expression selectExpression = pair.left;
-      selectExpressions.add(selectExpression);
+
+    ColumnPaginationController paginationController =
+        new ColumnPaginationController(
+            queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset());
+
+    Set<Expression> aggregationExpressions = new LinkedHashSet<>();
+    for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+      if (paginationController.hasCurOffset()) {
+        paginationController.consumeOffset();
+      } else if (paginationController.hasCurLimit()) {
+        Expression selectExpression = resultColumn.getExpression();
+        outputExpressions.add(new Pair<>(selectExpression, resultColumn.getAlias()));
+        selectExpressions.add(selectExpression);
+        aggregationExpressions.add(selectExpression);
+      } else {
+        break;
+      }
     }
+
+    analysis.setDeviceTemplate(template);
+    List<String> measurementList = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
+    Set<String> measurementSet = new HashSet<>();
+    for (Expression selectExpression : selectExpressions) {
+      if ("device".equalsIgnoreCase(selectExpression.getOutputSymbol())) {
+        continue;
+      }
+
+      String measurement = selectExpression.getExpressions().get(0).getOutputSymbol();
+      if (!template.getSchemaMap().containsKey(measurement)) {
+        throw new IllegalArgumentException(
+            "Measurement " + measurement + " is not found in template");
+      }
+
+      // for agg1(s1) + agg2(s1), only record s1 for one time
+      if (!measurementSet.contains(measurement)) {
+        measurementSet.add(measurement);
+        measurementList.add(measurement);
+        measurementSchemaList.add(template.getSchemaMap().get(measurement));
+      }
+
+      analyzeExpressionType(analysis, selectExpression);
+    }
+
+    analysis.setMeasurementList(measurementList);
+    analysis.setMeasurementSchemaList(measurementSchemaList);
+    analysis.setAggregationExpressions(aggregationExpressions);
     analysis.setOutputExpressions(outputExpressions);
     analysis.setSelectExpressions(selectExpressions);
-    analysis.setDeviceTemplate(template);
-    // TODO only add measurement and schema occured in selectExpressions
-    analysis.setMeasurementList(new ArrayList<>(template.getSchemaMap().keySet()));
-    analysis.setMeasurementSchemaList(new ArrayList<>(template.getSchemaMap().values()));
   }
 
   private static void analyzeDeviceToSourceTransform(Analysis analysis) {

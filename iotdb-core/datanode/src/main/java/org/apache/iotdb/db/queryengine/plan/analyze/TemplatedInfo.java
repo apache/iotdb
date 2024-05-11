@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -76,10 +78,15 @@ public class TemplatedInfo {
   private int maxTsBlockLineNum = -1;
 
   // variables related to predicate push down
+  // TODO when to init pushDownPredicate in agg situation?
   private Expression pushDownPredicate;
 
-  private Set<Expression> aggSelectExpressions;
+  // variables related to aggregation
+  public List<AggregationDescriptor> aggregationDescriptorList;
+  public GroupByTimeParameter groupByTimeParameter;
+  public boolean outputEndTime = false;
 
+  private Set<Expression> aggSelectExpressions;
   private Expression havingExpression;
 
   public TemplatedInfo(
@@ -96,7 +103,9 @@ public class TemplatedInfo {
       boolean keepNull,
       Map<String, IMeasurementSchema> schemaMap,
       Map<String, List<InputLocation>> layoutMap,
-      Expression pushDownPredicate) {
+      Expression pushDownPredicate,
+      GroupByTimeParameter groupByTimeParameter,
+      boolean outputEndTime) {
     this.measurementList = measurementList;
     this.schemaList = schemaList;
     this.dataTypes = dataTypes;
@@ -113,6 +122,9 @@ public class TemplatedInfo {
       this.layoutMap = layoutMap;
     }
     this.pushDownPredicate = pushDownPredicate;
+
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.outputEndTime = outputEndTime;
   }
 
   public List<String> getMeasurementList() {
@@ -355,6 +367,8 @@ public class TemplatedInfo {
       pushDownPredicate = Expression.deserialize(byteBuffer);
     }
 
+    // TODO add groupByTimeParameter, outputEndTime serialization and deserialization
+
     return new TemplatedInfo(
         measurementList,
         measurementSchemaList,
@@ -369,6 +383,8 @@ public class TemplatedInfo {
         keepNull,
         currentSchemaMap,
         layoutMap,
-        pushDownPredicate);
+        pushDownPredicate,
+        null,
+        false);
   }
 }

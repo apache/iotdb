@@ -409,7 +409,8 @@ public class Analysis implements IAnalysis {
     }
 
     if (isAllDevicesInOneTemplate()
-        && (isOnlyQueryTemplateMeasurements() || expression instanceof TimeSeriesOperand)) {
+        && isOnlyQueryTemplateMeasurements()
+        && expression instanceof TimeSeriesOperand) {
       TimeSeriesOperand seriesOperand = (TimeSeriesOperand) expression;
       return deviceTemplate.getSchemaMap().get(seriesOperand.getPath().getMeasurement()).getType();
     }

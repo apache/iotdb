@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -65,7 +66,10 @@ public class ExpressionTypeAnalyzer {
   public static TSDataType analyzeExpression(Analysis analysis, Expression expression) {
     if (!analysis.getExpressionTypes().containsKey(NodeRef.of(expression))) {
       ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
-      analyzer.analyze(expression, null);
+
+      Map<String, IMeasurementSchema> context =
+          analysis.isAllDevicesInOneTemplate() ? analysis.getDeviceTemplate().getSchemaMap() : null;
+      analyzer.analyze(expression, context);
 
       addExpressionTypes(analysis, analyzer);
     }
@@ -346,6 +350,14 @@ public class ExpressionTypeAnalyzer {
         return setExpressionType(
             timeSeriesOperand, context.get(timeSeriesOperand.getOutputSymbol()).getType());
       }
+
+      if (context != null
+          && !(timeSeriesOperand.getPath() instanceof MeasurementPath)
+          && context.containsKey(timeSeriesOperand.getPath().getFullPath())) {
+        return setExpressionType(
+            timeSeriesOperand, context.get(timeSeriesOperand.getPath().getFullPath()).getType());
+      }
+
       return setExpressionType(timeSeriesOperand, timeSeriesOperand.getPath().getSeriesType());
     }
 

@@ -63,11 +63,13 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
@@ -92,6 +94,12 @@ public class AggregationPushDown implements PlanOptimizer {
   private boolean cannotUseStatistics(QueryStatement queryStatement, Analysis analysis) {
     boolean isAlignByDevice = queryStatement.isAlignByDevice();
     if (isAlignByDevice) {
+      if (analysis.isAllDevicesInOneTemplate()) {
+        // TODO agg+template situation, how about the SourceTransformExpressions
+        return cannotUseStatistics(
+            analysis.getAggregationExpressions(), analysis.getAggregationExpressions());
+      }
+
       // check any of the devices
       String device = analysis.getDeviceList().get(0).toString();
       return cannotUseStatistics(
@@ -172,6 +180,10 @@ public class AggregationPushDown implements PlanOptimizer {
       List<PlanNode> rewrittenChildren = new ArrayList<>();
       for (int i = 0; i < node.getDevices().size(); i++) {
         context.setCurDevice(node.getDevices().get(i));
+        if (context.analysis.isAllDevicesInOneTemplate()) {
+          context.setCurDevicePath(context.analysis.getDeviceList().get(i));
+        }
+
         rewrittenChildren.add(node.getChildren().get(i).accept(this, context));
       }
       node.setChildren(rewrittenChildren);
@@ -257,14 +269,26 @@ public class AggregationPushDown implements PlanOptimizer {
               sourceToCountTimeAggregationsMap);
         }
 
-        List<PlanNode> sourceNodeList =
-            constructSourceNodeFromAggregationDescriptors(
-                sourceToAscendingAggregationsMap,
-                sourceToDescendingAggregationsMap,
-                sourceToCountTimeAggregationsMap,
-                node.getScanOrder(),
-                node.getGroupByTimeParameter(),
-                context);
+        List<PlanNode> sourceNodeList;
+        if (context.analysis.isAllDevicesInOneTemplate()) {
+          sourceNodeList =
+              constructSourceNodeFromTemplateAggregationDescriptors(
+                  sourceToAscendingAggregationsMap,
+                  sourceToDescendingAggregationsMap,
+                  sourceToCountTimeAggregationsMap,
+                  node.getScanOrder(),
+                  node.getGroupByTimeParameter(),
+                  context);
+        } else {
+          sourceNodeList =
+              constructSourceNodeFromAggregationDescriptors(
+                  sourceToAscendingAggregationsMap,
+                  sourceToDescendingAggregationsMap,
+                  sourceToCountTimeAggregationsMap,
+                  node.getScanOrder(),
+                  node.getGroupByTimeParameter(),
+                  context);
+        }
 
         if (isSingleSource && ((SeriesScanSourceNode) child).getPushDownPredicate() != null) {
           Expression pushDownPredicate = ((SeriesScanSourceNode) child).getPushDownPredicate();
@@ -352,7 +376,6 @@ public class AggregationPushDown implements PlanOptimizer {
         GroupByTimeParameter groupByTimeParameter,
         RewriterContext context) {
       List<PlanNode> sourceNodeList = new ArrayList<>();
-      boolean needCheckAscending = groupByTimeParameter == null;
       Map<PartialPath, List<AggregationDescriptor>> groupedAscendingAggregations = null;
       if (!countTimeAggregations.isEmpty()) {
         groupedAscendingAggregations = countTimeAggregations;
@@ -371,6 +394,7 @@ public class AggregationPushDown implements PlanOptimizer {
                 context));
       }
 
+      boolean needCheckAscending = groupByTimeParameter == null;
       if (needCheckAscending) {
         Map<PartialPath, List<AggregationDescriptor>> groupedDescendingAggregations =
             MetaUtils.groupAlignedAggregations(descendingAggregations);
@@ -385,6 +409,85 @@ public class AggregationPushDown implements PlanOptimizer {
                   context));
         }
       }
+      return sourceNodeList;
+    }
+
+    private List<PlanNode> constructSourceNodeFromTemplateAggregationDescriptors(
+        Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations,
+        Map<PartialPath, List<AggregationDescriptor>> descendingAggregations,
+        Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations,
+        Ordering scanOrder,
+        GroupByTimeParameter groupByTimeParameter,
+        RewriterContext context) {
+
+      // keySet of ascendingAggregations is measurement,
+      // valueSet of ascendingAggregations is aggDescriptors such as count(s1), avg(s1)
+
+      List<PlanNode> sourceNodeList = new ArrayList<>();
+      PartialPath devicePath = context.curDevicePath;
+      List<String> measurementList = context.analysis.getMeasurementList();
+      List<IMeasurementSchema> measurementSchemaList = context.analysis.getMeasurementSchemaList();
+      boolean needCheckAscending = groupByTimeParameter == null;
+
+      if (context.analysis.getDeviceTemplate().isDirectAligned()) {
+        AlignedPath alignedPath = new AlignedPath(devicePath);
+        alignedPath.setMeasurementList(measurementList);
+        alignedPath.addSchemas(measurementSchemaList);
+
+        List<AggregationDescriptor> aggregationDescriptors =
+            ascendingAggregations.values().stream()
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
+        if (!aggregationDescriptors.isEmpty()) {
+          sourceNodeList.add(
+              createAggregationScanNode(
+                  alignedPath, aggregationDescriptors, scanOrder, groupByTimeParameter, context));
+        }
+
+        if (needCheckAscending) {
+          aggregationDescriptors =
+              descendingAggregations.values().stream()
+                  .flatMap(Collection::stream)
+                  .collect(Collectors.toList());
+          sourceNodeList.add(
+              createAggregationScanNode(
+                  alignedPath, aggregationDescriptors, scanOrder, groupByTimeParameter, context));
+        }
+      } else {
+        // TODO verify the rightness of non-aligned series
+        for (int i = 0; i < measurementList.size(); i++) {
+          MeasurementPath measurementPath =
+              new MeasurementPath(
+                  devicePath.concatNode(measurementList.get(i)), measurementSchemaList.get(i));
+          for (List<AggregationDescriptor> aggregationDescriptorList :
+              descendingAggregations.values()) {
+            sourceNodeList.add(
+                createAggregationScanNode(
+                    measurementPath,
+                    aggregationDescriptorList,
+                    scanOrder,
+                    groupByTimeParameter,
+                    context));
+          }
+
+          if (needCheckAscending) {
+            for (List<AggregationDescriptor> aggregationDescriptorList :
+                descendingAggregations.values()) {
+              sourceNodeList.add(
+                  createAggregationScanNode(
+                      measurementPath,
+                      aggregationDescriptorList,
+                      scanOrder,
+                      groupByTimeParameter,
+                      context));
+            }
+          }
+        }
+      }
+
+      // TODO count(s1+s2) is not supported
+      // TODO count_time is not supported
+
       return sourceNodeList;
     }
 
@@ -442,6 +545,7 @@ public class AggregationPushDown implements PlanOptimizer {
     private final boolean isAlignByDevice;
 
     private String curDevice;
+    private PartialPath curDevicePath;
 
     public RewriterContext(Analysis analysis, MPPQueryContext context, boolean isAlignByDevice) {
       this.analysis = analysis;
@@ -461,9 +565,17 @@ public class AggregationPushDown implements PlanOptimizer {
       this.curDevice = curDevice;
     }
 
+    public void setCurDevicePath(PartialPath devicePath) {
+      this.curDevicePath = devicePath;
+    }
+
     public Set<Expression> getAggregationExpressions() {
       if (isAlignByDevice) {
-        return analysis.getDeviceToAggregationExpressions().get(curDevice);
+        if (analysis.isAllDevicesInOneTemplate()) {
+          return analysis.getAggregationExpressions();
+        } else {
+          return analysis.getDeviceToAggregationExpressions().get(curDevice);
+        }
       }
       return analysis.getAggregationExpressions();
     }

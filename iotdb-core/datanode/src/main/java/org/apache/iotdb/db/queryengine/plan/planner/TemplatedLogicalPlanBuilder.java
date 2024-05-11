@@ -48,6 +48,7 @@ import java.util.Set;
  * unnecessary judgements.
  */
 public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
+
   private final MPPQueryContext context;
 
   private final Analysis analysis;
@@ -132,6 +133,8 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
     return this;
   }
 
+  // ===================== Methods below are used for aggregation =============================
+
   public TemplatedLogicalPlanBuilder planRawDataAggregation(
       Set<Expression> aggregationExpressions,
       Expression groupByExpression,
@@ -139,20 +142,12 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
       GroupByParameter groupByParameter,
       boolean outputEndTime,
       AggregationStep curStep,
-      Ordering scanOrder) {
+      Ordering scanOrder,
+      List<AggregationDescriptor> aggregationDescriptorList) {
     if (aggregationExpressions == null) {
       return this;
     }
 
-    List<AggregationDescriptor> aggregationDescriptorList =
-        constructAggregationDescriptorList(aggregationExpressions, curStep);
-    updateTypeProvider(aggregationExpressions);
-    if (curStep.isOutputPartial()) {
-      aggregationDescriptorList.forEach(
-          aggregationDescriptor ->
-              updateTypeProviderByPartialAggregation(
-                  aggregationDescriptor, context.getTypeProvider()));
-    }
     this.root =
         new RawDataAggregationNode(
             context.getQueryId().genPlanNodeId(),

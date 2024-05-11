@@ -591,28 +591,62 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, LocalExecutionPlanContext context) {
-    AlignedPath seriesPath = node.getAlignedPath();
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    if (context.isBuildPlanUseTemplate()) {
+      return constructAlignedSeriesAggregationScanOperator(
+          node.getPlanNodeId(),
+          node.getAlignedPath(),
+          context.getTemplatedInfo().aggregationDescriptorList,
+          context.getTemplatedInfo().getPushDownPredicate(),
+          context.getTemplatedInfo().getScanOrder(),
+          context.getTemplatedInfo().groupByTimeParameter,
+          context.getTemplatedInfo().outputEndTime,
+          context);
+    }
+
+    return constructAlignedSeriesAggregationScanOperator(
+        node.getPlanNodeId(),
+        node.getAlignedPath(),
+        node.getAggregationDescriptorList(),
+        node.getPushDownPredicate(),
+        node.getScanOrder(),
+        node.getGroupByTimeParameter(),
+        node.isOutputEndTime(),
+        context);
+  }
+
+  private Operator constructAlignedSeriesAggregationScanOperator(
+      PlanNodeId planNodeId,
+      AlignedPath alignedPath,
+      List<AggregationDescriptor> aggregationDescriptorList,
+      Expression pushDownPredicate,
+      Ordering scanOrder,
+      GroupByTimeParameter groupByTimeParameter,
+      boolean outputEndTime,
+      LocalExecutionPlanContext context) {
+    boolean ascending = scanOrder == Ordering.ASC;
     List<Aggregator> aggregators = new ArrayList<>();
-    for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
+    for (AggregationDescriptor descriptor : aggregationDescriptorList) {
       checkArgument(
           descriptor.getInputExpressions().size() == 1,
           "descriptor's input expression size is not 1");
+
       Expression expression = descriptor.getInputExpressions().get(0);
       if (expression instanceof TimeSeriesOperand) {
+        // TODO for template_agg, no need use getPath.getMeasurement
         String inputSeries =
             ((TimeSeriesOperand) (descriptor.getInputExpressions().get(0)))
                 .getPath()
                 .getMeasurement();
-        int seriesIndex = seriesPath.getMeasurementList().indexOf(inputSeries);
+        int seriesIndex = alignedPath.getMeasurementList().indexOf(inputSeries);
         TSDataType seriesDataType =
-            seriesPath.getMeasurementSchema().getSubMeasurementsTSDataTypeList().get(seriesIndex);
+            alignedPath.getMeasurementSchema().getSubMeasurementsTSDataTypeList().get(seriesIndex);
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
                     descriptor.getAggregationFuncName(),
                     descriptor.getAggregationType(),
                     Collections.singletonList(seriesDataType),
+                    // TODO inputExpression must be devicePath+measurement
                     descriptor.getInputExpressions(),
                     descriptor.getInputAttributes(),
                     ascending,
@@ -627,6 +661,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                     descriptor.getAggregationFuncName(),
                     descriptor.getAggregationType(),
                     Collections.singletonList(TSDataType.INT64),
+                    // TODO inputExpression must be devicePath+measurement
                     descriptor.getInputExpressions(),
                     descriptor.getInputAttributes(),
                     ascending,
@@ -640,23 +675,22 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       }
     }
 
-    GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
     ITimeRangeIterator timeRangeIterator =
         initTimeRangeIterator(groupByTimeParameter, ascending, true);
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
-            node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
+            aggregationDescriptorList, timeRangeIterator, context.getTypeProvider());
 
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(context);
-    scanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
+    scanOptionsBuilder.withAllSensors(new HashSet<>(alignedPath.getMeasurementList()));
 
-    Expression pushDownPredicate = node.getPushDownPredicate();
     if (pushDownPredicate != null) {
       checkArgument(PredicateUtils.predicateCanPushIntoScan(pushDownPredicate));
       scanOptionsBuilder.withPushDownFilter(
           convertPredicateToFilter(
               pushDownPredicate,
-              node.getAlignedPath().getMeasurementList(),
+              alignedPath.getMeasurementList(),
+              // TODO what's the meaning of isBuildPlanUseTemplate
               context.getTypeProvider().getTemplatedInfo() != null,
               context.getTypeProvider()));
     }
@@ -666,14 +700,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
-                node.getPlanNodeId(),
+                planNodeId,
                 AlignedSeriesAggregationScanOperator.class.getSimpleName());
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         new AlignedSeriesAggregationScanOperator(
-            node.getPlanNodeId(),
-            seriesPath,
-            node.getScanOrder(),
-            node.isOutputEndTime(),
+            planNodeId,
+            alignedPath,
+            scanOrder,
+            outputEndTime,
             scanOptionsBuilder.build(),
             operatorContext,
             aggregators,
@@ -683,7 +717,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     ((DataDriverContext) context.getDriverContext())
         .addSourceOperator(seriesAggregationScanOperator);
-    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
+    ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
     context.getDriverContext().setInputDriver(true);
     return seriesAggregationScanOperator;
   }
