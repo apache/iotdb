@@ -349,9 +349,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           + FUEL_CONSUMPTION_COLUMN_NAME
           + "), count("
           + FUEL_CONSUMPTION_COLUMN_NAME
-          + ") from root.readings.** where "
-          + VELOCITY_COLUMN_NAME
-          + " > 1 ALIGN BY DEVICE";
+          + ") from root.readings.** ALIGN BY DEVICE";
 
   private static final List<String> AVG_VS_PROJ_FUEL_CONSUMPTION_HEADERS =
       ImmutableList.of(
@@ -382,9 +380,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private static final String AVG_DAILY_DRIVING_DURATION_SQL_TEMPLATE =
       "select avg("
           + VELOCITY_COLUMN_NAME
-          + ") from root.readings.** GROUP BY([%d, %d), 10m) HAVING avg("
-          + VELOCITY_COLUMN_NAME
-          + ") > 1 ALIGN BY DEVICE";
+          + ") from root.readings.** GROUP BY([%d, %d), 10m) ALIGN BY DEVICE";
 
   private static final List<String> AVG_DAILY_DRIVING_DURATION_HEADERS =
       ImmutableList.of(FLEET_COLUMN_NAME, NAME_COLUMN_NAME, DRIVER_COLUMN_NAME, "avg_daily_hours");
