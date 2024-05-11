@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
@@ -47,7 +46,6 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.slf4j.Logger;
@@ -84,11 +82,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   private IoTDBDataNodeAsyncClientManager clientManager;
 
-  private final int maxAllowedQueuedEventNumber =
-      Math.max(
-              PipeConfig.getInstance().getPipeAsyncConnectorMaxClientNumber(),
-              PipeConfig.getInstance().getPipeAsyncConnectorSelectorNumber())
-          * 2;
   private final IoTDBDataRegionSyncConnector retryConnector = new IoTDBDataRegionSyncConnector();
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
 
@@ -362,21 +355,10 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    * @see PipeConnector#transfer(TsFileInsertionEvent) for more details.
    */
   private void transferQueuedEventsIfNecessary() throws Exception {
-    final int maxRetryTimes = retryEventQueue.size();
-    int alreadyRetriedTimes = 0;
-
     while (!retryEventQueue.isEmpty()) {
       synchronized (this) {
         if (isClosed.get() || retryEventQueue.isEmpty()) {
           return;
-        }
-
-        if (alreadyRetriedTimes++ >= maxRetryTimes) {
-          if (retryEventQueue.size() < maxAllowedQueuedEventNumber) {
-            return;
-          }
-          throw new PipeConnectionException(
-              "The retry event queue is full. Please check the receiver status and the network connection.");
         }
 
         final Event peekedEvent = retryEventQueue.peek();
@@ -386,8 +368,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         } else if (peekedEvent instanceof PipeRawTabletInsertionEvent) {
           retryConnector.transfer((PipeRawTabletInsertionEvent) peekedEvent);
         } else if (peekedEvent instanceof PipeTsFileInsertionEvent) {
-          // Using the async connector to transfer the event for performance.
-          transferWithoutCheck((PipeTsFileInsertionEvent) peekedEvent);
+          retryConnector.transfer((PipeTsFileInsertionEvent) peekedEvent);
         } else {
           LOGGER.warn(
               "IoTDBThriftAsyncConnector does not support transfer generic event: {}.",
