@@ -94,7 +94,7 @@ public class AggregationPushDown implements PlanOptimizer {
   private boolean cannotUseStatistics(QueryStatement queryStatement, Analysis analysis) {
     boolean isAlignByDevice = queryStatement.isAlignByDevice();
     if (isAlignByDevice) {
-      if (analysis.isAllDevicesInOneTemplate()) {
+      if (analysis.allDevicesInOneTemplate()) {
         // TODO agg+template situation, how about the SourceTransformExpressions
         return cannotUseStatistics(
             analysis.getAggregationExpressions(), analysis.getAggregationExpressions());
@@ -180,7 +180,7 @@ public class AggregationPushDown implements PlanOptimizer {
       List<PlanNode> rewrittenChildren = new ArrayList<>();
       for (int i = 0; i < node.getDevices().size(); i++) {
         context.setCurDevice(node.getDevices().get(i));
-        if (context.analysis.isAllDevicesInOneTemplate()) {
+        if (context.analysis.allDevicesInOneTemplate()) {
           context.setCurDevicePath(context.analysis.getDeviceList().get(i));
         }
 
@@ -270,7 +270,7 @@ public class AggregationPushDown implements PlanOptimizer {
         }
 
         List<PlanNode> sourceNodeList;
-        if (context.analysis.isAllDevicesInOneTemplate()) {
+        if (context.analysis.allDevicesInOneTemplate()) {
           sourceNodeList =
               constructSourceNodeFromTemplateAggregationDescriptors(
                   sourceToAscendingAggregationsMap,
@@ -571,7 +571,7 @@ public class AggregationPushDown implements PlanOptimizer {
 
     public Set<Expression> getAggregationExpressions() {
       if (isAlignByDevice) {
-        if (analysis.isAllDevicesInOneTemplate()) {
+        if (analysis.allDevicesInOneTemplate()) {
           return analysis.getAggregationExpressions();
         } else {
           return analysis.getDeviceToAggregationExpressions().get(curDevice);

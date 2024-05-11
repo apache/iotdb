@@ -402,7 +402,7 @@ public class PredicatePushDown implements PlanOptimizer {
     private RewriterContext(Analysis analysis, MPPQueryContext context, boolean isAlignByDevice) {
       this.queryId = context.getQueryId();
       this.isAlignByDevice = isAlignByDevice;
-      this.isBuildPlanUseTemplate = analysis.isAllDevicesInOneTemplate();
+      this.isBuildPlanUseTemplate = analysis.allDevicesInOneTemplate();
       this.templatedInfo = context.getTypeProvider().getTemplatedInfo();
       this.filterNodeFromWhereChecker = analysis::fromWhere;
     }

@@ -68,7 +68,7 @@ public class ExpressionTypeAnalyzer {
       ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
 
       Map<String, IMeasurementSchema> context =
-          analysis.isAllDevicesInOneTemplate() ? analysis.getDeviceTemplate().getSchemaMap() : null;
+          analysis.allDevicesInOneTemplate() ? analysis.getDeviceTemplate().getSchemaMap() : null;
       analyzer.analyze(expression, context);
 
       addExpressionTypes(analysis, analyzer);

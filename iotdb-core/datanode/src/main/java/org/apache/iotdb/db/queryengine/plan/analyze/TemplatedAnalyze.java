@@ -253,7 +253,7 @@ public class TemplatedAnalyze {
       return;
     }
 
-    analysis.setOnlyQueryTemplateMeasurements(false);
+    analysis.setNoWhereAndAggregation(false);
     Expression wherePredicate =
         new TemplatedConcatRemoveUnExistentMeasurementVisitor()
             .process(

@@ -59,6 +59,8 @@ public class TemplatedAggregationAnalyze {
       MPPQueryContext context,
       Template template) {
 
+    analysis.setNoWhereAndAggregation(false);
+
     List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
 
     if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
