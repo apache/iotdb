@@ -47,6 +47,7 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileManager;
+import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -850,6 +851,8 @@ public class StorageEngine implements IService {
       status.setMessage(LoadReadOnlyException.MESSAGE);
       return status;
     }
+
+    LoadTsFileRateLimiter.getInstance().acquire(pieceNode.getDataSize());
 
     try {
       loadTsFileManager.writeToDataRegion(getDataRegion(dataRegionId), pieceNode, uuid);
