@@ -906,7 +906,8 @@ public class Session implements ISession {
   }
 
   private SessionConnection getQuerySessionConnection() {
-    Optional<TEndPoint> endPoint = availableNodes.getQueryEndPoint();
+    Optional<TEndPoint> endPoint =
+        availableNodes == null ? Optional.empty() : availableNodes.getQueryEndPoint();
     if (!endPoint.isPresent()) {
       return defaultSessionConnection;
     }
