@@ -28,6 +28,7 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig.RPC;
+import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.config.RatisConfig.Snapshot;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -114,6 +115,7 @@ public class DataRegionConsensusImpl {
                                       .setMaxMemoryRatioForQueue(CONF.getMaxMemoryRatioForQueue())
                                       .build())
                               .build())
+                      .setPipeConsensusConfig(PipeConsensusConfig.newBuilder().build())
                       .setRatisConfig(
                           RatisConfig.newBuilder()
                               // An empty log is committed after each restart, even if no data is
