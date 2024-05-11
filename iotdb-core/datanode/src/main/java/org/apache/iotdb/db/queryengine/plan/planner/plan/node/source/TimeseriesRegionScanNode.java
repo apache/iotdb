@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -48,6 +49,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class TimeseriesRegionScanNode extends RegionScanNode {
   // IDeviceID -> (MeasurementPath -> TimeseriesSchemaInfo)
@@ -171,6 +173,23 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
     return deviceToTimeseriesSchemaInfo.values().stream()
         .map(Map::keySet)
         .flatMap(Set::stream)
+        .flatMap(
+            path -> {
+              if (path instanceof AlignedPath) {
+                AlignedPath alignedPath = (AlignedPath) path;
+                return alignedPath.getMeasurementList().stream()
+                    .map(
+                        measurementName -> {
+                          try {
+                            return new PartialPath(alignedPath.getDevice(), measurementName);
+                          } catch (IllegalPathException e) {
+                            return null;
+                          }
+                        });
+              } else {
+                return Stream.of(path);
+              }
+            })
         .collect(Collectors.toList());
   }
 

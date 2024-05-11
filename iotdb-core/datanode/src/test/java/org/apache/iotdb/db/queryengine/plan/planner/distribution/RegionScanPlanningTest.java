@@ -46,7 +46,7 @@ import static org.junit.Assert.assertTrue;
 public class RegionScanPlanningTest {
 
   private static final Set<PartialPath> devicePaths = new HashSet<>();
-  private static final Set<PartialPath> measurementPath = new HashSet<>();
+  private static final Set<PartialPath> path = new HashSet<>();
 
   static {
     try {
@@ -57,18 +57,18 @@ public class RegionScanPlanningTest {
       devicePaths.add(new PartialPath(new PlainDeviceID("root.sg.d55555")));
       devicePaths.add(new PartialPath(new PlainDeviceID("root.sg.d666666")));
 
-      measurementPath.add(new MeasurementPath("root.sg.d1.s1"));
-      measurementPath.add(new MeasurementPath("root.sg.d1.s2"));
-      measurementPath.add(new MeasurementPath("root.sg.d22.s1"));
-      measurementPath.add(new MeasurementPath("root.sg.d22.s2"));
-      measurementPath.add(new MeasurementPath("root.sg.d333.s1"));
-      measurementPath.add(new MeasurementPath("root.sg.d333.s2"));
-      measurementPath.add(new MeasurementPath("root.sg.d4444.s1"));
-      measurementPath.add(new MeasurementPath("root.sg.d4444.s2"));
-      measurementPath.add(new MeasurementPath("root.sg.d55555.s1"));
-      measurementPath.add(new MeasurementPath("root.sg.d55555.s2"));
-      measurementPath.add(new MeasurementPath("root.sg.d666666.s1"));
-      measurementPath.add(new MeasurementPath("root.sg.d666666.s2"));
+      path.add(new MeasurementPath("root.sg.d1.s1"));
+      path.add(new MeasurementPath("root.sg.d1.s2"));
+      path.add(new MeasurementPath("root.sg.d22.s1"));
+      path.add(new MeasurementPath("root.sg.d22.s2"));
+      path.add(new MeasurementPath("root.sg.d333.s1"));
+      path.add(new MeasurementPath("root.sg.d333.s2"));
+      path.add(new MeasurementPath("root.sg.d4444.s1"));
+      path.add(new MeasurementPath("root.sg.d4444.s2"));
+      path.add(new MeasurementPath("root.sg.d55555.s1"));
+      path.add(new MeasurementPath("root.sg.d55555.s2"));
+      path.add(new MeasurementPath("root.sg.d666666.s1"));
+      path.add(new MeasurementPath("root.sg.d666666.s2"));
     } catch (IllegalPathException e) {
       throw new RuntimeException(e);
     }
@@ -144,6 +144,6 @@ public class RegionScanPlanningTest {
       }
     }
     assertEquals(devicePaths, targetDevicePaths);
-    assertEquals(measurementPath, targetMeasurementPaths);
+    assertEquals(path, targetMeasurementPaths);
   }
 }
