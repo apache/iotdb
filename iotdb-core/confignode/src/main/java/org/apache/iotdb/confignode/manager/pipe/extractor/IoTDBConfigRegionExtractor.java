@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeL
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
+import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -93,7 +94,10 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   @Override
   public synchronized EnrichedEvent supply() throws Exception {
-    return super.supply();
+    final EnrichedEvent event = super.supply();
+    PipeEventCommitManager.getInstance()
+        .enrichWithCommitterKeyAndCommitId(event, creationTime, regionId);
+    return event;
   }
 
   @Override

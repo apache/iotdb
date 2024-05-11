@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeE
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeAbstractConnectorSubtask;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -78,6 +79,8 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     initConnector(connectorAttributes);
 
     PipeConfigRegionConnectorMetrics.getInstance().register(this);
+    PipeEventCommitManager.getInstance()
+        .register(pipeName, creationTime, CONFIG_REGION_ID.getId(), pipeName + "_" + creationTime);
   }
 
   private void initExtractor(final Map<String, String> extractorAttributes) throws Exception {
@@ -190,6 +193,8 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
   public void close() {
     PipeConfigRegionConnectorMetrics.getInstance().deregister(taskID);
     isClosed.set(true);
+    PipeEventCommitManager.getInstance()
+        .deregister(pipeName, creationTime, CONFIG_REGION_ID.getId());
 
     try {
       extractor.close();
