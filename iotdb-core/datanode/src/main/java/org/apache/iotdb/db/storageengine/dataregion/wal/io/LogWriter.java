@@ -49,8 +49,9 @@ public abstract class LogWriter implements ILogWriter {
   protected long size;
   protected boolean isEndFile = false;
   private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES * 2 + 1);
-  private static final CompressionType compressionType = CompressionType.GZIP;
-  private final ICompressor compressor = ICompressor.getCompressor(CompressionType.GZIP);
+  private static final CompressionType compressionAlg =
+      IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm();
+  private final ICompressor compressor = ICompressor.getCompressor(compressionAlg);
   private final ByteBuffer compressedByteBuffer;
   private static final long MIN_COMPRESS_SIZE = 1024 * 512;
 
@@ -58,7 +59,7 @@ public abstract class LogWriter implements ILogWriter {
     this.logFile = logFile;
     this.logStream = new FileOutputStream(logFile, true);
     this.logChannel = this.logStream.getChannel();
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableWALCompression()) {
+    if (compressionAlg != CompressionType.UNCOMPRESSED) {
       compressedByteBuffer =
           ByteBuffer.allocate(
               compressor.getMaxBytesForCompression(
@@ -75,7 +76,7 @@ public abstract class LogWriter implements ILogWriter {
     boolean compressed = false;
     int uncompressedSize = bufferSize;
     if (!isEndFile
-        && IoTDBDescriptor.getInstance().getConfig().isEnableWALCompression()
+        && compressionAlg != CompressionType.UNCOMPRESSED
         && bufferSize > MIN_COMPRESS_SIZE /* Do not compress buffer that is less than 512KB */) {
       compressedByteBuffer.clear();
       compressor.compress(buffer, compressedByteBuffer);
@@ -91,7 +92,7 @@ public abstract class LogWriter implements ILogWriter {
     */
     headerBuffer.clear();
     headerBuffer.put(
-        compressed ? compressionType.serialize() : CompressionType.UNCOMPRESSED.serialize());
+        compressed ? compressionAlg.serialize() : CompressionType.UNCOMPRESSED.serialize());
     headerBuffer.putInt(bufferSize);
     if (compressed) {
       headerBuffer.putInt(uncompressedSize);

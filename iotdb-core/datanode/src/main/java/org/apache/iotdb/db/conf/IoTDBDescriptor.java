@@ -62,6 +62,7 @@ import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.utils.FilePathUtils;
@@ -417,10 +418,10 @@ public class IoTDBDescriptor {
                 "io_task_queue_size_for_flushing",
                 Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
 
-    conf.setEnableWALCompression(
-        Boolean.parseBoolean(
+    conf.setWALCompressionAlgorithm(
+        CompressionType.valueOf(
             properties.getProperty(
-                "enable_wal_compression", Boolean.toString(conf.isEnableWALCompression()))));
+                "wal_compression_algorithm", conf.getWALCompressionAlgorithm().toString())));
 
     conf.setCompactionScheduleIntervalInMs(
         Long.parseLong(
