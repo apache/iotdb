@@ -33,7 +33,6 @@ import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
 import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigRegionConnectorMetrics;
-import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -55,7 +54,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
   private final PipeTaskMeta pipeTaskMeta;
 
   // Pipe plugins for this subtask
-  private PipeExtractor extractor;
+  private IoTDBConfigRegionExtractor extractor;
 
   // TODO: currently unused
   @SuppressWarnings("unused")
@@ -87,7 +86,9 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
 
     // 1. Construct extractor
-    extractor = PipeConfigNodeAgent.plugin().reflectExtractor(extractorParameters);
+    extractor =
+        (IoTDBConfigRegionExtractor)
+            PipeConfigNodeAgent.plugin().reflectExtractor(extractorParameters);
 
     // 2. Validate extractor parameters
     extractor.validate(new PipeParameterValidator(extractorParameters));
