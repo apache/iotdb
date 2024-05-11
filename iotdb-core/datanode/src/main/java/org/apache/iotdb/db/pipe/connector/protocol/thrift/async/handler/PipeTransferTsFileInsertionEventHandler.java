@@ -103,7 +103,7 @@ public class PipeTransferTsFileInsertionEventHandler
     this.client = client;
 
     client.setShouldReturnSelf(false);
-    client.setTimeout(clientManager.getConnectionTimeout());
+    client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
     final int readLength = reader.read(readBuffer);
 
@@ -228,7 +228,9 @@ public class PipeTransferTsFileInsertionEventHandler
         exception);
 
     try {
-      clientManager.adjustTimeoutIfNecessary(exception);
+      if (Objects.nonNull(clientManager)) {
+        clientManager.adjustTimeoutIfNecessary(exception);
+      }
     } catch (Exception e) {
       LOGGER.warn("Failed to adjust timeout when failed to transfer file.", e);
     }
@@ -240,11 +242,13 @@ public class PipeTransferTsFileInsertionEventHandler
     } catch (final IOException e) {
       LOGGER.warn("Failed to close file reader when failed to transfer file.", e);
     } finally {
-      connector.addFailureEventToRetryQueue(event);
-
-      if (client != null) {
-        client.setShouldReturnSelf(true);
-        client.returnSelf();
+      try {
+        if (client != null) {
+          client.setShouldReturnSelf(true);
+          client.returnSelf();
+        }
+      } finally {
+        connector.addFailureEventToRetryQueue(event);
       }
     }
   }

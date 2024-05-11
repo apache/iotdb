@@ -47,6 +47,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -2807,6 +2808,8 @@ public class DataRegion implements IDataRegionForQuery {
         "Load tsfile in unsequence list, move file from {} to {}",
         tsFileToLoad.getAbsolutePath(),
         targetFile.getAbsolutePath());
+
+    LoadTsFileRateLimiter.getInstance().acquire(tsFileResource.getTsFile().length());
 
     // move file from sync dir to data dir
     if (!targetFile.getParentFile().exists()) {
