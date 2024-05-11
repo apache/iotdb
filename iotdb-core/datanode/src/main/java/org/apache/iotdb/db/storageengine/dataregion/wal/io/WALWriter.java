@@ -31,7 +31,8 @@ import java.nio.ByteBuffer;
 
 /** WALWriter writes the binary {@link WALEntry} into .wal file. */
 public class WALWriter extends LogWriter {
-  public static final String MAGIC_STRING = "WAL";
+  public static final String MAGIC_STRING_V1 = "WAL";
+  public static final String MAGIC_STRING = "V2-WAL";
   public static final int MAGIC_STRING_BYTES = MAGIC_STRING.getBytes().length;
 
   private WALFileStatus walFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;

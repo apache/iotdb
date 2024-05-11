@@ -52,6 +52,7 @@ public abstract class LogWriter implements ILogWriter {
   private static final CompressionType compressionType = CompressionType.GZIP;
   private final ICompressor compressor = ICompressor.getCompressor(CompressionType.GZIP);
   private final ByteBuffer compressedByteBuffer;
+  private static final long MIN_COMPRESS_SIZE = 1024 * 512;
 
   protected LogWriter(File logFile) throws FileNotFoundException {
     this.logFile = logFile;
@@ -73,8 +74,9 @@ public abstract class LogWriter implements ILogWriter {
     buffer.flip();
     boolean compressed = false;
     int uncompressedSize = bufferSize;
-    if (!isEndFile && IoTDBDescriptor.getInstance().getConfig().isEnableWALCompression()
-    /* && bufferSize > 1024 * 512 Do not compress buffer that is less than 512KB */ ) {
+    if (!isEndFile
+        && IoTDBDescriptor.getInstance().getConfig().isEnableWALCompression()
+        && bufferSize > MIN_COMPRESS_SIZE /* Do not compress buffer that is less than 512KB */) {
       compressedByteBuffer.clear();
       compressor.compress(buffer, compressedByteBuffer);
       buffer = compressedByteBuffer;
@@ -83,6 +85,10 @@ public abstract class LogWriter implements ILogWriter {
       compressed = true;
     }
     size += bufferSize;
+    /*
+     Header structure:
+     [CompressionType(1 byte)][dataBufferSize(4 bytes)][uncompressedSize(4 bytes)]
+    */
     headerBuffer.clear();
     headerBuffer.put(
         compressed ? compressionType.serialize() : CompressionType.UNCOMPRESSED.serialize());

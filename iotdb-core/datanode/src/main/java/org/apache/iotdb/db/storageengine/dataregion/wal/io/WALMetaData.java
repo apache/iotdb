@@ -123,8 +123,7 @@ public class WALMetaData implements SerializedSize {
   }
 
   public static WALMetaData readFromWALFile(File logFile, FileChannel channel) throws IOException {
-    if (channel.size() < WALWriter.MAGIC_STRING_BYTES
-        || !readTailMagic(channel).equals(WALWriter.MAGIC_STRING)) {
+    if (channel.size() < WALWriter.MAGIC_STRING_BYTES || !isValidMagicString(channel)) {
       throw new IOException(String.format("Broken wal file %s", logFile));
     }
     // load metadata size
@@ -153,10 +152,12 @@ public class WALMetaData implements SerializedSize {
     return metaData;
   }
 
-  private static String readTailMagic(FileChannel channel) throws IOException {
+  private static boolean isValidMagicString(FileChannel channel) throws IOException {
     ByteBuffer magicStringBytes = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
     channel.read(magicStringBytes, channel.size() - WALWriter.MAGIC_STRING_BYTES);
     magicStringBytes.flip();
-    return new String(magicStringBytes.array());
+    String magicString = new String(magicStringBytes.array());
+    return magicString.equals(WALWriter.MAGIC_STRING)
+        || magicString.startsWith(WALWriter.MAGIC_STRING_V1);
   }
 }

@@ -42,8 +42,31 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       ByteBuffer.allocate(
           IoTDBDescriptor.getInstance().getConfig().getWalBufferSize()); // uncompressed data buffer
 
+  enum FileVersion {
+    V1,
+    V2,
+    UNKNOWN
+  };
+
+  FileVersion version;
+
   public WALInputStream(File logFile) throws IOException {
     channel = FileChannel.open(logFile.toPath());
+    analyzeFileVersion();
+  }
+
+  private void analyzeFileVersion() throws IOException {
+    ByteBuffer magicStringBytes = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
+    channel.read(magicStringBytes, channel.size() - WALWriter.MAGIC_STRING_BYTES);
+    magicStringBytes.flip();
+    String magicString = new String(magicStringBytes.array());
+    if (magicString.equals(WALWriter.MAGIC_STRING)) {
+      version = FileVersion.V2;
+    } else if (magicString.startsWith(WALWriter.MAGIC_STRING_V1)) {
+      version = FileVersion.V1;
+    } else {
+      version = FileVersion.UNKNOWN;
+    }
   }
 
   @Override
@@ -66,6 +89,22 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   }
 
   private void loadNextSegment() throws IOException {
+    if (version == FileVersion.V2) {
+      loadNextSegmentV2();
+    } else if (version == FileVersion.V1) {
+      loadNextSegmentV1();
+    } else {
+      tryLoadSegment();
+    }
+  }
+
+  private void loadNextSegmentV1() throws IOException {
+    // just read raw data as input
+    channel.read(dataBuffer);
+    dataBuffer.flip();
+  }
+
+  private void loadNextSegmentV2() throws IOException {
     headerBuffer.clear();
     if (channel.read(headerBuffer) != Integer.BYTES + 1) {
       throw new IOException("Unexpected end of file");
@@ -100,5 +139,22 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       }
     }
     dataBuffer.flip();
+  }
+
+  private void tryLoadSegment() throws IOException {
+    long originPosition = channel.position();
+    try {
+      loadNextSegmentV2();
+      version = FileVersion.V2;
+    } catch (Throwable e) {
+      // failed to load in V2 way, try in V1 way
+      logger.warn("Failed to load WAL segment in V2 way, try in V1 way", e);
+      channel.position(originPosition);
+    }
+
+    if (version == FileVersion.UNKNOWN) {
+      loadNextSegmentV1();
+      version = FileVersion.V1;
+    }
   }
 }
