@@ -19,33 +19,18 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.model;
 
-import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.utils.Pair;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+public abstract class AbstractDeviceChunkMetaData {
+  private final IDeviceID devicePath;
 
-public class DeviceChunkMetaData extends AbstractDeviceChunkMetaData {
-
-  private final Map<String, List<IChunkMetadata>> measurementChunkMetadataMap;
-
-  public DeviceChunkMetaData(
-      IDeviceID devicePath, Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> map) {
-    super(devicePath);
-    measurementChunkMetadataMap = new HashMap<>();
-    for (Map.Entry<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> entry : map.entrySet()) {
-      this.measurementChunkMetadataMap.put(entry.getKey(), entry.getValue().left);
-    }
+  public AbstractDeviceChunkMetaData(IDeviceID devicePath) {
+    this.devicePath = devicePath;
   }
 
-  public Map<String, List<IChunkMetadata>> getMeasurementChunkMetadataMap() {
-    return measurementChunkMetadataMap;
+  public IDeviceID getDevicePath() {
+    return devicePath;
   }
 
-  @Override
-  public boolean isAligned() {
-    return false;
-  }
+  public abstract boolean isAligned();
 }

@@ -20,19 +20,19 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.model;
 
 public class ChunkOffset {
-    private final long offSet;
-    private final String path;
+  private final long offSet;
+  private final String path;
 
-    public ChunkOffset(long offSet, String path) {
-        this.offSet = offSet;
-        this.path = path;
-    }
+  public ChunkOffset(long offSet, String path) {
+    this.offSet = offSet;
+    this.path = path;
+  }
 
-    public long getOffSet() {
-        return offSet;
-    }
+  public long getOffSet() {
+    return offSet;
+  }
 
-    public String getPath() {
-        return path;
-    }
+  public String getPath() {
+    return path;
+  }
 }

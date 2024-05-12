@@ -22,25 +22,25 @@ package org.apache.iotdb.db.storageengine.dataregion.read.filescan.model;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 public class DeviceStartEndTime {
-    private final IDeviceID devicePath;
-    private final long startTime;
-    private final long endTime;
+  private final IDeviceID devicePath;
+  private final long startTime;
+  private final long endTime;
 
-    public DeviceStartEndTime(IDeviceID devicePath, long startTime, long endTime) {
-        this.devicePath = devicePath;
-        this.startTime = startTime;
-        this.endTime = endTime;
-    }
+  public DeviceStartEndTime(IDeviceID devicePath, long startTime, long endTime) {
+    this.devicePath = devicePath;
+    this.startTime = startTime;
+    this.endTime = endTime;
+  }
 
-    public IDeviceID getDevicePath() {
-        return devicePath;
-    }
+  public IDeviceID getDevicePath() {
+    return devicePath;
+  }
 
-    public long getEndTime() {
-        return endTime;
-    }
+  public long getEndTime() {
+    return endTime;
+  }
 
-    public long getStartTime() {
-        return startTime;
-    }
+  public long getStartTime() {
+    return startTime;
+  }
 }

@@ -19,51 +19,60 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan;
 
-import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.DeviceChunkMetaData;
-import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.DeviceStartEndTime;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileDeviceStartEndTimeIterator;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.io.IOException;
+import java.util.Iterator;
+
 /**
- * This interface is used to handle the scan of TSFile.
- * It will supply the interface for metadata check and chunkScan for one TsFile.
+ * This interface is used to handle the scan of TSFile. It will supply the interface for metadata
+ * check and chunkScan for one TsFile.
  */
 public interface IFileScanHandle {
 
-    /**
-     * Get the metaData of devices in current TsFile.
-     * MetaData includes the devicePath, startTime and endTime of specified devicePath.
-     * @return the iterator of DeviceStartEndTime.
-     */
-    Iterable<DeviceStartEndTime> getDeviceStartEndTimeIterator();
+  /**
+   * Get the metaData of devices in current TsFile. MetaData includes the devicePath, startTime and
+   * endTime of specified devicePath.
+   *
+   * @return the iterator of DeviceStartEndTime.
+   */
+  TsFileDeviceStartEndTimeIterator getDeviceStartEndTimeIterator() throws IOException;
 
-    /**
-     * Check whether specified timestamp in the devicePath is deleted in current TsFile.
-     * @param deviceID the devicePath needs to be checked.
-     * @param timestamp the timestamp for the devicePath.
-     * @return if timestamp is deleted in mods file , return true, else return false.
-     */
-    boolean isDeviceTimeDeleted(IDeviceID deviceID, long timestamp);
+  /**
+   * Check whether specified timestamp in the devicePath is deleted in current TsFile.
+   *
+   * @param deviceID the devicePath needs to be checked.
+   * @param timestamp the timestamp for the devicePath.
+   * @return if timestamp is deleted in mods file , return true, else return false.
+   */
+  boolean isDeviceTimeDeleted(IDeviceID deviceID, long timestamp);
 
-    /**
-     * Get the chunkMetaData of all devices in current TsFile.
-     * MetaData includes the devicePath, measurementId and chunkMetaDataList of specified devicePath.
-     * @return the iterator of DeviceChunkMetaData.
-     */
-    Iterable<DeviceChunkMetaData> getAllDeviceChunkMetaData();
+  /**
+   * Get the chunkMetaData of all devices in current TsFile. MetaData includes the devicePath,
+   * measurementId and chunkMetaDataList of specified devicePath.
+   *
+   * @return the iterator of DeviceChunkMetaData.
+   */
+  Iterator<AbstractDeviceChunkMetaData> getAllDeviceChunkMetaData() throws IOException;
 
-    /**
-     * If the TsFile of this handle is closed.
-     */
-    boolean isClosed();
+  /**
+   * Check whether specified timestamp in the timeSeries is deleted.
+   *
+   * @param timeSeriesName the timeSeries needs to be checked.
+   * @param timestamp the timestamp for the timeSeries.
+   * @return if timestamp is deleted in mods file , return true, else return false.
+   */
+  boolean isTimeSeriesTimeDeleted(String timeSeriesName, long timestamp);
 
+  /** If the TsFile of this handle is closed. */
+  boolean isClosed();
 
-    /**
-     * If the TsFile of this handle is deleted.
-     */
-    boolean isDeleted();
+  /** If the TsFile of this handle is deleted. */
+  boolean isDeleted();
 
-    /**
-     * Get the file path of target TsFile.
-     */
-    String getFilePath();
+  /** Get the file path of target TsFile. */
+  String getFilePath();
 }

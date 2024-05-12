@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
-import org.apache.iotdb.db.storageengine.dataregion.read.filescan.SharedTimeDataBuffer;
+import org.apache.iotdb.db.storageengine.dataregion.utils.SharedTimeDataBuffer;
+
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -30,39 +31,45 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
-    private static final int MASK = 0x80;
+  private static final int MASK = 0x80;
 
-    private final SharedTimeDataBuffer sharedTimeDataBuffer;
-    private int pageIndex = 0;
+  private final SharedTimeDataBuffer sharedTimeDataBuffer;
+  private int pageIndex = 0;
 
-    public DiskAlignedChunkHandleImpl(String filePath, long offset,Statistics<? extends Serializable> chunkStatistic,
-                                      SharedTimeDataBuffer sharedTimeDataBuffer) throws IOException {
-        super(filePath, offset, chunkStatistic);
-        this.sharedTimeDataBuffer = sharedTimeDataBuffer;
+  public DiskAlignedChunkHandleImpl(
+      String filePath,
+      long offset,
+      Statistics<? extends Serializable> chunkStatistic,
+      SharedTimeDataBuffer sharedTimeDataBuffer)
+      throws IOException {
+    super(filePath, offset, chunkStatistic);
+    this.sharedTimeDataBuffer = sharedTimeDataBuffer;
+  }
+
+  @Override
+  public long[] getDataTime() throws IOException {
+    ByteBuffer currentPageDataBuffer =
+        ChunkReader.deserializePageData(
+            currentPageHeader, this.currentChunkDataBuffer, this.currentChunkHeader);
+    int size = ReadWriteIOUtils.readInt(currentPageDataBuffer);
+    byte[] bitmap = new byte[(size + 7) / 8];
+    currentPageDataBuffer.get(bitmap);
+
+    Long[] timeData = sharedTimeDataBuffer.getPageData(pageIndex);
+    if (timeData.length != size) {
+      throw new UnsupportedOperationException("Time data size not match");
     }
 
-    @Override
-    public long[] getDataTime() throws IOException {
-        ByteBuffer currentPageDataBuffer = ChunkReader.deserializePageData(currentPageHeader, this.currentChunkDataBuffer, this.currentChunkHeader);
-        int size = ReadWriteIOUtils.readInt(currentPageDataBuffer);
-        byte[] bitmap = new byte[(size+7)/8];
-        currentPageDataBuffer.get(bitmap);
-
-        Long[] timeData = sharedTimeDataBuffer.getPageData(pageIndex);
-        if(timeData.length != size){
-            throw new UnsupportedOperationException("Time data size not match");
-        }
-
-        ArrayList<Long> validTimeList = new ArrayList<>();
-        for(int i = 0; i<size; i++){
-            if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
-                continue;
-            }
-            long timestamp = timeData[i];
-            validTimeList.add(timestamp);
-        }
-
-        pageIndex++;
-        return validTimeList.stream().mapToLong(Long::longValue).toArray();
+    ArrayList<Long> validTimeList = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+        continue;
+      }
+      long timestamp = timeData[i];
+      validTimeList.add(timestamp);
     }
+
+    pageIndex++;
+    return validTimeList.stream().mapToLong(Long::longValue).toArray();
+  }
 }

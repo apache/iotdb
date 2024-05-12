@@ -21,34 +21,29 @@ package org.apache.iotdb.db.storageengine.dataregion.read.filescan;
 
 import java.io.IOException;
 
-/**
- * This interface is used to handle the scan of chunks in TSFile.
- */
+/** This interface is used to handle the scan of chunks in TSFile. */
 public interface IChunkHandle {
 
-    /**
-     * Check If there is more pages to be scanned in Chunk.
-     * If so, move to next page and return true
-     */
-    boolean hasNextPage() throws IOException;
+  /**
+   * Check If there is more pages to be scanned in Chunk. If so, move to next page and return true
+   */
+  boolean hasNextPage() throws IOException;
 
-    /**
-     * Skip the current page
-     */
-    void skipCurrentPage();
+  /** Skip the current page */
+  void skipCurrentPage();
 
-    /**
-     * Get the statistics time of page in Chunk.
-     * @return start time and end time of page.
-     */
-    long[] getPageStatisticsTime();
+  /**
+   * Get the statistics time of page in Chunk.
+   *
+   * @return start time and end time of page.
+   */
+  long[] getPageStatisticsTime();
 
-    /**
-     * Scan the data in the page and get the timestamp.
-     * It will cause disk IO if tsFile is not in memory.
-     * @return the iterator of timestamp.
-     */
-    long[] getDataTime() throws IOException;
-
-
+  /**
+   * Scan the data in the page and get the timestamp. It will cause disk IO if tsFile is not in
+   * memory.
+   *
+   * @return the iterator of timestamp.
+   */
+  long[] getDataTime() throws IOException;
 }
