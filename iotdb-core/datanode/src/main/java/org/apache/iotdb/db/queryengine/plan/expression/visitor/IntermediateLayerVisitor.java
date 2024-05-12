@@ -61,6 +61,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.Log
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.LogicOrTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi.MappableUDFQueryRowTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi.UDFQueryRowTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi.UDFQueryTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.ternary.BetweenTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.ArithmeticNegationTransformer;
@@ -400,11 +401,10 @@ public class IntermediateLayerVisitor
       case SLIDING_TIME_WINDOW:
       case SESSION_TIME_WINDOW:
       case STATE_WINDOW:
-        throw new UnsupportedOperationException("In development");
-        //        return new UDFQueryRowWindowTransformer(
-        //            udfInputIntermediateLayer.constructRowWindowReader(
-        //                accessStrategy, context.memoryAssigner.assign()),
-        //            executor);
+        return new UDFQueryRowWindowTransformer(
+            udfInputIntermediateLayer.constructRowWindowReader(
+                accessStrategy, context.memoryAssigner.assign()),
+            executor);
       default:
         throw new UnsupportedOperationException("Unsupported transformer access strategy");
     }

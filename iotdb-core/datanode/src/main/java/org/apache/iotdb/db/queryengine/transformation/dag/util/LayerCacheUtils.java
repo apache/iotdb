@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.transformation.dag.util;
 
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
+import org.apache.iotdb.db.queryengine.transformation.dag.input.IUDFInputDataSet;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -42,6 +44,57 @@ public class LayerCacheUtils {
     Column[] columns = source.current();
     target.putColumn((TimeColumn) columns[1], columns[0]);
     source.consumedAll();
+
+    return YieldableState.YIELDABLE;
+  }
+
+  public static YieldableState yieldPoints(
+      LayerReader source, ElasticSerializableTVList target, int count) throws Exception {
+    while (count > 0) {
+      final YieldableState yieldableState = source.yield();
+      if (yieldableState != YieldableState.YIELDABLE) {
+        return yieldableState;
+      }
+
+      Column[] columns = source.current();
+      target.putColumn((TimeColumn) columns[1], columns[0]);
+      source.consumedAll();
+
+      int size = columns[0].getPositionCount();
+      count -= size;
+    }
+
+    return YieldableState.YIELDABLE;
+  }
+
+  public static YieldableState yieldRows(
+      IUDFInputDataSet source, ElasticSerializableRowRecordList target) throws Exception {
+    final YieldableState yieldableState = source.yield();
+    if (yieldableState != YieldableState.YIELDABLE) {
+      return yieldableState;
+    }
+
+    Column[] columns = source.currentBlock();
+    target.put(columns);
+
+    return YieldableState.YIELDABLE;
+  }
+
+  public static YieldableState yieldRows(
+      IUDFInputDataSet source, ElasticSerializableRowRecordList target, int count)
+      throws Exception {
+    while (count > 0) {
+      final YieldableState yieldableState = source.yield();
+      if (yieldableState != YieldableState.YIELDABLE) {
+        return yieldableState;
+      }
+
+      Column[] columns = source.currentBlock();
+      target.put(columns);
+
+      int size = columns[0].getPositionCount();
+      count -= size;
+    }
 
     return YieldableState.YIELDABLE;
   }

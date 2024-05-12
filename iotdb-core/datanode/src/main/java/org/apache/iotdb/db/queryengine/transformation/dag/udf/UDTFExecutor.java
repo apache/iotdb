@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.transformation.dag.udf;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.adapter.PointCollectorAdaptor;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.InputRowUtils;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -136,8 +137,11 @@ public class UDTFExecutor {
       Column timeColumn = timeColumnBuilder.build();
       Column valueColumn = valueColumnBuilder.build();
 
-      cachedColumns = new Column[] {valueColumn, timeColumn};
-      outputStorage.putColumn((TimeColumn) timeColumn, valueColumn);
+      // Some UDTF only generate data in terminate method
+      if (timeColumn.getPositionCount() != 0) {
+        cachedColumns = new Column[] {valueColumn, timeColumn};
+        outputStorage.putColumn((TimeColumn) timeColumn, valueColumn);
+      }
     } catch (UnsupportedOperationException e) {
       int colCount = columns.length;
       int rowCount = columns[0].getPositionCount();
@@ -156,25 +160,40 @@ public class UDTFExecutor {
         for (int j = 0; j < colCount; j++) {
           values[j] = columns[j].isNull(i) ? null : columns[j].getObject(i);
         }
+
         // construct input row for executor
         RowImpl row = new RowImpl(dataTypes);
         row.setRowRecord(values);
-        // transform each row by default
-        udtf.transform(row, collector);
+
+        boolean isAllNull = InputRowUtils.isAllNull(values);
+        if (isAllNull) {
+          // skip row that all fields are null
+          collector.putNull(row.getTime());
+        } else {
+          // transform each row by default
+          udtf.transform(row, collector);
+        }
       }
       // Store output data
       TimeColumn timeColumn = collector.buildTimeColumn();
       Column valueColumn = collector.buildValueColumn();
 
-      cachedColumns = new Column[] {valueColumn, timeColumn};
-      outputStorage.putColumn(timeColumn, valueColumn);
+      // Some UDTF only generate data in terminate method
+      if (timeColumn.getPositionCount() != 0) {
+        cachedColumns = new Column[] {valueColumn, timeColumn};
+        outputStorage.putColumn(timeColumn, valueColumn);
+      } else {
+        cachedColumns = null;
+      }
     } catch (Exception e) {
       onError("Mappable UDTF execution error", e);
     }
   }
 
-  public void execute(RowWindow rowWindow) {
+  public void execute(
+      RowWindow rowWindow, TimeColumnBuilder timeColumnBuilder, ColumnBuilder valueColumnBuilder) {
     try {
+      collector = new PointCollectorAdaptor(timeColumnBuilder, valueColumnBuilder);
       // Execute UDTF
       udtf.transform(rowWindow, collector);
       // Store output data

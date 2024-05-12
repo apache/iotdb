@@ -90,73 +90,69 @@ public class TransformUtils {
       TSDataType dataType,
       ValueRecorder valueRecorder,
       double delta,
-      ElasticSerializableTVList tvList)
+      ElasticSerializableTVList tvList,
+      int index)
       throws IOException {
     boolean res;
     switch (dataType) {
       case INT32:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordInt(tvList.getInt(tvList.getPointCount() - 2));
+          valueRecorder.recordInt(tvList.getInt(index - 1));
           valueRecorder.setRecorded(true);
         }
-        res = Math.abs(tvList.getInt(tvList.getPointCount() - 1) - valueRecorder.getInt()) > delta;
+        res = Math.abs(tvList.getInt(index) - valueRecorder.getInt()) > delta;
         if (res) {
-          valueRecorder.recordInt(tvList.getInt(tvList.getPointCount() - 1));
+          valueRecorder.recordInt(tvList.getInt(index));
         }
         break;
       case INT64:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordLong(tvList.getLong(tvList.getPointCount() - 2));
+          valueRecorder.recordLong(tvList.getLong(index - 1));
           valueRecorder.setRecorded(true);
         }
-        res =
-            Math.abs(tvList.getLong(tvList.getPointCount() - 1) - valueRecorder.getLong()) > delta;
+        res = Math.abs(tvList.getLong(index) - valueRecorder.getLong()) > delta;
         if (res) {
-          valueRecorder.recordLong(tvList.getLong(tvList.getPointCount() - 1));
+          valueRecorder.recordLong(tvList.getLong(index));
         }
         break;
       case FLOAT:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordFloat(tvList.getFloat(tvList.getPointCount() - 2));
+          valueRecorder.recordFloat(tvList.getFloat(index - 1));
           valueRecorder.setRecorded(true);
         }
-        res =
-            Math.abs(tvList.getFloat(tvList.getPointCount() - 1) - valueRecorder.getFloat())
-                > delta;
+        res = Math.abs(tvList.getFloat(index) - valueRecorder.getFloat()) > delta;
         if (res) {
-          valueRecorder.recordFloat(tvList.getFloat(tvList.getPointCount() - 1));
+          valueRecorder.recordFloat(tvList.getFloat(index));
         }
         break;
       case DOUBLE:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordDouble(tvList.getDouble(tvList.getPointCount() - 2));
+          valueRecorder.recordDouble(tvList.getDouble(index - 1));
           valueRecorder.setRecorded(true);
         }
-        res =
-            Math.abs(tvList.getDouble(tvList.getPointCount() - 1) - valueRecorder.getDouble())
-                > delta;
+        res = Math.abs(tvList.getDouble(index) - valueRecorder.getDouble()) > delta;
         if (res) {
-          valueRecorder.recordDouble(tvList.getDouble(tvList.getPointCount() - 1));
+          valueRecorder.recordDouble(tvList.getDouble(index));
         }
         break;
       case BOOLEAN:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordBoolean(tvList.getBoolean(tvList.getPointCount() - 2));
+          valueRecorder.recordBoolean(tvList.getBoolean(index - 1));
           valueRecorder.setRecorded(true);
         }
-        res = tvList.getBoolean(tvList.getPointCount() - 1) != valueRecorder.getBoolean();
+        res = tvList.getBoolean(index) != valueRecorder.getBoolean();
         if (res) {
-          valueRecorder.recordBoolean(tvList.getBoolean(tvList.getPointCount() - 1));
+          valueRecorder.recordBoolean(tvList.getBoolean(index));
         }
         break;
       case TEXT:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordString(tvList.getString(tvList.getPointCount() - 2));
+          valueRecorder.recordString(tvList.getString(index - 1));
           valueRecorder.setRecorded(true);
         }
-        res = !tvList.getString(tvList.getPointCount() - 1).equals(valueRecorder.getString());
+        res = !tvList.getString(index).equals(valueRecorder.getString());
         if (res) {
-          valueRecorder.recordString(tvList.getString(tvList.getPointCount() - 1));
+          valueRecorder.recordString(tvList.getString(index));
         }
         break;
       default:

@@ -217,6 +217,7 @@ public class SerializableRowRecordList implements SerializableList {
         time = block[valueColumnCount].getLong(offset);
         break;
       }
+      total += length;
     }
 
     return time;

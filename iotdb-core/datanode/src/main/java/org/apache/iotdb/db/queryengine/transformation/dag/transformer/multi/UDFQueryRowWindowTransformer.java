@@ -22,6 +22,9 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 public class UDFQueryRowWindowTransformer extends UniversalUDFQueryTransformer {
 
@@ -39,7 +42,11 @@ public class UDFQueryRowWindowTransformer extends UniversalUDFQueryTransformer {
     if (yieldableState != YieldableState.YIELDABLE) {
       return yieldableState;
     }
-    executor.execute(layerRowWindowReader.currentWindow());
+
+    TimeColumnBuilder timeColumnBuilder = new TimeColumnBuilder(null, 1);
+    ColumnBuilder valueColumnBuilder = TypeUtils.initColumnBuilder(tsDataType, 1);
+
+    executor.execute(layerRowWindowReader.currentWindow(), timeColumnBuilder, valueColumnBuilder);
     layerRowWindowReader.readyForNext();
     return YieldableState.YIELDABLE;
   }

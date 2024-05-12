@@ -87,9 +87,11 @@ public class RowImpl implements Row {
     return rowRecord[columnIndex] == null;
   }
 
+  // Value columns count
+  // thus exclude time column
   @Override
   public int size() {
-    return size;
+    return size - 1;
   }
 
   public void setRowRecord(Object[] rowRecord) {
