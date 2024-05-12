@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -698,7 +699,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       return false;
     } else {
       for (int i = 0; i < this.nodes.length; i++) {
-        if (!nodes[i].equals(otherNodes[i])) {
+        if (!Objects.equals(nodes[i], otherNodes[i])) {
           return false;
         }
       }
@@ -715,7 +716,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   public int hashCode() {
     int h = 0;
     for (String node : nodes) {
-      h += 31 * h + node.hashCode();
+      h += 31 * h + Objects.hashCode(node);
     }
     return h;
   }

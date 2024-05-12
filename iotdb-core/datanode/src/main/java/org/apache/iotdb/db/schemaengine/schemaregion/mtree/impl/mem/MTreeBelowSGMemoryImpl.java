@@ -1042,7 +1042,10 @@ public class MTreeBelowSGMemoryImpl {
             PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
             ShowDevicesResult result =
                 new ShowDevicesResult(
-                    device.getFullPath(), node.isAlignedNullable(), node.getSchemaTemplateId());
+                    device.getFullPath(),
+                    node.isAlignedNullable(),
+                    node.getSchemaTemplateId(),
+                    node.getPartialPath().getNodes());
             result.setAttributeProvider(
                 k ->
                     attributeProvider.apply(

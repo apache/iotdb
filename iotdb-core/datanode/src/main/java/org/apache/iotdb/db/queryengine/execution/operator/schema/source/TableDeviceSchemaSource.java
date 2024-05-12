@@ -165,24 +165,32 @@ public class TableDeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo>
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
     int idIndex = 0;
-    PartialPath devicePath = schemaInfo.getPartialPath();
+    String[] pathNodes = schemaInfo.getRawNodes();
     TsTable table = DataNodeTableCache.getInstance().getTable(this.database, tableName);
     TsTableColumnSchema columnSchema;
     for (ColumnHeader columnHeader : columnHeaderList) {
       columnSchema = table.getColumnSchema(columnHeader.getColumnName());
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-        builder
-            .getColumnBuilder(resultIndex)
-            .writeBinary(
-                new Binary(devicePath.getNodes()[idIndex + 3], TSFileConfig.STRING_CHARSET));
+        if (pathNodes[idIndex + 3] == null) {
+          builder.getColumnBuilder(resultIndex).appendNull();
+        } else {
+          builder
+              .getColumnBuilder(resultIndex)
+              .writeBinary(new Binary(pathNodes[idIndex + 3], TSFileConfig.STRING_CHARSET));
+        }
         idIndex++;
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
-        builder
-            .getColumnBuilder(resultIndex)
-            .writeBinary(
-                new Binary(
-                    schemaInfo.getAttributeValue(columnHeader.getColumnName()),
-                    TSFileConfig.STRING_CHARSET));
+        String attributeValue = schemaInfo.getAttributeValue(columnHeader.getColumnName());
+        if (attributeValue == null) {
+          builder.getColumnBuilder(resultIndex).appendNull();
+        } else {
+          builder
+              .getColumnBuilder(resultIndex)
+              .writeBinary(
+                  new Binary(
+                      schemaInfo.getAttributeValue(columnHeader.getColumnName()),
+                      TSFileConfig.STRING_CHARSET));
+        }
       }
       resultIndex++;
     }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
 import java.util.Objects;
@@ -29,10 +30,19 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
 
   private Function<String, String> attributeProvider;
 
+  private String[] rawNodes = null;
+
   public ShowDevicesResult(String name, Boolean isAligned, int templateId) {
     super(name);
     this.isAligned = isAligned;
     this.templateId = templateId;
+  }
+
+  public ShowDevicesResult(String name, Boolean isAligned, int templateId, String[] rawNodes) {
+    super(name);
+    this.isAligned = isAligned;
+    this.templateId = templateId;
+    this.rawNodes = rawNodes;
   }
 
   public Boolean isAligned() {
@@ -50,6 +60,15 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
   @Override
   public String getAttributeValue(String attributeKey) {
     return attributeProvider.apply(attributeKey);
+  }
+
+  public String[] getRawNodes() {
+    return rawNodes;
+  }
+
+  @Override
+  public PartialPath getPartialPath() {
+    return new PartialPath(rawNodes);
   }
 
   @Override

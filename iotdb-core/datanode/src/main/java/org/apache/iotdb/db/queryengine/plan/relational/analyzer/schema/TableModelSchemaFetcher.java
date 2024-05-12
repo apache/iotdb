@@ -255,10 +255,18 @@ public class TableModelSchemaFetcher {
             TsTableColumnSchema columnSchema =
                 tableInstance.getColumnSchema(columnHeaderList.get(j).getColumnName());
             if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-              nodes[idIndex] = columns[j].getBinary(i).toString();
+              if (columns[j].isNull(i)) {
+                nodes[idIndex] = null;
+              } else {
+                nodes[idIndex] = columns[j].getBinary(i).toString();
+              }
               idIndex++;
             } else {
-              attributeMap.put(columnSchema.getColumnName(), columns[j].getBinary(i).toString());
+              if (columns[j].isNull(i)) {
+                attributeMap.put(columnSchema.getColumnName(), null);
+              } else {
+                attributeMap.put(columnSchema.getColumnName(), columns[j].getBinary(i).toString());
+              }
             }
           }
           fetchedDeviceSchema.put(new TableDeviceId(nodes), attributeMap);
@@ -510,10 +518,18 @@ public class TableModelSchemaFetcher {
             TsTableColumnSchema columnSchema =
                 tableInstance.getColumnSchema(columnHeaderList.get(j).getColumnName());
             if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-              nodes[idIndex + 1] = columns[j].getBinary(i).toString();
+              if (columns[j].isNull(i)) {
+                nodes[idIndex + 1] = null;
+              } else {
+                nodes[idIndex + 1] = columns[j].getBinary(i).toString();
+              }
               idIndex++;
             } else {
-              attributeMap.put(columnSchema.getColumnName(), columns[j].getBinary(i).toString());
+              if (columns[j].isNull(i)) {
+                attributeMap.put(columnSchema.getColumnName(), null);
+              } else {
+                attributeMap.put(columnSchema.getColumnName(), columns[j].getBinary(i).toString());
+              }
             }
           }
           IDeviceID deviceID = new StringArrayDeviceID(nodes);

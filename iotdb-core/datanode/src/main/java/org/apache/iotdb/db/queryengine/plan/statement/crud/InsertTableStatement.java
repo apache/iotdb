@@ -130,7 +130,7 @@ public class InsertTableStatement extends Statement implements ITableDeviceSchem
       TsTableColumnCategory category = table.getColumnList().get(i).getColumnCategory();
       if (category.equals(TsTableColumnCategory.ID)) {
         String id = idColumnMap.get(table.getColumnList().get(i).getColumnName());
-        deviceIds[3 + idIndex] = id == null ? "" : id;
+        deviceIds[3 + idIndex] = id;
         idIndex++;
       } else if (category.equals(TsTableColumnCategory.MEASUREMENT)) {
         String measurement = table.getColumnList().get(i).getColumnName();

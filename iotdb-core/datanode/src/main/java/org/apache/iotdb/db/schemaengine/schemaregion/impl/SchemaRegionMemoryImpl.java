@@ -1349,7 +1349,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 new ShowDevicesResult(
                     deviceNode.getFullPath(),
                     deviceNode.isAlignedNullable(),
-                    deviceNode.getSchemaTemplateId());
+                    deviceNode.getSchemaTemplateId(),
+                    deviceNode.getPartialPath().getNodes());
             result.setAttributeProvider(
                 k ->
                     deviceAttributeStore.getAttribute(
