@@ -76,10 +76,6 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
 
-  private static final SubscriptionConnectionException NO_PROVIDERS_EXCEPTION =
-      new SubscriptionConnectionException(
-          "Cluster has no available subscription providers to connect");
-
   private final List<TEndPoint> initialEndpoints;
 
   private final String username;
@@ -182,7 +178,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// open & close ///////////////////////////////
 
-  public synchronized void open() throws IoTDBConnectionException {
+  public synchronized void open() throws SubscriptionException, IoTDBConnectionException {
     if (!isClosed.get()) {
       return;
     }
@@ -190,7 +186,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     // open subscription providers
     acquireWriteLock();
     try {
-      openProviders(); // throw IoTDBConnectionException
+      openProviders(); // throw SubscriptionException or IoTDBConnectionException
     } finally {
       releaseWriteLock();
     }
@@ -205,7 +201,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   @Override
-  public synchronized void close() throws IoTDBConnectionException {
+  public synchronized void close() throws SubscriptionException, IoTDBConnectionException {
     if (isClosed.get()) {
       return;
     }
@@ -220,7 +216,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       // close subscription providers
       acquireWriteLock();
       try {
-        closeProviders();
+        closeProviders(); // throw SubscriptionException or IoTDBConnectionException
       } finally {
         releaseWriteLock();
       }
@@ -371,7 +367,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void openProviders() throws IoTDBConnectionException {
+  void openProviders() throws SubscriptionException, IoTDBConnectionException {
     // close stale providers
     closeProviders();
 
@@ -416,12 +412,15 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
 
     if (hasNoProviders()) {
-      throw NO_PROVIDERS_EXCEPTION;
+      throw new SubscriptionConnectionException(
+          String.format(
+              "Cluster has no available subscription providers to connect with initial endpoints %s",
+              initialEndpoints));
     }
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  private void closeProviders() throws IoTDBConnectionException {
+  private void closeProviders() throws SubscriptionException, IoTDBConnectionException {
     for (final SubscriptionProvider provider : getAllProviders()) {
       provider.close();
     }
@@ -436,7 +435,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void closeAndRemoveProvider(final int dataNodeId) throws IoTDBConnectionException {
+  void closeAndRemoveProvider(final int dataNodeId)
+      throws SubscriptionException, IoTDBConnectionException {
     if (!containsProvider(dataNodeId)) {
       return;
     }
@@ -893,57 +893,90 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   private void subscribeWithRedirection(final Set<String> topicNames) throws SubscriptionException {
-    for (final SubscriptionProvider provider : getAllAvailableProviders()) {
+    final List<SubscriptionProvider> providers = getAllAvailableProviders();
+    if (providers.isEmpty()) {
+      throw new SubscriptionConnectionException(
+          String.format(
+              "Cluster has no available subscription providers when %s subscribe topic %s",
+              this, topicNames));
+    }
+    for (final SubscriptionProvider provider : providers) {
       try {
         provider.subscribe(topicNames);
         return;
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to subscribe topics {} from subscription provider {}, try next subscription provider...",
+            "{} failed to subscribe topics {} from subscription provider {}, try next subscription provider...",
+            this,
             topicNames,
             provider,
             e);
       }
     }
-    throw NO_PROVIDERS_EXCEPTION;
+    final String errorMessage =
+        String.format(
+            "%s failed to subscribe topics %s from all available subscription providers %s",
+            this, topicNames, providers);
+    LOGGER.warn(errorMessage);
+    throw new SubscriptionNonRetryableException(errorMessage);
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   private void unsubscribeWithRedirection(final Set<String> topicNames)
       throws SubscriptionException {
-    for (final SubscriptionProvider provider : getAllAvailableProviders()) {
+    final List<SubscriptionProvider> providers = getAllAvailableProviders();
+    if (providers.isEmpty()) {
+      throw new SubscriptionConnectionException(
+          String.format(
+              "Cluster has no available subscription providers when %s unsubscribe topic %s",
+              this, topicNames));
+    }
+    for (final SubscriptionProvider provider : providers) {
       try {
         provider.unsubscribe(topicNames);
         return;
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to unsubscribe topics {} from subscription provider {}, try next subscription provider...",
+            "{} failed to unsubscribe topics {} from subscription provider {}, try next subscription provider...",
+            this,
             topicNames,
             provider,
             e);
       }
     }
-    throw NO_PROVIDERS_EXCEPTION;
+    final String errorMessage =
+        String.format(
+            "%s failed to unsubscribe topics %s from all available subscription providers %s",
+            this, topicNames, providers);
+    LOGGER.warn(errorMessage);
+    throw new SubscriptionNonRetryableException(errorMessage);
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection() throws SubscriptionException {
-    Map<Integer, TEndPoint> endPoints = null;
-    for (final SubscriptionProvider provider : getAllAvailableProviders()) {
+    final List<SubscriptionProvider> providers = getAllAvailableProviders();
+    if (providers.isEmpty()) {
+      throw new SubscriptionConnectionException(
+          String.format(
+              "Cluster has no available subscription providers when %s fetch all endpoints", this));
+    }
+    for (final SubscriptionProvider provider : providers) {
       try {
-        endPoints = provider.getSessionConnection().fetchAllEndPoints();
-        break;
+        return provider.getSessionConnection().fetchAllEndPoints();
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to fetch all endpoints from subscription provider {}, try next subscription provider...",
+            "{} failed to fetch all endpoints from subscription provider {}, try next subscription provider...",
+            this,
             provider,
             e);
       }
     }
-    if (Objects.isNull(endPoints)) {
-      throw NO_PROVIDERS_EXCEPTION;
-    }
-    return endPoints;
+    final String errorMessage =
+        String.format(
+            "%s failed to fetch all endpoints from all available subscription providers %s",
+            this, providers);
+    LOGGER.warn(errorMessage);
+    throw new SubscriptionNonRetryableException(errorMessage);
   }
 
   /////////////////////////////// builder ///////////////////////////////

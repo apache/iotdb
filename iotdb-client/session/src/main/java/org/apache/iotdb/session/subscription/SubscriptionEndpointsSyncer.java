@@ -20,7 +20,6 @@
 package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +55,7 @@ public class SubscriptionEndpointsSyncer implements Runnable {
     if (consumer.hasNoProviders()) {
       try {
         consumer.openProviders();
-      } catch (final IoTDBConnectionException e) {
+      } catch (final Exception e) {
         LOGGER.warn("something unexpected happened when syncing subscription endpoints...", e);
         return;
       }
@@ -101,7 +100,7 @@ public class SubscriptionEndpointsSyncer implements Runnable {
         if (!provider.isAvailable()) {
           try {
             consumer.closeAndRemoveProvider(entry.getKey());
-          } catch (final IoTDBConnectionException e) {
+          } catch (final Exception e) {
             LOGGER.warn(
                 "Exception occurred when closing and removing subscription provider with data node id {}",
                 entry.getKey(),
@@ -117,7 +116,7 @@ public class SubscriptionEndpointsSyncer implements Runnable {
       if (!allEndPoints.containsKey(dataNodeId)) {
         try {
           consumer.closeAndRemoveProvider(dataNodeId);
-        } catch (final IoTDBConnectionException e) {
+        } catch (final Exception e) {
           LOGGER.warn(
               "Exception occurred when closing and removing subscription provider with data node id {}",
               dataNodeId,

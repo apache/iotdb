@@ -117,13 +117,14 @@ final class SubscriptionProvider extends SubscriptionSession {
       return;
     }
 
-    super.open();
+    super.open(); // throw IoTDBConnectionException
 
     final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
 
-    final PipeSubscribeHandshakeResp resp = handshake(new ConsumerConfig(consumerAttributes));
+    final PipeSubscribeHandshakeResp resp =
+        handshake(new ConsumerConfig(consumerAttributes)); // throw SubscriptionException
     dataNodeId = resp.getDataNodeId();
     consumerId = resp.getConsumerId();
     consumerGroupId = resp.getConsumerGroupId();
@@ -170,9 +171,9 @@ final class SubscriptionProvider extends SubscriptionSession {
     }
 
     try {
-      closeInternal();
+      closeInternal(); // throw SubscriptionException
     } finally {
-      super.close();
+      super.close(); // throw IoTDBConnectionException
       setUnavailable();
       isClosed.set(true);
     }
